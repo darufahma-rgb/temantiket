@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LiveClock } from "@/components/LiveClock";
 import { AdminWhatsappCard } from "@/components/AdminWhatsappCard";
+import { MitraLeaderboardCard } from "@/components/MitraLeaderboardCard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -860,6 +861,13 @@ export default function Dashboard() {
         >
           <AdminWhatsappCard />
         </motion.div>
+
+        {/* ── Mitra (Agent) Leaderboard preview — owner only ── */}
+        {user?.role === "owner" && (
+          <div className="mb-3 md:mb-5">
+            <MitraLeaderboardCard />
+          </div>
+        )}
 
         {/* ── Primary stat cards (4 main metrics) ── */}
         <motion.div
