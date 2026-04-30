@@ -1,4 +1,4 @@
-# IGH Tour — Travel Management App
+# Temantiket — Travel Management App
 
 Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn/ui.
 

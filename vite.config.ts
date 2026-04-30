@@ -38,8 +38,8 @@ export default defineConfig(({ mode }) => ({
       },
       includeAssets: ["favicon.ico", "logo-igh-tour.png", "offline.html"],
       manifest: {
-        name: "IGH Tour - Manajemen Umrah & Haji",
-        short_name: "IGH Tour",
+        name: "Temantiket - Manajemen Umrah & Haji",
+        short_name: "Temantiket",
         description: "Aplikasi manajemen trip, jamaah, paket, kalkulasi biaya, dan dokumen untuk Umrah dan Haji.",
         theme_color: "#f97316",
         background_color: "#fff7ed",
@@ -50,7 +50,7 @@ export default defineConfig(({ mode }) => ({
         start_url: "/?source=pwa",
         lang: "id",
         dir: "ltr",
-        id: "igh-tour-app",
+        id: "temantiket-app",
         categories: ["travel", "business", "productivity"],
         icons: [
           {

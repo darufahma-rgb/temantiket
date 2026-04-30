@@ -7,7 +7,7 @@
 export interface IghAdminSettings {
   /** Nomor WhatsApp admin (international format dengan/atau tanpa +). */
   adminWhatsapp: string;
-  /** Handle Instagram tanpa @, mis. "igh.tour". */
+  /** Handle Instagram tanpa @, mis. "temantiket". */
   adminInstagram: string;
 }
 
@@ -15,7 +15,7 @@ const STORAGE_KEY = "igh:admin-settings";
 
 export const DEFAULT_IGH_ADMIN_SETTINGS: IghAdminSettings = {
   adminWhatsapp: "+6282245193615", // Syamil IGH
-  adminInstagram: "igh.tour",
+  adminInstagram: "temantiket",
 };
 
 export function loadIghAdminSettings(): IghAdminSettings {

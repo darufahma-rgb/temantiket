@@ -59,7 +59,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
 
   const handleLogout = () => { logout(); navigate("/login"); };
 
-  const displayName = currentUser?.displayName ?? "IGH Tour";
+  const displayName = currentUser?.displayName ?? "Temantiket";
 
   const activeCheck = (url: string, end: boolean) => {
     if (url.startsWith("/trips")) return location.pathname.startsWith("/trips");
@@ -116,17 +116,17 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
           <button
             onClick={() => navigate("/")}
             className="flex items-center shrink-0 transition-opacity active:opacity-60"
-            aria-label="Beranda IGH Tour"
+            aria-label="Beranda Temantiket"
           >
             <img
               src="/logo-igh-tour-text.png"
-              alt="IGH Tour"
+              alt="Temantiket"
               className="h-[26px] w-auto object-contain"
               onError={(e) => {
                 const img = e.target as HTMLImageElement;
                 img.style.display = "none";
                 const fb = document.createElement("span");
-                fb.textContent = "IGH Tour";
+                fb.textContent = "Temantiket";
                 fb.className = "text-[14px] font-black tracking-tight text-orange-600";
                 img.parentElement!.appendChild(fb);
               }}

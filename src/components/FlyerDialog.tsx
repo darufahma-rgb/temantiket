@@ -74,7 +74,7 @@ export default function FlyerDialog({ open, onClose, trip, jamaahCount = 0 }: Fl
         await navigator.share({
           files: [file],
           title: trip.name,
-          text: `Promo paket ${trip.name} dari IGH Tour`,
+          text: `Promo paket ${trip.name} dari Temantiket`,
         });
       } else {
         toast.info("Browser tidak support share langsung. Silakan download dulu.");
@@ -150,7 +150,7 @@ export default function FlyerDialog({ open, onClose, trip, jamaahCount = 0 }: Fl
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <img
                   src="/logo-igh-tour-white.png"
-                  alt="IGH Tour"
+                  alt="Temantiket"
                   crossOrigin="anonymous"
                   style={{ height: 56, width: "auto", objectFit: "contain" }}
                 />
@@ -211,13 +211,13 @@ export default function FlyerDialog({ open, onClose, trip, jamaahCount = 0 }: Fl
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div>
                   <div style={{ fontSize: 11, opacity: 0.85, fontWeight: 600 }}>Info & pendaftaran</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>📱 Hubungi Admin IGH Tour</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>📱 Hubungi Admin Temantiket</div>
                 </div>
                 <div style={{
                   background: "#fff", color: tpl.from, padding: "10px 18px",
                   borderRadius: 12, fontWeight: 800, fontSize: 13,
                 }}>
-                  IGH TOUR
+                  TEMANTIKET
                 </div>
               </div>
             </div>

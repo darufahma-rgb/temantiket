@@ -71,7 +71,7 @@ export default function Login() {
       >
         <img
           src="/logo-igh-tour-white.png"
-          alt="IGH Tour"
+          alt="Temantiket"
           className="h-24 w-auto object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
         />
 
@@ -115,7 +115,7 @@ export default function Login() {
                     Portal Admin
                   </h1>
                   <p className="mt-1 text-[12px] text-white/60">
-                    Masuk untuk mengakses IGH Tour Portal
+                    Masuk untuk mengakses Temantiket Portal
                   </p>
                 </div>
 

@@ -83,11 +83,11 @@ export function PwaInstallPrompt() {
           {showIosGuide ? (
             <div className="flex items-start gap-3">
               <div className="h-10 w-10 rounded-xl overflow-hidden shrink-0 shadow">
-                <img src="/logo-igh-tour.png" alt="IGH Tour" className="h-full w-full object-contain" />
+                <img src="/logo-igh-tour.png" alt="Temantiket" className="h-full w-full object-contain" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[13.5px] text-[hsl(var(--foreground))] leading-tight mb-0.5">
-                  Pasang IGH Tour di Home Screen
+                  Pasang Temantiket di Home Screen
                 </p>
                 <p className="text-[11.5px] text-[hsl(var(--muted-foreground))] leading-snug">
                   Ketuk{" "}
@@ -110,10 +110,10 @@ export function PwaInstallPrompt() {
           ) : (
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl overflow-hidden shrink-0 shadow">
-                <img src="/logo-igh-tour.png" alt="IGH Tour" className="h-full w-full object-contain" />
+                <img src="/logo-igh-tour.png" alt="Temantiket" className="h-full w-full object-contain" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-[13.5px] text-[hsl(var(--foreground))] leading-tight">Pasang IGH Tour</p>
+                <p className="font-bold text-[13.5px] text-[hsl(var(--foreground))] leading-tight">Pasang Temantiket</p>
                 <p className="text-[11.5px] text-[hsl(var(--muted-foreground))]">Akses cepat dari layar utama</p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">

@@ -269,7 +269,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               type="text"
               value={value.customerName}
               onChange={(e) => set("customerName", e.target.value)}
-              placeholder="cth: IGH Tour"
+              placeholder="cth: Temantiket"
               style={M}
               className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
             />

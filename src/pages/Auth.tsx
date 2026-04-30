@@ -145,7 +145,7 @@ export default function Auth() {
             )}
 
             <Field icon={<Building2 className="h-4 w-4" />} label="Nama Agency"
-              value={agencyName} onChange={setAgencyName} placeholder="IGH Tour Jakarta" disabled={loading} />
+              value={agencyName} onChange={setAgencyName} placeholder="Temantiket Jakarta" disabled={loading} />
             <Field icon={<User className="h-4 w-4" />} label="Nama Owner"
               value={displayName} onChange={setDisplayName} placeholder="Owner Name" disabled={loading} />
             <Field icon={<Mail className="h-4 w-4" />} label="Email" type="email"

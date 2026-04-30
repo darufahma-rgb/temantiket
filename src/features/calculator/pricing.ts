@@ -1,5 +1,5 @@
 /**
- * Professional pricing engine for IGH Tour package calculator.
+ * Professional pricing engine for Temantiket package calculator.
  * Supports three modes:
  *   - "umroh_private" : structured umroh calc, private/family group
  *   - "umroh_group"   : structured umroh calc, large group / open trip

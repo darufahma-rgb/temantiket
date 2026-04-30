@@ -1,5 +1,5 @@
 -- ============================================================================
--- IGH Tour — Supabase Schema v2 (Multi-tenant + RLS)
+-- Temantiket — Supabase Schema v2 (Multi-tenant + RLS)
 -- ============================================================================
 -- Jalankan di SQL Editor Supabase Dashboard. Idempotent, aman dijalankan ulang.
 --

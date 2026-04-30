@@ -1,5 +1,5 @@
 -- ============================================================================
--- IGH Tour — FULL Supabase Setup (single-file, copy-paste sekali jalan)
+-- Temantiket — FULL Supabase Setup (single-file, copy-paste sekali jalan)
 -- ============================================================================
 -- Idempotent: aman dijalankan ulang berkali-kali tanpa rusak data existing.
 -- Cakup: schema multi-tenant, RLS, helper functions, storage buckets,

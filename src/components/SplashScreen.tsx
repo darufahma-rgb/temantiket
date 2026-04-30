@@ -141,7 +141,7 @@ export function SplashScreen() {
               >
                 <img
                   src="/logo-igh-tour-white.png"
-                  alt="IGH Tour"
+                  alt="Temantiket"
                   className="h-24 w-auto object-contain drop-shadow-[0_12px_32px_rgba(249,115,22,0.45)]"
                   onError={(e) => {
                     const img = e.target as HTMLImageElement;
@@ -263,7 +263,7 @@ export function SplashScreen() {
                         Portal Admin
                       </h2>
                       <p className="text-white/60 text-[12px] mt-1">
-                        Masuk untuk mengakses IGH Tour Portal
+                        Masuk untuk mengakses Temantiket Portal
                       </p>
                     </div>
 
@@ -365,7 +365,7 @@ export function SplashScreen() {
                   </div>
 
                   <p className="text-center text-white/30 text-[10px] mt-4 tracking-wide">
-                    © IGH Tour — Land Arrangement Umrah & Haji
+                    © Temantiket — Land Arrangement Umrah & Haji
                   </p>
                 </motion.div>
               )}

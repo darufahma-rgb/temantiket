@@ -37,13 +37,13 @@ export function buildICS(event: CalendarEvent): string {
   const allDay = event.allDay ?? !event.startDate.includes("T");
   const dtStart = toICSDate(event.startDate, allDay);
   const dtEnd = toICSDate(event.endDate ?? event.startDate, allDay);
-  const uid = `${Date.now()}-${Math.random().toString(36).slice(2)}@ightour.app`;
+  const uid = `${Date.now()}-${Math.random().toString(36).slice(2)}@temantiket.app`;
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//IGH Tour//Travel Manager//ID",
+    "PRODID:-//Temantiket//Travel Manager//ID",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",

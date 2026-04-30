@@ -496,7 +496,7 @@ export default function Settings() {
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] md:text-[11px] text-[hsl(var(--muted-foreground))]">Email</Label>
-                <Input className="h-8 md:h-9 text-[13px] md:text-sm" type="email" placeholder="cth: agen@ightour.id" value={profile.email} onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} />
+                <Input className="h-8 md:h-9 text-[13px] md:text-sm" type="email" placeholder="cth: agen@temantiket.id" value={profile.email} onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} />
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] md:text-[11px] text-[hsl(var(--muted-foreground))]">No. Telepon</Label>
@@ -504,7 +504,7 @@ export default function Settings() {
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] md:text-[11px] text-[hsl(var(--muted-foreground))]">Nama Agen</Label>
-                <Input className="h-8 md:h-9 text-[13px] md:text-sm" placeholder="cth: IGH Tour & Travel" value={profile.agency} onChange={(e) => setProfile((p) => ({ ...p, agency: e.target.value }))} />
+                <Input className="h-8 md:h-9 text-[13px] md:text-sm" placeholder="cth: Temantiket & Travel" value={profile.agency} onChange={(e) => setProfile((p) => ({ ...p, agency: e.target.value }))} />
               </div>
               <div className="space-y-1 sm:col-span-2">
                 <Label className="text-[10px] md:text-[11px] text-[hsl(var(--muted-foreground))]">Alamat Kantor</Label>
@@ -559,7 +559,7 @@ export default function Settings() {
                   </Label>
                   <Input
                     className="h-8 md:h-9 text-[13px] md:text-sm"
-                    placeholder="cth: igh.tour"
+                    placeholder="cth: temantiket"
                     value={ighAdmin.adminInstagram}
                     onChange={(e) => setIghAdmin((s) => ({ ...s, adminInstagram: e.target.value }))}
                   />

@@ -952,7 +952,7 @@ export default function PackageDetail() {
                   onClick={() => {
                     const url = buildGoogleCalendarUrl({
                       title: `${pkg.emoji ?? "✈️"} ${pkg.name}`,
-                      description: `Paket Umrah/Haji IGH Tour\nDestinasi: ${pkg.destination}\nJamaah: ${jamaah.length}/${pkg.people} pax\nTotal: Rp ${pkg.totalIDR.toLocaleString("id-ID")}`,
+                      description: `Paket Umrah/Haji Temantiket\nDestinasi: ${pkg.destination}\nJamaah: ${jamaah.length}/${pkg.people} pax\nTotal: Rp ${pkg.totalIDR.toLocaleString("id-ID")}`,
                       location: pkg.destination,
                       startDate: pkg.departureDate!,
                       allDay: true,
@@ -969,7 +969,7 @@ export default function PackageDetail() {
                     downloadICS(
                       {
                         title: `${pkg.emoji ?? "✈️"} ${pkg.name}`,
-                        description: `Paket Umrah/Haji IGH Tour\nDestinasi: ${pkg.destination}\nJamaah: ${jamaah.length}/${pkg.people} pax`,
+                        description: `Paket Umrah/Haji Temantiket\nDestinasi: ${pkg.destination}\nJamaah: ${jamaah.length}/${pkg.people} pax`,
                         location: pkg.destination,
                         startDate: pkg.departureDate!,
                         allDay: true,

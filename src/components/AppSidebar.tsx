@@ -105,11 +105,11 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
         <div className="flex items-center gap-3">
           <img
             src="/logo-igh-tour-text.png"
-            alt="IGH Tour"
+            alt="Temantiket"
             className="h-12 w-auto object-contain shrink-0"
           />
           <div className="leading-tight">
-            <div className="font-bold text-[14.5px] text-[hsl(var(--foreground))]">IGH Tour</div>
+            <div className="font-bold text-[14.5px] text-[hsl(var(--foreground))]">Temantiket</div>
             <div className="text-[10px] font-medium tracking-wide text-[hsl(var(--muted-foreground))] uppercase mt-0.5">
               Travel Agency
             </div>

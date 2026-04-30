@@ -233,7 +233,7 @@ export function PdfPreviewDialog({ open, onOpenChange, data }: Props) {
         <p className="text-[10px] font-normal text-slate-400/70 leading-none mt-1">
           <span className="font-medium">Preview PDF Penawaran</span>
           <span className="mx-1.5 text-slate-300">·</span>
-          Template IGH Tour, data dari kalkulator dipetakan otomatis
+          Template Temantiket, data dari kalkulator dipetakan otomatis
         </p>
       </DialogTitle>
       <div className="flex items-center gap-1.5 shrink-0">

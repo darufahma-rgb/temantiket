@@ -1,4 +1,4 @@
-# Edge Functions — IGH Tour
+# Edge Functions — Temantiket
 
 Tiga function buat manage user/agency. Semua butuh `SUPABASE_SERVICE_ROLE_KEY` yang otomatis tersedia di Edge Function runtime.
 

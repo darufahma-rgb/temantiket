@@ -1,5 +1,5 @@
 -- ============================================================================
--- IGH Tour — Supabase Setup (single-file, copy-paste into SQL Editor)
+-- Temantiket — Supabase Setup (single-file, copy-paste into SQL Editor)
 -- ============================================================================
 -- Idempotent: aman dijalankan ulang. Skema multi-tenant + RLS + Storage + Realtime.
 --

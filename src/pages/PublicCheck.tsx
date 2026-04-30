@@ -58,8 +58,8 @@ export default function PublicCheck() {
       {/* Header */}
       <header className="px-4 py-4 flex items-center justify-between border-b border-orange-100/60 bg-white/70 backdrop-blur">
         <Link to="/" className="flex items-center gap-2">
-          <img src="/logo-igh-tour.png" alt="IGH Tour" className="h-8 w-auto" />
-          <span className="text-sm font-bold text-orange-700">IGH Tour</span>
+          <img src="/logo-igh-tour.png" alt="Temantiket" className="h-8 w-auto" />
+          <span className="text-sm font-bold text-orange-700">Temantiket</span>
         </Link>
         <span className="text-[11px] text-[hsl(var(--muted-foreground))]">Cek Status Booking</span>
       </header>
@@ -68,7 +68,7 @@ export default function PublicCheck() {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
           <h1 className="text-2xl font-bold text-[hsl(var(--foreground))]">Cek Status Booking Umrah</h1>
           <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
-            Masukkan kode booking yang kamu terima dari admin IGH Tour buat lihat detail paket & status pembayaran.
+            Masukkan kode booking yang kamu terima dari admin Temantiket buat lihat detail paket & status pembayaran.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-5 flex gap-2">
@@ -193,7 +193,7 @@ export default function PublicCheck() {
 
             <div className="text-center pt-2">
               <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
-                Ada pertanyaan? Hubungi admin IGH Tour untuk bantuan lebih lanjut.
+                Ada pertanyaan? Hubungi admin Temantiket untuk bantuan lebih lanjut.
               </p>
             </div>
           </motion.div>
@@ -208,7 +208,7 @@ export default function PublicCheck() {
       </main>
 
       <footer className="px-4 py-4 text-center text-[10px] text-[hsl(var(--muted-foreground))] border-t border-orange-100/60">
-        © IGH Tour — Manajemen Umrah & Haji
+        © Temantiket — Manajemen Umrah & Haji
       </footer>
     </div>
   );

@@ -58,7 +58,7 @@ function BookingCodeShare({ code, jamaahName }: { code: string; jamaahName: stri
   };
 
   const sendWa = () => {
-    const text = `Assalamu'alaikum ${jamaahName},\n\nBerikut link untuk cek status booking Umrah Anda di IGH Tour:\n${url}\n\nKode booking: *${code}*\n\nTerima kasih.`;
+    const text = `Assalamu'alaikum ${jamaahName},\n\nBerikut link untuk cek status booking Umrah Anda di Temantiket:\n${url}\n\nKode booking: *${code}*\n\nTerima kasih.`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   };
 

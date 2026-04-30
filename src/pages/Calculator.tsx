@@ -946,7 +946,7 @@ export default function Calculator() {
       const name =
         calc.title?.trim() ||
         calc.packageName?.trim() ||
-        (calc.customerName ? `Umroh ${calc.customerName}` : "Paket Baru IGH Tour");
+        (calc.customerName ? `Umroh ${calc.customerName}` : "Paket Baru Temantiket");
 
       const destination =
         calc.destination?.trim() ||
@@ -1766,7 +1766,7 @@ export default function Calculator() {
         </>
       )}
 
-      {/* ── PDF EXPORT (template IGH Tour) ── */}
+      {/* ── PDF EXPORT (template Temantiket) ── */}
       <PdfExportCard
         data={ighPdfData}
         finalPrice={quote.finalPrice}
@@ -2179,7 +2179,7 @@ function PdfExportCard({
         <div className="flex items-center gap-2">
           <FileText className="h-3.5 w-3.5 md:h-4 md:w-4" />
           <span style={M} className="font-extrabold text-[12px] md:text-[14px] uppercase tracking-wide">
-            PDF Penawaran IGH Tour
+            PDF Penawaran Temantiket
           </span>
         </div>
         <span style={M} className="text-[10px] md:text-[11px] opacity-90 hidden sm:inline">

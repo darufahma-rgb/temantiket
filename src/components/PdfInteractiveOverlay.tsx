@@ -907,7 +907,7 @@ export function PdfInteractiveOverlay({ layout, mode, onChange, imgRect, enabled
 
       {/* Footer safe-zone guide (Batch 2) — garis dashed amber tipis di Y=960
           template-px. Penanda batas aman supaya checklist gak nubruk kontak
-          IG/email IGH Tour. Statis, gak ikut snap, hanya visual. */}
+          IG/email Temantiket. Statis, gak ikut snap, hanya visual. */}
       <div
         style={{
           position: "absolute",
