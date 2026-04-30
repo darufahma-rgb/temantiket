@@ -525,8 +525,8 @@ export default function Settings() {
             {/* ── IGH Settings: Kontak Admin (muncul di footer PDF penawaran) ── */}
             <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-4 space-y-3 mt-2">
               <div className="flex items-start gap-2">
-                <div className="h-7 w-7 rounded-lg bg-orange-100 flex items-center justify-center shrink-0 mt-0.5">
-                  <MessageCircle className="h-3.5 w-3.5 text-orange-600" />
+                <div className="h-7 w-7 rounded-lg bg-sky-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <MessageCircle className="h-3.5 w-3.5 text-sky-600" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[13px] font-semibold text-[hsl(var(--foreground))]">Kontak Admin (Footer Penawaran)</p>
@@ -706,8 +706,8 @@ export default function Settings() {
             {/* Header */}
             <div className="px-5 pt-4 pb-3 border-b border-[hsl(var(--border))]">
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                  <KeyRound className="h-4 w-4 text-orange-600" />
+                <div className="h-8 w-8 rounded-xl bg-sky-100 flex items-center justify-center shrink-0">
+                  <KeyRound className="h-4 w-4 text-sky-600" />
                 </div>
                 <div>
                   <DialogTitle className="text-[13.5px] font-bold">Buat PIN Keamanan</DialogTitle>
@@ -762,7 +762,7 @@ export default function Settings() {
                   onClick={handleSavePin}
                   disabled={pinLoading || pinInput.length < 4 || pinInput !== pinConfirm}
                   className="flex-1 h-9 rounded-xl text-[12px] font-bold text-white transition-all disabled:opacity-40"
-                  style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}
+                  style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}
                 >
                   {pinLoading ? "Menyimpan…" : "Aktifkan 2FA"}
                 </button>
@@ -917,7 +917,7 @@ export default function Settings() {
                   className={cn(
                     "rounded-xl border p-3 text-left transition-all",
                     rateMode === "live"
-                      ? "border-orange-400 bg-orange-50 text-orange-600"
+                      ? "border-sky-400 bg-sky-50 text-sky-600"
                       : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]"
                   )}
                 >
@@ -935,7 +935,7 @@ export default function Settings() {
                   className={cn(
                     "rounded-xl border p-3 text-left transition-all",
                     rateMode === "manual"
-                      ? "border-orange-400 bg-orange-50 text-orange-600"
+                      ? "border-sky-400 bg-sky-50 text-sky-600"
                       : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]"
                   )}
                 >
@@ -978,7 +978,7 @@ export default function Settings() {
                       Rp {rates[cur].toLocaleString("id-ID")}
                     </p>
                     {markupPct > 0 && (
-                      <p className="text-[10px] text-orange-500 mt-0.5">
+                      <p className="text-[10px] text-sky-500 mt-0.5">
                         Dasar: Rp {rawRates[cur].toLocaleString("id-ID")} + {markupPct}% markup
                       </p>
                     )}
@@ -1028,7 +1028,7 @@ export default function Settings() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label className="text-sm font-semibold">Buffer / Markup Harga</Label>
-                  <span className="text-sm font-bold text-orange-500">{markupPct.toFixed(1)}%</span>
+                  <span className="text-sm font-bold text-sky-500">{markupPct.toFixed(1)}%</span>
                 </div>
                 <Slider
                   min={0}
@@ -1043,7 +1043,7 @@ export default function Settings() {
                   <span>5% (aman dari fluktuasi)</span>
                 </div>
               </div>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] bg-orange-50 rounded-xl px-3 py-2 border border-orange-100">
+              <p className="text-xs text-[hsl(var(--muted-foreground))] bg-sky-50 rounded-xl px-3 py-2 border border-sky-100">
                 Markup akan ditambahkan ke kurs aktif, baik live maupun manual. Direkomendasikan 1–2% untuk melindungi margin dari fluktuasi harian.
               </p>
             </div>
@@ -1099,7 +1099,7 @@ export default function Settings() {
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-[hsl(var(--muted-foreground))] font-mono">{m.email}</span>
                         <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-semibold",
-                          m.role === "owner" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                          m.role === "owner" ? "bg-sky-100 text-sky-700" : "bg-blue-100 text-blue-700"
                         )}>{m.role}</span>
                       </div>
                     </div>

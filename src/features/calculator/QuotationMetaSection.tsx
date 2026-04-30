@@ -206,7 +206,7 @@ function ListEditor({
               }}
               placeholder="cth: Visa Umroh"
               style={M}
-              className="flex-1 h-7 rounded-md border border-slate-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="flex-1 h-7 rounded-md border border-slate-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
             <button
               type="button"
@@ -227,10 +227,10 @@ export function QuotationMetaSection({ value, onChange }: Props) {
     onChange({ ...value, [key]: v });
   }
   return (
-    <div className="rounded-xl border border-orange-200 bg-white overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-orange-50 to-amber-50 border-b border-orange-200">
-        <FileText className="h-3.5 w-3.5 text-orange-600" />
-        <span style={M} className="text-[11.5px] font-extrabold uppercase tracking-wider text-orange-700">
+    <div className="rounded-xl border border-sky-200 bg-white overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-sky-50 to-sky-100 border-b border-sky-200">
+        <FileText className="h-3.5 w-3.5 text-sky-600" />
+        <span style={M} className="text-[11.5px] font-extrabold uppercase tracking-wider text-sky-700">
           Info Penawaran (untuk PDF)
         </span>
       </div>
@@ -244,7 +244,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               onChange={(e) => set("quoteNumber", e.target.value)}
               placeholder="3345"
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -253,7 +253,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               value={value.tier}
               onChange={(e) => set("tier", e.target.value)}
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             >
               <option value="">— tanpa badge —</option>
               <option value="Premium">Premium</option>
@@ -271,7 +271,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               onChange={(e) => set("customerName", e.target.value)}
               placeholder="cth: Temantiket"
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
           </label>
           <label className="flex flex-col gap-1 col-span-2 md:col-span-3">
@@ -282,7 +282,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               onChange={(e) => set("title", e.target.value)}
               placeholder="cth: Penawaran Paket LA Umrah Bintang 5 Awal Musim"
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -293,7 +293,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               onChange={(e) => set("subtitle", e.target.value)}
               placeholder="cth: Program 7 Malam"
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
           </label>
           <label className="flex flex-col gap-1 col-span-2">
@@ -314,7 +314,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               onChange={(e) => set("usdToSar", parseFloat(e.target.value) || 0)}
               placeholder="3.75"
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -323,7 +323,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               value={value.makkahStars}
               onChange={(e) => set("makkahStars", parseInt(e.target.value) || 5)}
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             >
               {[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{"★".repeat(s)} ({s})</option>)}
             </select>
@@ -334,7 +334,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               value={value.madinahStars}
               onChange={(e) => set("madinahStars", parseInt(e.target.value) || 5)}
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             >
               {[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{"★".repeat(s)} ({s})</option>)}
             </select>
@@ -347,7 +347,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               onChange={(e) => set("hotelMakkahName", e.target.value)}
               placeholder="cth: Pullman Zamzam Makkah"
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
           </label>
           <label className="flex flex-col gap-1 col-span-2">
@@ -358,7 +358,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               onChange={(e) => set("hotelMadinahName", e.target.value)}
               placeholder="cth: Frontel Al Harithia"
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
           </label>
           <label className="flex flex-col gap-1 col-span-2">
@@ -369,7 +369,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               onChange={(e) => set("website", e.target.value)}
               placeholder="cth: www.agensitravel.co.id"
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -380,7 +380,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               onChange={(e) => set("contactPhone", e.target.value)}
               placeholder="cth: +62 812-0000-0000"
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -391,7 +391,7 @@ export function QuotationMetaSection({ value, onChange }: Props) {
               onChange={(e) => set("contactName", e.target.value)}
               placeholder="cth: Nama Kontak"
               style={M}
-              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
           </label>
         </div>

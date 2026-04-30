@@ -51,8 +51,8 @@ export function LivePdfThumbnail({ data, onClick, debounceMs = 500 }: Props) {
     <Wrapper
       type={onClick ? "button" : undefined}
       onClick={onClick}
-      className={`group relative block w-full rounded-xl border-2 border-orange-200 bg-slate-50 overflow-hidden ${
-        onClick ? "cursor-pointer hover:border-orange-400 transition-colors" : ""
+      className={`group relative block w-full rounded-xl border-2 border-sky-200 bg-slate-50 overflow-hidden ${
+        onClick ? "cursor-pointer hover:border-sky-400 transition-colors" : ""
       }`}
       title={onClick ? "Klik buat preview ukuran penuh" : undefined}
       style={{ aspectRatio: "740 / 1024" }}

@@ -65,13 +65,13 @@ export function DateRangePicker({
           disabled={disabled}
           className={cn(
             "h-8 w-full px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold text-left",
-            "flex items-center gap-1.5 focus:outline-none focus:ring-1 focus:ring-orange-400",
+            "flex items-center gap-1.5 focus:outline-none focus:ring-1 focus:ring-sky-400",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             !value && "text-slate-400 font-normal",
             className,
           )}
         >
-          <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-orange-500" />
+          <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-sky-500" />
           <span className="truncate flex-1">{value || placeholder}</span>
           {value && !disabled && (
             <X
@@ -113,7 +113,7 @@ export function DateRangePicker({
           <Button
             type="button"
             size="sm"
-            className="h-7 text-[11px] bg-orange-500 hover:bg-orange-600"
+            className="h-7 text-[11px] bg-sky-500 hover:bg-sky-600"
             onClick={() => setOpen(false)}
           >
             Tutup
@@ -161,13 +161,13 @@ export function DatePicker({
           disabled={disabled}
           className={cn(
             "h-8 w-full px-2 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold text-left",
-            "flex items-center gap-1.5 focus:outline-none focus:ring-1 focus:ring-orange-400",
+            "flex items-center gap-1.5 focus:outline-none focus:ring-1 focus:ring-sky-400",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             !display && "text-slate-400 font-normal",
             className,
           )}
         >
-          <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-orange-500" />
+          <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-sky-500" />
           <span className="truncate flex-1">{display || placeholder}</span>
           {display && !disabled && (
             <X

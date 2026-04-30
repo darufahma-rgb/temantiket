@@ -67,7 +67,7 @@ export function SplashScreen() {
             className="absolute inset-0 pointer-events-none"
             style={{
               background:
-                "radial-gradient(circle at 50% 42%, rgba(249,115,22,0.55) 0%, rgba(249,115,22,0.18) 22%, transparent 55%)",
+                "radial-gradient(circle at 50% 42%, rgba(14,165,233,0.55) 0%, rgba(14,165,233,0.18) 22%, transparent 55%)",
             }}
             animate={{ opacity: [0.55, 0.95, 0.55], scale: [1, 1.08, 1] }}
             transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
@@ -142,7 +142,7 @@ export function SplashScreen() {
                 <img
                   src="/logo-igh-tour-white.png"
                   alt="Temantiket"
-                  className="h-24 w-auto object-contain drop-shadow-[0_12px_32px_rgba(249,115,22,0.45)]"
+                  className="h-24 w-auto object-contain drop-shadow-[0_12px_32px_rgba(14,165,233,0.45)]"
                   onError={(e) => {
                     const img = e.target as HTMLImageElement;
                     img.style.display = "none";
@@ -195,7 +195,7 @@ export function SplashScreen() {
                       transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                     />
                     <motion.div
-                      className="absolute inset-0 rounded-full border-2 border-transparent border-t-orange-400 border-r-orange-300"
+                      className="absolute inset-0 rounded-full border-2 border-transparent border-t-sky-400 border-r-sky-300"
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                       style={{ filter: "drop-shadow(0 0 6px rgba(251,146,60,0.8))" }}
@@ -230,9 +230,9 @@ export function SplashScreen() {
                       className="h-full rounded-full"
                       style={{
                         background:
-                          "linear-gradient(90deg, #fb923c, #f97316, #fdba74, #f97316, #fb923c)",
+                          "linear-gradient(90deg, #38bdf8, #0ea5e9, #7dd3fc, #0ea5e9, #38bdf8)",
                         backgroundSize: "200% 100%",
-                        boxShadow: "0 0 12px rgba(249,115,22,0.7)",
+                        boxShadow: "0 0 12px rgba(14,165,233,0.7)",
                       }}
                       initial={{ width: "0%", backgroundPosition: "0% 0%" }}
                       animate={{ width: "100%", backgroundPosition: "200% 0%" }}
@@ -299,7 +299,7 @@ export function SplashScreen() {
                             clearError();
                           }}
                           disabled={isLoading}
-                          className="w-full h-11 bg-white/10 border border-white/20 rounded-xl px-4 text-white placeholder-white/30 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-400/60 focus:border-transparent disabled:opacity-50 transition-all"
+                          className="w-full h-11 bg-white/10 border border-white/20 rounded-xl px-4 text-white placeholder-white/30 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-400/60 focus:border-transparent disabled:opacity-50 transition-all"
                         />
                       </div>
 
@@ -319,7 +319,7 @@ export function SplashScreen() {
                               clearError();
                             }}
                             disabled={isLoading}
-                            className="w-full h-11 bg-white/10 border border-white/20 rounded-xl px-4 pr-11 text-white placeholder-white/30 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-400/60 focus:border-transparent disabled:opacity-50 transition-all"
+                            className="w-full h-11 bg-white/10 border border-white/20 rounded-xl px-4 pr-11 text-white placeholder-white/30 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-400/60 focus:border-transparent disabled:opacity-50 transition-all"
                           />
                           <button
                             type="button"
@@ -342,9 +342,9 @@ export function SplashScreen() {
                         disabled={isLoading || !username.trim() || !password.trim()}
                         className="w-full h-12 rounded-xl font-extrabold text-sm uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all disabled:opacity-50"
                         style={{
-                          background: "linear-gradient(135deg, #ea580c 0%, #f97316 60%, #fb923c 100%)",
+                          background: "linear-gradient(135deg, #0284c7 0%, #0ea5e9 60%, #38bdf8 100%)",
                           color: "white",
-                          boxShadow: "0 8px 28px rgba(249,115,22,0.4)",
+                          boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
                         }}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}

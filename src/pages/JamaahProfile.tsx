@@ -63,10 +63,10 @@ function BookingCodeShare({ code, jamaahName }: { code: string; jamaahName: stri
   };
 
   return (
-    <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50/60 p-3 flex items-center gap-3 flex-wrap">
+    <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50/60 p-3 flex items-center gap-3 flex-wrap">
       <div className="flex-1 min-w-[140px]">
-        <p className="text-[10px] uppercase tracking-wider text-orange-700/80 font-semibold">Kode Booking Jamaah</p>
-        <p className="font-mono font-bold text-orange-700 text-sm mt-0.5">{code}</p>
+        <p className="text-[10px] uppercase tracking-wider text-sky-700/80 font-semibold">Kode Booking Jamaah</p>
+        <p className="font-mono font-bold text-sky-700 text-sm mt-0.5">{code}</p>
         <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5 truncate">Bagikan ke jamaah biar mereka cek sendiri.</p>
       </div>
       <Button size="sm" variant="outline" onClick={copyLink} className="h-8 rounded-lg">
@@ -203,7 +203,7 @@ function PaymentSection({ jamaahId, tripId, pricePerPax }: { jamaahId: string; t
       </div>
 
       {showForm && (
-        <div className="px-5 py-4 border-b border-[hsl(var(--border))] grid gap-3 sm:grid-cols-2 bg-orange-50/40">
+        <div className="px-5 py-4 border-b border-[hsl(var(--border))] grid gap-3 sm:grid-cols-2 bg-sky-50/40">
           <div className="space-y-1">
             <Label className="text-xs">Jenis</Label>
             <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v as PaymentType }))}>
@@ -724,13 +724,13 @@ export default function JamaahProfile() {
           <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
             <div className="px-5 py-3.5 border-b border-[hsl(var(--border))] flex items-center justify-between">
               <h3 className="text-sm font-semibold text-[hsl(var(--card-foreground))]">Progres Kelengkapan</h3>
-              <span className="text-sm font-bold text-orange-500">{pct}%</span>
+              <span className="text-sm font-bold text-sky-500">{pct}%</span>
             </div>
             <div className="px-5 py-4 space-y-3">
               <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${pct}%`, background: "linear-gradient(90deg, #f97316, #fb923c)" }}
+                  style={{ width: `${pct}%`, background: "linear-gradient(90deg, #0ea5e9, #38bdf8)" }}
                 />
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -740,15 +740,15 @@ export default function JamaahProfile() {
                   return (
                     <div key={step.key} className={cn(
                       "flex flex-col items-center gap-1 p-2 rounded-xl text-center transition-all",
-                      done ? "bg-orange-50 border border-orange-200" : "bg-gray-50 border border-gray-100"
+                      done ? "bg-sky-50 border border-sky-200" : "bg-gray-50 border border-gray-100"
                     )}>
                       <div className={cn(
                         "h-7 w-7 rounded-full flex items-center justify-center",
-                        done ? "bg-orange-500" : "bg-gray-200"
+                        done ? "bg-sky-500" : "bg-gray-200"
                       )}>
                         <Icon className={cn("h-3.5 w-3.5", done ? "text-white" : "text-gray-400")} strokeWidth={2} />
                       </div>
-                      <span className={cn("text-[10px] font-medium leading-tight", done ? "text-orange-700" : "text-gray-400")}>{step.label}</span>
+                      <span className={cn("text-[10px] font-medium leading-tight", done ? "text-sky-700" : "text-gray-400")}>{step.label}</span>
                     </div>
                   );
                 })}

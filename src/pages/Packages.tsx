@@ -75,7 +75,7 @@ function getDepartureInfo(pkg: EnrichedPackage, occupied: number) {
     return { status: "Full", label: "Kuota penuh", className: "bg-emerald-500 text-white" };
   }
   if (!dateValue) {
-    return { status: "Active", label: "Jadwal belum set", className: "bg-orange-500 text-white" };
+    return { status: "Active", label: "Jadwal belum set", className: "bg-sky-500 text-white" };
   }
   const now = new Date();
   const departure = new Date(dateValue);
@@ -83,7 +83,7 @@ function getDepartureInfo(pkg: EnrichedPackage, occupied: number) {
   if (diffDays < 0) {
     return { status: "Departed", label: "Selesai", className: "bg-slate-700 text-white" };
   }
-  return { status: "Active", label: `⏳ ${diffDays} Hari Lagi`, className: "bg-orange-500 text-white" };
+  return { status: "Active", label: `⏳ ${diffDays} Hari Lagi`, className: "bg-sky-500 text-white" };
 }
 
 function getLogistics(pkg: EnrichedPackage) {
@@ -238,13 +238,13 @@ export default function Packages() {
             const departure = getDepartureInfo(enriched, occupied);
             const logistics = getLogistics(enriched);
             const financial = getFinancialSnapshot(pkg, occupied);
-            const progressColor = occupancyPct >= 90 ? "from-emerald-500 to-green-500" : occupancyPct >= 60 ? "from-amber-400 to-orange-500" : "from-orange-300 to-amber-400";
+            const progressColor = occupancyPct >= 90 ? "from-emerald-500 to-green-500" : occupancyPct >= 60 ? "from-sky-400 to-sky-500" : "from-amber-400 to-amber-500";
 
             return (
               <div
                 key={pkg.id}
                 onClick={() => navigate(`/packages/${pkg.id}`)}
-                className="group overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-[0_14px_40px_-24px_rgba(249,115,22,0.55)] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_20px_48px_-24px_rgba(15,23,42,0.30)]"
+                className="group overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-[0_14px_40px_-24px_rgba(14,165,233,0.55)] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_20px_48px_-24px_rgba(15,23,42,0.30)]"
                 style={{ fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif" }}
               >
                 <div className="relative h-16 md:h-24 overflow-hidden">
@@ -253,7 +253,7 @@ export default function Packages() {
                   ) : (
                     <div
                       className="w-full h-full flex items-center justify-center text-4xl"
-                      style={{ background: `linear-gradient(135deg,hsl(27 91% 54%),hsl(16 88% 58%))` }}
+                      style={{ background: `linear-gradient(135deg,hsl(198 92% 39%),hsl(205 90% 50%))` }}
                     >
                       {pkg.emoji}
                     </div>
@@ -263,7 +263,7 @@ export default function Packages() {
                     {departure.status}
                   </Badge>
                   <div className="absolute bottom-3 left-3 right-3 min-w-0">
-                    <p className="inline-flex max-w-full items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-orange-700 backdrop-blur-sm">
+                    <p className="inline-flex max-w-full items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-sky-700 backdrop-blur-sm">
                       <Calendar className="h-3 w-3 shrink-0" />
                       <span className="truncate">{departure.label}</span>
                     </p>
@@ -275,7 +275,7 @@ export default function Packages() {
                     <div className="min-w-0">
                       <h3 className="text-[13px] md:text-[15px] font-extrabold leading-tight text-slate-950 truncate">{pkg.name}</h3>
                       <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-500 truncate">
-                        <MapPin className="h-3 w-3 shrink-0 text-orange-500" />
+                        <MapPin className="h-3 w-3 shrink-0 text-sky-500" />
                         {pkg.destination}
                       </p>
                     </div>
@@ -299,12 +299,12 @@ export default function Packages() {
                     </DropdownMenu>
                   </div>
 
-                  <div className="rounded-xl md:rounded-2xl bg-orange-50/70 p-2 md:p-3 space-y-1.5 md:space-y-2">
+                  <div className="rounded-xl md:rounded-2xl bg-sky-50/70 p-2 md:p-3 space-y-1.5 md:space-y-2">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="font-semibold text-slate-600">Okupansi Jemaah</span>
                       <span className="font-extrabold text-slate-900">{occupied} / {pkg.people} Jemaah</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-white ring-1 ring-orange-100">
+                    <div className="h-2 overflow-hidden rounded-full bg-white ring-1 ring-sky-100">
                       <div className={`h-full rounded-full bg-gradient-to-r ${progressColor} transition-all duration-500`} style={{ width: `${occupancyPct}%` }} />
                     </div>
                   </div>
@@ -328,25 +328,25 @@ export default function Packages() {
 
                   <div className="grid grid-cols-3 gap-1 md:gap-1.5 text-[9.5px] md:text-[10px] font-semibold text-slate-600">
                     <span className="flex min-w-0 items-center gap-1 rounded-lg md:rounded-xl bg-white px-1.5 md:px-2 py-1.5 md:py-2 ring-1 ring-slate-100">
-                      <Plane className="h-3 w-3 shrink-0 text-orange-500" />
+                      <Plane className="h-3 w-3 shrink-0 text-sky-500" />
                       <span className="truncate">{logistics.airline}</span>
                     </span>
                     <span className="flex min-w-0 items-center gap-1 rounded-lg md:rounded-xl bg-white px-1.5 md:px-2 py-1.5 md:py-2 ring-1 ring-slate-100">
-                      <Star className="h-3 w-3 shrink-0 text-orange-500" />
+                      <Star className="h-3 w-3 shrink-0 text-sky-500" />
                       <span className="truncate">{logistics.hotel}</span>
                     </span>
                     <span className="flex min-w-0 items-center gap-1 rounded-lg md:rounded-xl bg-white px-1.5 md:px-2 py-1.5 md:py-2 ring-1 ring-slate-100">
-                      <Calendar className="h-3 w-3 shrink-0 text-orange-500" />
+                      <Calendar className="h-3 w-3 shrink-0 text-sky-500" />
                       <span className="truncate">{logistics.days}</span>
                     </span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 border-t border-orange-100 bg-slate-50/80">
+                <div className="grid grid-cols-3 border-t border-sky-100 bg-slate-50/80">
                   <button
                     type="button"
                     onClick={(e) => openShortcut(e, `/packages/${pkg.id}?tab=calculator`)}
-                    className="flex items-center justify-center gap-1 md:gap-1.5 px-1.5 md:px-2 py-2 md:py-2.5 text-[10.5px] md:text-[11px] font-bold text-slate-600 transition-colors hover:bg-orange-50 hover:text-orange-600"
+                    className="flex items-center justify-center gap-1 md:gap-1.5 px-1.5 md:px-2 py-2 md:py-2.5 text-[10.5px] md:text-[11px] font-bold text-slate-600 transition-colors hover:bg-sky-50 hover:text-sky-600"
                   >
                     <Calculator className="h-3.5 w-3.5" />
                     Kalkulasi
@@ -354,7 +354,7 @@ export default function Packages() {
                   <button
                     type="button"
                     onClick={(e) => openShortcut(e, `/packages/${pkg.id}?tab=jamaah`)}
-                    className="flex items-center justify-center gap-1 md:gap-1.5 border-x border-orange-100 px-1.5 md:px-2 py-2 md:py-2.5 text-[10.5px] md:text-[11px] font-bold text-slate-600 transition-colors hover:bg-orange-50 hover:text-orange-600"
+                    className="flex items-center justify-center gap-1 md:gap-1.5 border-x border-sky-100 px-1.5 md:px-2 py-2 md:py-2.5 text-[10.5px] md:text-[11px] font-bold text-slate-600 transition-colors hover:bg-sky-50 hover:text-sky-600"
                   >
                     <Users className="h-3.5 w-3.5" />
                     Jemaah
@@ -362,7 +362,7 @@ export default function Packages() {
                   <button
                     type="button"
                     onClick={(e) => openShortcut(e, `/packages/${pkg.id}?tab=jamaah&ocr=1`)}
-                    className="flex items-center justify-center gap-1 md:gap-1.5 px-1.5 md:px-2 py-2 md:py-2.5 text-[10.5px] md:text-[11px] font-bold text-slate-600 transition-colors hover:bg-orange-50 hover:text-orange-600"
+                    className="flex items-center justify-center gap-1 md:gap-1.5 px-1.5 md:px-2 py-2 md:py-2.5 text-[10.5px] md:text-[11px] font-bold text-slate-600 transition-colors hover:bg-sky-50 hover:text-sky-600"
                   >
                     <ScanLine className="h-3.5 w-3.5" />
                     OCR

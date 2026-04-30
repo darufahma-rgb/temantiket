@@ -30,7 +30,7 @@ type SortMode = "newest" | "oldest" | "az";
 
 const NOTE_COLORS = [
   { label: "Putih", value: "bg-white border-slate-200", dot: "bg-slate-300" },
-  { label: "Orange", value: "bg-orange-50 border-orange-200", dot: "bg-orange-400" },
+  { label: "Orange", value: "bg-sky-50 border-sky-200", dot: "bg-sky-400" },
   { label: "Biru", value: "bg-blue-50 border-blue-200", dot: "bg-blue-400" },
   { label: "Hijau", value: "bg-green-50 border-green-200", dot: "bg-green-400" },
   { label: "Ungu", value: "bg-purple-50 border-purple-200", dot: "bg-purple-400" },
@@ -324,7 +324,7 @@ export default function Notes() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <StickyNote className="h-5 w-5 text-orange-500" strokeWidth={1.5} />
+          <StickyNote className="h-5 w-5 text-sky-500" strokeWidth={1.5} />
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-[hsl(var(--foreground))]">
               {t.notes_title}
@@ -358,8 +358,8 @@ export default function Notes() {
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <div className="rounded-2xl border border-orange-200 bg-orange-50/40 p-4 space-y-3">
-              <p className="text-[11px] font-semibold text-orange-600 uppercase tracking-wider">
+            <div className="rounded-2xl border border-sky-200 bg-sky-50/40 p-4 space-y-3">
+              <p className="text-[11px] font-semibold text-sky-600 uppercase tracking-wider">
                 {t.notes_label_new}
               </p>
               <Input
@@ -390,7 +390,7 @@ export default function Notes() {
                     title="Rapihkan dengan AI"
                     onClick={() => handleRapihkan("new", newContent)}
                     disabled={formatting === "new"}
-                    className="absolute right-2 top-2 p-1 rounded-lg text-orange-400 hover:text-orange-600 hover:bg-orange-100 transition-colors"
+                    className="absolute right-2 top-2 p-1 rounded-lg text-sky-400 hover:text-sky-600 hover:bg-sky-100 transition-colors"
                   >
                     <Sparkles
                       className={cn(
@@ -412,19 +412,19 @@ export default function Notes() {
                   {newTags.map((tag) => (
                     <span
                       key={tag}
-                      className="flex items-center gap-1 bg-orange-100 text-orange-700 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      className="flex items-center gap-1 bg-sky-100 text-sky-700 text-[10px] font-semibold px-2 py-0.5 rounded-full"
                     >
                       #{tag}
                       <button
                         onClick={() => removeTag(tag, true)}
-                        className="text-orange-400 hover:text-orange-700"
+                        className="text-sky-400 hover:text-sky-700"
                       >
                         <X className="h-2.5 w-2.5" />
                       </button>
                     </span>
                   ))}
                   <div className="flex items-center gap-1">
-                    <Hash className="h-3 w-3 text-orange-400" />
+                    <Hash className="h-3 w-3 text-sky-400" />
                     <input
                       type="text"
                       value={tagInput}
@@ -507,7 +507,7 @@ export default function Notes() {
                   className={cn(
                     "h-8 px-2.5 text-[10px] font-semibold transition-colors border-r border-slate-200 last:border-r-0",
                     sortMode === s.value
-                      ? "bg-orange-500 text-white"
+                      ? "bg-sky-500 text-white"
                       : "text-slate-500 hover:bg-slate-50"
                   )}
                 >
@@ -525,7 +525,7 @@ export default function Notes() {
                 className={cn(
                   "text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors",
                   filterTag === null
-                    ? "bg-orange-500 text-white"
+                    ? "bg-sky-500 text-white"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 )}
               >
@@ -540,8 +540,8 @@ export default function Notes() {
                   className={cn(
                     "flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors",
                     filterTag === tag
-                      ? "bg-orange-500 text-white"
-                      : "bg-orange-50 text-orange-700 hover:bg-orange-100"
+                      ? "bg-sky-500 text-white"
+                      : "bg-sky-50 text-sky-700 hover:bg-sky-100"
                   )}
                 >
                   <Hash className="h-2.5 w-2.5" />
@@ -565,7 +565,7 @@ export default function Notes() {
           {!showAddForm && !search && !filterTag && (
             <button
               onClick={() => setShowAddForm(true)}
-              className="mt-2 text-[12px] text-orange-500 font-medium hover:text-orange-600 transition-colors"
+              className="mt-2 text-[12px] text-sky-500 font-medium hover:text-sky-600 transition-colors"
             >
               {t.notes_first_note}
             </button>
@@ -591,7 +591,7 @@ export default function Notes() {
             >
               {note.pinned && (
                 <div className="absolute top-2.5 right-2.5 pointer-events-none">
-                  <Pin className="h-3 w-3 text-orange-500 fill-orange-500 rotate-45" />
+                  <Pin className="h-3 w-3 text-sky-500 fill-sky-500 rotate-45" />
                 </div>
               )}
 
@@ -618,7 +618,7 @@ export default function Notes() {
                           "h-5 w-5 rounded-full transition-all border-2",
                           c.dot,
                           editColor === c.value
-                            ? "border-orange-500 scale-110"
+                            ? "border-sky-500 scale-110"
                             : "border-white/60"
                         )}
                       />
@@ -639,7 +639,7 @@ export default function Notes() {
                           handleRapihkan(note.id, editContent)
                         }
                         disabled={formatting === note.id}
-                        className="absolute right-2 top-2 p-1 rounded-lg text-orange-400 hover:text-orange-600 hover:bg-orange-100 transition-colors"
+                        className="absolute right-2 top-2 p-1 rounded-lg text-sky-400 hover:text-sky-600 hover:bg-sky-100 transition-colors"
                       >
                         <Sparkles
                           className={cn(
@@ -661,19 +661,19 @@ export default function Notes() {
                     {editTags.map((tag) => (
                       <span
                         key={tag}
-                        className="flex items-center gap-1 bg-orange-100 text-orange-700 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                        className="flex items-center gap-1 bg-sky-100 text-sky-700 text-[10px] font-semibold px-2 py-0.5 rounded-full"
                       >
                         #{tag}
                         <button
                           onClick={() => removeTag(tag, false)}
-                          className="text-orange-400 hover:text-orange-700"
+                          className="text-sky-400 hover:text-sky-700"
                         >
                           <X className="h-2.5 w-2.5" />
                         </button>
                       </span>
                     ))}
                     <div className="flex items-center gap-1">
-                      <Hash className="h-3 w-3 text-orange-400" />
+                      <Hash className="h-3 w-3 text-sky-400" />
                       <input
                         type="text"
                         value={editTagInput}
@@ -715,7 +715,7 @@ export default function Notes() {
                 <>
                   <div className="flex items-start justify-between gap-2">
                     <h3
-                      className="text-[13px] font-bold text-[hsl(var(--foreground))] leading-snug line-clamp-1 flex-1 cursor-pointer hover:text-orange-600 transition-colors"
+                      className="text-[13px] font-bold text-[hsl(var(--foreground))] leading-snug line-clamp-1 flex-1 cursor-pointer hover:text-sky-600 transition-colors"
                       onClick={() => setExpandedNote(note)}
                     >
                       {note.title}
@@ -727,8 +727,8 @@ export default function Notes() {
                         className={cn(
                           "p-1 rounded-lg transition-colors",
                           note.pinned
-                            ? "text-orange-500 hover:bg-orange-100"
-                            : "text-slate-400 hover:bg-orange-50 hover:text-orange-500"
+                            ? "text-sky-500 hover:bg-sky-100"
+                            : "text-slate-400 hover:bg-sky-50 hover:text-sky-500"
                         )}
                         title={note.pinned ? t.notes_unpin : t.notes_pin}
                       >
@@ -757,7 +757,7 @@ export default function Notes() {
                       <button
                         type="button"
                         onClick={() => startEdit(note)}
-                        className="p-1 rounded-lg hover:bg-orange-100 text-slate-400 hover:text-orange-600 transition-colors"
+                        className="p-1 rounded-lg hover:bg-sky-100 text-slate-400 hover:text-sky-600 transition-colors"
                         title={t.btn_edit}
                       >
                         <Edit3 className="h-3.5 w-3.5" />
@@ -782,7 +782,7 @@ export default function Notes() {
                           onClick={() =>
                             setFilterTag(filterTag === tag ? null : tag)
                           }
-                          className="flex items-center gap-0.5 text-[9.5px] font-semibold text-orange-600 bg-orange-100 hover:bg-orange-200 px-1.5 py-0.5 rounded-full transition-colors"
+                          className="flex items-center gap-0.5 text-[9.5px] font-semibold text-sky-600 bg-sky-100 hover:bg-sky-200 px-1.5 py-0.5 rounded-full transition-colors"
                         >
                           <Hash className="h-2.5 w-2.5" />
                           {tag}
@@ -819,7 +819,7 @@ export default function Notes() {
                           }
                           disabled={formatting === note.id}
                           title={t.notes_clean}
-                          className="flex items-center gap-1 text-[10px] text-orange-400 hover:text-orange-600 font-medium transition-colors"
+                          className="flex items-center gap-1 text-[10px] text-sky-400 hover:text-sky-600 font-medium transition-colors"
                         >
                           <Sparkles
                             className={cn(
@@ -886,7 +886,7 @@ export default function Notes() {
                         setExpandedNote(null);
                       }
                     }}
-                    className="p-1.5 rounded-lg hover:bg-orange-100 text-slate-400 hover:text-orange-600 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-sky-100 text-slate-400 hover:text-sky-600 transition-colors"
                     title={t.btn_edit}
                   >
                     <Edit3 className="h-4 w-4" />
@@ -913,7 +913,7 @@ export default function Notes() {
                   {(expandedNote.tags ?? []).map((tag) => (
                     <span
                       key={tag}
-                      className="flex items-center gap-0.5 text-[10px] font-semibold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full"
+                      className="flex items-center gap-0.5 text-[10px] font-semibold text-sky-600 bg-sky-100 px-2 py-0.5 rounded-full"
                     >
                       <Hash className="h-2.5 w-2.5" />
                       {tag}
@@ -951,7 +951,7 @@ export default function Notes() {
                         handleRapihkan(expandedNote.id, expandedNote.content)
                       }
                       disabled={formatting === expandedNote.id}
-                      className="flex items-center gap-1 text-[11px] text-orange-400 hover:text-orange-600 font-medium transition-colors"
+                      className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-600 font-medium transition-colors"
                     >
                       <Sparkles
                         className={cn(

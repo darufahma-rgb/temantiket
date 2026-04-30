@@ -155,15 +155,15 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
       <div className="shrink-0 mx-3 py-4 border-t border-[hsl(var(--border))] space-y-0.5">
         {/* User badge */}
         {user && (
-          <div className="flex items-center gap-2.5 px-4 py-2.5 mb-1 rounded-2xl bg-orange-50">
-            <div className="h-7 w-7 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-2.5 px-4 py-2.5 mb-1 rounded-2xl bg-sky-50">
+            <div className="h-7 w-7 rounded-full bg-sky-500 flex items-center justify-center shrink-0">
               <ShieldCheck className="h-3.5 w-3.5 text-white" strokeWidth={2} />
             </div>
             <div className="min-w-0">
-              <p className="text-[12px] font-bold text-orange-800 truncate leading-tight">
+              <p className="text-[12px] font-bold text-sky-800 truncate leading-tight">
                 {user.displayName}
               </p>
-              <p className="text-[10px] text-orange-500 uppercase tracking-wider">
+              <p className="text-[10px] text-sky-500 uppercase tracking-wider">
                 {user.role}
               </p>
             </div>

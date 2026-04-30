@@ -124,7 +124,7 @@ function AlignRow({ label, value, onChange }: AlignRowProps) {
               className={
                 "h-6 px-2 rounded inline-flex items-center justify-center transition-colors " +
                 (active
-                  ? "bg-white text-orange-600 shadow-sm ring-1 ring-orange-200"
+                  ? "bg-white text-sky-600 shadow-sm ring-1 ring-sky-200"
                   : "text-slate-500 hover:text-slate-700 hover:bg-slate-100")
               }
             >
@@ -147,7 +147,7 @@ function TextRow({ label, value, placeholder, multiline, onChange }: TextRowProp
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           rows={3}
-          className="w-full text-[10px] font-mono rounded-md border border-slate-200 bg-white px-2 py-1.5 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-orange-300 resize-y"
+          className="w-full text-[10px] font-mono rounded-md border border-slate-200 bg-white px-2 py-1.5 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-300 resize-y"
         />
       ) : (
         <Input
@@ -486,8 +486,8 @@ export function PdfLayoutTuner({ config, mode = "private", onChange, onClose }: 
         </section>
 
         {/* PRESETS */}
-        <section className="space-y-2 rounded-lg border border-orange-200 bg-orange-50/50 p-2">
-          <h4 className="text-[10px] font-bold uppercase tracking-wide text-orange-700 flex items-center gap-1">
+        <section className="space-y-2 rounded-lg border border-sky-200 bg-sky-50/50 p-2">
+          <h4 className="text-[10px] font-bold uppercase tracking-wide text-sky-700 flex items-center gap-1">
             <Bookmark className="h-3 w-3" />
             Presets
           </h4>
@@ -520,7 +520,7 @@ export function PdfLayoutTuner({ config, mode = "private", onChange, onClose }: 
               onClick={handleSaveAsNew}
               disabled={presetBusy}
               title="Save as new preset (cloud-synced)"
-              className="flex-1 h-7 inline-flex items-center justify-center gap-1 rounded-md text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 h-7 inline-flex items-center justify-center gap-1 rounded-md text-[10px] font-bold text-white bg-sky-500 hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Save className="h-3 w-3" />
               Save as New
@@ -972,7 +972,7 @@ export function PdfLayoutTuner({ config, mode = "private", onChange, onClose }: 
                   );
                 }
               }}
-              className="h-3 w-3 accent-orange-500"
+              className="h-3 w-3 accent-sky-500"
             />
             <span className="font-medium">Sync subtitle distance</span>
             <span className="text-slate-400">
@@ -1045,8 +1045,8 @@ export function PdfLayoutTuner({ config, mode = "private", onChange, onClose }: 
         </section>
 
         {/* GROUP PRICING TABLE */}
-        <section className="space-y-2 rounded-lg border border-orange-100 bg-orange-50/30 p-2">
-          <h4 className="text-[10px] font-bold uppercase tracking-wide text-orange-700">
+        <section className="space-y-2 rounded-lg border border-sky-100 bg-sky-50/30 p-2">
+          <h4 className="text-[10px] font-bold uppercase tracking-wide text-sky-700">
             Pricing Table — Group
           </h4>
           <p className="text-[9px] text-slate-500 leading-snug">
@@ -1090,7 +1090,7 @@ export function PdfLayoutTuner({ config, mode = "private", onChange, onClose }: 
             min={460} max={720} step={1} unit="px"
             onChange={(v) => patch("groupPricing", { doubleCenterXPx: v })}
           />
-          <div className="pt-1 border-t border-orange-100/80" />
+          <div className="pt-1 border-t border-sky-100/80" />
           <p className="text-[9px] font-semibold text-slate-600">
             X-Offset per kolom (geser independen):
           </p>

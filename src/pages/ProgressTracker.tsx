@@ -18,7 +18,7 @@ import { toast } from "sonner";
 
 // ── Jamaah step config ────────────────────────────────────────────────────────
 const JAMAAH_STEPS = [
-  { key: "registered", label: "Terdaftar",      icon: UserCheck,  color: "#f97316" },
+  { key: "registered", label: "Terdaftar",      icon: UserCheck,  color: "#0ea5e9" },
   { key: "docs",       label: "Dokumen",         icon: FileKey,    color: "#8b5cf6" },
   { key: "paid",       label: "Pembayaran",      icon: CreditCard, color: "#0ea5e9" },
   { key: "approved",   label: "Disetujui",       icon: BadgeCheck, color: "#10b981" },
@@ -74,10 +74,10 @@ function JamaahRow({ jamaah, step, tripId }: { jamaah: Jamaah; step: number; tri
 
   return (
     <div
-      className="flex items-center gap-2 py-2 px-3 md:py-3 md:px-4 hover:bg-orange-50/50 rounded-xl cursor-pointer transition-colors"
+      className="flex items-center gap-2 py-2 px-3 md:py-3 md:px-4 hover:bg-sky-50/50 rounded-xl cursor-pointer transition-colors"
       onClick={() => navigate(`/trips/${tripId}/jamaah/${jamaah.id}`)}
     >
-      <div className="h-9 w-9 rounded-full shrink-0 overflow-hidden bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+      <div className="h-9 w-9 rounded-full shrink-0 overflow-hidden bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
         {jamaah.photoDataUrl ? (
           <img src={jamaah.photoDataUrl} alt={jamaah.name} className="h-full w-full object-cover" />
         ) : (
@@ -92,7 +92,7 @@ function JamaahRow({ jamaah, step, tripId }: { jamaah: Jamaah; step: number; tri
         <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-700"
-            style={{ width: `${pct}%`, background: `linear-gradient(90deg, #f97316, ${stepColor})` }}
+            style={{ width: `${pct}%`, background: `linear-gradient(90deg, #0ea5e9, ${stepColor})` }}
           />
         </div>
         <div className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5">
@@ -138,11 +138,11 @@ function TripBlock({ trip, jamaahList, docMap }: { trip: Trip; jamaahList: Jamaa
   return (
     <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
       <button
-        className="w-full flex items-center justify-between px-3 py-3 md:px-5 md:py-3.5 hover:bg-orange-50/40 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-3 md:px-5 md:py-3.5 hover:bg-sky-50/40 transition-colors"
         onClick={() => setOpen((v) => !v)}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #f97316, #ea580c)" }}>
+          <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #0ea5e9, #0284c7)" }}>
             <Plane className="h-4 w-4 text-white" strokeWidth={2} />
           </div>
           <div className="min-w-0 text-left">
@@ -153,7 +153,7 @@ function TripBlock({ trip, jamaahList, docMap }: { trip: Trip; jamaahList: Jamaa
         <div className="flex items-center gap-3 shrink-0 ml-3">
           <svg className="h-9 w-9 -rotate-90" viewBox="0 0 36 36">
             <circle cx="18" cy="18" r="14" fill="none" stroke="#f1f5f9" strokeWidth="4" />
-            <circle cx="18" cy="18" r="14" fill="none" stroke="#f97316" strokeWidth="4"
+            <circle cx="18" cy="18" r="14" fill="none" stroke="#0ea5e9" strokeWidth="4"
               strokeDasharray={`${(avgPct / 100) * 88} 88`} strokeLinecap="round" />
           </svg>
           {open ? <ChevronUp className="h-4 w-4 text-[hsl(var(--muted-foreground))]" /> : <ChevronDown className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />}
@@ -320,7 +320,7 @@ export default function ProgressTracker() {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}
         className="grid grid-cols-3 gap-2">
         {[
-          { label: "Total Jamaah", value: totalJamaah, icon: Users, color: "#f97316" },
+          { label: "Total Jamaah", value: totalJamaah, icon: Users, color: "#0ea5e9" },
           { label: "Siap Berangkat", value: fullyDone, icon: Plane, color: "#10b981" },
           { label: "Progres Rata-rata", value: `${overallPct}%`, icon: TrendingUp, color: "#8b5cf6" },
         ].map((card) => (
@@ -340,7 +340,7 @@ export default function ProgressTracker() {
           className="rounded-2xl border border-[hsl(var(--border))] bg-white px-3 py-2.5 md:px-5 md:py-4">
           <div className="flex items-center justify-between mb-1.5 md:mb-2">
             <span className="text-[12px] md:text-sm font-semibold text-[hsl(var(--foreground))]">Progres Jamaah Keseluruhan</span>
-            <span className="text-[12px] md:text-sm font-bold text-orange-500">{overallPct}%</span>
+            <span className="text-[12px] md:text-sm font-bold text-sky-500">{overallPct}%</span>
           </div>
           <div className="w-full h-2 md:h-3 bg-gray-100 rounded-full overflow-hidden">
             <motion.div
@@ -348,7 +348,7 @@ export default function ProgressTracker() {
               animate={{ width: `${overallPct}%` }}
               transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
               className="h-full rounded-full"
-              style={{ background: "linear-gradient(90deg, #f97316, #fb923c, #fbbf24)" }}
+              style={{ background: "linear-gradient(90deg, #0ea5e9, #38bdf8, #fbbf24)" }}
             />
           </div>
           <div className="flex justify-between mt-2">

@@ -34,8 +34,8 @@ const PAGE_W = 413.9506;
 const PAGE_H = 572.532;
 const SCALE = PAGE_W / TPL_W_PX; // ≈ 0.5594
 
-// Brand colors — Orange #F28E34 untuk semua data isian
-const ORANGE: RGB = rgb(0xF2 / 255, 0x8E / 255, 0x34 / 255);
+// Brand colors — Blue #088BC1 untuk semua data isian
+const BRAND_BLUE: RGB = rgb(0x08 / 255, 0x8B / 255, 0xC1 / 255);
 const GREY_MUTED: RGB = rgb(0.45, 0.45, 0.45);
 const DARK: RGB = rgb(0.13, 0.13, 0.13);
 const WHITE: RGB = rgb(1, 1, 1);
@@ -455,7 +455,7 @@ export async function buildIghPdf(data: IghPdfData, layout?: Partial<IghLayoutCo
         topPx: py,
         size: projSize,
         font: projBold,
-        color: ORANGE,
+        color: BRAND_BLUE,
         align: projAlign,
         maxWidthPx: 285,
       });
@@ -515,11 +515,11 @@ export async function buildIghPdf(data: IghPdfData, layout?: Partial<IghLayoutCo
   const dateY = cfg.metaInfo.dateYPx ?? cfg.metaInfo.topPx;
   drawText(page, pick(cfg.metaInfo.customerText, data.customerName || "—"), {
     leftPx: cfg.metaInfo.customerXPx, topPx: customerY, size: cfg.metaInfo.size,
-    font: metaReg, color: ORANGE, maxWidthPx: 175,
+    font: metaReg, color: BRAND_BLUE, maxWidthPx: 175,
   });
   drawText(page, pick(cfg.metaInfo.dateText, data.date || "—"), {
     leftPx: cfg.metaInfo.dateXPx, topPx: dateY, size: cfg.metaInfo.size,
-    font: metaReg, color: ORANGE, maxWidthPx: 175,
+    font: metaReg, color: BRAND_BLUE, maxWidthPx: 175,
   });
 
   // ── 3. HOTEL SECTION ──
@@ -530,14 +530,14 @@ export async function buildIghPdf(data: IghPdfData, layout?: Partial<IghLayoutCo
   const subtitleSize = Math.max(7, Math.min(14, cfg.hotel.size * 0.45));
   drawText(page, pick(cfg.hotel.makkahText, data.hotelMakkah || "—"), {
     leftPx: cfg.hotel.makkahXPx, topPx: cfg.hotel.topPx, size: cfg.hotel.size,
-    minSize: 12, font: hotelBold, color: ORANGE, maxWidthPx: 285,
+    minSize: 12, font: hotelBold, color: BRAND_BLUE, maxWidthPx: 285,
   });
   drawText(page, `${Math.max(0, data.makkahNights || 0)} Malam`, {
     leftPx: cfg.hotel.makkahXPx, topPx: cfg.hotel.topPx + cfg.hotel.subtitleOffsetPx, size: subtitleSize, font: hotelReg, color: DARK,
   });
   drawText(page, pick(cfg.hotel.madinahText, data.hotelMadinah || "—"), {
     leftPx: cfg.hotel.madinahXPx, topPx: cfg.hotel.topPx, size: cfg.hotel.size,
-    minSize: 12, font: hotelBold, color: ORANGE, maxWidthPx: 285,
+    minSize: 12, font: hotelBold, color: BRAND_BLUE, maxWidthPx: 285,
   });
   drawText(page, `${Math.max(0, data.madinahNights || 0)} Malam`, {
     leftPx: cfg.hotel.madinahXPx, topPx: cfg.hotel.topPx + cfg.hotel.subtitleOffsetPx, size: subtitleSize, font: hotelReg, color: DARK,
@@ -546,7 +546,7 @@ export async function buildIghPdf(data: IghPdfData, layout?: Partial<IghLayoutCo
   // ── 4. PRICING ──
   if (isGroup) {
     // Group template: tabel 4 kolom (Total Pax | Quad | Triple | Double),
-    // multi-row stacked. Color ORANGE, true center horizontal & vertical.
+    // multi-row stacked. Color BRAND_BLUE, true center horizontal & vertical.
     const gp = cfg.groupPricing;
     const groupBold = fontFor("groupPricing", "bold");
     const rows = data.groupPricing ?? [];
@@ -575,7 +575,7 @@ export async function buildIghPdf(data: IghPdfData, layout?: Partial<IghLayoutCo
           size: gp.size,
           minSize: 9,
           font: groupBold,
-          color: ORANGE,
+          color: BRAND_BLUE,
         });
       };
       const q = convertViaIdr(row.quad,   row.quadIDR,   sourceCur, targetCur, kursUSD, kursSAR);

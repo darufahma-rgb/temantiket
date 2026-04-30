@@ -368,7 +368,7 @@ export default function BulkOcrDialog({ open, tripId, onClose }: Props) {
                 <div className={cn(
                   "flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border transition-all",
                   phase === step.key
-                    ? "bg-orange-100 text-orange-700 border-orange-200"
+                    ? "bg-sky-100 text-sky-700 border-sky-200"
                     : phaseIdx > i
                       ? "bg-green-100 text-green-700 border-green-200"
                       : "bg-[hsl(var(--secondary))] text-muted-foreground border-[hsl(var(--border))]"
@@ -393,22 +393,22 @@ export default function BulkOcrDialog({ open, tripId, onClose }: Props) {
               <div
                 className={cn(
                   "border-2 border-dashed rounded-xl cursor-pointer flex flex-col items-center justify-center gap-2 py-8 px-5 text-center transition-all",
-                  dragOver ? "border-orange-400 bg-orange-50" : "border-[hsl(var(--border))] hover:border-orange-300 hover:bg-orange-50/30"
+                  dragOver ? "border-sky-400 bg-sky-50" : "border-[hsl(var(--border))] hover:border-sky-300 hover:bg-sky-50/30"
                 )}
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <div className="h-10 w-10 rounded-xl bg-orange-100 flex items-center justify-center">
-                  <Upload className="h-4.5 w-4.5 text-orange-600" style={{ height: 18, width: 18 }} />
+                <div className="h-10 w-10 rounded-xl bg-sky-100 flex items-center justify-center">
+                  <Upload className="h-4.5 w-4.5 text-sky-600" style={{ height: 18, width: 18 }} />
                 </div>
                 <div>
                   <p className="text-[12.5px] font-semibold text-[hsl(var(--foreground))]">Drag & drop foto paspor, atau klik untuk pilih</p>
                   <p className="text-[10.5px] text-muted-foreground mt-0.5">Bisa multi-file · JPG, PNG, WEBP · MRZ harus terlihat jelas</p>
                 </div>
                 <button type="button"
-                  className="h-7 px-3 rounded-xl text-[11px] font-semibold border border-orange-200 text-orange-700 bg-white hover:bg-orange-50 transition-colors pointer-events-none flex items-center gap-1.5">
+                  className="h-7 px-3 rounded-xl text-[11px] font-semibold border border-sky-200 text-sky-700 bg-white hover:bg-sky-50 transition-colors pointer-events-none flex items-center gap-1.5">
                   <FileImage className="h-3.5 w-3.5" /> Pilih File
                 </button>
               </div>
@@ -451,22 +451,22 @@ export default function BulkOcrDialog({ open, tripId, onClose }: Props) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-[12.5px] font-semibold">
-                  Memproses… <span className="text-orange-600">{doneCount}/{rows.length}</span>
+                  Memproses… <span className="text-sky-600">{doneCount}/{rows.length}</span>
                 </p>
                 <div className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin text-orange-500" />
+                  <Loader2 className="h-3 w-3 animate-spin text-sky-500" />
                   Maks. 4 scan sekaligus
                 </div>
               </div>
               <div className="h-1.5 rounded-full bg-[hsl(var(--secondary))] overflow-hidden">
-                <div className="h-full rounded-full bg-orange-400 transition-all duration-300"
+                <div className="h-full rounded-full bg-sky-400 transition-all duration-300"
                   style={{ width: `${rows.length ? (doneCount / rows.length) * 100 : 0}%` }} />
               </div>
               <div className="space-y-1.5">
                 {rows.map((row, idx) => (
                   <div key={row.id} className={cn(
                     "flex items-center gap-3 rounded-xl border px-3 py-2 transition-all",
-                    row.status === "scanning" && "border-orange-200 bg-orange-50",
+                    row.status === "scanning" && "border-sky-200 bg-sky-50",
                     row.status === "done" && "border-green-200 bg-green-50",
                     row.status === "error" && "border-red-200 bg-red-50",
                     row.status === "queued" && "border-[hsl(var(--border))] bg-white opacity-50",
@@ -479,7 +479,7 @@ export default function BulkOcrDialog({ open, tripId, onClose }: Props) {
                           <span className={cn(
                             "text-[9.5px] font-bold px-1.5 py-0.5 rounded-full",
                             row.status === "queued" && "bg-gray-100 text-gray-500",
-                            row.status === "scanning" && "bg-orange-100 text-orange-700",
+                            row.status === "scanning" && "bg-sky-100 text-sky-700",
                             row.status === "done" && "bg-green-100 text-green-700",
                             row.status === "error" && "bg-red-100 text-red-600",
                           )}>
@@ -497,8 +497,8 @@ export default function BulkOcrDialog({ open, tripId, onClose }: Props) {
                         </div>
                       </div>
                       {row.status === "scanning" && (
-                        <div className="mt-1 h-1 rounded-full bg-orange-100 overflow-hidden">
-                          <div className="h-full rounded-full bg-orange-400 transition-all" style={{ width: `${row.progress}%` }} />
+                        <div className="mt-1 h-1 rounded-full bg-sky-100 overflow-hidden">
+                          <div className="h-full rounded-full bg-sky-400 transition-all" style={{ width: `${row.progress}%` }} />
                         </div>
                       )}
                       {(row.status === "done" || row.status === "error") && (
@@ -514,7 +514,7 @@ export default function BulkOcrDialog({ open, tripId, onClose }: Props) {
                               value={row.data.passportNumber}
                               onChange={(e) => updateRowData(row.id, "passportNumber", e.target.value)}
                               placeholder="No. Paspor *"
-                              className={cn("h-7 text-[11px] rounded-lg font-mono sm:col-span-3", !row.data.passportNumber.trim() && "border-orange-300 bg-orange-50/30")}
+                              className={cn("h-7 text-[11px] rounded-lg font-mono sm:col-span-3", !row.data.passportNumber.trim() && "border-sky-300 bg-sky-50/30")}
                             />
                             <Input
                               type="date"
@@ -609,7 +609,7 @@ export default function BulkOcrDialog({ open, tripId, onClose }: Props) {
                             <td className="px-1.5 py-1.5">
                               <Input value={row.data.passportNumber} onChange={(e) => updateRowData(row.id, "passportNumber", e.target.value)}
                                 placeholder="A1234567"
-                                className={cn("h-7 text-[11.5px] rounded-lg font-mono", !row.data.passportNumber.trim() && "border-orange-300 bg-orange-50/30")} />
+                                className={cn("h-7 text-[11.5px] rounded-lg font-mono", !row.data.passportNumber.trim() && "border-sky-300 bg-sky-50/30")} />
                             </td>
                             <td className="px-1.5 py-1.5">
                               <Input type="date" value={row.data.birthDate} onChange={(e) => updateRowData(row.id, "birthDate", e.target.value)}
@@ -677,7 +677,7 @@ export default function BulkOcrDialog({ open, tripId, onClose }: Props) {
             {phase === "upload" && (
               <button type="button" onClick={startScanning} disabled={rows.length === 0 || compressing}
                 className="h-8 px-4 rounded-xl text-[12px] font-bold text-white flex items-center gap-1.5 transition-all disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
+                style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}>
                 {compressing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
                 {compressing ? "Mengoptimasi foto…" : `Mulai Scan (${rows.length} foto)`}
               </button>
@@ -690,7 +690,7 @@ export default function BulkOcrDialog({ open, tripId, onClose }: Props) {
                   onClick={() => setPhase("review")}
                   disabled={!allFinished || validCount === 0}
                   className="h-8 px-4 rounded-xl text-[12px] font-bold text-white flex items-center gap-1.5 transition-all disabled:opacity-40"
-                  style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}
+                  style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}
                 >
                   {allFinished ? (
                     <>

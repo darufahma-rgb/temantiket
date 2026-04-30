@@ -52,8 +52,8 @@ const empty: PackageDraft = {
 };
 
 const lbl = "text-[10px] md:text-[10.5px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wide";
-const inp = "h-8 md:h-9 text-[12.5px] md:text-[13px] rounded-lg md:rounded-xl border border-[hsl(var(--border))] bg-white placeholder:text-gray-400 focus:border-orange-400 focus:ring-orange-400/20 transition-all";
-const sel = "h-8 md:h-9 text-[12.5px] md:text-[13px] rounded-lg md:rounded-xl border border-[hsl(var(--border))] bg-white focus:border-orange-400 transition-all";
+const inp = "h-8 md:h-9 text-[12.5px] md:text-[13px] rounded-lg md:rounded-xl border border-[hsl(var(--border))] bg-white placeholder:text-gray-400 focus:border-sky-400 focus:ring-sky-400/20 transition-all";
+const sel = "h-8 md:h-9 text-[12.5px] md:text-[13px] rounded-lg md:rounded-xl border border-[hsl(var(--border))] bg-white focus:border-sky-400 transition-all";
 
 export function PackageFormDialog({ open, onOpenChange, initial, onSubmit }: Props) {
   const [draft, setDraft] = useState<PackageDraft>(empty);
@@ -185,7 +185,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSubmit }: Pro
               >
                 <div className="flex items-center gap-2.5 md:gap-3 min-w-0">
                   <div className="h-8 w-8 md:h-9 md:w-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
+                    style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}>
                     <Package strokeWidth={1.8} className="h-4 w-4 md:h-4.5 md:w-4.5 text-white" />
                   </div>
                   <div className="min-w-0">
@@ -230,7 +230,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSubmit }: Pro
                             <button
                               type="button"
                               onClick={() => fileRef.current?.click()}
-                              className="h-8 px-3.5 rounded-xl bg-white text-[11.5px] font-semibold flex items-center gap-1.5 hover:bg-orange-50 transition-colors"
+                              className="h-8 px-3.5 rounded-xl bg-white text-[11.5px] font-semibold flex items-center gap-1.5 hover:bg-sky-50 transition-colors"
                             >
                               <Camera strokeWidth={2} className="h-3.5 w-3.5" />
                               Ganti Foto
@@ -251,10 +251,10 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSubmit }: Pro
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="w-full h-16 md:h-24 rounded-xl md:rounded-2xl border-2 border-dashed border-[hsl(var(--border))] flex flex-col items-center justify-center gap-1 md:gap-2 hover:border-orange-400 hover:bg-orange-50/40 transition-all group"
+                      className="w-full h-16 md:h-24 rounded-xl md:rounded-2xl border-2 border-dashed border-[hsl(var(--border))] flex flex-col items-center justify-center gap-1 md:gap-2 hover:border-sky-400 hover:bg-sky-50/40 transition-all group"
                     >
-                      <ImagePlus strokeWidth={1.5} className="h-4 w-4 md:h-5 md:w-5 text-gray-300 group-hover:text-orange-400 transition-colors" />
-                      <span className="text-[11px] md:text-[11.5px] text-gray-400 group-hover:text-orange-500 transition-colors">Klik untuk unggah foto cover</span>
+                      <ImagePlus strokeWidth={1.5} className="h-4 w-4 md:h-5 md:w-5 text-gray-300 group-hover:text-sky-400 transition-colors" />
+                      <span className="text-[11px] md:text-[11.5px] text-gray-400 group-hover:text-sky-500 transition-colors">Klik untuk unggah foto cover</span>
                     </button>
                   )}
                   <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
@@ -390,7 +390,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSubmit }: Pro
                 {/* Fasilitas */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <NotebookPen strokeWidth={1.8} className="h-3.5 w-3.5 text-orange-500" />
+                    <NotebookPen strokeWidth={1.8} className="h-3.5 w-3.5 text-sky-500" />
                     <p className={lbl}>Fasilitas yang Tersedia</p>
                   </div>
                   <div className="flex flex-wrap gap-1 md:gap-1.5">
@@ -403,8 +403,8 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSubmit }: Pro
                           onClick={() => toggleFacility(fac)}
                           className={`text-[10.5px] md:text-[11px] font-semibold px-2.5 md:px-3 py-0.5 md:py-1 rounded-full border transition-all ${
                             active
-                              ? "bg-orange-500 text-white border-orange-500 shadow-sm"
-                              : "bg-white text-gray-500 border-gray-200 hover:border-orange-300 hover:text-orange-600"
+                              ? "bg-sky-500 text-white border-sky-500 shadow-sm"
+                              : "bg-white text-gray-500 border-gray-200 hover:border-sky-300 hover:text-sky-600"
                           }`}
                         >
                           {fac}
@@ -422,7 +422,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSubmit }: Pro
                     onChange={(e) => set("notes", e.target.value)}
                     rows={2}
                     placeholder="Catatan khusus untuk paket ini..."
-                    className="w-full text-[12.5px] md:text-[13px] rounded-lg md:rounded-xl border border-[hsl(var(--border))] bg-white px-3 md:px-3.5 py-2 md:py-2.5 placeholder:text-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 outline-none transition-all resize-none"
+                    className="w-full text-[12.5px] md:text-[13px] rounded-lg md:rounded-xl border border-[hsl(var(--border))] bg-white px-3 md:px-3.5 py-2 md:py-2.5 placeholder:text-gray-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 outline-none transition-all resize-none"
                   />
                 </div>
 
@@ -443,7 +443,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSubmit }: Pro
                   onClick={handleSave}
                   disabled={saving || !canSave}
                   className="flex-[1.4] md:flex-1 h-10 rounded-xl text-[13px] font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
-                  style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}
+                  style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}
                 >
                   {saving ? (
                     <>

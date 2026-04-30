@@ -54,12 +54,12 @@ export default function PublicCheck() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-rose-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-cyan-50 to-blue-50 flex flex-col">
       {/* Header */}
-      <header className="px-4 py-4 flex items-center justify-between border-b border-orange-100/60 bg-white/70 backdrop-blur">
+      <header className="px-4 py-4 flex items-center justify-between border-b border-sky-100/60 bg-white/70 backdrop-blur">
         <Link to="/" className="flex items-center gap-2">
           <img src="/logo-igh-tour.png" alt="Temantiket" className="h-8 w-auto" />
-          <span className="text-sm font-bold text-orange-700">Temantiket</span>
+          <span className="text-sm font-bold text-sky-700">Temantiket</span>
         </Link>
         <span className="text-[11px] text-[hsl(var(--muted-foreground))]">Cek Status Booking</span>
       </header>
@@ -101,8 +101,8 @@ export default function PublicCheck() {
             className="mt-6 space-y-4"
           >
             {/* Trip card */}
-            <div className="rounded-2xl bg-white border border-orange-100 overflow-hidden shadow-sm">
-              <div className="bg-gradient-to-br from-orange-500 to-rose-500 text-white px-5 py-4">
+            <div className="rounded-2xl bg-white border border-sky-100 overflow-hidden shadow-sm">
+              <div className="bg-gradient-to-br from-sky-500 to-rose-500 text-white px-5 py-4">
                 <p className="text-[11px] uppercase tracking-wider opacity-90">Paket Perjalanan</p>
                 <h2 className="text-lg font-bold mt-1">{data.trip.emoji} {data.trip.name}</h2>
               </div>
@@ -121,7 +121,7 @@ export default function PublicCheck() {
                   </div>
                   <div>
                     <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Kode Booking</p>
-                    <p className="font-mono font-bold text-orange-700">{data.jamaah.bookingCode}</p>
+                    <p className="font-mono font-bold text-sky-700">{data.jamaah.bookingCode}</p>
                   </div>
                 </div>
               </div>
@@ -207,7 +207,7 @@ export default function PublicCheck() {
         )}
       </main>
 
-      <footer className="px-4 py-4 text-center text-[10px] text-[hsl(var(--muted-foreground))] border-t border-orange-100/60">
+      <footer className="px-4 py-4 text-center text-[10px] text-[hsl(var(--muted-foreground))] border-t border-sky-100/60">
         © Temantiket — Manajemen Umrah & Haji
       </footer>
     </div>

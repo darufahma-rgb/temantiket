@@ -195,7 +195,7 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
     <th
       style={M}
       className={cn(
-        "px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-orange-700 border-b border-orange-200 bg-orange-50/80 whitespace-nowrap",
+        "px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-sky-700 border-b border-sky-200 bg-sky-50/80 whitespace-nowrap",
         right && "text-right"
       )}
     >
@@ -210,7 +210,7 @@ function Td({ children, right, muted, bold, mono }: {
   return (
     <td
       className={cn(
-        "px-2.5 py-1.5 text-[12px] border-b border-orange-50",
+        "px-2.5 py-1.5 text-[12px] border-b border-sky-50",
         right && "text-right",
         muted && "text-[hsl(var(--muted-foreground))]",
         bold && "font-bold",
@@ -236,7 +236,7 @@ function NumCell({ value, onChange, placeholder }: {
       }}
       placeholder={placeholder ?? "0"}
       style={M}
-      className="w-full h-7 rounded-lg border border-orange-200 bg-white px-2 text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
+      className="w-full h-7 rounded-lg border border-sky-200 bg-white px-2 text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-sky-400 focus:border-sky-400"
     />
   );
 }
@@ -263,7 +263,7 @@ function TextCell({ value, onChange, placeholder, suggestions, listId }: {
         placeholder={placeholder ?? ""}
         list={suggestions && listId ? listId : undefined}
         style={M}
-        className="w-full h-7 rounded-lg border border-orange-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
+        className="w-full h-7 rounded-lg border border-sky-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400 focus:border-sky-400"
       />
       {suggestions && listId && (
         <datalist id={listId}>
@@ -288,18 +288,18 @@ function SectionHeader({
   color: string;
 }) {
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded-t-xl border border-b-0 border-orange-200" style={{ background: "linear-gradient(135deg,#fff7ed,#ffedd5)" }}>
+    <div className="flex items-center justify-between px-3 py-2.5 rounded-t-xl border border-b-0 border-sky-200" style={{ background: "linear-gradient(135deg,#f0f9ff,#e0f2fe)" }}>
       <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-orange-500 shrink-0" strokeWidth={2} />
-        <span style={M} className="text-[12px] font-bold text-orange-800">{title}</span>
-        <span style={M} className="text-[10px] font-semibold text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded">
+        <Icon className="h-4 w-4 text-sky-500 shrink-0" strokeWidth={2} />
+        <span style={M} className="text-[12px] font-bold text-sky-800">{title}</span>
+        <span style={M} className="text-[10px] font-semibold text-sky-500 bg-sky-100 px-1.5 py-0.5 rounded">
           {currency}
         </span>
       </div>
       <button
         onClick={onAdd}
         style={M}
-        className="flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-white border border-orange-200 hover:bg-orange-50 rounded-lg px-2 py-1 transition-colors"
+        className="flex items-center gap-1 text-[10px] font-bold text-sky-600 bg-white border border-sky-200 hover:bg-sky-50 rounded-lg px-2 py-1 transition-colors"
       >
         <Plus className="h-3 w-3" /> Tambah Baris
       </button>
@@ -325,14 +325,14 @@ const CUR_STYLE: Record<"IDR" | "SAR" | "USD", string> = {
 };
 function RowCurrencyToggle({ value, onChange }: { value: "IDR" | "SAR" | "USD"; onChange: (v: "IDR" | "SAR" | "USD") => void }) {
   return (
-    <div className="flex rounded-md border border-orange-200 overflow-hidden shrink-0">
+    <div className="flex rounded-md border border-sky-200 overflow-hidden shrink-0">
       {(["IDR", "SAR", "USD"] as const).map((cur, i) => (
         <button
           key={cur}
           type="button"
           onClick={() => onChange(cur)}
           style={M}
-          className={`h-7 px-1.5 text-[9px] font-bold transition-colors ${value === cur ? CUR_STYLE[cur] : "bg-white text-slate-400 hover:bg-slate-50"} ${i > 0 ? "border-l border-orange-200" : ""}`}
+          className={`h-7 px-1.5 text-[9px] font-bold transition-colors ${value === cur ? CUR_STYLE[cur] : "bg-white text-slate-400 hover:bg-slate-50"} ${i > 0 ? "border-l border-sky-200" : ""}`}
         >{cur}</button>
       ))}
     </div>
@@ -352,10 +352,10 @@ const CATS: Array<{ value: string; emoji: string; label: string }> = [
 ];
 function UnitToggle({ value, onChange }: { value: CostUnit; onChange: (v: CostUnit) => void }) {
   return (
-    <div className="flex rounded-md border border-orange-200 overflow-hidden shrink-0">
+    <div className="flex rounded-md border border-sky-200 overflow-hidden shrink-0">
       {(["pax", "group"] as const).map((u, i) => (
         <button key={u} type="button" onClick={() => onChange(u)} style={M}
-          className={`h-7 px-1.5 text-[9px] font-bold transition-colors ${value === u ? "bg-orange-500 text-white" : "bg-white text-slate-400 hover:bg-slate-50"} ${i > 0 ? "border-l border-orange-200" : ""}`}
+          className={`h-7 px-1.5 text-[9px] font-bold transition-colors ${value === u ? "bg-sky-500 text-white" : "bg-white text-slate-400 hover:bg-slate-50"} ${i > 0 ? "border-l border-sky-200" : ""}`}
         >{u === "pax" ? "/pax" : "/grup"}</button>
       ))}
     </div>
@@ -373,26 +373,26 @@ function SubtotalRow({ label, sarAmount, usdAmount, groupIDR, perPaxIDR, formatC
   const hasSAR = sarAmount !== undefined && sarAmount > 0;
   const hasUSD = usdAmount !== undefined && usdAmount > 0;
   const foreignDisplay = hasSAR && hasUSD
-    ? <><span className="text-blue-700">{fmtSAR(sarAmount!)}</span> <span className="text-orange-400">+</span> <span className="text-violet-700">{fmtUSD(usdAmount!)}</span></>
+    ? <><span className="text-blue-700">{fmtSAR(sarAmount!)}</span> <span className="text-sky-400">+</span> <span className="text-violet-700">{fmtUSD(usdAmount!)}</span></>
     : hasSAR ? <span className="text-blue-700">{fmtSAR(sarAmount!)}</span>
     : hasUSD ? <span className="text-violet-700">{fmtUSD(usdAmount!)}</span>
     : <span className="text-muted-foreground">—</span>;
 
   return (
-    <tr className="bg-orange-50/50">
-      <td colSpan={2} style={M} className="px-2.5 py-2 text-[11px] font-extrabold text-orange-700 uppercase tracking-wider border-t-2 border-orange-200">
+    <tr className="bg-sky-50/50">
+      <td colSpan={2} style={M} className="px-2.5 py-2 text-[11px] font-extrabold text-sky-700 uppercase tracking-wider border-t-2 border-sky-200">
         {label}
       </td>
-      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right border-t-2 border-orange-200 font-mono">
+      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right border-t-2 border-sky-200 font-mono">
         {foreignDisplay}
       </td>
-      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-orange-700 border-t-2 border-orange-200 font-mono">
+      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-sky-700 border-t-2 border-sky-200 font-mono">
         {formatCurrency(groupIDR)}
       </td>
-      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-orange-600 border-t-2 border-orange-200 font-mono">
+      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-sky-600 border-t-2 border-sky-200 font-mono">
         {formatCurrency(perPaxIDR)}
       </td>
-      <td className="border-t-2 border-orange-200" />
+      <td className="border-t-2 border-sky-200" />
     </tr>
   );
 }
@@ -491,14 +491,14 @@ function AddJamaahWithOcrDialog({ open, packageId, onClose }: { open: boolean; p
             </button>
             <input ref={photoRef} type="file" accept="image/png,image/jpeg,image/jpg" className="hidden" onChange={handlePhoto} />
 
-            <div className="flex-1 rounded-xl border border-orange-200 bg-orange-50/60 px-3 py-2 flex items-center justify-between gap-2">
+            <div className="flex-1 rounded-xl border border-sky-200 bg-sky-50/60 px-3 py-2 flex items-center justify-between gap-2">
               <div>
-                <p className="text-[11.5px] font-semibold text-orange-800">Scan Paspor OCR</p>
-                <p className="text-[10px] text-orange-700/80 leading-tight">Isi otomatis dari foto MRZ</p>
+                <p className="text-[11.5px] font-semibold text-sky-800">Scan Paspor OCR</p>
+                <p className="text-[10px] text-sky-700/80 leading-tight">Isi otomatis dari foto MRZ</p>
               </div>
               <input ref={ocrRef} type="file" accept="image/*" className="hidden" onChange={handleOcr} />
               <button type="button" onClick={() => ocrRef.current?.click()} disabled={ocrLoading}
-                className="h-10 sm:h-7 min-w-[64px] px-3 rounded-lg text-[12px] sm:text-[11px] font-semibold border border-orange-200 bg-white text-orange-700 hover:bg-orange-50 active:bg-orange-100 transition-colors disabled:opacity-60 flex items-center gap-1.5 shrink-0 touch-manipulation">
+                className="h-10 sm:h-7 min-w-[64px] px-3 rounded-lg text-[12px] sm:text-[11px] font-semibold border border-sky-200 bg-white text-sky-700 hover:bg-sky-50 active:bg-sky-100 transition-colors disabled:opacity-60 flex items-center gap-1.5 shrink-0 touch-manipulation">
                 <ScanLine className="h-4 w-4 sm:h-3 sm:w-3" />
                 {ocrLoading ? (ocrProgress < 35 ? "Memuat…" : `${ocrProgress}%`) : "Scan"}
               </button>
@@ -549,7 +549,7 @@ function AddJamaahWithOcrDialog({ open, packageId, onClose }: { open: boolean; p
             </button>
             <button type="submit" disabled={saving}
               className="flex-1 h-9 rounded-xl text-[12.5px] font-bold text-white transition-all disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
+              style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}>
               {saving ? "Menyimpan…" : "Tambah Jamaah"}
             </button>
           </div>
@@ -940,7 +940,7 @@ export default function PackageDetail() {
           {pkg.departureDate && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-xl h-8 px-2.5 md:h-10 md:px-3 border-orange-200 text-orange-600 hover:bg-orange-50" title="Sinkron ke kalender">
+                <Button variant="outline" size="sm" className="rounded-xl h-8 px-2.5 md:h-10 md:px-3 border-sky-200 text-sky-600 hover:bg-sky-50" title="Sinkron ke kalender">
                   <CalendarPlus className="h-3.5 w-3.5 md:mr-1" />
                   <span className="text-xs">Kalender</span>
                 </Button>
@@ -996,7 +996,7 @@ export default function PackageDetail() {
       <div className="grid grid-cols-3 gap-1.5 md:gap-3">
         <div className="rounded-xl md:rounded-2xl border bg-white px-2.5 py-2 md:p-4">
           <p className="text-[9.5px] md:text-xs text-muted-foreground leading-tight" style={M}>Total Paket</p>
-          <p className="mt-0.5 text-[12px] md:text-xl font-bold text-orange-600 leading-tight tabular-nums" style={M}>{fmtCompactIDR(pkg.totalIDR)}</p>
+          <p className="mt-0.5 text-[12px] md:text-xl font-bold text-sky-600 leading-tight tabular-nums" style={M}>{fmtCompactIDR(pkg.totalIDR)}</p>
         </div>
         <div className="rounded-xl md:rounded-2xl border bg-white px-2.5 py-2 md:p-4">
           <p className="text-[9.5px] md:text-xs text-muted-foreground leading-tight" style={M}>Per Jamaah</p>
@@ -1026,7 +1026,7 @@ export default function PackageDetail() {
 
           {/* ── Mode switcher + kurs strip (combined row on mobile) ── */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1 p-1 rounded-xl border border-orange-200 bg-orange-50/50 flex-wrap">
+            <div className="flex items-center gap-1 p-1 rounded-xl border border-sky-200 bg-sky-50/50 flex-wrap">
               {([
                 { mode: "umroh_private" as CalcMode, label: "🕌 Umroh Private" },
                 { mode: "umroh_group"   as CalcMode, label: "👥 Umroh Group"   },
@@ -1039,8 +1039,8 @@ export default function PackageDetail() {
                   className={cn(
                     "px-2.5 py-1.5 rounded-lg text-[10.5px] md:text-[11.5px] font-bold transition-all whitespace-nowrap",
                     calc.mode === mode
-                      ? "bg-orange-500 text-white shadow-sm"
-                      : "text-orange-600 hover:bg-orange-100"
+                      ? "bg-sky-500 text-white shadow-sm"
+                      : "text-sky-600 hover:bg-sky-100"
                   )}
                 >
                   {label}
@@ -1056,7 +1056,7 @@ export default function PackageDetail() {
                 return (
                   <div
                     key={cur}
-                    className={`flex items-center gap-1 rounded-lg border px-2 py-1 transition-colors ${active ? "bg-orange-50 border-orange-200" : "bg-slate-50 border-slate-200"}`}
+                    className={`flex items-center gap-1 rounded-lg border px-2 py-1 transition-colors ${active ? "bg-sky-50 border-sky-200" : "bg-slate-50 border-slate-200"}`}
                   >
                     <span style={M} className="text-[10px] font-bold text-slate-600 uppercase shrink-0">{cur}</span>
                     <span style={M} className="text-[10px] text-muted-foreground">=</span>
@@ -1077,7 +1077,7 @@ export default function PackageDetail() {
                         type="button"
                         onClick={() => setLocal(0)}
                         style={M}
-                        className="text-[9px] text-orange-400 hover:text-orange-600 font-medium shrink-0 ml-0.5"
+                        className="text-[9px] text-sky-400 hover:text-sky-600 font-medium shrink-0 ml-0.5"
                       >↩</button>
                     )}
                   </div>
@@ -1092,31 +1092,31 @@ export default function PackageDetail() {
           </div>
 
           {/* ── Package Info ── */}
-          <div className="rounded-xl border border-orange-200 bg-white p-3 md:p-4 space-y-2.5 md:space-y-3">
-            <p style={M} className="text-[10px] font-extrabold uppercase tracking-wide text-orange-600">Info Paket</p>
+          <div className="rounded-xl border border-sky-200 bg-white p-3 md:p-4 space-y-2.5 md:space-y-3">
+            <p style={M} className="text-[10px] font-extrabold uppercase tracking-wide text-sky-600">Info Paket</p>
             <div className="grid grid-cols-2 md:grid-cols-6 gap-2.5 md:gap-3">
               <div className="col-span-2 md:col-span-3 space-y-1">
-                <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">Nama Paket</label>
+                <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Nama Paket</label>
                 <input
                   type="text"
                   value={calc.packageName}
                   onChange={(e) => setField("packageName", e.target.value)}
                   style={M}
-                  className="w-full h-8 rounded-lg border border-orange-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400"
+                  className="w-full h-8 rounded-lg border border-sky-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400"
                 />
               </div>
               <div className="col-span-1 md:col-span-2 space-y-1">
-                <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">Destinasi</label>
+                <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Destinasi</label>
                 <input
                   type="text"
                   value={calc.destination}
                   onChange={(e) => setField("destination", e.target.value)}
                   style={M}
-                  className="w-full h-8 rounded-lg border border-orange-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400"
+                  className="w-full h-8 rounded-lg border border-sky-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400"
                 />
               </div>
               <div className="col-span-1 md:col-span-1 space-y-1">
-                <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">Jumlah Pax</label>
+                <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Jumlah Pax</label>
                 <div className="flex gap-1.5">
                   <input
                     type="text"
@@ -1127,13 +1127,13 @@ export default function PackageDetail() {
                       setField("pax", Math.max(1, stripped ? Number(stripped) : 1));
                     }}
                     style={M}
-                    className="w-full h-8 rounded-lg border border-orange-200 bg-white px-2 text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-orange-400"
+                    className="w-full h-8 rounded-lg border border-sky-200 bg-white px-2 text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-sky-400"
                   />
                   <button
                     onClick={() => setField("pax", Math.max(1, jamaah.length))}
                     title="Pakai jumlah jamaah terdaftar"
                     style={M}
-                    className="shrink-0 h-8 px-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 text-[10px] font-bold transition-colors"
+                    className="shrink-0 h-8 px-2 rounded-lg border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-700 text-[10px] font-bold transition-colors"
                   >
                     ={jamaah.length}
                   </button>
@@ -1144,7 +1144,7 @@ export default function PackageDetail() {
                   dan langsung di-persist ke kolom departure_date / return_date
                   via update() (auto-sync). Validation: tanggal pulang ≥ berangkat. */}
               <div className="col-span-1 md:col-span-3 space-y-1">
-                <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">Tanggal Berangkat</label>
+                <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Tanggal Berangkat</label>
                 <input
                   type="date"
                   value={pkg.departureDate ?? ""}
@@ -1163,14 +1163,14 @@ export default function PackageDetail() {
                     update(id!, patch);
                   }}
                   style={M}
-                  className="w-full h-8 rounded-lg border border-orange-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400"
+                  className="w-full h-8 rounded-lg border border-sky-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400"
                 />
               </div>
               <div className="col-span-1 md:col-span-3 space-y-1">
-                <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">
+                <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">
                   Tanggal Pulang
                   {pkg.departureDate && pkg.returnDate && (
-                    <span className="ml-1.5 text-[9px] text-orange-500 normal-case font-semibold">
+                    <span className="ml-1.5 text-[9px] text-sky-500 normal-case font-semibold">
                       · {Math.max(1, Math.round((new Date(pkg.returnDate + "T00:00:00").getTime() - new Date(pkg.departureDate + "T00:00:00").getTime()) / 86400000) + 1)} Hari
                     </span>
                   )}
@@ -1197,7 +1197,7 @@ export default function PackageDetail() {
                   }}
                   disabled={!pkg.departureDate}
                   style={M}
-                  className="w-full h-8 rounded-lg border border-orange-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400 disabled:bg-slate-50 disabled:text-muted-foreground disabled:cursor-not-allowed"
+                  className="w-full h-8 rounded-lg border border-sky-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400 disabled:bg-slate-50 disabled:text-muted-foreground disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -1207,7 +1207,7 @@ export default function PackageDetail() {
           {calc.mode !== "umum" && (<>
 
           {/* ── HOTEL TABLE ── */}
-          <div className="overflow-hidden rounded-xl border border-orange-200">
+          <div className="overflow-hidden rounded-xl border border-sky-200">
             <SectionHeader icon={Hotel} title="Hotel" currency="SAR / USD" color="bg-blue-500" onAdd={addHotel} />
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
@@ -1232,7 +1232,7 @@ export default function PackageDetail() {
                     const foreignAmount = h.days * activeRate * h.rooms;
                     const totalIDR = foreignAmount * rate;
                     return (
-                      <tr key={h.id} className="hover:bg-orange-50/30 transition-colors">
+                      <tr key={h.id} className="hover:bg-sky-50/30 transition-colors">
                         <Td><TextCell value={h.label} onChange={(v) => updateHotel(h.id, { label: v })} placeholder="Nama hotel" /></Td>
                         <Td right><NumCell value={h.days} onChange={(v) => updateHotel(h.id, { days: v })} /></Td>
                         <Td>
@@ -1241,7 +1241,7 @@ export default function PackageDetail() {
                         <Td right><NumCell value={h.rooms} onChange={(v) => updateHotel(h.id, { rooms: v })} /></Td>
                         <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                         <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                        <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeHotel(h.id)} /></td>
+                        <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeHotel(h.id)} /></td>
                       </tr>
                     );
                   })}
@@ -1261,7 +1261,7 @@ export default function PackageDetail() {
           </div>
 
           {/* ── TRANSPORT TABLE ── */}
-          <div className="overflow-hidden rounded-xl border border-orange-200">
+          <div className="overflow-hidden rounded-xl border border-sky-200">
             <SectionHeader icon={Bus} title="Transportasi" currency="SAR / USD" color="bg-blue-600" onAdd={addTransport} />
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
@@ -1284,7 +1284,7 @@ export default function PackageDetail() {
                     const foreignAmount = t.fleet * t.pricePerFleet;
                     const totalIDR = foreignAmount * rate;
                     return (
-                      <tr key={t.id} className="hover:bg-orange-50/30 transition-colors">
+                      <tr key={t.id} className="hover:bg-sky-50/30 transition-colors">
                         <Td><TextCell value={t.label} onChange={(v) => updateTransport(t.id, { label: v })} placeholder="cth: Hiace" suggestions={TRANSPORT_TYPES} listId="dl-transport-types-pkg" /></Td>
                         <Td><TextCell value={t.route ?? ""} onChange={(v) => updateTransport(t.id, { route: v })} placeholder="cth: JED-MED" suggestions={ROUTE_OPTIONS} listId="dl-routes-pkg" /></Td>
                         <Td right><NumCell value={t.fleet} onChange={(v) => updateTransport(t.id, { fleet: v })} /></Td>
@@ -1297,7 +1297,7 @@ export default function PackageDetail() {
                         <Td right muted mono>{cur === "SAR" ? fmtSAR(foreignAmount) : fmtUSD(foreignAmount)}</Td>
                         <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                         <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                        <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeTransport(t.id)} /></td>
+                        <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeTransport(t.id)} /></td>
                       </tr>
                     );
                   })}
@@ -1317,7 +1317,7 @@ export default function PackageDetail() {
           </div>
 
           {/* ── AIRLINE TICKET TABLE ── */}
-          <div className="overflow-hidden rounded-xl border border-orange-200">
+          <div className="overflow-hidden rounded-xl border border-sky-200">
             <SectionHeader icon={Globe} title="Tiket Pesawat" currency="IDR / USD" color="bg-sky-500" onAdd={addTicket} />
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
@@ -1340,14 +1340,14 @@ export default function PackageDetail() {
                       ? tk.pricePerPax * safePax * usdRate
                       : tk.pricePerPax * safePax;
                     return (
-                      <tr key={tk.id} className="hover:bg-orange-50/30 transition-colors">
+                      <tr key={tk.id} className="hover:bg-sky-50/30 transition-colors">
                         <Td><TextCell value={tk.label} onChange={(v) => updateTicket(tk.id, { label: v })} placeholder="cth: SUB - JED" /></Td>
                         <Td>
                           <select
                             value={tk.flightType}
                             onChange={(e) => updateTicket(tk.id, { flightType: e.target.value })}
                             style={M}
-                            className="h-7 rounded-lg border border-orange-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400 w-full"
+                            className="h-7 rounded-lg border border-sky-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400 w-full"
                           >
                             <option value="Return">Return</option>
                             <option value="One Way">One Way</option>
@@ -1359,16 +1359,16 @@ export default function PackageDetail() {
                         </Td>
                         <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                         <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                        <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeTicket(tk.id)} /></td>
+                        <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeTicket(tk.id)} /></td>
                       </tr>
                     );
                   })}
                   {quote && (
-                    <tr className="bg-orange-50/50">
-                      <td colSpan={4} style={M} className="px-2.5 py-2 text-[11px] font-extrabold text-orange-700 uppercase tracking-wider border-t-2 border-orange-200">SUBTOTAL TIKET</td>
-                      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-orange-700 border-t-2 border-orange-200 font-mono">{formatCurrency(quote.ticketIDR)}</td>
-                      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-orange-600 border-t-2 border-orange-200 font-mono">{formatCurrency(quote.ticketIDR / safePax)}</td>
-                      <td className="border-t-2 border-orange-200" />
+                    <tr className="bg-sky-50/50">
+                      <td colSpan={4} style={M} className="px-2.5 py-2 text-[11px] font-extrabold text-sky-700 uppercase tracking-wider border-t-2 border-sky-200">SUBTOTAL TIKET</td>
+                      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-sky-700 border-t-2 border-sky-200 font-mono">{formatCurrency(quote.ticketIDR)}</td>
+                      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-sky-600 border-t-2 border-sky-200 font-mono">{formatCurrency(quote.ticketIDR / safePax)}</td>
+                      <td className="border-t-2 border-sky-200" />
                     </tr>
                   )}
                 </tbody>
@@ -1377,7 +1377,7 @@ export default function PackageDetail() {
           </div>
 
           {/* ── VISA TABLE ── */}
-          <div className="overflow-hidden rounded-xl border border-orange-200">
+          <div className="overflow-hidden rounded-xl border border-sky-200">
             <SectionHeader icon={Globe} title="Visa" currency="SAR / USD" color="bg-violet-500" onAdd={addVisa} />
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
@@ -1399,7 +1399,7 @@ export default function PackageDetail() {
                     const foreignAmount = v.pricePerPax * safePax;
                     const totalIDR = foreignAmount * rate;
                     return (
-                      <tr key={v.id} className="hover:bg-orange-50/30 transition-colors">
+                      <tr key={v.id} className="hover:bg-sky-50/30 transition-colors">
                         <Td><TextCell value={v.label} onChange={(val) => updateVisa(v.id, { label: val })} placeholder="cth: Visa Umroh" /></Td>
                         <Td right>
                           <div className="flex items-center gap-1">
@@ -1411,7 +1411,7 @@ export default function PackageDetail() {
                         <Td right muted mono>{cur === "SAR" ? fmtSAR(foreignAmount) : fmtUSD(foreignAmount)}</Td>
                         <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                         <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                        <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeVisa(v.id)} /></td>
+                        <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeVisa(v.id)} /></td>
                       </tr>
                     );
                   })}
@@ -1431,7 +1431,7 @@ export default function PackageDetail() {
           </div>
 
           {/* ── DESTINATION & F&B TABLE ── */}
-          <div className="overflow-hidden rounded-xl border border-orange-200">
+          <div className="overflow-hidden rounded-xl border border-sky-200">
             <SectionHeader icon={Globe} title="Destinasi" currency="SAR / USD" color="bg-emerald-500" onAdd={addDest} />
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
@@ -1453,7 +1453,7 @@ export default function PackageDetail() {
                     const foreignAmount = d.pricePerPax * safePax;
                     const totalIDR = foreignAmount * rate;
                     return (
-                      <tr key={d.id} className="hover:bg-orange-50/30 transition-colors">
+                      <tr key={d.id} className="hover:bg-sky-50/30 transition-colors">
                         <Td><TextCell value={d.label} onChange={(v) => updateDest(d.id, { label: v })} placeholder="cth: City Tour" /></Td>
                         <Td right>
                           <div className="flex items-center gap-1">
@@ -1465,7 +1465,7 @@ export default function PackageDetail() {
                         <Td right muted mono>{cur === "SAR" ? fmtSAR(foreignAmount) : fmtUSD(foreignAmount)}</Td>
                         <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                         <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                        <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeDest(d.id)} /></td>
+                        <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeDest(d.id)} /></td>
                       </tr>
                     );
                   })}
@@ -1485,7 +1485,7 @@ export default function PackageDetail() {
           </div>
 
           {/* ── F&B TABLE ── */}
-          <div className="overflow-hidden rounded-xl border border-orange-200">
+          <div className="overflow-hidden rounded-xl border border-sky-200">
             <SectionHeader icon={Globe} title="F&B (Konsumsi / Zam-zam)" currency="SAR / USD" color="bg-teal-500" onAdd={addFnB} />
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
@@ -1507,7 +1507,7 @@ export default function PackageDetail() {
                     const foreignAmount = f.pricePerPax * safePax;
                     const totalIDR = foreignAmount * rate;
                     return (
-                      <tr key={f.id} className="hover:bg-orange-50/30 transition-colors">
+                      <tr key={f.id} className="hover:bg-sky-50/30 transition-colors">
                         <Td><TextCell value={f.label} onChange={(v) => updateFnB(f.id, { label: v })} placeholder="cth: Zam-zam" /></Td>
                         <Td right>
                           <div className="flex items-center gap-1">
@@ -1519,7 +1519,7 @@ export default function PackageDetail() {
                         <Td right muted mono>{cur === "SAR" ? fmtSAR(foreignAmount) : fmtUSD(foreignAmount)}</Td>
                         <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                         <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                        <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeFnB(f.id)} /></td>
+                        <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeFnB(f.id)} /></td>
                       </tr>
                     );
                   })}
@@ -1539,8 +1539,8 @@ export default function PackageDetail() {
           </div>
 
           {/* ── STAFF TABLE ── */}
-          <div className="overflow-hidden rounded-xl border border-orange-200">
-            <SectionHeader icon={UserCheck} title="Cost for Staff" currency="SAR / USD" color="bg-orange-500" onAdd={addStaff} />
+          <div className="overflow-hidden rounded-xl border border-sky-200">
+            <SectionHeader icon={UserCheck} title="Cost for Staff" currency="SAR / USD" color="bg-sky-500" onAdd={addStaff} />
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
@@ -1563,7 +1563,7 @@ export default function PackageDetail() {
                     const totalIDR = totalForeign * rate;
                     const perPaxForeign = totalForeign / safePax;
                     return (
-                      <tr key={s.id} className="hover:bg-orange-50/30 transition-colors">
+                      <tr key={s.id} className="hover:bg-sky-50/30 transition-colors">
                         <Td><TextCell value={s.label} onChange={(v) => updateStaff(s.id, { label: v })} placeholder="cth: Muthowif" /></Td>
                         <Td right><NumCell value={(s as StaffRow).numStaff ?? 1} onChange={(v) => updateStaff(s.id, { numStaff: v })} /></Td>
                         <Td right>
@@ -1575,7 +1575,7 @@ export default function PackageDetail() {
                         <Td right muted mono>{cur === "SAR" ? fmtSAR(perPaxForeign) : fmtUSD(perPaxForeign)}</Td>
                         <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                         <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                        <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeStaff(s.id)} /></td>
+                        <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeStaff(s.id)} /></td>
                       </tr>
                     );
                   })}
@@ -1598,14 +1598,14 @@ export default function PackageDetail() {
 
           {/* ── UMUM MODE TABLE ── */}
           {calc.mode === "umum" && (
-            <div className="overflow-hidden rounded-xl border border-orange-200">
-              <div className="flex items-center justify-between px-3 py-2.5 rounded-t-xl border border-b-0 border-orange-200" style={{ background: "linear-gradient(135deg,#fff7ed,#ffedd5)" }}>
+            <div className="overflow-hidden rounded-xl border border-sky-200">
+              <div className="flex items-center justify-between px-3 py-2.5 rounded-t-xl border border-b-0 border-sky-200" style={{ background: "linear-gradient(135deg,#f0f9ff,#e0f2fe)" }}>
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-orange-500" strokeWidth={2} />
-                  <span style={M} className="text-[12px] font-bold text-orange-800">Rincian Biaya</span>
-                  <span style={M} className="text-[10px] font-semibold text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded">IDR / SAR / USD</span>
+                  <TrendingUp className="h-4 w-4 text-sky-500" strokeWidth={2} />
+                  <span style={M} className="text-[12px] font-bold text-sky-800">Rincian Biaya</span>
+                  <span style={M} className="text-[10px] font-semibold text-sky-500 bg-sky-100 px-1.5 py-0.5 rounded">IDR / SAR / USD</span>
                 </div>
-                <button onClick={addGeneralCost} style={M} className="flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-white border border-orange-200 hover:bg-orange-50 rounded-lg px-2 py-1 transition-colors">
+                <button onClick={addGeneralCost} style={M} className="flex items-center gap-1 text-[10px] font-bold text-sky-600 bg-white border border-sky-200 hover:bg-sky-50 rounded-lg px-2 py-1 transition-colors">
                   <Plus className="h-3 w-3" /> Tambah Baris
                 </button>
               </div>
@@ -1630,10 +1630,10 @@ export default function PackageDetail() {
                       const multiplier = (c.unit === "pax" ? safePax : 1) * rowQty;
                       const groupIDR = c.currency === "IDR" ? c.amount * multiplier : c.currency === "SAR" ? c.amount * multiplier * sarRate : c.amount * multiplier * usdRate;
                       return (
-                        <tr key={c.id} className="hover:bg-orange-50/30 transition-colors">
+                        <tr key={c.id} className="hover:bg-sky-50/30 transition-colors">
                           <Td>
                             <select value={c.category ?? ""} onChange={(e) => updateGeneralCost(c.id, { category: e.target.value })} style={M}
-                              className="h-7 w-28 rounded-md border border-orange-200 bg-white px-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-orange-400">
+                              className="h-7 w-28 rounded-md border border-sky-200 bg-white px-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-sky-400">
                               {CATS.map((cat) => <option key={cat.value} value={cat.value}>{cat.emoji} {cat.label}</option>)}
                             </select>
                           </Td>
@@ -1647,16 +1647,16 @@ export default function PackageDetail() {
                             {c.amount > 0 && <div style={M} className="text-[9px] text-slate-400 font-normal">{c.amount.toLocaleString("id-ID")}{c.currency !== "IDR" ? ` ${c.currency}` : ""} × {rowQty}{c.unit === "pax" ? ` × ${safePax}p` : " (fix)"}</div>}
                           </Td>
                           <Td right muted mono>{formatCurrency(groupIDR / safePax)}</Td>
-                          <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeGeneralCost(c.id)} /></td>
+                          <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeGeneralCost(c.id)} /></td>
                         </tr>
                       );
                     })}
                     {quote && calc.generalCosts.length > 0 && (
-                      <tr className="bg-orange-50/50">
-                        <td colSpan={6} style={M} className="px-2.5 py-2 text-[11px] font-extrabold text-orange-700 uppercase tracking-wider border-t-2 border-orange-200">TOTAL BIAYA</td>
-                        <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-orange-700 border-t-2 border-orange-200 font-mono">{formatCurrency(quote.hpp)}</td>
-                        <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-orange-600 border-t-2 border-orange-200 font-mono">{formatCurrency(quote.hpp / safePax)}</td>
-                        <td className="border-t-2 border-orange-200" />
+                      <tr className="bg-sky-50/50">
+                        <td colSpan={6} style={M} className="px-2.5 py-2 text-[11px] font-extrabold text-sky-700 uppercase tracking-wider border-t-2 border-sky-200">TOTAL BIAYA</td>
+                        <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-sky-700 border-t-2 border-sky-200 font-mono">{formatCurrency(quote.hpp)}</td>
+                        <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-sky-600 border-t-2 border-sky-200 font-mono">{formatCurrency(quote.hpp / safePax)}</td>
+                        <td className="border-t-2 border-sky-200" />
                       </tr>
                     )}
                   </tbody>
@@ -1666,22 +1666,22 @@ export default function PackageDetail() {
           )}
 
           {/* ── FINANCIAL PARAMETERS ── */}
-          <div className="rounded-xl border border-orange-200 bg-white overflow-hidden">
-            <div className="px-3 md:px-4 py-2.5 md:py-3 border-b border-orange-100 bg-orange-50/60">
-              <p style={M} className="text-[10px] font-extrabold uppercase tracking-wide text-orange-700 flex items-center gap-1.5">
+          <div className="rounded-xl border border-sky-200 bg-white overflow-hidden">
+            <div className="px-3 md:px-4 py-2.5 md:py-3 border-b border-sky-100 bg-sky-50/60">
+              <p style={M} className="text-[10px] font-extrabold uppercase tracking-wide text-sky-700 flex items-center gap-1.5">
                 <TrendingUp className="h-3.5 w-3.5" /> Parameter Finansial
               </p>
             </div>
             <div className="p-3 md:p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
               <div className="space-y-2">
-                <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">
+                <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">
                   Commission Fee Admin (IDR Tetap)
                 </label>
                 <NumCell value={calc.commissionFee} onChange={(v) => setField("commissionFee", v)} placeholder="0" />
                 <p style={M} className="text-[10px] text-muted-foreground">Nominal IDR tambahan di atas HPP</p>
               </div>
               <div className="space-y-2">
-                <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">
+                <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">
                   Acceptable Profit / Margin ({calc.marginPercent}%)
                 </label>
                 <Slider
@@ -1689,12 +1689,12 @@ export default function PackageDetail() {
                   min={0} max={50} step={1}
                   onValueChange={(v) => setField("marginPercent", v[0])}
                 />
-                <div className="flex justify-between text-[10px] text-orange-400 font-medium">
+                <div className="flex justify-between text-[10px] text-sky-400 font-medium">
                   <span>0%</span><span>25%</span><span>50%</span>
                 </div>
               </div>
               <div className="space-y-2">
-                <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">
+                <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">
                   Discount (IDR dikurangkan)
                 </label>
                 <NumCell value={calc.discount} onChange={(v) => setField("discount", v)} placeholder="0" />
@@ -1726,9 +1726,9 @@ export default function PackageDetail() {
 
           {/* ── SUMMARY OUTPUT TABLE (private + umum modes) ── */}
           {quote && calc.mode !== "umroh_group" && (
-            <div className="rounded-xl border-2 border-orange-300 bg-white overflow-hidden">
+            <div className="rounded-xl border-2 border-sky-300 bg-white overflow-hidden">
               <button
-                className="w-full flex items-center justify-between px-3 md:px-5 py-3 md:py-4 bg-gradient-to-r from-orange-600 to-orange-500 text-white"
+                className="w-full flex items-center justify-between px-3 md:px-5 py-3 md:py-4 bg-gradient-to-r from-sky-600 to-sky-500 text-white"
                 onClick={() => setShowSummary((v) => !v)}
               >
                 <div className="flex items-center gap-2">
@@ -1742,10 +1742,10 @@ export default function PackageDetail() {
                 <div className="p-3 md:p-4 space-y-3 md:space-y-4">
 
                   {/* Main summary table */}
-                  <div className="overflow-x-auto rounded-xl border border-orange-200">
+                  <div className="overflow-x-auto rounded-xl border border-sky-200">
                     <table className="w-full border-collapse">
                       <thead>
-                        <tr style={{ background: "linear-gradient(135deg,#fff7ed,#ffedd5)" }}>
+                        <tr style={{ background: "linear-gradient(135deg,#f0f9ff,#e0f2fe)" }}>
                           <Th>Komponen</Th>
                           <Th right>Total Grup (IDR)</Th>
                           <Th right>Per Pax (IDR)</Th>
@@ -1766,24 +1766,24 @@ export default function PackageDetail() {
                               { label: "👤 Staff / Guide", idr: quote.staffIDR, sar: quote.breakdown.filter(b => b.category === "Staff").reduce((s, b) => s + b.notesSAR, 0), usd: 0 },
                             ]
                         ).filter(r => r.idr > 0).map((r) => (
-                          <tr key={r.label} className="hover:bg-orange-50/20">
-                            <td style={M} className="px-3 py-2 text-[12px] border-b border-orange-50">{r.label}</td>
-                            <td style={M} className="px-3 py-2 text-[12px] font-semibold text-right border-b border-orange-50 font-mono">{formatCurrency(r.idr)}</td>
-                            <td style={M} className="px-3 py-2 text-[12px] text-right text-muted-foreground border-b border-orange-50 font-mono">{formatCurrency(r.idr / safePax)}</td>
-                            <td style={M} className="px-3 py-2 text-[11px] text-right text-slate-600 border-b border-orange-50 font-mono">{r.sar > 0 ? fmtSAR(r.sar) : "—"}</td>
-                            <td style={M} className="px-3 py-2 text-[11px] text-right text-slate-600 border-b border-orange-50 font-mono">{r.usd > 0 ? fmtUSD(r.usd) : "—"}</td>
+                          <tr key={r.label} className="hover:bg-sky-50/20">
+                            <td style={M} className="px-3 py-2 text-[12px] border-b border-sky-50">{r.label}</td>
+                            <td style={M} className="px-3 py-2 text-[12px] font-semibold text-right border-b border-sky-50 font-mono">{formatCurrency(r.idr)}</td>
+                            <td style={M} className="px-3 py-2 text-[12px] text-right text-muted-foreground border-b border-sky-50 font-mono">{formatCurrency(r.idr / safePax)}</td>
+                            <td style={M} className="px-3 py-2 text-[11px] text-right text-slate-600 border-b border-sky-50 font-mono">{r.sar > 0 ? fmtSAR(r.sar) : "—"}</td>
+                            <td style={M} className="px-3 py-2 text-[11px] text-right text-slate-600 border-b border-sky-50 font-mono">{r.usd > 0 ? fmtUSD(r.usd) : "—"}</td>
                           </tr>
                         ))}
 
                         {/* HPP row */}
-                        <tr style={{ background: "#fff7ed" }}>
-                          <td style={M} className="px-3 py-2.5 text-[12px] font-extrabold text-orange-800 border-t-2 border-orange-300">
+                        <tr style={{ background: "#f0f9ff" }}>
+                          <td style={M} className="px-3 py-2.5 text-[12px] font-extrabold text-sky-800 border-t-2 border-sky-300">
                             💰 TOTAL BUDGET (HPP)
                           </td>
-                          <td style={M} className="px-3 py-2.5 text-[13px] font-extrabold text-orange-800 text-right border-t-2 border-orange-300 font-mono">{formatCurrency(quote.hpp)}</td>
-                          <td style={M} className="px-3 py-2.5 text-[12px] font-bold text-orange-700 text-right border-t-2 border-orange-300 font-mono">{formatCurrency(quote.hpp / safePax)}</td>
-                          <td style={M} className="px-3 py-2.5 text-[11px] text-slate-600 text-right border-t-2 border-orange-300 font-mono">{fmtSAR(quote.totalSAR)}</td>
-                          <td style={M} className="px-3 py-2.5 text-[11px] text-slate-600 text-right border-t-2 border-orange-300 font-mono">{fmtUSD(quote.totalUSD)}</td>
+                          <td style={M} className="px-3 py-2.5 text-[13px] font-extrabold text-sky-800 text-right border-t-2 border-sky-300 font-mono">{formatCurrency(quote.hpp)}</td>
+                          <td style={M} className="px-3 py-2.5 text-[12px] font-bold text-sky-700 text-right border-t-2 border-sky-300 font-mono">{formatCurrency(quote.hpp / safePax)}</td>
+                          <td style={M} className="px-3 py-2.5 text-[11px] text-slate-600 text-right border-t-2 border-sky-300 font-mono">{fmtSAR(quote.totalSAR)}</td>
+                          <td style={M} className="px-3 py-2.5 text-[11px] text-slate-600 text-right border-t-2 border-sky-300 font-mono">{fmtUSD(quote.totalUSD)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1793,9 +1793,9 @@ export default function PackageDetail() {
                   <div className="grid sm:grid-cols-2 gap-4">
 
                     {/* Left: price build-up */}
-                    <div className="rounded-xl border border-orange-200 overflow-hidden">
-                      <div className="px-4 py-2.5 bg-orange-50 border-b border-orange-200">
-                        <p style={M} className="text-[10px] font-extrabold uppercase tracking-wider text-orange-700">Pembentukan Harga Jual</p>
+                    <div className="rounded-xl border border-sky-200 overflow-hidden">
+                      <div className="px-4 py-2.5 bg-sky-50 border-b border-sky-200">
+                        <p style={M} className="text-[10px] font-extrabold uppercase tracking-wider text-sky-700">Pembentukan Harga Jual</p>
                       </div>
                       <div className="p-3 space-y-2">
                         {[
@@ -1811,12 +1811,12 @@ export default function PackageDetail() {
                             <p style={M} className={`text-[12px] font-bold font-mono text-right ${r.color}`}>{formatCurrency(r.value)}</p>
                           </div>
                         ))}
-                        <div className="border-t border-orange-200 pt-2 flex items-center justify-between">
+                        <div className="border-t border-sky-200 pt-2 flex items-center justify-between">
                           <div>
-                            <p style={M} className="text-[11px] font-bold text-orange-800">= Selling Price</p>
+                            <p style={M} className="text-[11px] font-bold text-sky-800">= Selling Price</p>
                             <p style={M} className="text-[10px] text-muted-foreground">{formatCurrency(quote.sellingPrice / safePax)}/pax</p>
                           </div>
-                          <p style={M} className="text-[13px] font-extrabold text-orange-700 font-mono">{formatCurrency(quote.sellingPrice)}</p>
+                          <p style={M} className="text-[13px] font-extrabold text-sky-700 font-mono">{formatCurrency(quote.sellingPrice)}</p>
                         </div>
                         {calc.discount > 0 && (
                           <div className="flex items-center justify-between">
@@ -1831,7 +1831,7 @@ export default function PackageDetail() {
                     <div className="space-y-3">
                       <div
                         className="rounded-xl p-4 text-white relative overflow-hidden"
-                        style={{ background: "linear-gradient(135deg,#ea580c,#f97316 60%,#fb923c)" }}
+                        style={{ background: "linear-gradient(135deg,#0284c7,#0ea5e9 60%,#38bdf8)" }}
                       >
                         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 90% 10%,white 0%,transparent 55%)" }} />
                         <div className="relative">
@@ -1896,7 +1896,7 @@ export default function PackageDetail() {
               </button>
               <button onClick={() => setBulkOpen(true)}
                 className="h-8 px-2.5 rounded-xl text-[11.5px] font-bold text-white flex items-center gap-1 transition-all"
-                style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
+                style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}>
                 <Layers className="h-3.5 w-3.5" /> Bulk OCR
               </button>
             </div>
@@ -1914,7 +1914,7 @@ export default function PackageDetail() {
                 </button>
                 <button onClick={() => setBulkOpen(true)}
                   className="h-8 px-3 rounded-xl text-[11.5px] font-bold text-white flex items-center gap-1"
-                  style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
+                  style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}>
                   <Layers className="h-3.5 w-3.5" /> Bulk Scan
                 </button>
               </div>

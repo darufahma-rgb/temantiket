@@ -146,7 +146,7 @@ export default function Login() {
                       value={email}
                       onChange={(e) => { setEmail(e.target.value); clearError(); }}
                       disabled={isLoading}
-                      className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-medium text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400/60 disabled:opacity-50"
+                      className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-medium text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
                     />
                   </div>
 
@@ -162,7 +162,7 @@ export default function Login() {
                         value={password}
                         onChange={(e) => { setPassword(e.target.value); clearError(); }}
                         disabled={isLoading}
-                        className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 pr-11 text-sm font-medium text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400/60 disabled:opacity-50"
+                        className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 pr-11 text-sm font-medium text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
                       />
                       <button
                         type="button"
@@ -180,8 +180,8 @@ export default function Login() {
                     disabled={isLoading || !email.trim() || !password.trim()}
                     className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
                     style={{
-                      background: "linear-gradient(135deg, #ea580c 0%, #f97316 60%, #fb923c 100%)",
-                      boxShadow: "0 8px 28px rgba(249,115,22,0.4)",
+                      background: "linear-gradient(135deg, #0284c7 0%, #0ea5e9 60%, #38bdf8 100%)",
+                      boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
                     }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -215,8 +215,8 @@ export default function Login() {
               <div className="rounded-3xl border border-white/20 bg-white/10 p-7 shadow-[0_24px_60px_rgba(0,0,0,0.4)] backdrop-blur-md">
                 <div className="mb-6 text-center">
                   <div className="flex justify-center mb-3">
-                    <div className="h-12 w-12 rounded-2xl bg-orange-500/30 border border-orange-400/40 flex items-center justify-center">
-                      <KeyRound className="h-5 w-5 text-orange-300" />
+                    <div className="h-12 w-12 rounded-2xl bg-sky-500/30 border border-sky-400/40 flex items-center justify-center">
+                      <KeyRound className="h-5 w-5 text-sky-300" />
                     </div>
                   </div>
                   <h1 className="text-xl font-extrabold tracking-tight text-white">
@@ -255,7 +255,7 @@ export default function Login() {
                       value={pin}
                       onChange={(e) => { setPin(e.target.value.replace(/\D/g, "")); clearError(); }}
                       disabled={isLoading}
-                      className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-center text-xl font-bold tracking-[0.5em] text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400/60 disabled:opacity-50"
+                      className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-center text-xl font-bold tracking-[0.5em] text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
                     />
                   </div>
 
@@ -264,8 +264,8 @@ export default function Login() {
                     disabled={isLoading || !pin.trim()}
                     className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
                     style={{
-                      background: "linear-gradient(135deg, #ea580c 0%, #f97316 60%, #fb923c 100%)",
-                      boxShadow: "0 8px 28px rgba(249,115,22,0.4)",
+                      background: "linear-gradient(135deg, #0284c7 0%, #0ea5e9 60%, #38bdf8 100%)",
+                      boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
                     }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}

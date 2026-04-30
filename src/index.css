@@ -21,9 +21,9 @@
     --popover: 0 0% 100%;
     --popover-foreground: 24 38% 15%;
 
-    --primary: 27 91% 54%;
+    --primary: 198 92% 39%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 27 91% 96%;
+    --primary-light: 198 92% 96%;
 
     --secondary: 30 50% 95%;
     --secondary-foreground: 24 38% 15%;
@@ -31,7 +31,7 @@
     --muted: 30 35% 95%;
     --muted-foreground: 24 18% 52%;
 
-    --accent: 27 91% 94%;
+    --accent: 198 92% 94%;
     --accent-foreground: 27 91% 38%;
 
     --success: 142 71% 45%;
@@ -45,18 +45,18 @@
 
     --border: 30 25% 88%;
     --input: 30 25% 88%;
-    --ring: 27 91% 54%;
+    --ring: 198 92% 39%;
 
     --radius: 1rem;
 
-    --gradient-primary: linear-gradient(135deg, hsl(27 91% 54%), hsl(20 90% 60%));
-    --gradient-hero: linear-gradient(135deg, hsl(27 91% 54%) 0%, hsl(20 90% 60%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(198 92% 39%), hsl(205 90% 50%));
+    --gradient-hero: linear-gradient(135deg, hsl(198 92% 39%) 0%, hsl(205 90% 50%) 100%);
     --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(30 50% 98%) 100%);
-    --shadow-card: 0 8px 40px -8px hsl(27 91% 54% / 0.15), 0 2px 8px -2px hsl(30 40% 70% / 0.1);
+    --shadow-card: 0 8px 40px -8px hsl(198 92% 39% / 0.15), 0 2px 8px -2px hsl(200 30% 70% / 0.1);
     --shadow-sm: 0 1px 3px 0 hsl(30 40% 60% / 0.08);
     --shadow-md: 0 4px 16px -2px hsl(30 40% 60% / 0.12);
     --shadow-lg: 0 12px 40px -8px hsl(30 40% 60% / 0.18);
-    --shadow-glow: 0 0 30px hsl(27 91% 54% / 0.30);
+    --shadow-glow: 0 0 30px hsl(198 92% 39% / 0.30);
 
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -76,7 +76,7 @@
        brand orange accents. Buang semua tone cokelat-tua biar gak muddy.
        Reference hex (di-convert ke HSL):
          #0D0D0D bg, #161617 card/sidebar, #1E1E1F input, #333 input-border,
-         #FFFFFF foreground, #94A3B8 muted, #F97316 brand orange. */
+         #FFFFFF foreground, #94A3B8 muted, #0ea5e9 brand orange. */
     --background: 0 0% 5%;             /* #0D0D0D matte black */
     --foreground: 0 0% 100%;           /* pure white judul/angka */
 
@@ -96,8 +96,8 @@
     --accent: 27 91% 14%;              /* deep orange tint, bukan brown */
     --accent-foreground: 27 95% 70%;
 
-    /* Primary tetap brand orange — udah match #F97316 */
-    --primary: 24 95% 53%;
+    /* Primary tetap brand orange — udah match #0ea5e9 */
+    --primary: 198 92% 42%;
     --primary-foreground: 0 0% 100%;
     --primary-light: 27 91% 12%;
 
@@ -105,22 +105,22 @@
        supaya field keliatan tappable). */
     --border: 240 3% 17%;
     --input: 0 0% 20%;                 /* #333 */
-    --ring: 24 95% 53%;                /* fokus = brand orange */
+    --ring: 198 92% 42%;                /* fokus = brand orange */
 
     /* Status semantic — Lunas ijo, warning oranye, destructive merah */
     --success: 142 71% 45%;
-    --warning: 24 95% 53%;
+    --warning: 198 92% 42%;
     --destructive: 0 84% 60%;
 
     /* Shadows: pakai orange transparan biar premium glow vibe */
-    --gradient-primary: linear-gradient(135deg, hsl(24 95% 53%), hsl(14 95% 55%));
-    --gradient-hero: linear-gradient(135deg, hsl(24 95% 53%) 0%, hsl(14 95% 55%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(198 92% 42%), hsl(205 90% 50%));
+    --gradient-hero: linear-gradient(135deg, hsl(198 92% 42%) 0%, hsl(205 90% 50%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(240 4% 10%) 0%, hsl(240 4% 8%) 100%);
     --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.40);
     --shadow-md: 0 4px 12px -2px hsl(0 0% 0% / 0.55);
     --shadow-lg: 0 14px 40px -10px hsl(0 0% 0% / 0.70);
     --shadow-card: 0 4px 20px -4px hsl(0 0% 0% / 0.55), 0 0 0 1px hsl(0 0% 100% / 0.04);
-    --shadow-glow: 0 0 24px hsl(24 95% 53% / 0.20);
+    --shadow-glow: 0 0 24px hsl(198 92% 42% / 0.20);
   }
 
   :root[data-font-size="small"] {
@@ -195,14 +195,14 @@
   }
 
   .lucide {
-    color: hsl(27 91% 45%) !important;
+    color: hsl(198 92% 35%) !important;
     stroke: currentColor !important;
     fill: none !important;
   }
 
   /* ── Global: outline orange icons, no box/chip behind them ──
      Any container whose only visible child is a lucide icon (the very
-     common "icon chip" pattern: <div className="bg-orange-100 ..."><Icon/></div>)
+     common "icon chip" pattern: <div className="bg-sky-100 ..."><Icon/></div>)
      gets its background, border and shadow stripped so the icon stands
      alone. Layout sizing (h-x w-x flex items-center justify-center) is
      preserved so surrounding flex/grid layouts don't shift. */
@@ -254,15 +254,15 @@
     color: hsl(var(--muted-foreground)) !important;
   }
 
-  /* Focus state: border + halo orange transparan (rgba(249,115,22,0.2)) */
+  /* Focus state: border + halo orange transparan (rgba(14,165,233,0.2)) */
   :root[data-theme="dark"] input:focus,
   :root[data-theme="dark"] input:focus-visible,
   :root[data-theme="dark"] textarea:focus,
   :root[data-theme="dark"] textarea:focus-visible,
   :root[data-theme="dark"] [role="combobox"]:focus,
   :root[data-theme="dark"] [role="combobox"][data-state="open"] {
-    border-color: hsl(24 95% 53%) !important;
-    box-shadow: 0 0 0 3px hsl(24 95% 53% / 0.20) !important;
+    border-color: hsl(198 92% 42%) !important;
+    box-shadow: 0 0 0 3px hsl(198 92% 42% / 0.20) !important;
     outline: none !important;
   }
 
@@ -276,10 +276,10 @@
   :root[data-theme="dark"] .bg-teal-50    { background-color: hsl(var(--secondary)) !important; }
   :root[data-theme="dark"] .bg-purple-50  { background-color: hsl(var(--secondary)) !important; }
   :root[data-theme="dark"] .bg-fuchsia-50 { background-color: hsl(var(--secondary)) !important; }
-  :root[data-theme="dark"] .bg-orange-50,
-  :root[data-theme="dark"] .bg-orange-50\/30,
-  :root[data-theme="dark"] .bg-orange-50\/40,
-  :root[data-theme="dark"] .bg-orange-100  { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-sky-50,
+  :root[data-theme="dark"] .bg-sky-50\/30,
+  :root[data-theme="dark"] .bg-sky-50\/40,
+  :root[data-theme="dark"] .bg-sky-100  { background-color: hsl(var(--secondary)) !important; }
   :root[data-theme="dark"] .bg-amber-50,
   :root[data-theme="dark"] .bg-amber-50\/30,
   :root[data-theme="dark"] .bg-amber-50\/40,
@@ -322,8 +322,8 @@
   :root[data-theme="dark"] .text-teal-600    { color: hsl(174 75% 60%) !important; }
   :root[data-theme="dark"] .text-purple-600  { color: hsl(270 80% 75%) !important; }
   :root[data-theme="dark"] .text-fuchsia-600 { color: hsl(290 80% 75%) !important; }
-  :root[data-theme="dark"] .text-orange-600,
-  :root[data-theme="dark"] .text-orange-700  { color: hsl(27 95% 65%) !important; }
+  :root[data-theme="dark"] .text-sky-600,
+  :root[data-theme="dark"] .text-sky-700  { color: hsl(198 92% 60%) !important; }
   :root[data-theme="dark"] .text-amber-600,
   :root[data-theme="dark"] .text-amber-700   { color: hsl(38 95% 65%) !important; }
   :root[data-theme="dark"] .text-red-500,
@@ -339,8 +339,8 @@
   /* Borders on chips that match these tints */
   :root[data-theme="dark"] .border-amber-100,
   :root[data-theme="dark"] .border-amber-200 { border-color: hsl(38 90% 50% / 0.30) !important; }
-  :root[data-theme="dark"] .border-orange-100,
-  :root[data-theme="dark"] .border-orange-200 { border-color: hsl(27 91% 50% / 0.30) !important; }
+  :root[data-theme="dark"] .border-sky-100,
+  :root[data-theme="dark"] .border-sky-200 { border-color: hsl(198 92% 39% / 0.30) !important; }
   :root[data-theme="dark"] .border-emerald-100,
   :root[data-theme="dark"] .border-emerald-200 { border-color: hsl(160 60% 45% / 0.30) !important; }
   :root[data-theme="dark"] .border-purple-100,
@@ -375,25 +375,25 @@
   /* Slider thumb halo on hover/focus */
   :root[data-theme="dark"] [role="slider"]:focus-visible,
   :root[data-theme="dark"] [role="slider"]:hover {
-    box-shadow: 0 0 0 6px hsl(24 95% 53% / 0.20) !important;
+    box-shadow: 0 0 0 6px hsl(198 92% 42% / 0.20) !important;
   }
 
   /* Selected card / pressed state — anything with .ring-2.ring-orange* or
      .border-primary atau aria-pressed/data-state=on dapet glow halus. */
   :root[data-theme="dark"] [data-state="on"],
   :root[data-theme="dark"] [aria-pressed="true"],
-  :root[data-theme="dark"] .ring-orange-500,
+  :root[data-theme="dark"] .ring-sky-500,
   :root[data-theme="dark"] .ring-primary,
   :root[data-theme="dark"] .border-primary {
-    border-color: hsl(24 95% 53%) !important;
-    box-shadow: 0 0 0 1px hsl(24 95% 53% / 0.50), 0 0 18px hsl(24 95% 53% / 0.18) !important;
+    border-color: hsl(198 92% 42%) !important;
+    box-shadow: 0 0 0 1px hsl(198 92% 42% / 0.50), 0 0 18px hsl(198 92% 42% / 0.18) !important;
   }
 
   /* Tabs / segmented control active pill — orange highlight */
   :root[data-theme="dark"] [role="tab"][data-state="active"] {
-    background-color: hsl(24 95% 53%) !important;
+    background-color: hsl(198 92% 42%) !important;
     color: hsl(0 0% 100%) !important;
-    box-shadow: 0 2px 12px hsl(24 95% 53% / 0.25) !important;
+    box-shadow: 0 2px 12px hsl(198 92% 42% / 0.25) !important;
   }
 
   /* "Belum Lunas" badge — gradasi orange→merah biar masuk brand,
@@ -401,17 +401,17 @@
      combo in JamaahDetailDrawer / Dashboard alert. */
   :root[data-theme="dark"] .bg-slate-100.text-slate-600,
   :root[data-theme="dark"] .bg-slate-100.border-slate-200 {
-    background-image: linear-gradient(135deg, hsl(24 95% 53%), hsl(0 84% 55%)) !important;
+    background-image: linear-gradient(135deg, hsl(198 92% 42%), hsl(0 84% 55%)) !important;
     background-color: transparent !important;
     color: hsl(0 0% 100%) !important;
-    border-color: hsl(24 95% 53% / 0.40) !important;
+    border-color: hsl(198 92% 42% / 0.40) !important;
   }
 
   /* Buttons / Tagihan-Belum-Lunas alert card di Dashboard pakai red-50;
      biar tetep brand-aligned (orange→red) */
   :root[data-theme="dark"] .from-red-50,
   :root[data-theme="dark"] .to-red-50 {
-    --tw-gradient-from: hsl(24 95% 53% / 0.10) var(--tw-gradient-from-position) !important;
+    --tw-gradient-from: hsl(198 92% 42% / 0.10) var(--tw-gradient-from-position) !important;
     --tw-gradient-to: hsl(0 84% 55% / 0.10) var(--tw-gradient-to-position) !important;
   }
 
@@ -472,8 +472,8 @@
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 10px hsl(27 91% 54% / 0.35), 0 2px 8px hsl(27 91% 54% / 0.25); }
-  50%       { box-shadow: 0 0 22px hsl(27 91% 54% / 0.60), 0 4px 16px hsl(27 91% 54% / 0.40); }
+  0%, 100% { box-shadow: 0 0 10px hsl(198 92% 39% / 0.35), 0 2px 8px hsl(198 92% 39% / 0.25); }
+  50%       { box-shadow: 0 0 22px hsl(198 92% 39% / 0.60), 0 4px 16px hsl(198 92% 39% / 0.40); }
 }
 
 @layer utilities {
@@ -503,10 +503,10 @@
   .btn-primary {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(135deg, hsl(27 91% 54%), hsl(16 88% 58%));
+    background: linear-gradient(135deg, hsl(198 92% 39%), hsl(205 90% 50%));
     color: white;
     font-weight: 600;
-    box-shadow: 0 2px 12px hsl(27 91% 54% / 0.30);
+    box-shadow: 0 2px 12px hsl(198 92% 39% / 0.30);
     transition: box-shadow 0.2s ease, opacity 0.15s ease;
   }
   .btn-primary::after {
@@ -521,21 +521,21 @@
     pointer-events: none;
   }
   .btn-primary:hover {
-    box-shadow: 0 4px 18px hsl(27 91% 54% / 0.45);
+    box-shadow: 0 4px 18px hsl(198 92% 39% / 0.45);
   }
   .btn-primary:hover::after {
     animation: btn-shimmer 0.55s ease forwards;
   }
   .btn-primary:active {
     opacity: 0.88;
-    box-shadow: 0 1px 6px hsl(27 91% 54% / 0.3);
+    box-shadow: 0 1px 6px hsl(198 92% 39% / 0.3);
   }
 
   /* ── Glow Pulse — hero/dashboard action ── */
   .btn-glow {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(135deg, hsl(27 91% 54%), hsl(16 88% 58%));
+    background: linear-gradient(135deg, hsl(198 92% 39%), hsl(205 90% 50%));
     color: white;
     font-weight: 600;
     animation: glow-pulse 2.8s ease-in-out infinite;
@@ -734,7 +734,7 @@
     }
 
     .mobile-compact .shadow-card {
-      box-shadow: 0 4px 18px -8px hsl(27 91% 54% / 0.18);
+      box-shadow: 0 4px 18px -8px hsl(198 92% 39% / 0.18);
     }
 
     .mobile-compact [data-radix-popper-content-wrapper] {
@@ -1254,19 +1254,19 @@ svg.lucide:where(.text-destructive, .text-success, .text-warning, .text-white,
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
   /* Match brand orange so safe-area insets blend with header (no white frame around app) */
-  background: linear-gradient(180deg, #fff7ed 0%, hsl(var(--card)) 80px);
+  background: linear-gradient(180deg, #f0f9ff 0%, hsl(var(--card)) 80px);
 }
 
 /* Body / html background extends behind safe-area insets so PWA feels edge-to-edge native.
    Without this, the area outside .app-shell-mobile shows default white, creating a "framed" look. */
 @media (max-width: 767px) {
   html, body, #root {
-    background: linear-gradient(180deg, #fff7ed 0%, hsl(var(--card)) 80px) !important;
+    background: linear-gradient(180deg, #f0f9ff 0%, hsl(var(--card)) 80px) !important;
   }
 }
 @media all and (display-mode: standalone) {
   html, body {
-    background: linear-gradient(180deg, #fff7ed 0%, hsl(var(--card)) 80px) !important;
+    background: linear-gradient(180deg, #f0f9ff 0%, hsl(var(--card)) 80px) !important;
   }
   /* Ensure app-shell truly fills the entire safe viewport in standalone */
   .app-shell-mobile {
@@ -1511,7 +1511,7 @@ button, [role="button"], a, input, select, textarea {
   padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   background: white;
   border-top: 1px solid hsl(var(--border));
-  box-shadow: 0 -4px 24px hsl(27 91% 54% / 0.12);
+  box-shadow: 0 -4px 24px hsl(198 92% 39% / 0.12);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1);

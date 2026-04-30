@@ -103,7 +103,7 @@ export default function Auth() {
           </p>
           <button
             onClick={() => navigate("/login", { replace: true })}
-            className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-orange-500 px-6 text-sm font-bold uppercase tracking-widest text-white"
+            className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-sky-500 px-6 text-sm font-bold uppercase tracking-widest text-white"
           >
             Ke Halaman Login
           </button>
@@ -113,7 +113,7 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950 px-4 py-10">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-4 py-10">
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
@@ -121,8 +121,8 @@ export default function Auth() {
         className="w-full max-w-md rounded-3xl border border-white/15 bg-white/5 p-8 backdrop-blur-md"
       >
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/30 border border-orange-400/40">
-            <Building2 className="h-5 w-5 text-orange-300" />
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/30 border border-sky-400/40">
+            <Building2 className="h-5 w-5 text-sky-300" />
           </div>
           <h1 className="mt-4 text-xl font-extrabold text-white">Setup Agency Pertama</h1>
           <p className="mt-1 text-[12px] text-white/60">
@@ -156,7 +156,7 @@ export default function Auth() {
             <button
               type="submit"
               disabled={loading}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-orange-600 to-orange-400 text-sm font-extrabold uppercase tracking-widest text-white shadow-lg disabled:opacity-50"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-sky-600 to-sky-400 text-sm font-extrabold uppercase tracking-widest text-white shadow-lg disabled:opacity-50"
             >
               {loading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Membuat…</>) : "Bikin Agency"}
             </button>
@@ -183,7 +183,7 @@ function Field({ icon, label, value, onChange, placeholder, type = "text", disab
         <input
           type={type} value={value} onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder} disabled={disabled}
-          className="h-11 w-full rounded-xl border border-white/20 bg-white/10 pl-10 pr-4 text-sm font-medium text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-orange-400/60 disabled:opacity-50"
+          className="h-11 w-full rounded-xl border border-white/20 bg-white/10 pl-10 pr-4 text-sm font-medium text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
         />
       </div>
     </div>

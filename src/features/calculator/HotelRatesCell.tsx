@@ -60,7 +60,7 @@ export function HotelRatesCell({ hotel, onChange }: Props) {
   }
 
   const inputBase =
-    "h-6 px-1.5 rounded-md border border-orange-200 bg-white text-[11px] text-right focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400";
+    "h-6 px-1.5 rounded-md border border-sky-200 bg-white text-[11px] text-right focus:outline-none focus:ring-1 focus:ring-sky-400 focus:border-sky-400";
 
   return (
     <div className="flex flex-col gap-1 min-w-[150px]">
@@ -70,7 +70,7 @@ export function HotelRatesCell({ hotel, onChange }: Props) {
           value={cur}
           onChange={(e) => onChange({ currency: e.target.value as CurrencyCode })}
           style={M}
-          className="h-5 rounded border border-orange-200 bg-white px-1 text-[10px] font-bold text-orange-700"
+          className="h-5 rounded border border-sky-200 bg-white px-1 text-[10px] font-bold text-sky-700"
           aria-label="Currency"
         >
           <option value="SAR">SAR</option>

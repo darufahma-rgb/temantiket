@@ -19,7 +19,7 @@ interface FlyerDialogProps {
 }
 
 const TEMPLATES = [
-  { id: "sunset", name: "Sunset Gold", from: "#f97316", to: "#dc2626" },
+  { id: "sunset", name: "Sunset Gold", from: "#0ea5e9", to: "#dc2626" },
   { id: "emerald", name: "Emerald Holy", from: "#059669", to: "#0f766e" },
   { id: "midnight", name: "Midnight Blue", from: "#1e3a8a", to: "#312e81" },
 ];
@@ -109,7 +109,7 @@ export default function FlyerDialog({ open, onClose, trip, jamaahCount = 0 }: Fl
               key={t.id}
               onClick={() => setTplId(t.id)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 transition-all text-xs font-medium
-                ${tplId === t.id ? "border-orange-500 bg-orange-50" : "border-[hsl(var(--border))] hover:border-orange-300"}`}
+                ${tplId === t.id ? "border-sky-500 bg-sky-50" : "border-[hsl(var(--border))] hover:border-sky-300"}`}
             >
               <span className="h-4 w-4 rounded-md" style={{ background: `linear-gradient(135deg, ${t.from}, ${t.to})` }} />
               {t.name}

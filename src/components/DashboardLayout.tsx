@@ -127,7 +127,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 img.style.display = "none";
                 const fb = document.createElement("span");
                 fb.textContent = "Temantiket";
-                fb.className = "text-[14px] font-black tracking-tight text-orange-600";
+                fb.className = "text-[14px] font-black tracking-tight text-sky-600";
                 img.parentElement!.appendChild(fb);
               }}
             />
@@ -158,7 +158,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
           {/* Live rate indicator — full numbers, tap to refresh */}
           <button
             onClick={() => refreshRates()}
-            className="flex items-center gap-1.5 shrink-0 h-9 pl-2 pr-1.5 rounded-2xl bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border border-orange-100/80 shadow-[0_1px_2px_rgba(249,115,22,0.08)] transition-all active:scale-95"
+            className="flex items-center gap-1.5 shrink-0 h-9 pl-2 pr-1.5 rounded-2xl bg-gradient-to-r from-sky-50 via-sky-100 to-sky-50 border border-sky-100/80 shadow-[0_1px_2px_rgba(14,165,233,0.08)] transition-all active:scale-95"
             style={{ fontVariantNumeric: "tabular-nums" }}
             title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")} · Tap untuk perbarui` : "Tap untuk perbarui"}
             aria-label="Kurs live"
@@ -167,26 +167,26 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               <span
                 className={cn(
                   "absolute inline-flex h-full w-full rounded-full opacity-75",
-                  rateMode === "manual" ? "bg-orange-400" : "bg-emerald-400 animate-ping"
+                  rateMode === "manual" ? "bg-sky-400" : "bg-emerald-400 animate-ping"
                 )}
               />
               <span
                 className="relative inline-flex h-1.5 w-1.5 rounded-full"
-                style={{ background: rateMode === "manual" ? "#f97316" : "#10b981" }}
+                style={{ background: rateMode === "manual" ? "#0ea5e9" : "#10b981" }}
               />
             </span>
 
             <div className="flex items-center gap-1.5 leading-none">
               <div className="flex flex-col items-end gap-[1px]">
-                <span className="text-[8px] font-bold uppercase tracking-wider text-orange-500/80 leading-none">USD</span>
-                <span className="text-[11px] font-extrabold text-orange-800 leading-none tabular-nums">
+                <span className="text-[8px] font-bold uppercase tracking-wider text-sky-500/80 leading-none">USD</span>
+                <span className="text-[11px] font-extrabold text-sky-800 leading-none tabular-nums">
                   {rates.USD ? rates.USD.toLocaleString("id-ID", { maximumFractionDigits: 0 }) : "—"}
                 </span>
               </div>
-              <span className="h-5 w-px bg-orange-200/80" />
+              <span className="h-5 w-px bg-sky-200/80" />
               <div className="flex flex-col items-end gap-[1px]">
-                <span className="text-[8px] font-bold uppercase tracking-wider text-orange-500/80 leading-none">SAR</span>
-                <span className="text-[11px] font-extrabold text-orange-800 leading-none tabular-nums">
+                <span className="text-[8px] font-bold uppercase tracking-wider text-sky-500/80 leading-none">SAR</span>
+                <span className="text-[11px] font-extrabold text-sky-800 leading-none tabular-nums">
                   {rates.SAR ? rates.SAR.toLocaleString("id-ID", { maximumFractionDigits: 0 }) : "—"}
                 </span>
               </div>
@@ -196,7 +196,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               <RefreshCw
                 strokeWidth={2.2}
                 className={cn(
-                  "h-3 w-3 text-orange-500",
+                  "h-3 w-3 text-sky-500",
                   ratesLoading && "animate-spin"
                 )}
               />
@@ -250,7 +250,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                         {isActive ? (
                           <motion.div
                             layoutId="nav-bar"
-                            className="h-[2.5px] w-6 rounded-full bg-orange-500"
+                            className="h-[2.5px] w-6 rounded-full bg-sky-500"
                             initial={{ opacity: 0, scaleX: 0 }}
                             animate={{ opacity: 1, scaleX: 1 }}
                             exit={{ opacity: 0, scaleX: 0 }}
@@ -266,14 +266,14 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                       strokeWidth={isActive ? 2.3 : 1.7}
                       className={cn(
                         "h-[20px] w-[20px] transition-colors duration-150",
-                        isActive ? "text-orange-500" : "text-[hsl(var(--muted-foreground))]"
+                        isActive ? "text-sky-500" : "text-[hsl(var(--muted-foreground))]"
                       )}
                     />
 
                     <span
                       className={cn(
                         "text-[10px] font-semibold leading-none tracking-tight transition-colors duration-150 mt-1",
-                        isActive ? "text-orange-500" : "text-[hsl(var(--muted-foreground))]"
+                        isActive ? "text-sky-500" : "text-[hsl(var(--muted-foreground))]"
                       )}
                     >
                       {item.title}
@@ -299,7 +299,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                     {moreActive ? (
                       <motion.div
                         layoutId="nav-bar"
-                        className="h-[2.5px] w-6 rounded-full bg-orange-500"
+                        className="h-[2.5px] w-6 rounded-full bg-sky-500"
                         initial={{ opacity: 0, scaleX: 0 }}
                         animate={{ opacity: 1, scaleX: 1 }}
                         exit={{ opacity: 0, scaleX: 0 }}
@@ -314,13 +314,13 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                   strokeWidth={moreActive ? 2.3 : 1.7}
                   className={cn(
                     "h-[20px] w-[20px] transition-colors duration-150",
-                    moreActive ? "text-orange-500" : "text-[hsl(var(--muted-foreground))]"
+                    moreActive ? "text-sky-500" : "text-[hsl(var(--muted-foreground))]"
                   )}
                 />
                 <span
                   className={cn(
                     "text-[10px] font-semibold leading-none tracking-tight transition-colors duration-150 mt-1",
-                    moreActive ? "text-orange-500" : "text-[hsl(var(--muted-foreground))]"
+                    moreActive ? "text-sky-500" : "text-[hsl(var(--muted-foreground))]"
                   )}
                 >
                   Lainnya
@@ -361,11 +361,11 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                     <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">Tools, ekspor, & pengaturan</p>
                   </div>
                   {currentUser && (
-                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-orange-50">
-                      <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center text-white text-[10px] font-bold">
+                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-sky-50">
+                      <div className="h-5 w-5 rounded-full bg-sky-500 flex items-center justify-center text-white text-[10px] font-bold">
                         {displayName.charAt(0).toUpperCase()}
                       </div>
-                      <span className="text-[11px] font-semibold text-orange-700 max-w-[100px] truncate">{displayName}</span>
+                      <span className="text-[11px] font-semibold text-sky-700 max-w-[100px] truncate">{displayName}</span>
                     </div>
                   )}
                 </div>
@@ -381,7 +381,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                         className={cn(
                           "w-full flex items-center gap-3 px-3 py-3 rounded-2xl transition-colors text-left",
                           isActive
-                            ? "bg-orange-50 text-orange-700"
+                            ? "bg-sky-50 text-sky-700"
                             : "hover:bg-[hsl(var(--secondary))]"
                         )}
                       >
@@ -389,14 +389,14 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                           className={cn(
                             "h-9 w-9 rounded-xl flex items-center justify-center shrink-0",
                             isActive
-                              ? "bg-orange-500 text-white"
+                              ? "bg-sky-500 text-white"
                               : "bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))]"
                           )}
                         >
                           <item.icon strokeWidth={isActive ? 2.2 : 1.8} className="h-[17px] w-[17px]" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className={cn("text-[13.5px] font-semibold leading-tight", isActive ? "text-orange-700" : "text-[hsl(var(--foreground))]")}>
+                          <div className={cn("text-[13.5px] font-semibold leading-tight", isActive ? "text-sky-700" : "text-[hsl(var(--foreground))]")}>
                             {item.title}
                           </div>
                           <div className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5 leading-tight truncate">
@@ -448,28 +448,28 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               <div
                 className="h-1.5 w-1.5 rounded-full"
                 style={{
-                  background: rateMode === "manual" ? "#f97316" : "#10b981",
-                  boxShadow: rateMode === "manual" ? "0 0 5px #f97316" : "0 0 5px #10b981",
+                  background: rateMode === "manual" ? "#0ea5e9" : "#10b981",
+                  boxShadow: rateMode === "manual" ? "0 0 5px #0ea5e9" : "0 0 5px #10b981",
                 }}
               />
               <div className="flex items-center gap-2 lg:gap-3 text-[11px] font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
                 <span className={cn(
                   "text-[9px] uppercase tracking-wide font-bold",
-                  rateMode === "manual" ? "text-orange-500" : "text-emerald-500"
+                  rateMode === "manual" ? "text-sky-500" : "text-emerald-500"
                 )}>
                   {rateMode === "manual" ? "Manual" : "Live"}
                 </span>
                 <span className="text-[hsl(var(--muted-foreground))]">
-                  USD <span className="text-orange-500 font-bold">Rp{rates.USD?.toLocaleString("id-ID") ?? "—"}</span>
+                  USD <span className="text-sky-500 font-bold">Rp{rates.USD?.toLocaleString("id-ID") ?? "—"}</span>
                 </span>
                 <span className="text-[hsl(var(--border))]">·</span>
                 <span className="text-[hsl(var(--muted-foreground))]">
-                  SAR <span className="text-orange-500 font-bold">Rp{rates.SAR?.toLocaleString("id-ID") ?? "—"}</span>
+                  SAR <span className="text-sky-500 font-bold">Rp{rates.SAR?.toLocaleString("id-ID") ?? "—"}</span>
                 </span>
               </div>
               <button
                 onClick={() => refreshRates()}
-                className="transition-colors text-[hsl(var(--muted-foreground))] hover:text-orange-500"
+                className="transition-colors text-[hsl(var(--muted-foreground))] hover:text-sky-500"
                 title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")}` : "Belum diperbarui"}
               >
                 <RefreshCw className={cn("h-3 w-3", ratesLoading && "animate-spin")} />

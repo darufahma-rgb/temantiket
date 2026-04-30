@@ -174,8 +174,8 @@ function AddTripDialog({ open, onClose }: { open: boolean; onClose: () => void }
                   className={cn(
                     "h-8 w-8 rounded-xl text-base flex items-center justify-center border-2 transition-all duration-150",
                     form.emoji === e
-                      ? "border-[hsl(var(--primary))] bg-orange-50 scale-110 shadow-sm"
-                      : "border-[hsl(var(--border))] hover:border-orange-300 hover:bg-orange-50/50"
+                      ? "border-[hsl(var(--primary))] bg-sky-50 scale-110 shadow-sm"
+                      : "border-[hsl(var(--border))] hover:border-sky-300 hover:bg-sky-50/50"
                   )}>{e}</button>
               ))}
             </div>
@@ -260,7 +260,7 @@ function AddTripDialog({ open, onClose }: { open: boolean; onClose: () => void }
               type="submit"
               disabled={loading}
               className="flex-1 h-9 rounded-xl text-[12.5px] font-bold text-white transition-all disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}
+              style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}
             >
               {loading ? "Menyimpan…" : "Simpan Paket"}
             </button>
@@ -295,7 +295,7 @@ function TripCard({ trip, onDelete }: { trip: Trip; onDelete: (t: Trip) => void 
       className="group relative rounded-xl md:rounded-2xl overflow-hidden cursor-pointer border border-[hsl(var(--border))] bg-white"
       onClick={() => navigate(`/trips/${trip.id}`)}
       variants={fadeUp}
-      whileHover={{ y: -3, boxShadow: "0 10px 28px -6px hsl(27 91% 54% / 0.14)" }}
+      whileHover={{ y: -3, boxShadow: "0 10px 28px -6px hsl(198 92% 39% / 0.14)" }}
       whileTap={{ scale: 0.99 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
     >
@@ -640,7 +640,7 @@ function PaymentAlerts({ trips }: { trips: Trip[] }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.14, ease: "easeOut" }}
     >
-      <div className="rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-orange-50 overflow-hidden">
+      <div className="rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-sky-50 overflow-hidden">
         <button
           onClick={() => setCollapsed((c) => !c)}
           className="w-full px-4 md:px-5 py-3 flex items-center justify-between gap-3 hover:bg-red-100/40 transition-colors"
@@ -672,7 +672,7 @@ function PaymentAlerts({ trips }: { trips: Trip[] }) {
               >
                 <div className={cn(
                   "h-9 w-9 rounded-xl shrink-0 flex items-center justify-center text-white text-sm font-bold",
-                  a.daysLeft <= 7 ? "bg-red-500" : a.daysLeft <= 14 ? "bg-orange-500" : "bg-amber-500"
+                  a.daysLeft <= 7 ? "bg-red-500" : a.daysLeft <= 14 ? "bg-sky-500" : "bg-amber-500"
                 )}>
                   {a.daysLeft <= 0 ? "H!" : `H-${a.daysLeft}`}
                 </div>
@@ -791,41 +791,41 @@ export default function Dashboard() {
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
           <div
-            className="relative overflow-hidden rounded-2xl md:rounded-3xl border border-orange-100 p-3 md:p-5"
+            className="relative overflow-hidden rounded-2xl md:rounded-3xl border border-sky-100 p-3 md:p-5"
             style={{
               background:
-                "linear-gradient(135deg, #fff7ed 0%, #ffedd5 45%, #fed7aa 100%)",
+                "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 45%, #bae6fd 100%)",
             }}
           >
             {/* Decorative glow */}
             <div
               className="absolute -top-12 -right-10 h-32 w-32 rounded-full pointer-events-none opacity-60"
-              style={{ background: "radial-gradient(circle, #fb923c33, transparent 70%)" }}
+              style={{ background: "radial-gradient(circle, #38bdf833, transparent 70%)" }}
             />
             <div
               className="absolute -bottom-8 -left-6 h-24 w-24 rounded-full pointer-events-none opacity-50"
-              style={{ background: "radial-gradient(circle, #f9731633, transparent 70%)" }}
+              style={{ background: "radial-gradient(circle, #0ea5e933, transparent 70%)" }}
             />
 
             <div className="relative flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <h1 className="text-[15.5px] md:text-[22px] font-extrabold text-orange-950 leading-tight tracking-tight">
+                <h1 className="text-[15.5px] md:text-[22px] font-extrabold text-sky-950 leading-tight tracking-tight">
                   {getGreeting(user?.displayName ?? "Admin", t)} <span className="inline-block">👋</span>
                 </h1>
-                <p className="text-[11px] md:text-[12.5px] text-orange-700/80 mt-1 capitalize font-medium">
+                <p className="text-[11px] md:text-[12.5px] text-sky-700/80 mt-1 capitalize font-medium">
                   {formatTodayFull(locale)}
                 </p>
                 {nearestDeparture ? (
                   <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                    <div className="inline-flex items-center gap-1.5 bg-white/80 backdrop-blur text-orange-700 rounded-full pl-2 pr-3 py-1 text-[11px] font-semibold border border-orange-200/60 shadow-sm">
+                    <div className="inline-flex items-center gap-1.5 bg-white/80 backdrop-blur text-sky-700 rounded-full pl-2 pr-3 py-1 text-[11px] font-semibold border border-sky-200/60 shadow-sm">
                       <Plane strokeWidth={2} className="h-3 w-3 shrink-0" />
                       <span className="opacity-80">{t.dash_nearest_departure}</span>
                       <strong className="truncate max-w-[120px]">{nearestDeparture.name}</strong>
-                      <span className="text-orange-500 shrink-0">· {daysUntil(nearestDeparture.departureDate!)}</span>
+                      <span className="text-sky-500 shrink-0">· {daysUntil(nearestDeparture.departureDate!)}</span>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-[11.5px] text-orange-800/70 mt-2.5 italic leading-snug">
+                  <p className="text-[11.5px] text-sky-800/70 mt-2.5 italic leading-snug">
                     {t.dash_no_schedule}
                   </p>
                 )}
@@ -837,7 +837,7 @@ export default function Dashboard() {
                   disabled={refreshing}
                   title="Muat ulang data dari Supabase"
                   aria-label="Refresh dashboard"
-                  className="group inline-flex items-center gap-1.5 h-8 md:h-9 px-2.5 md:px-3 rounded-full bg-white/80 backdrop-blur border border-orange-200/70 text-orange-700 hover:bg-white hover:border-orange-300 shadow-sm text-[11px] md:text-[12px] font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="group inline-flex items-center gap-1.5 h-8 md:h-9 px-2.5 md:px-3 rounded-full bg-white/80 backdrop-blur border border-sky-200/70 text-sky-700 hover:bg-white hover:border-sky-300 shadow-sm text-[11px] md:text-[12px] font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <RefreshCw
                     strokeWidth={2.2}
@@ -845,8 +845,8 @@ export default function Dashboard() {
                   />
                   <span className="hidden sm:inline">{refreshing ? "Memuat…" : "Refresh"}</span>
                 </button>
-                <div className="hidden md:flex h-12 w-12 rounded-2xl bg-white/70 backdrop-blur items-center justify-center shadow-sm border border-orange-100">
-                  <Plane strokeWidth={1.5} className="h-6 w-6 text-orange-500" />
+                <div className="hidden md:flex h-12 w-12 rounded-2xl bg-white/70 backdrop-blur items-center justify-center shadow-sm border border-sky-100">
+                  <Plane strokeWidth={1.5} className="h-6 w-6 text-sky-500" />
                 </div>
               </div>
             </div>
@@ -884,7 +884,7 @@ export default function Dashboard() {
             { icon: Plane, label: t.dash_total_trip, value: trips.length, tint: "from-blue-50 to-sky-50", iconBg: "bg-blue-500/10 text-blue-600", onClick: () => {} },
             { icon: TrendingUp, label: t.dash_active_trip, value: activeTrips, tint: "from-emerald-50 to-teal-50", iconBg: "bg-emerald-500/10 text-emerald-600", onClick: () => setTab("upcoming") },
             { icon: CheckCircle, label: t.dash_done_trip, value: doneTrips, tint: "from-purple-50 to-fuchsia-50", iconBg: "bg-purple-500/10 text-purple-600", onClick: () => setTab("done") },
-            { icon: Users, label: t.dash_total_jamaah, value: totalJamaah, tint: "from-orange-50 to-amber-50", iconBg: "bg-orange-500/10 text-orange-600", onClick: () => navigate("/progress") },
+            { icon: Users, label: t.dash_total_jamaah, value: totalJamaah, tint: "from-sky-50 to-sky-100", iconBg: "bg-sky-500/10 text-sky-600", onClick: () => navigate("/progress") },
           ].map((stat) => (
             <motion.button
               key={stat.label}
@@ -924,7 +924,7 @@ export default function Dashboard() {
               onClick={item.onClick}
               className="flex items-center gap-2.5 rounded-xl border border-[hsl(var(--border))] bg-white p-3 hover:shadow-sm hover:border-[hsl(var(--primary))]/40 transition-all text-left active:scale-[0.98]"
             >
-              <item.icon strokeWidth={1.5} className="h-5 w-5 text-orange-500 shrink-0" />
+              <item.icon strokeWidth={1.5} className="h-5 w-5 text-sky-500 shrink-0" />
               <div className="min-w-0">
                 <p className="text-[18px] font-bold text-[hsl(var(--foreground))] leading-none">{item.value}</p>
                 <p className="text-[10.5px] text-[hsl(var(--muted-foreground))] mt-0.5 truncate">{item.label}</p>
@@ -990,7 +990,7 @@ export default function Dashboard() {
                   className="flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-white px-3 py-2.5 cursor-pointer hover:border-[hsl(var(--primary))]/40 hover:shadow-sm transition-all"
                 >
                   <div className="h-9 w-9 rounded-xl flex items-center justify-center text-lg shrink-0"
-                    style={{ background: "linear-gradient(135deg,#fff7ed,#fed7aa)" }}>
+                    style={{ background: "linear-gradient(135deg,#f0f9ff,#bae6fd)" }}>
                     {pkg.emoji}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -1089,21 +1089,21 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="relative overflow-hidden rounded-3xl border border-orange-100 bg-gradient-to-br from-white via-orange-50/40 to-amber-50/60 px-5 py-8 md:p-10 text-center flex flex-col items-center justify-center"
+            className="relative overflow-hidden rounded-3xl border border-sky-100 bg-gradient-to-br from-white via-sky-50/40 to-sky-100/60 px-5 py-8 md:p-10 text-center flex flex-col items-center justify-center"
           >
             {/* Decorative blob */}
             <div
               className="absolute -top-16 -right-12 h-40 w-40 rounded-full pointer-events-none opacity-50"
-              style={{ background: "radial-gradient(circle, #fb923c44, transparent 70%)" }}
+              style={{ background: "radial-gradient(circle, #38bdf844, transparent 70%)" }}
             />
             <div
               className="absolute -bottom-12 -left-10 h-32 w-32 rounded-full pointer-events-none opacity-40"
-              style={{ background: "radial-gradient(circle, #f9731644, transparent 70%)" }}
+              style={{ background: "radial-gradient(circle, #0ea5e944, transparent 70%)" }}
             />
 
             <div className="relative">
-              <div className="inline-flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-white shadow-sm border border-orange-100 mb-4">
-                <Plane strokeWidth={1.5} className="h-8 w-8 md:h-10 md:w-10 text-orange-500" />
+              <div className="inline-flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-white shadow-sm border border-sky-100 mb-4">
+                <Plane strokeWidth={1.5} className="h-8 w-8 md:h-10 md:w-10 text-sky-500" />
               </div>
               <h2 className="text-[16px] md:text-lg font-bold text-[hsl(var(--foreground))]">{t.dash_no_packages}</h2>
               <p className="text-[12.5px] md:text-sm text-[hsl(var(--muted-foreground))] mt-1.5 max-w-xs mx-auto leading-relaxed">
@@ -1112,7 +1112,7 @@ export default function Dashboard() {
               <Button
                 onClick={() => navigate("/packages")}
                 className="mt-5 rounded-2xl px-5 h-11 text-[13px] font-bold shadow-md"
-                style={{ background: "linear-gradient(135deg,#f97316,#ea580c)", color: "white" }}
+                style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)", color: "white" }}
               >
                 <Plus strokeWidth={2} className="h-4 w-4 mr-1.5" /> {t.dash_create_first}
               </Button>

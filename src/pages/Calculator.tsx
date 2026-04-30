@@ -222,7 +222,7 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
     <th
       style={M}
       className={cn(
-        "px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-orange-700 border-b border-orange-200 bg-orange-50/80 whitespace-nowrap",
+        "px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-sky-700 border-b border-sky-200 bg-sky-50/80 whitespace-nowrap",
         right && "text-right"
       )}
     >
@@ -237,7 +237,7 @@ function Td({ children, right, muted, bold, mono }: {
   return (
     <td
       className={cn(
-        "px-2.5 py-1.5 text-[12px] border-b border-orange-50",
+        "px-2.5 py-1.5 text-[12px] border-b border-sky-50",
         right && "text-right",
         muted && "text-[hsl(var(--muted-foreground))]",
         bold && "font-bold",
@@ -263,7 +263,7 @@ function NumCell({ value, onChange, placeholder }: {
       }}
       placeholder={placeholder ?? "0"}
       style={M}
-      className="w-full h-7 rounded-lg border border-orange-200 bg-white px-2 text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
+      className="w-full h-7 rounded-lg border border-sky-200 bg-white px-2 text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-sky-400 focus:border-sky-400"
     />
   );
 }
@@ -334,7 +334,7 @@ function SelectCell({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       style={M}
-      className="w-full h-7 rounded-lg border border-orange-200 bg-white px-1.5 text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
+      className="w-full h-7 rounded-lg border border-sky-200 bg-white px-1.5 text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400 focus:border-sky-400"
     >
       <option value="">{placeholder ?? "Pilih"}</option>
       {options.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -355,7 +355,7 @@ function TextCell({ value, onChange, placeholder, suggestions, listId }: {
         placeholder={placeholder ?? ""}
         list={suggestions && listId ? listId : undefined}
         style={M}
-        className="w-full h-7 rounded-lg border border-orange-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
+        className="w-full h-7 rounded-lg border border-sky-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400 focus:border-sky-400"
       />
       {suggestions && listId && (
         <datalist id={listId}>
@@ -380,18 +380,18 @@ function SectionHeader({
   color: string;
 }) {
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded-t-xl border border-b-0 border-orange-200" style={{ background: "linear-gradient(135deg,#fff7ed,#ffedd5)" }}>
+    <div className="flex items-center justify-between px-3 py-2.5 rounded-t-xl border border-b-0 border-sky-200" style={{ background: "linear-gradient(135deg,#f0f9ff,#e0f2fe)" }}>
       <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-orange-500 shrink-0" strokeWidth={2} />
-        <span style={M} className="text-[12px] font-bold text-orange-800">{title}</span>
-        <span style={M} className="text-[10px] font-semibold text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded">
+        <Icon className="h-4 w-4 text-sky-500 shrink-0" strokeWidth={2} />
+        <span style={M} className="text-[12px] font-bold text-sky-800">{title}</span>
+        <span style={M} className="text-[10px] font-semibold text-sky-500 bg-sky-100 px-1.5 py-0.5 rounded">
           {currency}
         </span>
       </div>
       <button
         onClick={onAdd}
         style={M}
-        className="flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-white border border-orange-200 hover:bg-orange-50 rounded-lg px-2 py-1 transition-colors"
+        className="flex items-center gap-1 text-[10px] font-bold text-sky-600 bg-white border border-sky-200 hover:bg-sky-50 rounded-lg px-2 py-1 transition-colors"
       >
         <Plus className="h-3 w-3" /> Tambah Baris
       </button>
@@ -417,14 +417,14 @@ const CUR_STYLE: Record<"IDR" | "SAR" | "USD", string> = {
 };
 function RowCurrencyToggle({ value, onChange }: { value: "IDR" | "SAR" | "USD"; onChange: (v: "IDR" | "SAR" | "USD") => void }) {
   return (
-    <div className="flex rounded-md border border-orange-200 overflow-hidden shrink-0">
+    <div className="flex rounded-md border border-sky-200 overflow-hidden shrink-0">
       {(["IDR", "SAR", "USD"] as const).map((cur, i) => (
         <button
           key={cur}
           type="button"
           onClick={() => onChange(cur)}
           style={M}
-          className={`h-7 px-1.5 text-[9px] font-bold transition-colors ${value === cur ? CUR_STYLE[cur] : "bg-white text-slate-400 hover:bg-slate-50"} ${i > 0 ? "border-l border-orange-200" : ""}`}
+          className={`h-7 px-1.5 text-[9px] font-bold transition-colors ${value === cur ? CUR_STYLE[cur] : "bg-white text-slate-400 hover:bg-slate-50"} ${i > 0 ? "border-l border-sky-200" : ""}`}
         >{cur}</button>
       ))}
     </div>
@@ -444,10 +444,10 @@ const CATS: Array<{ value: string; emoji: string; label: string }> = [
 ];
 function UnitToggle({ value, onChange }: { value: CostUnit; onChange: (v: CostUnit) => void }) {
   return (
-    <div className="flex rounded-md border border-orange-200 overflow-hidden shrink-0">
+    <div className="flex rounded-md border border-sky-200 overflow-hidden shrink-0">
       {(["pax", "group"] as const).map((u, i) => (
         <button key={u} type="button" onClick={() => onChange(u)} style={M}
-          className={`h-7 px-1.5 text-[9px] font-bold transition-colors ${value === u ? "bg-orange-500 text-white" : "bg-white text-slate-400 hover:bg-slate-50"} ${i > 0 ? "border-l border-orange-200" : ""}`}
+          className={`h-7 px-1.5 text-[9px] font-bold transition-colors ${value === u ? "bg-sky-500 text-white" : "bg-white text-slate-400 hover:bg-slate-50"} ${i > 0 ? "border-l border-sky-200" : ""}`}
         >{u === "pax" ? "/pax" : "/grup"}</button>
       ))}
     </div>
@@ -465,26 +465,26 @@ function SubtotalRow({ label, sarAmount, usdAmount, groupIDR, perPaxIDR, formatC
   const hasSAR = sarAmount !== undefined && sarAmount > 0;
   const hasUSD = usdAmount !== undefined && usdAmount > 0;
   const foreignDisplay = hasSAR && hasUSD
-    ? <><span className="text-blue-700">{fmtSAR(sarAmount!)}</span> <span className="text-orange-400">+</span> <span className="text-violet-700">{fmtUSD(usdAmount!)}</span></>
+    ? <><span className="text-blue-700">{fmtSAR(sarAmount!)}</span> <span className="text-sky-400">+</span> <span className="text-violet-700">{fmtUSD(usdAmount!)}</span></>
     : hasSAR ? <span className="text-blue-700">{fmtSAR(sarAmount!)}</span>
     : hasUSD ? <span className="text-violet-700">{fmtUSD(usdAmount!)}</span>
     : <span className="text-muted-foreground">—</span>;
 
   return (
-    <tr className="bg-orange-50/50">
-      <td colSpan={2} style={M} className="px-2.5 py-2 text-[11px] font-extrabold text-orange-700 uppercase tracking-wider border-t-2 border-orange-200">
+    <tr className="bg-sky-50/50">
+      <td colSpan={2} style={M} className="px-2.5 py-2 text-[11px] font-extrabold text-sky-700 uppercase tracking-wider border-t-2 border-sky-200">
         {label}
       </td>
-      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right border-t-2 border-orange-200 font-mono">
+      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right border-t-2 border-sky-200 font-mono">
         {foreignDisplay}
       </td>
-      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-orange-700 border-t-2 border-orange-200 font-mono">
+      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-sky-700 border-t-2 border-sky-200 font-mono">
         {formatCurrency(groupIDR)}
       </td>
-      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-orange-600 border-t-2 border-orange-200 font-mono">
+      <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-sky-600 border-t-2 border-sky-200 font-mono">
         {formatCurrency(perPaxIDR)}
       </td>
-      <td className="border-t-2 border-orange-200" />
+      <td className="border-t-2 border-sky-200" />
     </tr>
   );
 }
@@ -1054,7 +1054,7 @@ export default function Calculator() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-          <CalcIcon strokeWidth={2} className="h-4 w-4 md:h-5 md:w-5 text-orange-500 shrink-0" />
+          <CalcIcon strokeWidth={2} className="h-4 w-4 md:h-5 md:w-5 text-sky-500 shrink-0" />
           <div className="min-w-0">
             <h1 className="text-[14px] md:text-lg font-bold text-[hsl(var(--foreground))] leading-tight truncate" style={M}>
               Kalkulator Profesional
@@ -1068,7 +1068,7 @@ export default function Calculator() {
           <button
             onClick={handleReset}
             style={M}
-            className="flex items-center gap-1 h-7 md:h-8 px-2 md:px-3 rounded-lg md:rounded-xl border border-orange-200 text-orange-600 bg-white hover:bg-orange-50 text-[10.5px] md:text-[11px] font-semibold transition-colors"
+            className="flex items-center gap-1 h-7 md:h-8 px-2 md:px-3 rounded-lg md:rounded-xl border border-sky-200 text-sky-600 bg-white hover:bg-sky-50 text-[10.5px] md:text-[11px] font-semibold transition-colors"
           >
             <RotateCcw className="h-3 w-3" /> Reset
           </button>
@@ -1083,7 +1083,7 @@ export default function Calculator() {
       </div>
 
       {/* ── Mode switcher ── */}
-      <div className="flex items-center gap-1 p-1 rounded-xl border border-orange-200 bg-orange-50/50 self-start flex-wrap">
+      <div className="flex items-center gap-1 p-1 rounded-xl border border-sky-200 bg-sky-50/50 self-start flex-wrap">
         {([
           { mode: "umroh_private" as CalcMode, label: "Umroh Private", icon: Moon },
           { mode: "umroh_group"   as CalcMode, label: "Umroh Group",   icon: Users },
@@ -1096,8 +1096,8 @@ export default function Calculator() {
             className={cn(
               "px-2.5 py-1.5 rounded-lg text-[10.5px] md:text-[11.5px] font-bold transition-all inline-flex items-center gap-1.5 whitespace-nowrap",
               calc.mode === mode
-                ? "bg-orange-500 text-white shadow-sm"
-                : "text-orange-600 hover:bg-orange-100"
+                ? "bg-sky-500 text-white shadow-sm"
+                : "text-sky-600 hover:bg-sky-100"
             )}
           >
             <Icon className="h-3.5 w-3.5" strokeWidth={2} />
@@ -1117,7 +1117,7 @@ export default function Calculator() {
             return (
               <div
                 key={cur}
-                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors ${active ? "bg-orange-50 border-orange-200" : "bg-white border-slate-200"}`}
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors ${active ? "bg-sky-50 border-sky-200" : "bg-white border-slate-200"}`}
               >
                 <span style={M} className="text-[10px] font-bold text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-100 shrink-0">{cur}</span>
                 <span style={M} className="text-[11px] text-muted-foreground">= Rp</span>
@@ -1138,7 +1138,7 @@ export default function Calculator() {
                     type="button"
                     onClick={() => setField(cur === "SAR" ? "localRateSAR" : "localRateUSD", 0)}
                     style={M}
-                    className="text-[10px] text-orange-400 hover:text-orange-600 font-medium shrink-0"
+                    className="text-[10px] text-sky-400 hover:text-sky-600 font-medium shrink-0"
                   >↩ Reset</button>
                 ) : (
                   <span style={M} className="text-[10px] text-slate-400 italic shrink-0">(dari Pengaturan)</span>
@@ -1156,34 +1156,34 @@ export default function Calculator() {
       </div>
 
       {/* ── Package Info ── */}
-      <div className="rounded-xl border border-orange-200 bg-white p-3 md:p-4 space-y-2.5 md:space-y-3">
-        <p style={M} className="text-[10px] font-extrabold uppercase tracking-wide text-orange-600">Info Paket</p>
+      <div className="rounded-xl border border-sky-200 bg-white p-3 md:p-4 space-y-2.5 md:space-y-3">
+        <p style={M} className="text-[10px] font-extrabold uppercase tracking-wide text-sky-600">Info Paket</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3">
           <div className="col-span-2 space-y-1">
-            <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">Nama Paket</label>
+            <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Nama Paket</label>
             <input
               type="text"
               value={calc.packageName}
               onChange={(e) => setField("packageName", e.target.value)}
               placeholder="cth: Umrah Ramadhan 2026"
               style={M}
-              className="w-full h-8 rounded-lg border border-orange-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="w-full h-8 rounded-lg border border-sky-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
           </div>
           <div className="space-y-1">
-            <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">Destinasi</label>
+            <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Destinasi</label>
             <select
               value={calc.destination}
               onChange={(e) => setField("destination", e.target.value)}
               style={M}
-              className="w-full h-8 rounded-lg border border-orange-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="w-full h-8 rounded-lg border border-sky-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400"
             >
               <option value="">Pilih rute</option>
               {DESTINATION_PRESETS.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
           <div className="space-y-1">
-            <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">Jumlah Pax</label>
+            <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Jumlah Pax</label>
             <input
               type="text"
               inputMode="numeric"
@@ -1193,7 +1193,7 @@ export default function Calculator() {
                 setField("pax", Math.max(1, stripped ? Number(stripped) : 1));
               }}
               style={M}
-              className="w-full h-8 rounded-lg border border-orange-200 bg-white px-2 text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="w-full h-8 rounded-lg border border-sky-200 bg-white px-2 text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-sky-400"
             />
           </div>
         </div>
@@ -1204,7 +1204,7 @@ export default function Calculator() {
       {calc.mode !== "umum" && (<>
 
         {/* ── HOTEL TABLE ── */}
-        <div className="overflow-hidden rounded-xl border border-orange-200">
+        <div className="overflow-hidden rounded-xl border border-sky-200">
           <SectionHeader icon={Hotel} title="Hotel" currency="SAR / USD" color="bg-blue-500" onAdd={addHotel} />
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
@@ -1234,7 +1234,7 @@ export default function Calculator() {
                     ? (h.days * activeRate * rate) / capacity
                     : totalIDR / safePax;
                   return (
-                    <tr key={h.id} className="hover:bg-orange-50/30 transition-colors">
+                    <tr key={h.id} className="hover:bg-sky-50/30 transition-colors">
                       <Td><TextCell value={h.label} onChange={(v) => updateHotel(h.id, { label: v })} placeholder="Nama hotel" /></Td>
                       <Td>
                         <SelectCell
@@ -1254,7 +1254,7 @@ export default function Calculator() {
                         {formatCurrency(perPaxIDR)}
                         {capacity > 0 && <div style={M} className="text-[9px] text-slate-400 font-normal">÷ {capacity} pax/kamar</div>}
                       </Td>
-                      <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeHotel(h.id)} /></td>
+                      <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeHotel(h.id)} /></td>
                     </tr>
                   );
                 })}
@@ -1274,7 +1274,7 @@ export default function Calculator() {
         </div>
 
         {/* ── TRANSPORT TABLE ── */}
-        <div className="overflow-hidden rounded-xl border border-orange-200">
+        <div className="overflow-hidden rounded-xl border border-sky-200">
           <SectionHeader icon={Bus} title="Transportasi" currency="SAR / USD" color="bg-blue-600" onAdd={addTransport} />
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
@@ -1297,7 +1297,7 @@ export default function Calculator() {
                   const foreignAmount = t.fleet * t.pricePerFleet;
                   const totalIDR = foreignAmount * rate;
                   return (
-                    <tr key={t.id} className="hover:bg-orange-50/30 transition-colors">
+                    <tr key={t.id} className="hover:bg-sky-50/30 transition-colors">
                       <Td><SelectCell value={t.label} onChange={(v) => updateTransport(t.id, { label: v })} options={TRANSPORT_TYPES} placeholder="Jenis" /></Td>
                       <Td><SelectCell value={t.route ?? ""} onChange={(v) => updateTransport(t.id, { route: v })} options={ROUTE_OPTIONS} placeholder="Rute" /></Td>
                       <Td right><NumCell value={t.fleet} onChange={(v) => updateTransport(t.id, { fleet: v })} /></Td>
@@ -1310,7 +1310,7 @@ export default function Calculator() {
                       <Td right muted mono>{cur === "SAR" ? fmtSAR(foreignAmount) : fmtUSD(foreignAmount)}</Td>
                       <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                       <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                      <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeTransport(t.id)} /></td>
+                      <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeTransport(t.id)} /></td>
                     </tr>
                   );
                 })}
@@ -1330,7 +1330,7 @@ export default function Calculator() {
         </div>
 
         {/* ── AIRLINE TICKET TABLE ── */}
-        <div className="overflow-hidden rounded-xl border border-orange-200">
+        <div className="overflow-hidden rounded-xl border border-sky-200">
           <SectionHeader icon={Globe} title="Tiket Pesawat" currency="IDR / USD" color="bg-sky-500" onAdd={addTicket} />
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
@@ -1354,7 +1354,7 @@ export default function Calculator() {
                     ? tk.pricePerPax * safePax * usdRate
                     : tk.pricePerPax * safePax;
                   return (
-                    <tr key={tk.id} className="hover:bg-orange-50/30 transition-colors">
+                    <tr key={tk.id} className="hover:bg-sky-50/30 transition-colors">
                       <Td><SelectCell value={tk.airline ?? ""} onChange={(v) => updateTicket(tk.id, { airline: v })} options={AIRLINES} placeholder="Maskapai" /></Td>
                       <Td><TextCell value={tk.label} onChange={(v) => updateTicket(tk.id, { label: v })} placeholder="cth: CGK - JED - CGK" suggestions={FLIGHT_ROUTE_SUGGESTIONS} listId={`flight-routes-${tk.id}`} /></Td>
                       <Td>
@@ -1362,7 +1362,7 @@ export default function Calculator() {
                           value={tk.flightType === "Open Jaw" ? "Return" : tk.flightType}
                           onChange={(e) => updateTicket(tk.id, { flightType: e.target.value })}
                           style={M}
-                          className="h-7 rounded-lg border border-orange-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-orange-400 w-full"
+                          className="h-7 rounded-lg border border-sky-200 bg-white px-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400 w-full"
                         >
                           <option value="Return">Return</option>
                           <option value="One Way">One Way</option>
@@ -1374,7 +1374,7 @@ export default function Calculator() {
                       </Td>
                       <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                       <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                      <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeTicket(tk.id)} /></td>
+                      <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeTicket(tk.id)} /></td>
                     </tr>
                   );
                 })}
@@ -1393,7 +1393,7 @@ export default function Calculator() {
         </div>
 
         {/* ── VISA TABLE ── */}
-        <div className="overflow-hidden rounded-xl border border-orange-200">
+        <div className="overflow-hidden rounded-xl border border-sky-200">
           <SectionHeader icon={Globe} title="Visa" currency="SAR / USD" color="bg-indigo-500" onAdd={addVisa} />
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
@@ -1415,7 +1415,7 @@ export default function Calculator() {
                   const foreignAmount = v.pricePerPax * safePax;
                   const totalIDR = foreignAmount * rate;
                   return (
-                    <tr key={v.id} className="hover:bg-orange-50/30 transition-colors">
+                    <tr key={v.id} className="hover:bg-sky-50/30 transition-colors">
                       <Td><TextCell value={v.label} onChange={(val) => updateVisa(v.id, { label: val })} placeholder="cth: Visa Umroh" /></Td>
                       <Td right>
                         <div className="flex items-center gap-1">
@@ -1427,7 +1427,7 @@ export default function Calculator() {
                       <Td right muted mono>{cur === "SAR" ? fmtSAR(foreignAmount) : fmtUSD(foreignAmount)}</Td>
                       <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                       <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                      <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeVisa(v.id)} /></td>
+                      <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeVisa(v.id)} /></td>
                     </tr>
                   );
                 })}
@@ -1447,7 +1447,7 @@ export default function Calculator() {
         </div>
 
         {/* ── DESTINATION TABLE ── */}
-        <div className="overflow-hidden rounded-xl border border-orange-200">
+        <div className="overflow-hidden rounded-xl border border-sky-200">
           <SectionHeader icon={Globe} title="Destinasi / Ziarah" currency="SAR / USD" color="bg-emerald-500" onAdd={addDest} />
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
@@ -1469,7 +1469,7 @@ export default function Calculator() {
                   const foreignAmount = d.pricePerPax * safePax;
                   const totalIDR = foreignAmount * rate;
                   return (
-                    <tr key={d.id} className="hover:bg-orange-50/30 transition-colors">
+                    <tr key={d.id} className="hover:bg-sky-50/30 transition-colors">
                       <Td><TextCell value={d.label} onChange={(v) => updateDest(d.id, { label: v })} placeholder="cth: Tasreh" /></Td>
                       <Td right>
                         <div className="flex items-center gap-1">
@@ -1481,7 +1481,7 @@ export default function Calculator() {
                       <Td right muted mono>{cur === "SAR" ? fmtSAR(foreignAmount) : fmtUSD(foreignAmount)}</Td>
                       <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                       <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                      <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeDest(d.id)} /></td>
+                      <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeDest(d.id)} /></td>
                     </tr>
                   );
                 })}
@@ -1501,7 +1501,7 @@ export default function Calculator() {
         </div>
 
         {/* ── F&B TABLE ── */}
-        <div className="overflow-hidden rounded-xl border border-orange-200">
+        <div className="overflow-hidden rounded-xl border border-sky-200">
           <SectionHeader icon={Globe} title="F&B / Konsumsi" currency="SAR / USD" color="bg-amber-500" onAdd={addFnB} />
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
@@ -1523,7 +1523,7 @@ export default function Calculator() {
                   const foreignAmount = f.pricePerPax * safePax;
                   const totalIDR = foreignAmount * rate;
                   return (
-                    <tr key={f.id} className="hover:bg-orange-50/30 transition-colors">
+                    <tr key={f.id} className="hover:bg-sky-50/30 transition-colors">
                       <Td><TextCell value={f.label} onChange={(v) => updateFnB(f.id, { label: v })} placeholder="cth: Zam-zam" /></Td>
                       <Td right>
                         <div className="flex items-center gap-1">
@@ -1535,7 +1535,7 @@ export default function Calculator() {
                       <Td right muted mono>{cur === "SAR" ? fmtSAR(foreignAmount) : fmtUSD(foreignAmount)}</Td>
                       <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                       <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                      <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeFnB(f.id)} /></td>
+                      <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeFnB(f.id)} /></td>
                     </tr>
                   );
                 })}
@@ -1555,8 +1555,8 @@ export default function Calculator() {
         </div>
 
         {/* ── STAFF TABLE ── */}
-        <div className="overflow-hidden rounded-xl border border-orange-200">
-          <SectionHeader icon={UserCheck} title="Cost for Staff" currency="SAR / USD" color="bg-orange-500" onAdd={addStaff} />
+        <div className="overflow-hidden rounded-xl border border-sky-200">
+          <SectionHeader icon={UserCheck} title="Cost for Staff" currency="SAR / USD" color="bg-sky-500" onAdd={addStaff} />
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -1579,7 +1579,7 @@ export default function Calculator() {
                   const totalIDR = totalForeign * rate;
                   const perPaxForeign = totalForeign / safePax;
                   return (
-                    <tr key={s.id} className="hover:bg-orange-50/30 transition-colors">
+                    <tr key={s.id} className="hover:bg-sky-50/30 transition-colors">
                       <Td><TextCell value={s.label} onChange={(v) => updateStaff(s.id, { label: v })} placeholder="cth: Muthowif" /></Td>
                       <Td right><NumCell value={(s as StaffRow).numStaff ?? 1} onChange={(v) => updateStaff(s.id, { numStaff: v })} /></Td>
                       <Td right>
@@ -1591,7 +1591,7 @@ export default function Calculator() {
                       <Td right muted mono>{cur === "SAR" ? fmtSAR(perPaxForeign) : fmtUSD(perPaxForeign)}</Td>
                       <Td right bold mono>{formatCurrency(totalIDR)}</Td>
                       <Td right muted mono>{formatCurrency(totalIDR / safePax)}</Td>
-                      <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeStaff(s.id)} /></td>
+                      <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeStaff(s.id)} /></td>
                     </tr>
                   );
                 })}
@@ -1637,14 +1637,14 @@ export default function Calculator() {
 
       {/* ── UMUM MODE TABLE ── */}
       {calc.mode === "umum" && (
-        <div className="overflow-hidden rounded-xl border border-orange-200">
-          <div className="flex items-center justify-between px-3 py-2.5 rounded-t-xl border border-b-0 border-orange-200" style={{ background: "linear-gradient(135deg,#fff7ed,#ffedd5)" }}>
+        <div className="overflow-hidden rounded-xl border border-sky-200">
+          <div className="flex items-center justify-between px-3 py-2.5 rounded-t-xl border border-b-0 border-sky-200" style={{ background: "linear-gradient(135deg,#f0f9ff,#e0f2fe)" }}>
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-orange-500" strokeWidth={2} />
-              <span style={M} className="text-[12px] font-bold text-orange-800">Rincian Biaya</span>
-              <span style={M} className="text-[10px] font-semibold text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded">IDR / SAR / USD</span>
+              <TrendingUp className="h-4 w-4 text-sky-500" strokeWidth={2} />
+              <span style={M} className="text-[12px] font-bold text-sky-800">Rincian Biaya</span>
+              <span style={M} className="text-[10px] font-semibold text-sky-500 bg-sky-100 px-1.5 py-0.5 rounded">IDR / SAR / USD</span>
             </div>
-            <button onClick={addGeneralCost} style={M} className="flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-white border border-orange-200 hover:bg-orange-50 rounded-lg px-2 py-1 transition-colors">
+            <button onClick={addGeneralCost} style={M} className="flex items-center gap-1 text-[10px] font-bold text-sky-600 bg-white border border-sky-200 hover:bg-sky-50 rounded-lg px-2 py-1 transition-colors">
               <Plus className="h-3 w-3" /> Tambah Baris
             </button>
           </div>
@@ -1669,10 +1669,10 @@ export default function Calculator() {
                   const multiplier = (c.unit === "pax" ? safePax : 1) * rowQty;
                   const groupIDR = c.currency === "IDR" ? c.amount * multiplier : c.currency === "SAR" ? c.amount * multiplier * sarRate : c.amount * multiplier * usdRate;
                   return (
-                    <tr key={c.id} className="hover:bg-orange-50/30 transition-colors">
+                    <tr key={c.id} className="hover:bg-sky-50/30 transition-colors">
                       <Td>
                         <select value={c.category ?? ""} onChange={(e) => updateGeneralCost(c.id, { category: e.target.value })} style={M}
-                          className="h-7 w-28 rounded-md border border-orange-200 bg-white px-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-orange-400">
+                          className="h-7 w-28 rounded-md border border-sky-200 bg-white px-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-sky-400">
                           {CATS.map((cat) => <option key={cat.value} value={cat.value}>{cat.emoji} {cat.label}</option>)}
                         </select>
                       </Td>
@@ -1686,16 +1686,16 @@ export default function Calculator() {
                         {c.amount > 0 && <div style={M} className="text-[9px] text-slate-400 font-normal">{c.amount.toLocaleString("id-ID")}{c.currency !== "IDR" ? ` ${c.currency}` : ""} × {rowQty}{c.unit === "pax" ? ` × ${safePax}p` : " (fix)"}</div>}
                       </Td>
                       <Td right muted mono>{formatCurrency(groupIDR / safePax)}</Td>
-                      <td className="px-1 py-1.5 border-b border-orange-50"><DeleteBtn onClick={() => removeGeneralCost(c.id)} /></td>
+                      <td className="px-1 py-1.5 border-b border-sky-50"><DeleteBtn onClick={() => removeGeneralCost(c.id)} /></td>
                     </tr>
                   );
                 })}
                 {quote && calc.generalCosts.length > 0 && (
-                  <tr className="bg-orange-50/50">
-                    <td colSpan={6} style={M} className="px-2.5 py-2 text-[11px] font-extrabold text-orange-700 uppercase tracking-wider border-t-2 border-orange-200">TOTAL BIAYA</td>
-                    <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-orange-700 border-t-2 border-orange-200 font-mono">{formatCurrency(quote.hpp)}</td>
-                    <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-orange-600 border-t-2 border-orange-200 font-mono">{formatCurrency(quote.hpp / safePax)}</td>
-                    <td className="border-t-2 border-orange-200" />
+                  <tr className="bg-sky-50/50">
+                    <td colSpan={6} style={M} className="px-2.5 py-2 text-[11px] font-extrabold text-sky-700 uppercase tracking-wider border-t-2 border-sky-200">TOTAL BIAYA</td>
+                    <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-sky-700 border-t-2 border-sky-200 font-mono">{formatCurrency(quote.hpp)}</td>
+                    <td style={M} className="px-2.5 py-2 text-[11px] font-bold text-right text-sky-600 border-t-2 border-sky-200 font-mono">{formatCurrency(quote.hpp / safePax)}</td>
+                    <td className="border-t-2 border-sky-200" />
                   </tr>
                 )}
               </tbody>
@@ -1705,22 +1705,22 @@ export default function Calculator() {
       )}
 
       {/* ── FINANCIAL PARAMETERS ── */}
-      <div className="rounded-xl border border-orange-200 bg-white overflow-hidden">
-        <div className="px-3 md:px-4 py-2.5 md:py-3 border-b border-orange-100 bg-orange-50/60">
-          <p style={M} className="text-[10px] font-extrabold uppercase tracking-wide text-orange-700 flex items-center gap-1.5">
+      <div className="rounded-xl border border-sky-200 bg-white overflow-hidden">
+        <div className="px-3 md:px-4 py-2.5 md:py-3 border-b border-sky-100 bg-sky-50/60">
+          <p style={M} className="text-[10px] font-extrabold uppercase tracking-wide text-sky-700 flex items-center gap-1.5">
             <TrendingUp className="h-3.5 w-3.5" /> Parameter Finansial
           </p>
         </div>
         <div className="p-3 md:p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
           <div className="space-y-2">
-            <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">
+            <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">
               Commission Fee Admin (IDR Tetap)
             </label>
             <NumCell value={calc.commissionFee} onChange={(v) => setField("commissionFee", v)} placeholder="0" />
             <p style={M} className="text-[10px] text-muted-foreground">Nominal IDR tambahan di atas HPP</p>
           </div>
           <div className="space-y-2">
-            <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">
+            <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">
               Acceptable Profit / Margin ({calc.marginPercent}%)
             </label>
             <Slider
@@ -1728,12 +1728,12 @@ export default function Calculator() {
               min={0} max={50} step={1}
               onValueChange={(v) => setField("marginPercent", v[0])}
             />
-            <div className="flex justify-between text-[10px] text-orange-400 font-medium">
+            <div className="flex justify-between text-[10px] text-sky-400 font-medium">
               <span>0%</span><span>25%</span><span>50%</span>
             </div>
           </div>
           <div className="space-y-2">
-            <label style={M} className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">
+            <label style={M} className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">
               Discount (IDR dikurangkan)
             </label>
             <NumCell value={calc.discount} onChange={(v) => setField("discount", v)} placeholder="0" />
@@ -1780,9 +1780,9 @@ export default function Calculator() {
 
       {/* ── SUMMARY OUTPUT (private + umum modes) ── */}
       {quote && calc.mode !== "umroh_group" && (
-        <div className="rounded-xl border-2 border-orange-300 bg-white overflow-hidden">
+        <div className="rounded-xl border-2 border-sky-300 bg-white overflow-hidden">
           <button
-            className="w-full flex items-center justify-between px-3 md:px-5 py-3 md:py-4 bg-gradient-to-r from-orange-600 to-orange-500 text-white"
+            className="w-full flex items-center justify-between px-3 md:px-5 py-3 md:py-4 bg-gradient-to-r from-sky-600 to-sky-500 text-white"
             onClick={() => setShowSummary((v) => !v)}
           >
             <div className="flex items-center gap-2">
@@ -1860,16 +1860,16 @@ export default function Calculator() {
                   return best;
                 }, null);
                 return (
-                  <div className="rounded-xl border-2 border-orange-300 overflow-hidden bg-gradient-to-br from-orange-50/40 to-white">
-                    <div className="px-4 py-2.5 bg-gradient-to-r from-orange-100 to-amber-50 border-b-2 border-orange-300 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="rounded-xl border-2 border-sky-300 overflow-hidden bg-gradient-to-br from-sky-50/40 to-white">
+                    <div className="px-4 py-2.5 bg-gradient-to-r from-sky-100 to-sky-50 border-b-2 border-sky-300 flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-orange-700" />
-                        <p style={M} className="text-[11px] md:text-[12px] font-extrabold uppercase tracking-wider text-orange-800">
+                        <Users className="h-4 w-4 text-sky-700" />
+                        <p style={M} className="text-[11px] md:text-[12px] font-extrabold uppercase tracking-wider text-sky-800">
                           Matriks Harga Jual per Tier
                         </p>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p style={M} className="text-[10px] text-orange-700/80">
+                        <p style={M} className="text-[10px] text-sky-700/80">
                           Display: <span className="font-bold">{groupMatrix.displayCurrency}</span>
                           {" · "}Round: <span className="font-bold">{calc.groupSettings.roundTo > 0 ? formatCurrency(calc.groupSettings.roundTo) : "—"}</span>
                         </p>
@@ -1888,12 +1888,12 @@ export default function Calculator() {
                     <div className="overflow-x-auto">
                       <table className="w-full border-collapse text-[11px] md:text-[12px]">
                         <thead>
-                          <tr className="bg-orange-50/70">
-                            <th style={M} className="px-3 py-2 text-left font-extrabold text-orange-800 uppercase tracking-wide text-[10px] md:text-[11px]">Pax Tier</th>
+                          <tr className="bg-sky-50/70">
+                            <th style={M} className="px-3 py-2 text-left font-extrabold text-sky-800 uppercase tracking-wide text-[10px] md:text-[11px]">Pax Tier</th>
                             {rooms.map((r) => (
-                              <th key={r} style={M} className="px-3 py-2 text-right font-extrabold text-orange-800 uppercase tracking-wide text-[10px] md:text-[11px]">{r}</th>
+                              <th key={r} style={M} className="px-3 py-2 text-right font-extrabold text-sky-800 uppercase tracking-wide text-[10px] md:text-[11px]">{r}</th>
                             ))}
-                            <th style={M} className="px-3 py-2 text-right font-extrabold text-orange-800 uppercase tracking-wide text-[10px] md:text-[11px]">HPP/pax</th>
+                            <th style={M} className="px-3 py-2 text-right font-extrabold text-sky-800 uppercase tracking-wide text-[10px] md:text-[11px]">HPP/pax</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1902,7 +1902,7 @@ export default function Calculator() {
                             const isBest = bestTier?.label === tier.label;
                             return (
                               <tr key={tier.label} className={cn(
-                                "border-t border-orange-100 hover:bg-orange-50/40 transition-colors",
+                                "border-t border-sky-100 hover:bg-sky-50/40 transition-colors",
                                 isBest && "bg-emerald-50/40"
                               )}>
                                 <td style={M} className="px-3 py-2 font-bold text-slate-700">
@@ -1918,7 +1918,7 @@ export default function Calculator() {
                                 {rooms.map((r) => {
                                   const cell = cells.get(r);
                                   return (
-                                    <td key={r} style={M} className="px-3 py-2 text-right font-mono font-semibold text-orange-700">
+                                    <td key={r} style={M} className="px-3 py-2 text-right font-mono font-semibold text-sky-700">
                                       {cell ? formatCurrency(cell.perPaxDisplay) : "—"}
                                     </td>
                                   );
@@ -1933,19 +1933,19 @@ export default function Calculator() {
                       </table>
                     </div>
                     {/* Footer ringkasan komponen biaya */}
-                    <div className="px-4 py-2.5 bg-orange-50/40 border-t border-orange-200 grid grid-cols-2 md:grid-cols-3 gap-3 text-[10px] md:text-[11px]">
+                    <div className="px-4 py-2.5 bg-sky-50/40 border-t border-sky-200 grid grid-cols-2 md:grid-cols-3 gap-3 text-[10px] md:text-[11px]">
                       <div>
-                        <p style={M} className="text-orange-700/70 uppercase tracking-wide font-bold">Fixed Grup</p>
+                        <p style={M} className="text-sky-700/70 uppercase tracking-wide font-bold">Fixed Grup</p>
                         <p style={M} className="font-mono font-extrabold text-slate-800">{formatCurrency(groupMatrix.fixedTotalIDR)}</p>
                         <p style={M} className="text-slate-500">Transport + Staff + Komisi</p>
                       </div>
                       <div>
-                        <p style={M} className="text-orange-700/70 uppercase tracking-wide font-bold">Per-Pax Flat</p>
+                        <p style={M} className="text-sky-700/70 uppercase tracking-wide font-bold">Per-Pax Flat</p>
                         <p style={M} className="font-mono font-extrabold text-slate-800">{formatCurrency(groupMatrix.perPaxFlatIDR)}</p>
                         <p style={M} className="text-slate-500">Tiket + Visa + Destinasi + F&B</p>
                       </div>
                       <div className="col-span-2 md:col-span-1">
-                        <p style={M} className="text-orange-700/70 uppercase tracking-wide font-bold">Margin Setting</p>
+                        <p style={M} className="text-sky-700/70 uppercase tracking-wide font-bold">Margin Setting</p>
                         <p style={M} className="font-mono font-extrabold text-emerald-700">+{calc.marginPercent}%</p>
                         <p style={M} className="text-slate-500">
                           Rate SAR <span className="font-mono">{fmtSAR(1)}</span> · USD <span className="font-mono">{fmtUSD(1)}</span>
@@ -1957,10 +1957,10 @@ export default function Calculator() {
               })()}
 
               {/* Main summary table */}
-              <div className="overflow-x-auto rounded-xl border border-orange-200">
+              <div className="overflow-x-auto rounded-xl border border-sky-200">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr style={{ background: "linear-gradient(135deg,#fff7ed,#ffedd5)" }}>
+                    <tr style={{ background: "linear-gradient(135deg,#f0f9ff,#e0f2fe)" }}>
                       <Th>Komponen</Th>
                       <Th right>Total Grup (IDR)</Th>
                       <Th right>Per Pax (IDR)</Th>
@@ -1981,24 +1981,24 @@ export default function Calculator() {
                           { label: "👤 Staff / Guide", idr: quote.staffIDR, sar: quote.breakdown.filter(b => b.category === "Staff").reduce((s, b) => s + b.notesSAR, 0), usd: 0 },
                         ]
                     ).filter(r => r.idr > 0).map((r) => (
-                      <tr key={r.label} className="hover:bg-orange-50/20">
-                        <td style={M} className="px-3 py-2 text-[12px] border-b border-orange-50">{r.label}</td>
-                        <td style={M} className="px-3 py-2 text-[12px] font-semibold text-right border-b border-orange-50 font-mono">{formatCurrency(r.idr)}</td>
-                        <td style={M} className="px-3 py-2 text-[12px] text-right text-muted-foreground border-b border-orange-50 font-mono">{formatCurrency(r.idr / safePax)}</td>
-                        <td style={M} className="px-3 py-2 text-[11px] text-right text-slate-600 border-b border-orange-50 font-mono">{r.sar > 0 ? fmtSAR(r.sar) : "—"}</td>
-                        <td style={M} className="px-3 py-2 text-[11px] text-right text-slate-600 border-b border-orange-50 font-mono">{r.usd > 0 ? fmtUSD(r.usd) : "—"}</td>
+                      <tr key={r.label} className="hover:bg-sky-50/20">
+                        <td style={M} className="px-3 py-2 text-[12px] border-b border-sky-50">{r.label}</td>
+                        <td style={M} className="px-3 py-2 text-[12px] font-semibold text-right border-b border-sky-50 font-mono">{formatCurrency(r.idr)}</td>
+                        <td style={M} className="px-3 py-2 text-[12px] text-right text-muted-foreground border-b border-sky-50 font-mono">{formatCurrency(r.idr / safePax)}</td>
+                        <td style={M} className="px-3 py-2 text-[11px] text-right text-slate-600 border-b border-sky-50 font-mono">{r.sar > 0 ? fmtSAR(r.sar) : "—"}</td>
+                        <td style={M} className="px-3 py-2 text-[11px] text-right text-slate-600 border-b border-sky-50 font-mono">{r.usd > 0 ? fmtUSD(r.usd) : "—"}</td>
                       </tr>
                     ))}
 
                     {/* HPP row */}
-                    <tr style={{ background: "#fff7ed" }}>
-                      <td style={M} className="px-3 py-2.5 text-[12px] font-extrabold text-orange-800 border-t-2 border-orange-300">
+                    <tr style={{ background: "#f0f9ff" }}>
+                      <td style={M} className="px-3 py-2.5 text-[12px] font-extrabold text-sky-800 border-t-2 border-sky-300">
                         💰 TOTAL BUDGET (HPP)
                       </td>
-                      <td style={M} className="px-3 py-2.5 text-[13px] font-extrabold text-orange-800 text-right border-t-2 border-orange-300 font-mono">{formatCurrency(quote.hpp)}</td>
-                      <td style={M} className="px-3 py-2.5 text-[12px] font-bold text-orange-700 text-right border-t-2 border-orange-300 font-mono">{formatCurrency(quote.hpp / safePax)}</td>
-                      <td style={M} className="px-3 py-2.5 text-[11px] text-slate-600 text-right border-t-2 border-orange-300 font-mono">{fmtSAR(quote.totalSAR)}</td>
-                      <td style={M} className="px-3 py-2.5 text-[11px] text-slate-600 text-right border-t-2 border-orange-300 font-mono">{fmtUSD(quote.totalUSD)}</td>
+                      <td style={M} className="px-3 py-2.5 text-[13px] font-extrabold text-sky-800 text-right border-t-2 border-sky-300 font-mono">{formatCurrency(quote.hpp)}</td>
+                      <td style={M} className="px-3 py-2.5 text-[12px] font-bold text-sky-700 text-right border-t-2 border-sky-300 font-mono">{formatCurrency(quote.hpp / safePax)}</td>
+                      <td style={M} className="px-3 py-2.5 text-[11px] text-slate-600 text-right border-t-2 border-sky-300 font-mono">{fmtSAR(quote.totalSAR)}</td>
+                      <td style={M} className="px-3 py-2.5 text-[11px] text-slate-600 text-right border-t-2 border-sky-300 font-mono">{fmtUSD(quote.totalUSD)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2008,9 +2008,9 @@ export default function Calculator() {
               <div className="grid sm:grid-cols-2 gap-4">
 
                 {/* Left: price build-up */}
-                <div className="rounded-xl border border-orange-200 overflow-hidden">
-                  <div className="px-4 py-2.5 bg-orange-50 border-b border-orange-200">
-                    <p style={M} className="text-[10px] font-extrabold uppercase tracking-wider text-orange-700">Pembentukan Harga Jual</p>
+                <div className="rounded-xl border border-sky-200 overflow-hidden">
+                  <div className="px-4 py-2.5 bg-sky-50 border-b border-sky-200">
+                    <p style={M} className="text-[10px] font-extrabold uppercase tracking-wider text-sky-700">Pembentukan Harga Jual</p>
                   </div>
                   <div className="p-3 space-y-2">
                     {[
@@ -2026,12 +2026,12 @@ export default function Calculator() {
                         <p style={M} className={`text-[12px] font-bold font-mono text-right ${r.color}`}>{formatCurrency(r.value)}</p>
                       </div>
                     ))}
-                    <div className="border-t border-orange-200 pt-2 flex items-center justify-between">
+                    <div className="border-t border-sky-200 pt-2 flex items-center justify-between">
                       <div>
-                        <p style={M} className="text-[11px] font-bold text-orange-800">= Selling Price</p>
+                        <p style={M} className="text-[11px] font-bold text-sky-800">= Selling Price</p>
                         <p style={M} className="text-[10px] text-muted-foreground">{formatCurrency(quote.sellingPrice / safePax)}/pax</p>
                       </div>
-                      <p style={M} className="text-[13px] font-extrabold text-orange-700 font-mono">{formatCurrency(quote.sellingPrice)}</p>
+                      <p style={M} className="text-[13px] font-extrabold text-sky-700 font-mono">{formatCurrency(quote.sellingPrice)}</p>
                     </div>
                     {calc.discount > 0 && (
                       <div className="flex items-center justify-between">
@@ -2046,7 +2046,7 @@ export default function Calculator() {
                 <div className="space-y-3">
                   <div
                     className="rounded-xl p-4 text-white relative overflow-hidden"
-                    style={{ background: "linear-gradient(135deg,#ea580c,#f97316 60%,#fb923c)" }}
+                    style={{ background: "linear-gradient(135deg,#0284c7,#0ea5e9 60%,#38bdf8)" }}
                   >
                     <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 90% 10%,white 0%,transparent 55%)" }} />
                     <div className="relative">
@@ -2097,7 +2097,7 @@ export default function Calculator() {
                       onClick={handleCreateTrip}
                       disabled={creatingTrip || quote.finalPrice === 0}
                       variant="outline"
-                      className="w-full h-9 md:h-11 rounded-xl border-orange-300 text-orange-700 hover:bg-orange-50 text-sm"
+                      className="w-full h-9 md:h-11 rounded-xl border-sky-300 text-sky-700 hover:bg-sky-50 text-sm"
                       style={M}
                     >
                       <Plane className="h-3.5 w-3.5 mr-1.5" />
@@ -2114,14 +2114,14 @@ export default function Calculator() {
       <PdfPreviewDialog open={pdfOpen} onOpenChange={setPdfOpen} data={ighPdfData} />
 
       {/* ── FOOTER: Reset Default ── */}
-      <div className="flex items-center justify-between gap-3 pt-4 mt-2 border-t border-orange-100">
+      <div className="flex items-center justify-between gap-3 pt-4 mt-2 border-t border-sky-100">
         <p className="text-[11px] text-muted-foreground" style={M}>
           Selesai? Reset semua field buat mulai kalkulasi baru.
         </p>
         <Button
           onClick={handleReset}
           variant="outline"
-          className="h-9 px-4 rounded-xl border-orange-300 text-orange-700 hover:bg-orange-50 text-[12px] font-semibold"
+          className="h-9 px-4 rounded-xl border-sky-300 text-sky-700 hover:bg-sky-50 text-[12px] font-semibold"
           style={M}
         >
           <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
@@ -2143,7 +2143,7 @@ export default function Calculator() {
             <AlertDialogCancel>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmReset}
-              className="bg-orange-600 hover:bg-orange-700 text-white"
+              className="bg-sky-600 hover:bg-sky-700 text-white"
             >
               Ya, Reset
             </AlertDialogAction>
@@ -2174,8 +2174,8 @@ function PdfExportCard({
   creatingTrip: boolean;
 }) {
   return (
-    <div className="rounded-xl border-2 border-orange-300 bg-white overflow-hidden">
-      <div className="flex items-center justify-between px-3 md:px-5 py-3 md:py-4 bg-gradient-to-r from-orange-600 to-orange-500 text-white">
+    <div className="rounded-xl border-2 border-sky-300 bg-white overflow-hidden">
+      <div className="flex items-center justify-between px-3 md:px-5 py-3 md:py-4 bg-gradient-to-r from-sky-600 to-sky-500 text-white">
         <div className="flex items-center gap-2">
           <FileText className="h-3.5 w-3.5 md:h-4 md:w-4" />
           <span style={M} className="font-extrabold text-[12px] md:text-[14px] uppercase tracking-wide">
@@ -2196,13 +2196,13 @@ function PdfExportCard({
           </p>
         </div>
 
-        <div className="rounded-xl border border-orange-200 bg-gradient-to-br from-white to-orange-50/40 p-3">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-orange-700 mb-2" style={M}>
+        <div className="rounded-xl border border-sky-200 bg-gradient-to-br from-white to-sky-50/40 p-3">
+          <p className="text-[10px] font-extrabold uppercase tracking-wider text-sky-700 mb-2" style={M}>
             Pemetaan Data Template
           </p>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]" style={M}>
             <dt className="text-muted-foreground">Project Name</dt>
-            <dd className="font-bold text-orange-700 truncate">{data.projectName || "—"}</dd>
+            <dd className="font-bold text-sky-700 truncate">{data.projectName || "—"}</dd>
             <dt className="text-muted-foreground">Timeline</dt>
             <dd className="font-semibold truncate">{data.timeline || "—"}</dd>
             <dt className="text-muted-foreground">Customer</dt>
@@ -2222,9 +2222,9 @@ function PdfExportCard({
         </div>
 
         <div className="flex flex-col gap-3 md:w-64">
-          <div className="rounded-xl bg-orange-50 border border-orange-200 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-orange-700" style={M}>Harga Final</p>
-            <p className="text-[13px] font-extrabold text-orange-800 mt-0.5 font-mono" style={M}>
+          <div className="rounded-xl bg-sky-50 border border-sky-200 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-sky-700" style={M}>Harga Final</p>
+            <p className="text-[13px] font-extrabold text-sky-800 mt-0.5 font-mono" style={M}>
               {formatCurrency(finalPrice)}
             </p>
             <p className="text-[10px] text-muted-foreground mt-0.5" style={M}>
@@ -2242,7 +2242,7 @@ function PdfExportCard({
             onClick={onCreateTrip}
             disabled={creatingTrip || finalPrice === 0}
             variant="outline"
-            className="w-full h-10 md:h-11 rounded-xl border-orange-300 text-orange-700 hover:bg-orange-50 text-sm"
+            className="w-full h-10 md:h-11 rounded-xl border-sky-300 text-sky-700 hover:bg-sky-50 text-sm"
             style={M}
           >
             <Plane className="h-3.5 w-3.5 mr-1.5" />

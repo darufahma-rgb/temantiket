@@ -206,16 +206,16 @@ function AddJamaahDialog({ open, tripId, onClose }: { open: boolean; tripId: str
               </div>
 
               {/* OCR banner */}
-              <div className="flex-1 rounded-xl border border-orange-200 bg-orange-50/60 px-3 py-2 flex items-center justify-between gap-2">
+              <div className="flex-1 rounded-xl border border-sky-200 bg-sky-50/60 px-3 py-2 flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-[11.5px] font-semibold text-orange-800">Scan Paspor OCR</p>
-                  <p className="text-[10px] text-orange-700/80 leading-tight">Isi otomatis dari foto MRZ</p>
+                  <p className="text-[11.5px] font-semibold text-sky-800">Scan Paspor OCR</p>
+                  <p className="text-[10px] text-sky-700/80 leading-tight">Isi otomatis dari foto MRZ</p>
                 </div>
                 <input ref={ocrRef} type="file" accept="image/*" className="hidden" onChange={handleOcrScan} />
                 <button type="button"
                   onClick={() => ocrRef.current?.click()}
                   disabled={ocrLoading}
-                  className="h-10 sm:h-8 min-w-[64px] px-3 rounded-lg text-[12px] sm:text-[11px] font-semibold border border-orange-200 bg-white text-orange-700 hover:bg-orange-50 active:bg-orange-100 transition-colors disabled:opacity-60 flex items-center gap-1.5 shrink-0 touch-manipulation"
+                  className="h-10 sm:h-8 min-w-[64px] px-3 rounded-lg text-[12px] sm:text-[11px] font-semibold border border-sky-200 bg-white text-sky-700 hover:bg-sky-50 active:bg-sky-100 transition-colors disabled:opacity-60 flex items-center gap-1.5 shrink-0 touch-manipulation"
                 >
                   <ScanLine strokeWidth={1.5} className="h-4 w-4 sm:h-3 sm:w-3" />
                   {ocrLoading ? (ocrProgress < 35 ? "Memuat…" : `${ocrProgress}%`) : "Scan"}
@@ -335,7 +335,7 @@ function AddJamaahDialog({ open, tripId, onClose }: { open: boolean; tripId: str
             </button>
             <button type="submit" disabled={loading}
               className="flex-1 h-9 rounded-xl text-[12.5px] font-bold text-white transition-all disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
+              style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}>
               {loading ? "Menyimpan…" : "Tambah Jamaah"}
             </button>
           </div>
@@ -466,7 +466,7 @@ function JamaahPreviewDialog({
                     onClick={handleSave}
                     disabled={saving}
                     className="h-8 px-3 rounded-xl text-[11.5px] font-bold text-white flex items-center gap-1.5 disabled:opacity-60"
-                    style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}
+                    style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}
                   >
                     <Save className="h-3 w-3" />
                     {saving ? "Menyimpan…" : "Simpan"}
@@ -532,18 +532,18 @@ function JamaahPreviewDialog({
 
               {/* Passport number — prominent */}
               {person.passportNumber && (
-                <div className="flex items-center gap-3 rounded-xl bg-orange-50 border border-orange-200 px-3.5 py-2.5">
-                  <ShieldCheck className="h-4 w-4 text-orange-500 shrink-0" />
+                <div className="flex items-center gap-3 rounded-xl bg-sky-50 border border-sky-200 px-3.5 py-2.5">
+                  <ShieldCheck className="h-4 w-4 text-sky-500 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-orange-500 font-semibold uppercase tracking-wide">No. Paspor</p>
-                    <p className="font-mono font-bold text-[15px] text-orange-800 tracking-widest">{person.passportNumber}</p>
+                    <p className="text-[10px] text-sky-500 font-semibold uppercase tracking-wide">No. Paspor</p>
+                    <p className="font-mono font-bold text-[15px] text-sky-800 tracking-widest">{person.passportNumber}</p>
                   </div>
                   <button
                     onClick={copyPassport}
-                    className="h-7 w-7 rounded-lg hover:bg-orange-100 flex items-center justify-center transition-colors shrink-0"
+                    className="h-7 w-7 rounded-lg hover:bg-sky-100 flex items-center justify-center transition-colors shrink-0"
                     title="Salin nomor paspor"
                   >
-                    {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-orange-400" />}
+                    {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-sky-400" />}
                   </button>
                 </div>
               )}
@@ -581,7 +581,7 @@ function JamaahPreviewDialog({
                             w.document.write(`<iframe src="${doc.dataUrl}" style="width:100%;height:100vh;border:none;"></iframe>`);
                           }
                         }}
-                        className="relative rounded-xl overflow-hidden border border-[hsl(var(--border))] hover:border-orange-300 transition-all group"
+                        className="relative rounded-xl overflow-hidden border border-[hsl(var(--border))] hover:border-sky-300 transition-all group"
                       >
                         {doc.fileType === "image" ? (
                           <img src={doc.dataUrl} alt={doc.label} className="h-20 w-20 object-cover" />
@@ -686,7 +686,7 @@ function JamaahCard({ jamaah, tripId, onDelete, onPreview }: { jamaah: Jamaah; t
       {/* Action buttons (edit + delete) */}
       <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
         <button
-          className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-orange-50 hover:text-[hsl(var(--primary))] text-[hsl(var(--muted-foreground))] transition-colors"
+          className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-sky-50 hover:text-[hsl(var(--primary))] text-[hsl(var(--muted-foreground))] transition-colors"
           onClick={(e) => { e.stopPropagation(); navigate(`/paket/${tripId}/jamaah/${jamaah.id}`); }}
           title="Edit data jamaah"
           data-testid={`btn-edit-jamaah-${jamaah.id}`}
@@ -772,7 +772,7 @@ export default function TripDetail() {
         </div>
         <div className="flex gap-2 shrink-0">
           <Button onClick={() => setFlyerOpen(true)} variant="outline"
-            className="h-9 px-3 text-sm rounded-xl border-orange-200 text-orange-700 hover:bg-orange-50">
+            className="h-9 px-3 text-sm rounded-xl border-sky-200 text-sky-700 hover:bg-sky-50">
             <Megaphone strokeWidth={1.5} className="h-4 w-4 mr-1.5" /> Flyer
           </Button>
           <Button onClick={() => setAddOpen(true)} disabled={quotaFull}

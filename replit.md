@@ -292,3 +292,18 @@ Audit-driven fixes across bulk import, PDF tuner, and asset caching:
 - **Payment badge**: `PaymentStatusPill({ status, size })` — re-used dari drawer ke `JamaahMiniCard` (size="xs"). Color map `PAYMENT_STATUS_STYLES`: Lunas=emerald, DP=amber, Belum Lunas=slate (icons Cloud/CircleDollarSign/AlertCircle).
 - **JamaahMiniCard** (`src/pages/PackageDetail.tsx` ~line 564): jadi clickable (role=button + Enter/Space keyboard support), tombol delete pakai `e.stopPropagation()`. Klik → buka `JamaahDetailDrawer` via `setDetailJamaahId(id)` state. `detailJamaah` pakai `useMemo` filter dari `jamaah` array — drawer auto-refresh saat data di-update di store (live update no manual refetch).
 - **Storage**: gak ada bucket baru. Reuse `jamaah-photos` (pas foto) + `jamaah-docs` (paspor + dokumen tambahan) yg udah ada dari OCR flow, semua agency-scoped via `{agency_id}/{file}` path.
+
+## Brand Color — Sky Blue (Apr 2026, post-rebrand)
+Primary brand swap dari orange → sky blue (#088BC1) berdasarkan poster Temantiket.
+- **Tailwind classes**: `orange-{50..950}` → `sky-{50..950}` di seluruh `src/**/*.{tsx,ts}` & `src/index.css` (dark mode overrides).
+- **CSS HSL tokens** di `src/index.css`:
+  - Light: `--primary: 198 92% 39%` (sebelumnya `27 91% 54%`).
+  - Dark:  `--primary: 198 92% 42%` (sebelumnya `24 95% 53%`).
+  - Gradient secondary stop: `205 90% 50%` (sebelumnya orange-amber range).
+- **Hex inline gradients** (Login, Dashboard, ProgressTracker, dll): `#f97316 → #0ea5e9`, `#ea580c → #0284c7`, `#fb923c → #38bdf8`, dst — full sky-* family.
+- **PWA manifest** (`vite.config.ts`): `theme_color: "#0ea5e9"`, `background_color: "#f0f9ff"`. Tag `<meta theme-color>` di `index.html` dan `public/offline.html` ikut di-update.
+- **PDF brand color** (`src/lib/generateIghPdf.ts`): konstanta lama `ORANGE` (#F28E34) di-rename `BRAND_BLUE` (#088BC1). Semua field PDF (jamaah, hotel, harga) sekarang render sky blue.
+- **Splash bg image** (`attached_assets/image_1776663921386.png`): di-replace dengan sky-blue gradient (1920x1920, hex #0a4a6b → #088BC1). Login dan SplashScreen pakai bg ini.
+- **Maskable PWA icon** (`public/logo-igh-tour-maskable.png`): regenerated 512x512 dengan bg sky #088BC1 + logo putih centered (safe zone 80%).
+- **Amber semantic** (warning, status "Sebagian", MRZ checksum fail) sengaja dibiarkan amber — ini status indicator, bukan brand. Cuma amber yang dulu paired dengan orange di gradient brand (Calculator header, DashboardLayout pill, QuotationMetaSection header, GroupMatrixSection header) di-flip jadi sky.
+- **Packages.tsx progress bar** semantic: 90%+ emerald (full), 60-89% sky (good), <60% amber (low) — progres gauge biar tetep informatif.

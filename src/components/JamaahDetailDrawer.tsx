@@ -667,7 +667,7 @@ export function JamaahDetailDrawer({ jamaah, open, onOpenChange }: Props) {
             onClick={onSave}
             disabled={!dirty || saving}
             className="flex-1 h-9 rounded-xl text-[12.5px] font-bold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
-            style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}
+            style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}
           >
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {saving ? "Menyimpan…" : dirty ? "Simpan Perubahan" : "Tersimpan"}
@@ -740,7 +740,7 @@ function UploadButton({
         "h-8 px-3 rounded-lg text-[11px] font-bold text-white transition-all inline-flex items-center justify-center gap-1.5 disabled:opacity-60",
         fullWidth && "w-full",
       )}
-      style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}
+      style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}
     >
       {loading ? (
         <>
