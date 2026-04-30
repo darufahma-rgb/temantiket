@@ -3,7 +3,24 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LogIn, AlertCircle, KeyRound } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { AnimatePresence, motion } from "framer-motion";
-import splashBackground from "@assets/image_1776663921386.png";
+import splashBackground from "@assets/image_1777530688079.png";
+
+// Pre-computed sparkle positions — di-define di luar komponen supaya gak
+// re-randomize tiap render (yg bikin posisi kelihatan "loncat" pas state berubah).
+const SPARKLES = Array.from({ length: 22 }, (_, i) => {
+  // Determinisitik via seed sederhana — biar konsisten antar re-render.
+  const seed = (i + 1) * 9301 + 49297;
+  const r1 = ((seed * 1103515245) % 1000) / 1000;
+  const r2 = ((seed * 214013) % 1000) / 1000;
+  const r3 = ((seed * 25214903917) % 1000) / 1000;
+  return {
+    x: r1 * 100,
+    y: r2 * 100,
+    size: 1.5 + r3 * 2.5,
+    dur: 3 + r1 * 4,
+    delay: r2 * 5,
+  };
+});
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -55,14 +72,99 @@ export default function Login() {
   return (
     <div
       className="h-fill relative flex items-center justify-center overflow-hidden"
-      style={{
-        backgroundImage: `url(${splashBackground})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundColor: "#190d23",
-      }}
+      style={{ backgroundColor: "#020617" }}
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/25 to-black/65" />
+      {/* Animated wallpaper — Ken Burns slow zoom + drift biar gak statis */}
+      <motion.div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `url(${splashBackground})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          willChange: "transform",
+        }}
+        initial={{ scale: 1.08, x: -8, y: -4 }}
+        animate={{ scale: 1.18, x: 8, y: 4 }}
+        transition={{
+          duration: 18,
+          ease: "easeInOut",
+          repeat: Infinity,
+          repeatType: "reverse",
+        }}
+      />
+
+      {/* Vignette gradient supaya teks tetap kebaca */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/70" />
+
+      {/* Aurora glow blob 1 — pulse perlahan */}
+      <motion.div
+        className="pointer-events-none absolute -top-32 -left-32 h-[420px] w-[420px] rounded-full"
+        style={{
+          background: "radial-gradient(circle, rgba(56,189,248,0.35) 0%, rgba(56,189,248,0) 70%)",
+          filter: "blur(40px)",
+        }}
+        animate={{
+          scale: [1, 1.25, 1],
+          opacity: [0.6, 0.95, 0.6],
+          x: [0, 30, 0],
+          y: [0, 20, 0],
+        }}
+        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+      />
+
+      {/* Aurora glow blob 2 — counter-pulse, fase beda biar gak sinkron */}
+      <motion.div
+        className="pointer-events-none absolute -bottom-40 -right-24 h-[480px] w-[480px] rounded-full"
+        style={{
+          background: "radial-gradient(circle, rgba(37,99,235,0.4) 0%, rgba(37,99,235,0) 70%)",
+          filter: "blur(50px)",
+        }}
+        animate={{
+          scale: [1.1, 0.9, 1.1],
+          opacity: [0.5, 0.85, 0.5],
+          x: [0, -25, 0],
+          y: [0, -15, 0],
+        }}
+        transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+      />
+
+      {/* Sparkle layer — titik-titik kecil yg mengambang */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        {SPARKLES.map((s, i) => (
+          <motion.span
+            key={i}
+            className="absolute rounded-full bg-white/70"
+            style={{
+              left: `${s.x}%`,
+              top: `${s.y}%`,
+              width: s.size,
+              height: s.size,
+              boxShadow: "0 0 8px rgba(255,255,255,0.7)",
+            }}
+            animate={{
+              y: [0, -18, 0],
+              opacity: [0.15, 0.85, 0.15],
+            }}
+            transition={{
+              duration: s.dur,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: s.delay,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Shimmer sweep — garis cahaya diagonal yg melintas lambat */}
+      <motion.div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(110deg, transparent 40%, rgba(125,211,252,0.08) 50%, transparent 60%)",
+        }}
+        animate={{ backgroundPosition: ["-200% 0%", "200% 0%"] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+      />
       <motion.div
         className="relative z-10 flex w-full max-w-sm flex-col items-center px-6"
         initial={{ opacity: 0, y: -16 }}
