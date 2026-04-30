@@ -7,9 +7,11 @@
 --   untuk MENGUBAH data lewat RPC ini.
 --
 -- Slug format:
---   `[lowercase first-name][memberIndex]`  → contoh: `danang10`
+--   `[lowercase first-name]-[memberIndex 4-digit pad]`
+--   → contoh: `danang-0010`  (firstname "Danang", memberIndex 10)
 --   - first-name = kata pertama dari clients.name, lowercase, alfanumerik aja
 --   - memberIndex = posisi kronologis client di agency (1-based, oldest=1)
+--   - Format lama tanpa dash (`danang10`) juga di-support utk backward compat.
 --
 -- Keamanan:
 --   - SECURITY DEFINER → bypass RLS (controlled), tapi hanya query SELECT
@@ -42,9 +44,14 @@ begin
     return json_build_object('error', 'invalid_slug');
   end if;
 
-  -- Pisah trailing digits (memberIndex) vs leading name prefix
+  -- Format baru: `firstname-NNNN` → split di tanda dash terakhir.
+  -- Format lama: `firstnameNNNN`  → trailing digits jadi index, sisanya name.
+  -- Tanda dash di-strip (jadi name prefix gak boleh ngandung dash, sesuai builder).
   v_digits      := substring(p_slug from '([0-9]+)$');
-  v_name_prefix := lower(regexp_replace(substring(p_slug from '^(.*?)[0-9]+$'), '[^a-zA-Z0-9]', '', 'g'));
+  v_name_prefix := lower(regexp_replace(
+                          substring(p_slug from '^(.*?)[-]?[0-9]+$'),
+                          '[^a-zA-Z0-9]', '', 'g'
+                        ));
 
   if v_digits is null or v_name_prefix is null or length(v_name_prefix) = 0 then
     return json_build_object('error', 'invalid_slug');

@@ -33,16 +33,29 @@
     <link rel="icon" type="image/png" href="/logo-igh-tour.png" />
     <link rel="shortcut icon" href="/logo-igh-tour.png" />
 
-    <!-- Open Graph -->
-    <meta property="og:title" content="Temantiket" />
-    <meta property="og:description" content="Aplikasi manajemen trip, jamaah, paket, kalkulasi biaya, dan dokumen untuk Umrah dan Haji." />
+    <!-- Open Graph
+         Note: SPA — scrapers WhatsApp/FB/Twitter tidak eksekusi JS, jadi mereka
+         baca tags STATIS dari file ini. Tags di-set generic biar sharing link
+         /m/* (Member Card publik) nampilin thumbnail kartu, sambil sharing root
+         tetap appropriate. Pakai absolute URL ke domain produksi supaya
+         scraper bisa ambil image. -->
+    <meta property="og:site_name" content="Temantiket" />
+    <meta property="og:title" content="Temantiket Member Card" />
+    <meta property="og:description" content="Cek poin & riwayat transaksi member kamu di Temantiket. Pantau stamp sampai penuh untuk reward spesial. ✈️" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/logo-igh-tour.png" />
+    <meta property="og:image" content="https://temantiket.id/og-member-card.png" />
+    <meta property="og:image:secure_url" content="https://temantiket.id/og-member-card.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="2864" />
+    <meta property="og:image:height" content="3579" />
+    <meta property="og:image:alt" content="Temantiket Member Card" />
     <meta property="og:locale" content="id_ID" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@temantiket" />
-    <meta name="twitter:image" content="/logo-igh-tour.png" />
+    <meta name="twitter:title" content="Temantiket Member Card" />
+    <meta name="twitter:description" content="Cek poin & riwayat transaksi member kamu di Temantiket." />
+    <meta name="twitter:image" content="https://temantiket.id/og-member-card.png" />
 
     <!-- Preconnect for fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

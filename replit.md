@@ -6,15 +6,24 @@ Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn
 Member Card sekarang bisa di-share sebagai marketing tool — klien dapat link publik buat cek poin sendiri kapanpun.
 
 - **Public Page** (`src/pages/PublicMemberCard.tsx`, route `/m/:slug`):
-  - Mobile-first, anon-accessible. Slug format: `[firstname-lowercase][memberIndex]` (mis. `/m/danang10`).
+  - Mobile-first, anon-accessible. Slug format: `firstname-NNNN` 4-digit pad → mis. `/m/danang-0010` (personal tapi susah ditebak random).
   - Render `<MemberCard readOnly>` — flip-card masih jalan, tapi tombol Download/Share disembunyiin.
-  - State: loading / error (`not_found` / `invalid_slug` / `network`) / sukses dgn CTA "pantau stamp lo sampai penuh".
+  - **Stamp History list** — daftar transaksi sukses (type label + tanggal + status badge), terbaru di atas, max 16. Pakai emoji icon (✈️🕋🔺📘🏙️) + label readable ("Tiket Pesawat", "Visa Transit Dubai", dll).
+  - **CTA "Pesan Tiket/Visa Lagi"** — tombol hijau gede di bawah, buka `wa.me/<adminWA>?text=...` ke admin Temantiket (default `+6281311506025` dari `loadIghAdminSettings`). Pesan auto-prefilled dgn nama & member ID klien.
+  - **Zero sensitive data** — tidak nampilin phone/email/paspor/alamat/harga. Footer tegas: "Read-Only · Tidak ada data sensitif yang ditampilkan."
+  - State: loading / error (`not_found` / `invalid_slug` / `network`) / sukses dgn dynamic `document.title`.
 
 - **Public RPC** (`supabase/migrations/2026_04_30_member_card_rpc.sql`):
-  - `public.get_member_card(p_slug text)` — `SECURITY DEFINER`, `stable`. Parses slug → `row_number() over (partition by agency_id order by created_at)` → match name prefix.
+  - `public.get_member_card(p_slug text)` — `SECURITY DEFINER`, `stable`. Parses slug (support both `firstname-NNNN` baru & legacy `firstnameNNNN`) → `row_number() over (partition by agency_id order by created_at)` → match name prefix.
   - Projection minimal: `client.{name, createdAt, memberIndex}` + `orders[].{type, status, createdAt, transitType}`. Tidak expose phone/email/paspor/harga.
   - `revoke all from public; grant execute to anon, authenticated` — read-only by design.
   - **User wajib apply migration di Supabase SQL Editor** sebelum halaman publik bisa fetch data.
+
+- **OG / Social Share Preview** (`index.html`):
+  - Static OG meta tags pointing ke `/og-member-card.png` (copy polosan member card front, 2864×3579 PNG di `public/`).
+  - Title: "Temantiket Member Card", desc: "Cek poin & riwayat transaksi member kamu di Temantiket."
+  - Karena SPA + scrapers (WA/FB) gak eksekusi JS, tags ini static & generic — semua link `/m/*` di-share di WhatsApp bakal nampilin thumbnail kartu Temantiket. (Untuk per-slug personalized preview, butuh SSR/edge function — out of scope.)
+  - Absolute URL pakai `https://temantiket.id` per domain produksi user.
 
 - **WhatsApp Share Engine** (`src/components/MemberCard.tsx`):
   - Tombol "Share ke WhatsApp" (hijau #25D366, muncul kalau prop `publicUrl` di-set).

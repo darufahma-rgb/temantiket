@@ -1,9 +1,10 @@
 /**
  * Helper untuk Member Card Public Page (/m/[slug]).
  *
- * Slug format: `[lowercase-firstname][memberIndex]`
- *   - Contoh: "Danang Pratama" + memberIndex 10 → "danang10"
- *   - Hanya alfanumerik (non-ASCII / spasi / tanda baca dibuang).
+ * Slug format: `[lowercase-firstname]-[memberIndex 4-digit pad]`
+ *   - Contoh: "Danang Pratama" + memberIndex 10 → "danang-0010"
+ *   - Personal (mengandung nama klien) tapi 4-digit pad bikin susah ditebak random.
+ *   - Hanya alfanumerik (non-ASCII / spasi / tanda baca dibuang dari name).
  *   - Server-side parsing identik di RPC `get_member_card(p_slug)`.
  */
 
@@ -14,7 +15,8 @@ export function buildMemberSlug(name: string, memberIndex: number): string {
     .normalize("NFKD")
     .replace(/[^a-z0-9]/g, "");
   const fallback = safe.length > 0 ? safe : "member";
-  return `${fallback}${Math.max(1, Math.floor(memberIndex))}`;
+  const idx = Math.max(1, Math.floor(memberIndex));
+  return `${fallback}-${String(idx).padStart(4, "0")}`;
 }
 
 /** Absolute URL ke halaman publik. SSR-safe (return relative kalau no window). */
