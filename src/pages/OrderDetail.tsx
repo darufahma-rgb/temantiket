@@ -17,6 +17,7 @@ import {
   ORDER_STATUSES, ORDER_TYPES, ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI,
   type Order, type OrderStatus, type OrderType,
 } from "@/features/orders/ordersRepo";
+import { FlightOrderEditor, type FlightMeta } from "@/features/orders/FlightOrderEditor";
 import { toast } from "sonner";
 
 const fmtIDR = (v: number) =>
@@ -64,7 +65,8 @@ export default function OrderDetail() {
       draft.status !== order.status ||
       Number(draft.totalPrice ?? 0) !== Number(order.totalPrice) ||
       (draft.clientId ?? null) !== (order.clientId ?? null) ||
-      (draft.notes ?? null) !== (order.notes ?? null)
+      (draft.notes ?? null) !== (order.notes ?? null) ||
+      JSON.stringify(draft.metadata ?? {}) !== JSON.stringify(order.metadata ?? {})
     );
   }, [draft, order]);
 
@@ -92,6 +94,7 @@ export default function OrderDetail() {
         totalPrice: Number(draft.totalPrice ?? 0),
         clientId: (draft.clientId as string | null) ?? null,
         notes: (draft.notes as string | null) ?? null,
+        metadata: (draft.metadata as Record<string, unknown>) ?? order.metadata,
       });
       const fresh = await getOneOrder(order.id);
       if (fresh) { setOrder(fresh); setDraft(fresh); }
@@ -128,7 +131,26 @@ export default function OrderDetail() {
         </div>
       </div>
 
-      {/* Editable form */}
+      {/* Flight-specific editor (Magic Parser, route, harga, passport sync) */}
+      {order.type === "flight" && (
+        <FlightOrderEditor
+          value={(draft.metadata as FlightMeta) ?? (order.metadata as FlightMeta) ?? {}}
+          clientId={(draft.clientId ?? order.clientId) as string | null}
+          onChange={(meta, total, clientId) => {
+            setDraft((d) => ({
+              ...d,
+              metadata: meta as Record<string, unknown>,
+              totalPrice: total,
+              clientId,
+            }));
+          }}
+          onAutoTitle={(t) => {
+            setDraft((d) => ({ ...d, title: d.title?.trim() ? d.title : t }));
+          }}
+        />
+      )}
+
+      {/* Generic editable form */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Field label="Judul">
           <Input value={draft.title ?? ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
