@@ -2,6 +2,34 @@
 
 Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn/ui.
 
+## Order Hub — Universal Orders + Independent Clients (Apr 30, 2026)
+Refactor: app sekarang punya jalur "Order Hub" pararel di samping flow Umrah lama (Calculator → Packages → Trips → Jamaah Manifest tetap utuh, tidak ada CRUD lama yang dihapus).
+
+- **Schema baru** (`supabase/migrations/2026_04_30_clients_orders.sql`, juga di-mirror ke `supabase/schema.sql`):
+  - `clients` table — kontak independen per-agency (uuid PK, multi-tenant + RLS via `is_member`). Punya kolom `legacy_jamaah_id` utk traceability.
+  - `orders` table — universal entity. CHECK constraint `type ∈ {umrah, flight, visa_voa, visa_student}`, `status ∈ {Draft, Confirmed, Paid, Completed, Cancelled}`. Kolom `total_price`, `currency`, `metadata jsonb`, plus optional FK `client_id`, `trip_id`, `package_id`, `jamaah_id` utk integrasi balik ke flow umrah.
+  - **Backfill non-destructive**: setiap row `jamaah` lama → 1 client (`legacy_jamaah_id` = jamaah.id) + 1 umrah order linked ke `jamaah_id` + (`trip_id` ATAU `package_id` tergantung mana yang match — `jamaah.tripId` di codebase lama dipake utk dua hal).
+  - Idempotent (re-run aman). Realtime publication ditambah utk `clients` + `orders`.
+
+- **Frontend layer**:
+  - Repos: `src/features/clients/clientsRepo.ts`, `src/features/orders/ordersRepo.ts` — pakai pola repo existing (Supabase + persisted local cache via `makePersistedCache`, write-through, fall-back ke cache saat network error).
+  - Stores: `src/store/clientsStore.ts`, `src/store/ordersStore.ts` (zustand, sama pola dgn `tripsStore`).
+  - Pages: `src/pages/Clients.tsx` (list + detail dgn `:id` param), `src/pages/Orders.tsx` (list dgn type filter `/orders/:type` + `?clientId=` query), `src/pages/OrderDetail.tsx` (edit form + linked entities + metadata viewer).
+  - Routes: `/clients`, `/clients/:id`, `/orders`, `/orders/:type`, `/orders/detail/:id`.
+  - Sidebar (`AppSidebar.tsx`): grup baru "Order Hub" berisi **Klien** + **Orders** (collapsible — Umrah & Haji / Tiket Pesawat / Visa Mesir). Group lama ("Operasional" + "Tools") tetap utuh dgn Calculator/Paket Trip/Progress/Catatan/Export.
+  - i18n: nav keys baru (`nav_clients`, `nav_orders`, `nav_orders_umrah`, `nav_orders_flight`, `nav_orders_visa`, `nav_group_hub`) di-translate ke ID/EN/AR.
+
+- **Calculator → Order integration** (`src/pages/Calculator.tsx`):
+  - Tombol baru "**Simpan ke Order**" (amber) di samping "Buat Trip". Tidak mengganggu flow lama; ini jalur paralel ke Order Hub.
+  - `handleCreateOrder()` bikin order `type='umrah'` dgn `total_price = quote.finalPrice` + `metadata` berisi snapshot lengkap (quote breakdown, hpp, sellingPrice, marginIDR, plus seluruh row kalkulator: hotels/transports/tickets/visas/destinations/fnbs/staffs/generalCosts/commissionFee/marginPercent/discount/groupSettings + customerName/dateRange).
+  - User bisa buka `/orders/detail/<id>` utk lihat metadata JSON (collapsible viewer).
+
+- **Realtime sync** (`src/lib/supabaseRealtime.ts`): channel `igh-tour-sync` sekarang juga subscribe ke `clients` + `orders` → auto-refresh store dari device lain.
+
+- **Bootstrap**: `App.tsx` `StoreBootstrap` panggil `fetchClients()` + `fetchOrders()` setelah login.
+
+- **Migration steps utk user**: buka Supabase SQL Editor → paste isi `supabase/migrations/2026_04_30_clients_orders.sql` → RUN. Backfill jalan otomatis (1 jamaah lama = 1 client + 1 umrah order).
+
 ## Pricing Matrix — Granular per-room rates (Apr 2026)
 Pricing logic untuk Umrah grup di-rework supaya cocok dengan kondisi hotel real (Quad/Triple/Double punya rate beda).
 - **`HotelRow`** (`src/features/calculator/pricing.ts`): tambah field opsional `pricePerNightTriple`, `pricePerNightDouble`, `useSupplement`, `supplementTriple`, `supplementDouble`. Field lama `pricePerNight` = base/Quad. Helper `resolveRoomRate(hotel, room)` resolve rate per kamar — pake rate eksplisit kalau ada, fallback ke `base + supplement` kalau `useSupplement`, terakhir fallback ke base.

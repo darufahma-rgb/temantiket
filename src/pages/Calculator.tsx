@@ -21,6 +21,7 @@ import {
 import type { IghPdfData } from "@/lib/generateIghPdf";
 import { usePackagesStore } from "@/store/packagesStore";
 import type { PackageDraft } from "@/features/packages/packagesRepo";
+import { useOrdersStore } from "@/store/ordersStore";
 import {
   computeProfessionalQuote,
   computeGeneralQuote,
@@ -505,10 +506,12 @@ export default function Calculator() {
   const [showSummary, setShowSummary] = useState(true);
   const [pdfOpen, setPdfOpen] = useState(false);
   const [creatingTrip, setCreatingTrip] = useState(false);
+  const [creatingOrder, setCreatingOrder] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
 
   const navigate = useNavigate();
   const createPackage = usePackagesStore((s) => s.create);
+  const addOrder = useOrdersStore((s) => s.addOrder);
 
   function update(value: CalcState) {
     setCalc(value);
@@ -1045,6 +1048,94 @@ export default function Calculator() {
       toast.error("Gagal membuat Paket Trip", { description: msg });
     } finally {
       setCreatingTrip(false);
+    }
+  }
+
+  // ── Save kalkulasi sbg Order (type=umrah) ────────────────────────────────
+  // Gak ngubah handleCreateTrip — ini jalur baru paralel buat Order Hub.
+  // Order yg dibuat berisi snapshot lengkap kalkulator di metadata, jadi
+  // kalo user mau revisit nanti tinggal buka /orders/detail/<id>.
+  async function handleCreateOrder() {
+    if (creatingOrder) return;
+    setCreatingOrder(true);
+    try {
+      const name =
+        calc.title?.trim() ||
+        calc.packageName?.trim() ||
+        (calc.customerName ? `Umroh ${calc.customerName}` : "Order Umrah");
+
+      const destination =
+        calc.destination?.trim() ||
+        [calc.hotelMakkahName, calc.hotelMadinahName].filter(Boolean).join(" & ").trim() ||
+        "Makkah & Madinah";
+
+      // Snapshot calc rows + breakdown quote → metadata jsonb
+      const metadata: Record<string, unknown> = {
+        source: "calculator",
+        savedAt: new Date().toISOString(),
+        packageName: name,
+        destination,
+        pax: Math.max(1, calc.pax || 1),
+        customerName: calc.customerName ?? null,
+        dateRange: calc.dateRange ?? null,
+        // Hasil quote
+        quote: {
+          hpp: Math.round(quote.hpp || 0),
+          sellingPrice: Math.round(quote.sellingPrice || 0),
+          finalPrice: Math.round(quote.finalPrice || 0),
+          marginIDR: Math.round(quote.marginIDR || 0),
+          netProfit: Math.round(quote.netProfit || 0),
+          breakdown: quote.breakdown ?? [],
+        },
+        // Snapshot rows (sama persis kayak yg dipake handleCreateTrip)
+        calcRows: {
+          mode: calc.mode,
+          packageName: name,
+          destination,
+          pax: Math.max(1, calc.pax || 1),
+          hotels: calc.hotels,
+          transports: calc.transports,
+          tickets: calc.tickets,
+          visas: calc.visas,
+          destinations: calc.destinations,
+          fnbs: calc.fnbs,
+          staffs: calc.staffs,
+          generalCosts: calc.generalCosts,
+          commissionFee: calc.commissionFee,
+          marginPercent: calc.marginPercent,
+          discount: calc.discount,
+          groupSettings: calc.groupSettings,
+        },
+      };
+
+      const order = await addOrder({
+        clientId: null,
+        type: "umrah",
+        status: "Draft",
+        title: name,
+        totalPrice: Math.round(quote.finalPrice || 0),
+        currency: "IDR",
+        metadata,
+        tripId: null,
+        packageId: null,
+        jamaahId: null,
+        notes: null,
+      });
+
+      toast.success("Order Umrah dibuat!", {
+        description: `${name} · ${formatCurrency(quote.finalPrice)}`,
+        action: {
+          label: "Buka Order",
+          onClick: () => navigate(`/orders/detail/${order.id}`),
+        },
+      });
+    } catch (err) {
+      console.error("create order failed", err);
+      toast.error("Gagal simpan ke Order", {
+        description: err instanceof Error ? err.message : "Coba lagi.",
+      });
+    } finally {
+      setCreatingOrder(false);
     }
   }
 
@@ -2084,14 +2175,14 @@ export default function Calculator() {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <Button
                       onClick={() => setPdfOpen(true)}
                       disabled={quote.finalPrice === 0}
                       className="w-full h-9 md:h-11 rounded-xl gradient-primary text-white text-sm"
                       style={M}
                     >
-                      <FileText className="h-3.5 w-3.5 mr-1.5" /> Lihat & Ekspor PDF
+                      <FileText className="h-3.5 w-3.5 mr-1.5" /> Ekspor PDF
                     </Button>
                     <Button
                       onClick={handleCreateTrip}
@@ -2102,6 +2193,17 @@ export default function Calculator() {
                     >
                       <Plane className="h-3.5 w-3.5 mr-1.5" />
                       {creatingTrip ? "Membuat Trip…" : "Buat Trip"}
+                    </Button>
+                    <Button
+                      onClick={handleCreateOrder}
+                      disabled={creatingOrder || quote.finalPrice === 0}
+                      variant="outline"
+                      className="w-full h-9 md:h-11 rounded-xl border-amber-300 text-amber-700 hover:bg-amber-50 text-sm"
+                      style={M}
+                      title="Simpan kalkulasi sbg Order Umrah di Order Hub"
+                    >
+                      <FileText className="h-3.5 w-3.5 mr-1.5" />
+                      {creatingOrder ? "Menyimpan…" : "Simpan ke Order"}
                     </Button>
                   </div>
                 </div>

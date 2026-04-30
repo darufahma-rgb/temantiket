@@ -21,9 +21,14 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
 import Notes from "./pages/Notes";
 import ExportCenter from "./pages/ExportCenter";
+import Clients from "./pages/Clients";
+import Orders from "./pages/Orders";
+import OrderDetail from "./pages/OrderDetail";
 import { useRatesStore } from "@/store/ratesStore";
 import { usePackagesStore } from "@/store/packagesStore";
 import { useTripsStore } from "@/store/tripsStore";
+import { useClientsStore } from "@/store/clientsStore";
+import { useOrdersStore } from "@/store/ordersStore";
 import { useAuthStore } from "@/store/authStore";
 import { useRegionalStore } from "@/store/regionalStore";
 import { applyAppearanceSettings, loadAppearanceSettings } from "@/lib/appearance";
@@ -38,12 +43,14 @@ function StoreBootstrap() {
   const refreshRates = useRatesStore((s) => s.refresh);
   const refreshPackages = usePackagesStore((s) => s.refresh);
   const fetchTrips = useTripsStore((s) => s.fetchTrips);
+  const fetchClients = useClientsStore((s) => s.fetchClients);
+  const fetchOrders = useOrdersStore((s) => s.fetchOrders);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   useEffect(() => {
     refreshRates();
     if (!isAuthenticated) return;
-    void Promise.all([refreshPackages(), fetchTrips()]);
-  }, [refreshRates, refreshPackages, fetchTrips, isAuthenticated]);
+    void Promise.all([refreshPackages(), fetchTrips(), fetchClients(), fetchOrders()]);
+  }, [refreshRates, refreshPackages, fetchTrips, fetchClients, fetchOrders, isAuthenticated]);
 
   // Realtime sync — subscribe perubahan dari device lain
   useEffect(() => {
@@ -153,6 +160,12 @@ function AnimatedRoutes() {
       <Route path="/paket/:id/jamaah/:jamaahId" element={<RequireAuth><DashboardLayout><JamaahProfile /></DashboardLayout></RequireAuth>} />
       <Route path="/notes" element={<RequireAuth><DashboardLayout><Notes /></DashboardLayout></RequireAuth>} />
       <Route path="/exports" element={<RequireAuth><DashboardLayout><ExportCenter /></DashboardLayout></RequireAuth>} />
+      {/* ── Order Hub ── */}
+      <Route path="/clients" element={<RequireAuth><DashboardLayout><Clients /></DashboardLayout></RequireAuth>} />
+      <Route path="/clients/:id" element={<RequireAuth><DashboardLayout><Clients /></DashboardLayout></RequireAuth>} />
+      <Route path="/orders" element={<RequireAuth><DashboardLayout><Orders /></DashboardLayout></RequireAuth>} />
+      <Route path="/orders/detail/:id" element={<RequireAuth><DashboardLayout><OrderDetail /></DashboardLayout></RequireAuth>} />
+      <Route path="/orders/:type" element={<RequireAuth><DashboardLayout><Orders /></DashboardLayout></RequireAuth>} />
       <Route path="/settings" element={<RequireAuth><DashboardLayout><Settings /></DashboardLayout></RequireAuth>} />
       <Route path="/auth" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<NotFound />} />

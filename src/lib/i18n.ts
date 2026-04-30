@@ -12,6 +12,12 @@ export interface Translations {
   nav_logout: string;
   nav_group_operational: string;
   nav_group_tools: string;
+  nav_clients: string;
+  nav_orders: string;
+  nav_orders_umrah: string;
+  nav_orders_flight: string;
+  nav_orders_visa: string;
+  nav_group_hub: string;
 
   // Dashboard
   greeting_early_morning: string;
@@ -126,6 +132,12 @@ const id: Translations = {
   nav_logout: "Logout",
   nav_group_operational: "Operasional",
   nav_group_tools: "Tools",
+  nav_clients: "Klien",
+  nav_orders: "Orders",
+  nav_orders_umrah: "Umrah & Haji",
+  nav_orders_flight: "Tiket Pesawat",
+  nav_orders_visa: "Visa Mesir",
+  nav_group_hub: "Order Hub",
 
   greeting_early_morning: "Selamat Malam",
   greeting_morning: "Selamat Pagi",
@@ -234,6 +246,12 @@ const en: Translations = {
   nav_logout: "Logout",
   nav_group_operational: "Operations",
   nav_group_tools: "Tools",
+  nav_clients: "Clients",
+  nav_orders: "Orders",
+  nav_orders_umrah: "Umrah & Hajj",
+  nav_orders_flight: "Flight Tickets",
+  nav_orders_visa: "Egypt Visa",
+  nav_group_hub: "Order Hub",
 
   greeting_early_morning: "Good Night",
   greeting_morning: "Good Morning",
@@ -342,6 +360,12 @@ const ar: Translations = {
   nav_logout: "خروج",
   nav_group_operational: "العمليات",
   nav_group_tools: "الأدوات",
+  nav_clients: "العملاء",
+  nav_orders: "الطلبات",
+  nav_orders_umrah: "العمرة والحج",
+  nav_orders_flight: "تذاكر الطيران",
+  nav_orders_visa: "تأشيرة مصر",
+  nav_group_hub: "مركز الطلبات",
 
   greeting_early_morning: "تصبح على خير",
   greeting_morning: "صباح الخير",

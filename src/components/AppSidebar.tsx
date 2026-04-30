@@ -1,4 +1,9 @@
-import { LayoutDashboard, Calculator, Package, GitBranch, LogOut, Settings, X, FileText, ShieldCheck, StickyNote, FileSpreadsheet } from "lucide-react";
+import { useState } from "react";
+import {
+  LayoutDashboard, Calculator, Package, GitBranch, LogOut, Settings, X,
+  ShieldCheck, StickyNote, FileSpreadsheet, Users, ShoppingBag, ChevronDown,
+  Plane, FileBadge,
+} from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
@@ -25,11 +30,44 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
   const { user, logout } = useAuthStore();
   const t = useT();
 
-  const navGroups = [
+  // Auto-buka group Orders kalau lagi di /orders
+  const [ordersOpen, setOrdersOpen] = useState<boolean>(
+    () => location.pathname.startsWith("/orders"),
+  );
+
+  const isActive = (url: string, end: boolean) => {
+    if (url === "#") return false;
+    if (url.startsWith("/trips")) return location.pathname.startsWith("/trips");
+    return end ? location.pathname === url : location.pathname.startsWith(url);
+  };
+
+  // Match exact `/orders/<type>` (atau `/orders/detail/...` kalau type-nya cocok)
+  const isOrdersTypeActive = (type: string) => {
+    return location.pathname === `/orders/${type}` ||
+      location.pathname.startsWith(`/orders/${type}?`) ||
+      location.pathname.startsWith(`/orders/${type}/`);
+  };
+
+  type NavItemDef = { title: string; url: string; icon: typeof LayoutDashboard; end: boolean; danger?: boolean };
+
+  const ordersChildren: NavItemDef[] = [
+    { title: t.nav_orders_umrah,  url: "/orders/umrah",        icon: Package,    end: false },
+    { title: t.nav_orders_flight, url: "/orders/flight",       icon: Plane,      end: false },
+    { title: t.nav_orders_visa,   url: "/orders/visa_student", icon: FileBadge,  end: false },
+  ];
+
+  const navGroups: { label: string | null; items: NavItemDef[] }[] = [
     {
       label: null,
       items: [
         { title: t.nav_dashboard, url: "/", icon: LayoutDashboard, end: true },
+      ],
+    },
+    {
+      label: t.nav_group_hub,
+      items: [
+        { title: t.nav_clients, url: "/clients", icon: Users, end: false },
+        // "Orders" handled separately below as a collapsible group
       ],
     },
     {
@@ -49,17 +87,9 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
     },
   ];
 
-  const settingsItem = { title: t.nav_settings, url: "/settings", icon: Settings, end: false, danger: false };
+  const settingsItem: NavItemDef = { title: t.nav_settings, url: "/settings", icon: Settings, end: false };
 
-  const isActive = (url: string, end: boolean) => {
-    if (url === "#") return false;
-    if (url.startsWith("/trips")) return location.pathname.startsWith("/trips");
-    return end ? location.pathname === url : location.pathname.startsWith(url);
-  };
-
-  const NavItem = ({ title, url, icon: Icon, end, danger = false }: {
-    title: string; url: string; icon: typeof LayoutDashboard; end: boolean; danger?: boolean;
-  }) => {
+  const NavItem = ({ title, url, icon: Icon, end, danger = false }: NavItemDef) => {
     const active = isActive(url, end);
     return (
       <NavLink
@@ -75,7 +105,6 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
               : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))] hover:translate-x-0.5"
         )}
       >
-        {/* Active left bar */}
         {active && (
           <motion.span
             layoutId="sidebar-pill"
@@ -94,6 +123,62 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
       </NavLink>
     );
   };
+
+  // Collapsible "Orders" group
+  const ordersGroupActive = location.pathname.startsWith("/orders");
+  const OrdersGroup = () => (
+    <div>
+      <button
+        onClick={() => setOrdersOpen((v) => !v)}
+        className={cn(
+          "w-full relative flex items-center gap-3 px-4 py-2.5 text-[13.5px] font-medium rounded-2xl transition-[background-color,color] duration-150",
+          ordersGroupActive
+            ? "text-[hsl(var(--primary))] bg-[hsl(var(--accent))]"
+            : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]",
+        )}
+      >
+        <ShoppingBag strokeWidth={ordersGroupActive ? 2 : 1.5} className="h-[17px] w-[17px] shrink-0" />
+        <span className="flex-1 leading-none pl-1 text-left">{t.nav_orders}</span>
+        <ChevronDown
+          strokeWidth={1.5}
+          className={cn("h-3.5 w-3.5 transition-transform", ordersOpen && "rotate-180")}
+        />
+      </button>
+      <AnimatePresence initial={false}>
+        {ordersOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden pl-3 mt-0.5 space-y-0.5"
+          >
+            {ordersChildren.map((item) => {
+              const type = item.url.split("/").pop() ?? "";
+              const active = isOrdersTypeActive(type);
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.url}
+                  to={item.url}
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-2 text-[12.5px] font-medium rounded-xl transition-colors",
+                    active
+                      ? "text-[hsl(var(--primary))] bg-[hsl(var(--accent))]"
+                      : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]",
+                  )}
+                >
+                  <Icon strokeWidth={active ? 2 : 1.5} className="h-[15px] w-[15px] shrink-0" />
+                  <span className="flex-1 leading-none">{item.title}</span>
+                </NavLink>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 
   const sidebarContent = (
     <aside
@@ -147,13 +232,18 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
                 <NavItem {...item} />
               </motion.div>
             ))}
+            {/* Inject Orders collapsible group dalam bagian Order Hub */}
+            {group.label === t.nav_group_hub && (
+              <motion.div variants={itemVariant}>
+                <OrdersGroup />
+              </motion.div>
+            )}
           </div>
         ))}
       </motion.div>
 
       {/* ── Bottom: User info + Settings + Logout ── */}
       <div className="shrink-0 mx-3 py-4 border-t border-[hsl(var(--border))] space-y-0.5">
-        {/* User badge */}
         {user && (
           <div className="flex items-center gap-2.5 px-4 py-2.5 mb-1 rounded-2xl bg-sky-50">
             <div className="h-7 w-7 rounded-full bg-sky-500 flex items-center justify-center shrink-0">
@@ -172,7 +262,6 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
 
         <NavItem {...settingsItem} />
 
-        {/* Logout button */}
         <button
           onClick={() => { logout(); onClose?.(); }}
           className="relative flex items-center gap-3 w-full px-4 py-2.5 text-[13.5px] font-medium rounded-2xl transition-[background-color,color] duration-150 text-[hsl(var(--muted-foreground))] hover:text-red-500 hover:bg-red-50 group"
@@ -189,12 +278,10 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
 
   return (
     <>
-      {/* Desktop sidebar */}
       <div className="hidden md:flex shrink-0">
         {sidebarContent}
       </div>
 
-      {/* Mobile drawer */}
       <AnimatePresence>
         {open && (
           <div className="md:hidden fixed inset-0 z-50 flex">

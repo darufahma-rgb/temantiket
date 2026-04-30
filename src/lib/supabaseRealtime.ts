@@ -4,6 +4,8 @@
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { useTripsStore, useJamaahStore } from "@/store/tripsStore";
 import { usePackagesStore } from "@/store/packagesStore";
+import { useClientsStore } from "@/store/clientsStore";
+import { useOrdersStore } from "@/store/ordersStore";
 import { pullPdfLayoutPresets } from "./cloudSync";
 import { useSyncStatusStore } from "@/store/syncStatusStore";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -35,6 +37,12 @@ export function startRealtimeSync(): () => void {
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "packages" }, () => {
       void usePackagesStore.getState().refresh();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, () => {
+      void useClientsStore.getState().fetchClients();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+      void useOrdersStore.getState().fetchOrders();
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "pdf_layout_presets" }, () => {
       // Refresh cache lalu broadcast ke semua tuner yang sedang dibuka.

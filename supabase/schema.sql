@@ -189,6 +189,70 @@ create table if not exists public.pdf_templates (
 alter table public.pdf_templates add column if not exists agency_id uuid references public.agencies(id) on delete cascade;
 create index if not exists pdf_templates_agency_idx on public.pdf_templates(agency_id);
 
+-- ── ORDER HUB (clients + orders) ────────────────────────────────────────────
+-- Multi-tenant + RLS via helper public.is_member().
+create table if not exists public.clients (
+  id                uuid primary key default uuid_generate_v4(),
+  agency_id         uuid not null references public.agencies(id) on delete cascade,
+  name              text not null,
+  phone             text not null default '',
+  email             text,
+  birth_date        text,
+  passport_number   text,
+  passport_expiry   text,
+  gender            text,
+  photo_data_url    text,
+  notes             text,
+  legacy_jamaah_id  text,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+create index if not exists clients_agency_idx on public.clients(agency_id);
+create index if not exists clients_name_idx   on public.clients(agency_id, lower(name));
+create index if not exists clients_legacy_idx on public.clients(legacy_jamaah_id);
+
+create table if not exists public.orders (
+  id              uuid primary key default uuid_generate_v4(),
+  agency_id       uuid not null references public.agencies(id) on delete cascade,
+  client_id       uuid references public.clients(id) on delete set null,
+  type            text not null,
+  status          text not null default 'Draft',
+  title           text,
+  total_price     numeric not null default 0,
+  currency        text not null default 'IDR',
+  metadata        jsonb not null default '{}'::jsonb,
+  trip_id         text references public.trips(id) on delete set null,
+  package_id      text references public.packages(id) on delete set null,
+  jamaah_id       text references public.jamaah(id) on delete set null,
+  notes           text,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'orders_type_check' and conrelid = 'public.orders'::regclass
+  ) then
+    alter table public.orders add constraint orders_type_check
+      check (type in ('umrah','flight','visa_voa','visa_student'));
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'orders_status_check' and conrelid = 'public.orders'::regclass
+  ) then
+    alter table public.orders add constraint orders_status_check
+      check (status in ('Draft','Confirmed','Paid','Completed','Cancelled'));
+  end if;
+end $$;
+create index if not exists orders_agency_idx  on public.orders(agency_id);
+create index if not exists orders_type_idx    on public.orders(agency_id, type);
+create index if not exists orders_client_idx  on public.orders(client_id);
+create index if not exists orders_package_idx on public.orders(package_id);
+create index if not exists orders_trip_idx    on public.orders(trip_id);
+create index if not exists orders_jamaah_idx  on public.orders(jamaah_id);
+create index if not exists orders_status_idx  on public.orders(agency_id, status);
+
 -- Audit logs (placeholder buat fitur #5 nanti)
 create table if not exists public.audit_logs (
   id          bigserial primary key,
@@ -216,6 +280,8 @@ alter table public.notes                 enable row level security;
 alter table public.pdf_templates         enable row level security;
 alter table public.pdf_layout_presets    enable row level security;
 alter table public.audit_logs            enable row level security;
+alter table public.clients               enable row level security;
+alter table public.orders                enable row level security;
 
 -- ── POLICY HELPERS ──────────────────────────────────────────────────────────
 -- Drop semua kemungkinan policy lama biar idempotent.
@@ -380,12 +446,37 @@ declare t text;
 begin
   for t in select unnest(array[
     'trips','jamaah','jamaah_docs','packages',
-    'package_calculations','notes','pdf_templates','pdf_layout_presets'
+    'package_calculations','notes','pdf_templates','pdf_layout_presets',
+    'clients','orders'
   ]) loop
     begin
       execute format('alter publication supabase_realtime add table public.%I', t);
     exception when duplicate_object then null;
     end;
+  end loop;
+end$$;
+
+-- ── CLIENTS + ORDERS POLICIES ───────────────────────────────────────────────
+do $$
+declare t text; pname text;
+begin
+  for t in select unnest(array['clients','orders']) loop
+    -- Drop existing policies first (idempotent re-run)
+    for pname in select policyname from pg_policies
+     where schemaname='public' and tablename=t loop
+      execute format('drop policy if exists %I on public.%I', pname, t);
+    end loop;
+    execute format($f$
+      create policy "%1$s_select" on public.%1$I
+        for select using (public.is_member(agency_id));
+      create policy "%1$s_insert" on public.%1$I
+        for insert with check (public.is_member(agency_id));
+      create policy "%1$s_update" on public.%1$I
+        for update using (public.is_member(agency_id))
+                  with check (public.is_member(agency_id));
+      create policy "%1$s_delete" on public.%1$I
+        for delete using (public.is_member(agency_id));
+    $f$, t);
   end loop;
 end$$;
 
