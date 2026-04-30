@@ -26,14 +26,19 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_agent_id uuid;
 begin
-  if new.created_by_agent is null and new.client_id is not null then
-    select c.created_by_agent into new.created_by_agent
+  if NEW.created_by_agent is null and NEW.client_id is not null then
+    select c.created_by_agent into v_agent_id
     from public.clients c
-    where c.id = new.client_id
-      and c.agency_id = new.agency_id;
+    where c.id = NEW.client_id
+      and c.agency_id = NEW.agency_id;
+    if v_agent_id is not null then
+      NEW.created_by_agent := v_agent_id;
+    end if;
   end if;
-  return new;
+  return NEW;
 end;
 $$;
 
