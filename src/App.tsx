@@ -26,6 +26,7 @@ import Clients from "./pages/Clients";
 import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
 import Reports from "./pages/Reports";
+import AgentDashboard from "./pages/AgentDashboard";
 import { useRatesStore } from "@/store/ratesStore";
 import { usePackagesStore } from "@/store/packagesStore";
 import { useTripsStore } from "@/store/tripsStore";
@@ -139,7 +140,7 @@ function RequireRole({
   roles,
   children,
 }: {
-  roles: ReadonlyArray<"owner" | "staff">;
+  roles: ReadonlyArray<"owner" | "staff" | "agent">;
   children: React.ReactNode;
 }) {
   const user = useAuthStore((s) => s.user);
@@ -152,9 +153,22 @@ function RequireRole({
     );
   }
   if (!user || !roles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    // Agent yg coba akses route owner/staff → bounce ke dashboard agent.
+    // Owner/staff yg coba akses /agent → bounce ke /.
+    const fallback = user?.role === "agent" ? "/agent" : "/";
+    return <Navigate to={fallback} replace />;
   }
   return <>{children}</>;
+}
+
+/**
+ * Index redirect — kalau user role 'agent' landing di '/', auto-redirect
+ * ke '/agent' (Mitra Dashboard). Owner/staff biasa render Index normal.
+ */
+function HomeRedirect() {
+  const user = useAuthStore((s) => s.user);
+  if (user?.role === "agent") return <Navigate to="/agent" replace />;
+  return <Index />;
 }
 
 function AuthInitBootstrap() {
@@ -178,7 +192,7 @@ function AnimatedRoutes() {
       <Route path="/cek/:code" element={<PublicCheck />} />
       <Route path="/m/:slug" element={<PublicMemberCard />} />
 
-      <Route path="/" element={<RequireAuth><Index /></RequireAuth>} />
+      <Route path="/" element={<RequireAuth><HomeRedirect /></RequireAuth>} />
       <Route path="/calculator" element={<RequireAuth><DashboardLayout><Calculator /></DashboardLayout></RequireAuth>} />
       <Route path="/packages" element={<RequireAuth><DashboardLayout><Packages /></DashboardLayout></RequireAuth>} />
       <Route path="/packages/:id" element={<RequireAuth><DashboardLayout><PackageDetail /></DashboardLayout></RequireAuth>} />
@@ -196,6 +210,17 @@ function AnimatedRoutes() {
       <Route path="/orders" element={<RequireAuth><DashboardLayout><Orders /></DashboardLayout></RequireAuth>} />
       <Route path="/orders/detail/:id" element={<RequireAuth><DashboardLayout><OrderDetail /></DashboardLayout></RequireAuth>} />
       <Route path="/orders/:type" element={<RequireAuth><DashboardLayout><Orders /></DashboardLayout></RequireAuth>} />
+      {/* ── Agent-only: Mitra Dashboard ── */}
+      <Route
+        path="/agent"
+        element={
+          <RequireAuth>
+            <RequireRole roles={["agent"]}>
+              <DashboardLayout><AgentDashboard /></DashboardLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
       {/* ── Owner-only: Laporan Keuangan ── */}
       <Route
         path="/reports"

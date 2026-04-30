@@ -164,7 +164,12 @@ export default function Settings() {
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberPass, setNewMemberPass] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState<"staff" | "agent">("staff");
+  const [newMemberCommission, setNewMemberCommission] = useState<number>(10);
   const [invitingMember, setInvitingMember] = useState(false);
+  // commissionDraft per-userId — utk inline edit di list anggota.
+  const [commissionDraft, setCommissionDraft] = useState<Record<string, string>>({});
+  const setMemberCommission = useAuthStore((s) => s.setMemberCommission);
 
   const [migrating, setMigrating] = useState(false);
   const [migrateProgress, setMigrateProgress] = useState<MigrateProgress | null>(null);
@@ -237,7 +242,7 @@ export default function Settings() {
     const emailIn = newMemberEmail.trim();
     const nameIn = newMemberName.trim();
     try {
-      await inviteMember(emailIn, newMemberPass, nameIn);
+      await inviteMember(emailIn, newMemberPass, nameIn, newMemberRole);
 
       // ── Instant feedback ──
       // Tambah row baru ke list secara optimistic — pake placeholder userId
@@ -247,7 +252,8 @@ export default function Settings() {
         userId: `pending-${Date.now()}`,
         email: emailIn,
         displayName: nameIn,
-        role: "staff",
+        role: newMemberRole,
+        commissionPct: newMemberRole === "agent" ? newMemberCommission : 0,
         createdAt: new Date().toISOString(),
       };
       setMembers((prev) => [...prev, optimisticRow]);
@@ -258,11 +264,24 @@ export default function Settings() {
       // include nama beneran.
       try {
         const fresh = await listMembers();
-        setMembers(fresh);
+        // Kalau user undang sbg agent dgn commission custom, set commission_pct
+        // utk member baru yg cocok email-nya (best-effort — pake email match
+        // karena userId masih pending).
+        if (newMemberRole === "agent" && newMemberCommission !== 10) {
+          const created = fresh.find((m) => m.email === emailIn);
+          if (created) {
+            try {
+              await setMemberCommission(created.userId, newMemberCommission);
+              const refreshed = await listMembers();
+              setMembers(refreshed);
+            } catch { setMembers(fresh); }
+          } else { setMembers(fresh); }
+        } else { setMembers(fresh); }
       } catch { /* ignore — optimistic row stays */ }
 
       setNewMemberEmail(""); setNewMemberName(""); setNewMemberPass("");
-      toast.success(`"${nameIn}" diundang. Beri tahu password awalnya secara aman.`);
+      setNewMemberRole("staff"); setNewMemberCommission(10);
+      toast.success(`"${nameIn}" diundang sbg ${newMemberRole}. Bagikan password-nya secara aman.`);
     } catch (e: any) {
       toast.error(`Undang gagal: ${e?.message ?? "unknown error"}`);
     } finally {
@@ -1057,9 +1076,9 @@ export default function Settings() {
             {isOwner && (
               <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
                 <div className="px-4 py-3 border-b border-[hsl(var(--border))]">
-                  <p className="text-sm font-semibold">Undang Staf Baru</p>
+                  <p className="text-sm font-semibold">Undang Anggota Baru</p>
                   <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">
-                    Akun langsung aktif; password awal dibagikan secara aman ke staf.
+                    Pilih role: <strong>staff</strong> (akses penuh kecuali laporan keuangan) atau <strong>agent/mitra</strong> (cuma liat klien & order yg dia bikin sendiri, dapet komisi).
                   </p>
                 </div>
                 <div className="p-4 grid grid-cols-2 gap-3">
@@ -1071,6 +1090,36 @@ export default function Settings() {
                     <Label className="text-xs">Nama Lengkap</Label>
                     <Input value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="cth: Ahmad Fauzi" className="h-8 md:h-9 text-[13px] md:text-sm" />
                   </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Role</Label>
+                    <Select value={newMemberRole} onValueChange={(v) => setNewMemberRole(v as "staff" | "agent")}>
+                      <SelectTrigger className="h-8 md:h-9 text-[13px] md:text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="staff">Staff (akses internal)</SelectItem>
+                        <SelectItem value="agent">Agent / Mitra (komisi)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {newMemberRole === "agent" ? (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Komisi (%)</Label>
+                      <Input
+                        type="number" min={0} max={100} step={0.5}
+                        value={newMemberCommission}
+                        onChange={(e) => setNewMemberCommission(Number(e.target.value) || 0)}
+                        className="h-8 md:h-9 text-[13px] md:text-sm font-mono"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <Label className="text-xs opacity-50">Komisi (%)</Label>
+                      <div className="h-8 md:h-9 rounded-md border bg-muted/30 px-3 flex items-center text-[12px] text-muted-foreground">
+                        Tidak berlaku utk staff
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-1 col-span-2">
                     <Label className="text-xs">Password Awal (min 8)</Label>
                     <div className="flex gap-2">
@@ -1079,6 +1128,13 @@ export default function Settings() {
                         <Plus className="h-4 w-4 mr-1" /> {invitingMember ? "Mengundang…" : "Undang"}
                       </Button>
                     </div>
+                    {newMemberRole === "agent" && (
+                      <p className="text-[10.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 mt-1">
+                        Catatan: Edge function <code>invite-member</code> harus support role <code>agent</code>.
+                        Kalau invite gagal dgn pesan "role invalid", deploy ulang edge function-nya
+                        (ada di <code>supabase/functions/invite-member/</code>).
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1092,25 +1148,71 @@ export default function Settings() {
                 {members.length === 0 && (
                   <p className="px-4 py-6 text-center text-xs text-[hsl(var(--muted-foreground))]">Belum ada anggota lain.</p>
                 )}
-                {members.map((m) => (
-                  <div key={m.userId} className="flex items-center justify-between px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium">{m.displayName || m.email}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-[hsl(var(--muted-foreground))] font-mono">{m.email}</span>
-                        <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-semibold",
-                          m.role === "owner" ? "bg-sky-100 text-sky-700" : "bg-blue-100 text-blue-700"
-                        )}>{m.role}</span>
+                {members.map((m) => {
+                  const draft = commissionDraft[m.userId];
+                  const isAgentRow = m.role === "agent";
+                  return (
+                    <div key={m.userId} className="flex items-center justify-between px-4 py-3 gap-3 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{m.displayName || m.email}</p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="text-xs text-[hsl(var(--muted-foreground))] font-mono truncate">{m.email}</span>
+                          <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide",
+                            m.role === "owner" ? "bg-sky-100 text-sky-700"
+                              : m.role === "agent" ? "bg-orange-100 text-orange-700"
+                              : "bg-blue-100 text-blue-700"
+                          )}>{m.role}</span>
+                          {isAgentRow && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700">
+                              komisi {m.commissionPct}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {isOwner && isAgentRow && (
+                          <>
+                            <Input
+                              type="number" min={0} max={100} step={0.5}
+                              value={draft ?? String(m.commissionPct)}
+                              onChange={(e) => setCommissionDraft((p) => ({ ...p, [m.userId]: e.target.value }))}
+                              className="h-8 w-20 text-[12px] font-mono"
+                              title="Komisi %"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 px-2 text-[11px]"
+                              disabled={draft === undefined || Number(draft) === m.commissionPct}
+                              onClick={async () => {
+                                const v = Number(draft);
+                                if (!Number.isFinite(v) || v < 0 || v > 100) {
+                                  toast.error("Komisi harus 0-100%."); return;
+                                }
+                                try {
+                                  await setMemberCommission(m.userId, v);
+                                  setMembers(await listMembers());
+                                  setCommissionDraft((p) => { const c = { ...p }; delete c[m.userId]; return c; });
+                                  toast.success(`Komisi ${m.displayName} → ${v}%`);
+                                } catch (e: any) {
+                                  toast.error(`Gagal: ${e?.message ?? "unknown"}`);
+                                }
+                              }}
+                            >
+                              <Save className="h-3 w-3" />
+                            </Button>
+                          </>
+                        )}
+                        {isOwner && m.role !== "owner" && m.userId !== user?.id && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-50 hover:text-red-500"
+                            onClick={() => handleRemoveMember(m.userId, m.displayName || m.email)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    {isOwner && m.role !== "owner" && m.userId !== user?.id && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-50 hover:text-red-500"
-                        onClick={() => handleRemoveMember(m.userId, m.displayName || m.email)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

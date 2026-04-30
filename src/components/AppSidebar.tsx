@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, Calculator, Package, GitBranch, LogOut, Settings, X,
   ShieldCheck, StickyNote, FileSpreadsheet, Users, ShoppingBag, ChevronDown,
-  Plane, FileBadge, Wallet,
+  Plane, FileBadge, Wallet, Trophy,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -57,47 +57,65 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
   ];
 
   const isOwner = user?.role === "owner";
+  const isAgent = user?.role === "agent";
 
-  const navGroups: { label: string | null; items: NavItemDef[] }[] = [
-    {
-      label: null,
-      items: [
-        { title: t.nav_dashboard, url: "/", icon: LayoutDashboard, end: true },
-      ],
-    },
-    {
-      label: t.nav_group_hub,
-      items: [
-        { title: t.nav_clients, url: "/clients", icon: Users, end: false },
-        // "Orders" handled separately below as a collapsible group
-      ],
-    },
-    {
-      label: t.nav_group_operational,
-      items: [
-        { title: t.nav_calculator, url: "/calculator", icon: Calculator, end: false },
-        { title: t.nav_packages, url: "/packages", icon: Package, end: false },
-        { title: t.nav_progress, url: "/progress", icon: GitBranch, end: false },
-      ],
-    },
-    {
-      label: t.nav_group_tools,
-      items: [
-        { title: t.nav_notes, url: "/notes", icon: StickyNote, end: false },
-        { title: t.nav_exports ?? "Export Center", url: "/exports", icon: FileSpreadsheet, end: false },
-      ],
-    },
-    // Admin group — owner-only. Disembunyikan utk staff supaya bocor data
-    // finansial gak terjadi via UI (route juga digard di App.tsx).
-    ...(isOwner
-      ? [{
-          label: t.nav_group_admin,
+  // Agent dapat nav minimal: Mitra Dashboard + Klien + Order + Settings.
+  // Owner/staff dapat nav full sesuai role-nya.
+  const navGroups: { label: string | null; items: NavItemDef[] }[] = isAgent
+    ? [
+        {
+          label: null,
           items: [
-            { title: t.nav_reports, url: "/reports", icon: Wallet, end: false },
+            { title: t.nav_agent_dashboard ?? "Mitra Dashboard", url: "/agent", icon: Trophy, end: true },
           ],
-        }]
-      : []),
-  ];
+        },
+        {
+          label: t.nav_group_hub,
+          items: [
+            { title: t.nav_clients, url: "/clients", icon: Users, end: false },
+            // Orders di-handle terpisah sbg collapsible group di bawah.
+          ],
+        },
+      ]
+    : [
+        {
+          label: null,
+          items: [
+            { title: t.nav_dashboard, url: "/", icon: LayoutDashboard, end: true },
+          ],
+        },
+        {
+          label: t.nav_group_hub,
+          items: [
+            { title: t.nav_clients, url: "/clients", icon: Users, end: false },
+          ],
+        },
+        {
+          label: t.nav_group_operational,
+          items: [
+            { title: t.nav_calculator, url: "/calculator", icon: Calculator, end: false },
+            { title: t.nav_packages, url: "/packages", icon: Package, end: false },
+            { title: t.nav_progress, url: "/progress", icon: GitBranch, end: false },
+          ],
+        },
+        {
+          label: t.nav_group_tools,
+          items: [
+            { title: t.nav_notes, url: "/notes", icon: StickyNote, end: false },
+            { title: t.nav_exports ?? "Export Center", url: "/exports", icon: FileSpreadsheet, end: false },
+          ],
+        },
+        // Admin group — owner-only. Disembunyikan utk staff supaya bocor data
+        // finansial gak terjadi via UI (route juga digard di App.tsx).
+        ...(isOwner
+          ? [{
+              label: t.nav_group_admin,
+              items: [
+                { title: t.nav_reports, url: "/reports", icon: Wallet, end: false },
+              ],
+            }]
+          : []),
+      ];
 
   const settingsItem: NavItemDef = { title: t.nav_settings, url: "/settings", icon: Settings, end: false };
 

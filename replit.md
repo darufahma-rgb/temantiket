@@ -2,6 +2,59 @@
 
 Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn/ui.
 
+## Agent (Mitra) Management System (Apr 30, 2026 — Fase 9)
+Sistem mitra/affiliate buat travel agency yg punya jaringan freelance agent.
+Tiap agent punya akun terpisah, hanya bisa liat klien & order yg dia bikin
+sendiri (RLS-enforced), dapet komisi otomatis dari profit, dan dapet poin
+gamification per order Completed. Owner liat leaderboard di Reports.
+
+- **Schema** (`supabase/migrations/2026_04_30_agents_system.sql`):
+  - `agency_members.role` CHECK constraint allow `'agent'` (selain owner/staff).
+  - `agency_members.commission_pct numeric not null default 10` — per-agent komisi.
+  - `clients.created_by_agent uuid` & `orders.created_by_agent uuid` — attribution column (FK ke `auth.users`, NULL = "Direct" alias dibikin owner/staff).
+  - Helper SQL: `is_agent(target_agency uuid)` → `auth.uid()` adalah agent di agency itu? Dipake di RLS policy.
+  - **Tabel baru `agent_points`**: `(agency_id, agent_id, order_id UNIQUE, points int, reason, awarded_at)`. Insert hanya via trigger (security definer); RLS select untuk semua member.
+  - **Trigger `tr_award_points_on_completion`**: AFTER INSERT OR UPDATE OF status ON orders. Award 10 poin kalau status pindah ke `'Completed'` & order punya `created_by_agent`. Idempotent (UNIQUE order_id + check old.status). Re-cancel→complete tidak double-award.
+  - **RLS hardening clients/orders**: agent cuma SELECT/UPDATE/DELETE row dgn `created_by_agent = auth.uid()`. Owner/staff tetap full access. INSERT: agent boleh tag dirinya atau biarin null.
+  - Realtime publication: `agent_points` ditambahkan.
+
+- **Auth & Types** (`src/store/authStore.ts`):
+  - `UserRole` extended: `"owner" | "staff" | "agent"`.
+  - `AuthUser` & `MemberInfo` punya field `commissionPct: number`. Di-fetch via `loadCurrentUser` (single round-trip + 2-query fallback kalau migration belum di-run).
+  - New owner-only method `setMemberCommission(userId, pct)` — clamp 0-100, update `agency_members.commission_pct`.
+
+- **Repo auto-attribution** (`src/features/{orders,clients}/`):
+  - `Order.createdByAgent` & `Client.createdByAgent` ditambahkan (optional di draft).
+  - `createOrder()` & `createClient()` auto-inject `createdByAgent = auth.uid()` kalau current user role-nya `agent` (kecuali sudah di-set explicit). Owner/staff biarin null = "Direct".
+
+- **Agent Dashboard** (`src/pages/AgentDashboard.tsx`, route `/agent`):
+  - Stat cards: Total Poin (+ peringkat dari leaderboard), Total Klien, Total Order (+ jumlah selesai), Komisi Earned (= profit × commission_pct).
+  - Riwayat 12 order terakhir dgn badge status & indicator poin (+10 utk yg Completed).
+  - CTA buttons: "Klien Baru" → `/clients`, "Order Baru" → `/orders`.
+  - Header gradient orange branding "Mitra Dashboard".
+
+- **Reports update** (`src/pages/Reports.tsx`):
+  - Filter baru: dropdown "Sumber order" — Semua / Direct (owner/staff) / per-mitra individual.
+  - 3 split cards: Direct profit, Via Mitra (gross + komisi dibayar + net for agency), Net Profit Agency (= Direct + (Agent Profit − Komisi)).
+  - **Leaderboard table** di bawah: per-agent stats (orders, revenue, gross profit, commission %, komisi diterima, lifetime points). Sorted by profit desc.
+  - Komisi rule: dihitung dari profit (bukan revenue), hanya kalau profit > 0 (gak dapet komisi atas kerugian).
+
+- **Routing & Sidebar guards**:
+  - `App.tsx`: `RequireRole` extended buat support agent role; auto-fallback redirect (agent ke `/agent`, lainnya ke `/`). New `HomeRedirect` component — agent landing di `/` auto-bounce ke `/agent`. Route `/agent` dilindungi `RequireRole roles={["agent"]}`.
+  - `AppSidebar.tsx`: agent dapat nav minimal — Mitra Dashboard, Klien, Orders (collapsible), Settings. Owner/staff dapat nav full sesuai role lama.
+
+- **Settings → Tim** (`src/pages/Settings.tsx`):
+  - Form invite anggota baru: dropdown role (Staff/Agent), input komisi % (cuma muncul kalau role=Agent).
+  - Member list: badge role + badge komisi (orange tone utk agent), inline editor komisi di sebelah tombol delete (input number + Save button) utk semua agent.
+  - Warning toast di form: kalau invite agent gagal "role invalid", deploy ulang edge function `invite-member` (server-side validates role).
+
+- **i18n keys baru** (`src/lib/i18n.ts`): `nav_agent_dashboard`, `nav_exports` (id/en/ar).
+
+- **Migration steps utk user**:
+  1. Supabase SQL Editor → paste isi `supabase/migrations/2026_04_30_agents_system.sql` → RUN.
+  2. Edge function `supabase/functions/invite-member/`: kalau ada whitelist role server-side, tambahkan `'agent'` ke allowed list, lalu redeploy. Tanpa redeploy, invite agent dari UI mungkin di-reject server-side.
+  3. Test trigger: bikin order dengan `created_by_agent` di-set, ubah status ke Completed → cek `agent_points` muncul row baru. Re-update tidak menghasilkan duplicate (UNIQUE order_id).
+
 ## Laporan Keuangan + Profit Tracking (Apr 30, 2026 — Fase 8)
 Owner-only financial dashboard yang ngitung profit per order, per kategori, dan per klien. Profit = Harga Jual − Harga Modal.
 

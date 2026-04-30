@@ -40,7 +40,7 @@ function recordLoginEvent(uid: string) {
 
 // ── Auth types ──────────────────────────────────────────────────────────────
 
-export type UserRole = "owner" | "staff";
+export type UserRole = "owner" | "staff" | "agent";
 
 export interface AuthUser {
   id: string;
@@ -49,6 +49,8 @@ export interface AuthUser {
   role: UserRole;
   agencyId: string;
   agencyName: string;
+  /** Komisi % per-agent (0 utk owner/staff). */
+  commissionPct: number;
 }
 
 export interface MemberInfo {
@@ -56,6 +58,8 @@ export interface MemberInfo {
   email: string;
   displayName: string;
   role: UserRole;
+  /** Komisi % — dipake utk hitung profit bersih agent di Reports. */
+  commissionPct: number;
   createdAt: string;
 }
 
@@ -80,6 +84,7 @@ interface AuthState {
   inviteMember: (email: string, password: string, displayName: string, role?: UserRole) => Promise<void>;
   removeMember: (userId: string) => Promise<void>;
   listMembers: () => Promise<MemberInfo[]>;
+  setMemberCommission: (userId: string, pct: number) => Promise<void>;
 
   // Self
   changePassword: (newPassword: string) => Promise<void>;
@@ -101,26 +106,29 @@ async function loadCurrentUser(): Promise<AuthUser | null> {
   let agencyId: string | null = null;
   let agencyName = "Agency";
   let role: UserRole = "staff";
+  let commissionPct = 0;
 
   const { data: joined, error: joinErr } = await supabase
     .from("agency_members")
-    .select("agency_id, role, agencies(id, name)")
+    .select("agency_id, role, commission_pct, agencies(id, name)")
     .eq("user_id", session.user.id)
     .maybeSingle();
 
   if (!joinErr && joined) {
     agencyId = (joined as { agency_id: string }).agency_id;
     role = ((joined as { role: string }).role as UserRole) ?? "staff";
+    commissionPct = Number((joined as { commission_pct?: number }).commission_pct ?? 0) || 0;
     const a = (joined as { agencies?: { id: string; name: string } | { id: string; name: string }[] }).agencies;
     const agencyRow = Array.isArray(a) ? a[0] : a;
     if (agencyRow?.name) agencyName = agencyRow.name;
   } else {
-    // Fallback ke 2-query path
+    // Fallback ke 2-query path. `commission_pct` mungkin belum di-migrate.
     const { data: membership } = await supabase
-      .from("agency_members").select("agency_id, role").eq("user_id", session.user.id).maybeSingle();
+      .from("agency_members").select("agency_id, role, commission_pct").eq("user_id", session.user.id).maybeSingle();
     if (!membership) return null;
     agencyId = membership.agency_id;
     role = (membership.role as UserRole) ?? "staff";
+    commissionPct = Number((membership as { commission_pct?: number }).commission_pct ?? 0) || 0;
     const { data: agency } = await supabase
       .from("agencies").select("id, name").eq("id", membership.agency_id).maybeSingle();
     if (agency?.name) agencyName = agency.name;
@@ -149,6 +157,7 @@ async function loadCurrentUser(): Promise<AuthUser | null> {
     role,
     agencyId,
     agencyName,
+    commissionPct,
   };
 }
 
@@ -317,7 +326,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // 1. Ambil member rows dari agency_members
     const { data: members, error } = await supabase
-      .from("agency_members").select("user_id, role, created_at")
+      .from("agency_members").select("user_id, role, commission_pct, created_at")
       .eq("agency_id", user.agencyId);
     if (error) throw error;
 
@@ -357,9 +366,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         email,
         displayName,
         role: m.role as UserRole,
+        commissionPct: Number((m as { commission_pct?: number }).commission_pct ?? 0) || 0,
         createdAt: m.created_at,
       };
     });
+  },
+
+  /** Owner-only: update commission_pct utk seorang agent. */
+  setMemberCommission: async (userId: string, pct: number) => {
+    const { user } = get();
+    if (!user || user.role !== "owner") throw new Error("Hanya owner yang bisa atur komisi.");
+    if (!supabase) throw new Error("Supabase belum dikonfigurasi");
+    const clamped = Math.max(0, Math.min(100, Math.round(pct * 100) / 100));
+    const { error } = await supabase
+      .from("agency_members")
+      .update({ commission_pct: clamped })
+      .eq("agency_id", user.agencyId)
+      .eq("user_id", userId);
+    if (error) throw error;
   },
 
   changePassword: async (newPassword) => {

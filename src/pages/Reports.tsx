@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   TrendingUp, TrendingDown, Wallet, Receipt, ShieldCheck, Filter,
-  Crown, ArrowDown, Users,
+  Crown, ArrowDown, Users, Trophy, Handshake, Building2,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, Legend,
@@ -14,15 +14,17 @@ import {
 } from "@/components/ui/select";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import {
   ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI, type Order, type OrderType,
 } from "@/features/orders/ordersRepo";
 import {
   profitIDR, revenueIDR, costIDR, fmtIDR, EGP_TO_IDR,
 } from "@/lib/profit";
+import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
 
 type RangeKey = "this_month" | "last_month" | "this_year" | "all";
+type AgentFilter = "all" | "direct" | string; // string = agent userId
 
 const RANGE_LABEL: Record<RangeKey, string> = {
   this_month: "Bulan ini",
@@ -58,30 +60,60 @@ const TYPE_COLOR: Record<OrderType, string> = {
 export default function Reports() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const listMembers = useAuthStore((s) => s.listMembers);
   const { orders, fetchOrders } = useOrdersStore();
   const { clients, fetchClients } = useClientsStore();
 
   const [range, setRange] = useState<RangeKey>("this_month");
+  const [agentFilter, setAgentFilter] = useState<AgentFilter>("all");
+  const [members, setMembers] = useState<MemberInfo[]>([]);
+  const [points, setPoints] = useState<AgentPoint[]>([]);
 
   useEffect(() => {
     void fetchOrders();
     if (clients.length === 0) void fetchClients();
-  }, [fetchOrders, fetchClients, clients.length]);
+    void (async () => {
+      try {
+        const [m, p] = await Promise.all([listMembers(), listAgentPoints()]);
+        setMembers(m);
+        setPoints(p);
+      } catch (err) {
+        console.warn("[reports] fetch members/points gagal:", err);
+      }
+    })();
+  }, [fetchOrders, fetchClients, clients.length, listMembers]);
 
   const { from, to } = rangeBounds(range);
 
-  // Filter orders by date range. Pakai createdAt sebagai patokan.
+  // Map agentId → MemberInfo (utk nama + commission_pct)
+  const memberById = useMemo(() => {
+    const m = new Map<string, MemberInfo>();
+    for (const x of members) m.set(x.userId, x);
+    return m;
+  }, [members]);
+
+  const agentMembers = useMemo(
+    () => members.filter((m) => m.role === "agent"),
+    [members],
+  );
+
+  // Filter orders by date range + agent attribution.
   const filtered = useMemo(() => {
-    if (!from && !to) return orders;
     return orders.filter((o) => {
       const t = new Date(o.createdAt).getTime();
       if (from && t < from.getTime()) return false;
       if (to && t >= to.getTime()) return false;
+      // Agent filter
+      if (agentFilter === "direct") {
+        if (o.createdByAgent != null) return false;
+      } else if (agentFilter !== "all") {
+        if (o.createdByAgent !== agentFilter) return false;
+      }
       return true;
     });
-  }, [orders, from, to]);
+  }, [orders, from, to, agentFilter]);
 
-  // Aggregations (semua angka di-normalize ke IDR via profit.ts).
+  // Total aggregations
   const totals = useMemo(() => {
     let revenue = 0;
     let cost = 0;
@@ -93,6 +125,45 @@ export default function Reports() {
     }
     return { revenue, cost, profit, count: filtered.length };
   }, [filtered]);
+
+  // Direct vs Agent split (always computed from filtered set,
+  // even when agentFilter aktif — supaya angka konsisten dgn yg dilihat).
+  const split = useMemo(() => {
+    let directProfit = 0;
+    let directRevenue = 0;
+    let directCount = 0;
+    let agentProfit = 0;     // gross profit dari order via agent
+    let agentRevenue = 0;
+    let agentCount = 0;
+    let totalCommission = 0; // total komisi yg dikeluarin agency
+
+    for (const o of filtered) {
+      const p = profitIDR(o);
+      const r = revenueIDR(o);
+      if (o.createdByAgent) {
+        agentProfit += p;
+        agentRevenue += r;
+        agentCount += 1;
+        const member = memberById.get(o.createdByAgent);
+        const pct = (member?.commissionPct ?? 0) / 100;
+        // Komisi dihitung dari profit (bukan revenue) — sesuai konvensi
+        // travel agency lokal. Kalau profit negatif, komisi 0 (agent gak
+        // dapet komisi atas kerugian).
+        if (p > 0) totalCommission += p * pct;
+      } else {
+        directProfit += p;
+        directRevenue += r;
+        directCount += 1;
+      }
+    }
+    const agentNetForAgency = agentProfit - totalCommission;
+    const netAgencyProfit = directProfit + agentNetForAgency;
+    return {
+      directProfit, directRevenue, directCount,
+      agentProfit, agentRevenue, agentCount,
+      totalCommission, agentNetForAgency, netAgencyProfit,
+    };
+  }, [filtered, memberById]);
 
   // Profit per type (utk pie chart).
   const byType = useMemo(() => {
@@ -139,11 +210,50 @@ export default function Reports() {
       .sort((a, b) => b.profit - a.profit);
   }, [filtered, clientNameById]);
 
+  // ── Agent Leaderboard ──
+  // Built from `filtered` (so date-range applies). Ranked by total profit
+  // generated dlm periode + jumlah order. Points pakai dari agent_points
+  // (tabel terpisah, lifetime).
+  const leaderboard = useMemo(() => {
+    const lifetimePoints = sumPointsByAgent(points);
+    const m = new Map<string, { profit: number; orders: number; revenue: number }>();
+    for (const o of filtered) {
+      if (!o.createdByAgent) continue;
+      const cur = m.get(o.createdByAgent) ?? { profit: 0, orders: 0, revenue: 0 };
+      cur.profit += profitIDR(o);
+      cur.revenue += revenueIDR(o);
+      cur.orders += 1;
+      m.set(o.createdByAgent, cur);
+    }
+    // Pastikan semua agent muncul (walau gak ada order di periode).
+    for (const a of agentMembers) {
+      if (!m.has(a.userId)) m.set(a.userId, { profit: 0, orders: 0, revenue: 0 });
+    }
+    return Array.from(m.entries()).map(([agentId, v]) => {
+      const member = memberById.get(agentId);
+      const pct = (member?.commissionPct ?? 0) / 100;
+      const commission = v.profit > 0 ? v.profit * pct : 0;
+      return {
+        agentId,
+        name: member?.displayName ?? `Agent ${agentId.slice(0, 6)}…`,
+        commissionPct: member?.commissionPct ?? 0,
+        revenue: v.revenue,
+        profit: v.profit,
+        orders: v.orders,
+        commission,
+        lifetimePoints: lifetimePoints.get(agentId) ?? 0,
+      };
+    }).sort((a, b) => {
+      // Sort: profit desc, lalu lifetime points desc.
+      if (b.profit !== a.profit) return b.profit - a.profit;
+      return b.lifetimePoints - a.lifetimePoints;
+    });
+  }, [filtered, agentMembers, memberById, points]);
+
   const pieData = byType
     .filter((x) => x.profit > 0)
     .map((x) => ({ name: x.label, value: x.profit, type: x.type }));
 
-  // Top 3 client untuk highlight.
   const top3 = byClient.slice(0, 3);
 
   return (
@@ -161,15 +271,34 @@ export default function Reports() {
             {user?.agencyName && <> · {user.agencyName}</>}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[150px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => (
                 <SelectItem key={k} value={k}>{RANGE_LABEL[k]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={agentFilter} onValueChange={(v) => setAgentFilter(v as AgentFilter)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Sumber order" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua sumber</SelectItem>
+              <SelectItem value="direct">Direct (owner/staff)</SelectItem>
+              {agentMembers.length > 0 && (
+                <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Per Mitra
+                </div>
+              )}
+              {agentMembers.map((a) => (
+                <SelectItem key={a.userId} value={a.userId}>
+                  {a.displayName}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -202,6 +331,48 @@ export default function Reports() {
           value={String(totals.count)}
           icon={Users}
           tone="violet"
+        />
+      </div>
+
+      {/* Direct vs Agent split */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <SplitCard
+          icon={Building2}
+          label="Direct (owner/staff)"
+          accent="from-sky-50 to-white border-sky-100"
+          profit={split.directProfit}
+          revenue={split.directRevenue}
+          count={split.directCount}
+          extra={null}
+        />
+        <SplitCard
+          icon={Handshake}
+          label="Via Mitra (agent)"
+          accent="from-orange-50 to-white border-orange-100"
+          profit={split.agentProfit}
+          revenue={split.agentRevenue}
+          count={split.agentCount}
+          extra={
+            <div className="text-[10.5px] text-muted-foreground mt-1">
+              Komisi dibayar: <span className="font-mono font-semibold text-orange-700">−{fmtIDR(split.totalCommission)}</span>
+              <br />
+              Net buat agency: <span className="font-mono font-bold text-emerald-700">{fmtIDR(split.agentNetForAgency)}</span>
+            </div>
+          }
+        />
+        <SplitCard
+          icon={Wallet}
+          label="Net Profit Agency"
+          accent="from-emerald-50 to-white border-emerald-100"
+          profit={split.netAgencyProfit}
+          revenue={totals.revenue}
+          count={totals.count}
+          extra={
+            <div className="text-[10.5px] text-muted-foreground mt-1">
+              = Direct + (Agent Profit − Komisi)
+            </div>
+          }
+          highlight
         />
       </div>
 
@@ -259,7 +430,6 @@ export default function Reports() {
                 </ResponsiveContainer>
               </div>
             )}
-            {/* Per-type breakdown rows */}
             <div className="mt-3 space-y-1.5">
               {byType.map((t) => (
                 <div key={t.type} className="flex items-center justify-between text-[12px]">
@@ -289,7 +459,6 @@ export default function Reports() {
               <span className="text-[10.5px] text-muted-foreground">{byClient.length} klien</span>
             </div>
 
-            {/* Top 3 highlight */}
             {top3.length > 0 && (
               <div className="grid grid-cols-3 gap-2 mb-4">
                 {top3.map((c, i) => {
@@ -311,7 +480,6 @@ export default function Reports() {
               </div>
             )}
 
-            {/* Full table */}
             <div className="overflow-x-auto -mx-1">
               <table className="w-full text-[12px]">
                 <thead>
@@ -346,12 +514,80 @@ export default function Reports() {
         </div>
       )}
 
+      {/* Agent Leaderboard */}
+      {agentMembers.length > 0 && (
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[13px] font-semibold flex items-center gap-1.5">
+              <Trophy className="h-3.5 w-3.5 text-amber-500" />
+              Leaderboard Mitra (Agent)
+            </h2>
+            <span className="text-[10.5px] text-muted-foreground">
+              {agentMembers.length} mitra · poin lifetime
+            </span>
+          </div>
+          <div className="overflow-x-auto -mx-1">
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr className="text-muted-foreground border-b">
+                  <th className="text-left font-semibold py-2 px-1">#</th>
+                  <th className="text-left font-semibold py-2 px-1">Mitra</th>
+                  <th className="text-right font-semibold py-2 px-1">Order</th>
+                  <th className="text-right font-semibold py-2 px-1">Revenue</th>
+                  <th className="text-right font-semibold py-2 px-1">Gross Profit</th>
+                  <th className="text-right font-semibold py-2 px-1">Komisi (%)</th>
+                  <th className="text-right font-semibold py-2 px-1">Komisi Diterima</th>
+                  <th className="text-right font-semibold py-2 px-1">⭐ Poin</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboard.map((row, i) => {
+                  const medals = ["🥇", "🥈", "🥉"];
+                  return (
+                    <tr key={row.agentId} className="border-b last:border-b-0 hover:bg-muted/40">
+                      <td className="py-2 px-1 text-muted-foreground">
+                        {i < 3 ? medals[i] : i + 1}
+                      </td>
+                      <td className="py-2 px-1 font-medium truncate max-w-[180px]">
+                        {row.name}
+                      </td>
+                      <td className="py-2 px-1 text-right">{row.orders}</td>
+                      <td className="py-2 px-1 text-right font-mono">{fmtIDR(row.revenue)}</td>
+                      <td className={`py-2 px-1 text-right font-mono font-semibold ${row.profit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                        {fmtIDR(row.profit)}
+                      </td>
+                      <td className="py-2 px-1 text-right font-mono text-muted-foreground">
+                        {row.commissionPct}%
+                      </td>
+                      <td className="py-2 px-1 text-right font-mono font-bold text-orange-700">
+                        {fmtIDR(row.commission)}
+                      </td>
+                      <td className="py-2 px-1 text-right font-mono font-bold text-amber-700">
+                        {row.lifetimePoints}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {leaderboard.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-6 text-center text-muted-foreground text-[11.5px]">
+                      Belum ada mitra terdaftar.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       {/* Footer note */}
       <div className="rounded-xl border bg-muted/30 p-3 text-[10.5px] text-muted-foreground leading-relaxed">
         <strong className="text-foreground">Catatan:</strong> Profit = Harga Jual − Harga Modal.
-        Order EGP (visa Mesir) di-konversi ke IDR pakai kurs <span className="font-mono">1 EGP ≈ Rp {EGP_TO_IDR}</span>
-        {" "}(konstanta — edit di <code>src/lib/profit.ts</code> kalau perlu).
-        Untuk order Umrah lama yang belum punya harga modal, sistem otomatis fallback ke nilai HPP dari snapshot Kalkulator.
+        Order EGP (visa Mesir) di-konversi ke IDR pakai kurs <span className="font-mono">1 EGP ≈ Rp {EGP_TO_IDR}</span>.
+        Komisi mitra dihitung dari <em>profit</em> (bukan revenue), hanya kalau profit positif.
+        Atur komisi per-mitra di <strong>Pengaturan → Tim</strong>. Poin di-award otomatis 10 poin
+        per order yg statusnya berubah ke <strong>Completed</strong>.
       </div>
     </div>
   );
@@ -384,6 +620,38 @@ function SummaryCard({
       <div className={`mt-1.5 font-extrabold font-mono ${big ? "text-xl md:text-2xl" : "text-base md:text-lg"} text-foreground`}>
         {value}
       </div>
+    </div>
+  );
+}
+
+function SplitCard({
+  icon: Icon, label, accent, profit, revenue, count, extra, highlight = false,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  accent: string;
+  profit: number;
+  revenue: number;
+  count: number;
+  extra: React.ReactNode;
+  highlight?: boolean;
+}) {
+  return (
+    <div className={`rounded-2xl border bg-gradient-to-br p-3 md:p-4 ${accent} ${highlight ? "ring-2 ring-emerald-300" : ""}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </span>
+        <span className="text-[10.5px] text-muted-foreground">{count} order</span>
+      </div>
+      <div className={`mt-1.5 font-extrabold font-mono text-lg md:text-xl ${profit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+        {fmtIDR(profit)}
+      </div>
+      <div className="text-[10.5px] text-muted-foreground">
+        Revenue: <span className="font-mono">{fmtIDR(revenue)}</span>
+      </div>
+      {extra}
     </div>
   );
 }

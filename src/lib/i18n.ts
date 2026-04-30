@@ -20,6 +20,8 @@ export interface Translations {
   nav_group_hub: string;
   nav_reports: string;
   nav_group_admin: string;
+  nav_agent_dashboard?: string;
+  nav_exports?: string;
 
   // Dashboard
   greeting_early_morning: string;
@@ -142,6 +144,8 @@ const id: Translations = {
   nav_group_hub: "Order Hub",
   nav_reports: "Laporan Keuangan",
   nav_group_admin: "Admin",
+  nav_agent_dashboard: "Mitra Dashboard",
+  nav_exports: "Export Center",
 
   greeting_early_morning: "Selamat Malam",
   greeting_morning: "Selamat Pagi",
@@ -258,6 +262,8 @@ const en: Translations = {
   nav_group_hub: "Order Hub",
   nav_reports: "Financial Reports",
   nav_group_admin: "Admin",
+  nav_agent_dashboard: "Agent Dashboard",
+  nav_exports: "Export Center",
 
   greeting_early_morning: "Good Night",
   greeting_morning: "Good Morning",
@@ -374,6 +380,8 @@ const ar: Translations = {
   nav_group_hub: "مركز الطلبات",
   nav_reports: "التقارير المالية",
   nav_group_admin: "المسؤول",
+  nav_agent_dashboard: "لوحة الوكيل",
+  nav_exports: "مركز التصدير",
 
   greeting_early_morning: "تصبح على خير",
   greeting_morning: "صباح الخير",

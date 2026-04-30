@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { requireAgencyId, getCurrentAgencyId } from "@/store/authStore";
+import { requireAgencyId, getCurrentAgencyId, useAuthStore } from "@/store/authStore";
 import { makePersistedCache } from "@/lib/persistedCache";
 
 /**
@@ -22,6 +22,9 @@ export interface Client {
   photoDataUrl?: string;
   notes?: string;
   legacyJamaahId?: string;
+  /** UID agent yg input client ini (null/undef = ditambahkan oleh owner/staff).
+   *  Auto-injected client-side oleh createClient() kalau user role 'agent'. */
+  createdByAgent?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +56,7 @@ const fromRow = (r: Record<string, unknown>): Client => ({
   photoDataUrl: (r.photo_data_url as string) ?? undefined,
   notes: (r.notes as string) ?? undefined,
   legacyJamaahId: (r.legacy_jamaah_id as string) ?? undefined,
+  createdByAgent: (r.created_by_agent as string) ?? null,
   createdAt: String(r.created_at ?? new Date().toISOString()),
   updatedAt: String(r.updated_at ?? r.created_at ?? new Date().toISOString()),
 });
@@ -69,6 +73,7 @@ const toRow = (c: Partial<Client>, agencyId?: string) => ({
   ...(c.photoDataUrl !== undefined ? { photo_data_url: c.photoDataUrl || null } : {}),
   ...(c.notes !== undefined ? { notes: c.notes || null } : {}),
   ...(c.legacyJamaahId !== undefined ? { legacy_jamaah_id: c.legacyJamaahId || null } : {}),
+  ...(c.createdByAgent !== undefined ? { created_by_agent: c.createdByAgent } : {}),
   ...(agencyId ? { agency_id: agencyId } : {}),
 });
 
@@ -103,11 +108,18 @@ export async function getClient(id: string): Promise<Client | null> {
 
 export async function createClient(draft: ClientDraft): Promise<Client> {
   const now = new Date().toISOString();
+  // Auto-attribute klien ke agent (kalau current user agent & belum di-set).
+  const me = useAuthStore.getState().user;
+  const enriched: ClientDraft =
+    me?.role === "agent" && draft.createdByAgent == null
+      ? { ...draft, createdByAgent: me.id }
+      : draft;
+
   if (isSupabaseConfigured()) {
     const agencyId = requireAgencyId();
     const { data, error } = await supabase!
       .from("clients")
-      .insert(toRow(draft, agencyId))
+      .insert(toRow(enriched, agencyId))
       .select("*")
       .single();
     if (error) throw error;
@@ -116,7 +128,7 @@ export async function createClient(draft: ClientDraft): Promise<Client> {
     return c;
   }
   const c: Client = {
-    ...draft,
+    ...enriched,
     id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     createdAt: now,
     updatedAt: now,

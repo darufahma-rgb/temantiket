@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { requireAgencyId, getCurrentAgencyId } from "@/store/authStore";
+import { requireAgencyId, getCurrentAgencyId, useAuthStore } from "@/store/authStore";
 import { makePersistedCache } from "@/lib/persistedCache";
 
 /**
@@ -26,13 +26,19 @@ export interface Order {
   status: OrderStatus;
   title: string | null;
   totalPrice: number;
-  /** Harga modal — apa yg agency bayar ke supplier. profit = totalPrice - costPrice */
-  costPrice: number;
+  /** Harga modal — apa yg agency bayar ke supplier. profit = totalPrice - costPrice.
+   *  Optional di draft (legacy callers belum set); fromRow() default-in ke 0. */
+  costPrice?: number;
   currency: string;
   metadata: Record<string, unknown>;
   tripId: string | null;
   packageId: string | null;
   jamaahId: string | null;
+  /** UID agent yg input order ini (null = Direct order oleh owner/staff).
+   *  Optional di draft — auto-injected client-side oleh createOrder() kalau
+   *  user role 'agent', biar legacy call site (Calculator, Orders) gak perlu
+   *  hard-code. */
+  createdByAgent?: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -75,6 +81,7 @@ const fromRow = (r: Record<string, unknown>): Order => ({
   tripId: (r.trip_id as string) ?? null,
   packageId: (r.package_id as string) ?? null,
   jamaahId: (r.jamaah_id as string) ?? null,
+  createdByAgent: (r.created_by_agent as string) ?? null,
   notes: (r.notes as string) ?? null,
   createdAt: String(r.created_at ?? new Date().toISOString()),
   updatedAt: String(r.updated_at ?? r.created_at ?? new Date().toISOString()),
@@ -93,6 +100,7 @@ const toRow = (o: Partial<Order>, agencyId?: string) => ({
   ...(o.tripId !== undefined ? { trip_id: o.tripId } : {}),
   ...(o.packageId !== undefined ? { package_id: o.packageId } : {}),
   ...(o.jamaahId !== undefined ? { jamaah_id: o.jamaahId } : {}),
+  ...(o.createdByAgent !== undefined ? { created_by_agent: o.createdByAgent } : {}),
   ...(o.notes !== undefined ? { notes: o.notes } : {}),
   ...(agencyId ? { agency_id: agencyId } : {}),
 });
@@ -134,11 +142,19 @@ export async function getOrder(id: string): Promise<Order | null> {
 }
 
 export async function createOrder(draft: OrderDraft): Promise<Order> {
+  // Auto-attribute ke agent kalau current user role-nya 'agent' & draft-nya
+  // belum punya createdByAgent. Owner/staff biarin null = "Direct order".
+  const me = useAuthStore.getState().user;
+  const enriched: OrderDraft =
+    me?.role === "agent" && draft.createdByAgent == null
+      ? { ...draft, createdByAgent: me.id }
+      : draft;
+
   if (isSupabaseConfigured()) {
     const agencyId = requireAgencyId();
     const { data, error } = await supabase!
       .from("orders")
-      .insert(toRow(draft, agencyId))
+      .insert(toRow(enriched, agencyId))
       .select("*")
       .single();
     if (error) throw error;
@@ -148,7 +164,7 @@ export async function createOrder(draft: OrderDraft): Promise<Order> {
   }
   const now = new Date().toISOString();
   const o: Order = {
-    ...draft,
+    ...enriched,
     id: `o-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     createdAt: now,
     updatedAt: now,
