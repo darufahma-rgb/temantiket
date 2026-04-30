@@ -71,56 +71,57 @@
   }
 
   :root[data-theme="dark"] {
-    /* ── Premium Dark v2 ──
-       Vibe: matte black canvas + dark onyx surfaces + clean white text +
-       brand orange accents. Buang semua tone cokelat-tua biar gak muddy.
+    /* ── Premium Dark v3 — "Midnight Wave" ──
+       Match persis dgn wallpaper login page: deep navy hampir hitam +
+       aksen electric blue (#0ea5e9 / #38bdf8). Card permukaan sedikit
+       diangkat dgn tint biru biar nyambung sm vibe wallpaper, bukan
+       neutral gray.
        Reference hex (di-convert ke HSL):
-         #0D0D0D bg, #161617 card/sidebar, #1E1E1F input, #333 input-border,
-         #FFFFFF foreground, #94A3B8 muted, #0ea5e9 brand orange. */
-    --background: 0 0% 5%;             /* #0D0D0D matte black */
-    --foreground: 0 0% 100%;           /* pure white judul/angka */
+         #020617 bg (slate-950), #0a1428 card, #0d1c3a chip, #1a2c52 border,
+         #0ea5e9 brand sky-500, #38bdf8 sky-400, #94A3B8 muted. */
+    --background: 222 47% 5%;          /* #020617 deep navy */
+    --foreground: 210 40% 98%;         /* near-white slightly cool */
 
-    --card: 240 4% 9%;                 /* #161617 dark onyx */
-    --card-foreground: 0 0% 100%;
-    --popover: 240 4% 9%;
-    --popover-foreground: 0 0% 100%;
+    --card: 222 56% 9%;                /* #0a1428 lifted navy */
+    --card-foreground: 210 40% 98%;
+    --popover: 222 60% 8%;             /* sedikit lebih dalam dari card */
+    --popover-foreground: 210 40% 98%;
 
     /* Secondary = "tile / chip" surface satu tingkat di atas card */
-    --secondary: 240 3% 12%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 220 50% 13%;          /* #0d1c3a chip */
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 240 3% 14%;
-    --muted-foreground: 215 16% 65%;   /* #94A3B8 slate gray label */
+    --muted: 220 40% 15%;
+    --muted-foreground: 215 25% 70%;   /* slate-400-ish, cocok di atas navy */
 
-    /* Orange accent chip — dipake buat status badge, hover, etc. */
-    --accent: 27 91% 14%;              /* deep orange tint, bukan brown */
-    --accent-foreground: 27 95% 70%;
+    /* Sky-blue accent chip — dipake buat status badge, hover, etc. */
+    --accent: 199 90% 14%;             /* deep sky tint */
+    --accent-foreground: 199 95% 74%;  /* sky-300 */
 
-    /* Primary tetap brand orange — udah match #0ea5e9 */
-    --primary: 198 92% 42%;
-    --primary-foreground: 0 0% 100%;
-    --primary-light: 27 91% 12%;
+    /* Primary = brand sky-500 (#0ea5e9), persis warna kurva di wallpaper */
+    --primary: 199 89% 48%;
+    --primary-foreground: 222 47% 5%;  /* dark text on bright button kontras */
+    --primary-light: 199 90% 12%;
 
-    /* Border halus #2A2A2C, input border #333 (sedikit lebih terang
-       supaya field keliatan tappable). */
-    --border: 240 3% 17%;
-    --input: 0 0% 20%;                 /* #333 */
-    --ring: 198 92% 42%;                /* fokus = brand orange */
+    /* Border halus dgn tint biru biar nyambung sm tema */
+    --border: 220 40% 18%;             /* #1a2c52 */
+    --input: 220 40% 22%;              /* sedikit lebih terang biar tappable */
+    --ring: 199 89% 60%;               /* fokus = sky-400 glow */
 
-    /* Status semantic — Lunas ijo, warning oranye, destructive merah */
+    /* Status semantic — Lunas ijo, warning amber (kontras vs sky), destructive merah */
     --success: 142 71% 45%;
-    --warning: 198 92% 42%;
+    --warning: 38 92% 55%;
     --destructive: 0 84% 60%;
 
-    /* Shadows: pakai orange transparan biar premium glow vibe */
-    --gradient-primary: linear-gradient(135deg, hsl(198 92% 42%), hsl(205 90% 50%));
-    --gradient-hero: linear-gradient(135deg, hsl(198 92% 42%) 0%, hsl(205 90% 50%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(240 4% 10%) 0%, hsl(240 4% 8%) 100%);
-    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.40);
-    --shadow-md: 0 4px 12px -2px hsl(0 0% 0% / 0.55);
-    --shadow-lg: 0 14px 40px -10px hsl(0 0% 0% / 0.70);
-    --shadow-card: 0 4px 20px -4px hsl(0 0% 0% / 0.55), 0 0 0 1px hsl(0 0% 100% / 0.04);
-    --shadow-glow: 0 0 24px hsl(198 92% 42% / 0.20);
+    /* Gradient & shadow — pakai sky tint biar match wallpaper vibe */
+    --gradient-primary: linear-gradient(135deg, hsl(199 89% 48%), hsl(199 95% 60%));
+    --gradient-hero: linear-gradient(135deg, hsl(221 83% 53%) 0%, hsl(199 89% 48%) 60%, hsl(199 95% 60%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(222 56% 10%) 0%, hsl(222 60% 7%) 100%);
+    --shadow-sm: 0 1px 2px 0 hsl(222 80% 2% / 0.50);
+    --shadow-md: 0 4px 14px -2px hsl(222 80% 2% / 0.60);
+    --shadow-lg: 0 16px 44px -10px hsl(222 80% 2% / 0.75);
+    --shadow-card: 0 4px 22px -4px hsl(222 80% 2% / 0.60), 0 0 0 1px hsl(199 89% 60% / 0.06);
+    --shadow-glow: 0 0 28px hsl(199 89% 48% / 0.32);
   }
 
   :root[data-font-size="small"] {
@@ -242,10 +243,11 @@
   :root[data-theme="dark"] input,
   :root[data-theme="dark"] textarea,
   :root[data-theme="dark"] [role="combobox"] {
-    /* Premium dark v2: input bg #1E1E1F, border #333, focus orange glow. */
-    background-color: hsl(240 3% 12%) !important;
+    /* Midnight Wave: input bg = chip token (navy-tinted), border = sky tint
+       at low opacity, focus glow = sky-400. Pakai token biar 1 sumber kebenaran. */
+    background-color: hsl(var(--secondary)) !important;
     color: hsl(var(--foreground)) !important;
-    border-color: hsl(0 0% 20%) !important;
+    border-color: hsl(199 89% 60% / 0.20) !important;
     transition: border-color 0.18s ease, box-shadow 0.18s ease;
   }
 
@@ -254,15 +256,15 @@
     color: hsl(var(--muted-foreground)) !important;
   }
 
-  /* Focus state: border + halo orange transparan (rgba(14,165,233,0.2)) */
+  /* Focus state: border + halo sky transparan — matching wallpaper accent. */
   :root[data-theme="dark"] input:focus,
   :root[data-theme="dark"] input:focus-visible,
   :root[data-theme="dark"] textarea:focus,
   :root[data-theme="dark"] textarea:focus-visible,
   :root[data-theme="dark"] [role="combobox"]:focus,
   :root[data-theme="dark"] [role="combobox"][data-state="open"] {
-    border-color: hsl(198 92% 42%) !important;
-    box-shadow: 0 0 0 3px hsl(198 92% 42% / 0.20) !important;
+    border-color: hsl(199 89% 48%) !important;
+    box-shadow: 0 0 0 3px hsl(199 89% 48% / 0.25), 0 0 18px hsl(199 89% 60% / 0.15) !important;
     outline: none !important;
   }
 
@@ -367,52 +369,60 @@
     box-shadow: 0 8px 28px hsl(0 0% 0% / 0.50), 0 0 0 1px hsl(0 0% 100% / 0.04) !important;
   }
 
-  /* shadcn Slider track — track gelap solid, range pakai primary (orange) */
+  /* shadcn Slider track — track gelap navy-tinted, range pakai primary (sky) */
   :root[data-theme="dark"] [data-orientation="horizontal"] > .bg-secondary,
   :root[data-theme="dark"] .bg-secondary[data-orientation="horizontal"] {
-    background-color: hsl(0 0% 18%) !important;
+    background-color: hsl(220 40% 15%) !important;
   }
-  /* Slider thumb halo on hover/focus */
+  /* Slider thumb halo on hover/focus — sky glow */
   :root[data-theme="dark"] [role="slider"]:focus-visible,
   :root[data-theme="dark"] [role="slider"]:hover {
-    box-shadow: 0 0 0 6px hsl(198 92% 42% / 0.20) !important;
+    box-shadow: 0 0 0 6px hsl(199 89% 48% / 0.25) !important;
   }
 
-  /* Selected card / pressed state — anything with .ring-2.ring-orange* or
-     .border-primary atau aria-pressed/data-state=on dapet glow halus. */
+  /* Selected card / pressed state — sky glow biar match wallpaper */
   :root[data-theme="dark"] [data-state="on"],
   :root[data-theme="dark"] [aria-pressed="true"],
   :root[data-theme="dark"] .ring-sky-500,
   :root[data-theme="dark"] .ring-primary,
   :root[data-theme="dark"] .border-primary {
-    border-color: hsl(198 92% 42%) !important;
-    box-shadow: 0 0 0 1px hsl(198 92% 42% / 0.50), 0 0 18px hsl(198 92% 42% / 0.18) !important;
+    border-color: hsl(199 89% 48%) !important;
+    box-shadow: 0 0 0 1px hsl(199 89% 48% / 0.55), 0 0 22px hsl(199 95% 60% / 0.22) !important;
   }
 
-  /* Tabs / segmented control active pill — orange highlight */
+  /* Tabs / segmented control active pill — sky highlight */
   :root[data-theme="dark"] [role="tab"][data-state="active"] {
-    background-color: hsl(198 92% 42%) !important;
-    color: hsl(0 0% 100%) !important;
-    box-shadow: 0 2px 12px hsl(198 92% 42% / 0.25) !important;
+    background-color: hsl(199 89% 48%) !important;
+    color: hsl(222 47% 5%) !important;
+    box-shadow: 0 2px 14px hsl(199 89% 48% / 0.35) !important;
   }
 
-  /* "Belum Lunas" badge — gradasi orange→merah biar masuk brand,
-     bukan slate yang ngilang di dark bg. Targets the existing class
-     combo in JamaahDetailDrawer / Dashboard alert. */
+  /* "Belum Lunas" badge — gradasi sky→ungu/merah supaya tetep stand-out
+     di atas navy. Pakai sky di sebelah kiri biar nyambung sm tema. */
   :root[data-theme="dark"] .bg-slate-100.text-slate-600,
   :root[data-theme="dark"] .bg-slate-100.border-slate-200 {
-    background-image: linear-gradient(135deg, hsl(198 92% 42%), hsl(0 84% 55%)) !important;
+    background-image: linear-gradient(135deg, hsl(199 89% 48%), hsl(0 84% 55%)) !important;
     background-color: transparent !important;
     color: hsl(0 0% 100%) !important;
-    border-color: hsl(198 92% 42% / 0.40) !important;
+    border-color: hsl(199 89% 48% / 0.45) !important;
   }
 
   /* Buttons / Tagihan-Belum-Lunas alert card di Dashboard pakai red-50;
-     biar tetep brand-aligned (orange→red) */
+     dipertahanin tone red biar urgensinya kebaca, tapi sky shadow halus. */
   :root[data-theme="dark"] .from-red-50,
   :root[data-theme="dark"] .to-red-50 {
-    --tw-gradient-from: hsl(198 92% 42% / 0.10) var(--tw-gradient-from-position) !important;
-    --tw-gradient-to: hsl(0 84% 55% / 0.10) var(--tw-gradient-to-position) !important;
+    --tw-gradient-from: hsl(0 84% 55% / 0.10) var(--tw-gradient-from-position) !important;
+    --tw-gradient-to: hsl(199 89% 48% / 0.10) var(--tw-gradient-to-position) !important;
+  }
+
+  /* Body & root background — pakai gradient halus navy supaya gak flat,
+     mirroring kontur wallpaper login (gelap tengah, sedikit lebih terang
+     di pojok). Layer ini tidak menutup card, hanya bg dasar. */
+  :root[data-theme="dark"] body {
+    background-image:
+      radial-gradient(ellipse at top left, hsl(221 83% 18% / 0.40), transparent 55%),
+      radial-gradient(ellipse at bottom right, hsl(199 89% 28% / 0.30), transparent 55%);
+    background-attachment: fixed;
   }
 
   :root[data-compact="true"] {
