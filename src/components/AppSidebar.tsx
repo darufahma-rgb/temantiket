@@ -106,7 +106,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
           <img
             src="/logo-igh-tour-text.png"
             alt="Temantiket"
-            className="h-8 w-auto object-contain shrink-0"
+            className="h-6 w-auto object-contain shrink-0"
           />
           <div className="leading-tight">
             <div className="font-bold text-[13px] text-[hsl(var(--foreground))]">Temantiket</div>
