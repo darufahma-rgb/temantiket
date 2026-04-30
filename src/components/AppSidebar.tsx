@@ -101,16 +101,16 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
       style={{ width: "var(--sidebar-width)" }}
     >
       {/* ── Logo ── */}
-      <div className="flex items-center justify-between px-5 pt-6 pb-5 shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+        <div className="flex items-center gap-2.5">
           <img
             src="/logo-igh-tour-text.png"
             alt="Temantiket"
-            className="h-12 w-auto object-contain shrink-0"
+            className="h-8 w-auto object-contain shrink-0"
           />
           <div className="leading-tight">
-            <div className="font-bold text-[14.5px] text-[hsl(var(--foreground))]">Temantiket</div>
-            <div className="text-[10px] font-medium tracking-wide text-[hsl(var(--muted-foreground))] uppercase mt-0.5">
+            <div className="font-bold text-[13px] text-[hsl(var(--foreground))]">Temantiket</div>
+            <div className="text-[9px] font-medium tracking-wide text-[hsl(var(--muted-foreground))] uppercase mt-0.5">
               Travel Agency
             </div>
           </div>
