@@ -44,8 +44,8 @@ alter table public.packages
 create table if not exists public.payments (
   id          text primary key,
   agency_id   uuid not null references public.agencies(id) on delete cascade,
-  jamaah_id   uuid not null references public.jamaah(id)   on delete cascade,
-  trip_id     uuid          references public.trips(id)    on delete set null,
+  jamaah_id   text not null references public.jamaah(id)   on delete cascade,
+  trip_id     text          references public.trips(id)    on delete set null,
   type        text not null default 'other'
               check (type in ('dp','installment','final','refund','other')),
   amount      numeric not null default 0,
