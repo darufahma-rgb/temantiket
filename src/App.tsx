@@ -17,6 +17,7 @@ import JamaahProfile from "./pages/JamaahProfile";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import PublicCheck from "./pages/PublicCheck";
+import PublicMemberCard from "./pages/PublicMemberCard";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
 import Notes from "./pages/Notes";
@@ -147,6 +148,7 @@ function AnimatedRoutes() {
       <Route path="/bootstrap" element={<Auth />} />
       <Route path="/cek" element={<PublicCheck />} />
       <Route path="/cek/:code" element={<PublicCheck />} />
+      <Route path="/m/:slug" element={<PublicMemberCard />} />
 
       <Route path="/" element={<RequireAuth><Index /></RequireAuth>} />
       <Route path="/calculator" element={<RequireAuth><DashboardLayout><Calculator /></DashboardLayout></RequireAuth>} />

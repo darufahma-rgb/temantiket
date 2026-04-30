@@ -1,10 +1,12 @@
 import { useMemo, useRef, useState } from "react";
 import * as htmlToImage from "html-to-image";
-import { Download, RotateCw, Loader2 } from "lucide-react";
+import { Download, RotateCw, Loader2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import type { Client } from "@/features/clients/clientsRepo";
-import type { Order, OrderType } from "@/features/orders/ordersRepo";
+import {
+  buildWhatsAppShareText,
+  buildWhatsAppShareUrl,
+} from "@/lib/memberSlug";
 import frontBg from "@assets/Polosan_Member_Card_Temantiket_1777540855821.png";
 import backBg from "@assets/Polosan_Member_Card_Temantiket_Back_1777540855822.png";
 
@@ -24,22 +26,45 @@ import backBg from "@assets/Polosan_Member_Card_Temantiket_Back_1777540855822.pn
  * Order dianggap "sukses" kalau status ∈ {Confirmed, Paid, Completed}.
  */
 
+/** Lite shape — kompatibel dgn tipe `Client` dari repo, juga dipake utk halaman publik. */
+export interface MemberCardClient {
+  name: string;
+  createdAt: string;
+  /** Optional: nomor HP (utk prefill recipient WhatsApp share). */
+  phone?: string | null;
+}
+
+/** Lite shape — kompatibel dgn tipe `Order`, juga dipake utk halaman publik. */
+export interface MemberCardOrder {
+  type: string;
+  status: string;
+  createdAt: string;
+  metadata?: Record<string, unknown> | null;
+  /** Override langsung dari payload publik (RPC `get_member_card`). */
+  transitType?: string | null;
+}
+
 interface Props {
-  client: Client;
+  client: MemberCardClient;
   /** Urutan kronologis client di agency (1-based). Dipakai sbg Member ID. */
   memberIndex: number;
   /** Semua order milik client. Sisi belakang akan otomatis di-stamp. */
-  orders: Order[];
+  orders: MemberCardOrder[];
+  /** Kalau ada → tombol "Share to WhatsApp" muncul. */
+  publicUrl?: string;
+  /** Sembunyiin tombol Download/Share/Flip-button (mode read-only utk publik kalau perlu). */
+  readOnly?: boolean;
 }
 
 const SUCCESS_STATUSES = new Set(["Confirmed", "Paid", "Completed"]);
 
 type StampKind = "flight" | "voa" | "transit_dubai" | "transit_saudi" | "student";
 
-function stampKindFor(o: Order): StampKind {
-  // Cek metadata override dulu — order umrah dgn transit Dubai bisa di-tag
-  // via metadata.transitType = "dubai".
-  const transit = (o.metadata as { transitType?: string } | null)?.transitType;
+function stampKindFor(o: MemberCardOrder): StampKind {
+  // Cek transitType override (dari RPC publik atau metadata.transitType).
+  const transit =
+    o.transitType ??
+    (o.metadata as { transitType?: string } | null | undefined)?.transitType;
   if (transit === "dubai") return "transit_dubai";
   if (transit === "saudi") return "transit_saudi";
   switch (o.type) {
@@ -247,14 +272,21 @@ const CardBack = ({
 };
 
 // ── Main component ─────────────────────────────────────────────────────────
-export default function MemberCard({ client, memberIndex, orders }: Props) {
+export default function MemberCard({
+  client, memberIndex, orders, publicUrl, readOnly = false,
+}: Props) {
   const [flipped, setFlipped] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
 
   const memberId = useMemo(() => String(memberIndex).padStart(4, "0"), [memberIndex]);
   const since = useMemo(() => fmtSinceShort(client.createdAt), [client.createdAt]);
+  const safeName = useMemo(
+    () => (client.name ?? "").replace(/[^a-zA-Z0-9]+/g, "_").replace(/_+$/g, "").slice(0, 40) || "member",
+    [client.name],
+  );
 
   const stamps = useMemo(() => {
     return orders
@@ -264,27 +296,43 @@ export default function MemberCard({ client, memberIndex, orders }: Props) {
       .map((o) => ({ kind: stampKindFor(o), date: fmtStampDate(o.createdAt) }));
   }, [orders]);
 
+  /** Render kedua sisi → array { suffix, dataUrl, blob, file }. */
+  async function renderBothFaces() {
+    const targets: Array<{ ref: React.RefObject<HTMLDivElement>; suffix: string }> = [
+      { ref: frontRef, suffix: "depan" },
+      { ref: backRef, suffix: "belakang" },
+    ];
+    const out: Array<{ suffix: string; dataUrl: string; blob: Blob; file: File }> = [];
+    for (const t of targets) {
+      if (!t.ref.current) continue;
+      const dataUrl = await htmlToImage.toPng(t.ref.current, { pixelRatio: 2, cacheBust: true });
+      const blob = await (await fetch(dataUrl)).blob();
+      const filename = `member-card_${safeName}_TMNTKT${memberId}_${t.suffix}.png`;
+      out.push({
+        suffix: t.suffix,
+        dataUrl,
+        blob,
+        file: new File([blob], filename, { type: "image/png" }),
+      });
+    }
+    return out;
+  }
+
+  /** Trigger browser download untuk satu file. */
+  function triggerDownload(dataUrl: string, suffix: string) {
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = `member-card_${safeName}_TMNTKT${memberId}_${suffix}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const targets: Array<{ ref: React.RefObject<HTMLDivElement>; suffix: string }> = [
-        { ref: frontRef, suffix: "depan" },
-        { ref: backRef, suffix: "belakang" },
-      ];
-      const safeName = client.name.replace(/[^a-zA-Z0-9]+/g, "_").replace(/_+$/g, "").slice(0, 40) || "member";
-      for (const t of targets) {
-        if (!t.ref.current) continue;
-        const dataUrl = await htmlToImage.toPng(t.ref.current, {
-          pixelRatio: 2,
-          cacheBust: true,
-        });
-        const a = document.createElement("a");
-        a.href = dataUrl;
-        a.download = `member-card_${safeName}_TMNTKT${memberId}_${t.suffix}.png`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
+      const faces = await renderBothFaces();
+      for (const f of faces) triggerDownload(f.dataUrl, f.suffix);
       toast.success("Member Card di-download", {
         description: "2 file PNG (depan + belakang) tersimpan di folder Download.",
       });
@@ -295,6 +343,50 @@ export default function MemberCard({ client, memberIndex, orders }: Props) {
       });
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleShareWhatsApp = async () => {
+    if (!publicUrl) return;
+    setSharing(true);
+    try {
+      const faces = await renderBothFaces();
+      const text = buildWhatsAppShareText({ clientName: client.name, publicUrl });
+
+      // 1) Mobile (iOS/Android): coba native share sheet — bisa attach gambar +
+      //    text sekaligus, user tinggal pilih WhatsApp.
+      const files = faces.map((f) => f.file);
+      const navAny = navigator as Navigator & {
+        canShare?: (data: { files?: File[] }) => boolean;
+        share?: (data: ShareData & { files?: File[] }) => Promise<void>;
+      };
+      if (navAny.share && navAny.canShare?.({ files })) {
+        try {
+          await navAny.share({ files, text, title: "Temantiket Member Card" });
+          toast.success("Share dialog terbuka");
+          return;
+        } catch (err) {
+          // User cancel → diam aja
+          if (err instanceof Error && err.name === "AbortError") return;
+          // fall-through ke fallback
+        }
+      }
+
+      // 2) Fallback (desktop / browser tanpa Web Share Files): download dulu →
+      //    buka wa.me link supaya user tinggal attach manual.
+      for (const f of faces) triggerDownload(f.dataUrl, f.suffix);
+      const waUrl = buildWhatsAppShareUrl({ phone: client.phone, text });
+      window.open(waUrl, "_blank", "noopener");
+      toast.success("WhatsApp terbuka", {
+        description: "2 file PNG sudah di-download — tinggal attach ke chat.",
+      });
+    } catch (e) {
+      console.error("[MemberCard] share failed:", e);
+      toast.error("Gagal share", {
+        description: e instanceof Error ? e.message : "Coba lagi.",
+      });
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -311,15 +403,28 @@ export default function MemberCard({ client, memberIndex, orders }: Props) {
             {" "}{successCount} dari 16 stamp terisi
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => setFlipped((f) => !f)}>
             <RotateCw className="h-3.5 w-3.5 mr-1.5" />
             {flipped ? "Lihat Depan" : "Lihat Belakang"}
           </Button>
-          <Button size="sm" onClick={handleDownload} disabled={downloading}>
-            {downloading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
-            Download
-          </Button>
+          {!readOnly && (
+            <Button size="sm" variant="outline" onClick={handleDownload} disabled={downloading || sharing}>
+              {downloading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+              Download
+            </Button>
+          )}
+          {!readOnly && publicUrl && (
+            <Button
+              size="sm"
+              onClick={handleShareWhatsApp}
+              disabled={sharing || downloading}
+              className="bg-[#25D366] hover:bg-[#1eb858] text-white"
+            >
+              {sharing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5 mr-1.5" />}
+              Share ke WhatsApp
+            </Button>
+          )}
         </div>
       </div>
 

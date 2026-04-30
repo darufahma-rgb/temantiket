@@ -18,6 +18,7 @@ import { ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI } from "@/features/orders/ordersRepo
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "sonner";
 import MemberCard from "@/components/MemberCard";
+import { buildMemberSlug, buildPublicMemberUrl } from "@/lib/memberSlug";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const fmtIDR = (v: number) =>
@@ -140,7 +141,23 @@ function ClientDetailInner({ id }: { id: string }) {
 
       {/* Temantiket Member Card — dua sisi, flip + auto-stamp dari order sukses */}
       <section className="rounded-2xl border border-border bg-white p-4 md:p-5">
-        <MemberCard client={client} memberIndex={memberIndex} orders={clientOrders} />
+        <MemberCard
+          client={client}
+          memberIndex={memberIndex}
+          orders={clientOrders}
+          publicUrl={buildPublicMemberUrl(buildMemberSlug(client.name, memberIndex))}
+        />
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Link publik klien:{" "}
+          <a
+            href={buildPublicMemberUrl(buildMemberSlug(client.name, memberIndex))}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono text-sky-600 hover:underline break-all"
+          >
+            {buildPublicMemberUrl(buildMemberSlug(client.name, memberIndex))}
+          </a>
+        </p>
       </section>
 
       {/* Orders milik klien */}

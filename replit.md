@@ -2,6 +2,32 @@
 
 Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn/ui.
 
+## Member Card Public Page + WhatsApp Share (Apr 30, 2026)
+Member Card sekarang bisa di-share sebagai marketing tool — klien dapat link publik buat cek poin sendiri kapanpun.
+
+- **Public Page** (`src/pages/PublicMemberCard.tsx`, route `/m/:slug`):
+  - Mobile-first, anon-accessible. Slug format: `[firstname-lowercase][memberIndex]` (mis. `/m/danang10`).
+  - Render `<MemberCard readOnly>` — flip-card masih jalan, tapi tombol Download/Share disembunyiin.
+  - State: loading / error (`not_found` / `invalid_slug` / `network`) / sukses dgn CTA "pantau stamp lo sampai penuh".
+
+- **Public RPC** (`supabase/migrations/2026_04_30_member_card_rpc.sql`):
+  - `public.get_member_card(p_slug text)` — `SECURITY DEFINER`, `stable`. Parses slug → `row_number() over (partition by agency_id order by created_at)` → match name prefix.
+  - Projection minimal: `client.{name, createdAt, memberIndex}` + `orders[].{type, status, createdAt, transitType}`. Tidak expose phone/email/paspor/harga.
+  - `revoke all from public; grant execute to anon, authenticated` — read-only by design.
+  - **User wajib apply migration di Supabase SQL Editor** sebelum halaman publik bisa fetch data.
+
+- **WhatsApp Share Engine** (`src/components/MemberCard.tsx`):
+  - Tombol "Share ke WhatsApp" (hijau #25D366, muncul kalau prop `publicUrl` di-set).
+  - Mobile (Web Share API + Files): native share sheet → user pilih WA → image+text auto-attach.
+  - Desktop fallback: download 2 PNG + buka `wa.me/<phone>?text=...` dgn teks template "Halo [nama], ini kartu member Temantiket lo! Cek poin & riwayat di [link] | Pantau stamp sampai penuh ✈️".
+  - Recipient prefilled dari `client.phone` (normalized ke 62xxxx via `normalizePhoneForWa`).
+
+- **Slug helpers** (`src/lib/memberSlug.ts`): `buildMemberSlug(name, idx)`, `buildPublicMemberUrl(slug)`, `normalizePhoneForWa(phone)`, `buildWhatsAppShareText/Url`.
+
+- **Integration** (`src/pages/Clients.tsx`): pass `publicUrl` ke `<MemberCard>` + tampilin link copy-able di bawah kartu (admin gampang share manual).
+
+- **Refactor MemberCard**: tipe `client`/`orders` di-loosen jadi structural (`MemberCardClient`/`MemberCardOrder`) supaya bisa di-feed dari payload publik (yg gak punya full Client / Order types).
+
 ## Order Hub — Universal Orders + Independent Clients (Apr 30, 2026)
 Refactor: app sekarang punya jalur "Order Hub" pararel di samping flow Umrah lama (Calculator → Packages → Trips → Jamaah Manifest tetap utuh, tidak ada CRUD lama yang dihapus).
 
