@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * Kartu kontak WhatsApp admin (Syamil IGH) untuk operasional internal.
+ * Kartu kontak WhatsApp admin (Syamil Temantiket) untuk operasional internal.
  * - Tampilkan nomor dengan format display Indonesia (+62 822-4519-3615).
  * - Tombol Copy → ke clipboard (digit-only) supaya admin bisa langsung paste.
  * - Tombol Buka → wa.me/{digits} di tab baru.

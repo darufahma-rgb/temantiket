@@ -751,7 +751,7 @@ export default function Calculator() {
     });
   }, [calc, effectiveRates, groupTiers]);
 
-  // ── Data untuk PDF template IGH ──
+  // ── Data untuk PDF template Temantiket ──
   const ighPdfData = useMemo<IghPdfData>(() => {
     // Resolve hotel Makkah/Madinah dari array hotels[]:
     //  1. Cari row yg label-nya menyebut kota (mis. "Makkah", "Hotel Makkah X")
@@ -2154,7 +2154,7 @@ export default function Calculator() {
   );
 }
 
-// ── PDF Export Card (uses new IGH template generator) ────────────────────────
+// ── PDF Export Card (uses new Temantiket template generator) ────────────────────────
 
 function PdfExportCard({
   data,

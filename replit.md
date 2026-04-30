@@ -22,7 +22,7 @@ Pricing logic untuk Umrah grup di-rework supaya cocok dengan kondisi hotel real 
 
 **PDF Layout Tuner Presets (cloud-synced):**
 - Tabel `pdf_layout_presets` (id text PK, agency_id, name, payload jsonb, timestamps) per-agency RLS.
-- Built-in preset `IGH Official Default` (id `builtin:igh-official-default`) selalu muncul di dropdown sebagai safety net read-only — tidak disimpan di cloud.
+- Built-in preset `Temantiket Official Default` (id `builtin:igh-official-default`) selalu muncul di dropdown sebagai safety net read-only — tidak disimpan di cloud.
 - Cloud presets di-cache ke localStorage (`igh:pdf-layout-presets-cache`) untuk render instan, lalu di-sync via `pullPdfLayoutPresets()` + realtime channel `pdf_layout_presets`. Cross-device sync bekerja otomatis lewat `onPdfPresetsChanged` listener.
 - **Pola**: local-first cache. Reads narik dari Supabase + simpen ke localStorage; writes push ke localStorage **dan** Supabase. Kalau Supabase belum dikonfigurasi, app jalan offline-only pakai localStorage.
 - **Repos cloud-aware**:

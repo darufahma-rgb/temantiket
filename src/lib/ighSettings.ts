@@ -1,7 +1,7 @@
 /**
- * IGH-wide admin settings (kontak admin yang muncul di footer PDF & UI).
+ * Temantiket-wide admin settings (kontak admin yang muncul di footer PDF & UI).
  * Disimpan ke localStorage; tidak disinkronkan ke cloud — ini setting per-device
- * untuk operasional admin (mis. WhatsApp Syamil IGH yang muncul di penawaran).
+ * untuk operasional admin (mis. WhatsApp Syamil Temantiket yang muncul di penawaran).
  */
 
 export interface IghAdminSettings {
@@ -14,7 +14,7 @@ export interface IghAdminSettings {
 const STORAGE_KEY = "igh:admin-settings";
 
 export const DEFAULT_IGH_ADMIN_SETTINGS: IghAdminSettings = {
-  adminWhatsapp: "+6282245193615", // Syamil IGH
+  adminWhatsapp: "+6282245193615", // Syamil Temantiket
   adminInstagram: "temantiket",
 };
 

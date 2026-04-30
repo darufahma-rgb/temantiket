@@ -75,7 +75,7 @@ export default function PublicCheck() {
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value.toUpperCase())}
-              placeholder="cth: IGH-AB23CD"
+              placeholder="cth: TMT-AB23CD"
               className="h-11 text-sm rounded-xl flex-1 bg-white"
               autoFocus
             />

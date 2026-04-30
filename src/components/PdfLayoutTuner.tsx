@@ -403,7 +403,7 @@ export function PdfLayoutTuner({ config, mode = "private", onChange, onClose }: 
     const previousPath = local.customTemplate?.storagePath;
     setLocal((prev) => ({ ...prev, customTemplate: null }));
     if (previousPath) void removePdfTemplate(previousPath);
-    toast.message("Background dikembalikan ke template IGH default");
+    toast.message("Background dikembalikan ke template Temantiket default");
   }
 
   return (
@@ -571,7 +571,7 @@ export function PdfLayoutTuner({ config, mode = "private", onChange, onClose }: 
             </div>
           ) : (
             <div className="rounded-md bg-white/60 border border-dashed border-sky-200 px-2 py-1.5 text-[10px] text-slate-500 italic">
-              Pakai template default IGH
+              Pakai template default Temantiket
             </div>
           )}
           <input
@@ -597,7 +597,7 @@ export function PdfLayoutTuner({ config, mode = "private", onChange, onClose }: 
             <button
               onClick={handleTemplateReset}
               disabled={!local.customTemplate || tplBusy}
-              title="Kembalikan ke template default IGH"
+              title="Kembalikan ke template default Temantiket"
               className="h-7 px-2 inline-flex items-center justify-center gap-1 rounded-md text-[10px] font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <RotateCcw className="h-3 w-3" />
@@ -1050,7 +1050,7 @@ export function PdfLayoutTuner({ config, mode = "private", onChange, onClose }: 
             Pricing Table — Group
           </h4>
           <p className="text-[9px] text-slate-500 leading-snug">
-            Khusus template <span className="font-semibold">IGH Blank Template Group</span> —
+            Khusus template <span className="font-semibold">Temantiket Blank Template Group</span> —
             tabel 4 kolom (Pax · Quad · Triple · Double). Aktif kalau PDF di-generate
             dari Kalkulator Grup.
           </p>

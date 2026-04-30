@@ -332,7 +332,7 @@ export async function buildIghPdf(data: IghPdfData, layout?: Partial<IghLayoutCo
   //   - PDF custom → load file itu sebagai base PDF (sama treatment kayak default)
   //   - Image custom → bikin PDF baru ukuran A5 (PAGE_W × PAGE_H), embed image
   //     full-bleed sebagai background, lalu generator naro teks di atasnya
-  //   - null/undefined → pakai template default IGH (`/igh-blank-template*.pdf`)
+  //   - null/undefined → pakai template default Temantiket (`/igh-blank-template*.pdf`)
   // Failure di custom URL (404, network, parse error) → auto-fallback ke default
   // supaya generator gak crash kalo file di Storage hilang/corrupt.
   const customTpl = cfg.customTemplate;
@@ -929,7 +929,7 @@ export async function downloadIghPdf(
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  const safe = (data.projectName || "IGH-Penawaran").replace(/[^a-z0-9-_]+/gi, "_");
+  const safe = (data.projectName || "Temantiket-Penawaran").replace(/[^a-z0-9-_]+/gi, "_");
   a.download = fileName || `${safe}_${(data.customerName || "Customer").replace(/[^a-z0-9-_]+/gi, "_")}.pdf`;
   document.body.appendChild(a);
   a.click();

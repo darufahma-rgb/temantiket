@@ -147,7 +147,7 @@ export function SplashScreen() {
                     const img = e.target as HTMLImageElement;
                     img.style.display = "none";
                     const fallback = document.createElement("span");
-                    fallback.textContent = "IGH";
+                    fallback.textContent = "TMT";
                     fallback.className =
                       "text-5xl font-black tracking-[-0.06em] text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]";
                     img.parentElement!.appendChild(fallback);

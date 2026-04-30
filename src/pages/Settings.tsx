@@ -114,7 +114,7 @@ export default function Settings() {
 
   const [appearance, setAppearance] = useState<AppearanceSettings>(() => loadAppearanceSettings());
 
-  // IGH Settings — kontak admin yang muncul di footer PDF penawaran & Dashboard.
+  // Temantiket Settings — kontak admin yang muncul di footer PDF penawaran & Dashboard.
   const [ighAdmin, setIghAdmin] = useState<IghAdminSettings>(() => loadIghAdminSettings());
   const [savingIghAdmin, setSavingIghAdmin] = useState(false);
   const handleSaveIghAdmin = () => {
@@ -522,7 +522,7 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* ── IGH Settings: Kontak Admin (muncul di footer PDF penawaran) ── */}
+            {/* ── Temantiket Settings: Kontak Admin (muncul di footer PDF penawaran) ── */}
             <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-4 space-y-3 mt-2">
               <div className="flex items-start gap-2">
                 <div className="h-7 w-7 rounded-lg bg-sky-100 flex items-center justify-center shrink-0 mt-0.5">

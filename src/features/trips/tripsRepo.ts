@@ -48,7 +48,7 @@ export interface Jamaah {
 
 export function generateBookingCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let s = "IGH-";
+  let s = "TMT-";
   for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
 }

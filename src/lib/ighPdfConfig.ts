@@ -1,5 +1,5 @@
 /**
- * Konfigurasi koordinat untuk generator PDF IGH.
+ * Konfigurasi koordinat untuk generator PDF Temantiket.
  * Dipakai oleh `generateIghPdf.ts` dan komponen `PdfLayoutTuner` untuk
  * tuning visual real-time tanpa edit kode.
  *
@@ -180,7 +180,7 @@ export interface IghLayoutConfig {
   /** Custom background template — override file template default (private/group).
    *  Bisa PDF (1 halaman, ukuran sama dgn template asli) atau gambar (PNG/JPG)
    *  yang di-render full-bleed sebagai background page baru.
-   *  null/undefined = pakai template default IGH (`/igh-blank-template.pdf` atau
+   *  null/undefined = pakai template default Temantiket (`/igh-blank-template.pdf` atau
    *  `/templates/IGH_Blank_Template_Group.pdf`). */
   customTemplate?: {
     /** Public URL ke file di Supabase Storage (`pdf-templates` bucket). */
@@ -333,7 +333,7 @@ export interface IghLayoutPreset {
 /** Built-in preset yang selalu tersedia — safety net kalau cloud kosong. */
 export const BUILTIN_PRESET: IghLayoutPreset = {
   id: "builtin:igh-official-default",
-  name: "IGH Official Default",
+  name: "Temantiket Official Default",
   config: DEFAULT_IGH_LAYOUT,
   createdAt: 0,
   updatedAt: 0,
