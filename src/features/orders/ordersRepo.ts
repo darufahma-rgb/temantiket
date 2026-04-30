@@ -145,10 +145,28 @@ export async function createOrder(draft: OrderDraft): Promise<Order> {
   // Auto-attribute ke agent kalau current user role-nya 'agent' & draft-nya
   // belum punya createdByAgent. Owner/staff biarin null = "Direct order".
   const me = useAuthStore.getState().user;
-  const enriched: OrderDraft =
+  let enriched: OrderDraft =
     me?.role === "agent" && draft.createdByAgent == null
       ? { ...draft, createdByAgent: me.id }
       : draft;
+
+  // ── Retention Logic (client-side) ──
+  // Kalau draft.createdByAgent masih kosong tapi clientId terhubung ke klien
+  // yg punya createdByAgent (alias "klien sudah dikunci ke mitra"), inherit
+  // mitra-nya ke order ini. Server juga punya BEFORE INSERT trigger yg sama
+  // (lihat 2026_05_01_agent_marketing.sql) — ini cuma defense-in-depth.
+  if (enriched.clientId && enriched.createdByAgent == null) {
+    try {
+      const { listClients } = await import("@/features/clients/clientsRepo");
+      const clients = await listClients();
+      const owner = clients.find((c) => c.id === enriched.clientId)?.createdByAgent;
+      if (owner) {
+        enriched = { ...enriched, createdByAgent: owner };
+      }
+    } catch (err) {
+      console.warn("[orders] retention lookup gagal:", err);
+    }
+  }
 
   if (isSupabaseConfigured()) {
     const agencyId = requireAgencyId();

@@ -27,6 +27,8 @@ import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
 import Reports from "./pages/Reports";
 import AgentDashboard from "./pages/AgentDashboard";
+import AgentLeaderboard from "./pages/AgentLeaderboard";
+import AgentMarketingKit from "./pages/AgentMarketingKit";
 import { useRatesStore } from "@/store/ratesStore";
 import { usePackagesStore } from "@/store/packagesStore";
 import { useTripsStore } from "@/store/tripsStore";
@@ -217,6 +219,26 @@ function AnimatedRoutes() {
           <RequireAuth>
             <RequireRole roles={["agent"]}>
               <DashboardLayout><AgentDashboard /></DashboardLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/agent/leaderboard"
+        element={
+          <RequireAuth>
+            <RequireRole roles={["agent"]}>
+              <DashboardLayout><AgentLeaderboard /></DashboardLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/agent/marketing"
+        element={
+          <RequireAuth>
+            <RequireRole roles={["agent"]}>
+              <DashboardLayout><AgentMarketingKit /></DashboardLayout>
             </RequireRole>
           </RequireAuth>
         }

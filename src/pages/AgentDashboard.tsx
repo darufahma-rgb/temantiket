@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users, ShoppingBag, Trophy, TrendingUp, Sparkles, Plus, Target,
+  Megaphone, Crown, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +12,8 @@ import { useClientsStore } from "@/store/clientsStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, ORDER_STATUSES, type OrderStatus } from "@/features/orders/ordersRepo";
 import { revenueIDR, profitIDR, fmtIDR } from "@/lib/profit";
+import { AgentTierProgress } from "@/components/AgentTierProgress";
+import { RewardCatalog } from "@/components/RewardCatalog";
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
   Draft: "bg-slate-100 text-slate-700",
@@ -111,13 +114,20 @@ export default function AgentDashboard() {
               )}
             </p>
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex flex-wrap gap-2 shrink-0">
             <Button
               variant="secondary"
               className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur"
-              onClick={() => navigate("/clients")}
+              onClick={() => navigate("/agent/marketing")}
             >
-              <Plus className="h-4 w-4 mr-1" /> Klien Baru
+              <Megaphone className="h-4 w-4 mr-1" /> Marketing Kit
+            </Button>
+            <Button
+              variant="secondary"
+              className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur"
+              onClick={() => navigate("/agent/leaderboard")}
+            >
+              <Crown className="h-4 w-4 mr-1" /> Leaderboard
             </Button>
             <Button
               variant="secondary"
@@ -161,6 +171,36 @@ export default function AgentDashboard() {
           accent="from-emerald-100 to-white text-emerald-700 border-emerald-200"
         />
       </div>
+
+      {/* ── Progress to Next Level + Reward Catalog ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AgentTierProgress totalPoints={myPoints} />
+        <RewardCatalog totalPoints={myPoints} />
+      </div>
+
+      {/* Quick CTA Marketing Kit */}
+      <button
+        onClick={() => navigate("/agent/marketing")}
+        className="w-full text-left rounded-2xl border bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 p-4 text-white shadow-sm hover:shadow-md transition-all hover:scale-[1.005] flex items-center justify-between gap-3"
+      >
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur shrink-0">
+            <Megaphone className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-[10.5px] font-semibold uppercase tracking-widest opacity-90">
+              Materi Promosi Siap Pakai
+            </p>
+            <p className="text-[14px] font-extrabold leading-tight">
+              Buat poster promo dengan nama & WA lo →
+            </p>
+            <p className="text-[11px] opacity-90 mt-0.5">
+              Tinggal download, langsung upload ke status WA / IG / FB.
+            </p>
+          </div>
+        </div>
+        <ChevronRight className="h-5 w-5 shrink-0" />
+      </button>
 
       {/* Riwayat Order */}
       <Card className="p-4">

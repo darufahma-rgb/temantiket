@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0c4a6e"/>
+      <stop offset="50%" stop-color="#0369a1"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="35%" r="55%">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.04"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1080" height="1080" fill="url(#bg)"/>
+  <rect width="1080" height="1080" fill="url(#glow)"/>
+
+  <!-- Decorative arabesque corners -->
+  <g opacity="0.18" fill="#fef3c7">
+    <circle cx="100" cy="100" r="80"/>
+    <circle cx="980" cy="100" r="50"/>
+    <circle cx="100" cy="900" r="40"/>
+    <circle cx="980" cy="980" r="100"/>
+  </g>
+
+  <!-- Top tag -->
+  <g transform="translate(540, 130)">
+    <rect x="-160" y="-32" width="320" height="64" rx="32" fill="#fbbf24"/>
+    <text x="0" y="10" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-weight="800" font-size="28" fill="#7c2d12" letter-spacing="2">PROMO 2026</text>
+  </g>
+
+  <!-- Headline -->
+  <text x="540" y="320" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-weight="900" font-size="92" fill="#ffffff" letter-spacing="-2">UMRAH HEMAT</text>
+  <text x="540" y="410" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-weight="900" font-size="92" fill="#fbbf24" letter-spacing="-2">9 HARI</text>
+
+  <!-- Kaaba silhouette (simplified geometric) -->
+  <g transform="translate(540, 560)">
+    <rect x="-110" y="-110" width="220" height="220" fill="#1e293b" rx="6"/>
+    <rect x="-110" y="-110" width="220" height="40" fill="#fbbf24"/>
+    <text x="0" y="20" text-anchor="middle" font-family="system-ui, sans-serif" font-size="120">🕋</text>
+  </g>
+
+  <!-- Price card -->
+  <g transform="translate(540, 770)">
+    <rect x="-280" y="-60" width="560" height="120" rx="20" fill="url(#card)" stroke="#fbbf24" stroke-width="3"/>
+    <text x="-240" y="-12" font-family="system-ui, sans-serif" font-weight="600" font-size="22" fill="#fef3c7">Mulai dari</text>
+    <text x="-240" y="42" font-family="system-ui, sans-serif" font-weight="900" font-size="56" fill="#ffffff">Rp 28.500.000</text>
+    <text x="240" y="20" text-anchor="end" font-family="system-ui, sans-serif" font-weight="700" font-size="18" fill="#fbbf24">/ pax</text>
+  </g>
+
+  <!-- Footer agent contact band -->
+  <g transform="translate(0, 920)">
+    <rect width="1080" height="160" fill="#0c4a6e"/>
+    <rect width="1080" height="6" fill="#fbbf24"/>
+    <text x="60" y="58" font-family="system-ui, sans-serif" font-weight="600" font-size="22" fill="#fbbf24" letter-spacing="2">HUBUNGI MITRA RESMI</text>
+    <text x="60" y="105" font-family="system-ui, sans-serif" font-weight="900" font-size="42" fill="#ffffff">{{AGENT_NAME}}</text>
+    <text x="60" y="142" font-family="system-ui, sans-serif" font-weight="600" font-size="26" fill="#bae6fd">📱 {{AGENT_WA}}</text>
+  </g>
+</svg>

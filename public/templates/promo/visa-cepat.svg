@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#064e3b"/>
+      <stop offset="50%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.04"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1080" height="1080" fill="url(#bg)"/>
+
+  <!-- Decorative stamps -->
+  <g opacity="0.14" fill="#ffffff">
+    <circle cx="160" cy="180" r="60"/>
+    <circle cx="900" cy="280" r="80"/>
+    <circle cx="120" cy="800" r="100"/>
+    <circle cx="950" cy="780" r="50"/>
+  </g>
+
+  <!-- Top tag -->
+  <g transform="translate(540, 130)">
+    <rect x="-200" y="-32" width="400" height="64" rx="32" fill="#fbbf24"/>
+    <text x="0" y="10" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="26" fill="#064e3b" letter-spacing="2">🛂 LAYANAN VISA</text>
+  </g>
+
+  <!-- Headline -->
+  <text x="540" y="290" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="100" fill="#ffffff" letter-spacing="-3">VISA CEPAT</text>
+  <text x="540" y="390" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="100" fill="#fbbf24" letter-spacing="-3">&amp; AMAN</text>
+
+  <!-- Passport icon -->
+  <text x="540" y="600" text-anchor="middle" font-size="220">📔</text>
+
+  <!-- Service cards -->
+  <g transform="translate(540, 770)">
+    <rect x="-340" y="-60" width="680" height="120" rx="20" fill="url(#card)" stroke="#fbbf24" stroke-width="3"/>
+    <g font-family="system-ui, sans-serif" font-weight="700" font-size="28" fill="#ffffff">
+      <text x="-300" y="-12">🇸🇦 Visa Umrah · 🇪🇬 Visa Pelajar Mesir</text>
+      <text x="-300" y="34" font-size="22" fill="#a7f3d0">Proses cepat · Tracking via WhatsApp</text>
+    </g>
+  </g>
+
+  <!-- Footer agent contact band -->
+  <g transform="translate(0, 920)">
+    <rect width="1080" height="160" fill="#064e3b"/>
+    <rect width="1080" height="6" fill="#fbbf24"/>
+    <text x="60" y="58" font-family="system-ui, sans-serif" font-weight="600" font-size="22" fill="#fbbf24" letter-spacing="2">KONSULTASI GRATIS</text>
+    <text x="60" y="105" font-family="system-ui, sans-serif" font-weight="900" font-size="42" fill="#ffffff">{{AGENT_NAME}}</text>
+    <text x="60" y="142" font-family="system-ui, sans-serif" font-weight="600" font-size="26" fill="#a7f3d0">📱 {{AGENT_WA}}</text>
+  </g>
+</svg>

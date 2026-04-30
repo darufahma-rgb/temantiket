@@ -2,6 +2,53 @@
 
 Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn/ui.
 
+## Mitra Marketing & Retention Pack (May 1, 2026 — Fase 9.5)
+Lapisan tambahan di atas Agent System buat bikin mitra ngerasa Temantiket =
+"alat cari duit" (gamification + marketing power). Bahasa UI: kasual gue/lo.
+
+- **Agent Tiering** (`src/features/agentPoints/agentTiers.ts`):
+  - 4 level: Bronze (0+) · Silver (100+) · Gold (500+) · Platinum (1500+).
+  - Tiap tier punya emoji, gradient warna, dan list `perks`.
+  - `getTierInfo(points)` → `{ current, next, pointsToNext, progress }` utk widget.
+
+- **Marketing Kit Generator** (`src/components/MarketingKitGenerator.tsx`, page `src/pages/AgentMarketingKit.tsx`, route `/agent/marketing`):
+  - Mitra isi nama + WA, pilih template promo (umrah-hemat / tiket-pesawat / visa-cepat), klik Download → PNG 1080×1080 IG-ready.
+  - Template tersimpan sbg SVG di `public/templates/promo/*.svg` dgn placeholder `{{AGENT_NAME}}` dan `{{AGENT_WA}}` di footer.
+  - Render flow: fetch SVG → string-replace placeholder → data-URL → `<Image>` → `<canvas>.drawImage` → `toBlob('image/png')` → trigger download.
+  - Tambah template baru: drop SVG di `public/templates/promo/`, registrasi entry di `TEMPLATES` array di `MarketingKitGenerator.tsx`.
+
+- **Reward Catalog** (`src/features/rewards/rewardsRepo.ts` + `src/components/RewardCatalog.tsx`):
+  - Katalog hardcoded di code: pulsa 50k/100k, voucher GoFood/Grab 100k, kaos mitra, bonus komisi +5% (1 bulan), voucher umrah gratis. Tiap item punya `costPoints` + `minTier` (utk gating premium reward).
+  - Mitra klik "Tukar" → confirm dialog → insert ke `reward_redemptions` (status=pending). Owner approve manual via SQL atau UI Reports nanti.
+  - `remainingPoints(lifetime, redemptions)` = lifetime − sum cost dari redemption ber-status approved/fulfilled.
+
+- **Agent Leaderboard Page** (`src/pages/AgentLeaderboard.tsx`, route `/agent/leaderboard`):
+  - Halaman publik utk mitra: podium 3 besar (medal 🥇🥈🥉) + tabel ranking penuh.
+  - Filter periode: bulan ini / bulan lalu / tahun ini / all-time.
+  - Privacy: angka komisi/profit mitra lain DISEMBUNYIKAN — yg ditampilkan cuma jumlah order, poin periode, poin lifetime, dan tier badge. Highlight row mitra yg lagi login dgn label "Lo".
+
+- **Retention Logic — Client Locking**:
+  - **Server** (`supabase/migrations/2026_05_01_agent_marketing.sql`): trigger `tr_inherit_agent_from_client` BEFORE INSERT pada `orders` — kalau order baru tidak set `created_by_agent` tapi client-nya punya `created_by_agent`, auto-inherit. Jadi sekali klien daftar via mitra X, semua order future buat klien itu otomatis kasih poin ke mitra X (siapapun yg input order).
+  - **Client** (`src/features/orders/ordersRepo.ts` `createOrder`): defense-in-depth — sebelum insert, kalau `clientId` ada & `createdByAgent` kosong, lookup ke `clientsRepo.listClients()` dan inherit owner. Jaga konsistensi di mode tanpa Supabase juga.
+
+- **Agent Dashboard Widgets** (`src/pages/AgentDashboard.tsx`):
+  - Header dapet 2 quick-link buttons: "Marketing Kit" + "Leaderboard" (selain Order Baru).
+  - 2-column section setelah hero stats: `<AgentTierProgress totalPoints={myPoints}/>` (kiri — tier banner gradient + progress bar + perks list + roadmap stepper 4 tier) dan `<RewardCatalog totalPoints={myPoints}/>` (kanan — grid 7 reward + history redemption).
+  - Banner CTA pink ke `/agent/marketing` di antara widgets dan Riwayat Order.
+
+- **Sidebar Nav (agent role)**: tambah grup "Marketing & Reward" → Marketing Kit + Leaderboard.
+
+- **Tabel `reward_redemptions` (Supabase)**:
+  - Cols: `agency_id`, `agent_id`, `reward_key`, `reward_label` (snapshot), `cost_points`, `status` (pending/approved/rejected/fulfilled), `notes`, `requested_at`, `resolved_at`, `resolved_by`.
+  - RLS: agent INSERT (dirinya, status=pending only) + SELECT (sendiri); owner/staff SELECT semua + UPDATE status + DELETE. Realtime publication enabled.
+
+- **Setup steps (PENTING — wajib jalanin manual di Supabase)**:
+  1. Pastiin `2026_04_30_agents_system.sql` udah di-run dulu (Fase 9).
+  2. Supabase SQL Editor → paste isi `supabase/migrations/2026_05_01_agent_marketing.sql` → RUN.
+  3. (Catatan) `supabase/schema.sql` udah include migration ini di akhir, jadi kalau setup baru tinggal run schema.sql full.
+  4. Test retention: bikin client lewat akun agent → bikin order utk client itu lewat akun owner (tanpa set created_by_agent) → cek `select created_by_agent from orders where id=...` → harus auto-isi UID si agent.
+  5. Test redeem: dari /agent dashboard, klik tukar reward → cek `select * from reward_redemptions order by requested_at desc limit 1` → status='pending'.
+
 ## Agent (Mitra) Management System (Apr 30, 2026 — Fase 9)
 Sistem mitra/affiliate buat travel agency yg punya jaringan freelance agent.
 Tiap agent punya akun terpisah, hanya bisa liat klien & order yg dia bikin

@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, Calculator, Package, GitBranch, LogOut, Settings, X,
   ShieldCheck, StickyNote, FileSpreadsheet, Users, ShoppingBag, ChevronDown,
-  Plane, FileBadge, Wallet, Trophy,
+  Plane, FileBadge, Wallet, Trophy, Megaphone, Crown,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -74,6 +74,13 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
           items: [
             { title: t.nav_clients, url: "/clients", icon: Users, end: false },
             // Orders di-handle terpisah sbg collapsible group di bawah.
+          ],
+        },
+        {
+          label: "Marketing & Reward",
+          items: [
+            { title: "Marketing Kit", url: "/agent/marketing", icon: Megaphone, end: false },
+            { title: "Leaderboard", url: "/agent/leaderboard", icon: Crown, end: false },
           ],
         },
       ]
