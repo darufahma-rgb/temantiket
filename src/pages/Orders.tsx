@@ -11,13 +11,24 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { useOrdersStore } from "@/store/ordersStore";
-import { useClientsStore } from "@/store/clientsStore";
+import { useClientsStore, type Client } from "@/store/clientsStore";
 import { useAuthStore } from "@/store/authStore";
 import {
   ORDER_TYPES, ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI,
   type OrderType,
 } from "@/features/orders/ordersRepo";
+import { PassportScanButton } from "@/components/PassportScanButton";
+import { decidePassportSync } from "@/features/clients/passportSync";
 import { toast } from "sonner";
+
+// Mata uang default per tipe order — visa Mesir dijual dalam EGP, sisanya IDR.
+const CURRENCY_BY_TYPE: Record<OrderType, "IDR" | "EGP"> = {
+  umrah: "IDR",
+  flight: "IDR",
+  visa_voa: "EGP",
+  visa_student: "EGP",
+};
+const CURRENCY_SYMBOL: Record<"IDR" | "EGP", string> = { IDR: "Rp", EGP: "EGP" };
 
 const fmtIDR = (v: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);
@@ -152,7 +163,6 @@ export default function Orders() {
         onOpenChange={setAddOpen}
         defaultType={typeFilter ?? "umrah"}
         defaultClientId={clientIdParam}
-        clients={clients}
         onSubmit={async (draft) => {
           const o = await addOrder({ ...draft, metadata: {}, tripId: null, packageId: null, jamaahId: null, notes: null });
           toast.success("Order dibuat");
@@ -180,32 +190,92 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
 }
 
 function NewOrderDialog({
-  open, onOpenChange, defaultType, defaultClientId, clients, onSubmit,
+  open, onOpenChange, defaultType, defaultClientId, onSubmit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   defaultType: OrderType;
   defaultClientId?: string;
-  clients: { id: string; name: string }[];
   onSubmit: (draft: {
     type: OrderType; status: "Draft"; title: string | null;
     totalPrice: number; currency: string; clientId: string | null;
   }) => Promise<void>;
 }) {
+  const { clients, addClient, patchClient } = useClientsStore();
+
   const [type, setType] = useState<OrderType>(defaultType);
   const [title, setTitle] = useState("");
+  // Track apakah user udah ngedit judul manual — kalau iya, jangan auto-overwrite
+  // pas type/client berubah. Reset ke false setiap dialog dibuka.
+  const [titleEdited, setTitleEdited] = useState(false);
   const [totalPrice, setTotalPrice] = useState<string>("");
   const [clientId, setClientId] = useState<string>(defaultClientId ?? "");
   const [saving, setSaving] = useState(false);
+
+  const currency = CURRENCY_BY_TYPE[type];
+  const currencySymbol = CURRENCY_SYMBOL[currency];
 
   useEffect(() => {
     if (open) {
       setType(defaultType);
       setTitle("");
+      setTitleEdited(false);
       setTotalPrice("");
       setClientId(defaultClientId ?? "");
     }
   }, [open, defaultType, defaultClientId]);
+
+  // Auto-fill judul: "[Tipe Order] - [Nama Klien]" (atau cuma tipe kalau gak
+  // ada klien). Cuma jalan kalau user belum ngetik manual.
+  useEffect(() => {
+    if (!open || titleEdited) return;
+    const typeLabel = ORDER_TYPE_LABEL[type];
+    const client = clientId ? clients.find((c) => c.id === clientId) : null;
+    const next = client ? `${typeLabel} - ${client.name}` : "";
+    setTitle(next);
+  }, [open, type, clientId, clients, titleEdited]);
+
+  // Hasil scan paspor → match ke client lama (update field kosong) atau bikin
+  // client baru. Selesai → auto-pilih client di dropdown supaya judul auto-fill.
+  const handlePassportScanned = async (
+    passport: Parameters<React.ComponentProps<typeof PassportScanButton>["onScanned"]>[0],
+    photoDataUrl: string,
+  ) => {
+    const decision = decidePassportSync(clients, passport, { photoDataUrl });
+    if (decision.kind === "noop") {
+      toast.error("Hasil scan kurang jelas", { description: decision.reason });
+      return;
+    }
+    let target: Client;
+    if (decision.kind === "match") {
+      target = decision.client;
+      // Update field yg masih kosong di client lama (non-destructive).
+      if (Object.keys(decision.patch).length > 0) {
+        try {
+          await patchClient(target.id, decision.patch);
+          toast.success(`Klien "${target.name}" diperbarui dari paspor`);
+        } catch (e) {
+          // Update gagal tapi match tetep valid — lanjut select aja.
+          console.warn("[NewOrderDialog] patch client failed:", e);
+          toast.success(`Klien "${target.name}" dipilih`);
+        }
+      } else {
+        toast.success(`Klien "${target.name}" dipilih`);
+      }
+    } else {
+      // create
+      try {
+        target = await addClient(decision.draft);
+        toast.success(`Klien baru "${target.name}" dibuat`);
+      } catch (e) {
+        toast.error("Gagal buat klien baru", {
+          description: e instanceof Error ? e.message : "Coba lagi.",
+        });
+        return;
+      }
+    }
+    setClientId(target.id);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -228,25 +298,57 @@ function NewOrderDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Judul</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="mis. Tiket Jakarta-Jeddah Mei" />
-          </div>
+
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Klien (opsional)</Label>
-            <Select value={clientId || "__none"} onValueChange={(v) => setClientId(v === "__none" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="Pilih klien" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">— Tanpa klien —</SelectItem>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <Select value={clientId || "__none"} onValueChange={(v) => setClientId(v === "__none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Pilih klien" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">— Tanpa klien —</SelectItem>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <PassportScanButton
+                label="Scan Paspor"
+                variant="outline"
+                size="sm"
+                className="h-9 shrink-0"
+                onScanned={handlePassportScanned}
+              />
+            </div>
           </div>
+
           <div className="space-y-1">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Harga (IDR)</Label>
-            <Input type="number" inputMode="numeric" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} placeholder="0" />
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Judul</Label>
+            <Input
+              value={title}
+              onChange={(e) => { setTitle(e.target.value); setTitleEdited(true); }}
+              placeholder="mis. Tiket Jakarta-Jeddah Mei"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Total Harga ({currency})
+            </Label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-semibold text-muted-foreground">
+                {currencySymbol}
+              </span>
+              <Input
+                type="number"
+                inputMode="numeric"
+                value={totalPrice}
+                onChange={(e) => setTotalPrice(e.target.value)}
+                placeholder="0"
+                className={currencySymbol.length >= 3 ? "pl-12" : "pl-9"}
+              />
+            </div>
           </div>
         </div>
         <DialogFooter>
@@ -261,7 +363,7 @@ function NewOrderDialog({
                   status: "Draft",
                   title: title.trim() || null,
                   totalPrice: Number(totalPrice) || 0,
-                  currency: "IDR",
+                  currency,
                   clientId: clientId || null,
                 });
               } catch (e) {
