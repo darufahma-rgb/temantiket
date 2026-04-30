@@ -210,9 +210,12 @@ function NewOrderDialog({
   const [titleEdited, setTitleEdited] = useState(false);
   const [totalPrice, setTotalPrice] = useState<string>("");
   const [clientId, setClientId] = useState<string>(defaultClientId ?? "");
+  const [currency, setCurrency] = useState<"IDR" | "EGP">(CURRENCY_BY_TYPE[defaultType]);
+  // Track apakah user udah pilih currency manual — kalau iya, jangan ikut
+  // berubah saat tipe order diganti.
+  const [currencyEdited, setCurrencyEdited] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const currency = CURRENCY_BY_TYPE[type];
   const currencySymbol = CURRENCY_SYMBOL[currency];
 
   useEffect(() => {
@@ -222,8 +225,16 @@ function NewOrderDialog({
       setTitleEdited(false);
       setTotalPrice("");
       setClientId(defaultClientId ?? "");
+      setCurrency(CURRENCY_BY_TYPE[defaultType]);
+      setCurrencyEdited(false);
     }
   }, [open, defaultType, defaultClientId]);
+
+  // Auto-update currency saat tipe berubah (selama user belum pilih manual).
+  useEffect(() => {
+    if (!open || currencyEdited) return;
+    setCurrency(CURRENCY_BY_TYPE[type]);
+  }, [open, type, currencyEdited]);
 
   // Auto-fill judul: "[Tipe Order] - [Nama Klien]" (atau cuma tipe kalau gak
   // ada klien). Cuma jalan kalau user belum ngetik manual.
@@ -334,21 +345,33 @@ function NewOrderDialog({
 
           <div className="space-y-1">
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              Total Harga ({currency})
+              Total Harga
             </Label>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-semibold text-muted-foreground">
-                {currencySymbol}
-              </span>
+            <div className="flex items-center gap-2">
+              <Select
+                value={currency}
+                onValueChange={(v) => { setCurrency(v as "IDR" | "EGP"); setCurrencyEdited(true); }}
+              >
+                <SelectTrigger className="w-[92px] shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="IDR">Rp</SelectItem>
+                  <SelectItem value="EGP">EGP</SelectItem>
+                </SelectContent>
+              </Select>
               <Input
                 type="number"
                 inputMode="numeric"
                 value={totalPrice}
                 onChange={(e) => setTotalPrice(e.target.value)}
                 placeholder="0"
-                className={currencySymbol.length >= 3 ? "pl-12" : "pl-9"}
+                className="flex-1 min-w-0"
               />
             </div>
+            <p className="text-[10.5px] text-muted-foreground pt-0.5">
+              Default {CURRENCY_SYMBOL[CURRENCY_BY_TYPE[type]]} mengikuti tipe order — bebas diganti.
+            </p>
           </div>
         </div>
         <DialogFooter>
