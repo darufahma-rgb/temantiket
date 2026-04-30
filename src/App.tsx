@@ -25,6 +25,7 @@ import ExportCenter from "./pages/ExportCenter";
 import Clients from "./pages/Clients";
 import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
+import Reports from "./pages/Reports";
 import { useRatesStore } from "@/store/ratesStore";
 import { usePackagesStore } from "@/store/packagesStore";
 import { useTripsStore } from "@/store/tripsStore";
@@ -129,6 +130,33 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Role guard — wajib dipake di luar `RequireAuth`. Kalo user authenticated
+ * tapi role-nya bukan owner, redirect ke "/" (Dashboard) supaya halaman
+ * sensitif kayak Laporan Keuangan gak bocor lewat link langsung.
+ */
+function RequireRole({
+  roles,
+  children,
+}: {
+  roles: ReadonlyArray<"owner" | "staff">;
+  children: React.ReactNode;
+}) {
+  const user = useAuthStore((s) => s.user);
+  const isInitialized = useAuthStore((s) => s.isInitialized);
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white/60 text-sm">
+        Memuat sesi…
+      </div>
+    );
+  }
+  if (!user || !roles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
 function AuthInitBootstrap() {
   const init = useAuthStore((s) => s.init);
   useEffect(() => { init(); }, [init]);
@@ -168,6 +196,17 @@ function AnimatedRoutes() {
       <Route path="/orders" element={<RequireAuth><DashboardLayout><Orders /></DashboardLayout></RequireAuth>} />
       <Route path="/orders/detail/:id" element={<RequireAuth><DashboardLayout><OrderDetail /></DashboardLayout></RequireAuth>} />
       <Route path="/orders/:type" element={<RequireAuth><DashboardLayout><Orders /></DashboardLayout></RequireAuth>} />
+      {/* ── Owner-only: Laporan Keuangan ── */}
+      <Route
+        path="/reports"
+        element={
+          <RequireAuth>
+            <RequireRole roles={["owner"]}>
+              <DashboardLayout><Reports /></DashboardLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
       <Route path="/settings" element={<RequireAuth><DashboardLayout><Settings /></DashboardLayout></RequireAuth>} />
       <Route path="/auth" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<NotFound />} />

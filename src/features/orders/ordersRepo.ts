@@ -26,6 +26,8 @@ export interface Order {
   status: OrderStatus;
   title: string | null;
   totalPrice: number;
+  /** Harga modal — apa yg agency bayar ke supplier. profit = totalPrice - costPrice */
+  costPrice: number;
   currency: string;
   metadata: Record<string, unknown>;
   tripId: string | null;
@@ -67,6 +69,7 @@ const fromRow = (r: Record<string, unknown>): Order => ({
   status: coerceStatus(r.status),
   title: (r.title as string) ?? null,
   totalPrice: r.total_price == null ? 0 : Number(r.total_price),
+  costPrice: r.cost_price == null ? 0 : Number(r.cost_price),
   currency: String(r.currency ?? "IDR"),
   metadata: (r.metadata as Record<string, unknown>) ?? {},
   tripId: (r.trip_id as string) ?? null,
@@ -84,6 +87,7 @@ const toRow = (o: Partial<Order>, agencyId?: string) => ({
   ...(o.status !== undefined ? { status: o.status } : {}),
   ...(o.title !== undefined ? { title: o.title } : {}),
   ...(o.totalPrice !== undefined ? { total_price: o.totalPrice } : {}),
+  ...(o.costPrice !== undefined ? { cost_price: o.costPrice } : {}),
   ...(o.currency !== undefined ? { currency: o.currency } : {}),
   ...(o.metadata !== undefined ? { metadata: o.metadata } : {}),
   ...(o.tripId !== undefined ? { trip_id: o.tripId } : {}),

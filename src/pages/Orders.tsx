@@ -198,7 +198,7 @@ function NewOrderDialog({
   defaultClientId?: string;
   onSubmit: (draft: {
     type: OrderType; status: "Draft"; title: string | null;
-    totalPrice: number; currency: string; clientId: string | null;
+    totalPrice: number; costPrice: number; currency: string; clientId: string | null;
   }) => Promise<void>;
 }) {
   const { clients, addClient, patchClient } = useClientsStore();
@@ -209,6 +209,7 @@ function NewOrderDialog({
   // pas type/client berubah. Reset ke false setiap dialog dibuka.
   const [titleEdited, setTitleEdited] = useState(false);
   const [totalPrice, setTotalPrice] = useState<string>("");
+  const [costPrice, setCostPrice] = useState<string>("");
   const [clientId, setClientId] = useState<string>(defaultClientId ?? "");
   const [currency, setCurrency] = useState<"IDR" | "EGP">(CURRENCY_BY_TYPE[defaultType]);
   // Track apakah user udah pilih currency manual — kalau iya, jangan ikut
@@ -224,6 +225,7 @@ function NewOrderDialog({
       setTitle("");
       setTitleEdited(false);
       setTotalPrice("");
+      setCostPrice("");
       setClientId(defaultClientId ?? "");
       setCurrency(CURRENCY_BY_TYPE[defaultType]);
       setCurrencyEdited(false);
@@ -343,36 +345,77 @@ function NewOrderDialog({
             />
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              Total Harga
-            </Label>
-            <div className="flex items-center gap-2">
-              <Select
-                value={currency}
-                onValueChange={(v) => { setCurrency(v as "IDR" | "EGP"); setCurrencyEdited(true); }}
-              >
-                <SelectTrigger className="w-[92px] shrink-0">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="IDR">Rp</SelectItem>
-                  <SelectItem value="EGP">EGP</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                type="number"
-                inputMode="numeric"
-                value={totalPrice}
-                onChange={(e) => setTotalPrice(e.target.value)}
-                placeholder="0"
-                className="flex-1 min-w-0"
-              />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Harga Modal
+              </Label>
+              <div className="flex items-center gap-1.5">
+                <span className="px-2 h-9 rounded-md border bg-muted/40 text-[11px] font-semibold inline-flex items-center shrink-0">
+                  {currencySymbol}
+                </span>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={costPrice}
+                  onChange={(e) => setCostPrice(e.target.value)}
+                  placeholder="0"
+                  className="flex-1 min-w-0"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground pt-0.5">
+                Bayar ke supplier
+              </p>
             </div>
-            <p className="text-[10.5px] text-muted-foreground pt-0.5">
-              Default {CURRENCY_SYMBOL[CURRENCY_BY_TYPE[type]]} mengikuti tipe order — bebas diganti.
-            </p>
+            <div className="space-y-1">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Harga Jual
+              </Label>
+              <div className="flex items-center gap-1.5">
+                <Select
+                  value={currency}
+                  onValueChange={(v) => { setCurrency(v as "IDR" | "EGP"); setCurrencyEdited(true); }}
+                >
+                  <SelectTrigger className="w-[68px] shrink-0 px-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="IDR">Rp</SelectItem>
+                    <SelectItem value="EGP">EGP</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={totalPrice}
+                  onChange={(e) => setTotalPrice(e.target.value)}
+                  placeholder="0"
+                  className="flex-1 min-w-0"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground pt-0.5">
+                Tagihan ke klien
+              </p>
+            </div>
           </div>
+
+          {/* Profit preview */}
+          {(Number(totalPrice) > 0 || Number(costPrice) > 0) && (() => {
+            const profit = (Number(totalPrice) || 0) - (Number(costPrice) || 0);
+            const positive = profit >= 0;
+            return (
+              <div className={`rounded-xl border px-3 py-2 flex items-center justify-between gap-2 ${
+                positive ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
+              }`}>
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Profit
+                </span>
+                <span className={`text-[14px] font-extrabold font-mono ${positive ? "text-emerald-700" : "text-red-600"}`}>
+                  {positive ? "+" : ""}{currencySymbol} {Math.abs(profit).toLocaleString("id-ID")}
+                </span>
+              </div>
+            );
+          })()}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Batal</Button>
@@ -386,6 +429,7 @@ function NewOrderDialog({
                   status: "Draft",
                   title: title.trim() || null,
                   totalPrice: Number(totalPrice) || 0,
+                  costPrice: Number(costPrice) || 0,
                   currency,
                   clientId: clientId || null,
                 });

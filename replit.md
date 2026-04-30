@@ -2,6 +2,48 @@
 
 Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn/ui.
 
+## Laporan Keuangan + Profit Tracking (Apr 30, 2026 — Fase 8)
+Owner-only financial dashboard yang ngitung profit per order, per kategori, dan per klien. Profit = Harga Jual − Harga Modal.
+
+- **Schema** (`supabase/migrations/2026_04_30_orders_cost_price.sql`):
+  - Tambah kolom `cost_price numeric not null default 0` ke tabel `orders` (idempotent, re-run aman).
+  - Index `orders_cost_price_idx (agency_id, type)` utk aggregation di Reports page.
+  - **User wajib apply migration di Supabase SQL Editor** sebelum field Harga Modal ke-persist ke cloud.
+
+- **Repo + types** (`src/features/orders/ordersRepo.ts`):
+  - `Order.costPrice: number` ditambahin (default 0). `fromRow`/`toRow` mapping `cost_price ↔ costPrice`.
+
+- **Profit helpers** (`src/lib/profit.ts`):
+  - `EGP_TO_IDR = 320` — konstanta konversi visa Mesir (EGP) → IDR utk Reports normalization.
+  - `effectiveCostPrice(order)` — fallback ke `metadata.hpp` utk order umrah lama yg belum punya cost_price (snapshot dari Calculator).
+  - `rawProfit`, `profitIDR`, `revenueIDR`, `costIDR`, `toIDR(amount, currency)`, `fmtIDR` — semua aggregation di Reports normalize ke IDR.
+
+- **NewOrderDialog** (`src/pages/Orders.tsx`):
+  - Field "Total Harga" diganti jadi grid 2-kolom: **Harga Modal** (kiri, currency mengikuti Harga Jual) + **Harga Jual** (kanan, dgn currency selector). Live profit preview card (hijau/merah) muncul kalau salah satu field diisi.
+  - `onSubmit` signature dapet `costPrice: number` baru.
+
+- **OrderDetail** (`src/pages/OrderDetail.tsx`):
+  - "Total Harga (IDR)" dipecah jadi 2 field: `Harga Modal (<currency>)` dan `Harga Jual (<currency>)`. Currency label ngikutin order.currency.
+  - `dirty` checker tambah comparison `costPrice`. `handleSave` push field baru ke `patchOrder`.
+
+- **Reports page** (`src/pages/Reports.tsx`, route `/reports`):
+  - **Date filter**: "Bulan ini" / "Bulan lalu" / "Tahun ini" / "Semua waktu" (filter by `order.createdAt`).
+  - **4 summary cards**: Total Profit (gradient hijau/merah ngikutin sign), Revenue, Modal, Jumlah Order.
+  - **Pie chart** (recharts) profit per kategori (Umrah/Flight/Visa VOA/Visa Student) + breakdown row per type.
+  - **Klien Paling Menguntungkan**: top-3 highlight cards (medali 🥇🥈🥉) + tabel full sorted desc (clickable → `/clients/:id`).
+  - Empty state kalau periode kosong, footer note ttg konversi EGP & fallback HPP.
+
+- **Role guard** (`src/App.tsx`):
+  - Komponen `RequireRole` baru (di atas `RequireAuth`) — kalo `user.role !== "owner"`, redirect ke `/`.
+  - Route `/reports` dibungkus `<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><Reports/>`. Staff yg ngetik URL langsung ke-bounce ke Dashboard.
+
+- **Sidebar nav** (`src/components/AppSidebar.tsx`):
+  - Group baru "Admin" cuma dirender kalo `user.role === "owner"` — berisi item "Laporan Keuangan" (icon Wallet → `/reports`). Staff sama sekali gak liat item-nya.
+
+- **i18n** (`src/lib/i18n.ts`): keys baru `nav_reports` + `nav_group_admin` di-translate ke ID/EN/AR.
+
+- **Migration steps utk user**: Supabase SQL Editor → paste isi `supabase/migrations/2026_04_30_orders_cost_price.sql` → RUN. Order baru langsung ke-track profit; order lama tetep keliatan (umrah fallback ke metadata.hpp, sisanya cost=0 sampai di-edit manual).
+
 ## Member Card Public Page + WhatsApp Share (Apr 30, 2026)
 Member Card sekarang bisa di-share sebagai marketing tool — klien dapat link publik buat cek poin sendiri kapanpun.
 

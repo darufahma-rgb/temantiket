@@ -18,6 +18,8 @@ export interface Translations {
   nav_orders_flight: string;
   nav_orders_visa: string;
   nav_group_hub: string;
+  nav_reports: string;
+  nav_group_admin: string;
 
   // Dashboard
   greeting_early_morning: string;
@@ -138,6 +140,8 @@ const id: Translations = {
   nav_orders_flight: "Tiket Pesawat",
   nav_orders_visa: "Visa Mesir",
   nav_group_hub: "Order Hub",
+  nav_reports: "Laporan Keuangan",
+  nav_group_admin: "Admin",
 
   greeting_early_morning: "Selamat Malam",
   greeting_morning: "Selamat Pagi",
@@ -252,6 +256,8 @@ const en: Translations = {
   nav_orders_flight: "Flight Tickets",
   nav_orders_visa: "Egypt Visa",
   nav_group_hub: "Order Hub",
+  nav_reports: "Financial Reports",
+  nav_group_admin: "Admin",
 
   greeting_early_morning: "Good Night",
   greeting_morning: "Good Morning",
@@ -366,6 +372,8 @@ const ar: Translations = {
   nav_orders_flight: "تذاكر الطيران",
   nav_orders_visa: "تأشيرة مصر",
   nav_group_hub: "مركز الطلبات",
+  nav_reports: "التقارير المالية",
+  nav_group_admin: "المسؤول",
 
   greeting_early_morning: "تصبح على خير",
   greeting_morning: "صباح الخير",

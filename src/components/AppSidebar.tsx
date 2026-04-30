@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, Calculator, Package, GitBranch, LogOut, Settings, X,
   ShieldCheck, StickyNote, FileSpreadsheet, Users, ShoppingBag, ChevronDown,
-  Plane, FileBadge,
+  Plane, FileBadge, Wallet,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -56,6 +56,8 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
     { title: t.nav_orders_visa,   url: "/orders/visa_student", icon: FileBadge,  end: false },
   ];
 
+  const isOwner = user?.role === "owner";
+
   const navGroups: { label: string | null; items: NavItemDef[] }[] = [
     {
       label: null,
@@ -85,6 +87,16 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
         { title: t.nav_exports ?? "Export Center", url: "/exports", icon: FileSpreadsheet, end: false },
       ],
     },
+    // Admin group — owner-only. Disembunyikan utk staff supaya bocor data
+    // finansial gak terjadi via UI (route juga digard di App.tsx).
+    ...(isOwner
+      ? [{
+          label: t.nav_group_admin,
+          items: [
+            { title: t.nav_reports, url: "/reports", icon: Wallet, end: false },
+          ],
+        }]
+      : []),
   ];
 
   const settingsItem: NavItemDef = { title: t.nav_settings, url: "/settings", icon: Settings, end: false };

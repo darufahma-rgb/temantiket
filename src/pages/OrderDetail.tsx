@@ -66,6 +66,7 @@ export default function OrderDetail() {
       draft.title !== order.title ||
       draft.status !== order.status ||
       Number(draft.totalPrice ?? 0) !== Number(order.totalPrice) ||
+      Number(draft.costPrice ?? 0) !== Number(order.costPrice) ||
       (draft.clientId ?? null) !== (order.clientId ?? null) ||
       (draft.notes ?? null) !== (order.notes ?? null) ||
       JSON.stringify(draft.metadata ?? {}) !== JSON.stringify(order.metadata ?? {})
@@ -94,6 +95,7 @@ export default function OrderDetail() {
         title: draft.title ?? null,
         status: (draft.status as OrderStatus) ?? order.status,
         totalPrice: Number(draft.totalPrice ?? 0),
+        costPrice: Number(draft.costPrice ?? 0),
         clientId: (draft.clientId as string | null) ?? null,
         notes: (draft.notes as string | null) ?? null,
         metadata: (draft.metadata as Record<string, unknown>) ?? order.metadata,
@@ -183,7 +185,10 @@ export default function OrderDetail() {
             </SelectContent>
           </Select>
         </Field>
-        <Field label="Total Harga (IDR)">
+        <Field label={`Harga Modal (${order.currency})`}>
+          <Input type="number" value={String(draft.costPrice ?? 0)} onChange={(e) => setDraft({ ...draft, costPrice: Number(e.target.value) || 0 })} />
+        </Field>
+        <Field label={`Harga Jual (${order.currency})`}>
           <Input type="number" value={String(draft.totalPrice ?? 0)} onChange={(e) => setDraft({ ...draft, totalPrice: Number(e.target.value) || 0 })} />
         </Field>
         <Field label="Klien">
