@@ -1,0 +1,39 @@
+Tolong perbarui total src/components/PdfLayoutTuner.tsx dan sinkronkan dengan src/lib/generateIghPdf.ts untuk menciptakan fitur Tuner Lengkap (X, Y, Ukuran, & Edit). Tujuan kita adalah mencapai presisi visual sekelas kicai.jpg dan memperbaiki semua masalah tumpang tindih.
+
+1. State & Logic Integration (Technical Base):
+
+Perbarui state ighLayoutConfig di src/lib/ighPdfConfig.ts untuk menyimpan:
+
+X-Coordinates untuk semua elemen (selain Y, Font Size, LineGap).
+
+Text Overrides (input teks) per section, yang akan menimpa konten dari kalkulator.
+
+Vertical Center Offset khusus untuk kotak Pax dan Harga.
+
+2. Tuner Panel (UI Upgrade):
+
+Perluas sidebar tuner dengan kelompok kontrol baru untuk setiap section (Project Name, Hotel, Pricing, Checklist, Meta Info). Setiap kelompok harus memiliki:
+
+TextInput: Untuk mengedit konten teks secara harfiah (Edit Teks). Default-nya kosong, tapi jika diisi, dia akan menimpa konten kalkulator.
+
+Slider Posisi X: Buat geser kiri-kanan.
+
+Slider Posisi Y: Buat geser naik-turun (sudah ada).
+
+Slider Font Size: (sudah ada).
+
+Slider Spesifik: Ganti 'Line Height' Project Name dengan slider 'Line Gap' (buat benerin teks tumpang tindih). Tambahkan slider 'Vertical Center Offset' untuk Pax/Harga.
+
+3. Fix Critical Issues (Coordinate Lock):
+
+Checklist Fix: Ganti 'Row Spacing' dengan slider 'Checklist Y Offset'. Ini untuk menaikkan posisi teks checklist ke atas agar berada di tengah-tengah antara dua garis horizontal, bukan duduk di atas garis seperti di image_1.png dan image_3.png.
+
+True Center Pricing: Gunakan metrik font (cap-height) yang sudah Agent pakai sebelumnya, tetapi tambahkan slider Vertical Center Offset di tuner agar user bisa men-tuning posisi vertikalnya secara visual.
+
+Header Alignment: Pastikan Meta Info (Invoice/Date) memiliki slider X agar bisa sejajar rapi tepat di bawah labelnya masing-masing.
+
+4. Real-time Rendering:
+
+Setiap kali TextInput diubah atau slider digeser, jalankan ulang fungsi renderIghPdfPreview (pake debounce 350ms).
+
+Pastikan fungsi Copy Config dan Reset tetap berfungsi dengan state yang baru.

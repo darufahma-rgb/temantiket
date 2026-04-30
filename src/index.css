@@ -1,0 +1,1595 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Inter:wght@300..800&family=Poppins:wght@300;400;500;600;700;800&family=Montserrat:wght@300..800&family=Playfair+Display:ital,wght@0,400..800;1,400..800&family=Lora:ital,wght@0,400..700;1,400..700&family=Roboto:wght@300;400;500;700;900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Safe area insets for notch/home-indicator */
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+
+    --background: 30 60% 97%;
+    --foreground: 24 38% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 24 38% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 38% 15%;
+
+    --primary: 27 91% 54%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 27 91% 96%;
+
+    --secondary: 30 50% 95%;
+    --secondary-foreground: 24 38% 15%;
+
+    --muted: 30 35% 95%;
+    --muted-foreground: 24 18% 52%;
+
+    --accent: 27 91% 94%;
+    --accent-foreground: 27 91% 38%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 25% 88%;
+    --input: 30 25% 88%;
+    --ring: 27 91% 54%;
+
+    --radius: 1rem;
+
+    --gradient-primary: linear-gradient(135deg, hsl(27 91% 54%), hsl(20 90% 60%));
+    --gradient-hero: linear-gradient(135deg, hsl(27 91% 54%) 0%, hsl(20 90% 60%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(30 50% 98%) 100%);
+    --shadow-card: 0 8px 40px -8px hsl(27 91% 54% / 0.15), 0 2px 8px -2px hsl(30 40% 70% / 0.1);
+    --shadow-sm: 0 1px 3px 0 hsl(30 40% 60% / 0.08);
+    --shadow-md: 0 4px 16px -2px hsl(30 40% 60% / 0.12);
+    --shadow-lg: 0 12px 40px -8px hsl(30 40% 60% / 0.18);
+    --shadow-glow: 0 0 30px hsl(27 91% 54% / 0.30);
+
+    --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-bg: 0 0% 100%;
+    --sidebar-width: 220px;
+  }
+
+  @media (min-width: 1280px) {
+    :root {
+      --sidebar-width: 240px;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    /* ── Premium Dark v2 ──
+       Vibe: matte black canvas + dark onyx surfaces + clean white text +
+       brand orange accents. Buang semua tone cokelat-tua biar gak muddy.
+       Reference hex (di-convert ke HSL):
+         #0D0D0D bg, #161617 card/sidebar, #1E1E1F input, #333 input-border,
+         #FFFFFF foreground, #94A3B8 muted, #F97316 brand orange. */
+    --background: 0 0% 5%;             /* #0D0D0D matte black */
+    --foreground: 0 0% 100%;           /* pure white judul/angka */
+
+    --card: 240 4% 9%;                 /* #161617 dark onyx */
+    --card-foreground: 0 0% 100%;
+    --popover: 240 4% 9%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Secondary = "tile / chip" surface satu tingkat di atas card */
+    --secondary: 240 3% 12%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 3% 14%;
+    --muted-foreground: 215 16% 65%;   /* #94A3B8 slate gray label */
+
+    /* Orange accent chip — dipake buat status badge, hover, etc. */
+    --accent: 27 91% 14%;              /* deep orange tint, bukan brown */
+    --accent-foreground: 27 95% 70%;
+
+    /* Primary tetap brand orange — udah match #F97316 */
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 27 91% 12%;
+
+    /* Border halus #2A2A2C, input border #333 (sedikit lebih terang
+       supaya field keliatan tappable). */
+    --border: 240 3% 17%;
+    --input: 0 0% 20%;                 /* #333 */
+    --ring: 24 95% 53%;                /* fokus = brand orange */
+
+    /* Status semantic — Lunas ijo, warning oranye, destructive merah */
+    --success: 142 71% 45%;
+    --warning: 24 95% 53%;
+    --destructive: 0 84% 60%;
+
+    /* Shadows: pakai orange transparan biar premium glow vibe */
+    --gradient-primary: linear-gradient(135deg, hsl(24 95% 53%), hsl(14 95% 55%));
+    --gradient-hero: linear-gradient(135deg, hsl(24 95% 53%) 0%, hsl(14 95% 55%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(240 4% 10%) 0%, hsl(240 4% 8%) 100%);
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.40);
+    --shadow-md: 0 4px 12px -2px hsl(0 0% 0% / 0.55);
+    --shadow-lg: 0 14px 40px -10px hsl(0 0% 0% / 0.70);
+    --shadow-card: 0 4px 20px -4px hsl(0 0% 0% / 0.55), 0 0 0 1px hsl(0 0% 100% / 0.04);
+    --shadow-glow: 0 0 24px hsl(24 95% 53% / 0.20);
+  }
+
+  :root[data-font-size="small"] {
+    font-size: 14px;
+  }
+
+  :root[data-font-size="medium"] {
+    font-size: 16px;
+  }
+
+  :root[data-font-size="large"] {
+    font-size: 17.5px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    height: 100%;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+    /* Native-feel for PWA */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    height: 100%;
+  }
+
+  #root {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* On mobile: prevent body scroll — all scrolling happens inside .app-shell-mobile */
+  @media (max-width: 767px) {
+    html, body {
+      overflow: hidden;
+    }
+    #root {
+      overflow: hidden;
+    }
+  }
+
+  /* Re-enable text selection for inputs and content areas */
+  input, textarea, [contenteditable], p, span, h1, h2, h3, h4, h5, h6, a, label {
+    -webkit-user-select: auto;
+    user-select: auto;
+    -webkit-touch-callout: default;
+  }
+
+  /* iOS momentum scrolling on scrollable areas */
+  .overflow-auto, .overflow-y-auto, .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .lucide {
+    color: hsl(27 91% 45%) !important;
+    stroke: currentColor !important;
+    fill: none !important;
+  }
+
+  /* ── Global: outline orange icons, no box/chip behind them ──
+     Any container whose only visible child is a lucide icon (the very
+     common "icon chip" pattern: <div className="bg-orange-100 ..."><Icon/></div>)
+     gets its background, border and shadow stripped so the icon stands
+     alone. Layout sizing (h-x w-x flex items-center justify-center) is
+     preserved so surrounding flex/grid layouts don't shift. */
+  :where(div, span, button, a):has(> svg.lucide:only-child),
+  :where(div, span, button, a):has(> svg.lucide:only-of-type:last-child:first-child) {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* Opt-out: gradient buttons and chips that *should* keep their fill
+     (e.g. primary CTA buttons with an icon). Add `keep-icon-bg` class
+     to a container to bypass the rule above. */
+  :where(.keep-icon-bg, .gradient-primary):has(> svg.lucide) {
+    background: revert !important;
+    background-color: revert !important;
+    background-image: revert !important;
+    border-color: revert !important;
+    box-shadow: revert !important;
+  }
+}
+
+@layer base {
+  :root[data-theme="dark"] .bg-white,
+  :root[data-theme="dark"] .bg-white\/95 {
+    background-color: hsl(var(--card)) !important;
+  }
+
+  :root[data-theme="dark"] .border-white,
+  :root[data-theme="dark"] .border-white\/20,
+  :root[data-theme="dark"] .border-white\/25 {
+    border-color: hsl(var(--border)) !important;
+  }
+
+  :root[data-theme="dark"] input,
+  :root[data-theme="dark"] textarea,
+  :root[data-theme="dark"] [role="combobox"] {
+    /* Premium dark v2: input bg #1E1E1F, border #333, focus orange glow. */
+    background-color: hsl(240 3% 12%) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(0 0% 20%) !important;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  :root[data-theme="dark"] input::placeholder,
+  :root[data-theme="dark"] textarea::placeholder {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  /* Focus state: border + halo orange transparan (rgba(249,115,22,0.2)) */
+  :root[data-theme="dark"] input:focus,
+  :root[data-theme="dark"] input:focus-visible,
+  :root[data-theme="dark"] textarea:focus,
+  :root[data-theme="dark"] textarea:focus-visible,
+  :root[data-theme="dark"] [role="combobox"]:focus,
+  :root[data-theme="dark"] [role="combobox"][data-state="open"] {
+    border-color: hsl(24 95% 53%) !important;
+    box-shadow: 0 0 0 3px hsl(24 95% 53% / 0.20) !important;
+    outline: none !important;
+  }
+
+  /* ── Dark-mode overrides for pastel-50 utility backgrounds ──
+     User preference: NO yellow / amber / orange tints in dark mode.
+     Use neutral dark surfaces with bright text instead. Other hues
+     keep a very subtle tint just so the visual coding survives. */
+  :root[data-theme="dark"] .bg-blue-50    { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-sky-50     { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-emerald-50 { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-teal-50    { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-purple-50  { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-fuchsia-50 { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-orange-50,
+  :root[data-theme="dark"] .bg-orange-50\/30,
+  :root[data-theme="dark"] .bg-orange-50\/40,
+  :root[data-theme="dark"] .bg-orange-100  { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-amber-50,
+  :root[data-theme="dark"] .bg-amber-50\/30,
+  :root[data-theme="dark"] .bg-amber-50\/40,
+  :root[data-theme="dark"] .bg-amber-100  { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-red-50,
+  :root[data-theme="dark"] .bg-red-50\/20,
+  :root[data-theme="dark"] .bg-red-50\/40 { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-rose-50    { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-pink-50    { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-indigo-50  { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-violet-50  { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-yellow-50,
+  :root[data-theme="dark"] .bg-yellow-100 { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-green-50,
+  :root[data-theme="dark"] .bg-green-50\/20 { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-slate-50,
+  :root[data-theme="dark"] .bg-gray-50    { background-color: hsl(var(--secondary)) !important; }
+
+  /* Same for gradient stops — Tailwind `from-X-50` / `to-X-50` write to
+     --tw-gradient-from / --tw-gradient-to. Map every pastel stop to
+     transparent so dashboards & cards just render as flat dark cards. */
+  :root[data-theme="dark"] [class*="from-"][class*="-50"],
+  :root[data-theme="dark"] [class*="from-"][class*="-100"] {
+    --tw-gradient-from: hsl(var(--card)) var(--tw-gradient-from-position) !important;
+    --tw-gradient-to: hsl(var(--card) / 0) var(--tw-gradient-to-position) !important;
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+  }
+  :root[data-theme="dark"] [class*="to-"][class*="-50"],
+  :root[data-theme="dark"] [class*="to-"][class*="-100"] {
+    --tw-gradient-to: hsl(var(--card) / 0.5) var(--tw-gradient-to-position) !important;
+  }
+  :root[data-theme="dark"] [class*="via-"][class*="-50"] {
+    --tw-gradient-via: hsl(var(--card) / 0.4) var(--tw-gradient-via-position) !important;
+  }
+
+  /* Brighten the colored text used inside those chips so it pops on dark. */
+  :root[data-theme="dark"] .text-blue-600    { color: hsl(214 90% 70%) !important; }
+  :root[data-theme="dark"] .text-sky-600     { color: hsl(199 90% 70%) !important; }
+  :root[data-theme="dark"] .text-emerald-600 { color: hsl(160 75% 60%) !important; }
+  :root[data-theme="dark"] .text-teal-600    { color: hsl(174 75% 60%) !important; }
+  :root[data-theme="dark"] .text-purple-600  { color: hsl(270 80% 75%) !important; }
+  :root[data-theme="dark"] .text-fuchsia-600 { color: hsl(290 80% 75%) !important; }
+  :root[data-theme="dark"] .text-orange-600,
+  :root[data-theme="dark"] .text-orange-700  { color: hsl(27 95% 65%) !important; }
+  :root[data-theme="dark"] .text-amber-600,
+  :root[data-theme="dark"] .text-amber-700   { color: hsl(38 95% 65%) !important; }
+  :root[data-theme="dark"] .text-red-500,
+  :root[data-theme="dark"] .text-red-600,
+  :root[data-theme="dark"] .text-red-700     { color: hsl(0 85% 70%) !important; }
+  :root[data-theme="dark"] .text-green-600,
+  :root[data-theme="dark"] .text-green-700   { color: hsl(140 75% 60%) !important; }
+  :root[data-theme="dark"] .text-gray-400,
+  :root[data-theme="dark"] .text-gray-500    { color: hsl(var(--muted-foreground)) !important; }
+  :root[data-theme="dark"] .text-slate-500,
+  :root[data-theme="dark"] .text-slate-600   { color: hsl(var(--muted-foreground)) !important; }
+
+  /* Borders on chips that match these tints */
+  :root[data-theme="dark"] .border-amber-100,
+  :root[data-theme="dark"] .border-amber-200 { border-color: hsl(38 90% 50% / 0.30) !important; }
+  :root[data-theme="dark"] .border-orange-100,
+  :root[data-theme="dark"] .border-orange-200 { border-color: hsl(27 91% 50% / 0.30) !important; }
+  :root[data-theme="dark"] .border-emerald-100,
+  :root[data-theme="dark"] .border-emerald-200 { border-color: hsl(160 60% 45% / 0.30) !important; }
+  :root[data-theme="dark"] .border-purple-100,
+  :root[data-theme="dark"] .border-purple-200 { border-color: hsl(270 60% 55% / 0.30) !important; }
+  :root[data-theme="dark"] .border-red-100,
+  :root[data-theme="dark"] .border-red-200    { border-color: hsl(0 75% 55% / 0.30) !important; }
+  :root[data-theme="dark"] .border-blue-100,
+  :root[data-theme="dark"] .border-blue-200   { border-color: hsl(214 70% 50% / 0.30) !important; }
+
+  /* Slate / gray backgrounds used for the rate strip etc. */
+  :root[data-theme="dark"] .bg-slate-50       { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .bg-slate-100      { background-color: hsl(var(--secondary)) !important; }
+  :root[data-theme="dark"] .border-slate-100,
+  :root[data-theme="dark"] .border-slate-200  { border-color: hsl(var(--border)) !important; }
+
+  /* ── Premium dark v2 polish ─────────────────────────────────────────
+     Sidebar: tipis 1px border + halo orange super-subtle.
+     Slider rail: pakai tone gelap, fill udah orange via --primary.
+     Card "selected" state: 1px orange border + glow halus.
+     Active nav icon dot: orange (sudah handled inline di AppSidebar). */
+
+  /* Sidebar surface — pakai card token, plus glow orange transparan halus. */
+  :root[data-theme="dark"] aside[class*="bg-white"] {
+    box-shadow: 0 8px 28px hsl(0 0% 0% / 0.50), 0 0 0 1px hsl(0 0% 100% / 0.04) !important;
+  }
+
+  /* shadcn Slider track — track gelap solid, range pakai primary (orange) */
+  :root[data-theme="dark"] [data-orientation="horizontal"] > .bg-secondary,
+  :root[data-theme="dark"] .bg-secondary[data-orientation="horizontal"] {
+    background-color: hsl(0 0% 18%) !important;
+  }
+  /* Slider thumb halo on hover/focus */
+  :root[data-theme="dark"] [role="slider"]:focus-visible,
+  :root[data-theme="dark"] [role="slider"]:hover {
+    box-shadow: 0 0 0 6px hsl(24 95% 53% / 0.20) !important;
+  }
+
+  /* Selected card / pressed state — anything with .ring-2.ring-orange* or
+     .border-primary atau aria-pressed/data-state=on dapet glow halus. */
+  :root[data-theme="dark"] [data-state="on"],
+  :root[data-theme="dark"] [aria-pressed="true"],
+  :root[data-theme="dark"] .ring-orange-500,
+  :root[data-theme="dark"] .ring-primary,
+  :root[data-theme="dark"] .border-primary {
+    border-color: hsl(24 95% 53%) !important;
+    box-shadow: 0 0 0 1px hsl(24 95% 53% / 0.50), 0 0 18px hsl(24 95% 53% / 0.18) !important;
+  }
+
+  /* Tabs / segmented control active pill — orange highlight */
+  :root[data-theme="dark"] [role="tab"][data-state="active"] {
+    background-color: hsl(24 95% 53%) !important;
+    color: hsl(0 0% 100%) !important;
+    box-shadow: 0 2px 12px hsl(24 95% 53% / 0.25) !important;
+  }
+
+  /* "Belum Lunas" badge — gradasi orange→merah biar masuk brand,
+     bukan slate yang ngilang di dark bg. Targets the existing class
+     combo in JamaahDetailDrawer / Dashboard alert. */
+  :root[data-theme="dark"] .bg-slate-100.text-slate-600,
+  :root[data-theme="dark"] .bg-slate-100.border-slate-200 {
+    background-image: linear-gradient(135deg, hsl(24 95% 53%), hsl(0 84% 55%)) !important;
+    background-color: transparent !important;
+    color: hsl(0 0% 100%) !important;
+    border-color: hsl(24 95% 53% / 0.40) !important;
+  }
+
+  /* Buttons / Tagihan-Belum-Lunas alert card di Dashboard pakai red-50;
+     biar tetep brand-aligned (orange→red) */
+  :root[data-theme="dark"] .from-red-50,
+  :root[data-theme="dark"] .to-red-50 {
+    --tw-gradient-from: hsl(24 95% 53% / 0.10) var(--tw-gradient-from-position) !important;
+    --tw-gradient-to: hsl(0 84% 55% / 0.10) var(--tw-gradient-to-position) !important;
+  }
+
+  :root[data-compact="true"] {
+    --radius: 0.75rem;
+  }
+
+  :root[data-compact="true"] .p-8 {
+    padding: 1.5rem;
+  }
+
+  :root[data-compact="true"] .p-6 {
+    padding: 1rem;
+  }
+
+  :root[data-compact="true"] .p-5 {
+    padding: 0.875rem;
+  }
+
+  :root[data-compact="true"] .p-4 {
+    padding: 0.75rem;
+  }
+
+  :root[data-compact="true"] .gap-8,
+  :root[data-compact="true"] .gap-6 {
+    gap: 1rem;
+  }
+
+  :root[data-compact="true"] .gap-5,
+  :root[data-compact="true"] .gap-4 {
+    gap: 0.75rem;
+  }
+
+  :root[data-compact="true"] .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1rem;
+  }
+
+  :root[data-compact="true"] .space-y-5 > :not([hidden]) ~ :not([hidden]),
+  :root[data-compact="true"] .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.75rem;
+  }
+
+  :root[data-compact="true"] .h-12,
+  :root[data-compact="true"] .h-11 {
+    height: 2.5rem;
+  }
+
+  :root[data-compact="true"] .h-10,
+  :root[data-compact="true"] .h-9 {
+    height: 2.125rem;
+  }
+}
+
+/* ── Button style keyframes ── */
+@keyframes btn-shimmer {
+  from { left: -80%; }
+  to   { left: 130%; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 10px hsl(27 91% 54% / 0.35), 0 2px 8px hsl(27 91% 54% / 0.25); }
+  50%       { box-shadow: 0 0 22px hsl(27 91% 54% / 0.60), 0 4px 16px hsl(27 91% 54% / 0.40); }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-elegant {
+    box-shadow: var(--shadow-lg);
+  }
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+
+  /* ── Gradient Shimmer — primary CTA ── */
+  .btn-primary {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, hsl(27 91% 54%), hsl(16 88% 58%));
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 2px 12px hsl(27 91% 54% / 0.30);
+    transition: box-shadow 0.2s ease, opacity 0.15s ease;
+  }
+  .btn-primary::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -80%;
+    width: 45%;
+    height: 200%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+    transform: skewX(-18deg);
+    pointer-events: none;
+  }
+  .btn-primary:hover {
+    box-shadow: 0 4px 18px hsl(27 91% 54% / 0.45);
+  }
+  .btn-primary:hover::after {
+    animation: btn-shimmer 0.55s ease forwards;
+  }
+  .btn-primary:active {
+    opacity: 0.88;
+    box-shadow: 0 1px 6px hsl(27 91% 54% / 0.3);
+  }
+
+  /* ── Glow Pulse — hero/dashboard action ── */
+  .btn-glow {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, hsl(27 91% 54%), hsl(16 88% 58%));
+    color: white;
+    font-weight: 600;
+    animation: glow-pulse 2.8s ease-in-out infinite;
+    transition: opacity 0.15s ease;
+  }
+  .btn-glow::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -80%;
+    width: 45%;
+    height: 200%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+    transform: skewX(-18deg);
+    pointer-events: none;
+  }
+  .btn-glow:hover::after {
+    animation: btn-shimmer 0.55s ease forwards;
+  }
+  .btn-glow:active {
+    opacity: 0.88;
+    animation: none;
+  }
+
+  /* ── Pill Flat Minimal — secondary/cancel ── */
+  .btn-ghost {
+    border-radius: 9999px;
+    background: hsl(var(--secondary));
+    color: hsl(var(--foreground));
+    font-weight: 500;
+    border: none;
+    transition: background 0.15s ease;
+  }
+  .btn-ghost:hover {
+    background: hsl(var(--border));
+  }
+  .btn-ghost:active {
+    background: hsl(var(--muted));
+  }
+
+  @media (max-width: 640px) {
+    html {
+      font-size: 16px;
+      overflow-x: hidden;
+    }
+
+    body {
+      min-width: 320px;
+      overflow-x: hidden;
+    }
+
+    .mobile-compact {
+      font-size: 1rem;
+    }
+
+    .mobile-compact h1 {
+      font-size: 1.35rem;
+      line-height: 1.35;
+    }
+
+    .mobile-compact h2,
+    .mobile-compact h3 {
+      line-height: 1.35;
+    }
+
+    .mobile-compact p {
+      line-height: 1.45;
+    }
+
+    .mobile-compact .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 0.875rem;
+    }
+
+    .mobile-compact .space-y-5 > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 0.75rem;
+    }
+
+    .mobile-compact .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 0.625rem;
+    }
+
+    .mobile-compact .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 0.5rem;
+    }
+
+    .mobile-compact .p-4 {
+      padding: 0.75rem;
+    }
+
+    .mobile-compact .p-5,
+    .mobile-compact .p-6 {
+      padding: 0.875rem;
+    }
+
+    .mobile-compact .px-6 {
+      padding-left: 0.875rem;
+      padding-right: 0.875rem;
+    }
+
+    .mobile-compact .py-4 {
+      padding-top: 0.75rem;
+      padding-bottom: 0.75rem;
+    }
+
+    .mobile-compact .py-12,
+    .mobile-compact .py-20 {
+      padding-top: 2rem;
+      padding-bottom: 2rem;
+    }
+
+    .mobile-compact .gap-4,
+    .mobile-compact .gap-5 {
+      gap: 0.75rem;
+    }
+
+    .mobile-compact .mb-5,
+    .mobile-compact .mb-6 {
+      margin-bottom: 0.875rem;
+    }
+
+    .mobile-compact .mt-5,
+    .mobile-compact .mt-6 {
+      margin-top: 0.875rem;
+    }
+
+    .mobile-compact .h-32 {
+      height: 6.5rem;
+    }
+
+    .mobile-compact .w-36 {
+      width: 6.5rem;
+    }
+
+    .mobile-compact .w-28 {
+      width: 5.5rem;
+    }
+
+    .mobile-compact input,
+    .mobile-compact textarea,
+    .mobile-compact select,
+    .mobile-compact button,
+    .mobile-compact [role="button"],
+    .mobile-compact [role="combobox"] {
+      font-size: 16px !important;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    .mobile-compact input,
+    .mobile-compact textarea,
+    .mobile-compact select,
+    .mobile-compact [role="combobox"] {
+      min-height: 2.75rem;
+    }
+
+    .mobile-compact button,
+    .mobile-compact [role="button"] {
+      min-height: 2.75rem;
+      min-width: 2.75rem;
+    }
+
+    .mobile-compact input[type="file"],
+    .mobile-compact input[type="checkbox"],
+    .mobile-compact input[type="radio"],
+    .mobile-compact .hidden {
+      min-height: unset;
+      min-width: unset;
+      font-size: inherit !important;
+    }
+
+    .mobile-compact [role="dialog"],
+    .mobile-compact [cmdk-dialog],
+    .mobile-compact .fixed.z-50 {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    .mobile-compact nav.fixed {
+      padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+    }
+
+    .mobile-compact nav.fixed a {
+      padding-top: 0.45rem;
+      padding-bottom: 0.45rem;
+      min-height: 3.65rem;
+    }
+
+    .mobile-compact nav.fixed svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    .mobile-compact nav.fixed span {
+      font-size: 0.72rem !important;
+      line-height: 1.05;
+    }
+
+    .mobile-compact .shadow-card {
+      box-shadow: 0 4px 18px -8px hsl(27 91% 54% / 0.18);
+    }
+
+    .mobile-compact [data-radix-popper-content-wrapper] {
+      max-width: calc(100vw - 1rem);
+    }
+
+    /* ─── Auto-compact forms (mobile/PWA, semua halaman) ──────────────────────
+       Tujuan: form jadi rapat tapi input tetep tap-able (≥44px), no iOS zoom.
+       Jangan ngecilin font input <16px. Yang dirapatkan: label, gap field,
+       dialog padding, footer buttons, helper text. */
+
+    /* Form labels — uppercase micro-label style */
+    .mobile-compact label,
+    .mobile-compact [data-form-label],
+    .mobile-compact [role="heading"][aria-level="2"] + label {
+      font-size: 0.7rem;
+      letter-spacing: 0.02em;
+      margin-bottom: 0.2rem;
+      line-height: 1.25;
+      font-weight: 600;
+    }
+
+    /* Standardize input height (44px tap target tetap) tapi padding lebih rapat */
+    .mobile-compact input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]),
+    .mobile-compact textarea,
+    .mobile-compact select,
+    .mobile-compact [role="combobox"] {
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+      padding-left: 0.65rem;
+      padding-right: 0.65rem;
+      border-radius: 0.625rem;
+    }
+
+    /* Color picker tetap kotak kecil */
+    .mobile-compact input[type="color"] {
+      min-height: unset !important;
+      min-width: unset !important;
+      height: 2rem;
+      width: 2.5rem;
+    }
+
+    /* Inline button "ghost"/outline lebih ramping di toolbar form */
+    .mobile-compact .form-toolbar button,
+    .mobile-compact [data-form-toolbar] button {
+      min-height: 2.25rem;
+      padding-left: 0.55rem;
+      padding-right: 0.55rem;
+    }
+
+    /* Field row group — kurangi vertical rhythm */
+    .mobile-compact form .space-y-4 > :not([hidden]) ~ :not([hidden]),
+    .mobile-compact [role="dialog"] .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 0.55rem;
+    }
+    .mobile-compact form .space-y-3 > :not([hidden]) ~ :not([hidden]),
+    .mobile-compact [role="dialog"] .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 0.45rem;
+    }
+    .mobile-compact form .space-y-2 > :not([hidden]) ~ :not([hidden]),
+    .mobile-compact [role="dialog"] .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 0.3rem;
+    }
+
+    /* Dialog content padding — biar form lebih luas area input-nya */
+    .mobile-compact [role="dialog"] > [data-state],
+    .mobile-compact [data-radix-dialog-content],
+    .mobile-compact [data-radix-alert-dialog-content] {
+      padding: 0.875rem !important;
+    }
+    .mobile-compact [role="dialog"] [data-radix-dialog-header],
+    .mobile-compact [role="dialog"] [data-radix-dialog-footer] {
+      padding-top: 0.4rem;
+      padding-bottom: 0.4rem;
+    }
+
+    /* Dialog title/description rapat */
+    .mobile-compact [role="dialog"] h2,
+    .mobile-compact [data-radix-dialog-title] {
+      font-size: 1rem;
+      line-height: 1.3;
+      margin-bottom: 0.15rem;
+    }
+    .mobile-compact [role="dialog"] [data-radix-dialog-description] {
+      font-size: 0.75rem;
+      line-height: 1.35;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Footer button group jadi full-width stack di mobile */
+    .mobile-compact [role="dialog"] .DialogFooter,
+    .mobile-compact [data-radix-dialog-footer] {
+      gap: 0.4rem !important;
+    }
+
+    /* Form 2-column grid → tetap 2-col tapi gap rapat */
+    .mobile-compact form .grid.grid-cols-2,
+    .mobile-compact [role="dialog"] .grid.grid-cols-2 {
+      gap: 0.5rem;
+    }
+
+    /* Helper text di bawah field */
+    .mobile-compact .field-hint,
+    .mobile-compact [data-field-hint],
+    .mobile-compact form p.text-xs,
+    .mobile-compact form p.text-\[10px\],
+    .mobile-compact form p.text-\[11px\] {
+      font-size: 0.65rem;
+      line-height: 1.3;
+      margin-top: 0.2rem;
+    }
+
+    /* Switch/toggle tap area sedikit dirapatkan */
+    .mobile-compact [role="switch"] {
+      min-width: 2.5rem !important;
+      min-height: 1.5rem !important;
+    }
+
+    /* Number-spinner / inline +/- tombol tetap nyaman */
+    .mobile-compact .num-spinner button,
+    .mobile-compact [data-num-spinner] button {
+      min-height: 2rem !important;
+      min-width: 2rem !important;
+      padding: 0;
+    }
+
+    /* Calendar picker compact */
+    .mobile-compact [role="grid"] td button,
+    .mobile-compact .rdp-day {
+      min-height: 2.25rem !important;
+      min-width: 2.25rem !important;
+      font-size: 0.8125rem !important;
+    }
+
+    /* ─── Compact-page mode (per-route) ──────────────────────────────────────
+       Aktif untuk halaman: /calculator, /packages*, /progress, /trips*,
+       /notes, /exports, /settings. Beranda ("/") tetap pakai layout default. */
+    .compact-page {
+      font-size: 0.9375rem;
+    }
+    .compact-page h1 { font-size: 1.15rem; line-height: 1.3; }
+    .compact-page h2 { font-size: 1rem; line-height: 1.3; }
+    .compact-page h3 { font-size: 0.9375rem; line-height: 1.3; }
+    .compact-page .text-3xl { font-size: 1.35rem; line-height: 1.25; }
+    .compact-page .text-2xl { font-size: 1.15rem; line-height: 1.25; }
+    .compact-page .text-xl  { font-size: 1.025rem; line-height: 1.3; }
+    .compact-page .text-lg  { font-size: 0.95rem; line-height: 1.3; }
+    .compact-page .text-base{ font-size: 0.875rem; }
+    .compact-page .text-sm  { font-size: 0.8125rem; }
+    .compact-page .text-xs  { font-size: 0.7rem; }
+
+    .compact-page .p-3 { padding: 0.5rem; }
+    .compact-page .p-4 { padding: 0.625rem; }
+    .compact-page .p-5,
+    .compact-page .p-6 { padding: 0.75rem; }
+    .compact-page .px-4 { padding-left: 0.625rem; padding-right: 0.625rem; }
+    .compact-page .px-5,
+    .compact-page .px-6 { padding-left: 0.75rem; padding-right: 0.75rem; }
+    .compact-page .py-3 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+    .compact-page .py-4 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+    .compact-page .py-5,
+    .compact-page .py-6 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+
+    .compact-page .gap-3 { gap: 0.5rem; }
+    .compact-page .gap-4,
+    .compact-page .gap-5 { gap: 0.625rem; }
+    .compact-page .gap-6 { gap: 0.75rem; }
+
+    .compact-page .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.375rem; }
+    .compact-page .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.45rem; }
+    .compact-page .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.55rem; }
+    .compact-page .space-y-5 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.65rem; }
+    .compact-page .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem; }
+
+    .compact-page .mb-4 { margin-bottom: 0.55rem; }
+    .compact-page .mb-5,
+    .compact-page .mb-6 { margin-bottom: 0.75rem; }
+    .compact-page .mb-8 { margin-bottom: 1rem; }
+    .compact-page .mt-4 { margin-top: 0.55rem; }
+    .compact-page .mt-5,
+    .compact-page .mt-6 { margin-top: 0.75rem; }
+    .compact-page .mt-8 { margin-top: 1rem; }
+
+    .compact-page .rounded-2xl { border-radius: 0.875rem; }
+    .compact-page .rounded-3xl { border-radius: 1rem; }
+
+    .compact-page .h-10 { height: 2.25rem; }
+    .compact-page .h-11 { height: 2.4rem; }
+    .compact-page .h-12 { height: 2.5rem; }
+    .compact-page .h-14 { height: 2.75rem; }
+    .compact-page .h-16 { height: 3rem; }
+
+    .compact-page .min-h-\[44px\] { min-height: 38px; }
+
+    /* Tabel & list rows */
+    .compact-page table th,
+    .compact-page table td {
+      padding: 0.4rem 0.5rem;
+      font-size: 0.8125rem;
+    }
+
+    /* Card shadows lebih halus */
+    .compact-page .shadow-lg,
+    .compact-page .shadow-xl { box-shadow: 0 4px 14px -8px rgba(0,0,0,0.12); }
+
+    /* Avatar / image thumbnails kecilin dikit */
+    .compact-page .h-20 { height: 4rem; }
+    .compact-page .w-20 { width: 4rem; }
+    .compact-page .h-24 { height: 4.75rem; }
+    .compact-page .w-24 { width: 4.75rem; }
+
+    /* Grid columns compact: 2-col grid jadi tetep 2-col tapi gap kecil */
+    .compact-page .grid.gap-3,
+    .compact-page .grid.gap-4 { gap: 0.5rem; }
+
+    .calculator-compact {
+      max-width: 100%;
+    }
+
+    .calculator-compact .calculator-page-title {
+      margin-bottom: -0.125rem;
+    }
+
+    .calculator-compact .calculator-page-title h1 {
+      font-size: 1rem;
+      gap: 0.375rem;
+    }
+
+    .calculator-compact .calculator-page-title svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    .calculator-compact .calculator-page-title p {
+      font-size: 0.75rem;
+      line-height: 1.25;
+    }
+
+    .calculator-compact .calculator-card {
+      border-radius: 0.875rem;
+    }
+
+    .calculator-compact .calculator-card-header {
+      padding: 0.625rem 0.75rem;
+      font-size: 0.75rem;
+      line-height: 1.2;
+      letter-spacing: 0.08em;
+    }
+
+    .calculator-compact .calculator-card-body {
+      padding: 0.75rem;
+    }
+
+    .calculator-compact label {
+      font-size: 0.6875rem;
+      line-height: 1.15;
+    }
+
+    .calculator-compact .w-36,
+    .calculator-compact .w-28,
+    .calculator-compact .w-24,
+    .calculator-compact .w-20 {
+      width: 4.75rem;
+    }
+
+    .calculator-compact input,
+    .calculator-compact [role="combobox"] {
+      height: 1.95rem;
+      min-height: 1.95rem;
+      border-radius: 0.625rem;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      font-size: 0.75rem;
+    }
+
+    .calculator-compact button {
+      min-height: 1.95rem;
+      border-radius: 0.625rem;
+      font-size: 0.75rem;
+    }
+
+    .calculator-compact .h-11,
+    .calculator-compact .h-10,
+    .calculator-compact .h-9 {
+      height: 1.95rem;
+    }
+
+    .calculator-compact .h-8 {
+      height: 1.8rem;
+    }
+
+    .calculator-compact .grid {
+      gap: 0.5rem;
+    }
+
+    .calculator-compact .gap-3,
+    .calculator-compact .gap-y-3,
+    .calculator-compact .gap-y-2\.5 {
+      gap: 0.5rem;
+      row-gap: 0.5rem;
+    }
+
+    .calculator-compact .gap-2 {
+      gap: 0.375rem;
+    }
+
+    .calculator-compact .pb-3 {
+      padding-bottom: 0.5rem;
+    }
+
+    .calculator-compact .my-1 {
+      margin-top: 0.25rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .calculator-compact .mb-3 {
+      margin-bottom: 0.5rem;
+    }
+
+    .calculator-compact .calculator-price-table {
+      border-radius: 0.75rem;
+      overflow-x: auto;
+      overflow-y: visible;
+    }
+
+    .calculator-compact .calculator-price-table table {
+      min-width: 0;
+      width: 100%;
+      table-layout: fixed;
+      font-size: 0.75rem;
+    }
+
+    .calculator-compact .calculator-price-table th:first-child,
+    .calculator-compact .calculator-price-table td:first-child {
+      width: 34%;
+    }
+
+    .calculator-compact .calculator-price-table th:not(:first-child),
+    .calculator-compact .calculator-price-table td:not(:first-child) {
+      width: 22%;
+    }
+
+    .calculator-compact .calculator-price-table th {
+      padding: 0.4rem 0.35rem;
+      font-size: 0.625rem;
+    }
+
+    .calculator-compact .calculator-price-table td {
+      padding: 0.2rem 0.25rem;
+    }
+
+    .calculator-compact .calculator-price-table input {
+      height: 1.65rem;
+      min-height: 1.65rem;
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
+      font-size: 0.6875rem;
+      border-radius: 0.5rem;
+    }
+
+    .calculator-compact .calculator-textarea {
+      min-height: 5.75rem;
+      border-radius: 0.75rem;
+      padding: 0.5rem;
+      font-size: 0.6875rem;
+      line-height: 1.25;
+      overflow-y: auto;
+      resize: vertical;
+    }
+
+    .calculator-compact .rounded-2xl {
+      border-radius: 0.875rem;
+    }
+
+    .calculator-compact .p-5 {
+      padding: 0.875rem;
+    }
+
+    .calculator-compact .text-2xl {
+      font-size: 1.25rem;
+      line-height: 1.2;
+    }
+
+    .calculator-compact .text-lg {
+      font-size: 1rem;
+      line-height: 1.25;
+    }
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+
+/* Hide scrollbar but keep scroll functionality */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ──────────────────────────────────────────────────────────
+   Global icon color — semua Lucide icon jadi orange (primary)
+   Opt-out: tambahkan class `icon-keep` pada svg/parent,
+   atau letakkan icon di dalam elemen dengan background solid
+   (.btn-primary, .btn-glow, .gradient-primary, .gradient-hero,
+   [data-slot="badge"] varian solid, dsb) — ditangani per-kasus.
+   ────────────────────────────────────────────────────────── */
+:where(svg.lucide):not(.icon-keep) {
+  color: hsl(var(--primary));
+}
+
+/* Jaga ikon tetap kontras saat berada di atas background solid berwarna */
+.btn-primary :where(svg.lucide),
+.btn-glow :where(svg.lucide),
+.gradient-primary :where(svg.lucide),
+.gradient-hero :where(svg.lucide),
+.bg-primary :where(svg.lucide),
+.bg-destructive :where(svg.lucide),
+.bg-success :where(svg.lucide),
+.bg-warning :where(svg.lucide),
+[data-state="checked"] :where(svg.lucide) {
+  color: inherit;
+}
+
+/* Hormati intent destructive/success/warning yang eksplisit */
+:where(.text-destructive, .text-success, .text-warning, .text-white,
+       [class*="text-red-"], [class*="text-green-"], [class*="text-emerald-"],
+       [class*="text-amber-"], [class*="text-yellow-"], [class*="text-blue-"])
+  :where(svg.lucide),
+svg.lucide:where(.text-destructive, .text-success, .text-warning, .text-white,
+                 [class*="text-red-"], [class*="text-green-"], [class*="text-emerald-"],
+                 [class*="text-amber-"], [class*="text-yellow-"], [class*="text-blue-"]) {
+  color: inherit;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PWA / Mobile-native optimisasi
+   ═══════════════════════════════════════════════════════════ */
+
+/* Safe area utility classes */
+.pt-safe { padding-top: var(--sat); }
+.pb-safe { padding-bottom: var(--sab); }
+.pl-safe { padding-left: var(--sal); }
+.pr-safe { padding-right: var(--sar); }
+.mt-safe { margin-top: var(--sat); }
+.mb-safe { margin-bottom: var(--sab); }
+
+/* Bottom nav base — frosted glass always */
+.pwa-bottom-nav {
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  backdrop-filter: blur(20px) saturate(1.5);
+  background: rgba(255, 255, 255, 0.93);
+}
+:root[data-theme="dark"] .pwa-bottom-nav {
+  background: rgba(22, 11, 5, 0.93);
+}
+
+/* Bottom nav safe area */
+.nav-safe-bottom {
+  padding-bottom: calc(0.35rem + var(--sab));
+}
+
+/* Page content safe bottom (under bottom nav) */
+.content-safe-bottom {
+  padding-bottom: calc(4rem + var(--sab));
+}
+
+/* Header safe top (iOS black-translucent status bar) */
+.header-safe-top {
+  padding-top: var(--sat);
+}
+
+/* Mobile spacing — safe-area insets are applied ONCE at .app-shell-mobile level
+   (padding-top/left/right). Header & bottom-nav use ONLY their own visual padding
+   to avoid double-padding (which previously created ~90px of empty whitespace
+   above the header in standalone PWA mode). */
+@media (max-width: 768px) {
+  .pwa-header {
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+  }
+  /* Bottom nav vertical padding handled by inline class (pt-1 + pb-... on inner flex). */
+  .pwa-main-content {
+    /* Reserve room for the bottom nav. Inner flex of nav already accounts for
+       safe-area-inset-bottom via inline `pb-[max(8px,env(safe-area-inset-bottom))]`. */
+    padding-bottom: calc(60px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* Full-height fill — 100dvh first for modern mobile, fallback to -webkit-fill-available for iOS */
+.h-fill {
+  height: 100vh;
+  height: -webkit-fill-available;
+  height: 100dvh;
+}
+
+.min-h-fill {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  min-height: 100dvh;
+}
+
+/* App shell — exactly one-screen-tall on mobile, no overflow */
+.app-shell-mobile {
+  height: 100vh;
+  height: -webkit-fill-available;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  max-width: 100vw;
+  /* Push entire app below notch / status bar in PWA standalone mode.
+     env(safe-area-inset-top) is 0 in normal browsers, so this is universal-safe. */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  /* Match brand orange so safe-area insets blend with header (no white frame around app) */
+  background: linear-gradient(180deg, #fff7ed 0%, hsl(var(--card)) 80px);
+}
+
+/* Body / html background extends behind safe-area insets so PWA feels edge-to-edge native.
+   Without this, the area outside .app-shell-mobile shows default white, creating a "framed" look. */
+@media (max-width: 767px) {
+  html, body, #root {
+    background: linear-gradient(180deg, #fff7ed 0%, hsl(var(--card)) 80px) !important;
+  }
+}
+@media all and (display-mode: standalone) {
+  html, body {
+    background: linear-gradient(180deg, #fff7ed 0%, hsl(var(--card)) 80px) !important;
+  }
+  /* Ensure app-shell truly fills the entire safe viewport in standalone */
+  .app-shell-mobile {
+    position: fixed;
+    inset: 0;
+    height: 100dvh;
+    width: 100vw;
+  }
+}
+
+/* Standalone mode — PWA installed, stronger safe-area handling */
+@media all and (display-mode: standalone) {
+  /* Slightly more opaque nav in standalone for better contrast */
+  .pwa-bottom-nav {
+    background: rgba(255, 255, 255, 0.97) !important;
+  }
+  :root[data-theme="dark"] .pwa-bottom-nav {
+    background: rgba(22, 11, 5, 0.97) !important;
+  }
+
+  /* Note: safe-area insets (top/left/right + bottom for nav home indicator) are
+     handled by .app-shell-mobile + the inner flex of .pwa-bottom-nav (inline
+     `pb-[max(8px,env(safe-area-inset-bottom))]`). Do NOT add padding-bottom here
+     or it will double-up and create dead space below the nav. */
+}
+
+/* ── PWA / Mobile compact form pages (Calculator, PDF Generator) ─────── */
+@media (max-width: 767px) {
+  .pwa-compact-form {
+    font-size: 13px;
+  }
+
+  /* Headings */
+  .pwa-compact-form h1 {
+    font-size: 15px !important;
+    line-height: 1.25 !important;
+  }
+  .pwa-compact-form h2 {
+    font-size: 13px !important;
+    line-height: 1.3 !important;
+  }
+  .pwa-compact-form h3 {
+    font-size: 12.5px !important;
+    line-height: 1.3 !important;
+  }
+  .pwa-compact-form p {
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+
+  /* Labels — smaller, tighter */
+  .pwa-compact-form label {
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  /* Inputs / selects / comboboxes — keep 16px font (no iOS zoom) but reduce height */
+  .pwa-compact-form input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  .pwa-compact-form select,
+  .pwa-compact-form textarea,
+  .pwa-compact-form [role="combobox"],
+  .pwa-compact-form [cmdk-input] {
+    font-size: 13px !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    padding: 4px 10px !important;
+    border-radius: 9px !important;
+    line-height: 1.2 !important;
+  }
+
+  .pwa-compact-form textarea {
+    height: auto !important;
+    min-height: 70px !important;
+    padding: 8px 10px !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Buttons — compact but still ≥40px tap target */
+  .pwa-compact-form button:not([data-radix-collection-item]):not([cmdk-item]) {
+    min-height: 36px !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    border-radius: 10px !important;
+  }
+  /* Big primary CTA buttons keep larger size if explicitly tagged */
+  .pwa-compact-form button.pwa-cta {
+    min-height: 44px !important;
+    font-size: 13.5px !important;
+    padding: 8px 16px !important;
+    border-radius: 12px !important;
+  }
+  /* Icon-only buttons (h-8 w-8 etc) keep aspect ratio */
+  .pwa-compact-form button.pwa-icon-btn {
+    min-width: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+  }
+
+  /* Card paddings */
+  .pwa-compact-form .p-5,
+  .pwa-compact-form .p-6,
+  .pwa-compact-form .p-7,
+  .pwa-compact-form .p-8 {
+    padding: 0.75rem !important;
+  }
+  .pwa-compact-form .p-4 {
+    padding: 0.625rem !important;
+  }
+  .pwa-compact-form .px-5,
+  .pwa-compact-form .px-6 {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  .pwa-compact-form .py-5,
+  .pwa-compact-form .py-6 {
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+  }
+  .pwa-compact-form .py-4 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  /* Gaps */
+  .pwa-compact-form .gap-5,
+  .pwa-compact-form .gap-6 { gap: 0.625rem !important; }
+  .pwa-compact-form .gap-4 { gap: 0.5rem !important; }
+  .pwa-compact-form .gap-x-5,
+  .pwa-compact-form .gap-x-6 { column-gap: 0.625rem !important; }
+  .pwa-compact-form .gap-y-3,
+  .pwa-compact-form .gap-y-4,
+  .pwa-compact-form .gap-y-5 { row-gap: 0.5rem !important; }
+
+  /* Vertical spacing */
+  .pwa-compact-form .space-y-5 > :not([hidden]) ~ :not([hidden]),
+  .pwa-compact-form .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.625rem !important;
+  }
+  .pwa-compact-form .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.5rem !important;
+  }
+  .pwa-compact-form .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.375rem !important;
+  }
+
+  /* Margins */
+  .pwa-compact-form .mb-5,
+  .pwa-compact-form .mb-6 { margin-bottom: 0.625rem !important; }
+  .pwa-compact-form .mt-5,
+  .pwa-compact-form .mt-6 { margin-top: 0.625rem !important; }
+
+  /* Card border radius — softer compact */
+  .pwa-compact-form .rounded-2xl,
+  .pwa-compact-form .rounded-3xl { border-radius: 0.875rem !important; }
+  .pwa-compact-form .rounded-xl { border-radius: 0.75rem !important; }
+
+  /* Section title bars — compact pill */
+  .pwa-compact-form [class*="rounded-t-xl"] {
+    padding: 0.4rem 0.625rem !important;
+    font-size: 11.5px !important;
+  }
+
+  /* Slider thumb stays tappable */
+  .pwa-compact-form [role="slider"] {
+    height: 18px !important;
+    width: 18px !important;
+  }
+
+  /* Force horizontal grids that wrap to 1 col on mobile (override sm:grid-cols-2) */
+  .pwa-compact-form .grid.grid-cols-1 { grid-template-columns: 1fr !important; }
+
+  /* SVG icons in form rows — slightly smaller */
+  .pwa-compact-form svg.h-5,
+  .pwa-compact-form svg.h-6 {
+    width: 1rem !important;
+    height: 1rem !important;
+  }
+}
+
+/* Hide scrollbars for horizontal scroll chip rows */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Splash screen full-bleed across all devices ─────────────────────── */
+.splash-root {
+  /* Force true viewport coverage. position:fixed + viewport-fit=cover (in
+     index.html) extends behind notch/home indicator. dvh handles iOS Safari
+     dynamic URL bar so there's no gap when bar shows/hides. */
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: -webkit-fill-available;
+  height: 100dvh;
+  min-height: 100dvh;
+  /* Background extends to the very edge of the screen */
+  background-attachment: fixed;
+}
+
+/* Comfortable max content width on very wide screens */
+@media (min-width: 1600px) {
+  .pwa-main-content > div {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Active tap feedback — all interactive */
+button:active,
+[role="button"]:active,
+a:active {
+  opacity: 0.75;
+  transform: scale(0.97);
+  transition: opacity 0.08s ease, transform 0.08s ease;
+}
+
+/* Prevent flash on rapid-tap */
+button, [role="button"], a, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── PWA install banner ─────────────────── */
+.pwa-install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  padding: 1rem;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  background: white;
+  border-top: 1px solid hsl(var(--border));
+  box-shadow: 0 -4px 24px hsl(27 91% 54% / 0.12);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-theme="dark"] .pwa-install-banner {
+  background: hsl(var(--card));
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── Offline indicator ──────────────────── */
+.offline-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9998;
+  padding: calc(0.35rem + env(safe-area-inset-top)) 1rem 0.35rem;
+  background: hsl(38 92% 50%);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.03em;
+  animation: slide-down 0.3s ease;
+}
+
+@keyframes slide-down {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── Dialog / Sheet mobile bottom-sheet feel ── */
+@media (max-width: 640px) {
+  [role="dialog"] > div,
+  [data-radix-dialog-content] {
+    border-radius: 1.5rem 1.5rem 0 0;
+  }
+}
+
+/* Smooth & responsive focus ring */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ─── Compact-page extension: tablet PWA & wider mobile (up to 768px) ────────
+   Re-applies key compact rules hingga 768px supaya PWA di tablet kecil
+   tetep terasa rapat. */
+@media (max-width: 767px) and (min-width: 641px) {
+  .compact-page { font-size: 0.9375rem; }
+  .compact-page h1 { font-size: 1.2rem; line-height: 1.3; }
+  .compact-page h2 { font-size: 1.05rem; line-height: 1.3; }
+  .compact-page .text-3xl { font-size: 1.4rem; }
+  .compact-page .text-2xl { font-size: 1.2rem; }
+  .compact-page .text-xl  { font-size: 1.05rem; }
+  .compact-page .p-4 { padding: 0.7rem; }
+  .compact-page .p-5,
+  .compact-page .p-6 { padding: 0.85rem; }
+  .compact-page .gap-4,
+  .compact-page .gap-5 { gap: 0.7rem; }
+  .compact-page .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.6rem; }
+  .compact-page .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.85rem; }
+  .compact-page .rounded-2xl { border-radius: 0.95rem; }
+}
+
+/* Saat dijalankan sebagai PWA standalone, paksa compact mode aktif sampai 900px */
+@media all and (display-mode: standalone) and (max-width: 900px) {
+  .compact-page { font-size: 0.9375rem; }
+  .compact-page .p-5,
+  .compact-page .p-6 { padding: 0.85rem; }
+  .compact-page .text-3xl { font-size: 1.35rem; }
+  .compact-page .text-2xl { font-size: 1.15rem; }
+  .compact-page .gap-6 { gap: 0.85rem; }
+  .compact-page .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.85rem; }
+}

@@ -1,0 +1,34 @@
+1. Row Level Security (RLS) — Si Penjaga Pintu
+Sekarang data lo ada di cloud. Kalau lo gak pasang RLS di tabel-tabel Supabase lo, secara teknis orang yang tau URL API lo bisa narik semua data jemaah lo lewat browser console.
+
+Yang Kurang: Pastiin di tabel jamaah, packages, dan calculations, lo pasang policy: auth.uid() = user_id (atau relasi ke agency-nya).
+
+Risiko: Agen A gak sengaja liat data profit/HPP Agen B. Ini sensitif banget di bisnis travel.
+
+2. Payment Tracking (Cashflow Management)
+Kalkulator lo udah "Dewa" dalam ngitung harga jual, tapi sistem lo belum punya "dompet" buat nyatet duit masuk.
+
+Yang Kurang: Tabel payments atau kolom status di tabel jamaah yang lebih detail (DP, Angsuran 1, Angsuran 2, Pelunasan).
+
+Rekomendasi: Tambahin status pembayaran yang ada indikator warnanya di list jemaah. Admin perlu tau siapa yang udah lunas dan siapa yang belum, biar nggak kecolongan berangkat tapi belum bayar.
+
+3. Inventory / Allotment Control (Seat & Room)
+Lo udah punya kuota Pax di modal paket. Tapi lo belum punya sistem "Booking Lock".
+
+Yang Kurang: Logika buat disable tambah jemaah kalau Pax sudah penuh.
+
+Risiko: Admin A dan Admin B input jemaah barengan, ternyata totalnya jadi 45 orang padahal kursi pesawat (PNR) lo cuma 40. Lo bakal rugi bayar selisih tiket last minute.
+
+4. Image Resizing di Supabase Storage
+Lo udah pake Storage buat paspor. Tapi inget, foto HP jaman sekarang itu gede-gede (5MB+).
+
+Yang Kurang: Optimasi ukuran gambar.
+
+Saran: Minta Replit Agent buat nambahin fungsi client-side compression (pake library kayak browser-image-compression) sebelum foto di-upload ke Supabase. Ini biar storage lo nggak cepet penuh dan load gambarnya cepet pas admin buka profil jemaah.
+
+5. Audit Log (Siapa Ngubah Apa?)
+Sekarang lo udah punya tim/staff. Kalau tiba-tiba harga paket berubah atau data jemaah ilang, lo harus bisa lacak siapa pelakunya.
+
+Yang Kurang: Tabel activity_logs.
+
+Fungsi: Nyatet kejadian kayak: "Admin Faikal mengubah HPP Paket Umrah Syawal" atau "Agent X menghapus data Jemaah Y". Sebagai Owner, ini "asuransi" lo kalau ada masalah internal.

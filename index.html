@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no, interactive-widget=resizes-content" />
+    <title>IGH Tour</title>
+    <meta name="description" content="Aplikasi manajemen trip, jamaah, paket, kalkulasi biaya, dan dokumen untuk Umrah dan Haji." />
+    <meta name="author" content="IGH Tour" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- Theme color — matches brand orange -->
+    <meta name="theme-color" content="#f97316" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1a0800" media="(prefers-color-scheme: dark)" />
+
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="IGH Tour" />
+    <link rel="apple-touch-icon" href="/logo-igh-tour.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/logo-igh-tour.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo-igh-tour.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/logo-igh-tour.png" />
+
+    <!-- iOS Splash Screens (portrait) -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#f97316" />
+    <meta name="msapplication-TileImage" content="/logo-igh-tour.png" />
+    <meta name="msapplication-tap-highlight" content="no" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/logo-igh-tour.png" />
+    <link rel="shortcut icon" href="/logo-igh-tour.png" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="IGH Tour" />
+    <meta property="og:description" content="Aplikasi manajemen trip, jamaah, paket, kalkulasi biaya, dan dokumen untuk Umrah dan Haji." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/logo-igh-tour.png" />
+    <meta property="og:locale" content="id_ID" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@ightour" />
+    <meta name="twitter:image" content="/logo-igh-tour.png" />
+
+    <!-- Preconnect for fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" rel="stylesheet" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+
+    <noscript>
+      <div style="font-family:-apple-system,'Segoe UI',sans-serif;max-width:480px;margin:80px auto;padding:24px;text-align:center;color:#3b1f0d">
+        <h1 style="font-size:1.25rem;margin-bottom:8px">JavaScript dimatikan</h1>
+        <p style="font-size:0.875rem;color:#7c4a1f">Aplikasi ini butuh JavaScript untuk jalan. Silakan aktifkan di pengaturan browser.</p>
+      </div>
+    </noscript>
+
+    <script>
+      (function () {
+        var BOOT_TIMEOUT_MS = 10000;
+        var t = setTimeout(function () {
+          var root = document.getElementById('root');
+          if (!root || root.childElementCount > 0) return;
+          root.innerHTML =
+            '<div style="font-family:-apple-system,\'Segoe UI\',sans-serif;max-width:520px;margin:80px auto;padding:24px;text-align:center;color:#3b1f0d">' +
+              '<h1 style="font-size:1.25rem;margin-bottom:8px;font-weight:700">Aplikasi gagal dimuat</h1>' +
+              '<p style="font-size:0.875rem;color:#7c4a1f;line-height:1.5;margin-bottom:16px">Konfigurasi server mungkin belum lengkap atau ada cache lama. Coba langkah berikut:</p>' +
+              '<ol style="font-size:0.875rem;color:#7c4a1f;text-align:left;line-height:1.6;margin:0 0 20px 24px">' +
+                '<li>Tutup tab ini, lalu buka ulang.</li>' +
+                '<li>Kalau masih putih, tekan tombol di bawah untuk bersih cache.</li>' +
+              '</ol>' +
+              '<button id="igh-reset-btn" style="background:#f97316;color:white;border:none;padding:12px 20px;border-radius:10px;font-weight:600;cursor:pointer;font-size:0.875rem">Bersihkan & muat ulang</button>' +
+            '</div>';
+          var btn = document.getElementById('igh-reset-btn');
+          if (btn) btn.addEventListener('click', function () {
+            try {
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function (regs) {
+                  regs.forEach(function (r) { r.unregister(); });
+                });
+              }
+              if (window.caches && caches.keys) {
+                caches.keys().then(function (keys) { keys.forEach(function (k) { caches.delete(k); }); });
+              }
+            } catch (e) {}
+            setTimeout(function () { location.reload(); }, 400);
+          });
+        }, BOOT_TIMEOUT_MS);
+        window.addEventListener('igh:booted', function () { clearTimeout(t); });
+      })();
+    </script>
+
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

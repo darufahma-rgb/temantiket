@@ -1,0 +1,43 @@
+Tolong lakukan restrukturisasi total pada tata letak teks di file generateIghPdf.ts. Saya ingin hasil akhirnya terlihat profesional, bersih, dan memiliki hierarki visual yang kuat seperti desain CorelDraw asli saya. Ikuti aturan layout berikut:
+
+1. Header & Meta Info (Top Right):
+
+Buat blok informasi 'Invoice to:' dan 'Date:' sejajar secara vertikal di sisi kanan atas.
+
+Gunakan rata kanan (Right Align) untuk isi datanya agar sejajar rapi di pinggir kertas.
+
+Pastikan label (Invoice to/Date) menggunakan warna abu-abu tua dan isinya menggunakan Montserrat Bold warna Orange.
+
+2. Project Section (Left Side):
+
+Perbaiki Project Name: Berikan line height yang lebih lega agar teks dua baris tidak saling menumpuk (overlapping). Gunakan warna coklat gelap/abu tua untuk teks ini agar kontras dengan label 'Project:'.
+
+Letakkan Periode Tanggal persis di bawah Project Name dengan rata kiri (Left Align) yang sempurna.
+
+3. Hotel & Pricing Section (Column Alignment):
+
+Hapus semua pengaturan rata tengah (Center) untuk section Hotel. Gunakan Left Align.
+
+Atur Hotel Makkah dan Hotel Madinah dalam dua kolom yang sejajar secara horizontal. Nama hotel (Bold Orange) di atas, jumlah malam (Regular Abu) di bawahnya.
+
+Untuk Harga per Pax dan Jumlah Pax di dalam kotak orange: Pastikan teks terpusat secara presisi (Vertical & Horizontal Center). Tambahkan sedikit padding agar tidak terlihat mepet ke atas kotak.
+
+4. Checklist Section (Rule of Left Align):
+
+WAJIB: Ubah semua list 'Sudah Termasuk' dan 'Belum Termasuk' menjadi Rata Kiri (Left Align). Jangan gunakan rata tengah karena sangat sulit dibaca.
+
+Berikan jarak antar baris (line spacing) yang konsisten pada setiap item list.
+
+Pastikan teks list dimulai tepat di bawah header box Hijau/Merah masing-masing.
+
+5. Footer & Notes:
+
+Rapihkan teks Kurs dan Catatan di bawah box harga dengan rata kiri.
+
+Kelompokkan info kontak (Instagram & Email) di bagian paling bawah. Letakkan slogan 'Pilihanmu untuk menjelajah Timur Tengah!' tepat di tengah secara horizontal di atas kontak.
+
+Technical Note: * Gunakan koordinat X dan Y yang konsisten (Gunakan sistem Grid/Kolom).
+
+Pastikan fungsi drawTextFit tetap aktif agar nama hotel yang panjang tidak merusak layout baru ini.
+
+Verifikasi kembali font Montserrat Bold ter-load sempurna."

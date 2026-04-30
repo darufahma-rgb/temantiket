@@ -1,0 +1,51 @@
+Tolong modifikasi komponen Trip Card di src/pages/Packages.tsx agar menjadi 'Executive Summary' yang padat informasi untuk kebutuhan admin. Gunakan font Montserrat dan pastikan layout tetap bersih (clean). Berikut adalah detail teknis yang harus diimplementasikan:"
+
+Real-time Status & Departure Countdown:
+
+Tambahkan Badge Status di pojok kanan atas berdasarkan tanggal keberangkatan (contoh: 'Active', 'Full', atau 'Departed').
+
+Hitung dan tampilkan Countdown sisa hari menuju keberangkatan (contoh: '⏳ 12 Hari Lagi'). Jika sudah lewat, ganti menjadi 'Selesai'.
+
+Occupancy Progress Bar (Dynamic Data):
+
+Tampilkan Progress Bar untuk kuota jemaah.
+
+Data harus dihitung secara real-time dengan memfilter travelhub.jamaah.v2 berdasarkan tripId yang sesuai dengan ID paket tersebut.
+
+Format teks: X / Total Pax Jemaah (Contoh: '35 / 40 Jemaah'). Warna bar harus berubah (misal: Orange ke Hijau) seiring penuhnya kuota.
+
+Financial Snapshot (Admin Only):
+
+Tampilkan ringkasan keuangan di dalam card yang datanya ditarik dari travelhub.package.calculations.v1.
+
+Total Revenue: Akumulasi total pembayaran dari seluruh jemaah yang terdaftar di paket tersebut.
+
+Estimated Margin: Selisih antara harga jual total dengan HPP (Harga Pokok Penjualan) yang tersimpan di kalkulator paket. Gunakan format mata uang IDR yang rapi.
+
+Logistics Info Icons:
+
+Tambahkan baris ikon minimalis untuk informasi teknis:
+
+Ikon Pesawat: Nama Maskapai (misal: Saudi Airlines).
+
+Ikon Bintang: Level Hotel (misal: 5★).
+
+Ikon Kalender: Total durasi hari (misal: 9 Hari).
+
+Quick Action Shortcuts (Bottom Bar):
+
+Di bagian bawah card, buat deretan tombol shortcut kecil agar admin bisa akses fitur tanpa masuk ke detail paket:
+
+Ikon Calculator: Navigasi/Open Modal ke fitur kalkulasi biaya paket.
+
+Ikon People: Langsung lihat daftar jemaah.
+
+Ikon OCR: Shortcut untuk langsung membuka dialog Scan Paspor ke dalam paket ini.
+
+PENTING: Pastikan semua tombol ini menggunakan e.stopPropagation() agar saat diklik tidak memicu navigasi ke halaman /packages/:id.
+
+Visual Polish & Hover State:
+
+Gunakan efek soft shadow dan hover scale ringan pada card.
+
+Pastikan hierarki teks jelas: Judul paket harus paling dominan, diikuti oleh status, baru informasi keuangan dan logistik.

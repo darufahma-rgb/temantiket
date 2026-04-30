@@ -1,0 +1,43 @@
+1. Row Level Security (RLS) & Multi-tenancy
+Sekarang datanya udah di cloud, lo harus pastiin privasi antar agen aman.
+
+Audit: Jangan sampai Agen A bisa liat data jemaah atau margin profit Agen B.
+
+Rekomendasi: Aktifin RLS di Supabase. Bikin kebijakan (Policy) supaya tiap user (Agen) cuma bisa SELECT atau UPDATE data yang punya user_id milik mereka sendiri. Kecuali lo (Superadmin) yang bisa liat semuanya.
+
+2. Supabase Storage untuk Dokumen Sensitif
+Lo punya fitur OCR Paspor yang sangat canggih. Sayang kalau gambarnya cuma lewat doang atau masuk ke localStorage.
+
+Audit: Nyimpen foto dalam bentuk Base64 di database itu bikin database lo bengkak dan lambat.
+
+Rekomendasi: Pake Supabase Storage. Simpan file asli paspor di Bucket, terus simpan URL-nya aja di tabel jemaah.
+
+Pro Tip: Kasih nama file yang unik (misal: passport_[no_paspor].jpg) biar gampang di-audit tim operasional.
+
+3. Supabase Realtime untuk Admin Collaboration
+Ini fitur "magic"-nya Supabase yang harus lo manfaatin.
+
+Audit: Kalau admin di kantor update status pembayaran jemaah, admin yang di lapangan (bandara) harus langsung tau tanpa perlu refresh halaman.
+
+Rekomendasi: Aktifin Realtime Subscriptions di tabel jamaah dan packages. Jadi pas ada perubahan data, UI di semua device tim lo bakal update otomatis.
+
+4. MRZ Checksum Validation (Deep Integration)
+Kemarin kita bahas ini, tapi sekarang udah bisa diimplementasikan lebih serius karena lo punya database buat nge-log kalau ada data yang "mencurigakan".
+
+Audit: OCR bisa salah baca.
+
+Rekomendasi: Tambahin fungsi validation di sisi client sebelum data di-insert ke Supabase. Kalau checksum MRZ gagal, kasih status needs_review di kolom database-nya. Admin lo jadi dapet notifikasi mana data yang perlu dicek ulang manual.
+
+5. Audit Logs (Krusial buat Bisnis Travel)
+Urutan duit dan data jemaah itu sensitif. Lo harus tau siapa yang ngubah apa.
+
+Audit: Kalau tiba-tiba harga jual paket berubah, lo harus tau siapa admin yang ngubah.
+
+Rekomendasi: Bikin tabel audit_logs atau manfaatin trigger di Supabase untuk nyatet setiap ada perubahan di tabel packages atau calculations. Minimal catat: user_id, action (update/delete), timestamp, dan old_value/new_value.
+
+6. Rooming List & Flight Manifest (The Final Output)
+Kalkulator lo udah keren, sekarang saatnya datanya "keluar" jadi dokumen operasional.
+
+Audit: Admin lo masih harus bikin Excel manual buat dikirim ke maskapai/hotel?
+
+Rekomendasi: Bikin satu halaman Export Center. Isinya tombol buat generate file Excel yang formatnya udah sesuai standar manifest maskapai dan rooming list hotel Saudi. Datanya narik langsung dari tabel jamaah yang udah di-filter per package_id.
