@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  ArrowLeft, Calculator, Calendar, CreditCard, FileKey, Layers,
+  ArrowLeft, Calculator, Calendar, CreditCard, Eye, FileKey, Layers,
   MapPin, Plus, Save, ScanLine, Trash2, Users, TrendingUp,
   Hotel, Bus, Globe, UserCheck, ChevronDown, ChevronUp,
 } from "lucide-react";
 import BulkOcrDialog from "@/components/BulkOcrDialog";
+import ClientViewDialog from "@/components/ClientViewDialog";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -677,6 +678,7 @@ export default function PackageDetail() {
   const { jamaah, loadingJamaah, fetchJamaah, removeJamaah } = useJamaahStore();
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [clientViewOpen, setClientViewOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") === "jamaah" ? "jamaah" : "calculator");
   const [deleteTarget, setDeleteTarget] = useState<Jamaah | null>(null);
   // Detail drawer — `detailJamaahId` jadi source-of-truth supaya drawer auto-refresh
@@ -986,11 +988,31 @@ export default function PackageDetail() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+          <Button
+            onClick={() => setClientViewOpen(true)}
+            size="sm"
+            variant="outline"
+            className="rounded-xl shrink-0 h-8 px-3 text-xs md:h-10 md:px-4 md:text-sm border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+            title="Preview untuk klien (siap kirim WhatsApp)"
+          >
+            <Eye className="h-3.5 w-3.5 mr-1" /> Client View
+          </Button>
           <Button onClick={() => setAddOpen(true)} size="sm" className="gradient-primary text-white rounded-xl shrink-0 h-8 px-3 text-xs md:h-10 md:px-4 md:text-sm">
             <Plus className="h-3.5 w-3.5 mr-1" /> Jamaah
           </Button>
         </div>
       </div>
+
+      <ClientViewDialog
+        open={clientViewOpen}
+        onClose={() => setClientViewOpen(false)}
+        data={{
+          kind: "umrah",
+          pkg,
+          jamaahCount: jamaah.length,
+          pricePerPax: pkg.people > 0 ? pkg.totalIDR / pkg.people : 0,
+        }}
+      />
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-3 gap-1.5 md:gap-3">

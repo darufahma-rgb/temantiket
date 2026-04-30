@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Trash2, Save, ExternalLink } from "lucide-react";
+import { ArrowLeft, Trash2, Save, ExternalLink, Eye } from "lucide-react";
+import ClientViewDialog from "@/components/ClientViewDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ export default function OrderDetail() {
   const [draft, setDraft] = useState<Partial<Order>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [clientViewOpen, setClientViewOpen] = useState(false);
 
   useEffect(() => {
     if (clients.length === 0) void fetchClients();
@@ -122,6 +124,16 @@ export default function OrderDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {order.type === "flight" && (
+            <Button
+              variant="outline"
+              onClick={() => setClientViewOpen(true)}
+              className="border-sky-200 text-sky-700 hover:bg-sky-50"
+              title="Preview untuk klien (siap kirim WhatsApp)"
+            >
+              <Eye className="h-3.5 w-3.5 mr-1.5" /> Client View
+            </Button>
+          )}
           <Button onClick={handleSave} disabled={!dirty || saving}>
             <Save className="h-3.5 w-3.5 mr-1.5" /> {saving ? "Menyimpan…" : "Simpan"}
           </Button>
@@ -239,6 +251,20 @@ export default function OrderDetail() {
             {JSON.stringify(order.metadata, null, 2)}
           </pre>
         </details>
+      )}
+
+      {order.type === "flight" && (
+        <ClientViewDialog
+          open={clientViewOpen}
+          onClose={() => setClientViewOpen(false)}
+          data={{
+            kind: "flight",
+            meta: ((draft.metadata as Record<string, unknown>) ?? order.metadata) as import("@/features/orders/FlightOrderEditor").FlightMeta,
+            client: linkedClient ?? null,
+            title: (draft.title as string | null) ?? order.title,
+            totalPrice: Number(draft.totalPrice ?? order.totalPrice),
+          }}
+        />
       )}
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
