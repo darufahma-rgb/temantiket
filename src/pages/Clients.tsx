@@ -17,6 +17,7 @@ import { useOrdersStore } from "@/store/ordersStore";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI } from "@/features/orders/ordersRepo";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "sonner";
+import MemberCard from "@/components/MemberCard";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const fmtIDR = (v: number) =>
@@ -81,6 +82,17 @@ function ClientDetailInner({ id }: { id: string }) {
     [orders, id],
   );
 
+  /** Member index = posisi kronologis client di agency (1-based, oldest = 1).
+   *  Stabil selama urutan createdAt tidak berubah. Dipakai sbg Member ID di kartu. */
+  const memberIndex = useMemo(() => {
+    if (!client) return 1;
+    const sorted = [...clients].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+    const idx = sorted.findIndex((c) => c.id === client.id);
+    return idx >= 0 ? idx + 1 : 1;
+  }, [clients, client]);
+
   if (loading && !client) {
     return <div className="p-6 text-sm text-muted-foreground">Memuat klien…</div>;
   }
@@ -125,6 +137,11 @@ function ClientDetailInner({ id }: { id: string }) {
           {client.notes}
         </div>
       )}
+
+      {/* Temantiket Member Card — dua sisi, flip + auto-stamp dari order sukses */}
+      <section className="rounded-2xl border border-border bg-white p-4 md:p-5">
+        <MemberCard client={client} memberIndex={memberIndex} orders={clientOrders} />
+      </section>
 
       {/* Orders milik klien */}
       <section className="space-y-3">
