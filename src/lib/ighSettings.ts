@@ -14,7 +14,7 @@ export interface IghAdminSettings {
 const STORAGE_KEY = "igh:admin-settings";
 
 export const DEFAULT_IGH_ADMIN_SETTINGS: IghAdminSettings = {
-  adminWhatsapp: "+6282245193615", // Syamil Temantiket
+  adminWhatsapp: "+6281311506025", // Admin Temantiket
   adminInstagram: "temantiket",
 };
 
@@ -48,7 +48,7 @@ export function whatsappDigits(raw: string): string {
   return (raw ?? "").replace(/\D+/g, "");
 }
 
-/** Format display: "+62 822-4519-3615" dari "+6282245193615". */
+/** Format display: "+62 813-1150-6025" dari "+6281311506025". */
 export function formatWhatsappDisplay(raw: string): string {
   const d = whatsappDigits(raw);
   if (!d) return "";

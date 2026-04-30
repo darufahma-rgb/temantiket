@@ -543,7 +543,7 @@ export default function Settings() {
                   </Label>
                   <Input
                     className="h-8 md:h-9 text-[13px] md:text-sm"
-                    placeholder="cth: +6282245193615"
+                    placeholder="cth: +6281311506025"
                     value={ighAdmin.adminWhatsapp}
                     onChange={(e) => setIghAdmin((s) => ({ ...s, adminWhatsapp: e.target.value }))}
                   />
