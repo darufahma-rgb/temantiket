@@ -790,22 +790,10 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div
-            className="relative overflow-hidden rounded-2xl md:rounded-3xl border border-sky-100 p-3 md:p-5"
-            style={{
-              background:
-                "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 45%, #bae6fd 100%)",
-            }}
-          >
-            {/* Decorative glow */}
-            <div
-              className="absolute -top-12 -right-10 h-32 w-32 rounded-full pointer-events-none opacity-60"
-              style={{ background: "radial-gradient(circle, #38bdf833, transparent 70%)" }}
-            />
-            <div
-              className="absolute -bottom-8 -left-6 h-24 w-24 rounded-full pointer-events-none opacity-50"
-              style={{ background: "radial-gradient(circle, #0ea5e933, transparent 70%)" }}
-            />
+          <div className="dashboard-hero relative overflow-hidden rounded-2xl md:rounded-3xl border p-3 md:p-5">
+            {/* Decorative glow — sky orbs di pojok, dark mode pakai biru lebih terang */}
+            <div className="dashboard-hero-glow-tr absolute -top-12 -right-10 h-32 w-32 rounded-full pointer-events-none" />
+            <div className="dashboard-hero-glow-bl absolute -bottom-8 -left-6 h-24 w-24 rounded-full pointer-events-none" />
 
             <div className="relative flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">

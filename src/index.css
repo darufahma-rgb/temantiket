@@ -425,6 +425,84 @@
     background-attachment: fixed;
   }
 
+  /* ── Dashboard hero greeting ───────────────────────────────────────
+     Light: pastel sky gradient (existing). Dark: deep navy gradient
+     dengan glow sky di pojok, persis vibe wallpaper login. */
+  .dashboard-hero {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 45%, #bae6fd 100%);
+    border-color: hsl(199 89% 90%);
+  }
+  .dashboard-hero-glow-tr {
+    background: radial-gradient(circle, rgba(56,189,248,0.25), transparent 70%);
+    opacity: 0.6;
+  }
+  .dashboard-hero-glow-bl {
+    background: radial-gradient(circle, rgba(14,165,233,0.20), transparent 70%);
+    opacity: 0.5;
+  }
+  :root[data-theme="dark"] .dashboard-hero {
+    background: linear-gradient(135deg, hsl(222 60% 8%) 0%, hsl(220 55% 12%) 45%, hsl(218 60% 16%) 100%) !important;
+    border-color: hsl(199 89% 60% / 0.18) !important;
+    box-shadow: 0 0 0 1px hsl(199 89% 60% / 0.06), 0 8px 32px hsl(222 80% 2% / 0.40);
+  }
+  :root[data-theme="dark"] .dashboard-hero-glow-tr {
+    background: radial-gradient(circle, hsl(199 95% 60% / 0.40), transparent 70%) !important;
+    opacity: 0.85 !important;
+    filter: blur(2px);
+  }
+  :root[data-theme="dark"] .dashboard-hero-glow-bl {
+    background: radial-gradient(circle, hsl(221 83% 53% / 0.40), transparent 70%) !important;
+    opacity: 0.75 !important;
+    filter: blur(2px);
+  }
+  /* Hero text — sky-950 too dark on navy bg, lift to white-ish */
+  :root[data-theme="dark"] .dashboard-hero h1 {
+    color: hsl(210 40% 98%) !important;
+  }
+  :root[data-theme="dark"] .dashboard-hero p {
+    color: hsl(199 90% 78%) !important;
+  }
+
+  /* ── Live Clock (Waktu Dunia) ──────────────────────────────────────
+     Light: ice-blue card + white tiles. Dark: deep navy card + lifted
+     navy tiles dgn sky border halus, matching wallpaper. */
+  .live-clock-card {
+    background: linear-gradient(135deg, #f0f9ff 0%, #f0f9ff 60%, #e0f2fe 100%);
+    border-color: hsl(199 89% 90% / 0.8);
+  }
+  .live-clock-glow {
+    background: radial-gradient(circle, rgba(56,189,248,0.20), transparent 70%);
+    opacity: 0.4;
+  }
+  .live-clock-title { color: hsl(199 89% 32% / 0.85); }
+  .live-clock-tile {
+    background: hsl(0 0% 100% / 0.9);
+    border-color: hsl(199 89% 90%);
+    box-shadow: 0 1px 2px rgba(14,165,233,0.06);
+  }
+  .live-clock-short { color: hsl(199 89% 42%); }
+  .live-clock-time  { color: hsl(199 89% 12%); }
+  .live-clock-day   { color: hsl(199 89% 32% / 0.7); }
+
+  :root[data-theme="dark"] .live-clock-card {
+    background: linear-gradient(135deg, hsl(222 60% 8%) 0%, hsl(220 55% 11%) 60%, hsl(218 60% 14%) 100%) !important;
+    border-color: hsl(199 89% 60% / 0.18) !important;
+    box-shadow: 0 0 0 1px hsl(199 89% 60% / 0.06), 0 4px 18px hsl(222 80% 2% / 0.45) !important;
+  }
+  :root[data-theme="dark"] .live-clock-glow {
+    background: radial-gradient(circle, hsl(199 95% 60% / 0.40), transparent 70%) !important;
+    opacity: 0.7 !important;
+  }
+  :root[data-theme="dark"] .live-clock-title { color: hsl(199 95% 74%) !important; }
+  :root[data-theme="dark"] .live-clock-tile {
+    background: hsl(220 50% 13%) !important;
+    border-color: hsl(199 89% 60% / 0.20) !important;
+    box-shadow: 0 1px 2px hsl(222 80% 2% / 0.50), inset 0 0 0 1px hsl(199 89% 60% / 0.04) !important;
+  }
+  :root[data-theme="dark"] .live-clock-short { color: hsl(199 95% 70%) !important; }
+  :root[data-theme="dark"] .live-clock-time  { color: hsl(210 40% 98%) !important; }
+  :root[data-theme="dark"] .live-clock-day   { color: hsl(215 25% 70%) !important; }
+
   :root[data-compact="true"] {
     --radius: 0.75rem;
   }
