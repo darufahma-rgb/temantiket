@@ -29,6 +29,7 @@ import Reports from "./pages/Reports";
 import AgentDashboard from "./pages/AgentDashboard";
 import AgentLeaderboard from "./pages/AgentLeaderboard";
 import AgentMarketingKit from "./pages/AgentMarketingKit";
+import BCTemplates from "./pages/BCTemplates";
 import { useRatesStore } from "@/store/ratesStore";
 import { usePackagesStore } from "@/store/packagesStore";
 import { useTripsStore } from "@/store/tripsStore";
@@ -254,6 +255,7 @@ function AnimatedRoutes() {
           </RequireAuth>
         }
       />
+      <Route path="/bc-templates" element={<RequireAuth><DashboardLayout><BCTemplates /></DashboardLayout></RequireAuth>} />
       <Route path="/settings" element={<RequireAuth><DashboardLayout><Settings /></DashboardLayout></RequireAuth>} />
       <Route path="/auth" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<NotFound />} />
