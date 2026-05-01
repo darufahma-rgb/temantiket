@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { differenceInCalendarDays, format, parse, isValid } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { Calculator as CalcIcon, Hotel, Bus, Globe, UserCheck, TrendingUp, Plus, Trash2, ChevronDown, ChevronUp, FileText, RotateCcw, Moon, Compass, Users, Plane, Download } from "lucide-react";
+import { Calculator as CalcIcon, Hotel, Bus, Globe, UserCheck, TrendingUp, Plus, Trash2, ChevronDown, ChevronUp, FileText, RotateCcw, Moon, Compass, Users, Plane, Download, ArrowLeftRight, Stamp } from "lucide-react";
+import { CurrencyConverterTab } from "@/features/calculator/CurrencyConverterTab";
+import { VisaCalculatorTab } from "@/features/calculator/VisaCalculatorTab";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { PdfPreviewDialog } from "@/components/PdfPreviewDialog";
@@ -508,6 +510,7 @@ export default function Calculator() {
   const [creatingTrip, setCreatingTrip] = useState(false);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [calcSection, setCalcSection] = useState<"umroh" | "converter" | "visa">("umroh");
 
   const navigate = useNavigate();
   const createPackage = usePackagesStore((s) => s.create);
@@ -1155,25 +1158,66 @@ export default function Calculator() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-          <button
-            onClick={handleReset}
-            style={M}
-            className="flex items-center gap-1 h-7 md:h-8 px-2 md:px-3 rounded-lg md:rounded-xl border border-sky-200 text-sky-600 bg-white hover:bg-sky-50 text-[10.5px] md:text-[11px] font-semibold transition-colors"
-          >
-            <RotateCcw className="h-3 w-3" /> Reset
-          </button>
-          <Button
-            onClick={() => setPdfOpen(true)}
-            disabled={quote.finalPrice === 0}
-            className="h-7 md:h-8 px-2 md:px-3 rounded-lg md:rounded-xl gradient-primary text-white text-[10.5px] md:text-[11px] font-semibold"
-          >
-            <FileText className="h-3.5 w-3.5 mr-1" /> PDF
-          </Button>
-        </div>
+        {calcSection === "umroh" && (
+          <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+            <button
+              onClick={handleReset}
+              style={M}
+              className="flex items-center gap-1 h-7 md:h-8 px-2 md:px-3 rounded-lg md:rounded-xl border border-sky-200 text-sky-600 bg-white hover:bg-sky-50 text-[10.5px] md:text-[11px] font-semibold transition-colors"
+            >
+              <RotateCcw className="h-3 w-3" /> Reset
+            </button>
+            <Button
+              onClick={() => setPdfOpen(true)}
+              disabled={quote.finalPrice === 0}
+              className="h-7 md:h-8 px-2 md:px-3 rounded-lg md:rounded-xl gradient-primary text-white text-[10.5px] md:text-[11px] font-semibold"
+            >
+              <FileText className="h-3.5 w-3.5 mr-1" /> PDF
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* ── Mode switcher ── */}
+      {/* ── Top-level section switcher ── */}
+      <div className="flex items-center gap-1 p-1 rounded-xl border border-slate-200 bg-slate-50 self-start flex-wrap">
+        {([
+          { key: "umroh" as const,     label: "Umroh / Haji",          icon: Moon          },
+          { key: "converter" as const, label: "Konverter Mata Uang",    icon: ArrowLeftRight },
+          { key: "visa" as const,      label: "Kalkulator Visa",        icon: Stamp          },
+        ]).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setCalcSection(key)}
+            style={M}
+            className={cn(
+              "px-2.5 py-1.5 rounded-lg text-[10.5px] md:text-[11.5px] font-bold transition-all inline-flex items-center gap-1.5 whitespace-nowrap",
+              calcSection === key
+                ? "bg-sky-500 text-white shadow-sm"
+                : "text-slate-500 hover:bg-slate-100"
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Konverter Mata Uang ── */}
+      {calcSection === "converter" && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
+          <CurrencyConverterTab />
+        </div>
+      )}
+
+      {/* ── Kalkulator Visa ── */}
+      {calcSection === "visa" && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
+          <VisaCalculatorTab />
+        </div>
+      )}
+
+      {/* ── Mode switcher (Umroh only) ── */}
+      {calcSection === "umroh" && (<>
       <div className="flex items-center gap-1 p-1 rounded-xl border border-sky-200 bg-sky-50/50 self-start flex-wrap">
         {([
           { mode: "umroh_private" as CalcMode, label: "Umroh Private", icon: Moon },
@@ -2252,6 +2296,7 @@ export default function Calculator() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </>)}
     </div>
   );
 }
