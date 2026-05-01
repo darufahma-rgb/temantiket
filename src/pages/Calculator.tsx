@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { differenceInCalendarDays, format, parse, isValid } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { Calculator as CalcIcon, Hotel, Bus, Globe, UserCheck, TrendingUp, Plus, Trash2, ChevronDown, ChevronUp, FileText, RotateCcw, Moon, Compass, Users, Plane, Download, ArrowLeftRight, Stamp } from "lucide-react";
+import { Calculator as CalcIcon, Hotel, Bus, Globe, UserCheck, TrendingUp, Plus, Trash2, ChevronDown, ChevronUp, FileText, RotateCcw, Moon, Compass, Users, Plane, Download, ArrowLeftRight, Stamp, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { CurrencyConverterTab } from "@/features/calculator/CurrencyConverterTab";
 import { VisaCalculatorTab } from "@/features/calculator/VisaCalculatorTab";
 import { Slider } from "@/components/ui/slider";
@@ -24,6 +24,7 @@ import type { IghPdfData } from "@/lib/generateIghPdf";
 import { usePackagesStore } from "@/store/packagesStore";
 import type { PackageDraft } from "@/features/packages/packagesRepo";
 import { useOrdersStore } from "@/store/ordersStore";
+import { useAuthStore } from "@/store/authStore";
 import {
   computeProfessionalQuote,
   computeGeneralQuote,
@@ -90,6 +91,10 @@ interface CalcState {
   website: string;
   contactPhone: string;
   contactName: string;
+  // ── Internal Profit View ──────────────────────────────────────────────────
+  internalModal: number;
+  internalModalCurrency: "IDR" | "USD" | "SAR" | "EGP";
+  internalOpex: number;
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
@@ -184,6 +189,9 @@ function makeDefault(): CalcState {
     website: "",
     contactPhone: "",
     contactName: "",
+    internalModal: 0,
+    internalModalCurrency: "IDR",
+    internalOpex: 0,
   };
 }
 
@@ -494,9 +502,24 @@ function SubtotalRow({ label, sarAmount, usdAmount, groupIDR, perPaxIDR, formatC
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
+// Helper: baca EGP rate dari localStorage (di-cache oleh CurrencyConverterTab).
+function getEgpRate(): number {
+  try {
+    const raw = localStorage.getItem("igh.egp.rate.v1");
+    if (!raw) return 320;
+    const parsed = JSON.parse(raw) as { rate?: number };
+    return Number(parsed.rate) > 0 ? Number(parsed.rate) : 320;
+  } catch {
+    return 320;
+  }
+}
+
 export default function Calculator() {
   const rates = useRatesStore((s) => s.rates);
   const { formatCurrency } = useRegional();
+  const userRole = useAuthStore((s) => s.user?.role);
+  const isOwner = userRole === "owner";
+  const [showInternalView, setShowInternalView] = useState(false);
 
   const [calc, setCalc] = useState<CalcState>(() => {
     const restored = loadFromStorage();
@@ -1111,6 +1134,21 @@ export default function Calculator() {
         },
       };
 
+      // Hitung costPrice dari Internal Profit View untuk Laporan Keuangan.
+      const egpRateSnap = getEgpRate();
+      const rateMapSnap: Record<string, number> = {
+        IDR: 1,
+        USD: rates.USD ?? 16000,
+        SAR: rates.SAR ?? 4250,
+        EGP: egpRateSnap,
+      };
+      const modalIDRSnap = Math.round(
+        (calc.internalModal || 0) * (rateMapSnap[calc.internalModalCurrency] || 1)
+      );
+      const opexIDRSnap = Math.round(calc.internalOpex || 0);
+      // costPrice = modal + opex (total biaya yg dikeluarkan agency, dlm IDR).
+      const derivedCostPrice = modalIDRSnap + opexIDRSnap;
+
       const order = await addOrder({
         clientId: null,
         type: "umrah",
@@ -1118,6 +1156,7 @@ export default function Calculator() {
         title: name,
         totalPrice: Math.round(quote.finalPrice || 0),
         currency: "IDR",
+        costPrice: derivedCostPrice > 0 ? derivedCostPrice : Math.round(quote.hpp || 0),
         metadata,
         tripId: null,
         packageId: null,
@@ -2218,6 +2257,131 @@ export default function Calculator() {
                       {quote.netProfit < 0 && " ⚠️ di bawah modal!"}
                     </p>
                   </div>
+
+                  {/* ── Internal Profit View (Owner only) ───────────────── */}
+                  {isOwner && (() => {
+                    const egpRate = getEgpRate();
+                    const rateMap: Record<string, number> = {
+                      IDR: 1,
+                      USD: rates.USD ?? 16000,
+                      SAR: rates.SAR ?? 4250,
+                      EGP: egpRate,
+                    };
+                    const modalIDR = Math.round((calc.internalModal || 0) * (rateMap[calc.internalModalCurrency] || 1));
+                    const opexIDR = Math.round(calc.internalOpex || 0);
+                    const hargaJual = Math.round(quote.finalPrice || 0);
+                    const profitIDRVal = hargaJual - modalIDR - opexIDR;
+                    const marginPct = hargaJual > 0 ? (profitIDRVal / hargaJual) * 100 : 0;
+                    const profitPerPax = safePax > 0 ? profitIDRVal / safePax : 0;
+
+                    return (
+                      <div className="rounded-xl border border-blue-200 overflow-hidden" style={M}>
+                        {/* Header toggle */}
+                        <button
+                          type="button"
+                          onClick={() => setShowInternalView((v) => !v)}
+                          className="w-full flex items-center justify-between px-3 py-2.5 bg-blue-50 hover:bg-blue-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Lock className="h-3.5 w-3.5 text-blue-600" />
+                            <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wide">Internal Profit View</span>
+                            <span className="text-[10px] text-blue-500 bg-blue-100 px-1.5 py-0.5 rounded-full font-semibold">Owner Only</span>
+                          </div>
+                          {showInternalView
+                            ? <EyeOff className="h-3.5 w-3.5 text-blue-500" />
+                            : <Eye className="h-3.5 w-3.5 text-blue-500" />
+                          }
+                        </button>
+
+                        {showInternalView && (
+                          <div className="px-3 py-3 space-y-3 bg-white">
+                            {/* Harga Modal input */}
+                            <div>
+                              <p className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide mb-1.5">Harga Modal (Nett)</p>
+                              <div className="flex gap-2">
+                                <select
+                                  value={calc.internalModalCurrency}
+                                  onChange={(e) => setField("internalModalCurrency", e.target.value as CalcState["internalModalCurrency"])}
+                                  className="h-8 rounded-lg border border-blue-200 bg-blue-50 text-[11px] font-bold text-blue-800 px-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                >
+                                  {(["IDR", "USD", "SAR", "EGP"] as const).map((c) => (
+                                    <option key={c} value={c}>{c}</option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={calc.internalModal || ""}
+                                  onChange={(e) => setField("internalModal", Number(e.target.value) || 0)}
+                                  placeholder="0"
+                                  className="flex-1 h-8 rounded-lg border border-blue-200 px-2 text-[12px] font-mono focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                />
+                              </div>
+                              {calc.internalModalCurrency !== "IDR" && calc.internalModal > 0 && (
+                                <p className="text-[10px] text-blue-500 mt-1">
+                                  ≈ {formatCurrency(modalIDR)} IDR (kurs {calc.internalModalCurrency} {rateMap[calc.internalModalCurrency].toLocaleString("id-ID")})
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Biaya Operasional input */}
+                            <div>
+                              <p className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide mb-1.5">Biaya Operasional (IDR)</p>
+                              <input
+                                type="number"
+                                min={0}
+                                value={calc.internalOpex || ""}
+                                onChange={(e) => setField("internalOpex", Number(e.target.value) || 0)}
+                                placeholder="0"
+                                className="w-full h-8 rounded-lg border border-blue-200 px-2 text-[12px] font-mono focus:outline-none focus:ring-2 focus:ring-blue-300"
+                              />
+                            </div>
+
+                            {/* Profit Breakdown */}
+                            <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100/60 border border-blue-200 p-3 space-y-1.5">
+                              {[
+                                { label: "Harga Jual Final", value: hargaJual, color: "text-sky-700" },
+                                { label: `− Modal (${calc.internalModalCurrency})`, value: -modalIDR, color: "text-rose-600" },
+                                { label: "− Biaya Operasional", value: -opexIDR, color: "text-rose-600" },
+                              ].map((r) => (
+                                <div key={r.label} className="flex items-center justify-between">
+                                  <span className={`text-[11px] font-semibold ${r.color}`}>{r.label}</span>
+                                  <span className={`text-[12px] font-bold font-mono ${r.color}`}>
+                                    {r.value < 0 ? `- ${formatCurrency(Math.abs(r.value))}` : formatCurrency(r.value)}
+                                  </span>
+                                </div>
+                              ))}
+                              <div className="border-t border-blue-300 pt-1.5 flex items-center justify-between">
+                                <div>
+                                  <p className={`text-[12px] font-extrabold ${profitIDRVal >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                                    = Total Profit (IDR)
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {formatCurrency(profitPerPax)}/pax · margin {marginPct.toFixed(1)}%
+                                    {profitIDRVal < 0 && " ⚠️ rugi!"}
+                                  </p>
+                                </div>
+                                <span className={`text-[15px] font-extrabold font-mono ${profitIDRVal >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                                  {profitIDRVal >= 0 ? "+" : ""}{formatCurrency(profitIDRVal)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Jadikan Order button */}
+                            <Button
+                              onClick={handleCreateOrder}
+                              disabled={creatingOrder || quote.finalPrice === 0}
+                              className="w-full h-9 rounded-xl text-sm font-bold text-white"
+                              style={{ background: "linear-gradient(135deg,#1d4ed8,#2563eb 60%,#3b82f6)", ...M }}
+                            >
+                              <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
+                              {creatingOrder ? "Menyimpan…" : "Jadikan Order"}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <Button
