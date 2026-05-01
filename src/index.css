@@ -1681,3 +1681,14 @@ button, [role="button"], a, input, select, textarea {
   .compact-page .gap-6 { gap: 0.85rem; }
   .compact-page .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.85rem; }
 }
+
+/* ── Sidebar logo: biru di light mode, putih di dark mode ── */
+.sidebar-logo {
+  /* Konversi logo putih → biru (#2563eb) di light mode */
+  filter: brightness(0) saturate(100%) invert(27%) sepia(82%) saturate(2000%) hue-rotate(218deg) brightness(97%);
+  transition: filter 0.2s ease;
+}
+[data-theme="dark"] .sidebar-logo {
+  /* Dark mode: biarkan putih apa adanya */
+  filter: none;
+}

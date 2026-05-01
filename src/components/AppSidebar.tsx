@@ -231,18 +231,12 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
     >
       {/* ── Logo ── */}
       <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center">
           <img
-            src="/logo-igh-tour-text.png"
+            src="/temantiket-logo.png"
             alt="Temantiket"
-            className="h-6 w-auto object-contain shrink-0"
+            className="sidebar-logo h-9 w-auto object-contain shrink-0"
           />
-          <div className="leading-tight">
-            <div className="font-bold text-[13px] text-[hsl(var(--foreground))]">Temantiket</div>
-            <div className="text-[9px] font-medium tracking-wide text-[hsl(var(--muted-foreground))] uppercase mt-0.5">
-              Travel Agency
-            </div>
-          </div>
         </div>
         {onClose && (
           <button

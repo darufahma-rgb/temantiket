@@ -140,16 +140,16 @@ export function SplashScreen() {
                 transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
               >
                 <img
-                  src="/logo-igh-tour-white.png"
+                  src="/temantiket-logo.png"
                   alt="Temantiket"
-                  className="h-24 w-auto object-contain drop-shadow-[0_12px_32px_rgba(14,165,233,0.45)]"
+                  className="h-20 w-auto object-contain drop-shadow-[0_12px_32px_rgba(14,165,233,0.45)]"
                   onError={(e) => {
                     const img = e.target as HTMLImageElement;
                     img.style.display = "none";
                     const fallback = document.createElement("span");
-                    fallback.textContent = "TMT";
+                    fallback.textContent = "Temantiket";
                     fallback.className =
-                      "text-5xl font-black tracking-[-0.06em] text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]";
+                      "text-4xl font-black tracking-[-0.06em] text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]";
                     img.parentElement!.appendChild(fallback);
                   }}
                 />
