@@ -41,11 +41,12 @@ Schema managed via Supabase SQL Editor. To initialize:
 ## Replit Migration Notes
 
 - Migrated from Replit Agent to Replit environment (May 2026)
-- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are stored as Replit shared env vars
-- Supabase Auth kept intentionally — custom multi-tenant RLS roles are incompatible with Replit Auth
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are stored as Replit shared env vars (not hardcoded)
+- Supabase Auth kept intentionally — custom multi-tenant RLS roles (owner/staff/agent) are incompatible with Replit Auth
 - No server-side layer added — correct architecture for a Supabase-native SPA
-- OpenAI integration is optional and user-configurable via `VITE_OPENAI_API_KEY` env var
-- Workflow "Start application" runs `npm install && npm run dev` on port 5000
+- OpenAI integration is optional — set `VITE_OPENAI_API_KEY` in Replit Secrets to enable AI features (passport OCR, itinerary AI, ticket price AI, AI command center). App falls back to Tesseract.js for OCR when not set.
+- Workflow "Start application" runs `npm run dev` on port 5000
+- Supabase Edge Functions (bootstrap, invite-member, remove-member, ocr-passport) remain deployed on Supabase — no Replit server needed
 
 ## Key Pages & Routes
 
