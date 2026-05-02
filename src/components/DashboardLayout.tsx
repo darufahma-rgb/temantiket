@@ -126,7 +126,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
             aria-label="Beranda Temantiket"
           >
             <img
-              src="/temantiket-icon.png"
+              src="/temantiket-icon.svg"
               alt=""
               className="h-6 w-6 object-contain icon-adaptive"
             />

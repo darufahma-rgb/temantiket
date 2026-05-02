@@ -190,7 +190,7 @@ export default function Login() {
         transition={{ duration: 0.6, ease: [0.34, 1.2, 0.64, 1] }}
       >
         <img
-          src="/temantiket-logo.png"
+          src="/temantiket-logo.svg"
           alt="Temantiket"
           className="h-12 w-auto object-contain drop-shadow-[0_8px_24px_rgba(14,165,233,0.45)] mb-2"
         />

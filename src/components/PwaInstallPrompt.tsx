@@ -82,7 +82,7 @@ export function PwaInstallPrompt() {
         >
           {showIosGuide ? (
             <div className="flex items-start gap-3">
-              <img src="/temantiket-icon.png" alt="Temantiket" className="h-9 w-9 object-contain shrink-0 icon-adaptive" />
+              <img src="/temantiket-icon.svg" alt="Temantiket" className="h-9 w-9 object-contain shrink-0 icon-adaptive" />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[13.5px] text-[hsl(var(--foreground))] leading-tight mb-0.5">
                   Pasang Temantiket di Home Screen
@@ -107,7 +107,7 @@ export function PwaInstallPrompt() {
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <img src="/temantiket-icon.png" alt="Temantiket" className="h-9 w-9 object-contain shrink-0 icon-adaptive" />
+              <img src="/temantiket-icon.svg" alt="Temantiket" className="h-9 w-9 object-contain shrink-0 icon-adaptive" />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[13.5px] text-[hsl(var(--foreground))] leading-tight">Pasang Temantiket</p>
                 <p className="text-[11.5px] text-[hsl(var(--muted-foreground))]">Akses cepat dari layar utama</p>

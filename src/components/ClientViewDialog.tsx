@@ -309,7 +309,7 @@ const FlightPreview = ({
       <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img
-            src="/temantiket-icon.png"
+            src="/temantiket-icon.svg"
             alt="Temantiket"
             crossOrigin="anonymous"
             style={{ height: 32, width: 32, objectFit: "contain" }}
@@ -484,7 +484,7 @@ const UmrahPreview = ({
       <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img
-            src="/temantiket-icon.png"
+            src="/temantiket-icon.svg"
             alt="Temantiket"
             crossOrigin="anonymous"
             style={{ height: 32, width: 32, objectFit: "contain" }}

@@ -1648,11 +1648,11 @@ button, [role="button"], a, input, select, textarea {
 }
 
 /* ── Temantiket icon mark: CSS mask approach — warna via background-color ── */
-/* Putih di dark mode, brand blue di light mode. Tidak ada kotak hitam. */
+/* SVG outline biru di light mode, putih di dark mode. */
 .icon-mark {
   background-color: #1a44d4;
-  -webkit-mask: url('/temantiket-icon-mark.png') center / contain no-repeat;
-  mask: url('/temantiket-icon-mark.png') center / contain no-repeat;
+  -webkit-mask: url('/temantiket-icon-mark.svg') center / contain no-repeat;
+  mask: url('/temantiket-icon-mark.svg') center / contain no-repeat;
   -webkit-mask-mode: luminance;
   mask-mode: luminance;
   transition: background-color 0.2s ease;
@@ -1666,24 +1666,17 @@ button, [role="button"], a, input, select, textarea {
   background-color: #ffffff !important;
 }
 
-/* ── Temantiket icon: hitam bersih di light mode, putih di dark/dark-bg ── */
-/* Icon aslinya putih-di-hitam. mix-blend-mode biar kotak hitam transparan. */
+/* ── Temantiket icon: SVG outline biru — transparan bg, biru di light, putih di dark ── */
 .icon-adaptive {
-  /* Light: invert → hitam-di-putih murni, multiply → putih bg hilang sempurna */
-  filter: invert(1);
-  mix-blend-mode: multiply;
   transition: filter 0.2s ease;
 }
 .dark .icon-adaptive,
 [data-theme="dark"] .icon-adaptive {
-  /* Dark: screen → hitam bg transparan, putih icon kelihatan */
-  filter: none;
-  mix-blend-mode: screen;
+  filter: brightness(0) invert(1);
 }
 /* Untuk icon di atas elemen gelap (dark card) di dalam light mode */
 .icon-on-dark {
-  filter: none;
-  mix-blend-mode: screen;
+  filter: brightness(0) invert(1);
 }
 
 /* ── Micro-animation utilities ──────────────────────────────────────────────── */

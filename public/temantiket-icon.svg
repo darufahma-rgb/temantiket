@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="#1a44d4" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Fuselage -->
+  <ellipse cx="50" cy="50" rx="8.5" ry="37"/>
+  <!-- Main wings (swept back) -->
+  <path d="M41.5 38 L5 62 L9 70 L41.5 52"/>
+  <path d="M58.5 38 L95 62 L91 70 L58.5 52"/>
+  <!-- Tail fins -->
+  <path d="M44 77 L26 90 L31 90 L44 81"/>
+  <path d="M56 77 L74 90 L69 90 L56 81"/>
+</svg>

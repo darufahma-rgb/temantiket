@@ -149,7 +149,7 @@ export default function FlyerDialog({ open, onClose, trip, jamaahCount = 0 }: Fl
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <img
-                  src="/temantiket-icon.png"
+                  src="/temantiket-icon.svg"
                   alt="Temantiket"
                   crossOrigin="anonymous"
                   style={{ height: 36, width: 36, objectFit: "contain" }}
