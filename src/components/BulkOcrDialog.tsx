@@ -677,7 +677,7 @@ export default function BulkOcrDialog({ open, tripId, onClose }: Props) {
             {phase === "upload" && (
               <button type="button" onClick={startScanning} disabled={rows.length === 0 || compressing}
                 className="h-8 px-4 rounded-xl text-[12px] font-bold text-white flex items-center gap-1.5 transition-all disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}>
+                style={{ background: "linear-gradient(135deg,#1a44d4,#123499)" }}>
                 {compressing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
                 {compressing ? "Mengoptimasi foto…" : `Mulai Scan (${rows.length} foto)`}
               </button>
@@ -690,7 +690,7 @@ export default function BulkOcrDialog({ open, tripId, onClose }: Props) {
                   onClick={() => setPhase("review")}
                   disabled={!allFinished || validCount === 0}
                   className="h-8 px-4 rounded-xl text-[12px] font-bold text-white flex items-center gap-1.5 transition-all disabled:opacity-40"
-                  style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}
+                  style={{ background: "linear-gradient(135deg,#1a44d4,#123499)" }}
                 >
                   {allFinished ? (
                     <>

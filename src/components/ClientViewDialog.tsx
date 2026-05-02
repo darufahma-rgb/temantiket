@@ -294,7 +294,7 @@ const FlightPreview = ({
       ref={ref}
       style={{
         width: 600,
-        background: "linear-gradient(160deg, #0f172a 0%, #1e3a8a 55%, #0ea5e9 100%)",
+        background: "linear-gradient(160deg, #0f172a 0%, #1e3a8a 55%, #1a44d4 100%)",
         color: "#fff",
         fontFamily: "Inter, system-ui, sans-serif",
         padding: 36,
@@ -417,7 +417,7 @@ const FlightPreview = ({
           </div>
           <div
             style={{
-              background: "linear-gradient(135deg, #0ea5e9, #0369a1)",
+              background: "linear-gradient(135deg, #1a44d4, #0a2472)",
               color: "#fff",
               padding: "8px 16px",
               borderRadius: 999,

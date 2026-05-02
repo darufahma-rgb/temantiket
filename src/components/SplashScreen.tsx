@@ -230,7 +230,7 @@ export function SplashScreen() {
                       className="h-full rounded-full"
                       style={{
                         background:
-                          "linear-gradient(90deg, #38bdf8, #0ea5e9, #7dd3fc, #0ea5e9, #38bdf8)",
+                          "linear-gradient(90deg, #6694ff, #1a44d4, #a8c0ff, #1a44d4, #6694ff)",
                         backgroundSize: "200% 100%",
                         boxShadow: "0 0 12px rgba(14,165,233,0.7)",
                       }}
@@ -342,7 +342,7 @@ export function SplashScreen() {
                         disabled={isLoading || !username.trim() || !password.trim()}
                         className="w-full h-12 rounded-xl font-extrabold text-sm uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all disabled:opacity-50"
                         style={{
-                          background: "linear-gradient(135deg, #0284c7 0%, #0ea5e9 60%, #38bdf8 100%)",
+                          background: "linear-gradient(135deg, #123499 0%, #1a44d4 60%, #6694ff 100%)",
                           color: "white",
                           boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
                         }}

@@ -54,7 +54,7 @@ function rangeBounds(key: RangeKey): { from: Date | null; to: Date | null } {
 }
 
 const TYPE_COLOR: Record<OrderType, string> = {
-  umrah: "#0ea5e9",
+  umrah: "#1a44d4",
   flight: "#f97316",
   visa_voa: "#a855f7",
   visa_student: "#10b981",

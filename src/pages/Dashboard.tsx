@@ -266,7 +266,7 @@ function AddTripDialog({ open, onClose }: { open: boolean; onClose: () => void }
               type="submit"
               disabled={loading}
               className="flex-1 h-9 rounded-xl text-[12.5px] font-bold text-white transition-all disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}
+              style={{ background: "linear-gradient(135deg,#1a44d4,#123499)" }}
             >
               {loading ? "Menyimpan…" : "Simpan Paket"}
             </button>
@@ -1108,11 +1108,11 @@ export default function Dashboard() {
             {/* Decorative blob */}
             <div
               className="absolute -top-16 -right-12 h-40 w-40 rounded-full pointer-events-none opacity-50"
-              style={{ background: "radial-gradient(circle, #38bdf844, transparent 70%)" }}
+              style={{ background: "radial-gradient(circle, #6694ff44, transparent 70%)" }}
             />
             <div
               className="absolute -bottom-12 -left-10 h-32 w-32 rounded-full pointer-events-none opacity-40"
-              style={{ background: "radial-gradient(circle, #0ea5e944, transparent 70%)" }}
+              style={{ background: "radial-gradient(circle, #1a44d444, transparent 70%)" }}
             />
 
             <div className="relative">
@@ -1126,7 +1126,7 @@ export default function Dashboard() {
               <Button
                 onClick={() => navigate("/packages")}
                 className="mt-5 rounded-2xl px-5 h-11 text-[13px] font-bold shadow-md"
-                style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)", color: "white" }}
+                style={{ background: "linear-gradient(135deg,#1a44d4,#123499)", color: "white" }}
               >
                 <Plus strokeWidth={2} className="h-4 w-4 mr-1.5" /> {t.dash_create_first}
               </Button>

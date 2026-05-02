@@ -17,6 +17,22 @@ export default {
         sans: ["Manrope", "system-ui", "-apple-system", "sans-serif"],
       },
       colors: {
+        /* ── Brand palette override ──
+           Primary: #00072d → #051650 → #0a2472 → #123499
+           Interactive accent: #1a44d4 (sky-500) */
+        sky: {
+          50:  "#eef3ff",
+          100: "#d4e0ff",
+          200: "#a8c0ff",
+          300: "#6694ff",
+          400: "#3d6af0",
+          500: "#1a44d4",
+          600: "#123499",
+          700: "#0a2472",
+          800: "#051650",
+          900: "#00072d",
+          950: "#000219",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

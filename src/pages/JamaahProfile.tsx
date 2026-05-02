@@ -730,7 +730,7 @@ export default function JamaahProfile() {
               <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${pct}%`, background: "linear-gradient(90deg, #0ea5e9, #38bdf8)" }}
+                  style={{ width: `${pct}%`, background: "linear-gradient(90deg, #1a44d4, #6694ff)" }}
                 />
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">

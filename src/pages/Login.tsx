@@ -308,7 +308,7 @@ export default function Login() {
                         disabled={isLoading || !email.trim() || !password.trim()}
                         className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
                         style={{
-                          background: "linear-gradient(135deg, #0284c7 0%, #0ea5e9 60%, #38bdf8 100%)",
+                          background: "linear-gradient(135deg, #123499 0%, #1a44d4 60%, #6694ff 100%)",
                           boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
                         }}
                         whileHover={{ scale: 1.02 }}
@@ -401,7 +401,7 @@ export default function Login() {
                         disabled={isLoading || !pin.trim()}
                         className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
                         style={{
-                          background: "linear-gradient(135deg, #0284c7 0%, #0ea5e9 60%, #38bdf8 100%)",
+                          background: "linear-gradient(135deg, #123499 0%, #1a44d4 60%, #6694ff 100%)",
                           boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
                         }}
                         whileHover={{ scale: 1.02 }}

@@ -657,7 +657,7 @@ export default function PublicTicketPrices() {
         style={{ background: "linear-gradient(135deg,#0c1e3e 0%,#0f3460 50%,#0c2d6e 100%)" }}
       >
         <div className="absolute inset-0 opacity-10 pointer-events-none"
-          style={{ backgroundImage: "radial-gradient(circle at 20% 50%,#38bdf8 0%,transparent 60%),radial-gradient(circle at 80% 20%,#818cf8 0%,transparent 50%)" }} />
+          style={{ backgroundImage: "radial-gradient(circle at 20% 50%,#6694ff 0%,transparent 60%),radial-gradient(circle at 80% 20%,#818cf8 0%,transparent 50%)" }} />
         <div className="relative">
           <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-1.5 mb-3">
             <Plane className="w-3.5 h-3.5 text-sky-300" />

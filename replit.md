@@ -20,7 +20,7 @@ The application is a React Single Page Application (SPA) utilizing Vite for the 
 
 **UI/UX Decisions:**
 
-*   **Color Scheme:** Branding colors are Temantiket navy (`#0b1628` / `#0f2044`) with an accent of sky-500 (`#0ea5e9`).
+*   **Color Scheme:** Brand Asset palette — **Rich Black** `#00072d` · **Dark Navy** `#051650` · **Navy Blue** `#0a2472` · **Caribbean Blue** `#123499` · interactive accent `#1a44d4`. Tailwind `sky` color scale is overridden in `tailwind.config.ts` to match this palette so all `text-sky-*`, `bg-sky-*`, `border-sky-*` classes automatically render the brand blues. CSS design-system tokens in `index.css` are updated for both light mode (light blue-white bg, Rich Black text) and dark mode (Rich Black bg → Dark Navy cards → Navy Blue chips).
 *   **Navigation:** Features a single-panel sidebar (`AppSidebar.tsx`, 240px wide). It shows the Temantiket logo at top, a user profile card with role badge, collapsible section groups ("Main Menu", "Keuangan", "Sistem Agen", "Help & Settings"), a blue gradient AI Itinerary CTA card, and a logout button at the bottom. Active nav items are highlighted with a sky-500 gradient pill. On mobile, the sidebar slides in as an overlay. Desktop header (`DashboardLayout.tsx`) shows a search bar on the left, a live currency rates pill, an AI Assistant shortcut button, a sync status dot, a notification bell, and the user avatar+name on the right.
 *   **Boarding Pass Cards:** Designed for clear display of flight information, including large ETD/ETA times, transit indicators, and airline logos fetched from Airhex CDN.
 *   **Multi-Leg UI:** Chained legs are rendered with amber transit dots and city pills, consolidating complex itineraries into single, readable cards.

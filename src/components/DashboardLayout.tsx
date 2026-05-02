@@ -179,7 +179,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               />
               <span
                 className="relative inline-flex h-1.5 w-1.5 rounded-full"
-                style={{ background: rateMode === "manual" ? "#0ea5e9" : "#10b981" }}
+                style={{ background: rateMode === "manual" ? "#1a44d4" : "#10b981" }}
               />
             </span>
 
@@ -473,7 +473,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                   color: "hsl(var(--foreground))",
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = "#0ea5e9";
+                  e.target.style.borderColor = "#1a44d4";
                   e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.12)";
                 }}
                 onBlur={(e) => {
@@ -506,8 +506,8 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 <span
                   className="h-1.5 w-1.5 rounded-full shrink-0"
                   style={{
-                    background: rateMode === "manual" ? "#0ea5e9" : "#10b981",
-                    boxShadow: rateMode === "manual" ? "0 0 4px #0ea5e9" : "0 0 4px #10b981",
+                    background: rateMode === "manual" ? "#1a44d4" : "#10b981",
+                    boxShadow: rateMode === "manual" ? "0 0 4px #1a44d4" : "0 0 4px #10b981",
                   }}
                 />
                 <span className="text-[11px] font-semibold text-[hsl(var(--muted-foreground))]" style={{ fontVariantNumeric: "tabular-nums" }}>
@@ -526,7 +526,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               <button
                 onClick={() => navigate("/itinerary")}
                 className="keep-icon-bg hidden md:flex items-center gap-2 h-9 px-3.5 rounded-xl text-white text-[12px] font-semibold transition-all hover:opacity-90 active:scale-95 shrink-0"
-                style={{ background: "linear-gradient(135deg, #0ea5e9, #0369a1)" }}
+                style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
               >
                 <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={2} style={{ color: "white" }} />
                 <span>AI Assistant</span>
@@ -566,7 +566,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               >
                 <div
                   className="h-6 w-6 rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0"
-                  style={{ background: "linear-gradient(135deg, #0ea5e9, #0369a1)" }}
+                  style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
                 >
                   {displayName.charAt(0).toUpperCase()}
                 </div>

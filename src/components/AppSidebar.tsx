@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
 
-const ACCENT = "#0ea5e9";
+const ACCENT = "#1a44d4";
 const SIDEBAR_W = 240;
 
 interface NavItemDef {
@@ -130,7 +130,7 @@ function SidebarNavItem({ item, onClose }: { item: NavItemDef; onClose?: () => v
             <motion.span
               layoutId="sidebar-pill"
               className="absolute inset-0 rounded-xl"
-              style={{ background: "linear-gradient(135deg, #0ea5e9, #0284c7)" }}
+              style={{ background: "linear-gradient(135deg, #1a44d4, #123499)" }}
               transition={{ type: "spring", stiffness: 500, damping: 40 }}
             />
           )}
@@ -245,7 +245,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
       <div className="flex items-center gap-2.5 px-5 py-4 shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
         <div
           className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
-          style={{ background: "linear-gradient(135deg, #0ea5e9, #0369a1)" }}
+          style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
         >
           <img
             src="/temantiket-logo.png"
@@ -276,7 +276,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
         >
           <div
             className="h-8 w-8 rounded-lg flex items-center justify-center text-white text-[12px] font-black shrink-0 shadow"
-            style={{ background: "linear-gradient(135deg, #0ea5e9, #0369a1)" }}
+            style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
           >
             {user.displayName.charAt(0).toUpperCase()}
           </div>
@@ -312,7 +312,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
         {/* CTA upgrade card */}
         <div
           className="rounded-2xl p-3.5 relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)" }}
+          style={{ background: "linear-gradient(135deg, #1a44d4 0%, #0a2472 100%)" }}
         >
           <div className="absolute -top-4 -right-4 h-16 w-16 rounded-full opacity-20" style={{ background: "white" }} />
           <div className="absolute -bottom-3 -left-3 h-12 w-12 rounded-full opacity-10" style={{ background: "white" }} />

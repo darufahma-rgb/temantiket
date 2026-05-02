@@ -12,27 +12,29 @@
     --sab: env(safe-area-inset-bottom, 0px);
     --sal: env(safe-area-inset-left, 0px);
 
-    --background: 30 60% 97%;
-    --foreground: 24 38% 15%;
+    /* ── Brand palette light mode ──
+       Rich Black #00072d · Dark Navy #051650 · Navy Blue #0a2472 · Caribbean Blue #123499 */
+    --background: 225 60% 97%;       /* light blue-tinted white */
+    --foreground: 235 100% 9%;       /* #00072d Rich Black */
 
     --card: 0 0% 100%;
-    --card-foreground: 24 38% 15%;
+    --card-foreground: 235 100% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 24 38% 15%;
+    --popover-foreground: 235 100% 9%;
 
-    --primary: 198 92% 39%;
+    --primary: 225 79% 34%;          /* #123499 Caribbean Blue */
     --primary-foreground: 0 0% 100%;
-    --primary-light: 198 92% 96%;
+    --primary-light: 225 79% 95%;
 
-    --secondary: 30 50% 95%;
-    --secondary-foreground: 24 38% 15%;
+    --secondary: 225 50% 94%;        /* light blue surface */
+    --secondary-foreground: 235 100% 9%;
 
-    --muted: 30 35% 95%;
-    --muted-foreground: 24 18% 52%;
+    --muted: 225 35% 92%;
+    --muted-foreground: 225 35% 45%;
 
-    --accent: 198 92% 94%;
-    --accent-foreground: 27 91% 38%;
+    --accent: 225 70% 92%;
+    --accent-foreground: 225 79% 34%;
 
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
@@ -43,20 +45,20 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 25% 88%;
-    --input: 30 25% 88%;
-    --ring: 198 92% 39%;
+    --border: 225 40% 85%;
+    --input: 225 40% 85%;
+    --ring: 225 72% 47%;             /* #1a44d4 interactive blue */
 
     --radius: 1rem;
 
-    --gradient-primary: linear-gradient(135deg, hsl(198 92% 39%), hsl(205 90% 50%));
-    --gradient-hero: linear-gradient(135deg, hsl(198 92% 39%) 0%, hsl(205 90% 50%) 100%);
-    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(30 50% 98%) 100%);
-    --shadow-card: 0 8px 40px -8px hsl(198 92% 39% / 0.15), 0 2px 8px -2px hsl(200 30% 70% / 0.1);
-    --shadow-sm: 0 1px 3px 0 hsl(30 40% 60% / 0.08);
-    --shadow-md: 0 4px 16px -2px hsl(30 40% 60% / 0.12);
-    --shadow-lg: 0 12px 40px -8px hsl(30 40% 60% / 0.18);
-    --shadow-glow: 0 0 30px hsl(198 92% 39% / 0.30);
+    --gradient-primary: linear-gradient(135deg, hsl(225 72% 47%), hsl(225 79% 34%));
+    --gradient-hero: linear-gradient(135deg, hsl(226 84% 24%) 0%, hsl(225 79% 34%) 50%, hsl(225 72% 47%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(225 50% 98%) 100%);
+    --shadow-card: 0 8px 40px -8px hsl(225 79% 34% / 0.15), 0 2px 8px -2px hsl(225 50% 60% / 0.1);
+    --shadow-sm: 0 1px 3px 0 hsl(225 50% 50% / 0.08);
+    --shadow-md: 0 4px 16px -2px hsl(225 50% 50% / 0.12);
+    --shadow-lg: 0 12px 40px -8px hsl(225 50% 50% / 0.18);
+    --shadow-glow: 0 0 30px hsl(225 72% 47% / 0.30);
 
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -71,57 +73,46 @@
   }
 
   :root[data-theme="dark"] {
-    /* ── Premium Dark v3 — "Midnight Wave" ──
-       Match persis dgn wallpaper login page: deep navy hampir hitam +
-       aksen electric blue (#0ea5e9 / #38bdf8). Card permukaan sedikit
-       diangkat dgn tint biru biar nyambung sm vibe wallpaper, bukan
-       neutral gray.
-       Reference hex (di-convert ke HSL):
-         #020617 bg (slate-950), #0a1428 card, #0d1c3a chip, #1a2c52 border,
-         #0ea5e9 brand sky-500, #38bdf8 sky-400, #94A3B8 muted. */
-    --background: 222 47% 5%;          /* #020617 deep navy */
-    --foreground: 210 40% 98%;         /* near-white slightly cool */
+    /* ── Brand Dark Mode — "Deep Navy" ──
+       Rich Black #00072d bg · Dark Navy #051650 card · Navy #0a2472 chip
+       Interactive blue #1a44d4 · Caribbean Blue #123499 primary */
+    --background: 235 100% 9%;         /* #00072d Rich Black */
+    --foreground: 225 60% 96%;         /* near-white cool blue */
 
-    --card: 222 56% 9%;                /* #0a1428 lifted navy */
-    --card-foreground: 210 40% 98%;
-    --popover: 222 60% 8%;             /* sedikit lebih dalam dari card */
-    --popover-foreground: 210 40% 98%;
+    --card: 228 88% 17%;               /* #051650 Dark Navy */
+    --card-foreground: 225 60% 96%;
+    --popover: 228 95% 14%;            /* deeper than card */
+    --popover-foreground: 225 60% 96%;
 
-    /* Secondary = "tile / chip" surface satu tingkat di atas card */
-    --secondary: 220 50% 13%;          /* #0d1c3a chip */
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 226 84% 24%;          /* #0a2472 Navy Blue chip */
+    --secondary-foreground: 225 60% 96%;
 
-    --muted: 220 40% 15%;
-    --muted-foreground: 215 25% 70%;   /* slate-400-ish, cocok di atas navy */
+    --muted: 226 70% 20%;
+    --muted-foreground: 225 30% 65%;
 
-    /* Sky-blue accent chip — dipake buat status badge, hover, etc. */
-    --accent: 199 90% 14%;             /* deep sky tint */
-    --accent-foreground: 199 95% 74%;  /* sky-300 */
+    --accent: 226 80% 28%;             /* deep blue tint */
+    --accent-foreground: 225 60% 85%;
 
-    /* Primary = brand sky-500 (#0ea5e9), persis warna kurva di wallpaper */
-    --primary: 199 89% 48%;
-    --primary-foreground: 222 47% 5%;  /* dark text on bright button kontras */
-    --primary-light: 199 90% 12%;
+    --primary: 225 72% 55%;            /* #1a44d4 brightened for dark mode */
+    --primary-foreground: 235 100% 9%;
+    --primary-light: 225 79% 16%;
 
-    /* Border halus dgn tint biru biar nyambung sm tema */
-    --border: 220 40% 18%;             /* #1a2c52 */
-    --input: 220 40% 22%;              /* sedikit lebih terang biar tappable */
-    --ring: 199 89% 60%;               /* fokus = sky-400 glow */
+    --border: 226 65% 28%;
+    --input: 226 65% 30%;
+    --ring: 225 72% 60%;
 
-    /* Status semantic — Lunas ijo, warning amber (kontras vs sky), destructive merah */
     --success: 142 71% 45%;
     --warning: 38 92% 55%;
     --destructive: 0 84% 60%;
 
-    /* Gradient & shadow — pakai sky tint biar match wallpaper vibe */
-    --gradient-primary: linear-gradient(135deg, hsl(199 89% 48%), hsl(199 95% 60%));
-    --gradient-hero: linear-gradient(135deg, hsl(221 83% 53%) 0%, hsl(199 89% 48%) 60%, hsl(199 95% 60%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(222 56% 10%) 0%, hsl(222 60% 7%) 100%);
-    --shadow-sm: 0 1px 2px 0 hsl(222 80% 2% / 0.50);
-    --shadow-md: 0 4px 14px -2px hsl(222 80% 2% / 0.60);
-    --shadow-lg: 0 16px 44px -10px hsl(222 80% 2% / 0.75);
-    --shadow-card: 0 4px 22px -4px hsl(222 80% 2% / 0.60), 0 0 0 1px hsl(199 89% 60% / 0.06);
-    --shadow-glow: 0 0 28px hsl(199 89% 48% / 0.32);
+    --gradient-primary: linear-gradient(135deg, hsl(225 72% 55%), hsl(225 79% 40%));
+    --gradient-hero: linear-gradient(135deg, hsl(235 100% 9%) 0%, hsl(226 84% 24%) 50%, hsl(225 72% 47%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(228 88% 18%) 0%, hsl(228 88% 14%) 100%);
+    --shadow-sm: 0 1px 2px 0 hsl(235 100% 4% / 0.60);
+    --shadow-md: 0 4px 14px -2px hsl(235 100% 4% / 0.70);
+    --shadow-lg: 0 16px 44px -10px hsl(235 100% 4% / 0.80);
+    --shadow-card: 0 4px 22px -4px hsl(235 100% 4% / 0.70), 0 0 0 1px hsl(225 72% 55% / 0.08);
+    --shadow-glow: 0 0 28px hsl(225 72% 55% / 0.35);
   }
 
   :root[data-font-size="small"] {

@@ -283,7 +283,7 @@ function ConfirmModal({ result, itineraryText, onConfirm, onCancel, saving }: Co
         </Button>
         <Button
           className="flex-1 h-10 text-[13px] font-bold"
-          style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)", color: "white" }}
+          style={{ background: "linear-gradient(135deg,#1a44d4,#123499)", color: "white" }}
           onClick={onConfirm}
           disabled={saving}
         >
@@ -745,7 +745,7 @@ export function PNRCommandCenter() {
                     onClick={() => doExtract(rawText)}
                     disabled={!rawText.trim() || extracting}
                     className="flex-1 h-9 text-[12.5px] font-bold rounded-xl"
-                    style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)", color: "white" }}
+                    style={{ background: "linear-gradient(135deg,#1a44d4,#123499)", color: "white" }}
                   >
                     {extracting ? (
                       <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Mengekstrak…</>
