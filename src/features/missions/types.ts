@@ -28,3 +28,14 @@ export interface MissionSubmission {
 export interface MissionWithSubmissions extends DailyMission {
   submissions: MissionSubmission[];
 }
+
+export interface MissionTemplate {
+  id: string;
+  agencyId: string;
+  title: string;
+  description: string;
+  defaultPoints: number;
+  useCount: number;
+  createdBy: string | null;
+  createdAt: string;
+}

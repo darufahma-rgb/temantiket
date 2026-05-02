@@ -653,6 +653,7 @@ export default function AgentCommandCenter() {
                 agencyId={user.agencyId}
                 ownerId={user.id}
                 agentNames={new Map(agentMembers.map((a) => [a.userId, a.displayName]))}
+                agentCount={agentMembers.length}
               />
             </Card>
           )}
