@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Calculator, Package, GitBranch, LogOut, Settings, X,
   ShieldCheck, StickyNote, FileSpreadsheet, Users, ShoppingBag, ChevronDown,
   Plane, FileBadge, Wallet, Trophy, Megaphone, Crown, MessageSquare, Command,
+  Sparkles,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -114,6 +115,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
         {
           label: t.nav_group_tools,
           items: [
+            { title: "AI Itinerary", url: "/itinerary", icon: Sparkles, end: false },
             { title: t.nav_notes, url: "/notes", icon: StickyNote, end: false },
             { title: t.nav_exports ?? "Export Center", url: "/exports", icon: FileSpreadsheet, end: false },
             { title: "Template BC WA", url: "/bc-templates", icon: MessageSquare, end: false },
