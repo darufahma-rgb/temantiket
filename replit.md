@@ -2,6 +2,35 @@
 
 Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn/ui.
 
+## Fase 19.5 — Global Universal Transit & Multi-Leg Recognition
+
+### Problem Fixed
+AI was generating TWO separate cards for transit-connected flights (e.g. CAI→BAH + BAH→GOI sharing the same Total Amount: EGP 29,283.8). This caused markup to be applied twice and confused customers with split itineraries.
+
+### Root Cause
+GDS booking systems (Galileo etc.) display each segment row separately, each repeating the same Total Amount. The AI (and client grouper) was treating each segment row as an independent booking.
+
+### Solution: Two-Layer Fix
+
+#### 1. `ticketPriceAI.ts` — Transit Chain Merger (client-side grouper)
+- New `LegInfo` and `MultiLegData` interfaces for multi-stop itineraries
+- `mergeTransitChains()`: detects when `ticket[n].toCode == ticket[n+1].fromCode` AND same price (within 1.5%) AND same airline → merges into ONE `ParsedTicketPrice` with `multiLeg: MultiLegData`
+- `buildMultiLegTicket()`: combines N outbound legs + N return legs (reversed for return chain) into single entry
+- `groupRoundTrips()` now runs transit merge BEFORE classic round-trip pairing
+- Notes encoding: multi-leg stored as `__ML__:{...}` prefix in `notes` field (no DB migration needed)
+- Updated AI SYSTEM_PROMPT with explicit Transit Chain Detection rule (highest priority)
+
+#### 2. `TicketPrices.tsx` — Multi-Leg UI
+- `formFromParsed()` uses `encodeMultiLeg()` for ML tickets, `encodeReturnLeg()` for simple RT
+- New `MultiLegChain` component: renders chained legs with amber transit dots and city pills
+- `BoardingPassCard` detects `__ML__:` prefix → renders header as "CAI ↔ GOI (via BAH)" badge, body as outbound + return MultiLegChain stacks, price box shows "Harga Paket PP / pax" with single markup
+- Pending scan preview cards: show "Multi-Leg PP" badge, full per-leg breakdown list, single selling price
+
+### Result
+- CAI→BAH + BAH→GOI → **ONE card**: CAI ↔ GOI (via BAH), markup applied once
+- Supports N transits: CAI→BAH→MCT→CGK all collapsed into one card
+- WhatsApp message shows full leg-by-leg breakdown for multi-leg bookings
+
 ## Fase 35 — Dual-Layer Sidebar Navigation
 
 - **AppSidebar** sekarang pakai dual-layer:

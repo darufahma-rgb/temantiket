@@ -26,7 +26,8 @@ import { useRatesStore } from "@/store/ratesStore";
 import {
   scanTicketPriceScreenshot, getAirlineLogoUrl, getAirlineGradient,
   encodeReturnLeg, decodeReturnLeg, isReturnTrip,
-  type ParsedTicketPrice, type ReturnLegData,
+  encodeMultiLeg, decodeMultiLeg, isMultiLegNotes, buildRouteLabel,
+  type ParsedTicketPrice, type ReturnLegData, type MultiLegData, type LegInfo,
 } from "@/lib/ticketPriceAI";
 import {
   listTicketPrices, createTicketPrice, updateTicketPrice, deleteTicketPrice,
@@ -50,10 +51,13 @@ const EMPTY_FORM: FormState = {
 };
 
 function formFromParsed(p: ParsedTicketPrice): FormState {
-  // For return trips, encode the return leg into the notes field for persistence.
-  const notes = (p.tripType === "return" || p.tripType === "multi_city")
-    ? encodeReturnLeg(p)
-    : null;
+  // Fase 19.5: multi-leg gets __ML__ encoding; simple return gets __RT__; one-way gets null.
+  let notes: string | null = null;
+  if (p.multiLeg) {
+    notes = encodeMultiLeg(p.multiLeg);
+  } else if (p.tripType === "return" || p.tripType === "multi_city") {
+    notes = encodeReturnLeg(p);
+  }
   return {
     airline: p.airline, airlineCode: p.airlineCode,
     fromCode: p.fromCode, fromCity: p.fromCity,
@@ -157,6 +161,97 @@ function LegRow({
   );
 }
 
+// ── Multi-leg chain display ───────────────────────────────────────────────────
+// Renders a chain of legs with transit connectors between them.
+function MultiLegChain({
+  legs, label,
+}: {
+  legs: LegInfo[];
+  label: "Berangkat" | "Pulang";
+}) {
+  const labelCls = label === "Berangkat"
+    ? "bg-sky-100 text-sky-700"
+    : "bg-violet-100 text-violet-700";
+
+  return (
+    <div className="space-y-1">
+      {/* Section label + flight numbers */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className={cn("text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full", labelCls)}>
+          {label}
+        </span>
+        {legs.map((l, i) => l.flightNumber && (
+          <span key={i} className="text-[9.5px] font-mono text-slate-500">{l.flightNumber}</span>
+        ))}
+        {legs[0]?.date && (
+          <span className="text-[9px] text-slate-400 ml-auto">{fmtDate(legs[0].date)}</span>
+        )}
+      </div>
+
+      {/* Origin */}
+      <div className="flex items-start gap-1">
+        <div className="flex-none w-8">
+          <p className="text-[17px] font-black text-slate-900 leading-none tracking-tight">{legs[0]?.fromCode}</p>
+          {legs[0]?.etd && <p className="text-[12px] font-extrabold text-sky-700 tabular-nums leading-none mt-0.5">{legs[0].etd}</p>}
+        </div>
+
+        {/* Middle: transit chain */}
+        <div className="flex-1 flex flex-col gap-0.5 pt-1.5">
+          {legs.map((leg, i) => (
+            <div key={i} className="flex items-center gap-0.5">
+              <div className="h-px flex-1 bg-slate-200" />
+              {i < legs.length - 1 ? (
+                <>
+                  <div className="h-2 w-2 rounded-full bg-amber-400 border border-amber-300" />
+                  <div className="h-px flex-1 bg-slate-200" />
+                </>
+              ) : (
+                <>
+                  <Plane className="w-2.5 h-2.5 text-slate-400" />
+                  <div className="h-px flex-1 bg-slate-200" />
+                </>
+              )}
+            </div>
+          ))}
+          {/* Transit labels */}
+          <div className="flex justify-around">
+            {legs.slice(0, -1).map((leg, i) => (
+              <div key={i} className="text-center">
+                <p className="text-[8px] text-amber-600 font-bold leading-none">{leg.toCode}</p>
+                <p className="text-[7px] text-slate-400 leading-none">via</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Destination */}
+        <div className="flex-none w-8 text-right">
+          <p className="text-[17px] font-black text-slate-900 leading-none tracking-tight">
+            {legs[legs.length - 1]?.toCode}
+          </p>
+          {legs[legs.length - 1]?.eta && (
+            <p className="text-[12px] font-extrabold text-sky-700 tabular-nums leading-none mt-0.5">
+              {legs[legs.length - 1].eta}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Transit stop detail pills */}
+      {legs.length > 1 && (
+        <div className="flex flex-wrap gap-1">
+          {legs.slice(0, -1).map((leg, i) => (
+            <span key={i} className="inline-flex items-center gap-0.5 text-[8.5px] text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-1.5 py-0.5 font-medium">
+              <MapPin className="w-2 h-2" />
+              {leg.toCity ? `${leg.toCity} (${leg.toCode})` : leg.toCode}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Boarding-pass style Price Card ───────────────────────────────────────────
 export function BoardingPassCard({
   item, markup, rates, isAdmin, onEdit, onDelete, onTogglePublish, waNumber, showBasePrice = false,
@@ -175,29 +270,51 @@ export function BoardingPassCard({
   const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
   const isDirect = !item.transitCode;
 
-  // Detect round-trip from encoded notes
-  const { leg: returnLeg, userNotes } = decodeReturnLeg(item.notes);
+  // Fase 19.5: detect multi-leg first, then fall back to simple round-trip
+  const { ml: mlData, userNotes: mlUserNotes } = decodeMultiLeg(item.notes);
+  const isML = !!mlData;
+  const { leg: returnLeg, userNotes: rtUserNotes } = isML
+    ? { leg: null, userNotes: null }
+    : decodeReturnLeg(item.notes);
   const isRT = !!returnLeg;
+  const userNotes = mlUserNotes ?? rtUserNotes;
+
+  // Route label for WhatsApp message
+  const routeLabel = isML
+    ? buildRouteLabel(mlData!)
+    : isRT
+      ? `${item.fromCode} ⇄ ${item.toCode}`
+      : `${item.fromCode} → ${item.toCode}`;
 
   const waText = encodeURIComponent(
     `Halo Temantiket! Saya tertarik dengan tiket berikut:\n\n` +
     `✈️ *${item.airline}*\n` +
-    (isRT
-      ? `🗺️ Rute PP: *${item.fromCode} ⇄ ${item.toCode}*\n` +
-        `   Berangkat: ${item.fromCode}→${item.toCode}${item.flightNumber ? ` (${item.flightNumber})` : ""}${item.etd ? ` jam ${item.etd}` : ""}${item.departDate ? ` · ${fmtDate(item.departDate)}` : ""}\n` +
-        `   Pulang: ${returnLeg?.returnFromCode ?? ""}→${returnLeg?.returnToCode ?? ""}${returnLeg?.returnFlightNumber ? ` (${returnLeg.returnFlightNumber})` : ""}${returnLeg?.returnEtd ? ` jam ${returnLeg.returnEtd}` : ""}${returnLeg?.returnDate ? ` · ${fmtDate(returnLeg.returnDate)}` : ""}\n`
-      : `🗺️ Rute: *${item.fromCode} → ${item.toCode}*\n` +
-        `${item.fromCity ? `   ${item.fromCity} → ${item.toCity}\n` : ""}` +
-        `${item.etd || item.eta ? `🕐 ${item.etd ?? "—"} → ${item.eta ?? "—"}\n` : ""}` +
-        `${item.transitCode ? `🔄 Transit: ${item.transitCity ?? item.transitCode}${item.transitDuration ? ` (${item.transitDuration})` : ""}\n` : ""}` +
-        `📅 Tanggal: ${item.departDate ? fmtDate(item.departDate) : "Fleksibel"}\n`) +
-    `💰 Harga: *${fmtIDR(sell)}${isRT ? "/paket PP" : "/pax"}*\n\n` +
+    `🗺️ Rute: *${routeLabel}*\n` +
+    (isML
+      ? mlData!.outboundLegs.map((l, i) =>
+          `   Seg ${i+1}: ${l.fromCode}→${l.toCode}${l.flightNumber ? ` (${l.flightNumber})` : ""}${l.etd ? ` jam ${l.etd}` : ""}${l.date ? ` · ${fmtDate(l.date)}` : ""}`
+        ).join("\n") + "\n" +
+        (mlData!.returnLegs?.length
+          ? `   ↩ Pulang:\n` + mlData!.returnLegs.map((l, i) =>
+              `   Seg ${i+1}: ${l.fromCode}→${l.toCode}${l.flightNumber ? ` (${l.flightNumber})` : ""}${l.etd ? ` jam ${l.etd}` : ""}${l.date ? ` · ${fmtDate(l.date)}` : ""}`
+            ).join("\n") + "\n"
+          : "")
+      : isRT
+        ? `   Berangkat: ${item.fromCode}→${item.toCode}${item.flightNumber ? ` (${item.flightNumber})` : ""}${item.etd ? ` jam ${item.etd}` : ""}${item.departDate ? ` · ${fmtDate(item.departDate)}` : ""}\n` +
+          `   Pulang: ${returnLeg?.returnFromCode ?? ""}→${returnLeg?.returnToCode ?? ""}${returnLeg?.returnFlightNumber ? ` (${returnLeg.returnFlightNumber})` : ""}${returnLeg?.returnEtd ? ` jam ${returnLeg.returnEtd}` : ""}${returnLeg?.returnDate ? ` · ${fmtDate(returnLeg.returnDate)}` : ""}\n`
+        : `${item.fromCity ? `   ${item.fromCity} → ${item.toCity}\n` : ""}` +
+          `${item.etd || item.eta ? `🕐 ${item.etd ?? "—"} → ${item.eta ?? "—"}\n` : ""}` +
+          `${item.transitCode ? `🔄 Transit: ${item.transitCity ?? item.transitCode}${item.transitDuration ? ` (${item.transitDuration})` : ""}\n` : ""}` +
+          `📅 Tanggal: ${item.departDate ? fmtDate(item.departDate) : "Fleksibel"}\n`) +
+    `💰 Harga: *${fmtIDR(sell)}${isML || isRT ? "/paket PP" : "/pax"}*\n\n` +
     `Mohon infokan ketersediaan dan detailnya. Terima kasih!`
   );
 
   const waLink = waNumber
     ? `${whatsappUrl(waNumber)}?text=${waText}`
     : `https://wa.me/?text=${waText}`;
+
+  const isRTorML = isRT || isML;
 
   return (
     <div
@@ -232,16 +349,26 @@ export function BoardingPassCard({
             <p className="font-bold text-[13px] leading-tight truncate">{item.airline}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-[10px] text-white/70 font-mono">{item.airlineCode}</span>
-              {item.flightNumber && !isRT && (
+              {/* For ML/RT: show route label instead of single flight number */}
+              {isML ? (
+                <span className="text-[10px] text-white/80 font-medium truncate max-w-[110px]">
+                  {buildRouteLabel(mlData!)}
+                </span>
+              ) : (!isRT && item.flightNumber) ? (
                 <span className="text-[10px] bg-white/20 rounded px-1.5 py-0.5 font-mono font-semibold tracking-wide">
                   {item.flightNumber}
                 </span>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
         <div className="text-right shrink-0">
-          {isRT ? (
+          {isML ? (
+            <span className="text-[9px] bg-white/25 text-white rounded-full px-2 py-0.5 font-bold uppercase tracking-wider flex items-center gap-1">
+              <ArrowLeftRight className="w-2.5 h-2.5" />
+              Multi-Leg PP
+            </span>
+          ) : isRT ? (
             <span className="text-[9px] bg-white/25 text-white rounded-full px-2 py-0.5 font-bold uppercase tracking-wider flex items-center gap-1">
               <ArrowLeftRight className="w-2.5 h-2.5" />
               Pulang-Pergi
@@ -261,8 +388,25 @@ export function BoardingPassCard({
       {/* ── Boarding-pass body ───────────────────────────────────────────── */}
       <div className="flex-1 px-4 py-4 space-y-3">
 
-        {isRT ? (
-          /* ── ROUND-TRIP: show both legs ── */
+        {isML ? (
+          /* ── MULTI-LEG PP: show full outbound + return chains ── */
+          <div className="space-y-2.5">
+            <MultiLegChain legs={mlData!.outboundLegs} label="Berangkat" />
+            {(mlData!.returnLegs?.length ?? 0) > 0 && (
+              <>
+                <div className="relative flex items-center -mx-4 px-4">
+                  <div className="flex-1 border-t border-dashed border-slate-200" />
+                  <div className="absolute -left-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
+                  <div className="absolute -right-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
+                  <RotateCcw className="h-3 w-3 text-violet-400 mx-2 shrink-0" />
+                  <div className="flex-1 border-t border-dashed border-slate-200" />
+                </div>
+                <MultiLegChain legs={mlData!.returnLegs!} label="Pulang" />
+              </>
+            )}
+          </div>
+        ) : isRT ? (
+          /* ── SIMPLE ROUND-TRIP: show both legs ── */
           <div className="space-y-2.5">
             <LegRow
               label="Berangkat"
@@ -345,8 +489,8 @@ export function BoardingPassCard({
           </>
         )}
 
-        {/* Tear-off divider (one-way only — RT already has its own divider) */}
-        {!isRT && (
+        {/* Tear-off divider (one-way only — RT/ML already have their own dividers) */}
+        {!isRTorML && (
           <div className="relative flex items-center gap-2 -mx-4 px-4">
             <div className="h-px flex-1 border-t border-dashed border-slate-200" />
             <div className="absolute -left-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
@@ -354,8 +498,8 @@ export function BoardingPassCard({
           </div>
         )}
 
-        {/* Date + valid (one-way only — RT shows dates inline in each leg) */}
-        {!isRT && (
+        {/* Date + valid (one-way only — RT/ML shows dates inline in each leg) */}
+        {!isRTorML && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
               <Clock className="w-3 h-3 text-slate-400" />
@@ -369,8 +513,8 @@ export function BoardingPassCard({
           </div>
         )}
 
-        {/* Valid until for RT */}
-        {isRT && item.validUntil && (
+        {/* Valid until for RT/ML */}
+        {isRTorML && item.validUntil && (
           <div className="flex justify-end">
             <span className={cn("text-[10px]", expired ? "text-red-500" : "text-slate-400")}>
               {expired ? "⛔ Expired" : `⏰ s/d ${fmtDate(item.validUntil)}`}
@@ -379,7 +523,7 @@ export function BoardingPassCard({
         )}
 
         {/* Price box */}
-        <div className={cn("rounded-xl px-3 py-2.5", expired ? "bg-red-50" : isRT ? "bg-violet-50" : "bg-sky-50")}>
+        <div className={cn("rounded-xl px-3 py-2.5", expired ? "bg-red-50" : isRTorML ? "bg-violet-50" : "bg-sky-50")}>
           {expired ? (
             <div className="text-center">
               <p className="text-sm font-bold text-red-600">Harga Expired</p>
@@ -387,10 +531,10 @@ export function BoardingPassCard({
             </div>
           ) : (
             <>
-              <p className={cn("text-[10px] font-medium uppercase tracking-wide", isRT ? "text-violet-600" : "text-sky-600")}>
-                {isRT ? "Harga Paket PP / pax" : "Harga Jual / pax"}
+              <p className={cn("text-[10px] font-medium uppercase tracking-wide", isRTorML ? "text-violet-600" : "text-sky-600")}>
+                {isRTorML ? "Harga Paket PP / pax" : "Harga Jual / pax"}
               </p>
-              <p className={cn("text-[22px] font-black leading-tight tabular-nums", isRT ? "text-violet-700" : "text-sky-700")}>
+              <p className={cn("text-[22px] font-black leading-tight tabular-nums", isRTorML ? "text-violet-700" : "text-sky-700")}>
                 {fmtIDR(sell)}
               </p>
               {showBasePrice && markup > 0 && (
@@ -400,18 +544,18 @@ export function BoardingPassCard({
               )}
               {!showBasePrice && (
                 <p className="text-[10px] text-slate-400">
-                  {isRT ? "harga paket pulang-pergi, sudah termasuk margin" : "sudah termasuk margin keuntungan"}
+                  {isRTorML ? "harga paket pulang-pergi, sudah termasuk margin" : "sudah termasuk margin keuntungan"}
                 </p>
               )}
             </>
           )}
         </div>
 
-        {/* User notes (strip RT prefix) */}
+        {/* User notes */}
         {userNotes && (
           <p className="text-[11px] text-slate-500 italic leading-snug">{userNotes}</p>
         )}
-        {!isRT && item.notes && (
+        {!isRTorML && item.notes && (
           <p className="text-[11px] text-slate-500 italic leading-snug">{item.notes}</p>
         )}
 
@@ -1124,12 +1268,16 @@ export default function TicketPrices() {
                 </div>
                 <div className="space-y-3">
                   {pendingForms.map((form, idx) => {
-                    const { leg: rtLeg } = decodeReturnLeg(form.notes);
+                    // Fase 19.5: detect multi-leg first, then simple RT
+                    const { ml: pendingML } = decodeMultiLeg(form.notes);
+                    const isMLForm = !!pendingML;
+                    const { leg: rtLeg } = isMLForm ? { leg: null } : decodeReturnLeg(form.notes);
                     const isRTForm = !!rtLeg;
+                    const isPPForm = isMLForm || isRTForm;
                     return (
                     <div key={idx} className={cn(
                       "border rounded-xl p-3 space-y-3",
-                      isRTForm ? "border-violet-200 bg-violet-50/40" : "border-sky-200 bg-sky-50/50"
+                      isPPForm ? "border-violet-200 bg-violet-50/40" : "border-sky-200 bg-sky-50/50"
                     )}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -1137,16 +1285,23 @@ export default function TicketPrices() {
                           <div>
                             <div className="flex items-center gap-1.5">
                               <p className="text-xs font-bold text-slate-800">{form.airline || "—"}</p>
-                              {isRTForm && (
+                              {isMLForm && (
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
+                                  <ArrowLeftRight className="w-2.5 h-2.5" />Multi-Leg PP
+                                </span>
+                              )}
+                              {!isMLForm && isRTForm && (
                                 <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
                                   <ArrowLeftRight className="w-2.5 h-2.5" />PP
                                 </span>
                               )}
                             </div>
                             <p className="text-[10px] text-slate-500 font-mono">
-                              {isRTForm
-                                ? `${form.fromCode} ⇄ ${form.toCode} · ${form.flightNumber ?? ""}${rtLeg?.returnFlightNumber ? `/${rtLeg.returnFlightNumber}` : ""} · Total: ${form.currency} ${form.basePrice?.toLocaleString("id-ID") ?? "—"}`
-                                : `${form.fromCode} → ${form.toCode}${form.flightNumber ? ` · ${form.flightNumber}` : ""}${form.etd ? ` · ${form.etd}` : ""}${form.eta ? `→${form.eta}` : ""}${form.transitCode ? ` via ${form.transitCode}` : ""}${form.basePrice ? ` · ${form.currency} ${form.basePrice.toLocaleString("id-ID")}` : ""}`
+                              {isMLForm
+                                ? `${buildRouteLabel(pendingML!)} · ${form.flightNumber ?? ""} · Total: ${form.currency} ${form.basePrice?.toLocaleString("id-ID") ?? "—"}`
+                                : isRTForm
+                                  ? `${form.fromCode} ⇄ ${form.toCode} · ${form.flightNumber ?? ""}${rtLeg?.returnFlightNumber ? `/${rtLeg.returnFlightNumber}` : ""} · Total: ${form.currency} ${form.basePrice?.toLocaleString("id-ID") ?? "—"}`
+                                  : `${form.fromCode} → ${form.toCode}${form.flightNumber ? ` · ${form.flightNumber}` : ""}${form.etd ? ` · ${form.etd}` : ""}${form.eta ? `→${form.eta}` : ""}${form.transitCode ? ` via ${form.transitCode}` : ""}${form.basePrice ? ` · ${form.currency} ${form.basePrice.toLocaleString("id-ID")}` : ""}`
                               }
                             </p>
                           </div>
@@ -1159,7 +1314,31 @@ export default function TicketPrices() {
                           <X className="w-3.5 h-3.5" />
                         </Button>
                       </div>
-                      {isRTForm && (
+
+                      {/* Multi-leg leg chain preview */}
+                      {isMLForm && pendingML && (
+                        <div className="rounded-lg bg-violet-100/60 border border-violet-200 px-2.5 py-1.5 space-y-0.5">
+                          <p className="text-[10px] font-bold text-violet-700">↗ Berangkat:</p>
+                          {pendingML.outboundLegs.map((leg, li) => (
+                            <p key={li} className="text-[10px] text-violet-700 font-medium pl-2">
+                              {leg.fromCode}→{leg.toCode}{leg.flightNumber ? ` (${leg.flightNumber})` : ""}{leg.etd ? ` jam ${leg.etd}` : ""}{leg.date ? ` · ${fmtDate(leg.date)}` : ""}
+                            </p>
+                          ))}
+                          {(pendingML.returnLegs?.length ?? 0) > 0 && (
+                            <>
+                              <p className="text-[10px] font-bold text-violet-700 pt-0.5">↩ Pulang:</p>
+                              {pendingML.returnLegs!.map((leg, li) => (
+                                <p key={li} className="text-[10px] text-violet-700 font-medium pl-2">
+                                  {leg.fromCode}→{leg.toCode}{leg.flightNumber ? ` (${leg.flightNumber})` : ""}{leg.etd ? ` jam ${leg.etd}` : ""}{leg.date ? ` · ${fmtDate(leg.date)}` : ""}
+                                </p>
+                              ))}
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Simple RT leg info */}
+                      {!isMLForm && isRTForm && (
                         <div className="rounded-lg bg-violet-100/60 border border-violet-200 px-2.5 py-1.5 text-[10.5px] text-violet-700 font-medium">
                           ↗ Berangkat: {form.fromCode}→{form.toCode}{form.etd ? ` jam ${form.etd}` : ""}
                           {form.departDate ? ` · ${fmtDate(form.departDate)}` : ""}
@@ -1167,6 +1346,7 @@ export default function TicketPrices() {
                           {rtLeg?.returnDate ? ` · ${fmtDate(rtLeg.returnDate)}` : ""}
                         </div>
                       )}
+
                       {/* Quick edit inline */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div className="space-y-0.5 col-span-2">
@@ -1225,7 +1405,7 @@ export default function TicketPrices() {
                           <Input className="h-7 text-xs" type="date" value={form.validUntil ?? ""}
                             onChange={(e) => updatePending(idx, { validUntil: e.target.value || null })} />
                         </div>
-                        {(form.transitCode || form.transitCity) && (
+                        {!isMLForm && (form.transitCode || form.transitCity) && (
                           <div className="col-span-2 space-y-0.5">
                             <Label className="text-[10px] text-slate-500">Transit</Label>
                             <div className="flex gap-1">
@@ -1242,8 +1422,8 @@ export default function TicketPrices() {
                       </div>
                       {form.basePrice > 0 && (
                         <p className="text-[11px] text-emerald-600 font-medium">
-                          💰 {isRTForm ? "Harga paket PP" : "Harga jual"}: {fmtIDR(sellingPrice(form.basePrice, form.currency, rates, markup))}
-                          {markup > 0 && ` (modal ${form.currency} ${form.basePrice.toLocaleString("id-ID")} + markup ${fmtIDR(markup)}${isRTForm ? " — markup sekali untuk paket PP" : ""})`}
+                          💰 {isPPForm ? "Harga paket PP" : "Harga jual"}: {fmtIDR(sellingPrice(form.basePrice, form.currency, rates, markup))}
+                          {markup > 0 && ` (modal ${form.currency} ${form.basePrice.toLocaleString("id-ID")} + markup ${fmtIDR(markup)}${isPPForm ? " — markup SEKALI untuk seluruh paket" : ""})`}
                         </p>
                       )}
                     </div>
