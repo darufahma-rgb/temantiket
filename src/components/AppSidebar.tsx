@@ -1,25 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard, Calculator, Package, LogOut, Settings,
   StickyNote, FileSpreadsheet, Users, ShoppingBag,
   Plane, FileBadge, Wallet, MessageSquare, Sparkles, Ticket,
   GitBranch, Command, Trophy, BookUser, Megaphone, BarChart3,
-  ChevronRight,
+  Wrench, ChevronRight, X,
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
 
-// ── Constants ──────────────────────────────────────────────────────────────
-
-const BG = "#0f1117";
-const BG_POPUP = "#1c2030";
+// ── Brand colors ────────────────────────────────────────────────────────────
+const L1_BG   = "#0b1628";           // deep navy — Layer 1 icon bar
+const L2_BG   = "#0f2044";           // mid navy — Layer 2 slide-out panel
+const ACCENT  = "#0ea5e9";           // sky-500 active accent
 const DIVIDER = "rgba(255,255,255,0.07)";
-const SIDEBAR_W = 192;
+const L1_W    = 60;                  // px — slim icon bar width
+const L2_W    = 196;                 // px — slide-out panel width
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
+// ── Types ───────────────────────────────────────────────────────────────────
 interface NavItemDef {
   title: string;
   url: string;
@@ -27,46 +27,35 @@ interface NavItemDef {
   end?: boolean;
   badge?: string;
   ownerOnly?: boolean;
-  children?: Omit<NavItemDef, "children">[];
 }
 
 interface GroupDef {
   key: string;
-  label?: string;
+  label: string;
+  icon: React.ElementType;
   items: NavItemDef[];
   ownerOnly?: boolean;
+  agentOnly?: boolean;
 }
 
-// ── Nav structure ──────────────────────────────────────────────────────────
+// ── Nav structure ────────────────────────────────────────────────────────────
 
 const STAFF_GROUPS: GroupDef[] = [
   {
-    key: "main",
+    key: "dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
     items: [
-      { title: "Dashboard", url: "/", icon: LayoutDashboard, end: true },
-    ],
-  },
-  {
-    key: "hub",
-    label: "Order Hub",
-    items: [
-      { title: "Klien / Jamaah",  url: "/clients",      icon: Users },
-      {
-        title: "Order Hub",
-        url: "/orders",
-        icon: ShoppingBag,
-        children: [
-          { title: "Umrah & Haji",  url: "/orders/umrah",        icon: Package },
-          { title: "Tiket Pesawat", url: "/orders/flight",       icon: Plane },
-          { title: "Visa Mesir",    url: "/orders/visa_student", icon: FileBadge },
-        ],
-      },
+      { title: "Dashboard",      url: "/",              icon: LayoutDashboard, end: true },
+      { title: "Klien / Jamaah", url: "/clients",       icon: Users },
+      { title: "Order Hub",      url: "/orders",        icon: ShoppingBag },
       { title: "Harga Tiket",    url: "/ticket-prices", icon: Ticket },
     ],
   },
   {
     key: "ops",
     label: "Operasional",
+    icon: Wrench,
     items: [
       { title: "Kalkulator & Kurs", url: "/calculator", icon: Calculator },
       { title: "AI Itinerary",      url: "/itinerary",  icon: Sparkles, badge: "AI" },
@@ -78,6 +67,7 @@ const STAFF_GROUPS: GroupDef[] = [
   {
     key: "marketing",
     label: "Marketing",
+    icon: Megaphone,
     items: [
       { title: "Template Broadcast", url: "/bc-templates",    icon: MessageSquare },
       { title: "Export & Manifest",  url: "/exports",         icon: FileSpreadsheet },
@@ -87,6 +77,7 @@ const STAFF_GROUPS: GroupDef[] = [
   {
     key: "finance",
     label: "Keuangan",
+    icon: BarChart3,
     ownerOnly: true,
     items: [
       { title: "Laporan Keuangan", url: "/reports", icon: BarChart3 },
@@ -95,6 +86,7 @@ const STAFF_GROUPS: GroupDef[] = [
   {
     key: "agent",
     label: "Sistem Agen",
+    icon: Trophy,
     items: [
       { title: "Kontrol & Misi",  url: "/agent-center",      icon: Command,  ownerOnly: true },
       { title: "Direktori Agen",  url: "/agent-directory",   icon: BookUser },
@@ -105,171 +97,104 @@ const STAFF_GROUPS: GroupDef[] = [
 
 const AGENT_GROUPS: GroupDef[] = [
   {
-    key: "main",
+    key: "dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
     items: [
-      { title: "Mitra Dashboard", url: "/agent", icon: Trophy, end: true },
-    ],
-  },
-  {
-    key: "hub",
-    label: "Order Hub",
-    items: [
-      { title: "Klien / Jamaah", url: "/clients", icon: Users },
-      {
-        title: "Order Hub",
-        url: "/orders",
-        icon: ShoppingBag,
-        children: [
-          { title: "Umrah & Haji",  url: "/orders/umrah",        icon: Package },
-          { title: "Tiket Pesawat", url: "/orders/flight",       icon: Plane },
-          { title: "Visa Mesir",    url: "/orders/visa_student", icon: FileBadge },
-        ],
-      },
+      { title: "Mitra Dashboard", url: "/agent",   icon: Trophy, end: true },
+      { title: "Klien / Jamaah",  url: "/clients", icon: Users },
+      { title: "Order Hub",       url: "/orders",  icon: ShoppingBag },
     ],
   },
   {
     key: "marketing",
     label: "Marketing",
+    icon: Megaphone,
     items: [
-      { title: "Template Broadcast", url: "/bc-templates",      icon: MessageSquare },
+      { title: "Template Broadcast", url: "/bc-templates",    icon: MessageSquare },
+      { title: "Marketing Kit",      url: "/agent/marketing", icon: Megaphone },
       { title: "Leaderboard",        url: "/agent/leaderboard", icon: Trophy },
     ],
   },
 ];
 
-// ── Shared item button base ────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-const itemBase =
-  "relative w-full flex items-center gap-2.5 h-9 px-3 rounded-xl text-left transition-all duration-150 cursor-pointer select-none";
-
-// ── Section divider with label ─────────────────────────────────────────────
-
-function SectionLabel({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-2 px-3 pt-3 pb-1">
-      <span
-        className="text-[9.5px] font-black uppercase tracking-[0.14em] whitespace-nowrap shrink-0"
-        style={{ color: "rgba(255,255,255,0.28)" }}
-      >
-        {label}
-      </span>
-      <div className="flex-1 h-px" style={{ background: DIVIDER }} />
-    </div>
-  );
-}
-
-// ── Flyout tooltip (only for items that have children) ────────────────────
-
-function FlyoutMenu({
-  item,
-  onClose,
-}: {
-  item: NavItemDef & { children: NonNullable<NavItemDef["children"]> };
-  onClose?: () => void;
-}) {
+function useActiveGroup(groups: GroupDef[]): string | null {
   const location = useLocation();
-  const [flyout, setFlyout] = useState(false);
-  const anyChildActive = item.children.some((c) => location.pathname.startsWith(c.url));
-  const active = location.pathname.startsWith(item.url) || anyChildActive;
-  const Icon = item.icon;
+  for (const g of groups) {
+    for (const item of g.items) {
+      if (item.end ? location.pathname === item.url : location.pathname.startsWith(item.url)) {
+        return g.key;
+      }
+    }
+  }
+  return null;
+}
 
+// ── Layer 1 — Slim icon button ───────────────────────────────────────────────
+function L1Button({
+  group,
+  isActive,
+  isOpen,
+  onClick,
+}: {
+  group: GroupDef;
+  isActive: boolean;
+  isOpen: boolean;
+  onClick: () => void;
+}) {
+  const Icon = group.icon;
   return (
-    <div
-      className="relative w-full"
-      onMouseEnter={() => setFlyout(true)}
-      onMouseLeave={() => setFlyout(false)}
+    <button
+      onClick={onClick}
+      title={group.label}
+      className="relative flex flex-col items-center justify-center w-full h-[52px] gap-[3px] transition-all duration-150 group"
+      aria-label={group.label}
+      aria-expanded={isOpen}
     >
-      <button
-        className={cn(
-          itemBase,
-          active
-            ? "text-sky-400"
-            : "text-white/40 hover:text-white/80 hover:bg-white/[5%]"
-        )}
-        style={active ? { background: "rgba(14,165,233,0.10)" } : {}}
-      >
-        {active && (
-          <motion.span
-            layoutId="toolbar-pill"
-            className="absolute inset-0 rounded-xl"
-            style={{ background: "rgba(14,165,233,0.10)" }}
-            transition={{ type: "spring", stiffness: 500, damping: 40 }}
-          />
-        )}
-        <Icon
-          strokeWidth={active ? 2.1 : 1.5}
-          className="h-[16px] w-[16px] shrink-0 relative z-10"
+      {/* Active indicator bar on left edge */}
+      {(isActive || isOpen) && (
+        <motion.span
+          layoutId="l1-pill"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-7 rounded-r-full"
+          style={{ background: ACCENT }}
+          transition={{ type: "spring", stiffness: 500, damping: 40 }}
         />
-        <span className="relative z-10 text-[12px] font-medium flex-1 truncate">
-          {item.title}
-        </span>
-        <ChevronRight
-          strokeWidth={1.5}
-          className="h-3 w-3 shrink-0 relative z-10 opacity-50"
-        />
-      </button>
+      )}
 
-      <AnimatePresence>
-        {flyout && (
-          <motion.div
-            initial={{ opacity: 0, x: 4, scale: 0.97 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 4, scale: 0.97 }}
-            transition={{ duration: 0.13, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute left-[calc(100%+6px)] top-0 z-[300] rounded-xl overflow-hidden shadow-2xl"
-            style={{
-              background: BG_POPUP,
-              border: `1px solid ${DIVIDER}`,
-              minWidth: "170px",
-            }}
-          >
-            <div
-              className="px-3 py-2 text-[9px] font-bold uppercase tracking-widest"
-              style={{ color: "rgba(255,255,255,0.3)", borderBottom: `1px solid ${DIVIDER}` }}
-            >
-              {item.title}
-            </div>
-            {item.children.map((child) => {
-              const ChildIcon = child.icon;
-              const cActive = location.pathname.startsWith(child.url);
-              return (
-                <NavLink
-                  key={child.url}
-                  to={child.url}
-                  onClick={() => { setFlyout(false); onClose?.(); }}
-                  className={cn(
-                    "flex items-center gap-2.5 px-3 py-2.5 text-[12.5px] font-medium transition-colors",
-                    cActive
-                      ? "text-sky-400 bg-sky-500/10"
-                      : "text-white/55 hover:text-white/90 hover:bg-white/[5%]"
-                  )}
-                >
-                  <ChildIcon strokeWidth={cActive ? 2.2 : 1.5} className="h-3.5 w-3.5 shrink-0" />
-                  {child.title}
-                </NavLink>
-              );
-            })}
-          </motion.div>
+      {/* Icon container */}
+      <div
+        className={cn(
+          "flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150",
+          isOpen
+            ? "bg-sky-500/20"
+            : isActive
+            ? "bg-sky-500/15"
+            : "group-hover:bg-white/[6%]",
         )}
-      </AnimatePresence>
-    </div>
+      >
+        <Icon
+          strokeWidth={isActive || isOpen ? 2.1 : 1.6}
+          className="h-[18px] w-[18px]"
+          style={{ color: isActive || isOpen ? ACCENT : "rgba(255,255,255,0.45)" }}
+        />
+      </div>
+
+      {/* Label */}
+      <span
+        className="text-[8.5px] font-semibold leading-none tracking-tight truncate max-w-[52px] px-1"
+        style={{ color: isActive || isOpen ? ACCENT : "rgba(255,255,255,0.3)" }}
+      >
+        {group.label}
+      </span>
+    </button>
   );
 }
 
-// ── Regular nav item ───────────────────────────────────────────────────────
-
-function NavItem({ item, onClose }: { item: NavItemDef; onClose?: () => void }) {
+// ── Layer 2 — Nav item in slide-out panel ────────────────────────────────────
+function L2Item({ item, onClose }: { item: NavItemDef; onClose: () => void }) {
   const Icon = item.icon;
-
-  if (item.children) {
-    return (
-      <FlyoutMenu
-        item={item as NavItemDef & { children: NonNullable<NavItemDef["children"]> }}
-        onClose={onClose}
-      />
-    );
-  }
-
   return (
     <NavLink
       to={item.url}
@@ -277,10 +202,10 @@ function NavItem({ item, onClose }: { item: NavItemDef; onClose?: () => void }) 
       onClick={onClose}
       className={({ isActive }) =>
         cn(
-          itemBase,
+          "relative flex items-center gap-2.5 h-9 px-3 rounded-xl text-left transition-all duration-150 w-full",
           isActive
             ? "text-sky-400"
-            : "text-white/40 hover:text-white/80 hover:bg-white/[5%]"
+            : "text-white/45 hover:text-white/85 hover:bg-white/[5%]",
         )
       }
     >
@@ -288,15 +213,15 @@ function NavItem({ item, onClose }: { item: NavItemDef; onClose?: () => void }) 
         <>
           {isActive && (
             <motion.span
-              layoutId="toolbar-pill"
+              layoutId="l2-pill"
               className="absolute inset-0 rounded-xl"
-              style={{ background: "rgba(14,165,233,0.10)" }}
+              style={{ background: "rgba(14,165,233,0.12)" }}
               transition={{ type: "spring", stiffness: 500, damping: 40 }}
             />
           )}
           <Icon
-            strokeWidth={isActive ? 2.1 : 1.5}
-            className="h-[16px] w-[16px] shrink-0 relative z-10"
+            strokeWidth={isActive ? 2.2 : 1.5}
+            className="h-[15px] w-[15px] shrink-0 relative z-10"
           />
           <span className="relative z-10 text-[12px] font-medium flex-1 truncate">
             {item.title}
@@ -312,7 +237,69 @@ function NavItem({ item, onClose }: { item: NavItemDef; onClose?: () => void }) 
   );
 }
 
-// ── Main sidebar component ─────────────────────────────────────────────────
+// ── Layer 2 slide-out panel ──────────────────────────────────────────────────
+function L2Panel({
+  group,
+  isOwner,
+  onClose,
+}: {
+  group: GroupDef;
+  isOwner: boolean;
+  onClose: () => void;
+}) {
+  const visibleItems = group.items.filter((i) => !i.ownerOnly || isOwner);
+
+  return (
+    <motion.div
+      key={group.key}
+      initial={{ x: -12, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -8, opacity: 0 }}
+      transition={{ type: "spring", stiffness: 420, damping: 38, mass: 0.85 }}
+      className="flex flex-col h-full"
+      style={{
+        width: `${L2_W}px`,
+        background: L2_BG,
+        borderRight: `1px solid ${DIVIDER}`,
+      }}
+    >
+      {/* Panel header */}
+      <div
+        className="flex items-center justify-between px-3 py-3 shrink-0"
+        style={{ borderBottom: `1px solid ${DIVIDER}` }}
+      >
+        <span
+          className="text-[10px] font-black uppercase tracking-[0.14em]"
+          style={{ color: "rgba(255,255,255,0.35)" }}
+        >
+          {group.label}
+        </span>
+        <button
+          onClick={onClose}
+          className="h-5 w-5 flex items-center justify-center rounded-md transition-colors hover:bg-white/[6%]"
+          aria-label="Tutup panel"
+        >
+          <X className="h-3 w-3" style={{ color: "rgba(255,255,255,0.3)" }} />
+        </button>
+      </div>
+
+      {/* Items */}
+      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-px" style={{ scrollbarWidth: "none" }}>
+        {visibleItems.map((item) => (
+          <L2Item key={item.url} item={item} onClose={onClose} />
+        ))}
+      </div>
+
+      {/* Blue accent at bottom */}
+      <div
+        className="shrink-0 mx-3 mb-3"
+        style={{ height: "1px", background: `linear-gradient(90deg, ${ACCENT}40, transparent)` }}
+      />
+    </motion.div>
+  );
+}
+
+// ── Main sidebar component ───────────────────────────────────────────────────
 
 interface AppSidebarProps {
   open?: boolean;
@@ -321,136 +308,149 @@ interface AppSidebarProps {
 
 export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
   const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
   const isOwner = user?.role === "owner";
   const isAgent = user?.role === "agent";
 
   const rawGroups = isAgent ? AGENT_GROUPS : STAFF_GROUPS;
   const groups = rawGroups.filter((g) => !g.ownerOnly || isOwner);
 
-  const toolbar = (
-    <aside
-      className="flex h-full flex-col py-3 shrink-0"
-      style={{
-        width: `${SIDEBAR_W}px`,
-        background: BG,
-        borderRight: `1px solid ${DIVIDER}`,
-      }}
-    >
-      {/* ── Logo + brand ── */}
-      <div className="flex items-center gap-2.5 px-4 mb-2 shrink-0">
-        <img
-          src="/temantiket-logo.png"
-          alt="Temantiket"
-          className="h-5 w-5 object-contain shrink-0"
-          style={{ filter: "brightness(0) invert(1) opacity(0.85)" }}
-          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-        />
-        <span
-          className="text-[12.5px] font-bold tracking-tight"
-          style={{ color: "rgba(255,255,255,0.82)" }}
-        >
-          temantiket
-        </span>
-      </div>
+  const activeGroupKey = useActiveGroup(groups);
+  const [openKey, setOpenKey] = useState<string | null>(activeGroupKey);
 
-      {/* Sky accent line */}
-      <div
-        className="mx-4 mb-3 shrink-0"
-        style={{ height: "1px", background: "linear-gradient(90deg, rgba(14,165,233,0.6), transparent)" }}
-      />
+  // Sync open panel to active route on mount / route changes
+  useEffect(() => {
+    setOpenKey(activeGroupKey);
+  }, [activeGroupKey]);
 
-      {/* ── Nav groups ── */}
+  const toggleGroup = (key: string) => {
+    setOpenKey((prev) => (prev === key ? null : key));
+  };
+
+  const handleClose = () => setOpenKey(null);
+
+  const openGroup = groups.find((g) => g.key === openKey) ?? null;
+
+  // ── Inner chrome ────────────────────────────────────────────────────────────
+  const sidebarChrome = (
+    <div className="flex h-full shrink-0">
+      {/* ── Layer 1: slim icon bar ── */}
       <div
-        className="flex-1 w-full overflow-y-auto"
-        style={{ scrollbarWidth: "none" }}
+        className="flex flex-col h-full py-2 shrink-0"
+        style={{
+          width: `${L1_W}px`,
+          background: L1_BG,
+          borderRight: `1px solid ${DIVIDER}`,
+        }}
       >
-        <div className="px-2 pb-3 space-y-px">
-          {groups.map((group, gi) => {
-            const visibleItems = group.items.filter(
-              (item) => !item.ownerOnly || isOwner
-            );
-            if (visibleItems.length === 0) return null;
-            return (
-              <div key={group.key}>
-                {gi > 0 && group.label && (
-                  <SectionLabel label={group.label} />
-                )}
-                {visibleItems.map((item) => (
-                  <NavItem key={item.url} item={item} onClose={onClose} />
-                ))}
+        {/* Logo */}
+        <div className="flex justify-center items-center h-[48px] shrink-0 mb-1">
+          <img
+            src="/temantiket-logo.png"
+            alt="Temantiket"
+            className="h-6 w-6 object-contain"
+            style={{ filter: "brightness(0) invert(1) opacity(0.75)" }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </div>
+
+        {/* Sky gradient accent */}
+        <div
+          className="mx-2 mb-2 shrink-0"
+          style={{ height: "1px", background: `linear-gradient(90deg, transparent, ${ACCENT}70, transparent)` }}
+        />
+
+        {/* Group icons */}
+        <div className="flex-1 flex flex-col items-center overflow-y-auto w-full px-1.5 gap-px" style={{ scrollbarWidth: "none" }}>
+          {groups.map((group) => (
+            <L1Button
+              key={group.key}
+              group={group}
+              isActive={activeGroupKey === group.key}
+              isOpen={openKey === group.key}
+              onClick={() => toggleGroup(group.key)}
+            />
+          ))}
+        </div>
+
+        {/* Bottom actions */}
+        <div
+          className="shrink-0 flex flex-col items-center gap-1 pt-2 pb-1 px-1.5"
+          style={{ borderTop: `1px solid ${DIVIDER}` }}
+        >
+          {/* Avatar */}
+          {user && (
+            <button
+              title={`${user.displayName} · ${user.role}`}
+              onClick={() => navigate("/settings")}
+              className="flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:bg-white/[6%]"
+            >
+              <div
+                className="h-7 w-7 rounded-full flex items-center justify-center shadow"
+                style={{ background: `linear-gradient(135deg, ${ACCENT}, #0369a1)` }}
+              >
+                <span className="text-[11px] font-bold text-white leading-none">
+                  {user.displayName.charAt(0).toUpperCase()}
+                </span>
               </div>
-            );
-          })}
+            </button>
+          )}
+
+          {/* Settings */}
+          <NavLink
+            to="/settings"
+            title="Pengaturan"
+            className={({ isActive }) =>
+              cn(
+                "flex items-center justify-center w-9 h-9 rounded-xl transition-all",
+                isActive ? "bg-sky-500/15" : "hover:bg-white/[6%]",
+              )
+            }
+          >
+            {({ isActive }) => (
+              <Settings
+                strokeWidth={isActive ? 2.1 : 1.6}
+                className="h-[17px] w-[17px]"
+                style={{ color: isActive ? ACCENT : "rgba(255,255,255,0.35)" }}
+              />
+            )}
+          </NavLink>
+
+          {/* Logout */}
+          <button
+            title="Keluar"
+            onClick={() => { logout(); onClose?.(); }}
+            className="flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:bg-red-500/10 group"
+          >
+            <LogOut
+              strokeWidth={1.6}
+              className="h-[17px] w-[17px] group-hover:text-red-400 transition-colors"
+              style={{ color: "rgba(255,255,255,0.3)" }}
+            />
+          </button>
         </div>
       </div>
 
-      {/* ── Bottom actions ── */}
-      <div
-        className="shrink-0 px-2 pt-2 space-y-px"
-        style={{ borderTop: `1px solid ${DIVIDER}` }}
-      >
-        {/* Profile */}
-        {user && (
-          <div className={cn(itemBase, "cursor-default text-white/50 pointer-events-none")}>
-            <div
-              className="h-6 w-6 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center shrink-0 shadow-md"
-              style={{ boxShadow: "0 0 8px rgba(14,165,233,0.3)" }}
-            >
-              <span className="text-[10px] font-bold text-white leading-none">
-                {user.displayName.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11.5px] font-semibold truncate" style={{ color: "rgba(255,255,255,0.7)" }}>
-                {user.displayName}
-              </p>
-              <p className="text-[9.5px] capitalize" style={{ color: "rgba(255,255,255,0.3)" }}>
-                {user.role}
-              </p>
-            </div>
-          </div>
+      {/* ── Layer 2: slide-out panel ── */}
+      <AnimatePresence mode="wait">
+        {openGroup && (
+          <L2Panel
+            key={openGroup.key}
+            group={openGroup}
+            isOwner={isOwner}
+            onClose={handleClose}
+          />
         )}
-
-        {/* Settings */}
-        <NavLink
-          to="/settings"
-          onClick={onClose}
-          className={({ isActive }) =>
-            cn(itemBase, isActive ? "text-sky-400" : "text-white/35 hover:text-white/75 hover:bg-white/[5%]")
-          }
-        >
-          {({ isActive }) => (
-            <>
-              {isActive && (
-                <motion.span
-                  layoutId="toolbar-pill"
-                  className="absolute inset-0 rounded-xl"
-                  style={{ background: "rgba(14,165,233,0.10)" }}
-                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                />
-              )}
-              <Settings strokeWidth={isActive ? 2.1 : 1.5} className="h-[16px] w-[16px] shrink-0 relative z-10" />
-              <span className="relative z-10 text-[12px] font-medium">Pengaturan</span>
-            </>
-          )}
-        </NavLink>
-
-        {/* Logout */}
-        <button
-          onClick={() => { logout(); onClose?.(); }}
-          className={cn(itemBase, "text-white/30 hover:text-red-400 hover:bg-red-500/[8%]")}
-        >
-          <LogOut strokeWidth={1.5} className="h-[16px] w-[16px] shrink-0" />
-          <span className="text-[12px] font-medium">Keluar</span>
-        </button>
-      </div>
-    </aside>
+      </AnimatePresence>
+    </div>
   );
 
   return (
     <>
-      {/* Desktop — always-visible sidebar */}
-      <div className="hidden md:flex shrink-0">{toolbar}</div>
+      {/* Desktop — always-visible */}
+      <div className="hidden md:flex shrink-0 h-full">{sidebarChrome}</div>
 
       {/* Mobile — slide-in overlay */}
       <AnimatePresence>
@@ -471,7 +471,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 360, damping: 36, mass: 0.88 }}
             >
-              {toolbar}
+              {sidebarChrome}
             </motion.div>
           </div>
         )}

@@ -2,6 +2,17 @@
 
 Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn/ui.
 
+## Fase 35 — Dual-Layer Sidebar Navigation
+
+- **AppSidebar** sekarang pakai dual-layer:
+  - **Layer 1** (60px slim icon bar): icon grup Dashboard, Operasional, Marketing, Keuangan, Sistem Agen
+  - **Layer 2** (196px slide-out panel): muncul saat klik icon, berisi menu teks detail per kategori
+  - Warna branding Temantiket navy (#0b1628 / #0f2044) + accent sky-500 (#0ea5e9)
+  - Active indicator bar di kiri, smooth spring animation, hover effects
+- **Routing fix**: `/agent/leaderboard` dan `/agent/marketing` sekarang bisa diakses semua role (owner/staff/agent), tidak lagi gated ke agent-only
+- **Realtime Leaderboard**: `agent_points` ditambahkan ke Supabase realtime channel — Leaderboard auto-refresh saat ada poin baru
+- **Marketing Kit**: SVG templates ada di `/public/templates/promo/` (umrah-hemat, tiket-pesawat, visa-cepat) — download PNG 1080×1080 IG-ready
+
 ## Replit Environment Setup
 
 - **Stack**: React + Vite SPA + Express backend server, Supabase as BaaS (auth, database, realtime, storage)

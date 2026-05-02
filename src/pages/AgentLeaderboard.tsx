@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Crown, ChevronLeft, Sparkles, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
@@ -12,6 +12,7 @@ import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import {
   listAgentPoints, sumPointsByAgent, type AgentPoint,
 } from "@/features/agentPoints/agentPointsRepo";
+import { onAgentPointsChanged } from "@/lib/supabaseRealtime";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { AgentTierBadge } from "@/components/AgentTierProgress";
 import { profitIDR } from "@/lib/profit";
@@ -67,6 +68,15 @@ export default function AgentLeaderboard() {
   const [points, setPoints] = useState<AgentPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const refreshPoints = useCallback(async () => {
+    try {
+      const p = await listAgentPoints();
+      setPoints(p);
+    } catch (err) {
+      console.warn("[AgentLeaderboard] refresh points gagal:", err);
+    }
+  }, []);
+
   useEffect(() => {
     void fetchOrders();
     void (async () => {
@@ -80,7 +90,11 @@ export default function AgentLeaderboard() {
         setLoading(false);
       }
     })();
-  }, [fetchOrders, listMembers]);
+
+    // Real-time: refresh points whenever agent_points tabel berubah
+    const unsub = onAgentPointsChanged(() => { void refreshPoints(); });
+    return unsub;
+  }, [fetchOrders, listMembers, refreshPoints]);
 
   const agentMembers = useMemo(
     () => members.filter((m) => m.role === "agent"),

@@ -239,9 +239,7 @@ function AnimatedRoutes() {
         path="/agent/leaderboard"
         element={
           <RequireAuth>
-            <RequireRole roles={["agent"]}>
-              <DashboardLayout><AgentLeaderboard /></DashboardLayout>
-            </RequireRole>
+            <DashboardLayout><AgentLeaderboard /></DashboardLayout>
           </RequireAuth>
         }
       />
@@ -249,9 +247,7 @@ function AnimatedRoutes() {
         path="/agent/marketing"
         element={
           <RequireAuth>
-            <RequireRole roles={["agent"]}>
-              <DashboardLayout><AgentMarketingKit /></DashboardLayout>
-            </RequireRole>
+            <DashboardLayout><AgentMarketingKit /></DashboardLayout>
           </RequireAuth>
         }
       />

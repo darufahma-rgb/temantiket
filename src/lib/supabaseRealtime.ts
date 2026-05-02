@@ -21,6 +21,15 @@ export function onPdfPresetsChanged(fn: PresetListener): () => void {
   return () => presetListeners.delete(fn);
 }
 
+/** Listeners untuk agent_points — Leaderboard subscribe biar auto-refresh. */
+type AgentPointsListener = () => void;
+const agentPointsListeners = new Set<AgentPointsListener>();
+
+export function onAgentPointsChanged(fn: AgentPointsListener): () => void {
+  agentPointsListeners.add(fn);
+  return () => agentPointsListeners.delete(fn);
+}
+
 export function startRealtimeSync(): () => void {
   if (!isSupabaseConfigured() || channel) return () => undefined;
 
@@ -43,6 +52,9 @@ export function startRealtimeSync(): () => void {
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
       void useOrdersStore.getState().fetchOrders();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "agent_points" }, () => {
+      for (const fn of agentPointsListeners) fn();
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "pdf_layout_presets" }, () => {
       // Refresh cache lalu broadcast ke semua tuner yang sedang dibuka.
