@@ -141,7 +141,18 @@ function ClientDetailInner({ id }: { id: string }) {
       )}
 
       {/* Temantiket Member Card — dua sisi, flip + auto-stamp dari order sukses */}
-      <section className="rounded-2xl border border-border bg-white p-4 md:p-5">
+      <section className="rounded-2xl border border-sky-100 bg-gradient-to-br from-white to-sky-50/40 overflow-hidden">
+        <div className="px-4 md:px-5 py-3 border-b border-sky-100 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🪪</span>
+            <h2 className="text-sm font-semibold text-foreground">Member Card</h2>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-100 text-sky-700">
+              {clientOrders.filter((o) => ["Confirmed","Paid","Completed"].includes(o.status)).length} stamp
+            </span>
+          </div>
+          <span className="text-[10px] text-muted-foreground">Klik Download di kartu untuk export PNG</span>
+        </div>
+        <div className="p-4 md:p-5">
         <MemberCard
           client={client}
           memberIndex={memberIndex}
@@ -159,6 +170,7 @@ function ClientDetailInner({ id }: { id: string }) {
             {buildPublicMemberUrl(buildMemberSlug(client.name, memberIndex))}
           </a>
         </p>
+        </div>
       </section>
 
       {/* Document Vault */}

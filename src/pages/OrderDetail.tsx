@@ -167,7 +167,7 @@ export default function OrderDetail() {
               <Eye className="h-3.5 w-3.5 mr-1.5" /> Client View
             </Button>
           )}
-          <InvoiceButton order={order} client={linkedClient ?? null} phone={linkedClient?.phone} />
+          <InvoiceButton order={order} client={linkedClient ?? null} phone={linkedClient?.phone} variant="default" className="gradient-primary text-white border-0 hover:opacity-90 shadow-sm" />
           <Button onClick={handleSave} disabled={!dirty || saving}>
             <Save className="h-3.5 w-3.5 mr-1.5" /> {saving ? "Menyimpan…" : "Simpan"}
           </Button>

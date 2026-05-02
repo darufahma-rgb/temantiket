@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Calculator, Package, LogOut, Settings,
   StickyNote, FileSpreadsheet, Users, ShoppingBag,
   Plane, FileBadge, Wallet, MessageSquare, Sparkles, Ticket,
-  GitBranch, Command, Trophy, BookUser,
+  GitBranch, Command, Trophy, BookUser, Megaphone, BarChart3,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -24,11 +24,13 @@ interface NavItemDef {
   icon: React.ElementType;
   end?: boolean;
   badge?: string;
+  ownerOnly?: boolean;
   children?: Omit<NavItemDef, "children">[];
 }
 
 interface GroupDef {
   key: string;
+  label?: string;
   items: NavItemDef[];
   ownerOnly?: boolean;
 }
@@ -43,9 +45,10 @@ const STAFF_GROUPS: GroupDef[] = [
     ],
   },
   {
-    key: "orders",
+    key: "hub",
+    label: "Hub",
     items: [
-      { title: "Klien", url: "/clients", icon: Users },
+      { title: "Klien (Jamaah)", url: "/clients", icon: Users },
       {
         title: "Order Hub",
         url: "/orders",
@@ -56,20 +59,15 @@ const STAFF_GROUPS: GroupDef[] = [
           { title: "Visa Mesir",    url: "/orders/visa_student", icon: FileBadge },
         ],
       },
-      { title: "Harga Tiket",     url: "/ticket-prices",   icon: Ticket },
-      { title: "Direktori Agen",  url: "/agent-directory", icon: BookUser },
-    ],
-  },
-  {
-    key: "ai",
-    items: [
-      { title: "AI Itinerary", url: "/itinerary", icon: Sparkles, badge: "AI" },
+      { title: "Harga Tiket", url: "/ticket-prices", icon: Ticket },
     ],
   },
   {
     key: "ops",
+    label: "Ops",
     items: [
       { title: "Kalkulator & Kurs", url: "/calculator", icon: Calculator },
+      { title: "AI Itinerary",      url: "/itinerary",  icon: Sparkles, badge: "AI" },
       { title: "Paket Trip",        url: "/packages",   icon: Package },
       { title: "Progress Jamaah",   url: "/progress",   icon: GitBranch },
       { title: "Catatan",           url: "/notes",      icon: StickyNote },
@@ -77,17 +75,28 @@ const STAFF_GROUPS: GroupDef[] = [
   },
   {
     key: "marketing",
+    label: "Mkt",
     items: [
-      { title: "Template BC WA",   url: "/bc-templates", icon: MessageSquare },
-      { title: "Export & Member Card", url: "/exports",  icon: FileSpreadsheet },
+      { title: "Template BC WA",       url: "/bc-templates",    icon: MessageSquare },
+      { title: "Export & Member Card", url: "/exports",         icon: FileSpreadsheet },
+      { title: "Marketing Kit",        url: "/agent/marketing", icon: Megaphone },
     ],
   },
   {
-    key: "admin",
+    key: "finance",
+    label: "Fin",
     ownerOnly: true,
     items: [
-      { title: "Laporan Keuangan",    url: "/reports",      icon: Wallet },
-      { title: "Kontrol Agen & Misi", url: "/agent-center", icon: Command },
+      { title: "Laporan Keuangan", url: "/reports", icon: BarChart3 },
+    ],
+  },
+  {
+    key: "agent",
+    label: "Agen",
+    items: [
+      { title: "Kontrol Agen & Misi", url: "/agent-center",      icon: Command,   ownerOnly: true },
+      { title: "Direktori Agen",      url: "/agent-directory",   icon: BookUser },
+      { title: "Leaderboard",         url: "/agent/leaderboard", icon: Trophy },
     ],
   },
 ];
@@ -100,9 +109,10 @@ const AGENT_GROUPS: GroupDef[] = [
     ],
   },
   {
-    key: "orders",
+    key: "hub",
+    label: "Hub",
     items: [
-      { title: "Klien", url: "/clients", icon: Users },
+      { title: "Klien (Jamaah)", url: "/clients", icon: Users },
       {
         title: "Order Hub",
         url: "/orders",
@@ -117,8 +127,9 @@ const AGENT_GROUPS: GroupDef[] = [
   },
   {
     key: "marketing",
+    label: "Mkt",
     items: [
-      { title: "Template BC WA", url: "/bc-templates",     icon: MessageSquare },
+      { title: "Template BC WA", url: "/bc-templates",      icon: MessageSquare },
       { title: "Leaderboard",    url: "/agent/leaderboard", icon: Trophy },
     ],
   },
@@ -292,11 +303,19 @@ function ToolItem({ item, onClose }: { item: NavItemDef; onClose?: () => void })
   );
 }
 
-// ── Section divider ────────────────────────────────────────────────────────
+// ── Section divider with optional category label ───────────────────────────
 
-function Divider() {
+function Divider({ label }: { label?: string }) {
   return (
-    <div className="flex justify-center w-full my-1.5">
+    <div className="flex flex-col items-center w-full mt-2 mb-1.5">
+      {label && (
+        <span
+          className="text-[7px] font-black uppercase tracking-[0.18em] mb-1 select-none"
+          style={{ color: "rgba(255,255,255,0.2)" }}
+        >
+          {label}
+        </span>
+      )}
       <div className="w-7 h-px" style={{ background: DIVIDER }} />
     </div>
   );
@@ -314,9 +333,8 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
   const isOwner = user?.role === "owner";
   const isAgent = user?.role === "agent";
 
-  const groups = isAgent
-    ? AGENT_GROUPS
-    : STAFF_GROUPS.filter((g) => !g.ownerOnly || isOwner);
+  const rawGroups = isAgent ? AGENT_GROUPS : STAFF_GROUPS;
+  const groups = rawGroups.filter((g) => !g.ownerOnly || isOwner);
 
   const toolbar = (
     <aside
@@ -349,16 +367,22 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
         className="flex-1 w-full flex flex-col items-center overflow-y-auto pb-2"
         style={{ scrollbarWidth: "none" }}
       >
-        {groups.map((group, gi) => (
-          <div key={group.key} className="w-full flex flex-col items-center">
-            {gi > 0 && <Divider />}
-            <div className="flex flex-col items-center gap-0.5 w-full px-2">
-              {group.items.map((item) => (
-                <ToolItem key={item.url} item={item} onClose={onClose} />
-              ))}
+        {groups.map((group, gi) => {
+          const visibleItems = group.items.filter(
+            (item) => !item.ownerOnly || isOwner
+          );
+          if (visibleItems.length === 0) return null;
+          return (
+            <div key={group.key} className="w-full flex flex-col items-center">
+              {gi > 0 && <Divider label={group.label} />}
+              <div className="flex flex-col items-center gap-0.5 w-full px-2">
+                {visibleItems.map((item) => (
+                  <ToolItem key={item.url} item={item} onClose={onClose} />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── Bottom actions ── */}
