@@ -1,7 +1,8 @@
 import { useState } from "react";
 import {
-  Sparkles, Copy, CheckCheck, Loader2, RefreshCw,
+  Wand2, Copy, CheckCheck, Loader2, RefreshCw,
   User, MessageCircle, DollarSign, Calendar, FileText,
+  Plane, BookOpen, Megaphone, Moon, Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -14,24 +15,23 @@ import { useAuthStore } from "@/store/authStore";
 
 /* ─── Kategori ─────────────────────────────────────────── */
 const CATEGORIES = [
-  { key: "umrah",   label: "Promo Umrah",       emoji: "🕋", accent: "from-sky-500 to-cyan-400",      prompt: "paket umrah hemat" },
-  { key: "haji",    label: "Paket Haji",         emoji: "🌙", accent: "from-emerald-600 to-teal-400",  prompt: "paket haji plus / furoda" },
-  { key: "flight",  label: "Tiket Pesawat",      emoji: "✈️", accent: "from-orange-500 to-amber-400",  prompt: "tiket pesawat murah" },
-  { key: "visa",    label: "Layanan Visa",        emoji: "📔", accent: "from-violet-500 to-purple-400", prompt: "layanan visa cepat" },
-  { key: "general", label: "Promo Umum",          emoji: "📣", accent: "from-rose-500 to-pink-400",    prompt: "layanan travel umrah & haji" },
+  { key: "umrah",   label: "Promo Umrah",   Icon: Moon,       prompt: "paket umrah hemat" },
+  { key: "haji",    label: "Paket Haji",    Icon: Sparkles,   prompt: "paket haji plus / furoda" },
+  { key: "flight",  label: "Tiket Pesawat", Icon: Plane,      prompt: "tiket pesawat murah" },
+  { key: "visa",    label: "Layanan Visa",  Icon: BookOpen,   prompt: "layanan visa cepat" },
+  { key: "general", label: "Promo Umum",    Icon: Megaphone,  prompt: "layanan travel umrah & haji" },
 ];
 
 /* ─── Tone ──────────────────────────────────────────────── */
 const TONES = [
-  { key: "santai",      label: "Santai",        desc: "Friendly, casual, akrab"     },
-  { key: "formal",      label: "Formal",        desc: "Profesional & terpercaya"    },
-  { key: "hardsell",    label: "Hard Selling",  desc: "FOMO, urgent, ajak action"   },
-  { key: "story",       label: "Storytelling",  desc: "Emosional, cerita perjalanan"},
+  { key: "santai",   label: "Santai",       desc: "Friendly, casual, akrab"      },
+  { key: "formal",   label: "Formal",       desc: "Profesional & terpercaya"     },
+  { key: "hardsell", label: "Hard Selling", desc: "FOMO, urgent, ajak action"    },
+  { key: "story",    label: "Storytelling", desc: "Emosional, cerita perjalanan" },
 ];
 
-/* ─── Helpers ───────────────────────────────────────────── */
+/* ─── API ───────────────────────────────────────────────── */
 async function generateCaptions(params: {
-  category: string;
   categoryPrompt: string;
   tone: string;
   agentName: string;
@@ -40,7 +40,7 @@ async function generateCaptions(params: {
   departureDate: string;
   extraNotes: string;
 }): Promise<string[]> {
-  const { category, categoryPrompt, tone, agentName, agentWa, price, departureDate, extraNotes } = params;
+  const { categoryPrompt, tone, agentName, agentWa, price, departureDate, extraNotes } = params;
 
   const toneMap: Record<string, string> = {
     santai:   "casual, akrab, pakai bahasa sehari-hari, sedikit emoji, tidak lebay",
@@ -83,13 +83,28 @@ Jangan tambahkan penjelasan di luar JSON. Contoh format: ["Caption 1...", "Capti
   if (!res.ok) throw new Error(`AI error ${res.status}`);
   const data = await res.json();
   const raw = data.choices?.[0]?.message?.content ?? "";
-
-  // Parse JSON dari response
   const match = raw.match(/\[[\s\S]*\]/);
   if (!match) throw new Error("Format respons AI tidak valid");
   const parsed: unknown = JSON.parse(match[0]);
   if (!Array.isArray(parsed)) throw new Error("Bukan array");
   return parsed.slice(0, 3).map(String);
+}
+
+/* ─── Section wrapper ───────────────────────────────────── */
+function Section({ label, icon: Icon, children }: {
+  label: string;
+  icon: React.ElementType;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-white p-4 md:p-5 shadow-none">
+      <div className="flex items-center gap-2 mb-4">
+        <Icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+        <h3 className="text-[13.5px] font-semibold text-foreground">{label}</h3>
+      </div>
+      {children}
+    </div>
+  );
 }
 
 /* ─── Main Component ────────────────────────────────────── */
@@ -114,14 +129,9 @@ export function CaptionGenerator() {
     setResults([]);
     try {
       const captions = await generateCaptions({
-        category: activeCategory,
         categoryPrompt: cat.prompt,
         tone: activeTone,
-        agentName,
-        agentWa,
-        price,
-        departureDate,
-        extraNotes,
+        agentName, agentWa, price, departureDate, extraNotes,
       });
       setResults(captions);
     } catch (err) {
@@ -134,187 +144,157 @@ export function CaptionGenerator() {
   const handleCopy = async (text: string, idx: number) => {
     await navigator.clipboard.writeText(text);
     setCopiedIdx(idx);
-    toast.success("Caption disalin ke clipboard!");
+    toast.success("Caption disalin!");
     setTimeout(() => setCopiedIdx(null), 2000);
   };
 
   return (
-    <div className="space-y-4 pb-10">
+    <div className="space-y-3 pb-10">
 
       {/* ── Kategori ── */}
-      <div className="rounded-2xl border border-border/60 bg-white p-4 md:p-5 shadow-sm">
-        <h3 className="text-[13px] font-bold mb-3 flex items-center gap-2">
-          <span className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shrink-0">
-            <Sparkles className="h-3 w-3 text-white" />
-          </span>
-          Pilih Kategori
-        </h3>
+      <Section label="Kategori" icon={Wand2}>
         <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
-          {CATEGORIES.map((c) => {
-            const isActive = c.key === activeCategory;
-            return (
-              <motion.button
-                key={c.key}
-                onClick={() => setActiveCategory(c.key)}
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className={cn(
-                  "relative rounded-xl overflow-hidden text-left p-3 transition-all",
-                  "bg-gradient-to-br",
-                  c.accent,
-                  isActive
-                    ? "ring-2 ring-offset-2 ring-fuchsia-500 shadow-lg"
-                    : "opacity-75 hover:opacity-95 shadow-sm",
-                )}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="activeCatGlow"
-                    className="absolute inset-0 bg-white/20 rounded-xl"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
-                <div className="relative">
-                  <div className="text-2xl mb-1.5 drop-shadow">{c.emoji}</div>
-                  <div className="text-[11px] font-bold text-white leading-tight">{c.label}</div>
-                </div>
-              </motion.button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Tone ── */}
-      <div className="rounded-2xl border border-border/60 bg-white p-4 md:p-5 shadow-sm">
-        <h3 className="text-[13px] font-bold mb-3 flex items-center gap-2">
-          <span className="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
-            <FileText className="h-3 w-3 text-white" />
-          </span>
-          Gaya Penulisan
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {TONES.map((t) => {
-            const isActive = t.key === activeTone;
+          {CATEGORIES.map(({ key, label, Icon }) => {
+            const isActive = key === activeCategory;
             return (
               <button
-                key={t.key}
-                onClick={() => setActiveTone(t.key)}
+                key={key}
+                onClick={() => setActiveCategory(key)}
                 className={cn(
-                  "rounded-xl border-2 px-3 py-2.5 text-left transition-all",
+                  "flex flex-col items-center gap-2 rounded-xl border py-3.5 px-2 transition-all text-center",
                   isActive
-                    ? "border-fuchsia-500 bg-fuchsia-50 shadow-sm"
-                    : "border-border/60 hover:border-fuchsia-300 hover:bg-fuchsia-50/40",
+                    ? "border-foreground bg-foreground text-background shadow-sm"
+                    : "border-border/70 bg-white text-foreground hover:border-foreground/40 hover:bg-gray-50",
                 )}
               >
-                <div className={cn("text-[12.5px] font-bold", isActive ? "text-fuchsia-700" : "text-foreground")}>
-                  {t.label}
-                </div>
-                <div className="text-[10.5px] text-muted-foreground mt-0.5">{t.desc}</div>
+                <Icon
+                  className={cn("h-5 w-5", isActive ? "text-background" : "text-muted-foreground")}
+                  strokeWidth={1.5}
+                />
+                <span className={cn("text-[11px] font-medium leading-tight", isActive ? "text-background" : "text-foreground")}>
+                  {label}
+                </span>
               </button>
             );
           })}
         </div>
-      </div>
+      </Section>
+
+      {/* ── Tone ── */}
+      <Section label="Gaya Penulisan" icon={FileText}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {TONES.map(({ key, label, desc }) => {
+            const isActive = key === activeTone;
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveTone(key)}
+                className={cn(
+                  "rounded-xl border px-3 py-2.5 text-left transition-all",
+                  isActive
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border/70 bg-white hover:border-foreground/40 hover:bg-gray-50",
+                )}
+              >
+                <div className={cn("text-[12.5px] font-semibold", isActive ? "text-background" : "text-foreground")}>
+                  {label}
+                </div>
+                <div className={cn("text-[10.5px] mt-0.5 leading-snug", isActive ? "text-background/70" : "text-muted-foreground")}>
+                  {desc}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Section>
 
       {/* ── Detail Opsional ── */}
-      <div className="relative rounded-2xl overflow-hidden border border-border/60 bg-white shadow-sm">
-        <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500" />
-        <div className="p-4 md:p-5">
-          <h3 className="text-[13px] font-bold mb-0.5 flex items-center gap-2">
-            <span className="w-6 h-6 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0">
-              <User className="h-3 w-3 text-white" />
-            </span>
-            Detail Agen <span className="text-[11px] font-normal text-muted-foreground ml-1">(opsional tapi makin bagus)</span>
-          </h3>
-          <p className="text-[11px] text-muted-foreground mb-4 ml-8">Semakin lengkap, caption makin personal & siap pakai.</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                <User className="h-3 w-3" /> Nama lo
-              </Label>
-              <Input value={agentName} onChange={(e) => setAgentName(e.target.value)}
-                placeholder="Contoh: Andi Saputra" className="h-9 text-[13px]" maxLength={48} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                <MessageCircle className="h-3 w-3" /> Nomor WhatsApp
-              </Label>
-              <Input value={agentWa} onChange={(e) => setAgentWa(e.target.value)}
-                placeholder="0812-3456-7890" className="h-9 text-[13px]" maxLength={32} type="tel" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                <DollarSign className="h-3 w-3" /> Kisaran Harga
-              </Label>
-              <Input value={price} onChange={(e) => setPrice(e.target.value)}
-                placeholder="Contoh: mulai 25 juta" className="h-9 text-[13px]" maxLength={64} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                <Calendar className="h-3 w-3" /> Tanggal Keberangkatan
-              </Label>
-              <Input value={departureDate} onChange={(e) => setDepartureDate(e.target.value)}
-                placeholder="Contoh: Desember 2025" className="h-9 text-[13px]" maxLength={64} />
-            </div>
-            <div className="space-y-1.5 md:col-span-2">
-              <Label className="text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                <FileText className="h-3 w-3" /> Info Tambahan
-              </Label>
-              <Textarea value={extraNotes} onChange={(e) => setExtraNotes(e.target.value)}
-                placeholder="Contoh: include visa, hotel bintang 5, makan 3x, free airport transfer..."
-                className="text-[13px] resize-none min-h-[72px]" maxLength={300} />
-            </div>
+      <Section label="Detail Agen" icon={User}>
+        <p className="text-[11.5px] text-muted-foreground -mt-2 mb-4">
+          Opsional — semakin lengkap, caption makin personal & siap pakai.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <User className="h-3 w-3" strokeWidth={1.5} /> Nama lo
+            </Label>
+            <Input value={agentName} onChange={(e) => setAgentName(e.target.value)}
+              placeholder="Contoh: Andi Saputra" className="h-9 text-[13px]" maxLength={48} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <MessageCircle className="h-3 w-3" strokeWidth={1.5} /> Nomor WhatsApp
+            </Label>
+            <Input value={agentWa} onChange={(e) => setAgentWa(e.target.value)}
+              placeholder="0812-3456-7890" className="h-9 text-[13px]" maxLength={32} type="tel" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <DollarSign className="h-3 w-3" strokeWidth={1.5} /> Kisaran Harga
+            </Label>
+            <Input value={price} onChange={(e) => setPrice(e.target.value)}
+              placeholder="Contoh: mulai 25 juta" className="h-9 text-[13px]" maxLength={64} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <Calendar className="h-3 w-3" strokeWidth={1.5} /> Tanggal Keberangkatan
+            </Label>
+            <Input value={departureDate} onChange={(e) => setDepartureDate(e.target.value)}
+              placeholder="Contoh: Desember 2025" className="h-9 text-[13px]" maxLength={64} />
+          </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <FileText className="h-3 w-3" strokeWidth={1.5} /> Info Tambahan
+            </Label>
+            <Textarea value={extraNotes} onChange={(e) => setExtraNotes(e.target.value)}
+              placeholder="Contoh: include visa, hotel bintang 5, makan 3x, free airport transfer..."
+              className="text-[13px] resize-none min-h-[72px]" maxLength={300} />
           </div>
         </div>
-      </div>
+      </Section>
 
       {/* ── Generate Button ── */}
-      <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-        <Button
-          onClick={() => void handleGenerate()}
-          disabled={loading}
-          className="w-full h-12 text-[14px] font-bold bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-600 hover:from-violet-700 hover:via-fuchsia-700 hover:to-pink-700 shadow-lg shadow-fuchsia-500/25 transition-all"
-        >
-          <AnimatePresence mode="wait">
-            {loading ? (
-              <motion.span key="loading" className="flex items-center gap-2"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                AI sedang nulis caption lo…
-              </motion.span>
-            ) : results.length > 0 ? (
-              <motion.span key="regen" className="flex items-center gap-2"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <RefreshCw className="h-4 w-4" />
-                Generate Ulang
-              </motion.span>
-            ) : (
-              <motion.span key="idle" className="flex items-center gap-2"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <Sparkles className="h-4 w-4" />
-                Generate 3 Caption Sekarang
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </Button>
-      </motion.div>
+      <Button
+        onClick={() => void handleGenerate()}
+        disabled={loading}
+        className="w-full h-11 text-[13.5px] font-semibold bg-foreground text-background hover:bg-foreground/90 transition-all rounded-xl"
+      >
+        <AnimatePresence mode="wait">
+          {loading ? (
+            <motion.span key="loading" className="flex items-center gap-2"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              AI sedang nulis caption…
+            </motion.span>
+          ) : results.length > 0 ? (
+            <motion.span key="regen" className="flex items-center gap-2"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
+              Generate Ulang
+            </motion.span>
+          ) : (
+            <motion.span key="idle" className="flex items-center gap-2"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <Wand2 className="h-4 w-4" strokeWidth={1.5} />
+              Generate 3 Caption
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </Button>
 
       {/* ── Results ── */}
       <AnimatePresence>
         {loading && (
           <motion.div key="skeleton"
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             className="space-y-3"
           >
             {[0, 1, 2].map((i) => (
-              <div key={i} className="rounded-2xl border border-border/60 bg-white p-4 shadow-sm animate-pulse space-y-2">
-                <div className="h-3 bg-muted rounded w-1/4" />
-                <div className="h-3 bg-muted rounded w-full" />
-                <div className="h-3 bg-muted rounded w-5/6" />
-                <div className="h-3 bg-muted rounded w-3/4" />
-                <div className="h-3 bg-muted rounded w-2/3" />
+              <div key={i} className="rounded-xl border border-border/70 bg-white p-4 animate-pulse space-y-2.5">
+                <div className="h-2.5 bg-muted rounded w-1/5" />
+                <div className="h-2.5 bg-muted rounded w-full" />
+                <div className="h-2.5 bg-muted rounded w-5/6" />
+                <div className="h-2.5 bg-muted rounded w-4/6" />
               </div>
             ))}
           </motion.div>
@@ -322,65 +302,47 @@ export function CaptionGenerator() {
 
         {!loading && results.length > 0 && (
           <motion.div key="results"
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             className="space-y-3"
           >
-            <div className="flex items-center gap-2 px-1">
-              <div className="h-px flex-1 bg-border/50" />
-              <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                3 Variasi Caption
-              </span>
-              <div className="h-px flex-1 bg-border/50" />
+            <div className="flex items-center gap-2 py-1">
+              <div className="h-px flex-1 bg-border/60" />
+              <span className="text-[11px] text-muted-foreground tracking-wide">3 variasi caption</span>
+              <div className="h-px flex-1 bg-border/60" />
             </div>
 
             {results.map((caption, idx) => (
               <motion.div
                 key={idx}
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.08 }}
-                className="relative rounded-2xl border border-border/60 bg-white p-4 md:p-5 shadow-sm hover:shadow-md hover:border-fuchsia-200 transition-all group"
+                transition={{ delay: idx * 0.07 }}
+                className="rounded-xl border border-border/70 bg-white p-4 md:p-5 hover:border-foreground/25 transition-colors"
               >
-                {/* Badge */}
                 <div className="flex items-center justify-between mb-3">
-                  <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-widest text-fuchsia-600 bg-fuchsia-50 px-2 py-0.5 rounded-full">
-                    <Sparkles className="h-2.5 w-2.5" />
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
                     Variasi {idx + 1}
                   </span>
                   <button
                     onClick={() => void handleCopy(caption, idx)}
                     className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold transition-all",
+                      "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium transition-all border",
                       copiedIdx === idx
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-muted hover:bg-fuchsia-50 hover:text-fuchsia-700 text-muted-foreground",
+                        ? "border-foreground/20 bg-foreground text-background"
+                        : "border-border/70 text-muted-foreground hover:border-foreground/40 hover:text-foreground",
                     )}
                   >
-                    {copiedIdx === idx ? (
-                      <><CheckCheck className="h-3.5 w-3.5" /> Disalin!</>
-                    ) : (
-                      <><Copy className="h-3.5 w-3.5" /> Salin</>
-                    )}
+                    {copiedIdx === idx
+                      ? <><CheckCheck className="h-3.5 w-3.5" strokeWidth={1.5} /> Disalin</>
+                      : <><Copy className="h-3.5 w-3.5" strokeWidth={1.5} /> Salin</>
+                    }
                   </button>
                 </div>
-
-                {/* Caption text */}
                 <p className="text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
                   {caption}
                 </p>
-
-                {/* Click-anywhere-to-copy hint */}
-                <button
-                  onClick={() => void handleCopy(caption, idx)}
-                  className="absolute inset-0 rounded-2xl opacity-0"
-                  aria-label={`Salin variasi ${idx + 1}`}
-                />
               </motion.div>
             ))}
-
-            <p className="text-center text-[11px] text-muted-foreground pb-2">
-              Klik <span className="font-semibold">Salin</span> di tiap kartu, atau klik area kartu untuk copy langsung ✨
-            </p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -389,5 +351,4 @@ export function CaptionGenerator() {
   );
 }
 
-/** Keep legacy export for backwards compat */
 export { CaptionGenerator as MarketingKitGenerator };
