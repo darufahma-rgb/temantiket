@@ -45,6 +45,7 @@ Schema managed via Supabase SQL Editor. To initialize:
 - Supabase Auth kept intentionally — custom multi-tenant RLS roles are incompatible with Replit Auth
 - No server-side layer added — correct architecture for a Supabase-native SPA
 - OpenAI integration is optional and user-configurable via `VITE_OPENAI_API_KEY` env var
+- Workflow "Start application" runs `npm install && npm run dev` on port 5000
 
 ## Key Pages & Routes
 
@@ -60,8 +61,8 @@ Schema managed via Supabase SQL Editor. To initialize:
 | `/reports` | Financial reports (owner only) |
 | `/agent` | Mitra/Agent dashboard |
 | `/agent-center` | Agent management (owner only) |
-| `/m/:slug` | Public member card |
-| `/leaderboard` | Public leaderboard |
+| `/m/:slug` | Public member card (no auth) |
+| `/leaderboard` | Public leaderboard (no auth) |
 | `/harga-tiket` | Public ticket price list (no auth) |
 | `/settings` | App settings |
 
@@ -105,13 +106,7 @@ Schema managed via Supabase SQL Editor. To initialize:
 
 - Public routes: `/harga-tiket`, `/promo`, `/prices` — no auth required
 - Dynamic SEO meta injection in `PublicTicketPrices.tsx` (title, description, og:title, og:description, og:url, twitter:*, robots)
-- `SharePanel` component in admin `TicketPrices.tsx`:
-  - Shows `/promo` (short, recommended) and `/harga-tiket` (full) with per-row Copy buttons + "Tersalin!" feedback
-  - Native Web Share API button (falls back to clipboard on desktop)
-  - WhatsApp share button with pre-filled message template
-  - "Pratinjau" button opens public page in new tab
-  - Informational note: only published tickets shown, harga modal hidden
-- Supabase migration needed: `supabase/migrations/2026_05_19_ticket_prices_v2.sql` (7 new columns — must run manually in SQL Editor)
+- `SharePanel` component in admin `TicketPrices.tsx`
 
 ## Fase 19: AI Ticket Price List (May 19, 2026)
 
