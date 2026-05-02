@@ -91,21 +91,29 @@ function fmtDate(iso?: string): string {
 
 const PLACEHOLDER = `Tempel kode Galileo, Amadeus, atau teks itinerary di sini...
 
-Contoh Galileo Display (Gulf Air - pulang pergi via Bahrain):
+━━ FORMAT 1: Galileo Booking Confirmation (setelah booking dikonfirmasi) ━━
+RECORD LOCATOR: GF3X7K
+
+1.1RAHMAN/AHMAD MR
+
+ 1 GF  70N 03JUN 3 CAIBAH HK1  1715 2015         E  1
+ 2 GF 284N 03JUN 3 BAHGOI HK1  2115 0340+1       E  1
+ 3 GF 285O 03SEP 4 GOIBAH HK1  0440 0610         E  1
+ 4 GF  79O 04SEP 5 BAHCAI HK1  0110 0430         E  1
+
+━━ FORMAT 2: Galileo Display/Pricing (sebelum booking) ━━
 MORE 1          TOTAL AMOUNT  29283.80 EGP
 1  GF  70   N  03JUN  CAI  BAH  1715  2015  WE  32N
 2  GF  284  N  03JUN  BAH  GOI  2115  0340# WE  32Q
 3  GF  285  O  03SEP  GOI  BAH  0440  0610  TH  32N
 4  GF  79   O  04SEP  BAH  CAI  0110  0430  FR  32N
 
-Format: setiap baris = 1 penerbangan, setiap 2 baris = 1 arah (pergi/pulang)
-Tanda # setelah jam tiba = tiba hari berikutnya
-
-Contoh Galileo PNR (format lama):
+━━ FORMAT 3: Galileo PNR lama / Amadeus ━━
 1 QR 978 Y 15MAR 4 CGKDOH HK1 2355 0430 16MAR
 2 QR 301 Y 16MAR 4 DOHCAI HK1 0700 0910
 
-Atau paste teks dari email / halaman Trip.com / booking confirmation.`;
+Atau paste teks dari email / halaman Trip.com / booking confirmation.
+(+1 atau # setelah jam tiba = tiba hari berikutnya)`;
 
 // ── Canvas helpers ─────────────────────────────────────────────────────────
 

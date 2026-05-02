@@ -4,9 +4,10 @@
  * menjadi struktur JSON terstandarisasi.
  *
  * Strategi:
- * 1. parseGalileoDisplay(text)   → parser regex khusus Galileo display format
- * 2. extractItinerary(text)      → OpenAI text → regex fallback
- * 3. extractItineraryFromImage() → OpenAI Vision (wajib key)
+ * 1. parseGalileoPNR(text)       → parser regex untuk Galileo booking confirmation (RLOC/GFAX)
+ * 2. parseGalileoDisplay(text)   → parser regex untuk Galileo availability/pricing display
+ * 3. extractItinerary(text)      → OpenAI text → regex fallback
+ * 4. extractItineraryFromImage() → OpenAI Vision (wajib key)
  */
 
 import { parseFlightText, KNOWN_AIRPORTS, KNOWN_AIRLINES } from "@/features/orders/flightParser";
@@ -151,6 +152,171 @@ export function parseGalileoDisplay(text: string): ItineraryData | null {
   };
 }
 
+// ── Galileo PNR / Booking Confirmation Parser ──────────────────────────────
+//
+// Format setelah booking dikonfirmasi (RLOC/GFAX):
+//
+//   RECORD LOCATOR: ABC123   atau   RLOC ABC123   atau   RLOC: ABC123
+//
+//   1.1SMITH/JOHN MR
+//   2.1JONES/JANE MRS
+//
+//    1 GF  70N 03JUN 3 CAIBAH HK1  1715 2015         E  1
+//    2 GF 284N 03JUN 3 BAHGOI HK1  2115 0340+1       E  1
+//    3 GF 285O 03SEP 4 GOIBAH HK1  0440 0610         E  1
+//    4 GF  79O 04SEP 5 BAHCAI HK1  0110 0430         E  1
+//
+// Variasi format yang didukung:
+//   A. Class menempel ke flight# (70N), airports 6-char concatenated (CAIBAH):
+//      <seg#> <AL> <FLT#><class> <DDMMM> <DOW> <ORIGDEST6> <status><seats> <dep4> <arr4>[+1]
+//   B. Class terpisah, airports 6-char concatenated, next-day via tanggal kedua:
+//      <seg#> <AL> <FLT#> <class> <DDMMM> <DOW> <ORIGDEST6> <status><seats> <dep4> <arr4> [<DDMMM>]
+//   C. Amadeus-style (mirip Galileo B):
+//      <seg#> <AL> <FLT#> <class> <DDMMM> <DOW> <ORIGDEST6> <status> <dep4> <arr4>[+1]
+
+// PNR: class nempel ke flight# + airports concatenated 6-char + +1 / tanggal arr
+const PNR_SEG_A =
+  /^\s*(\d+)\s+([A-Z]{2})\s{1,4}(\d{1,4})([A-Z])\s+(\d{1,2}[A-Z]{3})\s+\d\s+([A-Z]{3})([A-Z]{3})\s+[A-Z]{2,3}\d+\s+(\d{4})\s+(\d{4})(\+1)?/;
+
+// PNR/Amadeus: class terpisah + airports concatenated + next-day lewat tanggal
+const PNR_SEG_B =
+  /^\s*(\d+)\s+([A-Z]{2})\s+(\d{1,4})\s+([A-Z])\s+(\d{1,2}[A-Z]{3})\s+\d\s+([A-Z]{3})([A-Z]{3})\s+[A-Z]{2,3}\d+\s+(\d{4})\s+(\d{4})(?:\s+(\d{1,2}[A-Z]{3}))?/;
+
+// RLOC patterns
+const RLOC_RE = /(?:RLOC|RECORD\s+LOCATOR|PNR|LOCATOR)\s*[:\-]?\s*([A-Z0-9]{5,8})/i;
+// Fallback: standalone 6-char alphanum line (Galileo RLOC style)
+const RLOC_STANDALONE_RE = /^\s*([A-Z]{1,2}[A-Z0-9]{4,5})\s*$/;
+
+// Passenger name patterns
+// "1.1SMITH/JOHN MR"  "2.1JONES/JANE MRS"  "1SMITH/JOHNMR"
+const PAX_LINE_RE = /^\s*\d+[\.\-]\d+\s*([A-Z]{2,30})\/([A-Z][A-Z\s]{1,28}?)(?:\s+(?:MR|MRS|MS|MISS|MSTR|CHD|INF|JR|SR)\.?)?\s*$/;
+const PAX_NAME_RE = /\b(?:NAME|PENUMPANG|PASSENGER)\s*[:\-]\s*([A-Z]{2,30}\/[A-Z][A-Z\s]{1,28})/i;
+
+function parsePNRPassengers(lines: string[]): string | undefined {
+  const names: string[] = [];
+  for (const line of lines) {
+    const m = line.match(PAX_LINE_RE);
+    if (m) {
+      // "SMITH/JOHN" → "JOHN SMITH"
+      const last = m[1].trim();
+      const first = m[2].trim().split(/\s+/)[0];
+      names.push(`${first} ${last}`);
+    }
+  }
+  if (names.length > 0) return names.join(", ");
+  // Fallback: NAME: label
+  const fullText = lines.join("\n");
+  const nm = fullText.match(PAX_NAME_RE);
+  if (nm) {
+    const parts = nm[1].split("/");
+    if (parts.length >= 2) return `${parts[1].trim().split(/\s+/)[0]} ${parts[0].trim()}`;
+    return nm[1].trim();
+  }
+  return undefined;
+}
+
+function parsePNRRLOC(lines: string[]): string | undefined {
+  for (const line of lines) {
+    const m = line.match(RLOC_RE);
+    if (m) return m[1].toUpperCase();
+  }
+  // Standalone: look for isolated 6-char alphanumeric line (typical Galileo RLOC)
+  for (const line of lines) {
+    const m = line.match(RLOC_STANDALONE_RE);
+    if (m && /[A-Z]/.test(m[1]) && /[0-9]/.test(m[1])) {
+      return m[1].toUpperCase();
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Try to parse a single segment line with PNR_SEG_A (class glued to flt#).
+ * Returns FlightLeg or null.
+ */
+function tryPNRSegA(line: string): FlightLeg | null {
+  const m = line.match(PNR_SEG_A);
+  if (!m) return null;
+  const [, , airlineCode, flightNo, classCode, dateStr, origCode, destCode, depRaw, arrRaw, nextDay] = m;
+  const departDate = parseDDMMM(dateStr);
+  const arriveDate = nextDay === "+1" && departDate ? addOneDay(departDate) : departDate;
+  return {
+    airline: KNOWN_AIRLINES[airlineCode] ?? airlineCode,
+    flightNumber: `${airlineCode}${flightNo}`,
+    fromCode: origCode,
+    fromCity: KNOWN_AIRPORTS[origCode],
+    toCode: destCode,
+    toCity: KNOWN_AIRPORTS[destCode],
+    departDate,
+    departTime: toHHMM(depRaw),
+    arriveDate,
+    arriveTime: toHHMM(arrRaw),
+    class: classCode,
+  };
+}
+
+/**
+ * Try to parse a single segment line with PNR_SEG_B (class separate, optional arr-date).
+ * Returns FlightLeg or null.
+ */
+function tryPNRSegB(line: string): FlightLeg | null {
+  const m = line.match(PNR_SEG_B);
+  if (!m) return null;
+  const [, , airlineCode, flightNo, classCode, dateStr, origCode, destCode, depRaw, arrRaw, arrDateStr] = m;
+  const departDate = parseDDMMM(dateStr);
+  const arriveDate = arrDateStr ? parseDDMMM(arrDateStr) : departDate;
+  return {
+    airline: KNOWN_AIRLINES[airlineCode] ?? airlineCode,
+    flightNumber: `${airlineCode}${flightNo}`,
+    fromCode: origCode,
+    fromCity: KNOWN_AIRPORTS[origCode],
+    toCode: destCode,
+    toCity: KNOWN_AIRPORTS[destCode],
+    departDate,
+    departTime: toHHMM(depRaw),
+    arriveDate,
+    arriveTime: toHHMM(arrRaw),
+    class: classCode,
+  };
+}
+
+/**
+ * Parse Galileo PNR / booking confirmation format (RLOC/GFAX).
+ * Handles concatenated airports (CAIBAH), class glued to flt# (70N), and +1/date next-day.
+ * Returns ItineraryData if ≥1 segment found, else null.
+ */
+export function parseGalileoPNR(text: string): ItineraryData | null {
+  const lines = text.split("\n");
+  const segments: FlightLeg[] = [];
+
+  for (const line of lines) {
+    // Try format A first (class glued), then B (class separate)
+    const leg = tryPNRSegA(line) ?? tryPNRSegB(line);
+    if (leg) segments.push(leg);
+  }
+
+  if (segments.length === 0) return null;
+
+  const pnr = parsePNRRLOC(lines);
+  const passengerName = parsePNRPassengers(lines);
+
+  // Price extraction (rare in PNR but handle "TOTAL AMOUNT" if present)
+  let totalPrice: number | undefined;
+  let priceCurrency: ItineraryData["priceCurrency"];
+  for (const line of lines) {
+    const pm = line.match(GALILEO_PRICE_RE);
+    if (pm && !totalPrice) {
+      totalPrice = parseFloat(pm[1].replace(/,/g, "."));
+      const cur = pm[2].toUpperCase();
+      if (cur === "EGP" || cur === "IDR" || cur === "USD" || cur === "SAR") {
+        priceCurrency = cur as ItineraryData["priceCurrency"];
+      }
+    }
+  }
+
+  return { pnr, passengerName, legs: segments, totalPrice, priceCurrency, rawText: text };
+}
+
 // ── AI Prompts ─────────────────────────────────────────────────────────────
 
 const BASE_SCHEMA = `{
@@ -202,9 +368,21 @@ GALILEO DISPLAY FORMAT (space-separated airports):
   "#" after arrival time = arrives next day → increment arriveDate by 1 day.
   Journey pairing: rows 1-2 = outbound trip, rows 3-4 = return trip.
 
-GALILEO PNR FORMAT (concatenated airports, older style):
-  Example: "1 QR 978 Y 15MAR 4 CGKDOH HK1 2355 0430 16MAR"
-  → flightNumber=QR978, fromCode=CGK, toCode=DOH, departTime=23:55, arriveTime=04:30
+GALILEO PNR BOOKING CONFIRMATION (airports concatenated 6-char, class glued to flt# or separate):
+  Format A — class glued to flight#, +1 for next day:
+    <seg#> <AL> <FLT#><class> <DDMMM> <DOW> <ORIGDEST6> <status><seats> <dep4> <arr4>[+1]
+    Example:
+       1 GF  70N 03JUN 3 CAIBAH HK1  1715 2015         E  1
+       2 GF 284N 03JUN 3 BAHGOI HK1  2115 0340+1       E  1
+       3 GF 285O 03SEP 4 GOIBAH HK1  0440 0610         E  1
+       4 GF  79O 04SEP 5 BAHCAI HK1  0110 0430         E  1
+    → Seg 1: GF70, CAI→BAH (CAIBAH split at middle), dep 17:15, arr 20:15
+    → Seg 2: GF284, BAH→GOI, dep 21:15, arr 03:40 NEXT DAY (+1)
+  Format B — class separate, second date for next-day arrival:
+    Example: "1 QR 978 Y 15MAR 4 CGKDOH HK1 2355 0430 16MAR"
+    → flightNumber=QR978, fromCode=CGK, toCode=DOH, departTime=23:55, arriveTime=04:30, arriveDate=16MAR
+  RLOC/Record Locator appears as: "RLOC: ABC123" or "RECORD LOCATOR: ABC123" or standalone "ABC123"
+  Passenger appears as: "1.1SMITH/JOHN MR" or "NAME: SMITH/JOHN MR" → passengerName="JOHN SMITH"
 
 - Times are ALWAYS HH:MM 24-hour. "2355" → "23:55". "0340" → "03:40".
 - Dates ALWAYS YYYY-MM-DD. "03JUN" → current or nearest future year.
@@ -589,14 +767,21 @@ export function buildWhatsAppText(data: ItineraryData, egpRate: number): string 
 export async function extractItinerary(
   rawText: string,
 ): Promise<{ data: ItineraryData; usedAI: boolean }> {
-  // 1. Try Galileo display parser first (fastest, no API needed)
-  const galileo = parseGalileoDisplay(rawText);
-  if (galileo && galileo.legs.length > 0) {
-    console.info(`[itineraryAI] Galileo parser: ${galileo.legs.length} segmen ditemukan`);
-    return { data: galileo, usedAI: false };
+  // 1. Try Galileo PNR booking confirmation parser (RLOC/GFAX — concatenated airports)
+  const pnrResult = parseGalileoPNR(rawText);
+  if (pnrResult && pnrResult.legs.length > 0) {
+    console.info(`[itineraryAI] Galileo PNR parser: ${pnrResult.legs.length} segmen, PNR=${pnrResult.pnr ?? "—"}, pax=${pnrResult.passengerName ?? "—"}`);
+    return { data: pnrResult, usedAI: false };
   }
 
-  // 2. Try AI (GPT-4o-mini)
+  // 2. Try Galileo display/pricing parser (space-separated airports)
+  const displayResult = parseGalileoDisplay(rawText);
+  if (displayResult && displayResult.legs.length > 0) {
+    console.info(`[itineraryAI] Galileo display parser: ${displayResult.legs.length} segmen ditemukan`);
+    return { data: displayResult, usedAI: false };
+  }
+
+  // 3. Try AI (GPT-4o-mini)
   try {
     const data = await callOpenAIText(rawText);
     return { data, usedAI: true };
@@ -604,7 +789,7 @@ export async function extractItinerary(
     console.warn("[itineraryAI] OpenAI gagal, fallback ke regex:", err);
   }
 
-  // 3. Regex fallback
+  // 4. Regex fallback
   return { data: regexFallback(rawText), usedAI: false };
 }
 
