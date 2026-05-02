@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   TrendingUp, TrendingDown, Wallet, Receipt, ShieldCheck, Filter,
   Crown, ArrowDown, Users, Trophy, Handshake, Building2,
+  BarChart3, ArrowUpDown, ChevronUp, ChevronDown, Search,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, Legend,
@@ -255,6 +256,65 @@ export default function Reports() {
     .map((x) => ({ name: x.label, value: x.profit, type: x.type }));
 
   const top3 = byClient.slice(0, 3);
+
+  // ── Profit Breakdown per Paket ─────────────────────────────────────────────
+  type SortCol = "date" | "revenue" | "modal" | "opex" | "profit" | "margin";
+  type SortDir = "asc" | "desc";
+  const [sortCol, setSortCol] = useState<SortCol>("profit");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [pkgSearch, setPkgSearch] = useState("");
+
+  const byOrder = useMemo(() => {
+    return filtered.map((o) => {
+      const revenue = revenueIDR(o);
+      const cost = costIDR(o);
+      // Coba ambil opex dari metadata.internalProfit (order baru via "Jadikan Order")
+      const meta = o.metadata as Record<string, unknown> | null;
+      const ip = (meta?.internalProfit ?? null) as { opexIDR?: number } | null;
+      const opex = ip?.opexIDR ? Number(ip.opexIDR) : 0;
+      const modal = Math.max(0, cost - opex);
+      const profit = profitIDR(o);
+      const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+      return {
+        id: o.id,
+        title: o.title || "—",
+        date: o.createdAt,
+        type: o.type,
+        revenue,
+        modal,
+        opex,
+        profit,
+        margin,
+      };
+    });
+  }, [filtered]);
+
+  const byOrderFiltered = useMemo(() => {
+    const q = pkgSearch.trim().toLowerCase();
+    const rows = q ? byOrder.filter((r) => r.title.toLowerCase().includes(q)) : byOrder;
+    return [...rows].sort((a, b) => {
+      let diff = 0;
+      if (sortCol === "date") diff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      else if (sortCol === "revenue") diff = a.revenue - b.revenue;
+      else if (sortCol === "modal") diff = a.modal - b.modal;
+      else if (sortCol === "opex") diff = a.opex - b.opex;
+      else if (sortCol === "profit") diff = a.profit - b.profit;
+      else if (sortCol === "margin") diff = a.margin - b.margin;
+      return sortDir === "desc" ? -diff : diff;
+    });
+  }, [byOrder, pkgSearch, sortCol, sortDir]);
+
+  function toggleSort(col: SortCol) {
+    if (sortCol === col) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    else { setSortCol(col); setSortDir("desc"); }
+  }
+
+  function SortIcon({ col }: { col: SortCol }) {
+    if (sortCol !== col) return <ArrowUpDown className="h-3 w-3 opacity-40 ml-0.5 inline" />;
+    return sortDir === "desc"
+      ? <ChevronDown className="h-3 w-3 ml-0.5 inline text-blue-600" />
+      : <ChevronUp className="h-3 w-3 ml-0.5 inline text-blue-600" />;
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-5">
@@ -580,6 +640,169 @@ export default function Reports() {
           </div>
         </Card>
       )}
+
+      {/* ── Profit Breakdown per Paket ──────────────────────────────────────── */}
+      <Card className="p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-[13px] font-semibold flex items-center gap-1.5">
+              <BarChart3 className="h-3.5 w-3.5 text-blue-600" />
+              Breakdown Profit per Paket
+            </h2>
+            <p className="text-[10.5px] text-muted-foreground mt-0.5">
+              {byOrderFiltered.length} order · Klik header kolom untuk sort
+            </p>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={pkgSearch}
+              onChange={(e) => setPkgSearch(e.target.value)}
+              placeholder="Cari nama paket…"
+              className="pl-8 pr-3 h-8 w-[200px] rounded-lg border text-[12px] focus:outline-none focus:ring-2 focus:ring-blue-300"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto -mx-1">
+          <table className="w-full text-[12px] min-w-[680px]">
+            <thead>
+              <tr className="text-muted-foreground border-b">
+                <th className="text-left font-semibold py-2 px-2">#</th>
+                <th className="text-left font-semibold py-2 px-2">Paket / Order</th>
+                <th
+                  className="text-right font-semibold py-2 px-2 cursor-pointer select-none hover:text-foreground transition-colors"
+                  onClick={() => toggleSort("date")}
+                >
+                  Tanggal <SortIcon col="date" />
+                </th>
+                <th className="text-center font-semibold py-2 px-2">Tipe</th>
+                <th
+                  className="text-right font-semibold py-2 px-2 cursor-pointer select-none hover:text-foreground transition-colors"
+                  onClick={() => toggleSort("revenue")}
+                >
+                  Revenue <SortIcon col="revenue" />
+                </th>
+                <th
+                  className="text-right font-semibold py-2 px-2 cursor-pointer select-none hover:text-foreground transition-colors"
+                  onClick={() => toggleSort("modal")}
+                >
+                  Modal <SortIcon col="modal" />
+                </th>
+                <th
+                  className="text-right font-semibold py-2 px-2 cursor-pointer select-none hover:text-foreground transition-colors"
+                  onClick={() => toggleSort("opex")}
+                >
+                  Opex <SortIcon col="opex" />
+                </th>
+                <th
+                  className="text-right font-semibold py-2 px-2 cursor-pointer select-none hover:text-foreground transition-colors"
+                  onClick={() => toggleSort("profit")}
+                >
+                  Profit <SortIcon col="profit" />
+                </th>
+                <th
+                  className="text-right font-semibold py-2 px-2 cursor-pointer select-none hover:text-foreground transition-colors"
+                  onClick={() => toggleSort("margin")}
+                >
+                  Margin % <SortIcon col="margin" />
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {byOrderFiltered.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-8 text-center text-muted-foreground text-[11.5px]">
+                    {pkgSearch ? "Tidak ada paket yang cocok." : "Belum ada order di periode ini."}
+                  </td>
+                </tr>
+              ) : (
+                byOrderFiltered.map((row, i) => {
+                  const marginColor =
+                    row.margin >= 20 ? "text-emerald-700"
+                    : row.margin >= 10 ? "text-sky-700"
+                    : row.margin >= 0 ? "text-amber-700"
+                    : "text-red-600";
+                  const profitColor = row.profit >= 0 ? "text-emerald-700" : "text-red-600";
+                  return (
+                    <tr key={row.id} className="border-b last:border-b-0 hover:bg-blue-50/40 transition-colors">
+                      <td className="py-2 px-2 text-muted-foreground font-mono">{i + 1}</td>
+                      <td className="py-2 px-2 font-semibold max-w-[180px] truncate" title={row.title}>
+                        {row.title}
+                      </td>
+                      <td className="py-2 px-2 text-right text-muted-foreground whitespace-nowrap">
+                        {new Date(row.date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        <span
+                          className="inline-block px-1.5 py-0.5 rounded-md text-[10px] font-semibold"
+                          style={{
+                            background: `${TYPE_COLOR[row.type]}22`,
+                            color: TYPE_COLOR[row.type],
+                          }}
+                        >
+                          {ORDER_TYPE_EMOJI[row.type]} {ORDER_TYPE_LABEL[row.type]}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 text-right font-mono">{fmtIDR(row.revenue)}</td>
+                      <td className="py-2 px-2 text-right font-mono text-rose-700">{row.modal > 0 ? fmtIDR(row.modal) : <span className="text-muted-foreground">—</span>}</td>
+                      <td className="py-2 px-2 text-right font-mono text-amber-700">{row.opex > 0 ? fmtIDR(row.opex) : <span className="text-muted-foreground">—</span>}</td>
+                      <td className={`py-2 px-2 text-right font-mono font-bold ${profitColor}`}>
+                        {row.profit >= 0 ? "+" : ""}{fmtIDR(row.profit)}
+                      </td>
+                      <td className={`py-2 px-2 text-right font-bold ${marginColor}`}>
+                        {row.margin !== 0 ? (
+                          <span className="flex items-center justify-end gap-1">
+                            {row.margin.toFixed(1)}%
+                            <span
+                              className="inline-block h-1.5 rounded-full"
+                              style={{
+                                width: `${Math.min(Math.abs(row.margin), 50) * 1.2}px`,
+                                background: row.margin >= 0 ? "#10b981" : "#ef4444",
+                                opacity: 0.7,
+                              }}
+                            />
+                          </span>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+            {byOrderFiltered.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-blue-200 bg-blue-50/50 font-bold text-[12px]">
+                  <td colSpan={4} className="py-2.5 px-2 text-blue-800">Total ({byOrderFiltered.length} order)</td>
+                  <td className="py-2.5 px-2 text-right font-mono text-sky-700">
+                    {fmtIDR(byOrderFiltered.reduce((s, r) => s + r.revenue, 0))}
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-mono text-rose-700">
+                    {fmtIDR(byOrderFiltered.reduce((s, r) => s + r.modal, 0))}
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-mono text-amber-700">
+                    {fmtIDR(byOrderFiltered.reduce((s, r) => s + r.opex, 0))}
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-mono text-emerald-700">
+                    {(() => {
+                      const t = byOrderFiltered.reduce((s, r) => s + r.profit, 0);
+                      return `${t >= 0 ? "+" : ""}${fmtIDR(t)}`;
+                    })()}
+                  </td>
+                  <td className="py-2.5 px-2 text-right text-blue-700">
+                    {(() => {
+                      const rev = byOrderFiltered.reduce((s, r) => s + r.revenue, 0);
+                      const prof = byOrderFiltered.reduce((s, r) => s + r.profit, 0);
+                      return rev > 0 ? `${((prof / rev) * 100).toFixed(1)}%` : "—";
+                    })()}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </Card>
 
       {/* Footer note */}
       <div className="rounded-xl border bg-muted/30 p-3 text-[10.5px] text-muted-foreground leading-relaxed">

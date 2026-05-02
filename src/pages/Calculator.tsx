@@ -1132,6 +1132,12 @@ export default function Calculator() {
           discount: calc.discount,
           groupSettings: calc.groupSettings,
         },
+        // Internal Profit View snapshot — dipakai Laporan Keuangan buat breakdown
+        internalProfit: {
+          modalAmount: calc.internalModal,
+          modalCurrency: calc.internalModalCurrency,
+          opexIDR: Math.round(calc.internalOpex || 0),
+        },
       };
 
       // Hitung costPrice dari Internal Profit View untuk Laporan Keuangan.
