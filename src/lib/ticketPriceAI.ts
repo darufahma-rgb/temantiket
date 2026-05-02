@@ -1,6 +1,6 @@
 /**
  * ticketPriceAI — ekstrak daftar harga tiket dari screenshot menggunakan
- * OpenAI gpt-4o-mini Vision API.
+ * OpenAI gpt-4o-mini Vision API, atau dari text Galileo GDS tanpa AI.
  *
  * Fase 19.5: Global Universal Transit & Multi-Leg Recognition
  *   - Dynamic transit detection: arrival[n] == departure[n+1] → merge into single leg
@@ -8,7 +8,12 @@
  *   - Flexible route display: [Origin] ↔ [Final Destination] (via [Transit])
  *   - Single price point: markup applied once per booking regardless of transit count
  *   - Multi-leg support: N transits (CAI-BAH-MCT-CGK etc.)
+ *
+ * Fase 20: Galileo Text Parser (no AI needed)
+ *   - parseGalileoTextToTickets(text) — parses Galileo display or PNR text → ParsedTicketPrice[]
+ *   - Reuses parseGalileoDisplay + parseGalileoPNR from itineraryAI.ts
  */
+import { parseGalileoDisplay, parseGalileoPNR, type ItineraryData } from "@/lib/itineraryAI";
 
 export type TripType = "one_way" | "return" | "multi_city";
 
@@ -613,6 +618,82 @@ export async function scanTicketPriceScreenshot(imageSource: File | string): Pro
   } catch (err) {
     return { tickets: [], usedAI: false, grouped: 0, error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+// ── Fase 20: Galileo Text → ParsedTicketPrice (no AI needed) ─────────────────
+
+/**
+ * Convert each FlightLeg from ItineraryData into a raw one-way ParsedTicketPrice.
+ * All legs share the same totalPrice (single price point for the whole booking).
+ * groupRoundTrips() is then used to merge transit chains and detect round trips.
+ */
+function itineraryLegsToRawTickets(data: ItineraryData): ParsedTicketPrice[] {
+  return data.legs.map((leg) => {
+    // Extract 2-letter airline code from flightNumber prefix, e.g. "GF70" → "GF"
+    const airlineCode = leg.flightNumber?.match(/^([A-Z]{2})/)?.[1] ?? "??";
+    const airline = leg.airline ?? airlineCode;
+
+    const currency = (["IDR", "EGP", "USD", "SAR"].includes(String(data.priceCurrency ?? "")))
+      ? (data.priceCurrency as ParsedTicketPrice["currency"])
+      : "IDR";
+
+    return {
+      airline,
+      airlineCode,
+      fromCode:        leg.fromCode ?? "???",
+      fromCity:        leg.fromCity ?? "",
+      toCode:          leg.toCode ?? "???",
+      toCity:          leg.toCity ?? "",
+      departDate:      leg.departDate ?? null,
+      basePrice:       data.totalPrice ?? null,
+      currency,
+      tripType:        "one_way" as const,
+      flightNumber:    leg.flightNumber ?? null,
+      etd:             leg.departTime ?? null,
+      eta:             leg.arriveTime ?? null,
+      terminal:        null,
+      transitCode:     null,
+      transitCity:     null,
+      transitDuration: null,
+      returnFromCode:      null,
+      returnToCode:        null,
+      returnFromCity:      null,
+      returnToCity:        null,
+      returnDate:          null,
+      returnFlightNumber:  null,
+      returnEtd:           null,
+      returnEta:           null,
+      returnTransitCode:   null,
+      returnTransitCity:   null,
+      returnTransitDuration: null,
+    };
+  });
+}
+
+/**
+ * Parse pasted Galileo GDS text (display or PNR format) → ParsedTicketPrice[].
+ * Does NOT call OpenAI — pure regex, instant result.
+ *
+ * Supports:
+ *   • Galileo availability/pricing display:  1 GF 70 N 03JUN CAI BAH 1715 2015
+ *   • Galileo PNR/booking confirmation:      1 GF 70N 03JUN 3 CAIBAH HK1 1715 2015+1
+ */
+export function parseGalileoTextToTickets(text: string): ScanResult {
+  const data = parseGalileoDisplay(text) ?? parseGalileoPNR(text);
+
+  if (!data || data.legs.length === 0) {
+    return {
+      tickets: [],
+      usedAI: false,
+      grouped: 0,
+      error: "Format tidak dikenali. Pastikan text mengandung baris segmen Galileo (contoh: 1 GF 70 N 03JUN CAI BAH 1715 2015) atau format PNR (1 GF 70N 03JUN 3 CAIBAH HK1 1715 2015).",
+    };
+  }
+
+  const rawTickets = itineraryLegsToRawTickets(data);
+  const tickets    = groupRoundTrips(rawTickets);
+  const grouped    = tickets.filter((t) => t.tripType === "return" || !!t.multiLeg).length;
+  return { tickets, usedAI: false, grouped };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -25,7 +25,8 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 import { useRatesStore } from "@/store/ratesStore";
 import {
-  scanTicketPriceScreenshot, getAirlineLogoUrl, getAirlineGradient,
+  scanTicketPriceScreenshot, parseGalileoTextToTickets,
+  getAirlineLogoUrl, getAirlineGradient,
   encodeReturnLeg, decodeReturnLeg, isReturnTrip,
   encodeMultiLeg, decodeMultiLeg, isMultiLegNotes, buildRouteLabel,
   type ParsedTicketPrice, type ReturnLegData, type MultiLegData, type LegInfo,
@@ -59,12 +60,18 @@ function formFromParsed(p: ParsedTicketPrice): FormState {
   } else if (p.tripType === "return" || p.tripType === "multi_city") {
     notes = encodeReturnLeg(p);
   }
+  // Fase 20: populate validUntil from returnDate for round trips,
+  // or from multiLeg.returnDate for multi-leg round trips.
+  const validUntil =
+    p.returnDate ??
+    (p.multiLeg?.returnDate ?? null);
+
   return {
     airline: p.airline, airlineCode: p.airlineCode,
     fromCode: p.fromCode, fromCity: p.fromCity,
     toCode: p.toCode, toCity: p.toCity,
     departDate: p.departDate, basePrice: p.basePrice ?? 0,
-    currency: p.currency, validUntil: null, notes, isPublished: true,
+    currency: p.currency, validUntil, notes, isPublished: true,
     flightNumber: p.flightNumber ?? null,
     etd: p.etd ?? null, eta: p.eta ?? null,
     terminal: p.terminal ?? null,
@@ -933,6 +940,9 @@ export default function TicketPrices() {
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Galileo text paste state (Fase 20)
+  const [pasteText, setPasteText] = useState("");
+
   // Edit dialog
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<FormState>(EMPTY_FORM);
@@ -1011,6 +1021,37 @@ export default function TicketPrices() {
       {
         description: rtCount > 0
           ? `${rtCount} paket pulang-pergi otomatis digabung ✈️↩️ Markup diterapkan sekali per paket.`
+          : "Periksa detail sebelum menyimpan.",
+      }
+    );
+  }
+
+  // ── Galileo text paste (Fase 20) ─────────────────────────────────────────
+  function handleParseText() {
+    if (!pasteText.trim()) {
+      toast.error("Tempel dulu text Galileo di textarea");
+      return;
+    }
+    setScanError(null);
+    setParsedTickets([]);
+    setPendingForms([]);
+
+    const result = parseGalileoTextToTickets(pasteText);
+
+    if (result.error || result.tickets.length === 0) {
+      setScanError(result.error ?? "Tidak ada segmen penerbangan yang ditemukan di text ini.");
+      return;
+    }
+
+    setParsedTickets(result.tickets);
+    setPendingForms(result.tickets.map(formFromParsed));
+    setPasteText("");
+    const rtCount = result.grouped ?? 0;
+    toast.success(
+      `Parser menemukan ${result.tickets.length} entri tiket (tanpa AI)!`,
+      {
+        description: rtCount > 0
+          ? `${rtCount} paket pulang-pergi otomatis digabung. Markup diterapkan sekali per paket.`
           : "Periksa detail sebelum menyimpan.",
       }
     );
@@ -1250,6 +1291,33 @@ export default function TicketPrices() {
               }}
             />
 
+            {/* ── Fase 20: Galileo text paste ── */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
+                  Atau paste text Galileo langsung (tanpa AI, instan):
+                </span>
+              </div>
+              <Textarea
+                placeholder={
+                  "Contoh format display:\n  1 GF  70  N  03JUN  CAI  BAH  1715  2015   WE\n  2 GF 284  N  03JUN  BAH  GOI  2115  0340#  WE\n  TOTAL AMOUNT 29283.80 EGP\n\nAtau format PNR:\n  1 GF  70N 03JUN 3 CAIBAH HK1  1715 2015\n  2 GF 284N 03JUN 3 BAHGOI HK1  2115 0340+1"
+                }
+                className="font-mono text-[11px] min-h-[90px] resize-y bg-slate-50 border-slate-200 text-slate-700 placeholder:text-slate-300"
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full border-slate-300 text-slate-700 hover:bg-slate-100 text-[12px]"
+                disabled={!pasteText.trim()}
+                onClick={handleParseText}
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1.5 text-sky-500" />
+                Parse Text Galileo (Instan, Tanpa AI)
+              </Button>
+            </div>
+
             {scanError && (
               <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200">
                 <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
@@ -1396,6 +1464,11 @@ export default function TicketPrices() {
                           <Label className="text-[10px] text-slate-500">ETA</Label>
                           <Input className="h-7 text-xs font-mono" placeholder="05:30" value={form.eta ?? ""}
                             onChange={(e) => updatePending(idx, { eta: e.target.value || null })} />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-slate-500">Tgl Berangkat</Label>
+                          <Input className="h-7 text-xs" type="date" value={form.departDate ?? ""}
+                            onChange={(e) => updatePending(idx, { departDate: e.target.value || null })} />
                         </div>
                         <div className="space-y-0.5">
                           <Label className="text-[10px] text-slate-500">Harga Modal</Label>
