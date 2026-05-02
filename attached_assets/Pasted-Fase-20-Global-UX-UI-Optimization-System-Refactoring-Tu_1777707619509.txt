@@ -1,0 +1,37 @@
+Fase 20: Global UX/UI Optimization & System Refactoring"
+
+Tugas lo adalah merapikan seluruh layout dan performa sistem Temantiket agar menjadi platform yang profesional, ringan, dan fungsional. Ikuti panduan berikut:
+
+1. Unified Design Language & Branding:
+
+Gunakan logo Temantiket versi kecil di sidebar dan samakan semua elemen biru (buttons, icons, indicators) dengan kode warna primer yang sudah kita tentukan.
+
+Terapkan Global CSS Variables untuk warna, border-radius (buat agar clean dan modern), dan font-size agar konsisten di seluruh halaman.
+
+2. Sidebar & Navigation Architecture:
+
+Rapikan Sidebar menjadi kategori yang logis: Dashboard, Order Hub (Klien, Order, Tiket), Mitra Portal (Misi, Leaderboard), Admin Tools (Keuangan, Kontrol Agen, Template), dan AI Tools (Itinerary, Smart Importer).
+
+Pastikan sidebar mobile-friendly dan menggunakan lazy loading agar tidak berat saat berpindah halaman.
+
+3. Dashboard Component Cleanup:
+
+Gunakan sistem Widget-Based Dashboard. Admin melihat 'CEO Daily Quest' dan 'Profit Snapshot', sementara Agen melihat 'Daily Mission' dan 'Point Progress'.
+
+Pastikan kurs USD, SAR, dan EGP di header tetap terlihat (sticky) namun tidak mengganggu navigasi.
+
+4. Performance & Utility Optimization:
+
+Image Optimization: Pastikan Member Card dan Itinerary yang di-generate AI tidak membebani server; gunakan kompresi otomatis sebelum di-download.
+
+Form Efficiency: Rapikan semua form (terutama Order Baru dan Kalkulator) agar menggunakan logika auto-fill dan minim ketik manual.
+
+Responsive Grid: Gunakan layout grid/flexbox yang adaptif sehingga admin bisa bekerja dengan nyaman baik di laptop maupun HP saat di lapangan.
+
+5. Clean Code & Speed:
+
+Hapus kode CSS/JS yang tidak terpakai (unused code) dan pastikan transisi antar fitur terasa snappy (cepat).
+
+Implementasikan Skeleton Screens saat data sedang ditarik dari AI atau database agar user tidak merasa aplikasi 'hang'.
+
+Tujuannya: Gue mau website ini terasa seperti aplikasi 'Tier S'—keren secara visual sebagai Designer, canggih secara AI sebagai Founder AIGYPT, dan menguntungkan secara sistem sebagai CEO Temantiket.
