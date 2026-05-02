@@ -1647,14 +1647,19 @@ button, [role="button"], a, input, select, textarea {
   .compact-page .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.85rem; }
 }
 
-/* ── Temantiket icon: brand blue (#1a44d4) di light mode, putih di dark mode ── */
+/* ── Temantiket icon: brand blue di light mode, putih di dark mode ── */
+/* Icon aslinya putih-di-hitam, jadi pakai mix-blend-mode biar hitam transparan */
 .icon-adaptive {
-  filter: brightness(0) saturate(100%) invert(26%) sepia(91%) saturate(1500%) hue-rotate(210deg) brightness(99%);
+  /* Light: invert → hitam-di-putih, sepia+saturate+hue-rotate → biru brand, multiply → putih bg hilang */
+  filter: invert(1) sepia(1) saturate(4) hue-rotate(195deg) brightness(0.85);
+  mix-blend-mode: multiply;
   transition: filter 0.2s ease;
 }
 .dark .icon-adaptive,
 [data-theme="dark"] .icon-adaptive {
+  /* Dark: screen blend → hitam bg transparan, putih icon kelihatan */
   filter: none;
+  mix-blend-mode: screen;
 }
 
 /* ── Micro-animation utilities ──────────────────────────────────────────────── */
