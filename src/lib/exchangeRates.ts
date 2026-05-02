@@ -1,4 +1,4 @@
-export type Currency = "USD" | "SAR" | "IDR";
+export type Currency = "USD" | "SAR" | "IDR" | "EGP";
 export type Rates = Record<Currency, number>;
 
 const CACHE_KEY = "igh.rates.cache.v1";
@@ -35,6 +35,18 @@ async function fetchWithTimeout(url: string, ms = 6000): Promise<Response> {
   }
 }
 
+// Helper: read cached EGP rate from CurrencyConverterTab's dedicated cache
+function getCachedEgpRate(): number {
+  try {
+    const raw = localStorage.getItem("igh.egp.rate.v1");
+    if (!raw) return 515;
+    const { rate } = JSON.parse(raw) as { rate?: number };
+    return Number(rate) > 0 ? Number(rate) : 515;
+  } catch {
+    return 515;
+  }
+}
+
 // Primary: fawazahmed0 currency-api — free, no key, multi-source aggregator
 // (mid-market rates very close to XE / Wise). Two CDN endpoints for redundancy.
 async function fetchFromCurrencyApi(): Promise<Rates> {
@@ -51,11 +63,14 @@ async function fetchFromCurrencyApi(): Promise<Rates> {
       const idrTable = data?.idr ?? {};
       const usdPerIdr = Number(idrTable.usd);
       const sarPerIdr = Number(idrTable.sar);
+      const egpPerIdr = Number(idrTable.egp);
       if (!usdPerIdr || !sarPerIdr) throw new Error("Invalid rate data");
+      const egpRate = egpPerIdr > 0 ? Math.round((1 / egpPerIdr) * 100) / 100 : getCachedEgpRate();
       return {
         IDR: 1,
         USD: Math.round(1 / usdPerIdr),
         SAR: Math.round(1 / sarPerIdr),
+        EGP: Math.round(egpRate),
       };
     } catch (err) {
       lastErr = err;
@@ -64,7 +79,7 @@ async function fetchFromCurrencyApi(): Promise<Rates> {
   throw lastErr ?? new Error("currency-api unreachable");
 }
 
-// Fallback: Frankfurter (ECB rates, weekday-only)
+// Fallback: Frankfurter (ECB rates, weekday-only) — EGP not in ECB, use cached value
 async function fetchFromFrankfurter(): Promise<Rates> {
   const isDev = typeof window !== "undefined" &&
     (window.location.hostname === "localhost" || window.location.port !== "");
@@ -82,10 +97,11 @@ async function fetchFromFrankfurter(): Promise<Rates> {
     IDR: 1,
     USD: Math.round(1 / usdPerIdr),
     SAR: Math.round(1 / sarPerIdr),
+    EGP: getCachedEgpRate(),
   };
 }
 
-const FALLBACK_RATES: Rates = { USD: 16000, SAR: 4250, IDR: 1 };
+const FALLBACK_RATES: Rates = { USD: 16000, SAR: 4250, IDR: 1, EGP: 515 };
 
 export async function getExchangeRates(): Promise<Rates> {
   const cached = loadCache();
@@ -121,5 +137,6 @@ export function applyMarkup(rates: Rates, markupPct: number): Rates {
     IDR: 1,
     USD: Math.round(rates.USD * factor),
     SAR: Math.round(rates.SAR * factor),
+    EGP: Math.round((rates.EGP ?? 515) * factor),
   };
 }

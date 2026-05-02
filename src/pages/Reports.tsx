@@ -20,8 +20,9 @@ import {
   ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI, type Order, type OrderType,
 } from "@/features/orders/ordersRepo";
 import {
-  profitIDR, revenueIDR, costIDR, fmtIDR, EGP_TO_IDR,
+  profitIDR, revenueIDR, costIDR, fmtIDR,
 } from "@/lib/profit";
+import { useRatesStore } from "@/store/ratesStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
 
 type RangeKey = "this_month" | "last_month" | "this_year" | "all";
@@ -64,6 +65,7 @@ export default function Reports() {
   const listMembers = useAuthStore((s) => s.listMembers);
   const { orders, fetchOrders } = useOrdersStore();
   const { clients, fetchClients } = useClientsStore();
+  const egpRate = useRatesStore((s) => s.rates.EGP);
 
   const [range, setRange] = useState<RangeKey>("this_month");
   const [agentFilter, setAgentFilter] = useState<AgentFilter>("all");
@@ -120,12 +122,12 @@ export default function Reports() {
     let cost = 0;
     let profit = 0;
     for (const o of filtered) {
-      revenue += revenueIDR(o);
-      cost += costIDR(o);
-      profit += profitIDR(o);
+      revenue += revenueIDR(o, egpRate);
+      cost += costIDR(o, egpRate);
+      profit += profitIDR(o, egpRate);
     }
     return { revenue, cost, profit, count: filtered.length };
-  }, [filtered]);
+  }, [filtered, egpRate]);
 
   // Direct vs Agent split (always computed from filtered set,
   // even when agentFilter aktif — supaya angka konsisten dgn yg dilihat).
@@ -139,8 +141,8 @@ export default function Reports() {
     let totalCommission = 0; // total komisi yg dikeluarin agency
 
     for (const o of filtered) {
-      const p = profitIDR(o);
-      const r = revenueIDR(o);
+      const p = profitIDR(o, egpRate);
+      const r = revenueIDR(o, egpRate);
       if (o.createdByAgent) {
         agentProfit += p;
         agentRevenue += r;
@@ -164,15 +166,15 @@ export default function Reports() {
       agentProfit, agentRevenue, agentCount,
       totalCommission, agentNetForAgency, netAgencyProfit,
     };
-  }, [filtered, memberById]);
+  }, [filtered, memberById, egpRate]);
 
   // Profit per type (utk pie chart).
   const byType = useMemo(() => {
     const m = new Map<OrderType, { profit: number; revenue: number; count: number }>();
     for (const o of filtered) {
       const cur = m.get(o.type) ?? { profit: 0, revenue: 0, count: 0 };
-      cur.profit += profitIDR(o);
-      cur.revenue += revenueIDR(o);
+      cur.profit += profitIDR(o, egpRate);
+      cur.revenue += revenueIDR(o, egpRate);
       cur.count += 1;
       m.set(o.type, cur);
     }
@@ -182,7 +184,7 @@ export default function Reports() {
       emoji: ORDER_TYPE_EMOJI[type],
       ...v,
     }));
-  }, [filtered]);
+  }, [filtered, egpRate]);
 
   // Profit per client.
   const clientNameById = useMemo(() => {
@@ -196,8 +198,8 @@ export default function Reports() {
     for (const o of filtered) {
       const key = o.clientId ?? "__none";
       const cur = m.get(key) ?? { profit: 0, revenue: 0, count: 0, orders: [] };
-      cur.profit += profitIDR(o);
-      cur.revenue += revenueIDR(o);
+      cur.profit += profitIDR(o, egpRate);
+      cur.revenue += revenueIDR(o, egpRate);
       cur.count += 1;
       cur.orders.push(o);
       m.set(key, cur);
@@ -209,7 +211,7 @@ export default function Reports() {
         ...v,
       }))
       .sort((a, b) => b.profit - a.profit);
-  }, [filtered, clientNameById]);
+  }, [filtered, clientNameById, egpRate]);
 
   // ── Agent Leaderboard ──
   // Built from `filtered` (so date-range applies). Ranked by total profit
@@ -221,8 +223,8 @@ export default function Reports() {
     for (const o of filtered) {
       if (!o.createdByAgent) continue;
       const cur = m.get(o.createdByAgent) ?? { profit: 0, orders: 0, revenue: 0 };
-      cur.profit += profitIDR(o);
-      cur.revenue += revenueIDR(o);
+      cur.profit += profitIDR(o, egpRate);
+      cur.revenue += revenueIDR(o, egpRate);
       cur.orders += 1;
       m.set(o.createdByAgent, cur);
     }
@@ -249,7 +251,7 @@ export default function Reports() {
       if (b.profit !== a.profit) return b.profit - a.profit;
       return b.lifetimePoints - a.lifetimePoints;
     });
-  }, [filtered, agentMembers, memberById, points]);
+  }, [filtered, agentMembers, memberById, points, egpRate]);
 
   const pieData = byType
     .filter((x) => x.profit > 0)
@@ -266,14 +268,14 @@ export default function Reports() {
 
   const byOrder = useMemo(() => {
     return filtered.map((o) => {
-      const revenue = revenueIDR(o);
-      const cost = costIDR(o);
+      const revenue = revenueIDR(o, egpRate);
+      const cost = costIDR(o, egpRate);
       // Coba ambil opex dari metadata.internalProfit (order baru via "Jadikan Order")
       const meta = o.metadata as Record<string, unknown> | null;
       const ip = (meta?.internalProfit ?? null) as { opexIDR?: number } | null;
       const opex = ip?.opexIDR ? Number(ip.opexIDR) : 0;
       const modal = Math.max(0, cost - opex);
-      const profit = profitIDR(o);
+      const profit = profitIDR(o, egpRate);
       const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
       return {
         id: o.id,
@@ -287,7 +289,7 @@ export default function Reports() {
         margin,
       };
     });
-  }, [filtered]);
+  }, [filtered, egpRate]);
 
   const byOrderFiltered = useMemo(() => {
     const q = pkgSearch.trim().toLowerCase();
@@ -807,7 +809,7 @@ export default function Reports() {
       {/* Footer note */}
       <div className="rounded-xl border bg-muted/30 p-3 text-[10.5px] text-muted-foreground leading-relaxed">
         <strong className="text-foreground">Catatan:</strong> Profit = Harga Jual − Harga Modal.
-        Order EGP (visa Mesir) di-konversi ke IDR pakai kurs <span className="font-mono">1 EGP ≈ Rp {EGP_TO_IDR}</span>.
+        Order EGP (visa Mesir) di-konversi ke IDR pakai kurs <span className="font-mono">1 EGP ≈ Rp {egpRate}</span>.
         Komisi mitra dihitung dari <em>profit</em> (bukan revenue), hanya kalau profit positif.
         Atur komisi per-mitra di <strong>Pengaturan → Tim</strong>. Poin di-award otomatis 10 poin
         per order yg statusnya berubah ke <strong>Completed</strong>.

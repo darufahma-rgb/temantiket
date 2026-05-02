@@ -8,7 +8,7 @@
 
 import { type Rates } from "@/lib/exchangeRates";
 
-export type CalcCurrency = "IDR" | "SAR" | "USD";
+export type CalcCurrency = "IDR" | "SAR" | "USD" | "EGP";
 export type CalcMode = "umroh_private" | "umroh_group" | "umum";
 
 // ── Umroh Mode Input Structures ───────────────────────────────────────────────
@@ -21,7 +21,7 @@ export interface HotelRow {
   pricePerNight: number;
   rooms: number;         // number of rooms
   roomType?: "Quad" | "Triple" | "Double"; // sharing type — Quad=4, Triple=3, Double=2
-  currency?: "IDR" | "SAR" | "USD"; // default SAR
+  currency?: "IDR" | "SAR" | "USD" | "EGP"; // default SAR
   // ── Granular per-room-type rates (per room per night, in `currency`) ──
   /** Triple-room nightly rate. If unset, falls back per `useSupplement`. */
   pricePerNightTriple?: number;
@@ -61,7 +61,7 @@ export interface TransportRow {
   route?: string;         // Rute (e.g. "JED-MED")
   fleet: number;          // Jumlah
   pricePerFleet: number;  // Harga per unit (in selected currency)
-  currency?: "IDR" | "SAR" | "USD"; // default SAR
+  currency?: "IDR" | "SAR" | "USD" | "EGP"; // default SAR
 }
 
 export interface TicketRow {
@@ -70,28 +70,28 @@ export interface TicketRow {
   flightType: string;  // e.g. "Return" / "One Way"
   airline?: string;    // e.g. "Saudia Airlines"
   pricePerPax: number; // price per person
-  currency: "IDR" | "SAR" | "USD";
+  currency: "IDR" | "SAR" | "USD" | "EGP";
 }
 
 export interface VisaRow {
   id: string;
   label: string;
   pricePerPax: number; // currency per pax
-  currency?: "IDR" | "SAR" | "USD"; // default USD
+  currency?: "IDR" | "SAR" | "USD" | "EGP"; // default USD
 }
 
 export interface DestinationRow {
   id: string;
   label: string;
   pricePerPax: number; // currency per pax
-  currency?: "IDR" | "SAR" | "USD"; // default SAR
+  currency?: "IDR" | "SAR" | "USD" | "EGP"; // default SAR
 }
 
 export interface FnBRow {
   id: string;
   label: string;
   pricePerPax: number; // currency per pax
-  currency?: "IDR" | "SAR" | "USD"; // default SAR
+  currency?: "IDR" | "SAR" | "USD" | "EGP"; // default SAR
 }
 
 export interface StaffRow {
@@ -99,7 +99,7 @@ export interface StaffRow {
   label: string;
   numStaff?: number; // number of staff (optional, for display only)
   totalCost: number; // currency total for whole group
-  currency?: "IDR" | "SAR" | "USD"; // default SAR
+  currency?: "IDR" | "SAR" | "USD" | "EGP"; // default SAR
 }
 
 // ── Umum Mode Input Structure ─────────────────────────────────────────────────
@@ -147,6 +147,7 @@ export interface ProfessionalQuote {
   netProfit: number;
   totalSAR: number;
   totalUSD: number;
+  totalEGP: number;
 }
 
 // ── Shared Financial Rollup ───────────────────────────────────────────────────
@@ -190,20 +191,24 @@ export function computeProfessionalQuote(input: ProfessionalCalcInput): Professi
   const safePax = Math.max(1, pax);
   const sarRate = rates.SAR ?? 1;
   const usdRate = rates.USD ?? 1;
+  const egpRate = rates.EGP ?? 515;
 
   const breakdown: BreakdownRow[] = [];
   let totalSAR = 0;
   let totalUSD = 0;
+  let totalEGP = 0;
 
   // helper: resolve amount → IDR and track foreign totals
-  function toIDR(amount: number, cur: "IDR" | "SAR" | "USD"): number {
+  function toIDR(amount: number, cur: "IDR" | "SAR" | "USD" | "EGP"): number {
     if (cur === "SAR") return amount * sarRate;
     if (cur === "USD") return amount * usdRate;
+    if (cur === "EGP") return amount * egpRate;
     return amount;
   }
-  function trackForeign(amount: number, cur: "IDR" | "SAR" | "USD") {
+  function trackForeign(amount: number, cur: "IDR" | "SAR" | "USD" | "EGP") {
     if (cur === "SAR") totalSAR += amount;
     else if (cur === "USD") totalUSD += amount;
+    else if (cur === "EGP") totalEGP += amount;
   }
 
   // ── 1. Hotel (currency per room per night × rooms × days) ─────────────────
@@ -302,7 +307,7 @@ export function computeProfessionalQuote(input: ProfessionalCalcInput): Professi
   return {
     breakdown,
     hotelIDR, transportIDR, ticketIDR, visaIDR, destinationIDR, fnbIDR, staffIDR,
-    totalSAR, totalUSD,
+    totalSAR, totalUSD, totalEGP,
     ...rollup(hpp, commissionFee, marginPercent, discount, safePax),
   };
 }
@@ -323,16 +328,19 @@ export function computeGeneralQuote(input: GeneralCalcInput): ProfessionalQuote 
   const safePax = Math.max(1, pax);
   const sarRate = rates.SAR ?? 1;
   const usdRate = rates.USD ?? 1;
+  const egpRate = rates.EGP ?? 515;
 
   const breakdown: BreakdownRow[] = [];
   let totalSAR = 0;
   let totalUSD = 0;
+  let totalEGP = 0;
   let totalIDR = 0;
 
   for (const c of costs) {
     const multiplier = (c.unit === "pax" ? safePax : 1) * (c.qty ?? 1);
     let sarRef = 0;
     let usdRef = 0;
+    let egpRef = 0;
     let groupIDR = 0;
 
     if (c.currency === "IDR") {
@@ -341,6 +349,10 @@ export function computeGeneralQuote(input: GeneralCalcInput): ProfessionalQuote 
       sarRef = c.amount * multiplier;
       groupIDR = sarRef * sarRate;
       totalSAR += sarRef;
+    } else if (c.currency === "EGP") {
+      egpRef = c.amount * multiplier;
+      groupIDR = egpRef * egpRate;
+      totalEGP += egpRef;
     } else {
       usdRef = c.amount * multiplier;
       groupIDR = usdRef * usdRate;
@@ -362,7 +374,7 @@ export function computeGeneralQuote(input: GeneralCalcInput): ProfessionalQuote 
   return {
     breakdown,
     hotelIDR: 0, transportIDR: 0, ticketIDR: 0, visaIDR: 0, destinationIDR: 0, fnbIDR: 0, staffIDR: 0,
-    totalSAR, totalUSD,
+    totalSAR, totalUSD, totalEGP,
     ...rollup(totalIDR, commissionFee, marginPercent, discount, safePax),
   };
 }
@@ -444,13 +456,16 @@ export interface GroupMatrixQuote {
   displayCurrency: CalcCurrency;
   totalSAR: number;
   totalUSD: number;
+  totalEGP: number;
 }
 
-function toIDRWith(amount: number, cur: "IDR" | "SAR" | "USD", rates: Rates): number {
+function toIDRWith(amount: number, cur: "IDR" | "SAR" | "USD" | "EGP", rates: Rates): number {
   const sarRate = rates.SAR ?? 1;
   const usdRate = rates.USD ?? 1;
+  const egpRate = rates.EGP ?? 515;
   if (cur === "SAR") return amount * sarRate;
   if (cur === "USD") return amount * usdRate;
+  if (cur === "EGP") return amount * egpRate;
   return amount;
 }
 
@@ -468,9 +483,11 @@ export function computeGroupMatrix(input: GroupMatrixInput): GroupMatrixQuote {
 
   let totalSAR = 0;
   let totalUSD = 0;
-  const trackForeign = (amt: number, cur: "IDR" | "SAR" | "USD") => {
+  let totalEGP = 0;
+  const trackForeign = (amt: number, cur: "IDR" | "SAR" | "USD" | "EGP") => {
     if (cur === "SAR") totalSAR += amt;
     else if (cur === "USD") totalUSD += amt;
+    else if (cur === "EGP") totalEGP += amt;
   };
 
   // ── Per-pax flat (tiket + visa + dest + fnb), dalam IDR per orang
@@ -586,6 +603,7 @@ export function computeGroupMatrix(input: GroupMatrixInput): GroupMatrixQuote {
     displayCurrency,
     totalSAR,
     totalUSD,
+    totalEGP,
   };
 }
 

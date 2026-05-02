@@ -421,22 +421,29 @@ function DeleteBtn({ onClick }: { onClick: () => void }) {
   );
 }
 
-const CUR_STYLE: Record<"IDR" | "SAR" | "USD", string> = {
+const CUR_STYLE: Record<"IDR" | "SAR" | "USD" | "EGP", string> = {
   IDR: "bg-emerald-500 text-white",
   SAR: "bg-blue-500 text-white",
   USD: "bg-violet-500 text-white",
+  EGP: "bg-amber-500 text-white",
 };
-function RowCurrencyToggle({ value, onChange }: { value: "IDR" | "SAR" | "USD"; onChange: (v: "IDR" | "SAR" | "USD") => void }) {
+const CUR_FLAG: Record<"IDR" | "SAR" | "USD" | "EGP", string> = {
+  IDR: "",
+  SAR: "",
+  USD: "",
+  EGP: "🇪🇬",
+};
+function RowCurrencyToggle({ value, onChange }: { value: "IDR" | "SAR" | "USD" | "EGP"; onChange: (v: "IDR" | "SAR" | "USD" | "EGP") => void }) {
   return (
     <div className="flex rounded-md border border-sky-200 overflow-hidden shrink-0">
-      {(["IDR", "SAR", "USD"] as const).map((cur, i) => (
+      {(["IDR", "SAR", "USD", "EGP"] as const).map((cur, i) => (
         <button
           key={cur}
           type="button"
           onClick={() => onChange(cur)}
           style={M}
           className={`h-7 px-1.5 text-[9px] font-bold transition-colors ${value === cur ? CUR_STYLE[cur] : "bg-white text-slate-400 hover:bg-slate-50"} ${i > 0 ? "border-l border-sky-200" : ""}`}
-        >{cur}</button>
+        >{CUR_FLAG[cur]}{cur}</button>
       ))}
     </div>
   );
@@ -608,12 +615,14 @@ export default function Calculator() {
 
   const sarRate = calc.localRateSAR > 0 ? calc.localRateSAR : (rates.SAR ?? 1);
   const usdRate = calc.localRateUSD > 0 ? calc.localRateUSD : (rates.USD ?? 1);
+  const egpRate = rates.EGP ?? 515;
   const safePax = Math.max(1, calc.pax);
 
   const effectiveRates = useMemo(() => ({
     ...rates,
     SAR: calc.localRateSAR > 0 ? calc.localRateSAR : (rates.SAR ?? 1),
     USD: calc.localRateUSD > 0 ? calc.localRateUSD : (rates.USD ?? 1),
+    EGP: rates.EGP ?? 515,
   }), [calc.localRateSAR, calc.localRateUSD, rates]);
 
   const quote = useMemo(() => {
@@ -1141,12 +1150,11 @@ export default function Calculator() {
       };
 
       // Hitung costPrice dari Internal Profit View untuk Laporan Keuangan.
-      const egpRateSnap = getEgpRate();
       const rateMapSnap: Record<string, number> = {
         IDR: 1,
-        USD: rates.USD ?? 16000,
-        SAR: rates.SAR ?? 4250,
-        EGP: egpRateSnap,
+        USD: effectiveRates.USD ?? 16000,
+        SAR: effectiveRates.SAR ?? 4250,
+        EGP: effectiveRates.EGP ?? 515,
       };
       const modalIDRSnap = Math.round(
         (calc.internalModal || 0) * (rateMapSnap[calc.internalModalCurrency] || 1)
@@ -1847,7 +1855,7 @@ export default function Calculator() {
                 {calc.generalCosts.map((c) => {
                   const rowQty = c.qty ?? 1;
                   const multiplier = (c.unit === "pax" ? safePax : 1) * rowQty;
-                  const groupIDR = c.currency === "IDR" ? c.amount * multiplier : c.currency === "SAR" ? c.amount * multiplier * sarRate : c.amount * multiplier * usdRate;
+                  const groupIDR = c.currency === "IDR" ? c.amount * multiplier : c.currency === "SAR" ? c.amount * multiplier * sarRate : c.currency === "EGP" ? c.amount * multiplier * egpRate : c.amount * multiplier * usdRate;
                   return (
                     <tr key={c.id} className="hover:bg-sky-50/30 transition-colors">
                       <Td>
@@ -2266,12 +2274,11 @@ export default function Calculator() {
 
                   {/* ── Internal Profit View (Owner only) ───────────────── */}
                   {isOwner && (() => {
-                    const egpRate = getEgpRate();
                     const rateMap: Record<string, number> = {
                       IDR: 1,
-                      USD: rates.USD ?? 16000,
-                      SAR: rates.SAR ?? 4250,
-                      EGP: egpRate,
+                      USD: effectiveRates.USD ?? 16000,
+                      SAR: effectiveRates.SAR ?? 4250,
+                      EGP: effectiveRates.EGP ?? 515,
                     };
                     const modalIDR = Math.round((calc.internalModal || 0) * (rateMap[calc.internalModalCurrency] || 1));
                     const opexIDR = Math.round(calc.internalOpex || 0);

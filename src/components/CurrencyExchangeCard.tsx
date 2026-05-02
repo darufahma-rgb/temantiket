@@ -6,17 +6,19 @@ import { useRatesStore } from "@/store/ratesStore";
 import type { Rates } from "@/lib/exchangeRates";
 
 interface DisplayRate {
-  from: "USD" | "SAR";
+  from: "USD" | "SAR" | "EGP";
   to: "IDR";
   rate: number;
   change: number;
   up: boolean;
+  flag: string;
 }
 
 function buildDisplayRates(rates: Rates): DisplayRate[] {
   return [
-    { from: "USD", to: "IDR", rate: rates.USD, change: 0.42, up: true },
-    { from: "SAR", to: "IDR", rate: rates.SAR, change: -0.18, up: false },
+    { from: "USD", to: "IDR", rate: rates.USD, change: 0.42, up: true,  flag: "🇺🇸" },
+    { from: "SAR", to: "IDR", rate: rates.SAR, change: -0.18, up: false, flag: "🇸🇦" },
+    { from: "EGP", to: "IDR", rate: rates.EGP ?? 515, change: 0.21, up: true, flag: "🇪🇬" },
   ];
 }
 
@@ -28,7 +30,6 @@ export function CurrencyExchangeCard() {
 
   useEffect(() => {
     if (!lastUpdated) refresh();
-    // Cache TTL di lib = 5 menit, jadi polling lebih sering cuma buang resource.
     const interval = setInterval(refresh, 5 * 60 * 1000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -45,7 +46,7 @@ export function CurrencyExchangeCard() {
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <div>
           <CardTitle className="text-base">Live Exchange Rates</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">Mock data · display only</p>
+          <p className="text-xs text-muted-foreground mt-1">USD · SAR · EGP → IDR</p>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin text-primary" : ""}`} />
@@ -57,6 +58,7 @@ export function CurrencyExchangeCard() {
           <>
             <RateRowSkeleton />
             <RateRowSkeleton />
+            <RateRowSkeleton />
           </>
         ) : (
           display.map((r) => (
@@ -65,6 +67,7 @@ export function CurrencyExchangeCard() {
               className="flex items-center justify-between rounded-lg border bg-card p-3 hover:bg-accent/40 transition-smooth"
             >
               <div className="flex items-center gap-1.5 text-sm font-semibold">
+                <span>{r.flag}</span>
                 <span>{r.from}</span>
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>{r.to}</span>

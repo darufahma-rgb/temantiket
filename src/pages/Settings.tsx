@@ -989,16 +989,18 @@ export default function Settings() {
                   </Button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 divide-x divide-[hsl(var(--border))]">
-                {(["USD", "SAR"] as const).map((cur) => (
-                  <div key={cur} className="px-5 py-4">
-                    <p className="text-xs text-[hsl(var(--muted-foreground))] font-medium">1 {cur} =</p>
+              <div className="grid grid-cols-3 divide-x divide-[hsl(var(--border))]">
+                {(["USD", "SAR", "EGP"] as const).map((cur) => (
+                  <div key={cur} className="px-4 py-4">
+                    <p className="text-xs text-[hsl(var(--muted-foreground))] font-medium">
+                      {cur === "USD" ? "🇺🇸" : cur === "SAR" ? "🇸🇦" : "🇪🇬"} 1 {cur} =
+                    </p>
                     <p className="text-xl font-bold text-[hsl(var(--foreground))] mt-1">
                       Rp {rates[cur].toLocaleString("id-ID")}
                     </p>
                     {markupPct > 0 && (
                       <p className="text-[10px] text-sky-500 mt-0.5">
-                        Dasar: Rp {rawRates[cur].toLocaleString("id-ID")} + {markupPct}% markup
+                        Dasar: Rp {rawRates[cur].toLocaleString("id-ID")} + {markupPct}%
                       </p>
                     )}
                   </div>
@@ -1013,10 +1015,12 @@ export default function Settings() {
                   Nilai ini dipakai saat mode Manual Lapangan aktif.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {(["USD", "SAR"] as const).map((cur) => (
+              <div className="grid grid-cols-3 gap-3">
+                {(["USD", "SAR", "EGP"] as const).map((cur) => (
                   <div key={cur} className="space-y-1">
-                    <Label className="text-[10px] md:text-[11px] text-[hsl(var(--muted-foreground))]">1 {cur} = Rp</Label>
+                    <Label className="text-[10px] md:text-[11px] text-[hsl(var(--muted-foreground))]">
+                      {cur === "USD" ? "🇺🇸" : cur === "SAR" ? "🇸🇦" : "🇪🇬"} 1 {cur} = Rp
+                    </Label>
                     <Input
                       type="number"
                       min={1}

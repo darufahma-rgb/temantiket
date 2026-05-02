@@ -4,7 +4,7 @@ import { getExchangeRates, applyMarkup, type Currency, type Rates } from "@/lib/
 const MARKUP_KEY = "igh.rates.markup.v1";
 const MODE_KEY = "igh.rates.mode.v1";
 const MANUAL_RATES_KEY = "igh.rates.manual.v1";
-const DEFAULT_RATES: Rates = { USD: 16000, SAR: 4250, IDR: 1 };
+const DEFAULT_RATES: Rates = { USD: 16000, SAR: 4250, IDR: 1, EGP: 515 };
 
 type RateMode = "live" | "manual";
 
@@ -35,6 +35,7 @@ function loadManualRates(): Rates {
       IDR: 1,
       USD: Number(parsed.USD) > 0 ? Math.round(Number(parsed.USD)) : DEFAULT_RATES.USD,
       SAR: Number(parsed.SAR) > 0 ? Math.round(Number(parsed.SAR)) : DEFAULT_RATES.SAR,
+      EGP: Number(parsed.EGP) > 0 ? Math.round(Number(parsed.EGP)) : DEFAULT_RATES.EGP,
     };
   } catch {
     return DEFAULT_RATES;
