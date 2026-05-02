@@ -65,6 +65,30 @@ Schema managed via Supabase SQL Editor. To initialize:
 | `/harga-tiket` | Public ticket price list (no auth) |
 | `/settings` | App settings |
 
+## Fase 25: Full System Dummy Data Injection — Masisir Edition (May 2026)
+
+- `src/pages/DemoSeed.tsx` fully rewritten with "Masisir Edition" seeder section
+  - 5 Al-Azhar student clients (realistic Indonesian names, Cairo addresses)
+  - 10 orders mixing EGP/SAR currencies with markup metadata (`originalCurrency`, `originalPrice`, `originalCost`, `markup`, `markupIDR`) for Reports page
+  - 5 Cairo route ticket prices in EGP (CAI→JED, CAI→MED, CAI→DXB, CAI→KWI, CAI→RUH)
+  - 3 mission templates + 3 missions + 2 submissions
+  - 5 catatan (notes) with Masisir prefix
+  - 3 BC (broadcast) templates with Masisir prefix
+- Cleanup function removes all "Masisir —" prefixed data across all entity types
+- Original "Seed Dasar" retained as collapsible section
+- EGP rate: ~515 IDR/EGP; SAR rate: ~4250 IDR/SAR
+
+## Fase 25b: Itinerary History (localStorage) in ItineraryGenerator (May 2026)
+
+- localStorage key: `temantiket.itinerary.history.v1`, max 20 entries
+- Auto-saves every itinerary to history when `itinerary` state is set (useEffect)
+- Labels auto-generated from route codes + first airline/flight number
+- "Riwayat Itinerary" collapsible panel shown in empty state when history exists
+  - Shows label, PNR, passenger name, price, relative timestamp
+  - "Muat" button reloads saved itinerary into active session
+  - Per-row delete (trash icon) with hover reveal
+- Demo data: 2 itineraries seeded via `seedMasisirItineraries()` in DemoSeed
+
 ## Fase 19.2: Deep Data Extraction for Ticket Prices (May 2026)
 
 - Extended AI prompt: now extracts flight number, ETD, ETA, terminal, transit code/city/duration

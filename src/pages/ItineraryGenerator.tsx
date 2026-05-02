@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Sparkles, Copy, Check, Download, MessageCircle, ChevronDown, ChevronUp,
-  Plane, RefreshCw, Pencil, Info, Wand2, Share2, ImagePlus, X,
+  Plane, RefreshCw, Pencil, Info, Wand2, Share2, ImagePlus, X, History, Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -16,6 +16,65 @@ import {
   calcTransitMinutes, fmtMinutes,
   type ItineraryData, type FlightLeg,
 } from "@/lib/itineraryAI";
+
+// ── Itinerary History (localStorage) ──────────────────────────────────────
+
+const ITINERARY_HISTORY_KEY = "temantiket.itinerary.history.v1";
+const HISTORY_MAX = 20;
+
+interface SavedItinerary {
+  id: string;
+  label: string;
+  savedAt: number;
+  data: ItineraryData;
+}
+
+function buildLabel(data: ItineraryData): string {
+  if (data.legs.length === 0) return "Itinerary tanpa leg";
+  const first = data.legs[0];
+  const last  = data.legs[data.legs.length - 1];
+  const route = [first.fromCode, last.toCode].filter(Boolean).join(" → ");
+  const airline = first.airline?.split(" ")[0] ?? "";
+  const fn = first.flightNumber ?? "";
+  const parts = [route, [airline, fn].filter(Boolean).join(" ")].filter(Boolean);
+  return parts.join(" — ") || "Itinerary";
+}
+
+function loadHistory(): SavedItinerary[] {
+  try {
+    return JSON.parse(localStorage.getItem(ITINERARY_HISTORY_KEY) ?? "[]") as SavedItinerary[];
+  } catch { return []; }
+}
+
+function saveToHistory(data: ItineraryData) {
+  try {
+    const existing = loadHistory();
+    const id = `itin-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const entry: SavedItinerary = { id, label: buildLabel(data), savedAt: Date.now(), data };
+    const next = [entry, ...existing.filter((e) => e.label !== entry.label)].slice(0, HISTORY_MAX);
+    localStorage.setItem(ITINERARY_HISTORY_KEY, JSON.stringify(next));
+    return next;
+  } catch { return []; }
+}
+
+function deleteFromHistory(id: string): SavedItinerary[] {
+  try {
+    const next = loadHistory().filter((e) => e.id !== id);
+    localStorage.setItem(ITINERARY_HISTORY_KEY, JSON.stringify(next));
+    return next;
+  } catch { return []; }
+}
+
+function fmtRelTime(ms: number): string {
+  const diff = Date.now() - ms;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)  return "baru saja";
+  if (mins < 60) return `${mins} mnt lalu`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `${hrs} jam lalu`;
+  const days = Math.floor(hrs / 24);
+  return `${days} hari lalu`;
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -564,6 +623,8 @@ export default function ItineraryGenerator() {
   const [isRenderingShare, setIsRenderingShare] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [history, setHistory] = useState<SavedItinerary[]>(() => loadHistory());
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const shareCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -571,6 +632,14 @@ export default function ItineraryGenerator() {
 
   const waText = itinerary ? buildWhatsAppText(itinerary, egpRate) : "";
   const smartTips = itinerary ? buildSmartTips(itinerary.legs) : [];
+
+  // ── Auto-save itinerary to history when set ──
+  useEffect(() => {
+    if (itinerary && itinerary.legs.length > 0) {
+      const next = saveToHistory(itinerary);
+      setHistory(next);
+    }
+  }, [itinerary]);
 
   // ── Text processing ──
   const handleProcess = async () => {
@@ -1068,6 +1137,84 @@ export default function ItineraryGenerator() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* History panel — shown when there's history and no active itinerary */}
+      {!itinerary && history.length > 0 && (
+        <div className="rounded-2xl border border-border bg-white overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/40 transition-colors"
+            onClick={() => setHistoryOpen((v) => !v)}
+          >
+            <span className="flex items-center gap-2 text-[13px] font-semibold">
+              <History className="h-4 w-4 text-sky-500" />
+              Riwayat Itinerary
+              <span className="text-[11px] font-normal text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                {history.length} tersimpan
+              </span>
+            </span>
+            {historyOpen
+              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+
+          {historyOpen && (
+            <div className="border-t border-border divide-y divide-border">
+              {history.map((entry) => (
+                <div key={entry.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors group">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-medium truncate">{entry.label}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {entry.data.pnr && (
+                        <span className="text-[11px] font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
+                          {entry.data.pnr}
+                        </span>
+                      )}
+                      {entry.data.passengerName && (
+                        <span className="text-[11px] text-muted-foreground truncate">
+                          {entry.data.passengerName}
+                        </span>
+                      )}
+                      {entry.data.totalPrice && entry.data.priceCurrency && (
+                        <span className="text-[11px] text-sky-600 font-medium">
+                          {entry.data.priceCurrency} {entry.data.totalPrice.toLocaleString("id-ID")}
+                        </span>
+                      )}
+                      <span className="text-[11px] text-muted-foreground ml-auto shrink-0">
+                        {fmtRelTime(entry.savedAt)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px] px-2"
+                      onClick={() => {
+                        setItinerary(entry.data);
+                        setActiveTab("wa");
+                        toast.success("Itinerary dimuat dari riwayat");
+                      }}
+                    >
+                      Muat
+                    </Button>
+                    <button
+                      type="button"
+                      className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
+                      onClick={() => {
+                        const next = deleteFromHistory(entry.id);
+                        setHistory(next);
+                        toast.success("Itinerary dihapus dari riwayat");
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Empty state */}
       {!itinerary && (
