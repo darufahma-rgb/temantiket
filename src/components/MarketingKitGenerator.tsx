@@ -1,405 +1,393 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Image as ImageIcon, Sparkles, MessageCircle, User, Loader2, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import {
+  Sparkles, Copy, CheckCheck, Loader2, RefreshCw,
+  User, MessageCircle, DollarSign, Calendar, FileText,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuthStore } from "@/store/authStore";
 
-interface PromoTemplate {
-  key: string;
-  label: string;
-  category: "umrah" | "flight" | "visa";
-  emoji: string;
-  src: string;
-  accent: string;
-  accentFrom: string;
-  accentTo: string;
-  badge: string;
-  badgeColor: string;
-}
-
-const TEMPLATES: PromoTemplate[] = [
-  {
-    key: "umrah-hemat",
-    label: "Promo Umrah Hemat",
-    category: "umrah",
-    emoji: "🕋",
-    src: "/templates/promo/umrah-hemat.svg",
-    accent: "from-sky-500 via-blue-500 to-cyan-400",
-    accentFrom: "#0ea5e9",
-    accentTo: "#22d3ee",
-    badge: "Umrah",
-    badgeColor: "bg-sky-400/30 text-sky-100",
-  },
-  {
-    key: "tiket-pesawat",
-    label: "Tiket Pesawat Termurah",
-    category: "flight",
-    emoji: "✈️",
-    src: "/templates/promo/tiket-pesawat.svg",
-    accent: "from-orange-500 via-amber-500 to-yellow-400",
-    accentFrom: "#f97316",
-    accentTo: "#facc15",
-    badge: "Penerbangan",
-    badgeColor: "bg-orange-400/30 text-orange-100",
-  },
-  {
-    key: "visa-cepat",
-    label: "Layanan Visa Cepat",
-    category: "visa",
-    emoji: "📔",
-    src: "/templates/promo/visa-cepat.svg",
-    accent: "from-emerald-600 via-teal-500 to-green-400",
-    accentFrom: "#059669",
-    accentTo: "#4ade80",
-    badge: "Visa",
-    badgeColor: "bg-emerald-400/30 text-emerald-100",
-  },
+/* ─── Kategori ─────────────────────────────────────────── */
+const CATEGORIES = [
+  { key: "umrah",   label: "Promo Umrah",       emoji: "🕋", accent: "from-sky-500 to-cyan-400",      prompt: "paket umrah hemat" },
+  { key: "haji",    label: "Paket Haji",         emoji: "🌙", accent: "from-emerald-600 to-teal-400",  prompt: "paket haji plus / furoda" },
+  { key: "flight",  label: "Tiket Pesawat",      emoji: "✈️", accent: "from-orange-500 to-amber-400",  prompt: "tiket pesawat murah" },
+  { key: "visa",    label: "Layanan Visa",        emoji: "📔", accent: "from-violet-500 to-purple-400", prompt: "layanan visa cepat" },
+  { key: "general", label: "Promo Umum",          emoji: "📣", accent: "from-rose-500 to-pink-400",    prompt: "layanan travel umrah & haji" },
 ];
 
-const PNG_SIZE = 1080;
+/* ─── Tone ──────────────────────────────────────────────── */
+const TONES = [
+  { key: "santai",      label: "Santai",        desc: "Friendly, casual, akrab"     },
+  { key: "formal",      label: "Formal",        desc: "Profesional & terpercaya"    },
+  { key: "hardsell",    label: "Hard Selling",  desc: "FOMO, urgent, ajak action"   },
+  { key: "story",       label: "Storytelling",  desc: "Emosional, cerita perjalanan"},
+];
 
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
+/* ─── Helpers ───────────────────────────────────────────── */
+async function generateCaptions(params: {
+  category: string;
+  categoryPrompt: string;
+  tone: string;
+  agentName: string;
+  agentWa: string;
+  price: string;
+  departureDate: string;
+  extraNotes: string;
+}): Promise<string[]> {
+  const { category, categoryPrompt, tone, agentName, agentWa, price, departureDate, extraNotes } = params;
 
-function personalize(svg: string, name: string, wa: string): string {
-  const safeName = escapeXml(name.trim() || "Nama Mitra");
-  const safeWa = escapeXml(wa.trim() || "08xx-xxxx-xxxx");
-  return svg
-    .replace(/\{\{AGENT_NAME\}\}/g, safeName)
-    .replace(/\{\{AGENT_WA\}\}/g, safeWa);
-}
+  const toneMap: Record<string, string> = {
+    santai:   "casual, akrab, pakai bahasa sehari-hari, sedikit emoji, tidak lebay",
+    formal:   "formal, profesional, terpercaya, bahasa Indonesia baku, minim emoji",
+    hardsell: "high-energy, ada urgensi/FOMO, CTA kuat, pakai emoji banyak, persuasif",
+    story:    "storytelling singkat, emosional, membayangkan pengalaman ibadah, warm, satu atau dua emoji saja",
+  };
 
-const svgCache = new Map<string, string>();
-async function loadSvgText(src: string): Promise<string> {
-  if (svgCache.has(src)) return svgCache.get(src)!;
-  const res = await fetch(src);
-  if (!res.ok) throw new Error(`Gagal load template (${res.status})`);
-  const text = await res.text();
-  svgCache.set(src, text);
-  return text;
-}
+  const details = [
+    agentName     && `Nama agen: ${agentName}`,
+    agentWa       && `Nomor WA agen: ${agentWa}`,
+    price         && `Harga/kisaran: ${price}`,
+    departureDate && `Tanggal keberangkatan: ${departureDate}`,
+    extraNotes    && `Info tambahan: ${extraNotes}`,
+  ].filter(Boolean).join("\n");
 
-function svgToDataUrl(svg: string): string {
-  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-}
+  const systemPrompt = `Kamu adalah copywriter digital marketing ahli untuk travel umrah & haji di Indonesia.
+Tugas: buat 3 variasi caption promo untuk ${categoryPrompt} dengan tone ${toneMap[tone] || tone}.
+Format output: JSON array berisi tepat 3 string. Masing-masing caption max 300 kata, siap paste ke WhatsApp/Instagram.
+Jangan tambahkan penjelasan di luar JSON. Contoh format: ["Caption 1...", "Caption 2...", "Caption 3..."]`;
 
-async function svgToPngBlob(svg: string): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = PNG_SIZE;
-      canvas.height = PNG_SIZE;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) { reject(new Error("Canvas context tidak tersedia")); return; }
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, PNG_SIZE, PNG_SIZE);
-      ctx.drawImage(img, 0, 0, PNG_SIZE, PNG_SIZE);
-      canvas.toBlob(
-        (blob) => { if (!blob) reject(new Error("Gagal export PNG")); else resolve(blob); },
-        "image/png",
-        0.95,
-      );
-    };
-    img.onerror = () => reject(new Error("Gagal render SVG ke gambar"));
-    img.src = svgToDataUrl(svg);
+  const userPrompt = details
+    ? `Buat 3 caption promo ${categoryPrompt}.\n\nDetail:\n${details}`
+    : `Buat 3 caption promo ${categoryPrompt}.`;
+
+  const res = await fetch("/api/ai/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user",   content: userPrompt },
+      ],
+      temperature: 0.85,
+      max_tokens: 1800,
+    }),
   });
+
+  if (!res.ok) throw new Error(`AI error ${res.status}`);
+  const data = await res.json();
+  const raw = data.choices?.[0]?.message?.content ?? "";
+
+  // Parse JSON dari response
+  const match = raw.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error("Format respons AI tidak valid");
+  const parsed: unknown = JSON.parse(match[0]);
+  if (!Array.isArray(parsed)) throw new Error("Bukan array");
+  return parsed.slice(0, 3).map(String);
 }
 
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-}
-
-export function MarketingKitGenerator() {
+/* ─── Main Component ────────────────────────────────────── */
+export function CaptionGenerator() {
   const me = useAuthStore((s) => s.user);
-  const [name, setName] = useState(me?.displayName ?? "");
-  const [wa, setWa] = useState(me?.email ?? "");
-  const [activeKey, setActiveKey] = useState<string>(TEMPLATES[0].key);
-  const [previewSrc, setPreviewSrc] = useState<string>("");
-  const [loadingPreview, setLoadingPreview] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [downloaded, setDownloaded] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const active = useMemo(
-    () => TEMPLATES.find((t) => t.key === activeKey) ?? TEMPLATES[0],
-    [activeKey],
-  );
+  const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].key);
+  const [activeTone, setActiveTone]         = useState(TONES[0].key);
+  const [agentName, setAgentName]           = useState(me?.displayName ?? "");
+  const [agentWa, setAgentWa]               = useState(me?.email ?? "");
+  const [price, setPrice]                   = useState("");
+  const [departureDate, setDepartureDate]   = useState("");
+  const [extraNotes, setExtraNotes]         = useState("");
+  const [results, setResults]               = useState<string[]>([]);
+  const [loading, setLoading]               = useState(false);
+  const [copiedIdx, setCopiedIdx]           = useState<number | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    setLoadingPreview(true);
-    void (async () => {
-      try {
-        const raw = await loadSvgText(active.src);
-        if (!alive) return;
-        const personalized = personalize(raw, name, wa);
-        setPreviewSrc(svgToDataUrl(personalized));
-      } catch (err) {
-        console.warn("[MarketingKit] preview gagal:", err);
-        toast.error(`Gagal load template: ${err instanceof Error ? err.message : String(err)}`);
-      } finally {
-        if (alive) setLoadingPreview(false);
-      }
-    })();
-    return () => { alive = false; };
-  }, [active.src, name, wa]);
+  const cat = CATEGORIES.find((c) => c.key === activeCategory) ?? CATEGORIES[0];
 
-  const handleDownload = async () => {
-    if (!name.trim() || !wa.trim()) {
-      toast.error("Isi dulu nama lo & nomor WA sebelum download.");
-      return;
-    }
-    setDownloading(true);
+  const handleGenerate = async () => {
+    setLoading(true);
+    setResults([]);
     try {
-      const raw = await loadSvgText(active.src);
-      const personalized = personalize(raw, name, wa);
-      const blob = await svgToPngBlob(personalized);
-      const safeName = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 32) || "mitra";
-      downloadBlob(blob, `promo-${active.key}-${safeName}.png`);
-      setDownloaded(true);
-      setTimeout(() => setDownloaded(false), 3000);
-      toast.success("Promo lo udah ke-download!", {
-        description: "Cek folder Download — siap upload ke status WA / IG / FB.",
+      const captions = await generateCaptions({
+        category: activeCategory,
+        categoryPrompt: cat.prompt,
+        tone: activeTone,
+        agentName,
+        agentWa,
+        price,
+        departureDate,
+        extraNotes,
       });
+      setResults(captions);
     } catch (err) {
-      toast.error(`Download gagal: ${err instanceof Error ? err.message : String(err)}`);
+      toast.error(`Gagal generate: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
-      setDownloading(false);
+      setLoading(false);
     }
   };
 
+  const handleCopy = async (text: string, idx: number) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedIdx(idx);
+    toast.success("Caption disalin ke clipboard!");
+    setTimeout(() => setCopiedIdx(null), 2000);
+  };
+
   return (
-    <div ref={containerRef} className="space-y-4 pb-8">
+    <div className="space-y-4 pb-10">
 
-      {/* ── Identitas Mitra ── */}
-      <div className="relative rounded-2xl overflow-hidden border border-border/60 bg-white shadow-sm">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500" />
-        <div className="p-4 md:p-5">
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shrink-0">
-              <Sparkles className="h-3.5 w-3.5 text-white" />
-            </div>
-            <h3 className="text-[14px] font-bold text-foreground">Identitas Mitra</h3>
-          </div>
-          <p className="text-[11.5px] text-muted-foreground mb-4 ml-9 leading-relaxed">
-            Nama & WA lo akan ditempel otomatis di setiap template promo.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                <User className="h-3 w-3" /> Nama lo
-              </Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Contoh: Andi Saputra"
-                className="h-9 text-[13px] border-border/70 focus:border-fuchsia-400 focus:ring-fuchsia-400/20"
-                maxLength={48}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                <MessageCircle className="h-3 w-3" /> Nomor WhatsApp
-              </Label>
-              <Input
-                value={wa}
-                onChange={(e) => setWa(e.target.value)}
-                placeholder="Contoh: 0812-3456-7890"
-                className="h-9 text-[13px] border-border/70 focus:border-fuchsia-400 focus:ring-fuchsia-400/20"
-                maxLength={32}
-                type="tel"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Template Chooser ── */}
+      {/* ── Kategori ── */}
       <div className="rounded-2xl border border-border/60 bg-white p-4 md:p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-3.5">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
-              <ImageIcon className="h-3.5 w-3.5 text-white" />
-            </div>
-            <h3 className="text-[14px] font-bold">Pilih Template</h3>
-          </div>
-          <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-full">
-            {TEMPLATES.length} tersedia
+        <h3 className="text-[13px] font-bold mb-3 flex items-center gap-2">
+          <span className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shrink-0">
+            <Sparkles className="h-3 w-3 text-white" />
           </span>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {TEMPLATES.map((t) => {
-            const isActive = t.key === active.key;
+          Pilih Kategori
+        </h3>
+        <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+          {CATEGORIES.map((c) => {
+            const isActive = c.key === activeCategory;
             return (
               <motion.button
-                key={t.key}
-                onClick={() => setActiveKey(t.key)}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                key={c.key}
+                onClick={() => setActiveCategory(c.key)}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={cn(
-                  "relative rounded-xl overflow-hidden text-left transition-all",
+                  "relative rounded-xl overflow-hidden text-left p-3 transition-all",
                   "bg-gradient-to-br",
-                  t.accent,
+                  c.accent,
                   isActive
                     ? "ring-2 ring-offset-2 ring-fuchsia-500 shadow-lg"
-                    : "opacity-85 hover:opacity-100 shadow-sm hover:shadow-md",
+                    : "opacity-75 hover:opacity-95 shadow-sm",
                 )}
               >
                 {isActive && (
                   <motion.div
-                    layoutId="activeTemplateGlow"
+                    layoutId="activeCatGlow"
                     className="absolute inset-0 bg-white/20 rounded-xl"
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   />
                 )}
-                <div className="relative p-3 pb-2.5">
-                  <div className="text-2xl mb-2 drop-shadow">{t.emoji}</div>
-                  <span className={cn("inline-block text-[9.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full mb-1.5", t.badgeColor)}>
-                    {t.badge}
-                  </span>
-                  <div className="text-[11px] font-bold text-white leading-tight drop-shadow-sm">
-                    {t.label}
-                  </div>
+                <div className="relative">
+                  <div className="text-2xl mb-1.5 drop-shadow">{c.emoji}</div>
+                  <div className="text-[11px] font-bold text-white leading-tight">{c.label}</div>
                 </div>
-                {isActive && (
-                  <div className="absolute top-2 right-2">
-                    <CheckCircle2 className="h-4 w-4 text-white drop-shadow" />
-                  </div>
-                )}
               </motion.button>
             );
           })}
         </div>
       </div>
 
-      {/* ── Preview + Download ── */}
-      <motion.div
-        layout
-        className="relative rounded-2xl overflow-hidden"
-        style={{
-          background: "linear-gradient(135deg, #0f0c29, #1a1040, #24243e)",
-        }}
-      >
-        {/* Subtle glow blob behind preview */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-40"
-          style={{
-            background: `radial-gradient(ellipse at 60% 30%, ${active.accentFrom}55 0%, transparent 60%)`,
-            transition: "background 0.6s ease",
-          }}
-        />
-
-        <div className="relative p-4 md:p-5">
-          {/* Header row */}
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-400/90 mb-0.5">
-                ◉ Live Preview
-              </p>
-              <h3 className="text-[15px] font-bold text-white">{active.label}</h3>
-            </div>
-            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
-              <Button
-                onClick={() => void handleDownload()}
-                disabled={downloading || loadingPreview}
+      {/* ── Tone ── */}
+      <div className="rounded-2xl border border-border/60 bg-white p-4 md:p-5 shadow-sm">
+        <h3 className="text-[13px] font-bold mb-3 flex items-center gap-2">
+          <span className="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
+            <FileText className="h-3 w-3 text-white" />
+          </span>
+          Gaya Penulisan
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {TONES.map((t) => {
+            const isActive = t.key === activeTone;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTone(t.key)}
                 className={cn(
-                  "font-semibold text-[12.5px] shadow-lg transition-all",
-                  downloaded
-                    ? "bg-emerald-500 hover:bg-emerald-600"
-                    : "bg-gradient-to-r from-fuchsia-500 to-pink-600 hover:from-fuchsia-600 hover:to-pink-700 shadow-fuchsia-500/30",
+                  "rounded-xl border-2 px-3 py-2.5 text-left transition-all",
+                  isActive
+                    ? "border-fuchsia-500 bg-fuchsia-50 shadow-sm"
+                    : "border-border/60 hover:border-fuchsia-300 hover:bg-fuchsia-50/40",
                 )}
               >
-                <AnimatePresence mode="wait">
-                  {downloading ? (
-                    <motion.span key="dl" className="flex items-center gap-1.5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Menyiapkan…
-                    </motion.span>
-                  ) : downloaded ? (
-                    <motion.span key="ok" className="flex items-center gap-1.5" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Berhasil!
-                    </motion.span>
-                  ) : (
-                    <motion.span key="idle" className="flex items-center gap-1.5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <Download className="h-3.5 w-3.5" /> Download PNG
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </Button>
-            </motion.div>
-          </div>
+                <div className={cn("text-[12.5px] font-bold", isActive ? "text-fuchsia-700" : "text-foreground")}>
+                  {t.label}
+                </div>
+                <div className="text-[10.5px] text-muted-foreground mt-0.5">{t.desc}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-          {/* Preview canvas */}
-          <div
-            className="relative mx-auto max-w-sm aspect-square rounded-xl overflow-hidden shadow-2xl"
-            style={{
-              boxShadow: `0 0 0 1px ${active.accentFrom}40, 0 25px 60px -12px ${active.accentFrom}30`,
-              transition: "box-shadow 0.5s ease",
-            }}
-          >
-            <AnimatePresence>
-              {loadingPreview && (
-                <motion.div
-                  key="loader"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm gap-2"
-                >
-                  <Loader2 className="h-6 w-6 animate-spin text-fuchsia-400" />
-                  <p className="text-[11px] text-slate-400">Merender preview…</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <div className="w-full h-full bg-slate-900">
-              {previewSrc && (
-                <motion.img
-                  key={previewSrc}
-                  src={previewSrc}
-                  alt={`Preview ${active.label}`}
-                  className="w-full h-full object-contain"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                  loading="lazy"
-                />
-              )}
-            </div>
-          </div>
+      {/* ── Detail Opsional ── */}
+      <div className="relative rounded-2xl overflow-hidden border border-border/60 bg-white shadow-sm">
+        <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500" />
+        <div className="p-4 md:p-5">
+          <h3 className="text-[13px] font-bold mb-0.5 flex items-center gap-2">
+            <span className="w-6 h-6 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0">
+              <User className="h-3 w-3 text-white" />
+            </span>
+            Detail Agen <span className="text-[11px] font-normal text-muted-foreground ml-1">(opsional tapi makin bagus)</span>
+          </h3>
+          <p className="text-[11px] text-muted-foreground mb-4 ml-8">Semakin lengkap, caption makin personal & siap pakai.</p>
 
-          {/* Info row */}
-          <div className="mt-4 grid grid-cols-2 gap-2.5">
-            <div className="rounded-xl bg-white/5 border border-white/8 px-3 py-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Format</p>
-              <p className="text-[11.5px] text-slate-300 leading-snug">1080 × 1080 px PNG<br/>IG / FB / WA siap pakai</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                <User className="h-3 w-3" /> Nama lo
+              </Label>
+              <Input value={agentName} onChange={(e) => setAgentName(e.target.value)}
+                placeholder="Contoh: Andi Saputra" className="h-9 text-[13px]" maxLength={48} />
             </div>
-            <div className="rounded-xl bg-white/5 border border-white/8 px-3 py-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Tips</p>
-              <p className="text-[11.5px] text-slate-300 leading-snug">Upload ke Status WA<br/>untuk reach maksimal</p>
+            <div className="space-y-1.5">
+              <Label className="text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                <MessageCircle className="h-3 w-3" /> Nomor WhatsApp
+              </Label>
+              <Input value={agentWa} onChange={(e) => setAgentWa(e.target.value)}
+                placeholder="0812-3456-7890" className="h-9 text-[13px]" maxLength={32} type="tel" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                <DollarSign className="h-3 w-3" /> Kisaran Harga
+              </Label>
+              <Input value={price} onChange={(e) => setPrice(e.target.value)}
+                placeholder="Contoh: mulai 25 juta" className="h-9 text-[13px]" maxLength={64} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                <Calendar className="h-3 w-3" /> Tanggal Keberangkatan
+              </Label>
+              <Input value={departureDate} onChange={(e) => setDepartureDate(e.target.value)}
+                placeholder="Contoh: Desember 2025" className="h-9 text-[13px]" maxLength={64} />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label className="text-[10.5px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                <FileText className="h-3 w-3" /> Info Tambahan
+              </Label>
+              <Textarea value={extraNotes} onChange={(e) => setExtraNotes(e.target.value)}
+                placeholder="Contoh: include visa, hotel bintang 5, makan 3x, free airport transfer..."
+                className="text-[13px] resize-none min-h-[72px]" maxLength={300} />
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── Generate Button ── */}
+      <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+        <Button
+          onClick={() => void handleGenerate()}
+          disabled={loading}
+          className="w-full h-12 text-[14px] font-bold bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-600 hover:from-violet-700 hover:via-fuchsia-700 hover:to-pink-700 shadow-lg shadow-fuchsia-500/25 transition-all"
+        >
+          <AnimatePresence mode="wait">
+            {loading ? (
+              <motion.span key="loading" className="flex items-center gap-2"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                AI sedang nulis caption lo…
+              </motion.span>
+            ) : results.length > 0 ? (
+              <motion.span key="regen" className="flex items-center gap-2"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <RefreshCw className="h-4 w-4" />
+                Generate Ulang
+              </motion.span>
+            ) : (
+              <motion.span key="idle" className="flex items-center gap-2"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <Sparkles className="h-4 w-4" />
+                Generate 3 Caption Sekarang
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </Button>
       </motion.div>
+
+      {/* ── Results ── */}
+      <AnimatePresence>
+        {loading && (
+          <motion.div key="skeleton"
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="space-y-3"
+          >
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="rounded-2xl border border-border/60 bg-white p-4 shadow-sm animate-pulse space-y-2">
+                <div className="h-3 bg-muted rounded w-1/4" />
+                <div className="h-3 bg-muted rounded w-full" />
+                <div className="h-3 bg-muted rounded w-5/6" />
+                <div className="h-3 bg-muted rounded w-3/4" />
+                <div className="h-3 bg-muted rounded w-2/3" />
+              </div>
+            ))}
+          </motion.div>
+        )}
+
+        {!loading && results.length > 0 && (
+          <motion.div key="results"
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            className="space-y-3"
+          >
+            <div className="flex items-center gap-2 px-1">
+              <div className="h-px flex-1 bg-border/50" />
+              <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                3 Variasi Caption
+              </span>
+              <div className="h-px flex-1 bg-border/50" />
+            </div>
+
+            {results.map((caption, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.08 }}
+                className="relative rounded-2xl border border-border/60 bg-white p-4 md:p-5 shadow-sm hover:shadow-md hover:border-fuchsia-200 transition-all group"
+              >
+                {/* Badge */}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-widest text-fuchsia-600 bg-fuchsia-50 px-2 py-0.5 rounded-full">
+                    <Sparkles className="h-2.5 w-2.5" />
+                    Variasi {idx + 1}
+                  </span>
+                  <button
+                    onClick={() => void handleCopy(caption, idx)}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold transition-all",
+                      copiedIdx === idx
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-muted hover:bg-fuchsia-50 hover:text-fuchsia-700 text-muted-foreground",
+                    )}
+                  >
+                    {copiedIdx === idx ? (
+                      <><CheckCheck className="h-3.5 w-3.5" /> Disalin!</>
+                    ) : (
+                      <><Copy className="h-3.5 w-3.5" /> Salin</>
+                    )}
+                  </button>
+                </div>
+
+                {/* Caption text */}
+                <p className="text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
+                  {caption}
+                </p>
+
+                {/* Click-anywhere-to-copy hint */}
+                <button
+                  onClick={() => void handleCopy(caption, idx)}
+                  className="absolute inset-0 rounded-2xl opacity-0"
+                  aria-label={`Salin variasi ${idx + 1}`}
+                />
+              </motion.div>
+            ))}
+
+            <p className="text-center text-[11px] text-muted-foreground pb-2">
+              Klik <span className="font-semibold">Salin</span> di tiap kartu, atau klik area kartu untuk copy langsung ✨
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
 }
+
+/** Keep legacy export for backwards compat */
+export { CaptionGenerator as MarketingKitGenerator };

@@ -63,7 +63,7 @@ const STAFF_SECTIONS: SectionDef[] = [
     label: "Konten",
     items: [
       { title: "Template Broadcast", url: "/bc-templates",   icon: MessageSquare },
-      { title: "Marketing Kit",      url: "/agent/marketing",icon: Megaphone },
+      { title: "Caption Generator",   url: "/agent/marketing",icon: Megaphone },
       { title: "Catatan",            url: "/notes",          icon: StickyNote },
       { title: "Export & Manifest",  url: "/exports",        icon: FileSpreadsheet },
     ],
@@ -115,7 +115,7 @@ const AGENT_SECTIONS: SectionDef[] = [
     label: "Konten",
     items: [
       { title: "Template Broadcast", url: "/bc-templates",       icon: MessageSquare },
-      { title: "Marketing Kit",      url: "/agent/marketing",    icon: Megaphone },
+      { title: "Caption Generator",   url: "/agent/marketing",    icon: Megaphone },
     ],
   },
   {
