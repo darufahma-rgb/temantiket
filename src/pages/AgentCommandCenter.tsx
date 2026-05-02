@@ -21,6 +21,7 @@ import { profitIDR, revenueIDR, fmtIDR } from "@/lib/profit";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { MissionCreatorSection } from "@/features/missions/MissionCreatorSection";
+import { AgentWalletCard } from "@/components/AgentWalletCard";
 
 const M = { fontFamily: "'Manrope', sans-serif" };
 
@@ -128,6 +129,11 @@ export default function AgentCommandCenter() {
     }
     return combined;
   }, [points, missionSubs]);
+
+  const missionPointsByAgent = useMemo(
+    () => sumMissionPointsByAgent(missionSubs),
+    [missionSubs],
+  );
 
   // Client count per agent
   const clientCountByAgent = useMemo(() => {
@@ -495,10 +501,11 @@ export default function AgentCommandCenter() {
             </div>
           </Card>
 
-          {/* ── Commission Tracker ───────────────────────────────────────── */}
+          {/* ── Commission Tracker + Wallet ─────────────────────────────── */}
           {expandedAgent && (() => {
             const agent = agentRows.find((a) => a.userId === expandedAgent);
             if (!agent) return null;
+            const agentMissionPts = missionPointsByAgent.get(agent.userId) ?? 0;
             const completedList = agent.completedOrdersList;
             return (
               <Card className="p-4 border-blue-200 bg-blue-50/30">
@@ -582,6 +589,15 @@ export default function AgentCommandCenter() {
                     )}
                   </table>
                 </div>
+              {/* Wallet Agen — konversi poin misi ke komisi IDR */}
+              {user?.id && (
+                <AgentWalletCard
+                  agentId={agent.userId}
+                  agentName={agent.displayName}
+                  missionPoints={agentMissionPts}
+                  reviewedBy={user.id}
+                />
+              )}
               </Card>
             );
           })()}

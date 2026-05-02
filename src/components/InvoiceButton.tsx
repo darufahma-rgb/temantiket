@@ -10,8 +10,12 @@ import { toast } from "sonner";
 import { generateInvoicePdf, nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
 import { useInvoiceStore } from "@/store/invoiceStore";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
+import { WaShareButton } from "@/components/WaShareButton";
 import type { Order } from "@/features/orders/ordersRepo";
 import type { Client } from "@/store/clientsStore";
+
+const fmtIDRCompact = (v: number) =>
+  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(v);
 
 interface Props {
   order: Order;
@@ -19,10 +23,15 @@ interface Props {
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "lg";
   className?: string;
+  /** Phone number for WA dispatch (e.g. client.phone). */
+  phone?: string | null;
 }
 
-export function InvoiceButton({ order, client, variant = "outline", size = "sm", className }: Props) {
+export function InvoiceButton({ order, client, variant = "outline", size = "sm", className, phone }: Props) {
   const [generating, setGenerating] = useState(false);
+  const [lastPdfBytes, setLastPdfBytes] = useState<Uint8Array | null>(null);
+  const [lastWaText, setLastWaText]     = useState<string>("");
+  const [lastFileName, setLastFileName] = useState<string>("invoice.pdf");
   const { templateDataUrl, setLastInvoice } = useInvoiceStore();
 
   const handleGenerate = async () => {
@@ -61,6 +70,22 @@ export function InvoiceButton({ order, client, variant = "outline", size = "sm",
       };
       reader.readAsDataURL(blob);
 
+      // Store for WA dispatch
+      const fileName = `${invoiceNumber}_${(client?.name ?? order.title ?? "invoice").replace(/\s+/g, "_")}.pdf`;
+      const waMsg = [
+        `Halo${client?.name ? ` *${client.name}*` : ""}!`,
+        ``,
+        `Invoice Anda sudah siap 📄`,
+        `No. Invoice: *${invoiceNumber}*`,
+        `Tanggal: ${invoiceDate}`,
+        `Total: *${fmtIDRCompact(Number(order.totalPrice))}*`,
+        ``,
+        `Terima kasih telah mempercayakan perjalanan Anda kepada *Temantiket* 🕋`,
+      ].join("\n");
+      setLastPdfBytes(pdfBytes);
+      setLastWaText(waMsg);
+      setLastFileName(fileName);
+
       toast.success(`Invoice ${invoiceNumber} berhasil dibuat`, {
         description: `Untuk ${client?.name ?? "—"}`,
         duration: 4000,
@@ -76,19 +101,32 @@ export function InvoiceButton({ order, client, variant = "outline", size = "sm",
   };
 
   return (
-    <Button
-      variant={variant}
-      size={size}
-      onClick={handleGenerate}
-      disabled={generating}
-      className={`border-emerald-200 text-emerald-700 hover:bg-emerald-50 ${className ?? ""}`}
-      title="Cetak Invoice PDF"
-    >
-      {generating
-        ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-        : <FileDown className="h-3.5 w-3.5 mr-1.5" />
-      }
-      {generating ? "Membuat…" : "Cetak Invoice"}
-    </Button>
+    <div className="flex items-center gap-1.5">
+      <Button
+        variant={variant}
+        size={size}
+        onClick={handleGenerate}
+        disabled={generating}
+        className={`border-emerald-200 text-emerald-700 hover:bg-emerald-50 ${className ?? ""}`}
+        title="Cetak Invoice PDF"
+      >
+        {generating
+          ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+          : <FileDown className="h-3.5 w-3.5 mr-1.5" />
+        }
+        {generating ? "Membuat…" : "Cetak Invoice"}
+      </Button>
+      {lastPdfBytes && (
+        <WaShareButton
+          mode="file"
+          text={lastWaText}
+          phone={phone}
+          pdfBytes={lastPdfBytes}
+          fileName={lastFileName}
+          size={size}
+          label="Kirim WA"
+        />
+      )}
+    </div>
   );
 }

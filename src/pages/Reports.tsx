@@ -24,6 +24,7 @@ import {
 } from "@/lib/profit";
 import { useRatesStore } from "@/store/ratesStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
+import { buildLedgerEntries, ledgerSummary } from "@/lib/ledgerSync";
 
 type RangeKey = "this_month" | "last_month" | "this_year" | "all";
 type AgentFilter = "all" | "direct" | string; // string = agent userId
@@ -71,6 +72,7 @@ export default function Reports() {
   const [agentFilter, setAgentFilter] = useState<AgentFilter>("all");
   const [members, setMembers] = useState<MemberInfo[]>([]);
   const [points, setPoints] = useState<AgentPoint[]>([]);
+  const [activeTab, setActiveTab] = useState<"summary" | "ledger">("summary");
 
   useEffect(() => {
     void fetchOrders();
@@ -99,6 +101,20 @@ export default function Reports() {
     () => members.filter((m) => m.role === "agent"),
     [members],
   );
+
+  // ── Ledger: client name lookup ──────────────────────────────────────────────
+  const ledgerClientNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of clients) m.set(c.id, c.name);
+    return m;
+  }, [clients]);
+
+  // Ledger: build from ALL orders (not date-filtered — ledger is full history)
+  const ledgerEntries = useMemo(
+    () => buildLedgerEntries(orders, ledgerClientNameById, egpRate),
+    [orders, ledgerClientNameById, egpRate],
+  );
+  const ledgerStats = useMemo(() => ledgerSummary(ledgerEntries), [ledgerEntries]);
 
   // Filter orders by date range + agent attribution.
   const filtered = useMemo(() => {
@@ -318,6 +334,11 @@ export default function Reports() {
       : <ChevronUp className="h-3 w-3 ml-0.5 inline text-blue-600" />;
   }
 
+  const fmtDate = (iso: string) => {
+    try { return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(iso)); }
+    catch { return iso; }
+  };
+
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-5">
       {/* Header */}
@@ -366,6 +387,26 @@ export default function Reports() {
           </Select>
         </div>
       </div>
+
+      {/* ── Tab bar ──────────────────────────────────────────────────────── */}
+      <div className="flex gap-1 border-b border-border pb-0">
+        {(["summary", "ledger"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-[12px] font-semibold rounded-t-xl border border-b-0 transition-colors -mb-px ${
+              activeTab === tab
+                ? "bg-background border-border text-foreground"
+                : "bg-muted/30 border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab === "summary" ? "📊 Ringkasan" : "📒 Buku Besar"}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Summary tab ──────────────────────────────────────────────────── */}
+      {activeTab === "summary" && <>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -805,6 +846,117 @@ export default function Reports() {
           </table>
         </div>
       </Card>
+
+      </>}
+
+      {/* ── Buku Besar (Ledger) tab ──────────────────────────────────────── */}
+      {activeTab === "ledger" && (
+        <div className="space-y-4">
+          {/* Ledger summary cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: "Total Revenue",  value: fmtIDR(ledgerStats.totalRevenue),  tone: "sky"     },
+              { label: "Total Modal",    value: fmtIDR(ledgerStats.totalCost),     tone: "amber"   },
+              { label: "Total Profit",   value: fmtIDR(ledgerStats.totalProfit),   tone: ledgerStats.totalProfit >= 0 ? "emerald" : "red" },
+              { label: "Avg Margin",     value: `${ledgerStats.avgMargin.toFixed(1)}%`, tone: "violet" },
+            ].map((r) => (
+              <div key={r.label} className={`rounded-2xl border bg-gradient-to-br p-3 md:p-4 ${
+                r.tone === "sky"     ? "from-sky-50 to-white border-sky-100 text-sky-700" :
+                r.tone === "amber"  ? "from-amber-50 to-white border-amber-100 text-amber-700" :
+                r.tone === "emerald"? "from-emerald-50 to-white border-emerald-100 text-emerald-700" :
+                r.tone === "red"    ? "from-red-50 to-white border-red-100 text-red-600" :
+                "from-violet-50 to-white border-violet-100 text-violet-700"
+              }`}>
+                <p className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">{r.label}</p>
+                <p className="text-base md:text-lg font-extrabold font-mono mt-1">{r.value}</p>
+                {r.label === "Total Profit" && <p className="text-[10px] text-muted-foreground">{ledgerStats.count} transaksi lunas</p>}
+              </div>
+            ))}
+          </div>
+
+          {ledgerEntries.length === 0 ? (
+            <Card className="p-10 text-center">
+              <p className="font-semibold text-muted-foreground">Belum ada order berstatus Paid atau Completed.</p>
+              <p className="text-[12px] text-muted-foreground mt-1">Ubah status order ke Paid untuk mulai mengisi Buku Besar.</p>
+            </Card>
+          ) : (
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[13px] font-semibold flex items-center gap-1.5">
+                  📒 Buku Besar — Transaksi Lunas
+                </h2>
+                <span className="text-[10.5px] text-muted-foreground">{ledgerEntries.length} entri · semua waktu</span>
+              </div>
+              <div className="overflow-x-auto -mx-1">
+                <table className="w-full text-[12px] min-w-[720px]">
+                  <thead>
+                    <tr className="text-muted-foreground border-b">
+                      <th className="text-left font-semibold py-2 px-2">#</th>
+                      <th className="text-left font-semibold py-2 px-2">Tanggal Lunas</th>
+                      <th className="text-left font-semibold py-2 px-2">Klien</th>
+                      <th className="text-left font-semibold py-2 px-2">Order</th>
+                      <th className="text-right font-semibold py-2 px-2">Revenue</th>
+                      <th className="text-right font-semibold py-2 px-2">Modal</th>
+                      <th className="text-right font-semibold py-2 px-2">Profit</th>
+                      <th className="text-right font-semibold py-2 px-2">Margin</th>
+                      <th className="text-right font-semibold py-2 px-2">Saldo Kumulatif</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ledgerEntries.map((e, i) => {
+                      const profitColor = e.profitIDR >= 0 ? "text-emerald-700" : "text-red-600";
+                      const balColor    = e.runningBalance >= 0 ? "text-emerald-700 font-bold" : "text-red-600 font-bold";
+                      const marginColor = e.marginPct >= 20 ? "text-emerald-700" : e.marginPct >= 10 ? "text-sky-700" : e.marginPct >= 0 ? "text-amber-700" : "text-red-600";
+                      return (
+                        <tr key={e.orderId} className="border-b last:border-b-0 hover:bg-muted/30">
+                          <td className="py-2 px-2 text-muted-foreground">{ledgerEntries.length - i}</td>
+                          <td className="py-2 px-2 whitespace-nowrap text-muted-foreground">{fmtDate(e.paidAt)}</td>
+                          <td className="py-2 px-2 max-w-[120px] truncate" title={e.clientName}>{e.clientName}</td>
+                          <td className="py-2 px-2 max-w-[160px] truncate font-medium" title={e.orderTitle}>
+                            <span className="mr-1">{ORDER_TYPE_EMOJI[e.orderType as keyof typeof ORDER_TYPE_EMOJI] ?? "📦"}</span>
+                            {e.orderTitle}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono">{fmtIDR(e.revenueIDR)}</td>
+                          <td className="py-2 px-2 text-right font-mono text-rose-700">{fmtIDR(e.costIDR)}</td>
+                          <td className={`py-2 px-2 text-right font-mono font-semibold ${profitColor}`}>
+                            {e.profitIDR >= 0 ? "+" : ""}{fmtIDR(e.profitIDR)}
+                          </td>
+                          <td className={`py-2 px-2 text-right font-semibold ${marginColor}`}>
+                            {e.marginPct.toFixed(1)}%
+                          </td>
+                          <td className={`py-2 px-2 text-right font-mono ${balColor}`}>
+                            {fmtIDR(e.runningBalance)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-emerald-200 bg-emerald-50/50 font-bold text-[12px]">
+                      <td colSpan={4} className="py-2.5 px-2 text-emerald-800">Total ({ledgerEntries.length} transaksi)</td>
+                      <td className="py-2.5 px-2 text-right font-mono text-sky-700">{fmtIDR(ledgerStats.totalRevenue)}</td>
+                      <td className="py-2.5 px-2 text-right font-mono text-rose-700">{fmtIDR(ledgerStats.totalCost)}</td>
+                      <td className={`py-2.5 px-2 text-right font-mono ${ledgerStats.totalProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                        {ledgerStats.totalProfit >= 0 ? "+" : ""}{fmtIDR(ledgerStats.totalProfit)}
+                      </td>
+                      <td className="py-2.5 px-2 text-right text-emerald-700">
+                        {ledgerStats.avgMargin.toFixed(1)}%
+                      </td>
+                      <td className={`py-2.5 px-2 text-right font-mono ${ledgerStats.totalProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                        {fmtIDR(ledgerStats.totalProfit)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <p className="mt-3 text-[10.5px] text-muted-foreground">
+                * Revenue & profit di-konversi ke IDR menggunakan kurs yang di-snapshot saat order pertama kali berstatus Paid.
+                Order lama yang belum punya snapshot menggunakan kurs live saat ini (1 EGP ≈ Rp {egpRate}).
+              </p>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Footer note */}
       <div className="rounded-xl border bg-muted/30 p-3 text-[10.5px] text-muted-foreground leading-relaxed">

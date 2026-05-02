@@ -206,6 +206,33 @@ Schema managed via Supabase SQL Editor. To initialize:
 2. Atau ketik ke AI: "Bikinin invoice untuk [nama klien]" → AI generate → card muncul di chat → klik Download PDF.
 3. Custom template: Settings > Invoice > Upload gambar → semua invoice berikutnya pakai template tsb sebagai background + data di-overlay.
 
+## Fase 28.1: PNR Command Center
+
+**Files:**
+- `src/components/PNRCommandCenter.tsx` — Universal PNR input widget with auto-extract (flight/hotel/tour), smart confirm modal, auto-creates client/order/invoice/WA reminder.
+
+**Integration:** Embedded in `src/pages/Dashboard.tsx` above DepartureTodayAlert.
+
+## Fase 29: Full Ecosystem Integration & Automated Workflow
+
+**New files:**
+- `src/lib/ledgerSync.ts` — `buildRateSnapshotPatch()` freezes EGP/SAR rate in `order.metadata` when status → Paid/Completed. `buildLedgerEntries()` + `ledgerSummary()` build the Buku Besar from Paid/Completed orders.
+- `src/lib/agentWallet.ts` — localStorage-based agent wallet. `POINT_TO_IDR_RATE = 1000` (1 poin = Rp 1.000). Functions: `convertMissionPoints()`, `recordPayout()`, `walletBalance()`.
+- `src/components/WaShareButton.tsx` — Universal WA dispatch button. mode="file" tries Web Share API (PDF attachment) first, falls back to wa.me text link. Accepts `phone`, `pdfBytes`, `text`.
+- `src/components/AgentWalletCard.tsx` — Per-agent wallet UI: balance, convertible mission points, Convert button (creates wallet transaction), Catat Pencairan button, transaction history.
+
+**Modified files:**
+- `src/pages/OrderDetail.tsx` — On status → Paid/Completed: snapshots EGP/SAR rate in `order.metadata` via `buildRateSnapshotPatch()`; shows toast "+1 poin Member Card [ClientName]" (integration 2) + "Buku Besar diperbarui" with rate info (integration 1). InvoiceButton now receives `phone={linkedClient?.phone}`.
+- `src/components/InvoiceButton.tsx` — After PDF generation, stores `lastPdfBytes` in state + builds pre-filled WA message. Shows `WaShareButton` inline (integration 4).
+- `src/pages/Reports.tsx` — Added "📊 Ringkasan" / "📒 Buku Besar" tab switcher. Ledger tab shows full-history table of Paid/Completed orders with running balance, EGP/SAR rate snapshot, margin %, cumulative profit (integration 1).
+- `src/pages/AgentCommandCenter.tsx` — Added `missionPointsByAgent` map (separate from combined order+mission points). In per-agent Commission Tracker expander, renders `AgentWalletCard` for mission-point → komisi conversion (integration 3).
+
+**Integration summary:**
+1. **Invoice → Ledger**: Rate snapshot frozen at payment time; Buku Besar tab shows all paid orders with historical rates + running balance.
+2. **Order → Member Points**: Toast notification fires when any order transitions to Paid/Completed, linking it to the client's Member Card stamp.
+3. **Mission → Agent Wallet**: Owner converts approved mission points to IDR komisi credit; wallet tracks credit/payout history in localStorage.
+4. **One-Click WA Dispatch**: Invoice PDF shareable via Web Share API (WhatsApp attachment) or wa.me pre-filled message, triggered directly from InvoiceButton after generation.
+
 ## Legacy Umrah Flow
 
 - Calculator → Packages → Trips → Jamaah Manifest (still intact, not removed)

@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
+import { useRatesStore } from "@/store/ratesStore";
+import { buildRateSnapshotPatch } from "@/lib/ledgerSync";
 import { InvoiceButton } from "@/components/InvoiceButton";
 import {
   ORDER_STATUSES, ORDER_TYPES, ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI,
@@ -30,6 +32,7 @@ export default function OrderDetail() {
   const navigate = useNavigate();
   const { orders, getOneOrder, patchOrder, removeOrder, fetchOrders } = useOrdersStore();
   const { clients, fetchClients } = useClientsStore();
+  const rates = useRatesStore((s) => s.rates);
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,17 +95,44 @@ export default function OrderDetail() {
     if (!dirty) return;
     setSaving(true);
     try {
+      const newStatus = (draft.status as OrderStatus) ?? order.status;
+      const isPaidTransition =
+        (newStatus === "Paid" || newStatus === "Completed") &&
+        order.status !== newStatus;
+
+      // Snapshot EGP/SAR rate when order first becomes Paid/Completed
+      let metaPatch = (draft.metadata as Record<string, unknown>) ?? order.metadata ?? {};
+      if (isPaidTransition) {
+        metaPatch = buildRateSnapshotPatch(metaPatch, rates.EGP ?? 515, rates.SAR ?? 4250);
+      }
+
       await patchOrder(order.id, {
         title: draft.title ?? null,
-        status: (draft.status as OrderStatus) ?? order.status,
+        status: newStatus,
         totalPrice: Number(draft.totalPrice ?? 0),
         costPrice: Number(draft.costPrice ?? 0),
         clientId: (draft.clientId as string | null) ?? null,
         notes: (draft.notes as string | null) ?? null,
-        metadata: (draft.metadata as Record<string, unknown>) ?? order.metadata,
+        metadata: metaPatch,
       });
+
       const fresh = await getOneOrder(order.id);
       if (fresh) { setOrder(fresh); setDraft(fresh); }
+
+      // Trigger side-effect notifications after status change
+      if (isPaidTransition) {
+        if (linkedClient) {
+          toast.success(`Member Card "${linkedClient.name}" +1 poin`, {
+            description: "Stamp otomatis ditambahkan ke kartu member klien.",
+            duration: 4500,
+          });
+        }
+        toast.info("Buku Besar diperbarui", {
+          description: `Kurs snapshot: 1 EGP ≈ Rp ${rates.EGP ?? 515} · 1 SAR ≈ Rp ${rates.SAR ?? 4250}`,
+          duration: 4000,
+        });
+      }
+
       toast.success("Order disimpan");
     } catch (e) {
       toast.error("Gagal simpan", { description: e instanceof Error ? e.message : "Coba lagi." });
@@ -137,7 +167,7 @@ export default function OrderDetail() {
               <Eye className="h-3.5 w-3.5 mr-1.5" /> Client View
             </Button>
           )}
-          <InvoiceButton order={order} client={linkedClient ?? null} />
+          <InvoiceButton order={order} client={linkedClient ?? null} phone={linkedClient?.phone} />
           <Button onClick={handleSave} disabled={!dirty || saving}>
             <Save className="h-3.5 w-3.5 mr-1.5" /> {saving ? "Menyimpan…" : "Simpan"}
           </Button>
