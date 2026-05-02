@@ -38,6 +38,13 @@ import { useAuthStore } from "@/store/authStore";
 
 type Status = "idle" | "loading" | "ok" | "error" | "skipped";
 
+// ── Quick Inject items ────────────────────────────────────────────────────────
+
+const QUICK_ITEMS: Omit<SeedItem, "status">[] = [
+  { key: "q_client", label: "Klien: MR. AHMAD IKHSAN N", emoji: "👤", description: "1 klien baru: Ahmad Ikhsan N", cleanDescription: "Hapus klien Ahmad Ikhsan N (notes 'QuickSeed —')" },
+  { key: "q_order_voa", label: "Order VOA MESIR – IDR 2.877.000", emoji: "🛂", description: "1 order visa_voa: VOA MESIR senilai IDR 2.877.000", cleanDescription: "Hapus order bertitel 'QuickSeed — VOA MESIR'" },
+];
+
 interface SeedItem {
   key: string;
   label: string;
@@ -337,6 +344,11 @@ function ItemRow({ item, mode }: { item: SeedItem; mode: "seed" | "clean" }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function DemoSeed() {
+  const [quickSeedItems,  setQuickSeedItems]  = useState<SeedItem[]>(toItems(QUICK_ITEMS, "idle"));
+  const [quickCleanItems, setQuickCleanItems] = useState<SeedItem[]>(toItems(QUICK_ITEMS, "idle"));
+  const [runningQuick,  setRunningQuick]  = useState(false);
+  const [cleaningQuick, setCleaningQuick] = useState(false);
+
   const [basicSeedItems,  setBasicSeedItems]  = useState<SeedItem[]>(toItems(BASIC_ITEMS, "idle"));
   const [basicCleanItems, setBasicCleanItems] = useState<SeedItem[]>(toItems(BASIC_ITEMS, "idle"));
   const [masisirSeedItems,  setMasisirSeedItems]  = useState<SeedItem[]>(toItems(MASISIR_ITEMS, "idle"));
@@ -350,6 +362,93 @@ export default function DemoSeed() {
   const user     = useAuthStore((s) => s.user);
   const agencyId = user?.agencyId ?? "";
   const userId   = user?.id ?? "";
+
+  function setQuickSeed(key: string, status: Status, extra?: { error?: string; count?: number }) {
+    setQuickSeedItems((prev) => prev.map((it) => (it.key === key ? { ...it, status, ...extra } : it)));
+  }
+  function setQuickClean(key: string, status: Status, extra?: { error?: string; count?: number }) {
+    setQuickCleanItems((prev) => prev.map((it) => (it.key === key ? { ...it, status, ...extra } : it)));
+  }
+
+  // ── QUICK INJECT: Ahmad Ikhsan N ────────────────────────────────────────────
+  async function runQuickSeed() {
+    if (!agencyId) { toast.error("Login dulu ya!"); return; }
+    setRunningQuick(true);
+    setQuickSeedItems(toItems(QUICK_ITEMS, "idle"));
+
+    let clientId = "";
+
+    try {
+      setQuickSeed("q_client", "loading");
+      const client = await createClient({
+        name: "Ahmad Ikhsan N",
+        phone: "081234567890",
+        email: "ahmad.ikhsan@temantiket.co.id",
+        gender: "L",
+        birthDate: "1995-08-17",
+        passportNumber: "B1234567",
+        passportExpiry: "2030-08-17",
+        notes: "QuickSeed — Klien testing fitur Invoice. Order VOA MESIR IDR 2.877.000.",
+      });
+      clientId = client.id;
+      setQuickSeed("q_client", "ok", { count: 1 });
+    } catch (e) { setQuickSeed("q_client", "error", { error: String(e) }); }
+
+    try {
+      setQuickSeed("q_order_voa", "loading");
+      await createOrder({
+        clientId: clientId || null,
+        type: "visa_voa",
+        status: "Confirmed",
+        title: "QuickSeed — VOA MESIR – MR. AHMAD IKHSAN N",
+        totalPrice: 2_877_000,
+        costPrice: 2_300_000,
+        currency: "IDR",
+        metadata: {
+          country: "Mesir",
+          applicantName: "MR. AHMAD IKHSAN N",
+          duration: "30 hari",
+          entryType: "Single Entry",
+          markup: 577_000,
+          notes: "VOA Mesir untuk keperluan perjalanan bisnis.",
+        },
+        tripId: null, packageId: null, jamaahId: null,
+        notes: "Data testing invoice — VOA MESIR IDR 2.877.000. Bisa langsung generate invoice dari OrderDetail.",
+      });
+      setQuickSeed("q_order_voa", "ok", { count: 1 });
+    } catch (e) { setQuickSeed("q_order_voa", "error", { error: String(e) }); }
+
+    setRunningQuick(false);
+    toast.success("Ahmad Ikhsan N berhasil dimasukkan!", {
+      description: "Buka Order Hub → cari 'VOA MESIR' → klik → Cetak Invoice.",
+    });
+  }
+
+  // ── QUICK CLEANUP ─────────────────────────────────────────────────────────────
+  async function runQuickCleanup() {
+    if (!agencyId) { toast.error("Login dulu ya!"); return; }
+    setCleaningQuick(true);
+    setQuickCleanItems(toItems(QUICK_ITEMS, "idle"));
+
+    try {
+      setQuickClean("q_client", "loading");
+      const all = await listClients();
+      const demos = all.filter((c) => c.notes?.includes("QuickSeed —"));
+      for (const c of demos) await deleteClient(c.id);
+      setQuickClean("q_client", demos.length ? "ok" : "skipped", { count: demos.length });
+    } catch (e) { setQuickClean("q_client", "error", { error: String(e) }); }
+
+    try {
+      setQuickClean("q_order_voa", "loading");
+      const all = await listOrders();
+      const demos = all.filter((o) => o.title?.startsWith("QuickSeed —"));
+      for (const o of demos) await deleteOrder(o.id);
+      setQuickClean("q_order_voa", demos.length ? "ok" : "skipped", { count: demos.length });
+    } catch (e) { setQuickClean("q_order_voa", "error", { error: String(e) }); }
+
+    setCleaningQuick(false);
+    toast.success("Data Ahmad Ikhsan N dihapus.", { description: "Database sudah bersih." });
+  }
 
   function setBasicSeed(key: string, status: Status, extra?: { error?: string; count?: number }) {
     setBasicSeedItems((prev) => prev.map((it) => (it.key === key ? { ...it, status, ...extra } : it)));
@@ -1102,7 +1201,12 @@ export default function DemoSeed() {
   const anyBasicSeedRan  = !runningBasic  && basicSeedItems.some((it)  => it.status !== "idle");
   const anyBasicCleanRan = !cleaningBasic && basicCleanItems.some((it) => it.status !== "idle");
 
-  const anyRunning = runningBasic || cleaningBasic || runningMasisir || cleaningMasisir;
+  const anyQuickSeedRan  = !runningQuick  && quickSeedItems.some((it)  => it.status !== "idle");
+  const anyQuickCleanRan = !cleaningQuick && quickCleanItems.some((it) => it.status !== "idle");
+  const quickSeedDone  = quickSeedItems.filter((it)  => it.status === "ok").length;
+  const quickSeedErr   = quickSeedItems.filter((it)  => it.status === "error").length;
+
+  const anyRunning = runningQuick || cleaningQuick || runningBasic || cleaningBasic || runningMasisir || cleaningMasisir;
 
   return (
     <div className="max-w-2xl mx-auto py-8 px-4 space-y-6">
@@ -1128,6 +1232,96 @@ export default function DemoSeed() {
           </p>
         </CardContent>
       </Card>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          QUICK INJECT — Ahmad Ikhsan N (VOA MESIR)
+      ══════════════════════════════════════════════════════════════════════ */}
+      <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/10 dark:border-emerald-700 overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 bg-emerald-600 text-white">
+          <span className="text-xl">⚡</span>
+          <div className="flex-1">
+            <p className="font-bold text-[15px]">Quick Inject — Test Invoice</p>
+            <p className="text-[12px] text-emerald-100">MR. AHMAD IKHSAN N · VOA MESIR · IDR 2.877.000</p>
+          </div>
+          {anyQuickSeedRan && (
+            <Badge className={`${quickSeedErr === 0 ? "bg-white text-emerald-700" : "bg-amber-400 text-white"}`}>
+              {quickSeedErr === 0 ? `${quickSeedDone}/${QUICK_ITEMS.length} OK` : `${quickSeedErr} gagal`}
+            </Badge>
+          )}
+        </div>
+
+        <div className="p-5 space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Yang akan dibuat</CardTitle>
+              <CardDescription className="text-xs">
+                1 klien (Ahmad Ikhsan N) + 1 order VOA MESIR IDR 2.877.000 (status: Confirmed)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {quickSeedItems.map((item) => <ItemRow key={item.key} item={item} mode="seed" />)}
+            </CardContent>
+          </Card>
+
+          <Button
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+            size="lg"
+            disabled={anyRunning}
+            onClick={runQuickSeed}
+          >
+            {runningQuick
+              ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Menyuntikkan Data…</>
+              : <><span className="mr-2">⚡</span>{anyQuickSeedRan ? "Jalankan Ulang Quick Inject" : "Inject Ahmad Ikhsan N Sekarang"}</>}
+          </Button>
+
+          {anyQuickSeedRan && quickSeedErr === 0 && (
+            <Card className="border-green-200 bg-green-50 dark:bg-green-900/10">
+              <CardContent className="pt-4 pb-3 space-y-1">
+                <p className="text-sm font-semibold text-green-800">✅ Data berhasil masuk. Langkah selanjutnya:</p>
+                <ol className="text-sm text-green-700 list-decimal list-inside space-y-1">
+                  <li>Buka <a href="/orders" className="underline font-medium">/orders</a> (Order Hub)</li>
+                  <li>Cari order <strong>"VOA MESIR – MR. AHMAD IKHSAN N"</strong></li>
+                  <li>Klik order → tombol <strong>"Cetak Invoice"</strong></li>
+                  <li>PDF invoice otomatis ter-download ✓</li>
+                </ol>
+              </CardContent>
+            </Card>
+          )}
+
+          <Separator />
+
+          <div className="flex items-center gap-3">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50" disabled={anyRunning}>
+                  {cleaningQuick
+                    ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Menghapus…</>
+                    : <><Trash2 className="w-3 h-3 mr-1" />Hapus Data Quick Inject</>}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Hapus Data Quick Inject?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Klien <strong>Ahmad Ikhsan N</strong> dan order <strong>VOA MESIR</strong> akan dihapus permanen dari Supabase.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={runQuickCleanup}>
+                    Ya, Hapus
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            {anyQuickCleanRan && (
+              <span className="text-xs text-slate-500">
+                {quickCleanItems.filter((it) => it.status === "ok").length} item dihapus
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
           FASE 25 — MASISIR EDITION
