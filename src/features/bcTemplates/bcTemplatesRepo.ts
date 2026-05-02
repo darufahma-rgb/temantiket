@@ -11,6 +11,7 @@
 
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAgencyId, useAuthStore } from "@/store/authStore";
+import { withTimeout } from "@/lib/supabaseTimeout";
 
 export type BCCategory =
   | "visa_on_arrival"
@@ -100,12 +101,15 @@ function toRow(d: Partial<BCTemplateDraft> & { agency_id?: string; created_by?: 
 export async function listTemplates(): Promise<BCTemplate[]> {
   if (isSupabaseConfigured()) {
     try {
-      const { data, error } = await supabase!
-        .from("bc_templates")
-        .select("*")
-        .order("category")
-        .order("sort_order")
-        .order("created_at");
+      const { data, error } = await withTimeout(
+        supabase!
+          .from("bc_templates")
+          .select("*")
+          .order("category")
+          .order("sort_order")
+          .order("created_at"),
+        10000,
+      );
       if (error) throw error;
       const list = (data ?? []).map(fromRow);
       saveCache(list);
@@ -122,15 +126,17 @@ export async function createTemplate(draft: BCTemplateDraft): Promise<BCTemplate
   const me = useAuthStore.getState().user;
   if (isSupabaseConfigured()) {
     const agencyId = requireAgencyId();
-    const { data, error } = await supabase!
-      .from("bc_templates")
-      .insert({
-        ...toRow(draft),
-        agency_id:  agencyId,
-        created_by: me?.id ?? null,
-      })
-      .select("*")
-      .single();
+    const { data, error } = await withTimeout(
+      supabase!
+        .from("bc_templates")
+        .insert({
+          ...toRow(draft),
+          agency_id:  agencyId,
+          created_by: me?.id ?? null,
+        })
+        .select("*")
+        .single(),
+    );
     if (error) throw error;
     const t = fromRow(data);
     saveCache([t, ...loadCache()]);
@@ -152,12 +158,14 @@ export async function createTemplate(draft: BCTemplateDraft): Promise<BCTemplate
 
 export async function updateTemplate(id: string, patch: Partial<BCTemplateDraft>): Promise<BCTemplate> {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabase!
-      .from("bc_templates")
-      .update(toRow(patch))
-      .eq("id", id)
-      .select("*")
-      .single();
+    const { data, error } = await withTimeout(
+      supabase!
+        .from("bc_templates")
+        .update(toRow(patch))
+        .eq("id", id)
+        .select("*")
+        .single(),
+    );
     if (error) throw error;
     const t = fromRow(data);
     saveCache(loadCache().map((x) => (x.id === id ? t : x)));
@@ -174,7 +182,9 @@ export async function updateTemplate(id: string, patch: Partial<BCTemplateDraft>
 
 export async function deleteTemplate(id: string): Promise<void> {
   if (isSupabaseConfigured()) {
-    const { error } = await supabase!.from("bc_templates").delete().eq("id", id);
+    const { error } = await withTimeout(
+      supabase!.from("bc_templates").delete().eq("id", id),
+    );
     if (error) throw error;
   }
   saveCache(loadCache().filter((x) => x.id !== id));

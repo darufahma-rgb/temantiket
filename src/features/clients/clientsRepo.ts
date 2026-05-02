@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAgencyId, getCurrentAgencyId, useAuthStore } from "@/store/authStore";
 import { makePersistedCache } from "@/lib/persistedCache";
+import { withTimeout } from "@/lib/supabaseTimeout";
 
 /**
  * Client = kontak independen per-agency. Tidak terikat ke trip atau package
@@ -80,10 +81,13 @@ const toRow = (c: Partial<Client>, agencyId?: string) => ({
 export async function listClients(): Promise<Client[]> {
   if (isSupabaseConfigured()) {
     try {
-      const { data, error } = await supabase!
-        .from("clients")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const { data, error } = await withTimeout(
+        supabase!
+          .from("clients")
+          .select("*")
+          .order("created_at", { ascending: false }),
+        10000,
+      );
       if (error) throw error;
       const items = (data ?? []).map(fromRow);
       saveCache(items);
@@ -117,11 +121,13 @@ export async function createClient(draft: ClientDraft): Promise<Client> {
 
   if (isSupabaseConfigured()) {
     const agencyId = requireAgencyId();
-    const { data, error } = await supabase!
-      .from("clients")
-      .insert(toRow(enriched, agencyId))
-      .select("*")
-      .single();
+    const { data, error } = await withTimeout(
+      supabase!
+        .from("clients")
+        .insert(toRow(enriched, agencyId))
+        .select("*")
+        .single(),
+    );
     if (error) throw error;
     const c = fromRow(data);
     saveCache([c, ...loadCache()]);
@@ -139,12 +145,14 @@ export async function createClient(draft: ClientDraft): Promise<Client> {
 
 export async function updateClient(id: string, patch: Partial<Client>): Promise<Client> {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabase!
-      .from("clients")
-      .update(toRow(patch))
-      .eq("id", id)
-      .select("*")
-      .single();
+    const { data, error } = await withTimeout(
+      supabase!
+        .from("clients")
+        .update(toRow(patch))
+        .eq("id", id)
+        .select("*")
+        .single(),
+    );
     if (error) throw error;
     const c = fromRow(data);
     saveCache(loadCache().map((x) => (x.id === id ? c : x)));
@@ -161,11 +169,13 @@ export async function updateClient(id: string, patch: Partial<Client>): Promise<
 
 export async function deleteClient(id: string): Promise<void> {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabase!
-      .from("clients")
-      .delete()
-      .eq("id", id)
-      .select("id");
+    const { data, error } = await withTimeout(
+      supabase!
+        .from("clients")
+        .delete()
+        .eq("id", id)
+        .select("id"),
+    );
     if (error) {
       console.error(`[clients] DELETE id=${id} gagal:`, error);
       throw error;

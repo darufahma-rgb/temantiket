@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAgencyId, getCurrentAgencyId, useAuthStore } from "@/store/authStore";
 import { makePersistedCache } from "@/lib/persistedCache";
+import { withTimeout } from "@/lib/supabaseTimeout";
 
 export type TicketCurrency = "IDR" | "EGP" | "USD" | "SAR";
 
@@ -114,7 +115,7 @@ export async function listTicketPrices(publishedOnly = false): Promise<TicketPri
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: false });
       if (publishedOnly) q = q.eq("is_published", true);
-      const { data, error } = await q;
+      const { data, error } = await withTimeout(q, 10000);
       if (error) throw error;
       const items = (data ?? []).map(fromRow);
       saveCache(items);
@@ -133,11 +134,13 @@ export async function createTicketPrice(draft: TicketPriceDraft): Promise<Ticket
   const me = useAuthStore.getState().user;
   if (isSupabaseConfigured()) {
     const agencyId = requireAgencyId();
-    const { data, error } = await supabase!
-      .from("ticket_prices")
-      .insert({ ...toRow(draft, agencyId), created_by: me?.id ?? null })
-      .select("*")
-      .single();
+    const { data, error } = await withTimeout(
+      supabase!
+        .from("ticket_prices")
+        .insert({ ...toRow(draft, agencyId), created_by: me?.id ?? null })
+        .select("*")
+        .single(),
+    );
     if (error) throw error;
     const item = fromRow(data);
     saveCache([item, ...loadCache()]);
@@ -157,12 +160,14 @@ export async function createTicketPrice(draft: TicketPriceDraft): Promise<Ticket
 
 export async function updateTicketPrice(id: string, patch: Partial<TicketPriceDraft>): Promise<TicketPrice> {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabase!
-      .from("ticket_prices")
-      .update(toRow(patch))
-      .eq("id", id)
-      .select("*")
-      .single();
+    const { data, error } = await withTimeout(
+      supabase!
+        .from("ticket_prices")
+        .update(toRow(patch))
+        .eq("id", id)
+        .select("*")
+        .single(),
+    );
     if (error) throw error;
     const item = fromRow(data);
     saveCache(loadCache().map((x) => (x.id === id ? item : x)));
@@ -179,11 +184,13 @@ export async function updateTicketPrice(id: string, patch: Partial<TicketPriceDr
 
 export async function deleteTicketPrice(id: string): Promise<void> {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabase!
-      .from("ticket_prices")
-      .delete()
-      .eq("id", id)
-      .select("id");
+    const { data, error } = await withTimeout(
+      supabase!
+        .from("ticket_prices")
+        .delete()
+        .eq("id", id)
+        .select("id"),
+    );
     if (error) throw error;
     if (!data || data.length === 0) throw new Error("Hapus gagal — mungkin RLS block DELETE.");
   }
