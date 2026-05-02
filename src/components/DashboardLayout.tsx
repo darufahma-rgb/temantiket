@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AppSidebar } from "./AppSidebar";
 import { AIChatWidget } from "./AIChatWidget";
 import { AIContextualBar } from "./AIContextualBar";
-import { Menu, LayoutDashboard, Users, ShoppingBag, Settings, RefreshCw, LogOut, StickyNote, FileSpreadsheet, MoreHorizontal, ChevronRight, Ticket, Sparkles, Calculator, Package, MessageSquare, Wallet } from "lucide-react";
+import { Menu, LayoutDashboard, Users, ShoppingBag, Settings, RefreshCw, LogOut, StickyNote, FileSpreadsheet, MoreHorizontal, ChevronRight, Ticket, Sparkles, Calculator, Package, MessageSquare, Wallet, Search, Bell, Command } from "lucide-react";
 
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -436,7 +436,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
         </AnimatePresence>
       </div>
 
-      {/* ── Desktop / Tablet layout — full-bleed edge-to-edge ── */}
+      {/* ── Desktop / Tablet layout ── */}
       <div
         className="mobile-compact hidden md:flex h-screen w-screen overflow-hidden"
         style={{ background: "hsl(var(--background))" }}
@@ -444,98 +444,153 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
         <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {/* ── Desktop Header — reference-image style ── */}
           <motion.header
-            className="pwa-header flex items-center gap-3 px-4 md:px-5 lg:px-6 py-2.5 md:py-3 border-b border-[hsl(var(--border))] shrink-0"
-            style={{ background: "hsl(var(--card))" }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="flex items-center gap-3 px-5 lg:px-6 shrink-0"
+            style={{
+              height: "60px",
+              background: "hsl(var(--card))",
+              borderBottom: "1px solid hsl(var(--border))",
+            }}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
           >
-            {/* Live rates — minimal style */}
-            <div className="flex items-center gap-2.5 shrink-0">
-              <div
-                className="h-1.5 w-1.5 rounded-full"
+            {/* Search bar */}
+            <div className="flex-1 max-w-md relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none"
+                style={{ color: "hsl(var(--muted-foreground))" }}
+                strokeWidth={1.8}
+              />
+              <input
+                type="text"
+                placeholder="Cari klien, order, trip…"
+                className="w-full h-9 pl-9 pr-4 text-[13px] rounded-xl outline-none transition-all"
                 style={{
-                  background: rateMode === "manual" ? "#0ea5e9" : "#10b981",
-                  boxShadow: rateMode === "manual" ? "0 0 5px #0ea5e9" : "0 0 5px #10b981",
+                  background: "hsl(var(--secondary))",
+                  border: "1px solid hsl(var(--border))",
+                  color: "hsl(var(--foreground))",
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#0ea5e9";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.12)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "hsl(var(--border))";
+                  e.target.style.boxShadow = "none";
                 }}
               />
-              <div className="flex items-center gap-2 lg:gap-3 text-[11px] font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
-                <span className={cn(
-                  "text-[9px] uppercase tracking-wide font-bold",
-                  rateMode === "manual" ? "text-sky-500" : "text-emerald-500"
-                )}>
-                  {rateMode === "manual" ? "Manual" : "Live"}
-                </span>
-                <span className="text-[hsl(var(--muted-foreground))]">
-                  USD <span className="text-sky-500 font-bold">Rp{rates.USD?.toLocaleString("id-ID") ?? "—"}</span>
-                </span>
-                <span className="text-[hsl(var(--border))]">·</span>
-                <span className="text-[hsl(var(--muted-foreground))]">
-                  SAR <span className="text-sky-500 font-bold">Rp{rates.SAR?.toLocaleString("id-ID") ?? "—"}</span>
-                </span>
-              </div>
-              <button
-                onClick={() => refreshRates()}
-                className="transition-colors text-[hsl(var(--muted-foreground))] hover:text-sky-500"
-                title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")}` : "Belum diperbarui"}
+              <span
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                style={{
+                  background: "hsl(var(--border))",
+                  color: "hsl(var(--muted-foreground))",
+                  fontFamily: "monospace",
+                }}
               >
-                <RefreshCw className={cn("h-3 w-3", ratesLoading && "animate-spin")} />
-              </button>
+                ⌘K
+              </span>
             </div>
 
             <div className="flex-1" />
 
-            <div className="flex items-center gap-3 lg:gap-4 shrink-0">
-              {/* Sync status indicator (desktop) */}
-              <div
-                className="flex items-center gap-1.5"
-                title={syncTitle}
-                aria-label={syncTitle}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Kurs live — compact pill */}
+              <button
+                onClick={() => refreshRates()}
+                title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")}` : "Tap untuk perbarui"}
+                className="hidden lg:flex items-center gap-2 h-9 px-3 rounded-xl transition-all hover:bg-[hsl(var(--secondary))]"
+                style={{ border: "1px solid hsl(var(--border))" }}
               >
-                <span className="relative flex h-1.5 w-1.5">
+                <span
+                  className="h-1.5 w-1.5 rounded-full shrink-0"
+                  style={{
+                    background: rateMode === "manual" ? "#0ea5e9" : "#10b981",
+                    boxShadow: rateMode === "manual" ? "0 0 4px #0ea5e9" : "0 0 4px #10b981",
+                  }}
+                />
+                <span className="text-[11px] font-semibold text-[hsl(var(--muted-foreground))]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  USD <span className="text-sky-500 font-bold">Rp{rates.USD?.toLocaleString("id-ID") ?? "—"}</span>
+                  <span className="mx-1.5 opacity-30">·</span>
+                  SAR <span className="text-sky-500 font-bold">Rp{rates.SAR?.toLocaleString("id-ID") ?? "—"}</span>
+                </span>
+                <RefreshCw
+                  className={cn("h-3 w-3", ratesLoading && "animate-spin")}
+                  style={{ color: "hsl(var(--muted-foreground))" }}
+                  strokeWidth={2}
+                />
+              </button>
+
+              {/* AI Assistant button */}
+              <button
+                onClick={() => navigate("/itinerary")}
+                className="keep-icon-bg hidden md:flex items-center gap-2 h-9 px-3.5 rounded-xl text-white text-[12px] font-semibold transition-all hover:opacity-90 active:scale-95 shrink-0"
+                style={{ background: "linear-gradient(135deg, #0ea5e9, #0369a1)" }}
+              >
+                <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={2} style={{ color: "white" }} />
+                <span>AI Assistant</span>
+              </button>
+
+              {/* Sync status dot */}
+              <div
+                className="flex items-center gap-1.5 h-9 px-2.5 rounded-xl"
+                style={{ border: "1px solid hsl(var(--border))" }}
+                title={syncTitle}
+              >
+                <span className="relative flex h-2 w-2 shrink-0">
                   {syncStatus === "syncing" && (
                     <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: syncInfo.color }} />
                   )}
-                  <span
-                    className="relative inline-flex h-1.5 w-1.5 rounded-full"
-                    style={{ background: syncInfo.color, boxShadow: syncInfo.glow }}
-                  />
+                  <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: syncInfo.color, boxShadow: syncInfo.glow }} />
                 </span>
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))] leading-none">
+                <span className="hidden lg:block text-[10px] font-semibold text-[hsl(var(--muted-foreground))] leading-none">
                   {syncInfo.label}
-                </span>
-                <span className="text-[10px] text-[hsl(var(--muted-foreground))] leading-none tabular-nums">
-                  {lastSync ? `· ${formatLastSync(lastSync)}` : ""}
                 </span>
               </div>
 
-              <div className="hidden lg:flex flex-col items-end">
-                <div className="text-[13px] font-bold text-[hsl(var(--foreground))] leading-tight">{displayName}</div>
-                <div className="text-[10px] font-medium text-[hsl(var(--muted-foreground))] capitalize tracking-wide">{currentUser?.role ?? "agent"}</div>
-              </div>
+              {/* Notification bell */}
               <button
-                onClick={handleLogout}
-                className="h-8 w-8 flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:text-red-500 transition-colors"
-                title="Keluar"
+                className="keep-icon-bg relative h-9 w-9 flex items-center justify-center rounded-xl transition-colors hover:bg-[hsl(var(--secondary))]"
+                style={{ border: "1px solid hsl(var(--border))" }}
+                title="Notifikasi"
               >
-                <LogOut className="h-4 w-4" />
+                <Bell className="h-4 w-4" style={{ color: "hsl(var(--muted-foreground))" }} strokeWidth={1.8} />
+              </button>
+
+              {/* User avatar + name */}
+              <button
+                onClick={() => navigate("/settings")}
+                className="flex items-center gap-2.5 h-9 pl-2 pr-3 rounded-xl transition-colors hover:bg-[hsl(var(--secondary))]"
+                style={{ border: "1px solid hsl(var(--border))" }}
+              >
+                <div
+                  className="h-6 w-6 rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0"
+                  style={{ background: "linear-gradient(135deg, #0ea5e9, #0369a1)" }}
+                >
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+                <div className="hidden lg:flex flex-col items-start leading-none">
+                  <span className="text-[12px] font-bold text-[hsl(var(--foreground))]">{displayName}</span>
+                  <span className="text-[9px] font-medium text-[hsl(var(--muted-foreground))] capitalize mt-0.5">{currentUser?.role ?? "user"}</span>
+                </div>
               </button>
             </div>
           </motion.header>
 
-          <div className="flex-1 overflow-hidden relative">
+          {/* ── Main content ── */}
+          <div className="flex-1 overflow-hidden relative" style={{ background: "hsl(var(--background))" }}>
             <AnimatePresence mode="wait" initial={false}>
               <motion.main
                 key={location.pathname}
                 className={`pwa-main-content absolute inset-0 overflow-auto ${noPadding
                   ? "pb-0"
-                  : "p-4 md:p-5 lg:p-7 xl:p-8"
+                  : "p-4 md:p-5 lg:p-6 xl:p-7"
                 }`}
-                initial={{ x: 56, opacity: 0 }}
+                initial={{ x: 40, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -56, opacity: 0 }}
-                transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                exit={{ x: -40, opacity: 0 }}
+                transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
                 <div className="mx-auto w-full max-w-[1400px]">
                   {!noPadding && <AIContextualBar />}

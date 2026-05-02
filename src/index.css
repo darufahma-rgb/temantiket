@@ -195,36 +195,10 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  /* Lucide icons — inherit color from parent by default */
   .lucide {
-    color: hsl(198 92% 35%) !important;
     stroke: currentColor !important;
     fill: none !important;
-  }
-
-  /* ── Global: outline orange icons, no box/chip behind them ──
-     Any container whose only visible child is a lucide icon (the very
-     common "icon chip" pattern: <div className="bg-sky-100 ..."><Icon/></div>)
-     gets its background, border and shadow stripped so the icon stands
-     alone. Layout sizing (h-x w-x flex items-center justify-center) is
-     preserved so surrounding flex/grid layouts don't shift. */
-  :where(div, span, button, a):has(> svg.lucide:only-child),
-  :where(div, span, button, a):has(> svg.lucide:only-of-type:last-child:first-child) {
-    background: transparent !important;
-    background-color: transparent !important;
-    background-image: none !important;
-    border-color: transparent !important;
-    box-shadow: none !important;
-  }
-
-  /* Opt-out: gradient buttons and chips that *should* keep their fill
-     (e.g. primary CTA buttons with an icon). Add `keep-icon-bg` class
-     to a container to bypass the rule above. */
-  :where(.keep-icon-bg, .gradient-primary):has(> svg.lucide) {
-    background: revert !important;
-    background-color: revert !important;
-    background-image: revert !important;
-    border-color: revert !important;
-    box-shadow: revert !important;
   }
 }
 

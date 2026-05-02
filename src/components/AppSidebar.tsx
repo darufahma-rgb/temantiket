@@ -4,22 +4,16 @@ import {
   StickyNote, FileSpreadsheet, Users, ShoppingBag,
   Plane, FileBadge, Wallet, MessageSquare, Sparkles, Ticket,
   GitBranch, Command, Trophy, BookUser, Megaphone, BarChart3,
-  Wrench, ChevronRight, X,
+  Wrench, ChevronDown, ChevronUp, HelpCircle, Star, Zap,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
 
-// ── Brand colors ────────────────────────────────────────────────────────────
-const L1_BG   = "#0b1628";           // deep navy — Layer 1 icon bar
-const L2_BG   = "#0f2044";           // mid navy — Layer 2 slide-out panel
-const ACCENT  = "#0ea5e9";           // sky-500 active accent
-const DIVIDER = "rgba(255,255,255,0.07)";
-const L1_W    = 60;                  // px — slim icon bar width
-const L2_W    = 196;                 // px — slide-out panel width
+const ACCENT = "#0ea5e9";
+const SIDEBAR_W = 240;
 
-// ── Types ───────────────────────────────────────────────────────────────────
 interface NavItemDef {
   title: string;
   url: string;
@@ -29,171 +23,92 @@ interface NavItemDef {
   ownerOnly?: boolean;
 }
 
-interface GroupDef {
+interface SectionDef {
   key: string;
   label: string;
-  icon: React.ElementType;
   items: NavItemDef[];
   ownerOnly?: boolean;
   agentOnly?: boolean;
+  collapsible?: boolean;
 }
 
-// ── Nav structure ────────────────────────────────────────────────────────────
-
-const STAFF_GROUPS: GroupDef[] = [
+const STAFF_SECTIONS: SectionDef[] = [
   {
-    key: "dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
+    key: "main",
+    label: "Main Menu",
+    collapsible: true,
     items: [
-      { title: "Dashboard",      url: "/",              icon: LayoutDashboard, end: true },
-      { title: "Klien / Jamaah", url: "/clients",       icon: Users },
-      { title: "Order Hub",      url: "/orders",        icon: ShoppingBag },
-      { title: "Harga Tiket",    url: "/ticket-prices", icon: Ticket },
-    ],
-  },
-  {
-    key: "ops",
-    label: "Operasional",
-    icon: Wrench,
-    items: [
-      { title: "Kalkulator & Kurs", url: "/calculator", icon: Calculator },
-      { title: "AI Itinerary",      url: "/itinerary",  icon: Sparkles, badge: "AI" },
-      { title: "Paket Trip",        url: "/packages",   icon: Package },
-      { title: "Progress Jamaah",   url: "/progress",   icon: GitBranch },
-      { title: "Catatan",           url: "/notes",      icon: StickyNote },
-    ],
-  },
-  {
-    key: "marketing",
-    label: "Marketing",
-    icon: Megaphone,
-    items: [
-      { title: "Template Broadcast", url: "/bc-templates",    icon: MessageSquare },
-      { title: "Export & Manifest",  url: "/exports",         icon: FileSpreadsheet },
-      { title: "Marketing Kit",      url: "/agent/marketing", icon: Megaphone },
+      { title: "Dashboard",         url: "/",              icon: LayoutDashboard, end: true },
+      { title: "Klien & Jamaah",    url: "/clients",       icon: Users },
+      { title: "Order Hub",         url: "/orders",        icon: ShoppingBag },
+      { title: "Harga Tiket",       url: "/ticket-prices", icon: Ticket },
+      { title: "AI Itinerary",      url: "/itinerary",     icon: Sparkles, badge: "AI" },
+      { title: "Kalkulator & Kurs", url: "/calculator",    icon: Calculator },
+      { title: "Paket Trip",        url: "/packages",      icon: Package },
+      { title: "Progress Jamaah",   url: "/progress",      icon: GitBranch },
+      { title: "Catatan",           url: "/notes",         icon: StickyNote },
+      { title: "Template Broadcast",url: "/bc-templates",  icon: MessageSquare },
+      { title: "Export & Manifest", url: "/exports",       icon: FileSpreadsheet },
+      { title: "Marketing Kit",     url: "/agent/marketing", icon: Megaphone },
     ],
   },
   {
     key: "finance",
     label: "Keuangan",
-    icon: BarChart3,
     ownerOnly: true,
     items: [
-      { title: "Laporan Keuangan", url: "/reports", icon: BarChart3 },
+      { title: "Laporan Keuangan",  url: "/reports",         icon: BarChart3 },
     ],
   },
   {
     key: "agent",
     label: "Sistem Agen",
-    icon: Trophy,
     items: [
-      { title: "Kontrol & Misi",  url: "/agent-center",      icon: Command,  ownerOnly: true },
-      { title: "Direktori Agen",  url: "/agent-directory",   icon: BookUser },
-      { title: "Leaderboard",     url: "/agent/leaderboard", icon: Trophy },
+      { title: "Kontrol & Misi",   url: "/agent-center",     icon: Command, ownerOnly: true },
+      { title: "Direktori Agen",   url: "/agent-directory",  icon: BookUser },
+      { title: "Leaderboard",      url: "/agent/leaderboard",icon: Trophy },
+    ],
+  },
+  {
+    key: "settings",
+    label: "Help & Settings",
+    items: [
+      { title: "Pengaturan",       url: "/settings",         icon: Settings },
     ],
   },
 ];
 
-const AGENT_GROUPS: GroupDef[] = [
+const AGENT_SECTIONS: SectionDef[] = [
   {
-    key: "dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
+    key: "main",
+    label: "Main Menu",
+    collapsible: true,
     items: [
-      { title: "Mitra Dashboard", url: "/agent",   icon: Trophy, end: true },
-      { title: "Klien / Jamaah",  url: "/clients", icon: Users },
-      { title: "Order Hub",       url: "/orders",  icon: ShoppingBag },
-    ],
-  },
-  {
-    key: "marketing",
-    label: "Marketing",
-    icon: Megaphone,
-    items: [
-      { title: "Template Broadcast", url: "/bc-templates",    icon: MessageSquare },
-      { title: "Marketing Kit",      url: "/agent/marketing", icon: Megaphone },
+      { title: "Mitra Dashboard",    url: "/agent",          icon: Trophy, end: true },
+      { title: "Klien & Jamaah",     url: "/clients",        icon: Users },
+      { title: "Order Hub",          url: "/orders",         icon: ShoppingBag },
+      { title: "Template Broadcast", url: "/bc-templates",   icon: MessageSquare },
+      { title: "Marketing Kit",      url: "/agent/marketing",icon: Megaphone },
       { title: "Leaderboard",        url: "/agent/leaderboard", icon: Trophy },
     ],
   },
+  {
+    key: "settings",
+    label: "Help & Settings",
+    items: [
+      { title: "Pengaturan",         url: "/settings",       icon: Settings },
+    ],
+  },
 ];
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function useActiveGroup(groups: GroupDef[]): string | null {
+function useIsAnyActive(items: NavItemDef[]): boolean {
   const location = useLocation();
-  for (const g of groups) {
-    for (const item of g.items) {
-      if (item.end ? location.pathname === item.url : location.pathname.startsWith(item.url)) {
-        return g.key;
-      }
-    }
-  }
-  return null;
-}
-
-// ── Layer 1 — Slim icon button ───────────────────────────────────────────────
-function L1Button({
-  group,
-  isActive,
-  isOpen,
-  onClick,
-}: {
-  group: GroupDef;
-  isActive: boolean;
-  isOpen: boolean;
-  onClick: () => void;
-}) {
-  const Icon = group.icon;
-  return (
-    <button
-      onClick={onClick}
-      title={group.label}
-      className="relative flex flex-col items-center justify-center w-full h-[52px] gap-[3px] transition-all duration-150 group"
-      aria-label={group.label}
-      aria-expanded={isOpen}
-    >
-      {/* Active indicator bar on left edge */}
-      {(isActive || isOpen) && (
-        <motion.span
-          layoutId="l1-pill"
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-7 rounded-r-full"
-          style={{ background: ACCENT }}
-          transition={{ type: "spring", stiffness: 500, damping: 40 }}
-        />
-      )}
-
-      {/* Icon container */}
-      <div
-        className={cn(
-          "flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150",
-          isOpen
-            ? "bg-sky-500/20"
-            : isActive
-            ? "bg-sky-500/15"
-            : "group-hover:bg-white/[6%]",
-        )}
-      >
-        <Icon
-          strokeWidth={isActive || isOpen ? 2.1 : 1.6}
-          className="h-[18px] w-[18px]"
-          style={{ color: isActive || isOpen ? ACCENT : "rgba(255,255,255,0.45)" }}
-        />
-      </div>
-
-      {/* Label */}
-      <span
-        className="text-[8.5px] font-semibold leading-none tracking-tight truncate max-w-[52px] px-1"
-        style={{ color: isActive || isOpen ? ACCENT : "rgba(255,255,255,0.3)" }}
-      >
-        {group.label}
-      </span>
-    </button>
+  return items.some((item) =>
+    item.end ? location.pathname === item.url : location.pathname.startsWith(item.url)
   );
 }
 
-// ── Layer 2 — Nav item in slide-out panel ────────────────────────────────────
-function L2Item({ item, onClose }: { item: NavItemDef; onClose: () => void }) {
+function SidebarNavItem({ item, onClose }: { item: NavItemDef; onClose?: () => void }) {
   const Icon = item.icon;
   return (
     <NavLink
@@ -202,10 +117,10 @@ function L2Item({ item, onClose }: { item: NavItemDef; onClose: () => void }) {
       onClick={onClose}
       className={({ isActive }) =>
         cn(
-          "relative flex items-center gap-2.5 h-9 px-3 rounded-xl text-left transition-all duration-150 w-full",
+          "relative flex items-center gap-3 h-9 px-3 rounded-xl text-left transition-all duration-150 w-full group",
           isActive
-            ? "text-sky-400"
-            : "text-white/45 hover:text-white/85 hover:bg-white/[5%]",
+            ? "text-white"
+            : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]"
         )
       }
     >
@@ -213,21 +128,29 @@ function L2Item({ item, onClose }: { item: NavItemDef; onClose: () => void }) {
         <>
           {isActive && (
             <motion.span
-              layoutId="l2-pill"
+              layoutId="sidebar-pill"
               className="absolute inset-0 rounded-xl"
-              style={{ background: "rgba(14,165,233,0.12)" }}
+              style={{ background: "linear-gradient(135deg, #0ea5e9, #0284c7)" }}
               transition={{ type: "spring", stiffness: 500, damping: 40 }}
             />
           )}
           <Icon
-            strokeWidth={isActive ? 2.2 : 1.5}
-            className="h-[15px] w-[15px] shrink-0 relative z-10"
+            strokeWidth={isActive ? 2.2 : 1.7}
+            className="h-[16px] w-[16px] shrink-0 relative z-10 transition-colors"
+            style={{ color: isActive ? "white" : undefined }}
           />
-          <span className="relative z-10 text-[12px] font-medium flex-1 truncate">
+          <span className="relative z-10 text-[13px] font-medium flex-1 truncate leading-none">
             {item.title}
           </span>
           {item.badge && (
-            <span className="relative z-10 text-[8px] font-black uppercase tracking-wide px-1 py-px rounded bg-sky-500/20 text-sky-400 shrink-0">
+            <span
+              className="relative z-10 text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0"
+              style={
+                isActive
+                  ? { background: "rgba(255,255,255,0.25)", color: "white" }
+                  : { background: `${ACCENT}20`, color: ACCENT }
+              }
+            >
               {item.badge}
             </span>
           )}
@@ -237,69 +160,60 @@ function L2Item({ item, onClose }: { item: NavItemDef; onClose: () => void }) {
   );
 }
 
-// ── Layer 2 slide-out panel ──────────────────────────────────────────────────
-function L2Panel({
-  group,
+function SidebarSection({
+  section,
   isOwner,
   onClose,
 }: {
-  group: GroupDef;
+  section: SectionDef;
   isOwner: boolean;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
-  const visibleItems = group.items.filter((i) => !i.ownerOnly || isOwner);
+  const visibleItems = section.items.filter((i) => !i.ownerOnly || isOwner);
+  const hasActive = useIsAnyActive(visibleItems);
+  const [collapsed, setCollapsed] = useState(false);
+
+  if (visibleItems.length === 0) return null;
 
   return (
-    <motion.div
-      key={group.key}
-      initial={{ x: -12, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: -8, opacity: 0 }}
-      transition={{ type: "spring", stiffness: 420, damping: 38, mass: 0.85 }}
-      className="flex flex-col h-full"
-      style={{
-        width: `${L2_W}px`,
-        background: L2_BG,
-        borderRight: `1px solid ${DIVIDER}`,
-      }}
-    >
-      {/* Panel header */}
-      <div
-        className="flex items-center justify-between px-3 py-3 shrink-0"
-        style={{ borderBottom: `1px solid ${DIVIDER}` }}
+    <div className="space-y-0.5">
+      <button
+        onClick={section.collapsible ? () => setCollapsed((c) => !c) : undefined}
+        className={cn(
+          "flex items-center justify-between w-full px-3 py-1.5",
+          section.collapsible ? "cursor-pointer" : "cursor-default"
+        )}
       >
-        <span
-          className="text-[10px] font-black uppercase tracking-[0.14em]"
-          style={{ color: "rgba(255,255,255,0.35)" }}
-        >
-          {group.label}
+        <span className="text-[10px] font-black uppercase tracking-[0.12em] text-[hsl(var(--muted-foreground))]">
+          {section.label}
         </span>
-        <button
-          onClick={onClose}
-          className="h-5 w-5 flex items-center justify-center rounded-md transition-colors hover:bg-white/[6%]"
-          aria-label="Tutup panel"
-        >
-          <X className="h-3 w-3" style={{ color: "rgba(255,255,255,0.3)" }} />
-        </button>
-      </div>
+        {section.collapsible && (
+          collapsed
+            ? <ChevronDown className="h-3 w-3 text-[hsl(var(--muted-foreground))]" />
+            : <ChevronUp className="h-3 w-3 text-[hsl(var(--muted-foreground))]" />
+        )}
+      </button>
 
-      {/* Items */}
-      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-px" style={{ scrollbarWidth: "none" }}>
-        {visibleItems.map((item) => (
-          <L2Item key={item.url} item={item} onClose={onClose} />
-        ))}
-      </div>
-
-      {/* Blue accent at bottom */}
-      <div
-        className="shrink-0 mx-3 mb-3"
-        style={{ height: "1px", background: `linear-gradient(90deg, ${ACCENT}40, transparent)` }}
-      />
-    </motion.div>
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-0.5 px-1">
+              {visibleItems.map((item) => (
+                <SidebarNavItem key={item.url} item={item} onClose={onClose} />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
-
-// ── Main sidebar component ───────────────────────────────────────────────────
 
 interface AppSidebarProps {
   open?: boolean;
@@ -312,152 +226,137 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
   const isOwner = user?.role === "owner";
   const isAgent = user?.role === "agent";
 
-  const rawGroups = isAgent ? AGENT_GROUPS : STAFF_GROUPS;
-  const groups = rawGroups.filter((g) => !g.ownerOnly || isOwner);
+  const sections = (isAgent ? AGENT_SECTIONS : STAFF_SECTIONS).filter(
+    (s) => !s.ownerOnly || isOwner
+  );
 
-  const activeGroupKey = useActiveGroup(groups);
-  const [openKey, setOpenKey] = useState<string | null>(activeGroupKey);
+  const handleLogout = () => { logout(); onClose?.(); navigate("/login"); };
 
-  // Sync open panel to active route on mount / route changes
-  useEffect(() => {
-    setOpenKey(activeGroupKey);
-  }, [activeGroupKey]);
+  const roleLabel =
+    user?.role === "owner" ? "Owner" :
+    user?.role === "staff" ? "Staff" : "Agen Mitra";
 
-  const toggleGroup = (key: string) => {
-    setOpenKey((prev) => (prev === key ? null : key));
-  };
-
-  const handleClose = () => setOpenKey(null);
-
-  const openGroup = groups.find((g) => g.key === openKey) ?? null;
-
-  // ── Inner chrome ────────────────────────────────────────────────────────────
-  const sidebarChrome = (
-    <div className="flex h-full shrink-0">
-      {/* ── Layer 1: slim icon bar ── */}
-      <div
-        className="flex flex-col h-full py-2 shrink-0"
-        style={{
-          width: `${L1_W}px`,
-          background: L1_BG,
-          borderRight: `1px solid ${DIVIDER}`,
-        }}
-      >
-        {/* Logo */}
-        <div className="flex justify-center items-center h-[48px] shrink-0 mb-1">
+  const sidebarContent = (
+    <div
+      className="flex flex-col h-full"
+      style={{ width: `${SIDEBAR_W}px`, background: "hsl(var(--card))", borderRight: "1px solid hsl(var(--border))" }}
+    >
+      {/* ── Logo area ── */}
+      <div className="flex items-center gap-2.5 px-5 py-4 shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+        <div
+          className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+          style={{ background: "linear-gradient(135deg, #0ea5e9, #0369a1)" }}
+        >
           <img
             src="/temantiket-logo.png"
             alt="Temantiket"
-            className="h-6 w-6 object-contain"
-            style={{ filter: "brightness(0) invert(1) opacity(0.75)" }}
+            className="h-5 w-5 object-contain"
+            style={{ filter: "brightness(0) invert(1)" }}
             onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
+              const img = e.target as HTMLImageElement;
+              img.style.display = "none";
+              const span = document.createElement("span");
+              span.textContent = "T";
+              span.className = "text-white font-black text-lg";
+              img.parentElement!.appendChild(span);
             }}
           />
         </div>
-
-        {/* Sky gradient accent */}
-        <div
-          className="mx-2 mb-2 shrink-0"
-          style={{ height: "1px", background: `linear-gradient(90deg, transparent, ${ACCENT}70, transparent)` }}
-        />
-
-        {/* Group icons */}
-        <div className="flex-1 flex flex-col items-center overflow-y-auto w-full px-1.5 gap-px" style={{ scrollbarWidth: "none" }}>
-          {groups.map((group) => (
-            <L1Button
-              key={group.key}
-              group={group}
-              isActive={activeGroupKey === group.key}
-              isOpen={openKey === group.key}
-              onClick={() => toggleGroup(group.key)}
-            />
-          ))}
-        </div>
-
-        {/* Bottom actions */}
-        <div
-          className="shrink-0 flex flex-col items-center gap-1 pt-2 pb-1 px-1.5"
-          style={{ borderTop: `1px solid ${DIVIDER}` }}
-        >
-          {/* Avatar */}
-          {user && (
-            <button
-              title={`${user.displayName} · ${user.role}`}
-              onClick={() => navigate("/settings")}
-              className="flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:bg-white/[6%]"
-            >
-              <div
-                className="h-7 w-7 rounded-full flex items-center justify-center shadow"
-                style={{ background: `linear-gradient(135deg, ${ACCENT}, #0369a1)` }}
-              >
-                <span className="text-[11px] font-bold text-white leading-none">
-                  {user.displayName.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            </button>
-          )}
-
-          {/* Settings */}
-          <NavLink
-            to="/settings"
-            title="Pengaturan"
-            className={({ isActive }) =>
-              cn(
-                "flex items-center justify-center w-9 h-9 rounded-xl transition-all",
-                isActive ? "bg-sky-500/15" : "hover:bg-white/[6%]",
-              )
-            }
-          >
-            {({ isActive }) => (
-              <Settings
-                strokeWidth={isActive ? 2.1 : 1.6}
-                className="h-[17px] w-[17px]"
-                style={{ color: isActive ? ACCENT : "rgba(255,255,255,0.35)" }}
-              />
-            )}
-          </NavLink>
-
-          {/* Logout */}
-          <button
-            title="Keluar"
-            onClick={() => { logout(); onClose?.(); }}
-            className="flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:bg-red-500/10 group"
-          >
-            <LogOut
-              strokeWidth={1.6}
-              className="h-[17px] w-[17px] group-hover:text-red-400 transition-colors"
-              style={{ color: "rgba(255,255,255,0.3)" }}
-            />
-          </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-black text-[hsl(var(--foreground))] leading-none tracking-tight">Temantiket</p>
+          <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5 leading-none">Travel Management</p>
         </div>
       </div>
 
-      {/* ── Layer 2: slide-out panel ── */}
-      <AnimatePresence mode="wait">
-        {openGroup && (
-          <L2Panel
-            key={openGroup.key}
-            group={openGroup}
+      {/* ── User profile ── */}
+      {user && (
+        <button
+          onClick={() => { navigate("/settings"); onClose?.(); }}
+          className="flex items-center gap-3 mx-3 mt-3 mb-1 px-3 py-2.5 rounded-xl hover:bg-[hsl(var(--secondary))] transition-colors text-left"
+        >
+          <div
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-white text-[12px] font-black shrink-0 shadow"
+            style={{ background: "linear-gradient(135deg, #0ea5e9, #0369a1)" }}
+          >
+            {user.displayName.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12.5px] font-bold text-[hsl(var(--foreground))] truncate leading-tight">{user.displayName}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span
+                className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
+                style={{ background: `${ACCENT}15`, color: ACCENT }}
+              >
+                <Zap className="h-2.5 w-2.5" strokeWidth={2.5} />
+                {roleLabel}
+              </span>
+            </div>
+          </div>
+        </button>
+      )}
+
+      {/* ── Nav sections ── */}
+      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4" style={{ scrollbarWidth: "none" }}>
+        {sections.map((section) => (
+          <SidebarSection
+            key={section.key}
+            section={section}
             isOwner={isOwner}
-            onClose={handleClose}
+            onClose={onClose}
           />
-        )}
-      </AnimatePresence>
+        ))}
+      </div>
+
+      {/* ── Bottom: CTA + Logout ── */}
+      <div className="shrink-0 px-3 pb-4 space-y-2" style={{ borderTop: "1px solid hsl(var(--border))", paddingTop: "12px" }}>
+        {/* CTA upgrade card */}
+        <div
+          className="rounded-2xl p-3.5 relative overflow-hidden"
+          style={{ background: "linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)" }}
+        >
+          <div className="absolute -top-4 -right-4 h-16 w-16 rounded-full opacity-20" style={{ background: "white" }} />
+          <div className="absolute -bottom-3 -left-3 h-12 w-12 rounded-full opacity-10" style={{ background: "white" }} />
+          <div className="relative z-10">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Star className="h-3.5 w-3.5 text-yellow-300" strokeWidth={2} fill="currentColor" />
+              <span className="text-[11px] font-black text-white tracking-wide">Pro Tips</span>
+            </div>
+            <p className="text-[10px] text-white/80 leading-snug mb-2.5">
+              Gunakan AI Itinerary untuk buat program perjalanan otomatis!
+            </p>
+            <button
+              onClick={() => { navigate("/itinerary"); onClose?.(); }}
+              className="w-full flex items-center justify-center gap-1.5 h-7 rounded-lg text-[11px] font-bold text-sky-700 bg-white/90 hover:bg-white transition-colors"
+            >
+              <Sparkles className="h-3 w-3" strokeWidth={2.5} />
+              Coba Sekarang
+            </button>
+          </div>
+        </div>
+
+        {/* Logout */}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2.5 h-9 px-3 rounded-xl text-[12.5px] font-medium text-[hsl(var(--muted-foreground))] hover:text-red-500 hover:bg-red-50 transition-colors group"
+        >
+          <LogOut className="h-[15px] w-[15px] shrink-0 group-hover:text-red-500 transition-colors" strokeWidth={1.8} />
+          Keluar
+        </button>
+      </div>
     </div>
   );
 
   return (
     <>
-      {/* Desktop — always-visible */}
-      <div className="hidden md:flex shrink-0 h-full">{sidebarChrome}</div>
+      {/* Desktop — always visible */}
+      <div className="hidden md:flex shrink-0 h-full">{sidebarContent}</div>
 
       {/* Mobile — slide-in overlay */}
       <AnimatePresence>
         {open && (
           <div className="md:hidden fixed inset-0 z-50 flex">
             <motion.div
-              className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+              className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -465,13 +364,13 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
               onClick={onClose}
             />
             <motion.div
-              className="relative flex-shrink-0"
+              className="relative flex-shrink-0 shadow-2xl"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 360, damping: 36, mass: 0.88 }}
             >
-              {sidebarChrome}
+              {sidebarContent}
             </motion.div>
           </div>
         )}
