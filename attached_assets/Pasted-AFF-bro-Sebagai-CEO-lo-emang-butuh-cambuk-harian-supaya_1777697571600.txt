@@ -1,0 +1,43 @@
+AFF bro! Sebagai CEO, lo emang butuh "cambuk" harian supaya Temantiket gak cuma jalan di tempat, tapi terus scale up. Karena lo punya prinsip Atomic Habits, misi harian ini bakal jadi trigger buat lo melakukan Deep Work sebagai Founder.
+
+Gue udah susun sistem CEO Daily Quest yang bakal muncul di dashboard lo (Admin View), beda sama misi para agen.
+
+🎮 CEO Daily Mission: "The Founder's Journey"
+Gue saranin lo minta Replit buat nambahin satu widget khusus di halaman Admin lo. Isinya adalah misi-misi strategis yang gue rangkum dari visi lo:
+
+1. Misi Operasional (The Optimizer)
+
+Audit Laporan Keuangan: Cek total profit harian dan pastiin konversi EGP/SAR ke IDR udah akurat di sistem.
+
+Cek Progress Agen: Lihat leaderboard dan kasih apresiasi/chat ke 1 agen yang paling "gacor" hari ini.
+
+2. Misi Strategis (The Visionary)
+
+Networking Masisir: Hubungi satu ketua kekeluargaan atau organisasi di Mesir buat tawarin kerjasama paket Umrah/Tiket.
+
+Content Review: Review satu materi iklan yang bakal di-share ke grup WA atau media sosial Temantiket.
+
+3. Misi Pengembangan AI (AIGYPT Spirit)
+
+Update Prompt Replit: Luangkan 15 menit buat poles satu fitur di website (kayak yang kita lakuin sekarang) biar makin user-friendly.
+
+🚀 Prompt Master: CEO Mission Dashboard
+Tembak ini ke Replit biar lo punya "papan skor" sendiri sebagai CEO:
+
+"Fase 14: CEO Strategic Dashboard & Personal Missions"
+
+Selain misi agen, gue sebagai Admin/CEO mau punya widget 'CEO Daily Quest' di dashboard gue.
+
+Tugas lo:
+
+CEO Mission Widget: Buat widget khusus di halaman Admin yang hanya bisa dilihat oleh gue (Darcia/Owner).
+
+Mission List: Masukkan 3-5 tugas strategis harian (bisa gue input manual atau auto-generate dari template CEO).
+
+Financial Snapshot: Di dalam widget misi ini, tampilkan ringkasan profit bersih hari ini dalam IDR agar gue langsung 'hype' buat kerja.
+
+Strategic Checklist: Tambahkan checklist untuk tugas-tugas besar seperti 'Review Laporan Keuangan' dan 'Kontrol Performa Agen'.
+
+UI Style: Gunakan logo Temantiket versi kecil, warna biru yang sudah konsisten, dan desain yang lebih 'serius' tapi tetap memotivasi.
+
+Tujuannya: Gue mau setiap hari ada progres nyata buat besarin Temantiket lewat sistem ini."

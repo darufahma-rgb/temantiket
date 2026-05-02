@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { LiveClock } from "@/components/LiveClock";
 import { AdminWhatsappCard } from "@/components/AdminWhatsappCard";
 import { MitraLeaderboardCard } from "@/components/MitraLeaderboardCard";
+import { CeoDailyQuest } from "@/components/CeoDailyQuest";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -868,6 +869,9 @@ export default function Dashboard() {
             <MitraLeaderboardCard />
           </div>
         )}
+
+        {/* ── CEO Daily Quest — owner only ── */}
+        {user?.role === "owner" && <CeoDailyQuest />}
 
         {/* ── Primary stat cards (4 main metrics) ── */}
         <motion.div
