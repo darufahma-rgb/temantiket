@@ -12,6 +12,7 @@ import {
   Bot, Send, Loader2, Sparkles,
   TrendingUp, Users, ShoppingBag, Zap, RefreshCw,
   CheckCircle2, AlertCircle, Target, Calculator, ChevronDown,
+  FileDown,
 } from "lucide-react";
 import { sendAIMessage, type ChatMessage, type ToolResult } from "@/lib/aiCommandCenter";
 import { useAIChatStore } from "@/store/aiChatStore";
@@ -352,6 +353,47 @@ function ToolResultCard({ result }: { result: ToolResult }) {
             <span className="text-indigo-600">{a.points} poin · {a.totalOrders} order</span>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (type === "invoice_ready") {
+    const handleDownload = () => {
+      const a = document.createElement("a");
+      a.href     = String(d.dataUrl);
+      a.download = `${String(d.invoiceNumber)}_${String(d.clientName).replace(/\s+/g, "_")}.pdf`;
+      a.click();
+    };
+    return (
+      <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 text-xs space-y-2.5">
+        <div className="flex items-center gap-1.5 font-semibold text-emerald-700">
+          <FileDown className="w-3.5 h-3.5" /> Invoice Siap Download
+        </div>
+        <div className="space-y-1 text-emerald-800">
+          <div className="flex justify-between">
+            <span className="text-emerald-600">No. Invoice</span>
+            <span className="font-mono font-semibold">{String(d.invoiceNumber)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-emerald-600">Klien</span>
+            <span className="font-semibold">{String(d.clientName)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-emerald-600">Order</span>
+            <span className="font-medium truncate max-w-[120px]">{String(d.orderTitle)}</span>
+          </div>
+          <div className="flex justify-between border-t border-emerald-200 pt-1">
+            <span className="text-emerald-600 font-medium">Total</span>
+            <span className="font-bold text-emerald-700">{String(d.total)}</span>
+          </div>
+        </div>
+        <button
+          onClick={handleDownload}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors"
+        >
+          <FileDown className="w-3.5 h-3.5" />
+          Download PDF
+        </button>
       </div>
     );
   }

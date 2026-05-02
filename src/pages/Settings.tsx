@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { User, Bell, Shield, Palette, Globe, Save, Camera, TrendingUp, RefreshCw, Users, Plus, Trash2, Radio, PencilLine, KeyRound, Clock, CheckCircle2, Lock, History, FileEdit, FileX, FilePlus, Activity, XCircle, AlertCircle, Database, Cloud, HardDrive, UserCheck, MessageCircle, Instagram } from "lucide-react";
+import { User, Bell, Shield, Palette, Globe, Save, Camera, TrendingUp, RefreshCw, Users, Plus, Trash2, Radio, PencilLine, KeyRound, Clock, CheckCircle2, Lock, History, FileEdit, FileX, FilePlus, Activity, XCircle, AlertCircle, Database, Cloud, HardDrive, UserCheck, MessageCircle, Instagram, FileText } from "lucide-react";
+import { InvoiceTemplateUploader } from "@/components/InvoiceTemplateUploader";
 import { loadIghAdminSettings, saveIghAdminSettings, formatWhatsappDisplay, type IghAdminSettings } from "@/lib/ighSettings";
 import { supabase, isSupabaseConfigured, SUPABASE_URL } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
@@ -83,6 +84,7 @@ export default function Settings() {
     { key: "regional",      label: t.settings_regional,      icon: Globe },
     { key: "rates",         label: t.settings_rates,         icon: TrendingUp },
     { key: "agents",        label: t.settings_agents,        icon: Users },
+    { key: "invoice",       label: "Invoice",                icon: FileText },
     { key: "audit",         label: "Audit Log",              icon: History },
     { key: "status",        label: "Status",                 icon: Activity },
   ];
@@ -1251,12 +1253,44 @@ export default function Settings() {
           </div>
         )}
 
+        {tab === "invoice" && (
+          <div className="space-y-6 max-w-xl">
+            <SectionHeader
+              title="Pengaturan Invoice"
+              desc="Kustomisasi template dan format invoice yang dicetak dari setiap order."
+            />
+            <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-5 space-y-5">
+              <InvoiceTemplateUploader />
+            </div>
+
+            <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))/30] p-4 space-y-3">
+              <div className="text-[12px] font-semibold text-[hsl(var(--foreground))]">Cara Menggunakan Invoice</div>
+              <ol className="text-[11.5px] text-[hsl(var(--muted-foreground))] space-y-2 list-decimal list-inside leading-relaxed">
+                <li>Buka halaman detail order manapun (flight, umrah, visa)</li>
+                <li>Klik tombol <strong className="text-[hsl(var(--foreground))]">Cetak Invoice</strong> di pojok kanan atas</li>
+                <li>PDF langsung ter-download otomatis dengan nomor invoice auto-generate</li>
+                <li>Atau ketik ke AI: <em>"Bikinin invoice untuk [nama klien]"</em></li>
+              </ol>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 space-y-2">
+              <div className="text-[12px] font-semibold text-emerald-700">Format Nomor Invoice</div>
+              <div className="font-mono text-[13px] text-emerald-800 bg-white border border-emerald-200 rounded-lg px-3 py-2">
+                INV-YYYYMMDD-0001
+              </div>
+              <p className="text-[11px] text-emerald-600">
+                Nomor invoice dibuat otomatis dan bertambah setiap kali Anda mencetak invoice baru.
+              </p>
+            </div>
+          </div>
+        )}
+
         {tab === "audit" && <AuditLogPanel />}
 
         {tab === "status" && <ConnectionHealthPanel />}
 
         {/* Save */}
-        {tab !== "audit" && tab !== "status" && (
+        {tab !== "audit" && tab !== "status" && tab !== "invoice" && (
           <div className="mt-6 pt-4 border-t border-[hsl(var(--border))] max-w-xl">
             <Button onClick={handleSave} className="gradient-primary text-white shadow-glow hover:opacity-90 rounded-xl h-9 px-5 text-sm">
               <Save strokeWidth={1.5} className="h-3.5 w-3.5 mr-2" /> Simpan Perubahan

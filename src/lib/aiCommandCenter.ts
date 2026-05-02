@@ -14,13 +14,16 @@
  */
 
 import { listClients } from "@/features/clients/clientsRepo";
-import { listOrders } from "@/features/orders/ordersRepo";
+import { listOrders, getOrder } from "@/features/orders/ordersRepo";
 import { listMissions, createMission } from "@/features/missions/missionsRepo";
 import { listAgentPoints, sumPointsByAgent } from "@/features/agentPoints/agentPointsRepo";
 import { extractItinerary } from "@/lib/itineraryAI";
 import { fmtIDR, profitIDR, revenueIDR } from "@/lib/profit";
 import { useRatesStore } from "@/store/ratesStore";
 import { useAuthStore } from "@/store/authStore";
+import { generateInvoicePdf, nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
+import { useInvoiceStore } from "@/store/invoiceStore";
+import { loadIghAdminSettings } from "@/lib/ighSettings";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -208,6 +211,32 @@ const TOOLS: object[] = [
       description:
         "Dapatkan data performa agen: total poin, jumlah order per agen, ranking. Gunakan ketika user tanya tentang agen terbaik, performa agen, atau leaderboard.",
       parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "generate_invoice",
+      description:
+        "Generate invoice PDF profesional untuk order tertentu dan siapkan link download-nya. Gunakan ketika user minta 'bikinin invoice', 'cetak invoice', atau 'buat invoice untuk [nama klien/order]'. Bisa cari by nama klien atau order ID.",
+      parameters: {
+        type: "object",
+        properties: {
+          clientName: {
+            type: "string",
+            description: "Nama klien (opsional) — digunakan untuk mencari order terkait",
+          },
+          orderId: {
+            type: "string",
+            description: "ID order spesifik (opsional) — lebih akurat dari clientName",
+          },
+          orderType: {
+            type: "string",
+            description: "Filter tipe order: flight, umrah, visa_voa, visa_student (opsional)",
+          },
+        },
+        required: [],
+      },
     },
   },
 ];
@@ -497,6 +526,98 @@ async function executeTool(
             type: "agent_performance",
             totalAgents: agentList.length,
             agents: agentList.slice(0, 5),
+          },
+          success: true,
+        };
+      }
+
+      case "generate_invoice": {
+        const { clientName, orderId, orderType } = args as {
+          clientName?: string;
+          orderId?: string;
+          orderType?: string;
+        };
+
+        let targetOrder = null;
+        let targetClient = null;
+
+        if (orderId) {
+          targetOrder = await getOrder(orderId);
+        }
+
+        if (!targetOrder) {
+          const [allOrders, allClients] = await Promise.all([listOrders(), listClients()]);
+          let filteredOrders = allOrders;
+          if (orderType) filteredOrders = filteredOrders.filter((o) => o.type === orderType);
+
+          if (clientName) {
+            const matchedClients = allClients.filter((c) =>
+              c.name.toLowerCase().includes(clientName.toLowerCase()),
+            );
+            if (matchedClients.length === 0) throw new Error(`Klien dengan nama "${clientName}" tidak ditemukan.`);
+            targetClient = matchedClients[0];
+            filteredOrders = filteredOrders.filter((o) => o.clientId === targetClient!.id);
+          }
+
+          if (filteredOrders.length === 0) throw new Error("Tidak ada order yang ditemukan. Coba dengan nama klien atau ID order yang lebih spesifik.");
+          targetOrder = filteredOrders[0];
+
+          if (!targetClient && targetOrder.clientId) {
+            const allClients2 = await listClients();
+            targetClient = allClients2.find((c) => c.id === targetOrder!.clientId) ?? null;
+          }
+        } else if (!targetClient && targetOrder?.clientId) {
+          const allClients2 = await listClients();
+          targetClient = allClients2.find((c) => c.id === targetOrder.clientId) ?? null;
+        }
+
+        if (!targetOrder) throw new Error("Order tidak ditemukan.");
+
+        const settings = loadIghAdminSettings();
+        const { templateDataUrl } = useInvoiceStore.getState();
+        const invoiceNumber = nextInvoiceNumber();
+
+        const pdfBytes = await generateInvoicePdf({
+          invoiceNumber,
+          invoiceDate: todayString(),
+          order: targetOrder,
+          client: targetClient,
+          agencyName: "Temantiket",
+          agencyPhone: settings.adminWhatsapp,
+          agencyInstagram: settings.adminInstagram,
+          templateDataUrl,
+        });
+
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        const label = `${invoiceNumber} · ${targetClient?.name ?? targetOrder.title ?? targetOrder.id.slice(0, 8)}`;
+        useInvoiceStore.getState().setLastInvoice(dataUrl, label);
+
+        return {
+          result: JSON.stringify({
+            success: true,
+            invoiceNumber,
+            clientName: targetClient?.name ?? null,
+            orderTitle: targetOrder.title,
+            total: targetOrder.totalPrice,
+            currency: targetOrder.currency,
+          }),
+          displayData: {
+            type: "invoice_ready",
+            invoiceNumber,
+            clientName: targetClient?.name ?? "—",
+            orderTitle: targetOrder.title ?? targetOrder.type,
+            total: targetOrder.currency === "EGP"
+              ? `EGP ${Number(targetOrder.totalPrice).toLocaleString("id-ID")}`
+              : new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(Number(targetOrder.totalPrice)),
+            label,
+            dataUrl,
           },
           success: true,
         };

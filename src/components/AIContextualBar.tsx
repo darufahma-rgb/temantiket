@@ -47,10 +47,10 @@ const PAGE_CONFIGS: { match: (p: string) => boolean; config: PageConfig }[] = [
     config: {
       label: "Order Hub",
       chips: [
+        "Bikinin invoice untuk order flight terbaru",
         "List order flight status Confirmed",
         "Ada order umrah yang masih Draft?",
         "Berapa total revenue dari order Completed?",
-        "List 5 order terbaru semua tipe",
       ],
     },
   },

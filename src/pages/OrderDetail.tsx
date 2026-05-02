@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
+import { InvoiceButton } from "@/components/InvoiceButton";
 import {
   ORDER_STATUSES, ORDER_TYPES, ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI,
   type Order, type OrderStatus, type OrderType,
@@ -136,6 +137,7 @@ export default function OrderDetail() {
               <Eye className="h-3.5 w-3.5 mr-1.5" /> Client View
             </Button>
           )}
+          <InvoiceButton order={order} client={linkedClient ?? null} />
           <Button onClick={handleSave} disabled={!dirty || saving}>
             <Save className="h-3.5 w-3.5 mr-1.5" /> {saving ? "Menyimpan…" : "Simpan"}
           </Button>

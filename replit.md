@@ -185,6 +185,26 @@ Schema managed via Supabase SQL Editor. To initialize:
 - Requires `VITE_OPENAI_API_KEY` — graceful error message kalau belum di-set
 - Files: `src/store/aiChatStore.ts` (shared state), `src/components/AIContextualBar.tsx` (bar)
 
+## Fase 27: Automated Invoice Generator
+
+**Files:**
+- `src/lib/invoiceGenerator.ts` — Core PDF engine (pdf-lib). Renders A4 invoice: header gelap, detail rows, total box, watermark "by Temantiket". Supports custom template image overlay. Auto-generates invoice number `INV-YYYYMMDD-NNNN`.
+- `src/store/invoiceStore.ts` — Zustand store: templateDataUrl (localStorage), lastInvoiceDataUrl (for AI trigger).
+- `src/components/InvoiceButton.tsx` — "Cetak Invoice" button di setiap OrderDetail. Generates PDF, auto-download, stores blob di invoiceStore.
+- `src/components/InvoiceTemplateUploader.tsx` — Upload custom template image via Settings > Invoice tab.
+
+**Integration points:**
+- `src/pages/OrderDetail.tsx` — InvoiceButton ditambah ke header buttons (semua tipe order: flight, umrah, visa).
+- `src/pages/Settings.tsx` — Tab baru "Invoice": upload template, petunjuk pemakaian, format nomor invoice.
+- `src/lib/aiCommandCenter.ts` — Tool `generate_invoice`: cari order by clientName/orderId, generate PDF, store data URL, return invoice_ready result.
+- `src/components/AIChatWidget.tsx` — `invoice_ready` result card: tampilkan nomor, klien, total + tombol Download PDF langsung dari chat.
+- `src/components/AIContextualBar.tsx` — Chip "Bikinin invoice untuk order flight terbaru" di halaman Orders.
+
+**Flow:**
+1. Klik "Cetak Invoice" di OrderDetail → PDF langsung download (< 1 detik).
+2. Atau ketik ke AI: "Bikinin invoice untuk [nama klien]" → AI generate → card muncul di chat → klik Download PDF.
+3. Custom template: Settings > Invoice > Upload gambar → semua invoice berikutnya pakai template tsb sebagai background + data di-overlay.
+
 ## Legacy Umrah Flow
 
 - Calculator → Packages → Trips → Jamaah Manifest (still intact, not removed)
