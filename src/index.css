@@ -1647,6 +1647,21 @@ button, [role="button"], a, input, select, textarea {
   .compact-page .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.85rem; }
 }
 
+/* ── Temantiket icon mark: CSS mask approach — warna via background-color ── */
+/* Putih di dark mode, brand blue di light mode. Tidak ada kotak hitam. */
+.icon-mark {
+  background-color: #1a44d4;
+  -webkit-mask: url('/temantiket-icon-mark.png') center / contain no-repeat;
+  mask: url('/temantiket-icon-mark.png') center / contain no-repeat;
+  -webkit-mask-mode: luminance;
+  mask-mode: luminance;
+  transition: background-color 0.2s ease;
+}
+.dark .icon-mark,
+[data-theme="dark"] .icon-mark {
+  background-color: #ffffff;
+}
+
 /* ── Temantiket icon: hitam bersih di light mode, putih di dark/dark-bg ── */
 /* Icon aslinya putih-di-hitam. mix-blend-mode biar kotak hitam transparan. */
 .icon-adaptive {

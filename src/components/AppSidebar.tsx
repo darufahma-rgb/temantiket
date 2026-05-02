@@ -243,14 +243,10 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
     >
       {/* ── Logo area ── */}
       <div className="flex items-center gap-2.5 px-5 py-4 shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-        <img
-          src="/temantiket-icon.png"
-          alt="Temantiket"
-          className="h-8 w-8 object-contain shrink-0 icon-adaptive"
-          onError={(e) => {
-            const img = e.target as HTMLImageElement;
-            img.style.display = "none";
-          }}
+        <div
+          className="h-8 w-8 shrink-0 icon-mark"
+          role="img"
+          aria-label="Temantiket"
         />
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-black text-[hsl(var(--foreground))] leading-none tracking-tight">Temantiket</p>
