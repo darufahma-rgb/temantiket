@@ -236,7 +236,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
           <img
             src="/temantiket-logo.png"
             alt="Temantiket"
-            className="sidebar-logo h-5 w-auto object-contain shrink-0"
+            className="sidebar-logo h-8 w-auto object-contain shrink-0"
           />
         </div>
         {onClose && (
