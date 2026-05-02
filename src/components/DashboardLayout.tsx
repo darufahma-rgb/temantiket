@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppSidebar } from "./AppSidebar";
-import { Menu, LayoutDashboard, Calculator, Package, GitBranch, Settings, FileText, RefreshCw, LogOut, StickyNote, FileSpreadsheet, MoreHorizontal, ChevronRight } from "lucide-react";
+import { Menu, LayoutDashboard, Calculator, Package, GitBranch, Settings, FileText, RefreshCw, LogOut, StickyNote, FileSpreadsheet, MoreHorizontal, ChevronRight, Ticket } from "lucide-react";
 
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,7 @@ const primaryNavItems = [
 
 // Secondary items live inside the "Lainnya" bottom sheet
 const moreNavItems = [
+  { title: "Daftar Harga Tiket", url: "/ticket-prices", icon: Ticket, desc: "Harga tiket + margin otomatis" },
   { title: "Catatan", url: "/notes", icon: StickyNote, desc: "Catatan & memo cepat" },
   { title: "Export Center", url: "/exports", icon: FileSpreadsheet, desc: "Rooming & manifest Excel" },
   { title: "Pengaturan", url: "/settings", icon: Settings, desc: "Akun, tim, kurs, tampilan" },
