@@ -1661,6 +1661,10 @@ button, [role="button"], a, input, select, textarea {
 [data-theme="dark"] .icon-mark {
   background-color: #ffffff;
 }
+/* Paksa putih — untuk icon di atas card/elemen gelap di dalam light mode */
+.icon-mark-white {
+  background-color: #ffffff !important;
+}
 
 /* ── Temantiket icon: hitam bersih di light mode, putih di dark/dark-bg ── */
 /* Icon aslinya putih-di-hitam. mix-blend-mode biar kotak hitam transparan. */

@@ -188,11 +188,10 @@ export function CeoDailyQuest() {
             <div className="relative flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 {/* Logo mark — always white on the dark gradient card */}
-                <img
-                  src="/temantiket-icon.png"
-                  alt="Temantiket"
-                  className="h-8 w-8 object-contain shrink-0 icon-on-dark"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                <div
+                  className="h-8 w-8 shrink-0 icon-mark icon-mark-white"
+                  role="img"
+                  aria-label="Temantiket"
                 />
 
                 <div>
