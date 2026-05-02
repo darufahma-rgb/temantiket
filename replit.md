@@ -39,8 +39,8 @@ The application is a React Single Page Application (SPA) utilizing Vite for the 
 *   **Order Hub:** Manages universal orders (Umrah, Flight, Visa) and client data.
 *   **Reporting:** Features a financial reports section, including a ledger tab (`Buku Besar`) that tracks paid/completed orders with historical exchange rates and running balances.
 *   **Real-time Features:** Supabase Realtime subscriptions enable live synchronization across devices, including real-time updates for the Agent Leaderboard.
-*   **Environment Setup:** Development uses `npm run dev` to concurrently run the Express API server (port 3001) and Vite development server (port 5000). Production (Vercel) serves static frontend + serverless functions from `api/` directory. The `vercel.json` rewrite excludes `/api/*` from SPA redirect.
-*   **Vercel Serverless Functions:** All backend endpoints live in `api/` — `api/ai/chat.js` (OpenAI proxy), `api/bootstrap.js`, `api/invite-member.js`, `api/remove-member.js`, `api/export/invoice.js`, `api/export/igh.js`. Required Vercel env vars: `OPENAI_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+*   **Environment Setup:** Development uses `npm run dev` to concurrently run the Express API server (port 3001) and Vite development server (port 5000). On Replit, the workflow command is `npm run dev` targeting port 5000. Required Replit env vars (shared): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Required Replit secrets: `SUPABASE_SERVICE_ROLE_KEY` (for admin member operations), `OPENAI_API_KEY` (optional, for AI features).
+*   **Server Routes:** All backend endpoints live in `server/index.cjs` — `/api/bootstrap`, `/api/invite-member`, `/api/remove-member`, `/api/ai/chat` (OpenAI proxy). Vercel serverless functions in `api/` serve as an alternative deployment target.
 *   **Database Management:** Schema is managed via Supabase SQL Editor, with migrations applied chronologically.
 
 ## External Dependencies
