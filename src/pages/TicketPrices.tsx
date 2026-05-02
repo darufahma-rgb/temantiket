@@ -618,6 +618,16 @@ export function BoardingPassCard({
 }
 
 // ── Form Dialog ──────────────────────────────────────────────────────────────
+function LegDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      <div className="h-px flex-1 bg-violet-200" />
+      <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600">{label}</span>
+      <div className="h-px flex-1 bg-violet-200" />
+    </div>
+  );
+}
+
 function TicketFormDialog({
   open, onClose, initial, onSave, loading,
 }: {
@@ -628,22 +638,68 @@ function TicketFormDialog({
   loading: boolean;
 }) {
   const [form, setForm] = useState<FormState>(initial);
-  useEffect(() => { setForm(initial); }, [initial, open]);
+  const [returnForm, setReturnForm] = useState<ReturnLegData | null>(null);
+  const [mlData, setMlData] = useState<MultiLegData | null>(null);
+  const [userNotes, setUserNotes] = useState<string>("");
+
+  useEffect(() => {
+    setForm(initial);
+    const { ml } = decodeMultiLeg(initial.notes);
+    if (ml) {
+      setMlData(ml);
+      setReturnForm(null);
+      setUserNotes("");
+    } else {
+      setMlData(null);
+      const { leg, userNotes: un } = decodeReturnLeg(initial.notes);
+      setReturnForm(leg);
+      setUserNotes(un ?? "");
+    }
+  }, [initial, open]);
 
   const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
+  const setRt = (patch: Partial<ReturnLegData>) =>
+    setReturnForm((r) => r ? { ...r, ...patch } : r);
+
+  const isRT = !!returnForm;
+  const isML = !!mlData;
+  const isPP = isRT || isML;
+
+  const handleSave = async () => {
+    let finalNotes: string | null = null;
+    if (isML) {
+      finalNotes = form.notes; // keep ML encoding unchanged
+    } else if (isRT && returnForm) {
+      const rtStr = `__RT__:${JSON.stringify(returnForm)}`;
+      finalNotes = userNotes.trim() ? `${rtStr}\n${userNotes.trim()}` : rtStr;
+    } else {
+      finalNotes = userNotes.trim() || null;
+    }
+    await onSave({ ...form, notes: finalNotes });
+  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Plane className="w-4 h-4 text-sky-600" />
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
+            <Plane className="w-4 h-4 text-sky-600 shrink-0" />
             {form.airline ? `Edit: ${form.airline}` : "Tambah Harga Tiket"}
+            {isML && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
+                <ArrowLeftRight className="w-3 h-3" />Multi-Leg PP
+              </span>
+            )}
+            {isRT && !isML && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
+                <ArrowLeftRight className="w-3 h-3" />PP
+              </span>
+            )}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Airline */}
+          {/* ── Airline ── */}
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2 space-y-1">
               <Label className="text-xs">Nama Maskapai</Label>
@@ -658,7 +714,9 @@ function TicketFormDialog({
             </div>
           </div>
 
-          {/* Flight Number */}
+          {isPP && <LegDivider label="↗ Leg Berangkat" />}
+
+          {/* ── Outbound flight number + times ── */}
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">No. Penerbangan</Label>
@@ -667,27 +725,27 @@ function TicketFormDialog({
                 className="font-mono uppercase" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Jam Berangkat (ETD)</Label>
+              <Label className="text-xs">ETD</Label>
               <Input placeholder="23:55" value={form.etd ?? ""}
                 onChange={(e) => set({ etd: e.target.value || null })} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Jam Tiba (ETA)</Label>
+              <Label className="text-xs">ETA</Label>
               <Input placeholder="05:30" value={form.eta ?? ""}
                 onChange={(e) => set({ eta: e.target.value || null })} />
             </div>
           </div>
 
-          {/* Route */}
+          {/* ── Outbound route ── */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Dari (IATA 3-huruf)</Label>
+              <Label className="text-xs">Dari (IATA)</Label>
               <Input placeholder="CGK" maxLength={3} value={form.fromCode}
                 onChange={(e) => set({ fromCode: e.target.value.toUpperCase() })}
                 className="font-mono uppercase" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Ke (IATA 3-huruf)</Label>
+              <Label className="text-xs">Ke (IATA)</Label>
               <Input placeholder="JED" maxLength={3} value={form.toCode}
                 onChange={(e) => set({ toCode: e.target.value.toUpperCase() })}
                 className="font-mono uppercase" />
@@ -704,17 +762,10 @@ function TicketFormDialog({
             </div>
           </div>
 
-          {/* Terminal */}
-          <div className="space-y-1">
-            <Label className="text-xs">Terminal Keberangkatan (opsional)</Label>
-            <Input placeholder="T3 atau Terminal 2" value={form.terminal ?? ""}
-              onChange={(e) => set({ terminal: e.target.value || null })} />
-          </div>
-
-          {/* Transit */}
+          {/* ── Outbound transit ── */}
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Kode Transit (IATA)</Label>
+              <Label className="text-xs">Transit (IATA)</Label>
               <Input placeholder="DOH" maxLength={3} value={form.transitCode ?? ""}
                 onChange={(e) => set({ transitCode: e.target.value.toUpperCase() || null })}
                 className="font-mono uppercase" />
@@ -731,18 +782,129 @@ function TicketFormDialog({
             </div>
           </div>
 
-          {/* Date + Price + Currency */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Tanggal Keberangkatan</Label>
-              <Input type="date" value={form.departDate ?? ""}
-                onChange={(e) => set({ departDate: e.target.value || null })} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Berlaku Hingga</Label>
-              <Input type="date" value={form.validUntil ?? ""}
-                onChange={(e) => set({ validUntil: e.target.value || null })} />
-            </div>
+          {/* ── Outbound date ── */}
+          <div className="space-y-1">
+            <Label className="text-xs">Tanggal Keberangkatan</Label>
+            <Input type="date" value={form.departDate ?? ""}
+              onChange={(e) => set({ departDate: e.target.value || null })} />
+          </div>
+
+          {/* ══ RETURN LEG — Simple RT ══ */}
+          {isRT && returnForm && (
+            <>
+              <LegDivider label="↩ Leg Pulang" />
+              <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-3 space-y-3">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">No. Penerbangan</Label>
+                    <Input placeholder="QR819" value={returnForm.returnFlightNumber ?? ""}
+                      onChange={(e) => setRt({ returnFlightNumber: e.target.value.toUpperCase() || null })}
+                      className="font-mono uppercase" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">ETD</Label>
+                    <Input placeholder="08:00" value={returnForm.returnEtd ?? ""}
+                      onChange={(e) => setRt({ returnEtd: e.target.value || null })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">ETA</Label>
+                    <Input placeholder="18:30" value={returnForm.returnEta ?? ""}
+                      onChange={(e) => setRt({ returnEta: e.target.value || null })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Dari (IATA)</Label>
+                    <Input placeholder="JED" maxLength={3} value={returnForm.returnFromCode ?? ""}
+                      onChange={(e) => setRt({ returnFromCode: e.target.value.toUpperCase() || null })}
+                      className="font-mono uppercase" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Ke (IATA)</Label>
+                    <Input placeholder="CGK" maxLength={3} value={returnForm.returnToCode ?? ""}
+                      onChange={(e) => setRt({ returnToCode: e.target.value.toUpperCase() || null })}
+                      className="font-mono uppercase" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Kota Asal Pulang</Label>
+                    <Input placeholder="Jeddah" value={returnForm.returnFromCity ?? ""}
+                      onChange={(e) => setRt({ returnFromCity: e.target.value || null })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Kota Tujuan Pulang</Label>
+                    <Input placeholder="Jakarta" value={returnForm.returnToCity ?? ""}
+                      onChange={(e) => setRt({ returnToCity: e.target.value || null })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Transit (IATA)</Label>
+                    <Input placeholder="DOH" maxLength={3} value={returnForm.returnTransitCode ?? ""}
+                      onChange={(e) => setRt({ returnTransitCode: e.target.value.toUpperCase() || null })}
+                      className="font-mono uppercase" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Kota Transit</Label>
+                    <Input placeholder="Doha" value={returnForm.returnTransitCity ?? ""}
+                      onChange={(e) => setRt({ returnTransitCity: e.target.value || null })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Durasi Transit</Label>
+                    <Input placeholder="2h 30m" value={returnForm.returnTransitDuration ?? ""}
+                      onChange={(e) => setRt({ returnTransitDuration: e.target.value || null })} />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Tanggal Kepulangan</Label>
+                  <Input type="date" value={returnForm.returnDate ?? ""}
+                    onChange={(e) => setRt({ returnDate: e.target.value || null })} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ══ RETURN LEG — Multi-Leg (read-only summary) ══ */}
+          {isML && mlData && (
+            <>
+              <LegDivider label="↩ Leg Pulang (Multi-Leg)" />
+              <div className="rounded-xl border border-violet-200 bg-violet-50/40 px-3 py-2.5 space-y-1">
+                <p className="text-[10px] font-bold text-violet-600 mb-1">↗ Berangkat</p>
+                {mlData.outboundLegs.map((leg, i) => (
+                  <p key={i} className="text-[11px] text-violet-700 pl-2 font-mono">
+                    {leg.fromCode}→{leg.toCode}{leg.flightNumber ? ` (${leg.flightNumber})` : ""}{leg.etd ? ` jam ${leg.etd}` : ""}{leg.date ? ` · ${fmtDate(leg.date)}` : ""}
+                  </p>
+                ))}
+                {(mlData.returnLegs?.length ?? 0) > 0 && (
+                  <>
+                    <p className="text-[10px] font-bold text-violet-600 pt-1">↩ Pulang</p>
+                    {mlData.returnLegs!.map((leg, i) => (
+                      <p key={i} className="text-[11px] text-violet-700 pl-2 font-mono">
+                        {leg.fromCode}→{leg.toCode}{leg.flightNumber ? ` (${leg.flightNumber})` : ""}{leg.etd ? ` jam ${leg.etd}` : ""}{leg.date ? ` · ${fmtDate(leg.date)}` : ""}
+                      </p>
+                    ))}
+                  </>
+                )}
+                <p className="text-[10px] text-violet-400 pt-1 italic">Multi-leg otomatis — scan ulang untuk ubah rute</p>
+              </div>
+            </>
+          )}
+
+          {/* ── Common fields ── */}
+          <div className="h-px bg-border/50" />
+
+          <div className="space-y-1">
+            <Label className="text-xs">Terminal Keberangkatan (opsional)</Label>
+            <Input placeholder="T3 atau Terminal 2" value={form.terminal ?? ""}
+              onChange={(e) => set({ terminal: e.target.value || null })} />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Berlaku Hingga</Label>
+            <Input type="date" value={form.validUntil ?? ""}
+              onChange={(e) => set({ validUntil: e.target.value || null })} />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -764,15 +926,15 @@ function TicketFormDialog({
             </div>
           </div>
 
-          {/* Notes */}
-          <div className="space-y-1">
-            <Label className="text-xs">Catatan (opsional)</Label>
-            <Textarea placeholder="Contoh: Termasuk bagasi 30kg, tersedia kelas bisnis" rows={2}
-              value={form.notes ?? ""}
-              onChange={(e) => set({ notes: e.target.value || null })} />
-          </div>
+          {!isML && (
+            <div className="space-y-1">
+              <Label className="text-xs">Catatan (opsional)</Label>
+              <Textarea placeholder="Contoh: Termasuk bagasi 30kg, tersedia kelas bisnis" rows={2}
+                value={userNotes}
+                onChange={(e) => setUserNotes(e.target.value)} />
+            </div>
+          )}
 
-          {/* Publish toggle */}
           <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border">
             <Switch checked={form.isPublished} onCheckedChange={(v) => set({ isPublished: v })} />
             <div>
@@ -787,7 +949,7 @@ function TicketFormDialog({
           <Button
             className="bg-sky-600 hover:bg-sky-700 text-white"
             disabled={loading || !form.airline || !form.fromCode || !form.toCode}
-            onClick={() => onSave(form)}
+            onClick={() => void handleSave()}
           >
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
             Simpan
