@@ -28,6 +28,7 @@ import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
 import Reports from "./pages/Reports";
 import AgentCommandCenter from "./pages/AgentCommandCenter";
+import AgentDirectory from "./pages/AgentDirectory";
 import AgentDashboard from "./pages/AgentDashboard";
 import AgentLeaderboard from "./pages/AgentLeaderboard";
 import AgentMarketingKit from "./pages/AgentMarketingKit";
@@ -261,6 +262,17 @@ function AnimatedRoutes() {
           <RequireAuth>
             <RequireRole roles={["owner"]}>
               <DashboardLayout><Reports /></DashboardLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+      {/* ── Owner/staff: Agent Directory ── */}
+      <Route
+        path="/agent-directory"
+        element={
+          <RequireAuth>
+            <RequireRole roles={["owner", "staff"]}>
+              <DashboardLayout><AgentDirectory /></DashboardLayout>
             </RequireRole>
           </RequireAuth>
         }

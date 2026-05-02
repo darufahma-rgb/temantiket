@@ -4,7 +4,7 @@ import {
   ShieldCheck, StickyNote, FileSpreadsheet, Users, ShoppingBag,
   ChevronDown, Plane, FileBadge, Wallet, Megaphone, Crown,
   MessageSquare, Sparkles, Ticket, GitBranch, Command, Trophy,
-  CreditCard,
+  CreditCard, BookUser,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -281,6 +281,9 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
       <motion.div variants={itemVariant}><OrdersGroup onClose={onClose} /></motion.div>
       <motion.div variants={itemVariant}>
         <NavItem title="Daftar Harga Tiket" url="/ticket-prices" icon={Ticket} onClose={onClose} />
+      </motion.div>
+      <motion.div variants={itemVariant}>
+        <NavItem title="Direktori Agen" url="/agent-directory" icon={BookUser} onClose={onClose} />
       </motion.div>
 
       <SectionDivider />
