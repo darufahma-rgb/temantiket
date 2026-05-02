@@ -174,7 +174,7 @@ export default function Login() {
         <img
           src="/temantiket-logo.png"
           alt="Temantiket"
-          className="h-20 w-auto object-contain drop-shadow-[0_8px_24px_rgba(14,165,233,0.45)] mb-2"
+          className="h-12 w-auto object-contain drop-shadow-[0_8px_24px_rgba(14,165,233,0.45)] mb-2"
         />
 
         <AnimatePresence mode="wait">
