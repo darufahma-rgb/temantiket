@@ -5,6 +5,7 @@ import { AdminWhatsappCard } from "@/components/AdminWhatsappCard";
 import { MitraLeaderboardCard } from "@/components/MitraLeaderboardCard";
 import { CeoDailyQuest } from "@/components/CeoDailyQuest";
 import { DepartureTodayAlert } from "@/components/DepartureTodayAlert";
+import { PNRCommandCenter } from "@/components/PNRCommandCenter";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -966,6 +967,9 @@ export default function Dashboard() {
             </button>
           ))}
         </motion.div>
+
+        {/* ── PNR Command Center ── */}
+        <PNRCommandCenter />
 
         {/* ── Departure / Return 24h alerts ── */}
         <DepartureTodayAlert packages={packages} orders={orders} clients={clients} />
