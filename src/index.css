@@ -1684,11 +1684,11 @@ button, [role="button"], a, input, select, textarea {
 
 /* ── Sidebar logo: biru di light mode, putih di dark mode ── */
 .sidebar-logo {
-  /* Konversi logo putih → biru (#2563eb) di light mode */
-  filter: brightness(0) saturate(100%) invert(27%) sepia(82%) saturate(2000%) hue-rotate(218deg) brightness(97%);
+  /* Konversi logo ke primary brand blue hsl(198 92% 39%) ≈ #0888BF (sky-600 family) */
+  filter: brightness(0) saturate(100%) invert(27%) sepia(88%) saturate(1050%) hue-rotate(178deg) brightness(93%);
   transition: filter 0.2s ease;
 }
 [data-theme="dark"] .sidebar-logo {
-  /* Dark mode: biarkan putih apa adanya */
+  /* Dark mode: biarkan warna asli logo */
   filter: none;
 }

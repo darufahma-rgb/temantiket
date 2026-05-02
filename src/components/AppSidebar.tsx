@@ -230,12 +230,12 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
       style={{ width: "var(--sidebar-width)" }}
     >
       {/* ── Logo ── */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+      <div className="flex items-center justify-between px-4 pt-4 pb-5 shrink-0">
         <div className="flex items-center">
           <img
             src="/temantiket-logo.png"
             alt="Temantiket"
-            className="sidebar-logo h-7 w-auto object-contain shrink-0"
+            className="sidebar-logo h-5 w-auto object-contain shrink-0"
           />
         </div>
         {onClose && (
