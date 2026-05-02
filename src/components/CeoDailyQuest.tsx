@@ -191,7 +191,7 @@ export function CeoDailyQuest() {
                 <img
                   src="/temantiket-icon.png"
                   alt="Temantiket"
-                  className="h-8 w-8 object-contain shrink-0"
+                  className="h-8 w-8 object-contain shrink-0 icon-on-dark"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
 

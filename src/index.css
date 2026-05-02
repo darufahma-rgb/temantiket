@@ -1647,17 +1647,22 @@ button, [role="button"], a, input, select, textarea {
   .compact-page .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.85rem; }
 }
 
-/* ── Temantiket icon: brand blue di light mode, putih di dark mode ── */
-/* Icon aslinya putih-di-hitam, jadi pakai mix-blend-mode biar hitam transparan */
+/* ── Temantiket icon: hitam bersih di light mode, putih di dark/dark-bg ── */
+/* Icon aslinya putih-di-hitam. mix-blend-mode biar kotak hitam transparan. */
 .icon-adaptive {
-  /* Light: invert → hitam-di-putih, sepia+saturate+hue-rotate → biru brand, multiply → putih bg hilang */
-  filter: invert(1) sepia(1) saturate(4) hue-rotate(195deg) brightness(0.85);
+  /* Light: invert → hitam-di-putih murni, multiply → putih bg hilang sempurna */
+  filter: invert(1);
   mix-blend-mode: multiply;
   transition: filter 0.2s ease;
 }
 .dark .icon-adaptive,
 [data-theme="dark"] .icon-adaptive {
-  /* Dark: screen blend → hitam bg transparan, putih icon kelihatan */
+  /* Dark: screen → hitam bg transparan, putih icon kelihatan */
+  filter: none;
+  mix-blend-mode: screen;
+}
+/* Untuk icon di atas elemen gelap (dark card) di dalam light mode */
+.icon-on-dark {
   filter: none;
   mix-blend-mode: screen;
 }
