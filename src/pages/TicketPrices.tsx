@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Upload, Sparkles, Plus, Trash2, Edit3, Eye, EyeOff, Loader2,
   MessageCircle, AlertTriangle, Check, X, ChevronDown, ChevronUp,
@@ -266,6 +267,7 @@ export function BoardingPassCard({
   waNumber: string;
   showBasePrice?: boolean;
 }) {
+  const navigate = useNavigate();
   const expired = isExpired(item.validUntil);
   const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
   const isDirect = !item.transitCode;
@@ -572,6 +574,17 @@ export function BoardingPassCard({
               <a href={waLink} target="_blank" rel="noreferrer">
                 <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Pesan via WA
               </a>
+            </Button>
+          )}
+          {isAdmin && !expired && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs border-blue-200 text-blue-700 hover:bg-blue-50 shrink-0"
+              title="Buat order flight dari tiket ini"
+              onClick={() => navigate("/orders/flight")}
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" />Order
             </Button>
           )}
           {isAdmin && onTogglePublish && onEdit && onDelete && (

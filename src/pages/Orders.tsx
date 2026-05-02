@@ -165,7 +165,17 @@ export default function Orders() {
                     <div className="font-semibold text-sm truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</div>
                     <div className="text-[11.5px] text-muted-foreground truncate">
                       {ORDER_TYPE_LABEL[o.type]}
-                      {o.clientId && clientNameById.get(o.clientId) && ` · ${clientNameById.get(o.clientId)}`}
+                      {o.clientId && clientNameById.get(o.clientId) && (
+                        <>
+                          {" · "}
+                          <span
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/clients/${o.clientId}`); }}
+                            className="hover:underline hover:text-primary cursor-pointer"
+                          >
+                            {clientNameById.get(o.clientId)}
+                          </span>
+                        </>
+                      )}
                       {" · "}{o.status}
                     </div>
                   </div>

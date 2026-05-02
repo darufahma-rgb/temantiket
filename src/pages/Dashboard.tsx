@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, MapPin, Calendar as CalendarIcon, Trash2, Plane, Camera, Calculator, Users, CheckCircle, TrendingUp, ArrowRight, FileBarChart, Bus, Train, AlertCircle, Clock, Star, ChevronRight, Wallet, RefreshCw } from "lucide-react";
+import { Plus, MapPin, Calendar as CalendarIcon, Trash2, Plane, Camera, Calculator, Users, CheckCircle, TrendingUp, ArrowRight, FileBarChart, Bus, Train, AlertCircle, Clock, Star, ChevronRight, Wallet, RefreshCw, ShoppingBag } from "lucide-react";
 import { useTripsStore, type Trip } from "@/store/tripsStore";
 import { listAllAgencyJamaah } from "@/features/trips/tripsRepo";
 import { listAllAgencyPayments, sumPaid, type Payment } from "@/features/payments/paymentsRepo";
@@ -1036,9 +1036,9 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* ── Kalkulator & Laporan shortcut bar ── */}
+        {/* ── Kalkulator & Laporan & Order shortcut bar ── */}
         <motion.div
-          className="grid grid-cols-2 gap-2 mb-3.5 md:gap-2.5 md:mb-5"
+          className="grid grid-cols-3 gap-2 mb-3.5 md:gap-2.5 md:mb-5"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.22, ease: "easeOut" }}
@@ -1049,6 +1049,14 @@ export default function Dashboard() {
           >
             <Calculator strokeWidth={1.5} className="h-4 w-4 text-[hsl(var(--primary))] shrink-0" />
             <span className="text-[12px] md:text-[13px] font-medium text-[hsl(var(--foreground))] truncate">{t.dash_open_calculator}</span>
+            <ArrowRight strokeWidth={1.5} className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] transition-colors ml-auto shrink-0" />
+          </button>
+          <button
+            onClick={() => navigate("/orders")}
+            className="flex items-center gap-1.5 md:gap-2 rounded-lg md:rounded-xl border border-[hsl(var(--border))] bg-white px-2.5 md:px-3 py-2 md:py-2.5 hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-[border-color,background-color] duration-200 group active:scale-[0.98]"
+          >
+            <ShoppingBag strokeWidth={1.5} className="h-4 w-4 text-[hsl(var(--primary))] shrink-0" />
+            <span className="text-[12px] md:text-[13px] font-medium text-[hsl(var(--foreground))] truncate">Order Hub</span>
             <ArrowRight strokeWidth={1.5} className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] transition-colors ml-auto shrink-0" />
           </button>
           <button

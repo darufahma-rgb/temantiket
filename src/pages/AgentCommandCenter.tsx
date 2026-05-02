@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Users, Trophy, Wallet, TrendingUp, ShieldCheck, Edit2, Check, X,
-  ChevronDown, ChevronUp, BarChart3, Crown, Zap, RefreshCw, Target,
+  ChevronDown, ChevronUp, BarChart3, Crown, Zap, RefreshCw, Target, FileBarChart,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
@@ -70,6 +71,7 @@ function SummaryCard({
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AgentCommandCenter() {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const listMembers = useAuthStore((s) => s.listMembers);
   const setMemberCommission = useAuthStore((s) => s.setMemberCommission);
@@ -676,11 +678,22 @@ export default function AgentCommandCenter() {
 
           {/* ── Footer note ─────────────────────────────────────────────── */}
           <div className="rounded-xl border bg-muted/30 p-3 text-[10.5px] text-muted-foreground leading-relaxed">
-            <strong className="text-foreground">Catatan:</strong>{" "}
-            Komisi = Profit × Komisi% · hanya dihitung dari order berstatus <strong>Completed</strong> dengan profit positif.
-            Poin lifetime dihitung dari trigger otomatis DB (10pt per Completed order) dan tidak bisa di-reset manual dari UI —
-            hubungi admin database jika diperlukan. Edit komisi langsung di baris tabel dengan ikon ✏️.
-            Poin misi dihitung dari misi yang disetujui admin dan diakumulasi ke total poin agen.
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <strong className="text-foreground">Catatan:</strong>{" "}
+                Komisi = Profit × Komisi% · hanya dihitung dari order berstatus <strong>Completed</strong> dengan profit positif.
+                Poin lifetime dihitung dari trigger otomatis DB (10pt per Completed order) dan tidak bisa di-reset manual dari UI —
+                hubungi admin database jika diperlukan. Edit komisi langsung di baris tabel dengan ikon ✏️.
+                Poin misi dihitung dari misi yang disetujui admin dan diakumulasi ke total poin agen.
+              </div>
+              <button
+                onClick={() => navigate("/reports")}
+                className="shrink-0 flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors whitespace-nowrap"
+              >
+                <FileBarChart className="h-3.5 w-3.5" />
+                Lihat Laporan Keuangan →
+              </button>
+            </div>
           </div>
         </>
       )}

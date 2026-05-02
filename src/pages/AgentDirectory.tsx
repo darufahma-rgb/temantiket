@@ -445,10 +445,16 @@ export default function AgentDirectory() {
 
                         {/* Jumlah Order */}
                         <td className="px-3 py-3 text-right">
-                          <div className="font-semibold text-[13px]">{agent.totalOrders}</div>
-                          {agent.completedOrders > 0 && (
-                            <div className="text-[10px] text-emerald-600">{agent.completedOrders} selesai</div>
-                          )}
+                          <button
+                            onClick={() => navigate("/orders")}
+                            className="text-right hover:text-primary transition-colors group"
+                            title="Lihat semua order"
+                          >
+                            <div className="font-semibold text-[13px] group-hover:underline">{agent.totalOrders}</div>
+                            {agent.completedOrders > 0 && (
+                              <div className="text-[10px] text-emerald-600">{agent.completedOrders} selesai</div>
+                            )}
+                          </button>
                         </td>
 
                         {/* Klien */}

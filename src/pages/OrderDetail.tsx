@@ -16,6 +16,8 @@ import {
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
 import { useRatesStore } from "@/store/ratesStore";
+import { usePackagesStore } from "@/store/packagesStore";
+import { useTripsStore } from "@/store/tripsStore";
 import { buildRateSnapshotPatch } from "@/lib/ledgerSync";
 import { InvoiceButton } from "@/components/InvoiceButton";
 import {
@@ -34,6 +36,8 @@ export default function OrderDetail() {
   const { orders, getOneOrder, patchOrder, removeOrder, fetchOrders } = useOrdersStore();
   const { clients, fetchClients } = useClientsStore();
   const rates = useRatesStore((s) => s.rates);
+  const packages = usePackagesStore((s) => s.packages);
+  const trips = useTripsStore((s) => s.trips);
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -260,12 +264,18 @@ export default function OrderDetail() {
           )}
           {order.packageId && (
             <Link to={`/packages/${order.packageId}`} className="flex items-center gap-2 text-sm hover:underline">
-              <ExternalLink className="h-3.5 w-3.5" /> Paket Trip: <span className="font-mono text-xs">{order.packageId}</span>
+              <ExternalLink className="h-3.5 w-3.5" /> Paket Trip:{" "}
+              <span className="font-semibold">
+                {packages.find((p) => p.id === order.packageId)?.name ?? <span className="font-mono text-xs">{order.packageId}</span>}
+              </span>
             </Link>
           )}
           {order.tripId && (
             <Link to={`/trips/${order.tripId}`} className="flex items-center gap-2 text-sm hover:underline">
-              <ExternalLink className="h-3.5 w-3.5" /> Trip: <span className="font-mono text-xs">{order.tripId}</span>
+              <ExternalLink className="h-3.5 w-3.5" /> Trip:{" "}
+              <span className="font-semibold">
+                {trips.find((t) => t.id === order.tripId)?.name ?? <span className="font-mono text-xs">{order.tripId}</span>}
+              </span>
             </Link>
           )}
           {order.jamaahId && (

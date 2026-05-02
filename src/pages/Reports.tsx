@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   TrendingUp, TrendingDown, Wallet, Receipt, ShieldCheck, Filter,
   Crown, ArrowDown, Users, Trophy, Handshake, Building2,
-  BarChart3, ArrowUpDown, ChevronUp, ChevronDown, Search,
+  BarChart3, ArrowUpDown, ChevronUp, ChevronDown, Search, FileDown,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, Legend,
@@ -356,6 +356,14 @@ export default function Reports() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+            onClick={() => navigate("/exports")}
+          >
+            <FileDown className="h-3.5 w-3.5" /> Export Data
+          </Button>
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
             <SelectTrigger className="w-[150px]">

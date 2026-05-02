@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Plus, Phone, CalendarDays, CreditCard, Trash2, Users, Camera, Upload, X, FileText, ImageIcon, MapPin, ScanLine, Pencil, Save, ExternalLink, ShieldCheck, Copy, Check, Megaphone } from "lucide-react";
+import { ArrowLeft, Plus, Phone, CalendarDays, CreditCard, Trash2, Users, Camera, Upload, X, FileText, ImageIcon, MapPin, ScanLine, Pencil, Save, ExternalLink, ShieldCheck, Copy, Check, Megaphone, Download } from "lucide-react";
 import FlyerDialog from "@/components/FlyerDialog";
 import { useTripsStore, useJamaahStore, useDocsStore, type Jamaah, type DocCategory } from "@/store/tripsStore";
 import { toast } from "sonner";
@@ -772,6 +772,10 @@ export default function TripDetail() {
           </div>
         </div>
         <div className="flex gap-2 shrink-0">
+          <Button onClick={() => navigate("/exports")} variant="outline"
+            className="h-9 px-3 text-sm rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+            <Download strokeWidth={1.5} className="h-4 w-4 mr-1.5" /> Export
+          </Button>
           <Button onClick={() => setFlyerOpen(true)} variant="outline"
             className="h-9 px-3 text-sm rounded-xl border-sky-200 text-sky-700 hover:bg-sky-50">
             <Megaphone strokeWidth={1.5} className="h-4 w-4 mr-1.5" /> Flyer
