@@ -62,7 +62,20 @@ Schema managed via Supabase SQL Editor. To initialize:
 | `/agent-center` | Agent management (owner only) |
 | `/m/:slug` | Public member card |
 | `/leaderboard` | Public leaderboard |
+| `/harga-tiket` | Public ticket price list (no auth) |
 | `/settings` | App settings |
+
+## Fase 19.2: Deep Data Extraction for Ticket Prices (May 2026)
+
+- Extended AI prompt: now extracts flight number, ETD, ETA, terminal, transit code/city/duration
+- Extended `ticket_prices` table: 7 new columns (flight_number, etd, eta, terminal, transit_code, transit_city, transit_duration)
+- Boarding-pass style card UI with large ETD/ETA times, transit indicator, tear-off divider
+- Airline logos auto-fetched from airhex CDN by IATA code
+- Direct/Transit badge on every card
+- Public share page `/harga-tiket` (no auth) — Temantiket branded, shows harga jual only (no modal)
+- Share Link Publik button in admin page + URL info bar with copy/open actions
+- Admin sees base price + markup breakdown; public sees harga jual only
+- Migration SQL: `supabase/migrations/2026_05_19_ticket_prices_v2.sql`
 
 ## Fase 19: AI Ticket Price List (May 19, 2026)
 

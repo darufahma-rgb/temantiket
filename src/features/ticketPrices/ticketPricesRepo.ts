@@ -13,15 +13,23 @@ export interface TicketPrice {
   fromCity: string;
   toCode: string;
   toCity: string;
-  departDate: string | null;  // YYYY-MM-DD or null
+  departDate: string | null;       // YYYY-MM-DD or null
   basePrice: number;
   currency: TicketCurrency;
-  validUntil: string | null;  // YYYY-MM-DD
+  validUntil: string | null;       // YYYY-MM-DD
   notes: string | null;
   isPublished: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+  // Fase 19.2 — extended flight details
+  flightNumber: string | null;     // e.g. "QR818"
+  etd: string | null;              // "HH:MM" departure time
+  eta: string | null;              // "HH:MM" arrival time
+  terminal: string | null;         // e.g. "T3"
+  transitCode: string | null;      // IATA transit airport
+  transitCity: string | null;      // transit city name
+  transitDuration: string | null;  // e.g. "2h 30m"
 }
 
 export type TicketPriceDraft = Omit<TicketPrice, "id" | "agencyId" | "createdAt" | "updatedAt">;
@@ -45,40 +53,54 @@ export function resetTicketPricesCache() {
 
 // ── Row mappers ──────────────────────────────────────────────────────────────
 const fromRow = (r: Record<string, unknown>): TicketPrice => ({
-  id:          String(r.id),
-  agencyId:    String(r.agency_id),
-  airline:     String(r.airline ?? ""),
-  airlineCode: String(r.airline_code ?? ""),
-  fromCode:    String(r.from_code ?? ""),
-  fromCity:    String(r.from_city ?? ""),
-  toCode:      String(r.to_code ?? ""),
-  toCity:      String(r.to_city ?? ""),
-  departDate:  (r.depart_date as string) ?? null,
-  basePrice:   Number(r.base_price ?? 0),
-  currency:    (r.currency as TicketCurrency) ?? "IDR",
-  validUntil:  (r.valid_until as string) ?? null,
-  notes:       (r.notes as string) ?? null,
-  isPublished: r.is_published !== false,
-  sortOrder:   Number(r.sort_order ?? 0),
-  createdAt:   String(r.created_at ?? new Date().toISOString()),
-  updatedAt:   String(r.updated_at ?? new Date().toISOString()),
+  id:              String(r.id),
+  agencyId:        String(r.agency_id),
+  airline:         String(r.airline ?? ""),
+  airlineCode:     String(r.airline_code ?? ""),
+  fromCode:        String(r.from_code ?? ""),
+  fromCity:        String(r.from_city ?? ""),
+  toCode:          String(r.to_code ?? ""),
+  toCity:          String(r.to_city ?? ""),
+  departDate:      (r.depart_date as string) ?? null,
+  basePrice:       Number(r.base_price ?? 0),
+  currency:        (r.currency as TicketCurrency) ?? "IDR",
+  validUntil:      (r.valid_until as string) ?? null,
+  notes:           (r.notes as string) ?? null,
+  isPublished:     r.is_published !== false,
+  sortOrder:       Number(r.sort_order ?? 0),
+  createdAt:       String(r.created_at ?? new Date().toISOString()),
+  updatedAt:       String(r.updated_at ?? new Date().toISOString()),
+  flightNumber:    (r.flight_number as string) ?? null,
+  etd:             (r.etd as string) ?? null,
+  eta:             (r.eta as string) ?? null,
+  terminal:        (r.terminal as string) ?? null,
+  transitCode:     (r.transit_code as string) ?? null,
+  transitCity:     (r.transit_city as string) ?? null,
+  transitDuration: (r.transit_duration as string) ?? null,
 });
 
 const toRow = (d: Partial<TicketPriceDraft>, agencyId?: string): Record<string, unknown> => ({
   ...(agencyId ? { agency_id: agencyId } : {}),
-  ...(d.airline      !== undefined ? { airline:      d.airline }      : {}),
-  ...(d.airlineCode  !== undefined ? { airline_code: d.airlineCode }  : {}),
-  ...(d.fromCode     !== undefined ? { from_code:    d.fromCode }     : {}),
-  ...(d.fromCity     !== undefined ? { from_city:    d.fromCity }     : {}),
-  ...(d.toCode       !== undefined ? { to_code:      d.toCode }       : {}),
-  ...(d.toCity       !== undefined ? { to_city:      d.toCity }       : {}),
-  ...(d.departDate   !== undefined ? { depart_date:  d.departDate }   : {}),
-  ...(d.basePrice    !== undefined ? { base_price:   d.basePrice }    : {}),
-  ...(d.currency     !== undefined ? { currency:     d.currency }     : {}),
-  ...(d.validUntil   !== undefined ? { valid_until:  d.validUntil }   : {}),
-  ...(d.notes        !== undefined ? { notes:        d.notes }        : {}),
-  ...(d.isPublished  !== undefined ? { is_published: d.isPublished }  : {}),
-  ...(d.sortOrder    !== undefined ? { sort_order:   d.sortOrder }    : {}),
+  ...(d.airline          !== undefined ? { airline:          d.airline }          : {}),
+  ...(d.airlineCode      !== undefined ? { airline_code:     d.airlineCode }      : {}),
+  ...(d.fromCode         !== undefined ? { from_code:        d.fromCode }         : {}),
+  ...(d.fromCity         !== undefined ? { from_city:        d.fromCity }         : {}),
+  ...(d.toCode           !== undefined ? { to_code:          d.toCode }           : {}),
+  ...(d.toCity           !== undefined ? { to_city:          d.toCity }           : {}),
+  ...(d.departDate       !== undefined ? { depart_date:      d.departDate }       : {}),
+  ...(d.basePrice        !== undefined ? { base_price:       d.basePrice }        : {}),
+  ...(d.currency         !== undefined ? { currency:         d.currency }         : {}),
+  ...(d.validUntil       !== undefined ? { valid_until:      d.validUntil }       : {}),
+  ...(d.notes            !== undefined ? { notes:            d.notes }            : {}),
+  ...(d.isPublished      !== undefined ? { is_published:     d.isPublished }      : {}),
+  ...(d.sortOrder        !== undefined ? { sort_order:       d.sortOrder }        : {}),
+  ...(d.flightNumber     !== undefined ? { flight_number:    d.flightNumber }     : {}),
+  ...(d.etd              !== undefined ? { etd:              d.etd }              : {}),
+  ...(d.eta              !== undefined ? { eta:              d.eta }              : {}),
+  ...(d.terminal         !== undefined ? { terminal:         d.terminal }         : {}),
+  ...(d.transitCode      !== undefined ? { transit_code:     d.transitCode }      : {}),
+  ...(d.transitCity      !== undefined ? { transit_city:     d.transitCity }      : {}),
+  ...(d.transitDuration  !== undefined ? { transit_duration: d.transitDuration }  : {}),
 });
 
 // ── CRUD ─────────────────────────────────────────────────────────────────────

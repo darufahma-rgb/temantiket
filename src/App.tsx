@@ -35,6 +35,7 @@ import BCTemplates from "./pages/BCTemplates";
 import ItineraryGenerator from "./pages/ItineraryGenerator";
 import DemoSeed from "./pages/DemoSeed";
 import TicketPrices from "./pages/TicketPrices";
+import PublicTicketPrices from "./pages/PublicTicketPrices";
 import { useRatesStore } from "@/store/ratesStore";
 import { usePackagesStore } from "@/store/packagesStore";
 import { useTripsStore } from "@/store/tripsStore";
@@ -200,6 +201,7 @@ function AnimatedRoutes() {
       <Route path="/cek/:code" element={<PublicCheck />} />
       <Route path="/m/:slug" element={<PublicMemberCard />} />
       <Route path="/leaderboard" element={<PublicLeaderboard />} />
+      <Route path="/harga-tiket" element={<PublicTicketPrices />} />
 
       <Route path="/" element={<RequireAuth><HomeRedirect /></RequireAuth>} />
       <Route path="/calculator" element={<RequireAuth><DashboardLayout><Calculator /></DashboardLayout></RequireAuth>} />

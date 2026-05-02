@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Upload, Sparkles, Plus, Trash2, Edit3, Eye, EyeOff, Loader2,
   MessageCircle, AlertTriangle, Check, X, ChevronDown, ChevronUp,
-  Tag, RefreshCw, Settings2, ImagePlus, Plane,
+  Tag, RefreshCw, Settings2, ImagePlus, Plane, Share2, Copy,
+  Clock, MapPin, ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,10 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 import { useRatesStore } from "@/store/ratesStore";
-import { scanTicketPriceScreenshot, getAirlineLogoUrl, getAirlineGradient, type ParsedTicketPrice } from "@/lib/ticketPriceAI";
+import {
+  scanTicketPriceScreenshot, getAirlineLogoUrl, getAirlineGradient,
+  type ParsedTicketPrice,
+} from "@/lib/ticketPriceAI";
 import {
   listTicketPrices, createTicketPrice, updateTicketPrice, deleteTicketPrice,
   loadMarkup, saveMarkup, sellingPrice, isExpired, fmtIDR, fmtDate,
@@ -39,6 +43,8 @@ const EMPTY_FORM: FormState = {
   airline: "", airlineCode: "", fromCode: "", fromCity: "",
   toCode: "", toCity: "", departDate: null, basePrice: 0,
   currency: "IDR", validUntil: null, notes: null, isPublished: true,
+  flightNumber: null, etd: null, eta: null, terminal: null,
+  transitCode: null, transitCity: null, transitDuration: null,
 };
 
 function formFromParsed(p: ParsedTicketPrice): FormState {
@@ -48,6 +54,12 @@ function formFromParsed(p: ParsedTicketPrice): FormState {
     toCode: p.toCode, toCity: p.toCity,
     departDate: p.departDate, basePrice: p.basePrice ?? 0,
     currency: p.currency, validUntil: null, notes: null, isPublished: true,
+    flightNumber: p.flightNumber ?? null,
+    etd: p.etd ?? null, eta: p.eta ?? null,
+    terminal: p.terminal ?? null,
+    transitCode: p.transitCode ?? null,
+    transitCity: p.transitCity ?? null,
+    transitDuration: p.transitDuration ?? null,
   };
 }
 
@@ -77,27 +89,31 @@ function AirlineLogo({ code, airline, size = 40 }: { code: string; airline: stri
   );
 }
 
-// ── Price card ───────────────────────────────────────────────────────────────
-function PriceCard({
-  item, markup, rates, isAdmin, onEdit, onDelete, onTogglePublish, waNumber,
+// ── Boarding-pass style Price Card ───────────────────────────────────────────
+export function BoardingPassCard({
+  item, markup, rates, isAdmin, onEdit, onDelete, onTogglePublish, waNumber, showBasePrice = false,
 }: {
   item: TicketPrice;
   markup: number;
   rates: Record<string, number>;
   isAdmin: boolean;
-  onEdit: (item: TicketPrice) => void;
-  onDelete: (id: string) => void;
-  onTogglePublish: (id: string, val: boolean) => void;
+  onEdit?: (item: TicketPrice) => void;
+  onDelete?: (id: string) => void;
+  onTogglePublish?: (id: string, val: boolean) => void;
   waNumber: string;
+  showBasePrice?: boolean;
 }) {
   const expired = isExpired(item.validUntil);
   const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
+  const isDirect = !item.transitCode;
 
   const waText = encodeURIComponent(
     `Halo Temantiket! Saya tertarik dengan tiket berikut:\n\n` +
-    `✈️ *${item.airline}*\n` +
+    `✈️ *${item.airline}*${item.flightNumber ? ` (${item.flightNumber})` : ""}\n` +
     `🗺️ Rute: *${item.fromCode} → ${item.toCode}*\n` +
     `${item.fromCity ? `   ${item.fromCity} → ${item.toCity}\n` : ""}` +
+    `${item.etd || item.eta ? `🕐 ${item.etd ?? "—"} → ${item.eta ?? "—"}\n` : ""}` +
+    `${item.transitCode ? `🔄 Transit: ${item.transitCity ?? item.transitCode}${item.transitDuration ? ` (${item.transitDuration})` : ""}\n` : ""}` +
     `📅 Tanggal: ${item.departDate ? fmtDate(item.departDate) : "Fleksibel"}\n` +
     `💰 Harga: *${fmtIDR(sell)}/pax*\n\n` +
     `Mohon infokan ketersediaan dan detailnya. Terima kasih!`
@@ -110,7 +126,7 @@ function PriceCard({
   return (
     <div
       className={cn(
-        "relative rounded-2xl border bg-white shadow-sm transition-all hover:shadow-md overflow-hidden",
+        "relative rounded-2xl border bg-white shadow-sm transition-all hover:shadow-lg overflow-hidden flex flex-col",
         expired && "opacity-70",
         !item.isPublished && "border-dashed border-slate-300 bg-slate-50",
       )}
@@ -129,45 +145,133 @@ function PriceCard({
         </div>
       )}
 
-      {/* Airline header */}
+      {/* ── Airline header strip ─────────────────────────────────────────── */}
       <div className={cn(
-        "flex items-center gap-3 px-4 py-3 bg-gradient-to-r",
+        "flex items-center justify-between gap-3 px-4 py-3 bg-gradient-to-r text-white",
         getAirlineGradient(item.airlineCode),
-        "text-white",
       )}>
-        <AirlineLogo code={item.airlineCode} airline={item.airline} size={38} />
-        <div className="min-w-0">
-          <p className="font-bold text-sm leading-tight truncate">{item.airline}</p>
-          <p className="text-[11px] text-white/70 leading-tight">{item.airlineCode}</p>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <AirlineLogo code={item.airlineCode} airline={item.airline} size={36} />
+          <div className="min-w-0">
+            <p className="font-bold text-[13px] leading-tight truncate">{item.airline}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] text-white/70 font-mono">{item.airlineCode}</span>
+              {item.flightNumber && (
+                <span className="text-[10px] bg-white/20 rounded px-1.5 py-0.5 font-mono font-semibold tracking-wide">
+                  {item.flightNumber}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          {isDirect ? (
+            <span className="text-[9px] bg-white/20 text-white/90 rounded-full px-2 py-0.5 font-semibold uppercase tracking-wider">
+              Direct
+            </span>
+          ) : (
+            <span className="text-[9px] bg-amber-400/30 text-amber-100 rounded-full px-2 py-0.5 font-semibold uppercase tracking-wider">
+              Transit
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="px-4 py-3 space-y-3">
-        {/* Route */}
+      {/* ── Boarding-pass body ───────────────────────────────────────────── */}
+      <div className="flex-1 px-4 py-4 space-y-3">
+
+        {/* Route + Times */}
         <div className="flex items-center gap-2">
-          <span className="text-lg font-black text-slate-800 tracking-tight">{item.fromCode}</span>
-          <div className="flex-1 flex items-center gap-1">
-            <div className="h-px flex-1 bg-slate-200" />
-            <Plane className="w-3 h-3 text-slate-400" />
-            <div className="h-px flex-1 bg-slate-200" />
+          {/* From */}
+          <div className="flex-1 text-left">
+            <p className="text-2xl font-black text-slate-900 leading-none tracking-tight">{item.fromCode}</p>
+            {item.fromCity && (
+              <p className="text-[10px] text-slate-400 mt-0.5 leading-tight truncate max-w-[80px]">{item.fromCity}</p>
+            )}
+            {item.etd && (
+              <p className="text-[15px] font-extrabold text-sky-700 mt-1.5 tabular-nums leading-none">{item.etd}</p>
+            )}
+            {item.terminal && (
+              <p className="text-[9px] text-slate-400 mt-0.5 font-medium">{item.terminal}</p>
+            )}
           </div>
-          <span className="text-lg font-black text-slate-800 tracking-tight">{item.toCode}</span>
+
+          {/* Middle: flight path */}
+          <div className="flex flex-col items-center gap-1 shrink-0 px-1">
+            {isDirect ? (
+              <>
+                <div className="flex items-center gap-1">
+                  <div className="h-px w-6 bg-slate-200" />
+                  <Plane className="w-3.5 h-3.5 text-slate-400" />
+                  <div className="h-px w-6 bg-slate-200" />
+                </div>
+                <span className="text-[9px] text-slate-300 font-medium">Direct</span>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-0.5">
+                  <div className="h-px w-4 bg-slate-200" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400 border-2 border-amber-300" />
+                  <div className="h-px w-4 bg-slate-200" />
+                </div>
+                <p className="text-[9px] text-amber-600 font-bold text-center leading-tight">
+                  {item.transitCode}
+                </p>
+                {item.transitDuration && (
+                  <p className="text-[8px] text-slate-400 text-center">{item.transitDuration}</p>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* To */}
+          <div className="flex-1 text-right">
+            <p className="text-2xl font-black text-slate-900 leading-none tracking-tight">{item.toCode}</p>
+            {item.toCity && (
+              <p className="text-[10px] text-slate-400 mt-0.5 leading-tight truncate max-w-[80px] ml-auto">{item.toCity}</p>
+            )}
+            {item.eta && (
+              <p className="text-[15px] font-extrabold text-sky-700 mt-1.5 tabular-nums leading-none">{item.eta}</p>
+            )}
+          </div>
         </div>
-        {(item.fromCity || item.toCity) && (
-          <div className="flex justify-between text-[11px] text-slate-400 -mt-2">
-            <span>{item.fromCity}</span>
-            <span>{item.toCity}</span>
+
+        {/* Transit detail row (if transit) */}
+        {item.transitCode && item.transitCity && (
+          <div className="flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-amber-50 border border-amber-100">
+            <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
+            <span className="text-[10.5px] text-amber-700 font-medium">
+              Transit: {item.transitCity} ({item.transitCode})
+              {item.transitDuration && <span className="text-amber-500"> · {item.transitDuration}</span>}
+            </span>
           </div>
         )}
 
-        {/* Date */}
-        <div className="flex items-center gap-1.5 text-[12px] text-slate-500">
-          <span>📅</span>
-          <span>{item.departDate ? fmtDate(item.departDate) : "Tanggal Fleksibel"}</span>
+        {/* Tear-off divider */}
+        <div className="relative flex items-center gap-2 -mx-4 px-4">
+          <div className="h-px flex-1 border-t border-dashed border-slate-200" />
+          <div className="absolute -left-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
+          <div className="absolute -right-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
         </div>
 
-        {/* Price */}
-        <div className="bg-sky-50 rounded-xl px-3 py-2.5">
+        {/* Date + valid */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+            <Clock className="w-3 h-3 text-slate-400" />
+            <span>{item.departDate ? fmtDate(item.departDate) : "Tanggal Fleksibel"}</span>
+          </div>
+          {item.validUntil && (
+            <span className={cn("text-[10px]", expired ? "text-red-500" : "text-slate-400")}>
+              {expired ? "⛔ Expired" : `⏰ s/d ${fmtDate(item.validUntil)}`}
+            </span>
+          )}
+        </div>
+
+        {/* Price box */}
+        <div className={cn(
+          "rounded-xl px-3 py-2.5",
+          expired ? "bg-red-50" : "bg-sky-50",
+        )}>
           {expired ? (
             <div className="text-center">
               <p className="text-sm font-bold text-red-600">Harga Expired</p>
@@ -175,32 +279,30 @@ function PriceCard({
             </div>
           ) : (
             <>
-              <p className="text-[10px] text-sky-600 font-medium uppercase tracking-wide">Harga Jual</p>
-              <p className="text-xl font-black text-sky-700 leading-tight">{fmtIDR(sell)}</p>
-              <p className="text-[10px] text-slate-400">/pax • sudah termasuk margin</p>
+              <p className="text-[10px] text-sky-600 font-medium uppercase tracking-wide">Harga Jual / pax</p>
+              <p className="text-[22px] font-black text-sky-700 leading-tight tabular-nums">{fmtIDR(sell)}</p>
+              {showBasePrice && markup > 0 && (
+                <p className="text-[10px] text-slate-400">
+                  Modal: {item.currency} {item.basePrice.toLocaleString("id-ID")} + markup {fmtIDR(markup)}
+                </p>
+              )}
+              {!showBasePrice && (
+                <p className="text-[10px] text-slate-400">sudah termasuk margin keuntungan</p>
+              )}
             </>
           )}
         </div>
-
-        {/* Valid until */}
-        {item.validUntil && (
-          <p className={cn("text-[11px]", expired ? "text-red-500" : "text-slate-400")}>
-            {expired ? "⛔" : "⏰"} Berlaku hingga {fmtDate(item.validUntil)}
-          </p>
-        )}
 
         {/* Notes */}
         {item.notes && (
           <p className="text-[11px] text-slate-500 italic leading-snug">{item.notes}</p>
         )}
 
-        {/* CTA */}
-        <div className="flex gap-2 pt-1">
+        {/* CTA row */}
+        <div className="flex gap-2 pt-0.5">
           {expired ? (
             <Button
-              asChild
-              size="sm"
-              variant="outline"
+              asChild size="sm" variant="outline"
               className="flex-1 text-xs border-slate-300 text-slate-600"
             >
               <a href={waLink} target="_blank" rel="noreferrer">
@@ -210,8 +312,7 @@ function PriceCard({
             </Button>
           ) : (
             <Button
-              asChild
-              size="sm"
+              asChild size="sm"
               className="flex-1 text-xs bg-green-600 hover:bg-green-700 text-white"
             >
               <a href={waLink} target="_blank" rel="noreferrer">
@@ -222,32 +323,25 @@ function PriceCard({
           )}
 
           {/* Admin controls */}
-          {isAdmin && (
+          {isAdmin && onTogglePublish && onEdit && onDelete && (
             <div className="flex gap-1">
               <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 text-slate-500"
+                size="icon" variant="ghost" className="h-8 w-8 text-slate-500"
                 title={item.isPublished ? "Sembunyikan" : "Tampilkan"}
                 onClick={() => onTogglePublish(item.id, !item.isPublished)}
               >
                 {item.isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
               </Button>
               <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 text-slate-500"
-                title="Edit"
-                onClick={() => onEdit(item)}
+                size="icon" variant="ghost" className="h-8 w-8 text-slate-500"
+                title="Edit" onClick={() => onEdit(item)}
               >
                 <Edit3 className="w-3.5 h-3.5" />
               </Button>
               <Button
-                size="icon"
-                variant="ghost"
+                size="icon" variant="ghost"
                 className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
-                title="Hapus"
-                onClick={() => onDelete(item.id)}
+                title="Hapus" onClick={() => onDelete(item.id)}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </Button>
@@ -289,21 +383,34 @@ function TicketFormDialog({
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2 space-y-1">
               <Label className="text-xs">Nama Maskapai</Label>
-              <Input
-                placeholder="Qatar Airways"
-                value={form.airline}
-                onChange={(e) => set({ airline: e.target.value })}
-              />
+              <Input placeholder="Qatar Airways" value={form.airline}
+                onChange={(e) => set({ airline: e.target.value })} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Kode IATA</Label>
-              <Input
-                placeholder="QR"
-                maxLength={2}
-                value={form.airlineCode}
+              <Input placeholder="QR" maxLength={2} value={form.airlineCode}
                 onChange={(e) => set({ airlineCode: e.target.value.toUpperCase() })}
-                className="font-mono uppercase"
-              />
+                className="font-mono uppercase" />
+            </div>
+          </div>
+
+          {/* Flight Number */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">No. Penerbangan</Label>
+              <Input placeholder="QR818" value={form.flightNumber ?? ""}
+                onChange={(e) => set({ flightNumber: e.target.value.toUpperCase() || null })}
+                className="font-mono uppercase" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Jam Berangkat (ETD)</Label>
+              <Input placeholder="23:55" value={form.etd ?? ""}
+                onChange={(e) => set({ etd: e.target.value || null })} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Jam Tiba (ETA)</Label>
+              <Input placeholder="05:30" value={form.eta ?? ""}
+                onChange={(e) => set({ eta: e.target.value || null })} />
             </div>
           </div>
 
@@ -311,39 +418,52 @@ function TicketFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Dari (IATA 3-huruf)</Label>
-              <Input
-                placeholder="CGK"
-                maxLength={3}
-                value={form.fromCode}
+              <Input placeholder="CGK" maxLength={3} value={form.fromCode}
                 onChange={(e) => set({ fromCode: e.target.value.toUpperCase() })}
-                className="font-mono uppercase"
-              />
+                className="font-mono uppercase" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Ke (IATA 3-huruf)</Label>
-              <Input
-                placeholder="JED"
-                maxLength={3}
-                value={form.toCode}
+              <Input placeholder="JED" maxLength={3} value={form.toCode}
                 onChange={(e) => set({ toCode: e.target.value.toUpperCase() })}
-                className="font-mono uppercase"
-              />
+                className="font-mono uppercase" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Kota Asal</Label>
-              <Input
-                placeholder="Jakarta"
-                value={form.fromCity}
-                onChange={(e) => set({ fromCity: e.target.value })}
-              />
+              <Input placeholder="Jakarta" value={form.fromCity}
+                onChange={(e) => set({ fromCity: e.target.value })} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Kota Tujuan</Label>
-              <Input
-                placeholder="Jeddah"
-                value={form.toCity}
-                onChange={(e) => set({ toCity: e.target.value })}
-              />
+              <Input placeholder="Jeddah" value={form.toCity}
+                onChange={(e) => set({ toCity: e.target.value })} />
+            </div>
+          </div>
+
+          {/* Terminal */}
+          <div className="space-y-1">
+            <Label className="text-xs">Terminal Keberangkatan (opsional)</Label>
+            <Input placeholder="T3 atau Terminal 2" value={form.terminal ?? ""}
+              onChange={(e) => set({ terminal: e.target.value || null })} />
+          </div>
+
+          {/* Transit */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Kode Transit (IATA)</Label>
+              <Input placeholder="DOH" maxLength={3} value={form.transitCode ?? ""}
+                onChange={(e) => set({ transitCode: e.target.value.toUpperCase() || null })}
+                className="font-mono uppercase" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Kota Transit</Label>
+              <Input placeholder="Doha" value={form.transitCity ?? ""}
+                onChange={(e) => set({ transitCity: e.target.value || null })} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Durasi Transit</Label>
+              <Input placeholder="2h 30m" value={form.transitDuration ?? ""}
+                onChange={(e) => set({ transitDuration: e.target.value || null })} />
             </div>
           </div>
 
@@ -351,42 +471,26 @@ function TicketFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Tanggal Keberangkatan</Label>
-              <Input
-                type="date"
-                value={form.departDate ?? ""}
-                onChange={(e) => set({ departDate: e.target.value || null })}
-              />
+              <Input type="date" value={form.departDate ?? ""}
+                onChange={(e) => set({ departDate: e.target.value || null })} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Berlaku Hingga</Label>
-              <Input
-                type="date"
-                value={form.validUntil ?? ""}
-                onChange={(e) => set({ validUntil: e.target.value || null })}
-              />
+              <Input type="date" value={form.validUntil ?? ""}
+                onChange={(e) => set({ validUntil: e.target.value || null })} />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2 space-y-1">
               <Label className="text-xs">Harga Modal (base)</Label>
-              <Input
-                type="number"
-                min="0"
-                placeholder="0"
-                value={form.basePrice || ""}
-                onChange={(e) => set({ basePrice: Number(e.target.value) })}
-              />
+              <Input type="number" min="0" placeholder="0" value={form.basePrice || ""}
+                onChange={(e) => set({ basePrice: Number(e.target.value) })} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Mata Uang</Label>
-              <Select
-                value={form.currency}
-                onValueChange={(v) => set({ currency: v as TicketCurrency })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={form.currency} onValueChange={(v) => set({ currency: v as TicketCurrency })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.keys(CURRENCY_LABEL) as TicketCurrency[]).map((c) => (
                     <SelectItem key={c} value={c}>{c}</SelectItem>
@@ -399,20 +503,14 @@ function TicketFormDialog({
           {/* Notes */}
           <div className="space-y-1">
             <Label className="text-xs">Catatan (opsional)</Label>
-            <Textarea
-              placeholder="Contoh: Termasuk bagasi 30kg, tersedia kelas bisnis"
-              rows={2}
+            <Textarea placeholder="Contoh: Termasuk bagasi 30kg, tersedia kelas bisnis" rows={2}
               value={form.notes ?? ""}
-              onChange={(e) => set({ notes: e.target.value || null })}
-            />
+              onChange={(e) => set({ notes: e.target.value || null })} />
           </div>
 
           {/* Publish toggle */}
           <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border">
-            <Switch
-              checked={form.isPublished}
-              onCheckedChange={(v) => set({ isPublished: v })}
-            />
+            <Switch checked={form.isPublished} onCheckedChange={(v) => set({ isPublished: v })} />
             <div>
               <p className="text-sm font-medium">Tampilkan di Daftar Harga</p>
               <p className="text-xs text-slate-400">Matikan untuk menyembunyikan sementara</p>
@@ -462,11 +560,13 @@ export default function TicketPrices() {
   const [editId, setEditId] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // Admin form (manual add)
+  // Manual add dialog
   const [addOpen, setAddOpen] = useState(false);
 
-  // WA number
   const waNumber = loadIghAdminSettings().adminWhatsapp ?? "";
+
+  // Public link for sharing
+  const publicUrl = `${window.location.origin}/harga-tiket`;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -482,7 +582,7 @@ export default function TicketPrices() {
 
   useEffect(() => { void load(); }, [load]);
 
-  // ── Markup ────────────────────────────────────────────────────────────────
+  // ── Markup ──────────────────────────────────────────────────────────────
   function applyMarkup() {
     const val = Math.max(0, Number(markupInput) || 0);
     saveMarkup(val);
@@ -491,7 +591,18 @@ export default function TicketPrices() {
     toast.success(`Mark-up diset ke ${fmtIDR(val)}/pax`);
   }
 
-  // ── Screenshot scan ───────────────────────────────────────────────────────
+  // ── Share public link ───────────────────────────────────────────────────
+  function handleSharePublic() {
+    if (navigator.clipboard) {
+      void navigator.clipboard.writeText(publicUrl).then(() => {
+        toast.success("Link publik tersalin! Bagikan ke klien Anda.");
+      });
+    } else {
+      window.open(publicUrl, "_blank");
+    }
+  }
+
+  // ── Screenshot scan ─────────────────────────────────────────────────────
   async function handleFileSelect(file: File) {
     if (!file.type.startsWith("image/")) {
       toast.error("File harus berupa gambar (JPG, PNG, WebP)");
@@ -547,7 +658,7 @@ export default function TicketPrices() {
     setPendingForms((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  // ── CRUD ─────────────────────────────────────────────────────────────────
+  // ── CRUD ───────────────────────────────────────────────────────────────
   async function handleSaveEdit(form: FormState) {
     setSavingEdit(true);
     try {
@@ -561,6 +672,7 @@ export default function TicketPrices() {
         toast.success("Harga tiket ditambahkan!");
       }
       setEditOpen(false);
+      setAddOpen(false);
     } catch (e) {
       toast.error("Gagal simpan: " + String(e));
     } finally {
@@ -577,6 +689,9 @@ export default function TicketPrices() {
       departDate: item.departDate, basePrice: item.basePrice,
       currency: item.currency, validUntil: item.validUntil,
       notes: item.notes, isPublished: item.isPublished,
+      flightNumber: item.flightNumber, etd: item.etd, eta: item.eta,
+      terminal: item.terminal, transitCode: item.transitCode,
+      transitCity: item.transitCity, transitDuration: item.transitDuration,
     });
     setEditOpen(true);
   }
@@ -603,13 +718,12 @@ export default function TicketPrices() {
     } catch (e) { toast.error("Gagal update: " + String(e)); }
   }
 
-  // ── Visible prices ────────────────────────────────────────────────────────
   const visiblePrices = isAdmin ? prices : prices.filter((p) => p.isPublished);
 
   return (
-    <div className="max-w-4xl mx-auto py-6 px-4 space-y-6">
+    <div className="max-w-5xl mx-auto py-6 px-4 space-y-6">
       {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-sky-100">
@@ -618,10 +732,20 @@ export default function TicketPrices() {
             <h1 className="text-xl font-bold text-slate-900 dark:text-white">Daftar Harga Tiket</h1>
           </div>
           <p className="text-sm text-slate-500 mt-0.5">
-            Update harga via screenshot — AI ekstrak otomatis
+            AI ekstrak nomor penerbangan, jam, transit otomatis dari screenshot
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Share public link */}
+          <Button
+            size="sm" variant="outline"
+            className="text-sky-600 border-sky-200 hover:bg-sky-50 hover:border-sky-300"
+            onClick={handleSharePublic}
+          >
+            <Share2 className="w-3.5 h-3.5 mr-1.5" />
+            Share Link Publik
+          </Button>
+
           {/* Markup badge */}
           <button
             onClick={() => setMarkupOpen((v) => !v)}
@@ -636,6 +760,7 @@ export default function TicketPrices() {
             Markup: {markup > 0 ? fmtIDR(markup) : "Belum diset"}
             {markupOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
+
           {isAdmin && (
             <>
               <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
@@ -654,6 +779,31 @@ export default function TicketPrices() {
         </div>
       </div>
 
+      {/* ── Public link info bar ── */}
+      <div className="flex items-center gap-3 p-3 rounded-xl bg-sky-50 border border-sky-200">
+        <Share2 className="w-4 h-4 text-sky-500 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-semibold text-sky-700">Link Publik Daftar Harga</p>
+          <p className="text-[11px] text-sky-600 font-mono truncate">{publicUrl}</p>
+        </div>
+        <button
+          onClick={handleSharePublic}
+          className="flex items-center gap-1 text-[11px] text-sky-600 font-semibold hover:text-sky-800 shrink-0 bg-sky-100 hover:bg-sky-200 rounded-lg px-2.5 py-1.5 transition-colors"
+        >
+          <Copy className="w-3 h-3" />
+          Salin
+        </button>
+        <a
+          href={publicUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1 text-[11px] text-sky-600 font-semibold hover:text-sky-800 shrink-0 bg-sky-100 hover:bg-sky-200 rounded-lg px-2.5 py-1.5 transition-colors"
+        >
+          <ArrowRight className="w-3 h-3" />
+          Buka
+        </a>
+      </div>
+
       {/* ── Markup popover ── */}
       {markupOpen && (
         <Card className="border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10">
@@ -665,25 +815,17 @@ export default function TicketPrices() {
                   Global Mark-up Keuntungan (IDR/pax)
                 </Label>
                 <Input
-                  type="number"
-                  min="0"
-                  step="50000"
-                  placeholder="0"
+                  type="number" min="0" step="50000" placeholder="0"
                   className="bg-white"
                   value={markupInput}
                   onChange={(e) => setMarkupInput(e.target.value)}
                 />
                 <p className="text-[11px] text-emerald-600">
-                  Ditambahkan ke semua harga modal sebelum ditampilkan ke klien.
-                  Kurs konversi otomatis dari header.
+                  Ditambahkan ke semua harga modal sebelum ditampilkan ke klien. Kurs konversi otomatis.
                 </p>
               </div>
-              <Button
-                className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
-                onClick={applyMarkup}
-              >
-                <Check className="w-4 h-4 mr-1" />
-                Terapkan
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0" onClick={applyMarkup}>
+                <Check className="w-4 h-4 mr-1" />Terapkan
               </Button>
               <Button variant="ghost" onClick={() => setMarkupOpen(false)}>
                 <X className="w-4 h-4" />
@@ -699,11 +841,10 @@ export default function TicketPrices() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-sky-500" />
-              Import dari Screenshot via AI
+              Import dari Screenshot via AI — Deep Extraction
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Drop zone */}
             <div
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(e) => e.preventDefault()}
@@ -722,24 +863,21 @@ export default function TicketPrices() {
               {scanning ? (
                 <>
                   <Loader2 className="w-7 h-7 text-sky-500 animate-spin" />
-                  <p className="text-sm font-medium text-sky-700">AI sedang membaca screenshot…</p>
-                  <p className="text-xs text-slate-400">gpt-4o-mini Vision</p>
+                  <p className="text-sm font-medium text-sky-700">AI sedang menganalisis tiket…</p>
+                  <p className="text-xs text-slate-400">Mengekstrak nomor penerbangan, jam, transit…</p>
                 </>
               ) : (
                 <>
                   <ImagePlus className="w-7 h-7 text-slate-400" />
                   <p className="text-sm font-medium text-slate-600">
-                    Drop screenshot harga tiket atau <span className="text-sky-600 underline">klik untuk pilih</span>
+                    Drop screenshot atau <span className="text-sky-600 underline">klik untuk pilih</span>
                   </p>
-                  <p className="text-xs text-slate-400">JPG, PNG, WebP • AI ekstrak maskapai, rute, dan harga otomatis</p>
+                  <p className="text-xs text-slate-400">AI ekstrak: maskapai · nomor penerbangan · ETD/ETA · transit · harga</p>
                 </>
               )}
             </div>
             <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
+              ref={fileInputRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) void handleFileSelect(f);
@@ -747,7 +885,6 @@ export default function TicketPrices() {
               }}
             />
 
-            {/* Scan error */}
             {scanError && (
               <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200">
                 <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
@@ -779,10 +916,7 @@ export default function TicketPrices() {
                 </div>
                 <div className="space-y-3">
                   {pendingForms.map((form, idx) => (
-                    <div
-                      key={idx}
-                      className="border border-sky-200 rounded-xl p-3 bg-sky-50/50 space-y-3"
-                    >
+                    <div key={idx} className="border border-sky-200 rounded-xl p-3 bg-sky-50/50 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <AirlineLogo code={form.airlineCode} airline={form.airline} size={28} />
@@ -790,13 +924,16 @@ export default function TicketPrices() {
                             <p className="text-xs font-bold text-slate-800">{form.airline || "—"}</p>
                             <p className="text-[10px] text-slate-500 font-mono">
                               {form.fromCode} → {form.toCode}
-                              {form.basePrice ? ` • ${form.currency} ${form.basePrice.toLocaleString("id-ID")}` : ""}
+                              {form.flightNumber && ` · ${form.flightNumber}`}
+                              {form.etd && ` · ${form.etd}`}
+                              {form.eta && `→${form.eta}`}
+                              {form.transitCode && ` via ${form.transitCode}`}
+                              {form.basePrice ? ` · ${form.currency} ${form.basePrice.toLocaleString("id-ID")}` : ""}
                             </p>
                           </div>
                         </div>
                         <Button
-                          size="icon"
-                          variant="ghost"
+                          size="icon" variant="ghost"
                           className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
                           onClick={() => removePending(idx)}
                         >
@@ -804,73 +941,78 @@ export default function TicketPrices() {
                         </Button>
                       </div>
                       {/* Quick edit inline */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-0.5">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div className="space-y-0.5 col-span-2">
                           <Label className="text-[10px] text-slate-500">Maskapai</Label>
-                          <Input
-                            className="h-7 text-xs"
-                            value={form.airline}
-                            onChange={(e) => updatePending(idx, { airline: e.target.value })}
-                          />
+                          <Input className="h-7 text-xs" value={form.airline}
+                            onChange={(e) => updatePending(idx, { airline: e.target.value })} />
                         </div>
-                        <div className="grid grid-cols-2 gap-1">
-                          <div className="space-y-0.5">
-                            <Label className="text-[10px] text-slate-500">Dari</Label>
-                            <Input
-                              className="h-7 text-xs font-mono uppercase"
-                              maxLength={3}
-                              value={form.fromCode}
-                              onChange={(e) => updatePending(idx, { fromCode: e.target.value.toUpperCase() })}
-                            />
-                          </div>
-                          <div className="space-y-0.5">
-                            <Label className="text-[10px] text-slate-500">Ke</Label>
-                            <Input
-                              className="h-7 text-xs font-mono uppercase"
-                              maxLength={3}
-                              value={form.toCode}
-                              onChange={(e) => updatePending(idx, { toCode: e.target.value.toUpperCase() })}
-                            />
-                          </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-slate-500">No. Penerbangan</Label>
+                          <Input className="h-7 text-xs font-mono uppercase" value={form.flightNumber ?? ""}
+                            onChange={(e) => updatePending(idx, { flightNumber: e.target.value.toUpperCase() || null })} />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-slate-500">Kode IATA</Label>
+                          <Input className="h-7 text-xs font-mono uppercase" maxLength={2} value={form.airlineCode}
+                            onChange={(e) => updatePending(idx, { airlineCode: e.target.value.toUpperCase() })} />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-slate-500">Dari</Label>
+                          <Input className="h-7 text-xs font-mono uppercase" maxLength={3} value={form.fromCode}
+                            onChange={(e) => updatePending(idx, { fromCode: e.target.value.toUpperCase() })} />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-slate-500">Ke</Label>
+                          <Input className="h-7 text-xs font-mono uppercase" maxLength={3} value={form.toCode}
+                            onChange={(e) => updatePending(idx, { toCode: e.target.value.toUpperCase() })} />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-slate-500">ETD</Label>
+                          <Input className="h-7 text-xs font-mono" placeholder="23:55" value={form.etd ?? ""}
+                            onChange={(e) => updatePending(idx, { etd: e.target.value || null })} />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-slate-500">ETA</Label>
+                          <Input className="h-7 text-xs font-mono" placeholder="05:30" value={form.eta ?? ""}
+                            onChange={(e) => updatePending(idx, { eta: e.target.value || null })} />
                         </div>
                         <div className="space-y-0.5">
                           <Label className="text-[10px] text-slate-500">Harga Modal</Label>
-                          <Input
-                            className="h-7 text-xs"
-                            type="number"
-                            value={form.basePrice || ""}
-                            onChange={(e) => updatePending(idx, { basePrice: Number(e.target.value) })}
-                          />
+                          <Input className="h-7 text-xs" type="number" value={form.basePrice || ""}
+                            onChange={(e) => updatePending(idx, { basePrice: Number(e.target.value) })} />
                         </div>
-                        <div className="grid grid-cols-2 gap-1">
-                          <div className="space-y-0.5">
-                            <Label className="text-[10px] text-slate-500">Mata Uang</Label>
-                            <Select
-                              value={form.currency}
-                              onValueChange={(v) => updatePending(idx, { currency: v as TicketCurrency })}
-                            >
-                              <SelectTrigger className="h-7 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(["IDR","EGP","USD","SAR"] as TicketCurrency[]).map((c) => (
-                                  <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-0.5">
-                            <Label className="text-[10px] text-slate-500">Berlaku Hingga</Label>
-                            <Input
-                              className="h-7 text-xs"
-                              type="date"
-                              value={form.validUntil ?? ""}
-                              onChange={(e) => updatePending(idx, { validUntil: e.target.value || null })}
-                            />
-                          </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-slate-500">Mata Uang</Label>
+                          <Select value={form.currency} onValueChange={(v) => updatePending(idx, { currency: v as TicketCurrency })}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {(["IDR","EGP","USD","SAR"] as TicketCurrency[]).map((c) => (
+                                <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[10px] text-slate-500">Berlaku Hingga</Label>
+                          <Input className="h-7 text-xs" type="date" value={form.validUntil ?? ""}
+                            onChange={(e) => updatePending(idx, { validUntil: e.target.value || null })} />
+                        </div>
+                        {(form.transitCode || form.transitCity) && (
+                          <div className="col-span-2 space-y-0.5">
+                            <Label className="text-[10px] text-slate-500">Transit</Label>
+                            <div className="flex gap-1">
+                              <Input className="h-7 text-xs font-mono uppercase w-20" maxLength={3}
+                                placeholder="DOH" value={form.transitCode ?? ""}
+                                onChange={(e) => updatePending(idx, { transitCode: e.target.value.toUpperCase() || null })} />
+                              <Input className="h-7 text-xs flex-1" placeholder="Doha" value={form.transitCity ?? ""}
+                                onChange={(e) => updatePending(idx, { transitCity: e.target.value || null })} />
+                              <Input className="h-7 text-xs w-20" placeholder="2h 30m" value={form.transitDuration ?? ""}
+                                onChange={(e) => updatePending(idx, { transitDuration: e.target.value || null })} />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      {/* Preview selling price */}
                       {form.basePrice > 0 && (
                         <p className="text-[11px] text-emerald-600 font-medium">
                           💰 Harga jual: {fmtIDR(sellingPrice(form.basePrice, form.currency, rates, markup))}
@@ -907,7 +1049,6 @@ export default function TicketPrices() {
         </div>
       ) : (
         <>
-          {/* Summary bar */}
           <div className="flex items-center justify-between">
             <p className="text-sm text-slate-500">
               {visiblePrices.length} rute tersedia
@@ -921,7 +1062,7 @@ export default function TicketPrices() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {visiblePrices.map((item) => (
-              <PriceCard
+              <BoardingPassCard
                 key={item.id}
                 item={item}
                 markup={markup}
@@ -931,6 +1072,7 @@ export default function TicketPrices() {
                 onDelete={handleDelete}
                 onTogglePublish={handleTogglePublish}
                 waNumber={waNumber}
+                showBasePrice={isAdmin}
               />
             ))}
           </div>
