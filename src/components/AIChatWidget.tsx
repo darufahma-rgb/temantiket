@@ -2,17 +2,175 @@
  * AIChatWidget — Fase 26: AI Command Center
  * Floating chat bubble di pojok kanan bawah dashboard.
  * Mendukung OpenAI function calling untuk kontrol penuh Temantiket.
+ * Context-aware: chip suggestion berubah sesuai halaman aktif.
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Bot, X, Send, Loader2, ChevronDown, Sparkles,
+  Bot, Send, Loader2, Sparkles,
   TrendingUp, Users, ShoppingBag, Zap, RefreshCw,
-  CheckCircle2, AlertCircle, Target, Calculator,
+  CheckCircle2, AlertCircle, Target, Calculator, ChevronDown,
 } from "lucide-react";
 import { sendAIMessage, type ChatMessage, type ToolResult } from "@/lib/aiCommandCenter";
+import { useAIChatStore } from "@/store/aiChatStore";
 import { cn } from "@/lib/utils";
+
+// ── Page-aware fallback suggestions ─────────────────────────────────────────
+
+interface PageSuggestions {
+  match: (p: string) => boolean;
+  chips: string[];
+}
+
+const PAGE_SUGGESTIONS: PageSuggestions[] = [
+  {
+    match: (p) => p === "/" || p === "/dashboard",
+    chips: [
+      "Gimana performa bisnis hari ini?",
+      "Siapa agen terbaik bulan ini?",
+      "Buat misi harian untuk agen",
+      "Ada order yang belum Completed?",
+      "Berapa total revenue saat ini?",
+      "List 5 order terbaru",
+    ],
+  },
+  {
+    match: (p) => p.startsWith("/clients"),
+    chips: [
+      "Cari klien Ahmad",
+      "List 10 klien terbaru",
+      "Berapa total klien?",
+      "Cari klien dengan HP 081",
+      "Ada klien tanpa order?",
+      "List semua klien",
+    ],
+  },
+  {
+    match: (p) => p.startsWith("/orders"),
+    chips: [
+      "List order flight Confirmed",
+      "Ada order umrah Draft?",
+      "Berapa total revenue Completed?",
+      "List 5 order terbaru",
+      "Order visa apa saja?",
+      "Hitung profit semua order",
+    ],
+  },
+  {
+    match: (p) => p.startsWith("/itinerary"),
+    chips: [
+      'Ekstrak: "1 QR978 Y 15MAR CGK DOH HK1 2355 0430"',
+      'Ekstrak: "EK317 CAI-DXB 20MAY 0310 0755"',
+      "Buat itinerary CGK-DOH-JED Qatar",
+      "Cari order flight terbaru",
+      "Hitung profit tiket EGP 1200 modal 950",
+      "Update kurs EGP ke 520",
+    ],
+  },
+  {
+    match: (p) => p.startsWith("/calculator"),
+    chips: [
+      "Hitung profit EGP 1500 modal EGP 1200",
+      "Hitung profit IDR 15jt modal 12jt",
+      "Update kurs EGP ke 520",
+      "Update kurs SAR ke 4300",
+      "Set kurs USD ke 16500",
+      "Berapa margin 20% dari EGP 2000?",
+    ],
+  },
+  {
+    match: (p) => p.startsWith("/reports"),
+    chips: [
+      "Berapa total revenue & profit?",
+      "Gimana performa bisnis?",
+      "Siapa agen order terbanyak?",
+      "List order Completed bulan ini",
+      "Hitung profit semua order",
+      "Performa agen bulan ini?",
+    ],
+  },
+  {
+    match: (p) => p.startsWith("/agent-center"),
+    chips: [
+      "Buat misi: share promo umrah, 20 poin",
+      "Siapa agen poin terbanyak?",
+      "List performa semua agen",
+      "Buat misi: update foto profil, 15 poin",
+      "Berapa total agen aktif?",
+      "Rankingkan agen berdasarkan poin",
+    ],
+  },
+  {
+    match: (p) => p.startsWith("/ticket-prices"),
+    chips: [
+      "List order flight terbaru",
+      "Update kurs EGP ke 520",
+      "Hitung profit tiket EGP 1200 modal 950",
+      "Cari klien dengan order flight",
+      "Berapa revenue dari order flight?",
+      "Update kurs SAR ke 4300",
+    ],
+  },
+  {
+    match: (p) => p.startsWith("/settings"),
+    chips: [
+      "Update kurs EGP ke 520",
+      "Update kurs SAR ke 4300",
+      "Update kurs USD ke 16500",
+      "Ringkasan bisnis hari ini",
+      "Berapa total klien & order?",
+      "Gimana performa agen?",
+    ],
+  },
+  {
+    match: (p) => p.startsWith("/packages"),
+    chips: [
+      "Hitung profit paket EGP 2500 modal 2000",
+      "List klien dengan order umrah",
+      "Buat misi promosi paket umrah",
+      "Berapa total order umrah?",
+      "Gimana performa bisnis?",
+      "List 5 klien terbaru",
+    ],
+  },
+  {
+    match: (p) => p.startsWith("/bc-templates"),
+    chips: [
+      "List semua klien untuk broadcast",
+      "Berapa jumlah klien aktif?",
+      "Gimana performa bisnis untuk bahan BC?",
+      "Cari klien nama Ahmad",
+      "List order terbaru untuk follow up",
+      "Berapa revenue bulan ini?",
+    ],
+  },
+  {
+    match: (p) => p.startsWith("/notes"),
+    chips: [
+      "Ringkasan bisnis untuk dicatat",
+      "Berapa total revenue & profit?",
+      "List order yang baru Completed",
+      "Gimana status performa agen?",
+      "Update kurs EGP ke 520",
+      "List 5 klien terbaru",
+    ],
+  },
+];
+
+const DEFAULT_SUGGESTIONS = [
+  "Gimana performa bisnis hari ini?",
+  "List 5 klien terbaru",
+  "Update kurs EGP ke 520",
+  "Buat misi untuk agen",
+  "Hitung profit EGP 1500 modal EGP 1200",
+  "Siapa agen terbaik?",
+];
+
+function getPageSuggestions(pathname: string): string[] {
+  return PAGE_SUGGESTIONS.find((p) => p.match(pathname))?.chips ?? DEFAULT_SUGGESTIONS;
+}
 
 // ── Tool result display ──────────────────────────────────────────────────────
 
@@ -75,7 +233,7 @@ function ToolResultCard({ result }: { result: ToolResult }) {
           </div>
         ))}
         {(d.total as number) > 5 && (
-          <div className="text-emerald-500">+{(d.total as number) - 5} lainnya...</div>
+          <div className="text-emerald-500">+{(d.total as number) - 5} lainnya…</div>
         )}
       </div>
     );
@@ -120,7 +278,7 @@ function ToolResultCard({ result }: { result: ToolResult }) {
             </div>
           ))}
         </div>
-        <div className="text-amber-500 text-[10px]">Buka halaman Itinerary untuk menyimpan & share via WhatsApp</div>
+        <div className="text-amber-500 text-[10px]">Buka halaman Itinerary untuk menyimpan &amp; share via WhatsApp</div>
       </div>
     );
   }
@@ -210,26 +368,14 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ── Suggestion chips ─────────────────────────────────────────────────────────
-
-const SUGGESTIONS = [
-  "Gimana performa bisnis hari ini?",
-  "List 5 klien terbaru",
-  "Update kurs EGP ke 520",
-  "Buat misi untuk agen",
-  "Hitung profit EGP 1500 modal EGP 1200",
-  "Cari klien Ahmad",
-];
-
 // ── Message bubble ───────────────────────────────────────────────────────────
 
-function MessageBubble({
-  msg,
-  toolResults,
-}: {
+interface StoredMessage {
   msg: ChatMessage;
   toolResults?: ToolResult[];
-}) {
+}
+
+function MessageBubble({ msg, toolResults }: { msg: ChatMessage; toolResults?: ToolResult[] }) {
   const isUser = msg.role === "user";
   return (
     <div className={cn("flex flex-col gap-1.5", isUser ? "items-end" : "items-start")}>
@@ -251,14 +397,12 @@ function MessageBubble({
       )}
 
       {msg.content && (
-        <div
-          className={cn(
-            "max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed",
-            isUser
-              ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-br-sm"
-              : "bg-white border border-border/60 text-foreground rounded-bl-sm shadow-sm",
-          )}
-        >
+        <div className={cn(
+          "max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed",
+          isUser
+            ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-br-sm"
+            : "bg-white border border-border/60 text-foreground rounded-bl-sm shadow-sm",
+        )}>
           {msg.content}
         </div>
       )}
@@ -268,75 +412,75 @@ function MessageBubble({
 
 // ── Main widget ──────────────────────────────────────────────────────────────
 
-interface StoredMessage {
-  msg: ChatMessage;
-  toolResults?: ToolResult[];
-}
-
 export function AIChatWidget() {
-  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  const { isOpen, pendingText, open, close, clearPendingText } = useAIChatStore();
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<StoredMessage[]>([]);
   const [apiMessages, setApiMessages] = useState<ChatMessage[]>([]);
   const [hasUnread, setHasUnread] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const suggestions = getPageSuggestions(pathname);
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   useEffect(() => {
-    if (open) {
+    if (isOpen) {
       setHasUnread(false);
       setTimeout(scrollToBottom, 100);
       setTimeout(() => inputRef.current?.focus(), 200);
     }
-  }, [open, scrollToBottom]);
+  }, [isOpen, scrollToBottom]);
 
   useEffect(() => {
-    if (open) scrollToBottom();
-  }, [history, loading, open, scrollToBottom]);
+    if (isOpen) scrollToBottom();
+  }, [history, loading, isOpen, scrollToBottom]);
 
-  const sendMessage = useCallback(
-    async (text: string) => {
-      const trimmed = text.trim();
-      if (!trimmed || loading) return;
+  // Handle pending text from external (AIContextualBar chips)
+  useEffect(() => {
+    if (pendingText && isOpen) {
+      setInput(pendingText);
+      clearPendingText();
+      setTimeout(() => inputRef.current?.focus(), 150);
+    }
+  }, [pendingText, isOpen, clearPendingText]);
 
-      const userMsg: ChatMessage = { role: "user", content: trimmed };
-      const nextApiMessages = [...apiMessages, userMsg];
+  const sendMessage = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
 
-      setHistory((h) => [...h, { msg: userMsg }]);
-      setApiMessages(nextApiMessages);
-      setInput("");
-      setLoading(true);
+    const userMsg: ChatMessage = { role: "user", content: trimmed };
+    const nextApiMessages = [...apiMessages, userMsg];
 
-      try {
-        const response = await sendAIMessage(nextApiMessages);
-        const assistantMsg: ChatMessage = {
-          role: "assistant",
-          content: response.message,
-        };
-        setHistory((h) => [
-          ...h,
-          { msg: assistantMsg, toolResults: response.toolResults },
-        ]);
-        setApiMessages((prev) => [...prev, assistantMsg]);
-        if (!open) setHasUnread(true);
-      } catch (err) {
-        const errMsg: ChatMessage = {
-          role: "assistant",
-          content: `Maaf, terjadi error: ${err instanceof Error ? err.message : "Unknown error"}. Coba lagi ya.`,
-        };
-        setHistory((h) => [...h, { msg: errMsg }]);
-        setApiMessages((prev) => [...prev, errMsg]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [apiMessages, loading, open],
-  );
+    setHistory((h) => [...h, { msg: userMsg }]);
+    setApiMessages(nextApiMessages);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const response = await sendAIMessage(nextApiMessages);
+      const assistantMsg: ChatMessage = { role: "assistant", content: response.message };
+      setHistory((h) => [...h, { msg: assistantMsg, toolResults: response.toolResults }]);
+      setApiMessages((prev) => [...prev, assistantMsg]);
+      if (!isOpen) setHasUnread(true);
+    } catch (err) {
+      const errMsg: ChatMessage = {
+        role: "assistant",
+        content: `Maaf, terjadi error: ${err instanceof Error ? err.message : "Unknown error"}. Coba lagi ya.`,
+      };
+      setHistory((h) => [...h, { msg: errMsg }]);
+      setApiMessages((prev) => [...prev, errMsg]);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiMessages, loading, isOpen]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -352,14 +496,14 @@ export function AIChatWidget() {
       {/* Floating button */}
       <div className="fixed bottom-24 right-4 z-50 md:bottom-6 md:right-6">
         <AnimatePresence>
-          {!open && (
+          {!isOpen && (
             <motion.button
               key="fab"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0, opacity: 0 }}
               whileTap={{ scale: 0.92 }}
-              onClick={() => setOpen(true)}
+              onClick={open}
               className="relative w-14 h-14 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 shadow-lg shadow-sky-500/30 flex items-center justify-center text-white hover:shadow-xl hover:shadow-sky-500/40 transition-shadow"
             >
               <Bot className="w-6 h-6" />
@@ -373,7 +517,7 @@ export function AIChatWidget() {
 
       {/* Chat dialog */}
       <AnimatePresence>
-        {open && (
+        {isOpen && (
           <motion.div
             key="chat"
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
@@ -396,7 +540,7 @@ export function AIChatWidget() {
                 </div>
               </div>
               <button
-                onClick={() => setOpen(false)}
+                onClick={close}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
               >
                 <ChevronDown className="w-4 h-4" />
@@ -411,15 +555,14 @@ export function AIChatWidget() {
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-sky-500/25">
                       <Bot className="w-6 h-6 text-white" />
                     </div>
-                    <p className="font-semibold text-sm text-foreground">
-                      Halo! Saya AI Command Center
-                    </p>
+                    <p className="font-semibold text-sm text-foreground">Halo! Saya AI Command Center</p>
                     <p className="text-xs text-muted-foreground mt-1 px-4">
-                      Kontrol seluruh bisnis Temantiket hanya lewat chat. Coba salah satu perintah di bawah 👇
+                      Kontrol seluruh bisnis Temantiket hanya lewat chat.
+                      Coba salah satu perintah di bawah 👇
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    {SUGGESTIONS.map((s) => (
+                    {suggestions.map((s) => (
                       <button
                         key={s}
                         onClick={() => void sendMessage(s)}

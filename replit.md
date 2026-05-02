@@ -162,13 +162,28 @@ Schema managed via Supabase SQL Editor. To initialize:
 
 **UI Features:**
 - Tombol FAB biru bergradient di kanan bawah, badge merah kalau ada pesan belum dibaca
-- Chip suggestion untuk perintah umum di empty state
+- **AIContextualBar** — strip di atas setiap halaman dengan chip perintah kontekstual
+  - Dashboard: performa bisnis, agen terbaik, buat misi, status order
+  - Clients: cari klien, list terbaru, filter order klien
+  - Orders: filter status/tipe, revenue, list terbaru
+  - Itinerary: contoh PNR Galileo, Amadeus, dan teks booking langsung
+  - Calculator: hitung profit IDR/EGP, update kurs EGP/SAR/USD
+  - Reports: revenue, profit, performa agen
+  - Agent Center: buat misi, ranking agen, total poin
+  - Ticket Prices: order flight, kurs, profit tiket
+  - BC Templates: list klien, data bisnis untuk broadcast
+  - Notes: ringkasan bisnis, status order
+  - Settings: update semua kurs langsung dari settings
+  - Packages: profit paket, klien dengan order umrah
+- Chip suggestion **context-aware** — berubah sesuai halaman aktif
+- Klik chip → langsung isi input chat (tidak auto-send, bisa diedit dulu)
 - Tool result cards dengan warna berbeda per tipe (biru=dashboard, hijau=klien, dsb)
 - Multi-tool results ditampilkan inline sebelum pesan teks AI
 - Textarea auto-grow, Enter=kirim, Shift+Enter=baris baru
 - Reset percakapan (clear history + API context)
 - Proactive questioning — AI tanya balik kalau perintah kurang jelas
 - Requires `VITE_OPENAI_API_KEY` — graceful error message kalau belum di-set
+- Files: `src/store/aiChatStore.ts` (shared state), `src/components/AIContextualBar.tsx` (bar)
 
 ## Legacy Umrah Flow
 
