@@ -163,15 +163,15 @@ export function CaptionGenerator() {
                 className={cn(
                   "flex flex-col items-center gap-2 rounded-xl border py-3.5 px-2 transition-all text-center",
                   isActive
-                    ? "border-foreground bg-foreground text-background shadow-sm"
-                    : "border-border/70 bg-white text-foreground hover:border-foreground/40 hover:bg-gray-50",
+                    ? "border-[#1a44d4] bg-[#1a44d4] text-white shadow-sm"
+                    : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40 hover:bg-blue-50/40",
                 )}
               >
                 <Icon
-                  className={cn("h-5 w-5", isActive ? "text-background" : "text-muted-foreground")}
+                  className={cn("h-5 w-5", isActive ? "text-white" : "text-muted-foreground")}
                   strokeWidth={1.5}
                 />
-                <span className={cn("text-[11px] font-medium leading-tight", isActive ? "text-background" : "text-foreground")}>
+                <span className={cn("text-[11px] font-medium leading-tight", isActive ? "text-white" : "text-foreground")}>
                   {label}
                 </span>
               </button>
@@ -192,14 +192,14 @@ export function CaptionGenerator() {
                 className={cn(
                   "rounded-xl border px-3 py-2.5 text-left transition-all",
                   isActive
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border/70 bg-white hover:border-foreground/40 hover:bg-gray-50",
+                    ? "border-[#1a44d4] bg-[#1a44d4] text-white"
+                    : "border-border/70 bg-white hover:border-[#1a44d4]/40 hover:bg-blue-50/40",
                 )}
               >
-                <div className={cn("text-[12.5px] font-semibold", isActive ? "text-background" : "text-foreground")}>
+                <div className={cn("text-[12.5px] font-semibold", isActive ? "text-white" : "text-foreground")}>
                   {label}
                 </div>
-                <div className={cn("text-[10.5px] mt-0.5 leading-snug", isActive ? "text-background/70" : "text-muted-foreground")}>
+                <div className={cn("text-[10.5px] mt-0.5 leading-snug", isActive ? "text-white/75" : "text-muted-foreground")}>
                   {desc}
                 </div>
               </button>
@@ -257,7 +257,7 @@ export function CaptionGenerator() {
       <Button
         onClick={() => void handleGenerate()}
         disabled={loading}
-        className="w-full h-11 text-[13.5px] font-semibold bg-foreground text-background hover:bg-foreground/90 transition-all rounded-xl"
+        className="w-full h-11 text-[13.5px] font-semibold bg-[#1a44d4] text-white hover:bg-[#1535b0] transition-all rounded-xl"
       >
         <AnimatePresence mode="wait">
           {loading ? (
@@ -328,8 +328,8 @@ export function CaptionGenerator() {
                     className={cn(
                       "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium transition-all border",
                       copiedIdx === idx
-                        ? "border-foreground/20 bg-foreground text-background"
-                        : "border-border/70 text-muted-foreground hover:border-foreground/40 hover:text-foreground",
+                        ? "border-[#1a44d4]/30 bg-[#1a44d4] text-white"
+                        : "border-border/70 text-muted-foreground hover:border-[#1a44d4]/40 hover:text-[#1a44d4]",
                     )}
                   >
                     {copiedIdx === idx
