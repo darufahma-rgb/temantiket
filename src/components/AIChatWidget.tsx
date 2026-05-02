@@ -617,7 +617,16 @@ export function AIChatWidget() {
               onClick={open}
               className="relative w-14 h-14 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 shadow-lg shadow-sky-500/30 flex items-center justify-center text-white hover:shadow-xl hover:shadow-sky-500/40 transition-shadow"
             >
-              <img src="/chatgpt-icon.png" alt="AI" className="w-7 h-7 object-contain" />
+              <motion.img
+                src="/chatgpt-icon.png"
+                alt="AI"
+                className="w-7 h-7 object-contain"
+                animate={loading ? { rotate: 360 } : { rotate: 0 }}
+                transition={loading
+                  ? { duration: 1.8, repeat: Infinity, ease: "linear" }
+                  : { duration: 0.4, ease: "easeOut" }
+                }
+              />
               {hasUnread && (
                 <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
               )}
@@ -641,7 +650,16 @@ export function AIChatWidget() {
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-sky-500 to-blue-600 text-white shrink-0">
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <img src="/chatgpt-icon.png" alt="AI" className="w-5 h-5 object-contain" />
+                <motion.img
+                  src="/chatgpt-icon.png"
+                  alt="AI"
+                  className="w-5 h-5 object-contain"
+                  animate={loading ? { rotate: 360 } : { rotate: 0 }}
+                  transition={loading
+                    ? { duration: 1.8, repeat: Infinity, ease: "linear" }
+                    : { duration: 0.4, ease: "easeOut" }
+                  }
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm leading-tight">AI Command Center</div>
