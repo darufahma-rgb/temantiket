@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   LayoutDashboard, Calculator, Package, LogOut, Settings,
   StickyNote, FileSpreadsheet, Users, ShoppingBag,
   Plane, FileBadge, Wallet, MessageSquare, Sparkles, Ticket,
   GitBranch, Command, Trophy, BookUser, Megaphone, BarChart3,
-  Wrench, ChevronDown, ChevronUp, HelpCircle, Star, Zap,
+  ChevronDown, Star, Zap, Bot,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
 
 const ACCENT = "#1a44d4";
-const SIDEBAR_W = 240;
+const SIDEBAR_W = 248;
 
 interface NavItemDef {
   title: string;
@@ -35,21 +35,21 @@ interface SectionDef {
 const STAFF_SECTIONS: SectionDef[] = [
   {
     key: "main",
-    label: "Main Menu",
+    label: "Menu Utama",
     collapsible: true,
     items: [
-      { title: "Dashboard",         url: "/",              icon: LayoutDashboard, end: true },
-      { title: "Klien & Jamaah",    url: "/clients",       icon: Users },
-      { title: "Order Hub",         url: "/orders",        icon: ShoppingBag },
-      { title: "Harga Tiket",       url: "/ticket-prices", icon: Ticket },
-      { title: "AI Itinerary",      url: "/itinerary",     icon: Sparkles, badge: "AI" },
-      { title: "Kalkulator & Kurs", url: "/calculator",    icon: Calculator },
-      { title: "Paket Trip",        url: "/packages",      icon: Package },
-      { title: "Progress Jamaah",   url: "/progress",      icon: GitBranch },
-      { title: "Catatan",           url: "/notes",         icon: StickyNote },
-      { title: "Template Broadcast",url: "/bc-templates",  icon: MessageSquare },
-      { title: "Export & Manifest", url: "/exports",       icon: FileSpreadsheet },
-      { title: "Marketing Kit",     url: "/agent/marketing", icon: Megaphone },
+      { title: "Dashboard",          url: "/",               icon: LayoutDashboard, end: true },
+      { title: "Klien & Jamaah",     url: "/clients",        icon: Users },
+      { title: "Order Hub",          url: "/orders",         icon: ShoppingBag },
+      { title: "Harga Tiket",        url: "/ticket-prices",  icon: Ticket },
+      { title: "AI Itinerary",       url: "/itinerary",      icon: Sparkles, badge: "AI" },
+      { title: "Kalkulator & Kurs",  url: "/calculator",     icon: Calculator },
+      { title: "Paket Trip",         url: "/packages",       icon: Package },
+      { title: "Progress Jamaah",    url: "/progress",       icon: GitBranch },
+      { title: "Catatan",            url: "/notes",          icon: StickyNote },
+      { title: "Template Broadcast", url: "/bc-templates",   icon: MessageSquare },
+      { title: "Export & Manifest",  url: "/exports",        icon: FileSpreadsheet },
+      { title: "Marketing Kit",      url: "/agent/marketing",icon: Megaphone },
     ],
   },
   {
@@ -57,23 +57,23 @@ const STAFF_SECTIONS: SectionDef[] = [
     label: "Keuangan",
     ownerOnly: true,
     items: [
-      { title: "Laporan Keuangan",  url: "/reports",         icon: BarChart3 },
+      { title: "Laporan Keuangan",   url: "/reports",        icon: BarChart3 },
     ],
   },
   {
     key: "agent",
     label: "Sistem Agen",
     items: [
-      { title: "Kontrol & Misi",   url: "/agent-center",     icon: Command, ownerOnly: true },
-      { title: "Direktori Agen",   url: "/agent-directory",  icon: BookUser },
-      { title: "Leaderboard",      url: "/agent/leaderboard",icon: Trophy },
+      { title: "Kontrol & Misi",     url: "/agent-center",      icon: Command, ownerOnly: true },
+      { title: "Direktori Agen",     url: "/agent-directory",   icon: BookUser },
+      { title: "Leaderboard",        url: "/agent/leaderboard", icon: Trophy },
     ],
   },
   {
     key: "settings",
-    label: "Help & Settings",
+    label: "Pengaturan",
     items: [
-      { title: "Pengaturan",       url: "/settings",         icon: Settings },
+      { title: "Pengaturan",         url: "/settings",          icon: Settings },
     ],
   },
 ];
@@ -81,22 +81,22 @@ const STAFF_SECTIONS: SectionDef[] = [
 const AGENT_SECTIONS: SectionDef[] = [
   {
     key: "main",
-    label: "Main Menu",
+    label: "Menu Utama",
     collapsible: true,
     items: [
-      { title: "Mitra Dashboard",    url: "/agent",          icon: Trophy, end: true },
-      { title: "Klien & Jamaah",     url: "/clients",        icon: Users },
-      { title: "Order Hub",          url: "/orders",         icon: ShoppingBag },
-      { title: "Template Broadcast", url: "/bc-templates",   icon: MessageSquare },
-      { title: "Marketing Kit",      url: "/agent/marketing",icon: Megaphone },
-      { title: "Leaderboard",        url: "/agent/leaderboard", icon: Trophy },
+      { title: "Mitra Dashboard",    url: "/agent",              icon: Trophy, end: true },
+      { title: "Klien & Jamaah",     url: "/clients",            icon: Users },
+      { title: "Order Hub",          url: "/orders",             icon: ShoppingBag },
+      { title: "Template Broadcast", url: "/bc-templates",       icon: MessageSquare },
+      { title: "Marketing Kit",      url: "/agent/marketing",    icon: Megaphone },
+      { title: "Leaderboard",        url: "/agent/leaderboard",  icon: Trophy },
     ],
   },
   {
     key: "settings",
-    label: "Help & Settings",
+    label: "Pengaturan",
     items: [
-      { title: "Pengaturan",         url: "/settings",       icon: Settings },
+      { title: "Pengaturan",         url: "/settings",           icon: Settings },
     ],
   },
 ];
@@ -117,10 +117,10 @@ function SidebarNavItem({ item, onClose }: { item: NavItemDef; onClose?: () => v
       onClick={onClose}
       className={({ isActive }) =>
         cn(
-          "relative flex items-center gap-3 h-9 px-3 rounded-xl text-left transition-all duration-150 w-full group",
+          "relative flex items-center gap-2.5 h-[34px] px-2.5 rounded-lg text-left transition-all duration-150 w-full group",
           isActive
             ? "text-white"
-            : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]"
+            : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))]"
         )
       }
     >
@@ -129,26 +129,38 @@ function SidebarNavItem({ item, onClose }: { item: NavItemDef; onClose?: () => v
           {isActive && (
             <motion.span
               layoutId="sidebar-pill"
-              className="absolute inset-0 rounded-xl"
-              style={{ background: "linear-gradient(135deg, #1a44d4, #123499)" }}
+              className="absolute inset-0 rounded-lg"
+              style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #0a2472 100%)` }}
               transition={{ type: "spring", stiffness: 500, damping: 40 }}
             />
           )}
-          <Icon
-            strokeWidth={isActive ? 2.2 : 1.7}
-            className="h-[16px] w-[16px] shrink-0 relative z-10 transition-colors"
-            style={{ color: isActive ? "white" : undefined }}
-          />
-          <span className="relative z-10 text-[13px] font-medium flex-1 truncate leading-none">
+
+          <span
+            className={cn(
+              "relative z-10 flex items-center justify-center h-[22px] w-[22px] rounded-md shrink-0 transition-all duration-150",
+              isActive
+                ? "bg-white/15"
+                : "bg-transparent group-hover:bg-[hsl(var(--secondary))]"
+            )}
+          >
+            <Icon
+              strokeWidth={isActive ? 2.2 : 1.8}
+              className="h-[13px] w-[13px] transition-colors"
+              style={{ color: isActive ? "white" : undefined }}
+            />
+          </span>
+
+          <span className="relative z-10 text-[12.5px] font-medium flex-1 truncate leading-none">
             {item.title}
           </span>
+
           {item.badge && (
             <span
-              className="relative z-10 text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0"
+              className="relative z-10 text-[7.5px] font-black uppercase tracking-wider px-1.5 py-[3px] rounded-full shrink-0"
               style={
                 isActive
-                  ? { background: "rgba(255,255,255,0.25)", color: "white" }
-                  : { background: `${ACCENT}20`, color: ACCENT }
+                  ? { background: "rgba(255,255,255,0.22)", color: "white" }
+                  : { background: `${ACCENT}18`, color: ACCENT }
               }
             >
               {item.badge}
@@ -170,27 +182,29 @@ function SidebarSection({
   onClose?: () => void;
 }) {
   const visibleItems = section.items.filter((i) => !i.ownerOnly || isOwner);
-  const hasActive = useIsAnyActive(visibleItems);
   const [collapsed, setCollapsed] = useState(false);
 
   if (visibleItems.length === 0) return null;
 
   return (
-    <div className="space-y-0.5">
+    <div>
       <button
         onClick={section.collapsible ? () => setCollapsed((c) => !c) : undefined}
         className={cn(
-          "flex items-center justify-between w-full px-3 py-1.5",
+          "flex items-center justify-between w-full px-2.5 pb-1 pt-0.5",
           section.collapsible ? "cursor-pointer" : "cursor-default"
         )}
       >
-        <span className="text-[10px] font-black uppercase tracking-[0.12em] text-[hsl(var(--muted-foreground))]">
+        <span className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-[hsl(var(--muted-foreground))/60]" style={{ opacity: 0.55 }}>
           {section.label}
         </span>
         {section.collapsible && (
-          collapsed
-            ? <ChevronDown className="h-3 w-3 text-[hsl(var(--muted-foreground))]" />
-            : <ChevronUp className="h-3 w-3 text-[hsl(var(--muted-foreground))]" />
+          <motion.div
+            animate={{ rotate: collapsed ? 0 : 180 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChevronDown className="h-3 w-3" style={{ color: "hsl(var(--muted-foreground))", opacity: 0.5 }} />
+          </motion.div>
         )}
       </button>
 
@@ -200,10 +214,10 @@ function SidebarSection({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+            transition={{ duration: 0.18, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="space-y-0.5 px-1">
+            <div className="space-y-[2px]">
               {visibleItems.map((item) => (
                 <SidebarNavItem key={item.url} item={item} onClose={onClose} />
               ))}
@@ -236,45 +250,53 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
     user?.role === "owner" ? "Owner" :
     user?.role === "staff" ? "Staff" : "Agen Mitra";
 
+  const roleColor =
+    user?.role === "owner" ? "#f59e0b" :
+    user?.role === "staff" ? ACCENT : "#10b981";
+
   const sidebarContent = (
     <div
-      className="flex flex-col h-full"
+      className="flex flex-col h-full overflow-hidden"
       style={{ width: `${SIDEBAR_W}px`, background: "hsl(var(--card))", borderRight: "1px solid hsl(var(--border))" }}
     >
-      {/* ── Logo area ── */}
-      <div className="flex items-center gap-2.5 px-5 py-4 shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-        <div
-          className="h-8 w-8 shrink-0 icon-mark"
-          role="img"
-          aria-label="Temantiket"
-        />
+      {/* ── Logo ── */}
+      <div className="flex items-center gap-2.5 px-4 py-[14px] shrink-0">
+        <div className="h-7 w-7 shrink-0 icon-mark" role="img" aria-label="Temantiket" />
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-black text-[hsl(var(--foreground))] leading-none tracking-tight">Temantiket</p>
-          <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5 leading-none">Travel Management</p>
+          <p className="text-[13.5px] font-black text-[hsl(var(--foreground))] leading-none tracking-[-0.02em]">
+            Temantiket
+          </p>
+          <p className="text-[9.5px] text-[hsl(var(--muted-foreground))] mt-[3px] leading-none" style={{ opacity: 0.6 }}>
+            Travel Management
+          </p>
         </div>
       </div>
+
+      {/* ── Thin divider ── */}
+      <div className="mx-4 shrink-0" style={{ height: "1px", background: "hsl(var(--border))" }} />
 
       {/* ── User profile ── */}
       {user && (
         <button
           onClick={() => { navigate("/settings"); onClose?.(); }}
-          className="flex items-center gap-3 mx-3 mt-3 mb-1 px-3 py-2.5 rounded-xl hover:bg-[hsl(var(--secondary))] transition-colors text-left"
+          className="flex items-center gap-2.5 mx-3 mt-3 mb-2 px-2.5 py-2 rounded-xl hover:bg-[hsl(var(--accent))] transition-colors text-left group"
         >
           <div
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-white text-[12px] font-black shrink-0 shadow"
-            style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
+            className="h-7 w-7 rounded-lg flex items-center justify-center text-white text-[11px] font-black shrink-0"
+            style={{ background: `linear-gradient(135deg, ${ACCENT}, #051650)` }}
           >
             {user.displayName.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[12.5px] font-bold text-[hsl(var(--foreground))] truncate leading-tight">{user.displayName}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <p className="text-[12px] font-semibold text-[hsl(var(--foreground))] truncate leading-tight">
+              {user.displayName}
+            </p>
+            <div className="flex items-center gap-1 mt-[2px]">
               <span
-                className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
-                style={{ background: `${ACCENT}15`, color: ACCENT }}
+                className="text-[8.5px] font-bold uppercase tracking-wider leading-none"
+                style={{ color: roleColor }}
               >
-                <Zap className="h-2.5 w-2.5" strokeWidth={2.5} />
-                {roleLabel}
+                ● {roleLabel}
               </span>
             </div>
           </div>
@@ -282,7 +304,10 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
       )}
 
       {/* ── Nav sections ── */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4" style={{ scrollbarWidth: "none" }}>
+      <div
+        className="flex-1 overflow-y-auto px-2.5 pb-3 space-y-3"
+        style={{ scrollbarWidth: "none" }}
+      >
         {sections.map((section) => (
           <SidebarSection
             key={section.key}
@@ -293,39 +318,40 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
         ))}
       </div>
 
-      {/* ── Bottom: CTA + Logout ── */}
-      <div className="shrink-0 px-3 pb-4 space-y-2" style={{ borderTop: "1px solid hsl(var(--border))", paddingTop: "12px" }}>
-        {/* CTA upgrade card */}
-        <div
-          className="rounded-2xl p-3.5 relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg, #1a44d4 0%, #0a2472 100%)" }}
+      {/* ── Bottom ── */}
+      <div
+        className="shrink-0 px-3 pt-2.5 pb-4 space-y-1.5"
+        style={{ borderTop: "1px solid hsl(var(--border))" }}
+      >
+        {/* AI CTA */}
+        <button
+          onClick={() => { navigate("/itinerary"); onClose?.(); }}
+          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-150 hover:scale-[1.01] active:scale-[0.99]"
+          style={{ background: `linear-gradient(135deg, ${ACCENT}18 0%, #0a247215 100%)`, border: `1px solid ${ACCENT}22` }}
         >
-          <div className="absolute -top-4 -right-4 h-16 w-16 rounded-full opacity-20" style={{ background: "white" }} />
-          <div className="absolute -bottom-3 -left-3 h-12 w-12 rounded-full opacity-10" style={{ background: "white" }} />
-          <div className="relative z-10">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Star className="h-3.5 w-3.5 text-yellow-300" strokeWidth={2} fill="currentColor" />
-              <span className="text-[11px] font-black text-white tracking-wide">Pro Tips</span>
-            </div>
-            <p className="text-[10px] text-white/80 leading-snug mb-2.5">
-              Gunakan AI Itinerary untuk buat program perjalanan otomatis!
-            </p>
-            <button
-              onClick={() => { navigate("/itinerary"); onClose?.(); }}
-              className="w-full flex items-center justify-center gap-1.5 h-7 rounded-lg text-[11px] font-bold text-sky-700 bg-white/90 hover:bg-white transition-colors"
-            >
-              <Sparkles className="h-3 w-3" strokeWidth={2.5} />
-              Coba Sekarang
-            </button>
+          <div
+            className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: `linear-gradient(135deg, ${ACCENT}, #0a2472)` }}
+          >
+            <Bot className="h-3.5 w-3.5 text-white" strokeWidth={2} />
           </div>
-        </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11.5px] font-bold leading-tight" style={{ color: ACCENT }}>
+              AI Itinerary
+            </p>
+            <p className="text-[9.5px] text-[hsl(var(--muted-foreground))] leading-tight mt-[1px]" style={{ opacity: 0.7 }}>
+              Buat program perjalanan otomatis
+            </p>
+          </div>
+          <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: ACCENT, opacity: 0.6 }} strokeWidth={2} />
+        </button>
 
         {/* Logout */}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2.5 h-9 px-3 rounded-xl text-[12.5px] font-medium text-[hsl(var(--muted-foreground))] hover:text-red-500 hover:bg-red-50 transition-colors group"
+          className="w-full flex items-center gap-2.5 h-8 px-2.5 rounded-lg text-[12px] font-medium text-[hsl(var(--muted-foreground))] hover:text-red-500 hover:bg-red-500/8 transition-all duration-150 group"
         >
-          <LogOut className="h-[15px] w-[15px] shrink-0 group-hover:text-red-500 transition-colors" strokeWidth={1.8} />
+          <LogOut className="h-[14px] w-[14px] shrink-0 transition-colors group-hover:text-red-500" strokeWidth={1.8} />
           Keluar
         </button>
       </div>
@@ -334,15 +360,15 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
 
   return (
     <>
-      {/* Desktop — always visible */}
+      {/* Desktop */}
       <div className="hidden md:flex shrink-0 h-full">{sidebarContent}</div>
 
-      {/* Mobile — slide-in overlay */}
+      {/* Mobile */}
       <AnimatePresence>
         {open && (
           <div className="md:hidden fixed inset-0 z-50 flex">
             <motion.div
-              className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+              className="absolute inset-0 bg-black/40 backdrop-blur-[3px]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
