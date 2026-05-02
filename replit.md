@@ -77,6 +77,18 @@ Schema managed via Supabase SQL Editor. To initialize:
 - Admin sees base price + markup breakdown; public sees harga jual only
 - Migration SQL: `supabase/migrations/2026_05_19_ticket_prices_v2.sql`
 
+## Fase 21: Public Access Link for Ticket Price List (May 2, 2026)
+
+- Public routes: `/harga-tiket`, `/promo`, `/prices` — no auth required
+- Dynamic SEO meta injection in `PublicTicketPrices.tsx` (title, description, og:title, og:description, og:url, twitter:*, robots)
+- `SharePanel` component in admin `TicketPrices.tsx`:
+  - Shows `/promo` (short, recommended) and `/harga-tiket` (full) with per-row Copy buttons + "Tersalin!" feedback
+  - Native Web Share API button (falls back to clipboard on desktop)
+  - WhatsApp share button with pre-filled message template
+  - "Pratinjau" button opens public page in new tab
+  - Informational note: only published tickets shown, harga modal hidden
+- Supabase migration needed: `supabase/migrations/2026_05_19_ticket_prices_v2.sql` (7 new columns — must run manually in SQL Editor)
+
 ## Fase 19: AI Ticket Price List (May 19, 2026)
 
 - `ticket_prices` table for storing airline ticket base prices per agency

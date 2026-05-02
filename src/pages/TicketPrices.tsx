@@ -3,7 +3,7 @@ import {
   Upload, Sparkles, Plus, Trash2, Edit3, Eye, EyeOff, Loader2,
   MessageCircle, AlertTriangle, Check, X, ChevronDown, ChevronUp,
   Tag, RefreshCw, Settings2, ImagePlus, Plane, Share2, Copy,
-  Clock, MapPin, ArrowRight,
+  Clock, MapPin, ArrowRight, ExternalLink, Instagram, Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -534,6 +534,128 @@ function TicketFormDialog({
   );
 }
 
+// ── Share Panel ──────────────────────────────────────────────────────────────
+function SharePanel({ publicUrl }: { publicUrl: string }) {
+  const promoUrl = `${window.location.origin}/promo`;
+  const [copiedMain, setCopiedMain] = useState(false);
+  const [copiedPromo, setCopiedPromo] = useState(false);
+
+  function copyUrl(url: string, which: "main" | "promo") {
+    void navigator.clipboard.writeText(url).then(() => {
+      if (which === "main") { setCopiedMain(true); setTimeout(() => setCopiedMain(false), 2000); }
+      else { setCopiedPromo(true); setTimeout(() => setCopiedPromo(false), 2000); }
+    });
+  }
+
+  function handleNativeShare() {
+    if (navigator.share) {
+      void navigator.share({
+        title: "Daftar Harga Tiket Umroh & Haji — Temantiket",
+        text: "Cek harga tiket umroh dan haji terbaru! Maskapai pilihan, langsung pesan via WhatsApp 🕋✈️",
+        url: promoUrl,
+      });
+    } else {
+      copyUrl(promoUrl, "promo");
+    }
+  }
+
+  function handleWaShare() {
+    const msg = encodeURIComponent(`✈️ *Daftar Harga Tiket Umroh & Haji*\nCek harga terbaru di sini:\n${promoUrl}\n\n_Harga kompetitif, pesan langsung via WhatsApp — Temantiket_`);
+    window.open(`https://wa.me/?text=${msg}`, "_blank");
+  }
+
+  return (
+    <div className="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-blue-50 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-sky-200 bg-sky-600/5">
+        <div className="p-1.5 rounded-lg bg-sky-600 text-white">
+          <Share2 className="w-3.5 h-3.5" />
+        </div>
+        <div>
+          <p className="text-[12px] font-bold text-sky-800">Bagikan Daftar Harga ke Klien</p>
+          <p className="text-[10px] text-sky-600">Halaman publik — tanpa login, tanpa harga modal</p>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-3">
+        {/* URL rows */}
+        <div className="space-y-2">
+          {/* Promo URL — short, recommended */}
+          <div className="flex items-center gap-2 bg-white rounded-xl border border-sky-200 px-3 py-2 shadow-sm">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5">
+                SINGKAT
+              </span>
+            </div>
+            <code className="flex-1 text-[11px] font-mono text-sky-700 truncate min-w-0">{promoUrl}</code>
+            <button
+              onClick={() => copyUrl(promoUrl, "promo")}
+              className={cn(
+                "flex items-center gap-1 text-[11px] font-semibold shrink-0 rounded-lg px-2.5 py-1.5 transition-colors",
+                copiedPromo
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-sky-100 text-sky-600 hover:bg-sky-200",
+              )}
+            >
+              {copiedPromo ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              {copiedPromo ? "Tersalin!" : "Salin"}
+            </button>
+          </div>
+
+          {/* Full URL */}
+          <div className="flex items-center gap-2 bg-white/60 rounded-xl border border-slate-200 px-3 py-2">
+            <Link2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <code className="flex-1 text-[11px] font-mono text-slate-500 truncate min-w-0">{publicUrl}</code>
+            <button
+              onClick={() => copyUrl(publicUrl, "main")}
+              className={cn(
+                "flex items-center gap-1 text-[11px] font-semibold shrink-0 rounded-lg px-2.5 py-1.5 transition-colors",
+                copiedMain
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200",
+              )}
+            >
+              {copiedMain ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              {copiedMain ? "Tersalin!" : "Salin"}
+            </button>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleNativeShare}
+            className="flex items-center gap-1.5 bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-semibold px-3 py-2 rounded-xl transition-colors"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            Bagikan
+          </button>
+          <button
+            onClick={handleWaShare}
+            className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-[11px] font-semibold px-3 py-2 rounded-xl transition-colors"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            Kirim via WhatsApp
+          </button>
+          <a
+            href={publicUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 text-[11px] font-semibold px-3 py-2 rounded-xl transition-colors"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Pratinjau
+          </a>
+        </div>
+
+        <p className="text-[10px] text-sky-600/70 pt-0.5">
+          Hanya tiket yang dipublikasikan yang tampil. Harga modal tersembunyi dari halaman publik.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function TicketPrices() {
   const { user } = useAuthStore();
@@ -779,30 +901,8 @@ export default function TicketPrices() {
         </div>
       </div>
 
-      {/* ── Public link info bar ── */}
-      <div className="flex items-center gap-3 p-3 rounded-xl bg-sky-50 border border-sky-200">
-        <Share2 className="w-4 h-4 text-sky-500 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold text-sky-700">Link Publik Daftar Harga</p>
-          <p className="text-[11px] text-sky-600 font-mono truncate">{publicUrl}</p>
-        </div>
-        <button
-          onClick={handleSharePublic}
-          className="flex items-center gap-1 text-[11px] text-sky-600 font-semibold hover:text-sky-800 shrink-0 bg-sky-100 hover:bg-sky-200 rounded-lg px-2.5 py-1.5 transition-colors"
-        >
-          <Copy className="w-3 h-3" />
-          Salin
-        </button>
-        <a
-          href={publicUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1 text-[11px] text-sky-600 font-semibold hover:text-sky-800 shrink-0 bg-sky-100 hover:bg-sky-200 rounded-lg px-2.5 py-1.5 transition-colors"
-        >
-          <ArrowRight className="w-3 h-3" />
-          Buka
-        </a>
-      </div>
+      {/* ── Share Panel ── */}
+      <SharePanel publicUrl={publicUrl} />
 
       {/* ── Markup popover ── */}
       {markupOpen && (

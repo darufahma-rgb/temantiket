@@ -202,6 +202,8 @@ function AnimatedRoutes() {
       <Route path="/m/:slug" element={<PublicMemberCard />} />
       <Route path="/leaderboard" element={<PublicLeaderboard />} />
       <Route path="/harga-tiket" element={<PublicTicketPrices />} />
+      <Route path="/promo" element={<PublicTicketPrices />} />
+      <Route path="/prices" element={<PublicTicketPrices />} />
 
       <Route path="/" element={<RequireAuth><HomeRedirect /></RequireAuth>} />
       <Route path="/calculator" element={<RequireAuth><DashboardLayout><Calculator /></DashboardLayout></RequireAuth>} />

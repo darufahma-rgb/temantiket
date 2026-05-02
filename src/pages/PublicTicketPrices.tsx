@@ -232,6 +232,33 @@ export default function PublicTicketPrices() {
   const [markup] = useState(() => loadMarkup());
   const waNumber = loadIghAdminSettings().adminWhatsapp ?? "";
 
+  // ── SEO meta injection ───────────────────────────────────────────────────
+  useEffect(() => {
+    const prev = document.title;
+    document.title = "Daftar Harga Tiket Umroh & Haji — Temantiket";
+
+    const setMeta = (sel: string, attr: string, val: string) => {
+      let el = document.querySelector(sel) as HTMLMetaElement | null;
+      if (!el) {
+        el = document.createElement("meta");
+        document.head.appendChild(el);
+      }
+      el.setAttribute(attr, val);
+    };
+
+    const desc = "Cek harga tiket penerbangan umroh dan haji terbaru dari Temantiket. Maskapai pilihan, rute CGK-JED, CGK-MED & lainnya. Pesan langsung via WhatsApp — mudah, cepat, amanah.";
+    setMeta('meta[name="description"]', "content", desc);
+    setMeta('meta[property="og:title"]', "content", "Daftar Harga Tiket Umroh & Haji — Temantiket");
+    setMeta('meta[property="og:description"]', "content", desc);
+    setMeta('meta[property="og:type"]', "content", "website");
+    setMeta('meta[property="og:url"]', "content", window.location.href);
+    setMeta('meta[name="twitter:title"]', "content", "Daftar Harga Tiket Umroh & Haji — Temantiket");
+    setMeta('meta[name="twitter:description"]', "content", desc);
+    setMeta('meta[name="robots"]', "content", "index, follow");
+
+    return () => { document.title = prev; };
+  }, []);
+
   useEffect(() => {
     void refresh();
     listTicketPrices(true)
