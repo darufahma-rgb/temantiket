@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AppSidebar } from "./AppSidebar";
+import { AIChatWidget } from "./AIChatWidget";
 import { Menu, LayoutDashboard, Users, ShoppingBag, Settings, RefreshCw, LogOut, StickyNote, FileSpreadsheet, MoreHorizontal, ChevronRight, Ticket, Sparkles, Calculator, Package, MessageSquare, Wallet } from "lucide-react";
 
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -542,6 +543,9 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
           </div>
         </div>
       </div>
+
+      {/* ── AI Command Center — floating widget, semua halaman dashboard ── */}
+      <AIChatWidget />
     </>
   );
 }

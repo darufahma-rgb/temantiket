@@ -1,0 +1,606 @@
+/**
+ * AI Command Center — Fase 26
+ * OpenAI function-calling engine yang terhubung ke seluruh fitur Temantiket.
+ *
+ * Tools yang tersedia:
+ *  - get_dashboard_summary    : Ringkasan klien, order, kurs, agen
+ *  - get_clients              : Cari/list klien
+ *  - get_orders               : List order dengan filter
+ *  - create_itinerary         : Ekstrak itinerary dari raw text
+ *  - update_exchange_rate     : Update kurs EGP/SAR/USD (manual mode)
+ *  - create_daily_mission     : Buat misi harian untuk agen
+ *  - calculate_profit         : Hitung profit dari harga jual & modal
+ *  - get_agent_performance    : Statistik performa agen
+ */
+
+import { listClients } from "@/features/clients/clientsRepo";
+import { listOrders } from "@/features/orders/ordersRepo";
+import { listMissions, createMission } from "@/features/missions/missionsRepo";
+import { listAgentPoints, sumPointsByAgent } from "@/features/agentPoints/agentPointsRepo";
+import { extractItinerary } from "@/lib/itineraryAI";
+import { fmtIDR, profitIDR, revenueIDR } from "@/lib/profit";
+import { useRatesStore } from "@/store/ratesStore";
+import { useAuthStore } from "@/store/authStore";
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+export interface ToolResult {
+  toolName: string;
+  displayData: Record<string, unknown>;
+  success: boolean;
+}
+
+export interface AIChatResponse {
+  message: string;
+  toolResults: ToolResult[];
+}
+
+// ── OpenAI tool definitions ──────────────────────────────────────────────────
+
+const TOOLS: object[] = [
+  {
+    type: "function",
+    function: {
+      name: "get_dashboard_summary",
+      description:
+        "Ambil ringkasan dashboard: jumlah klien, total order, total revenue IDR, kurs terkini, jumlah misi aktif. Gunakan ketika user tanya status bisnis, ringkasan, atau 'gimana performa hari ini'.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_clients",
+      description:
+        "List atau cari klien (jamaah). Bisa filter by nama atau nomor HP. Gunakan ketika user tanya tentang klien tertentu atau minta daftar klien.",
+      parameters: {
+        type: "object",
+        properties: {
+          search: {
+            type: "string",
+            description: "Kata kunci pencarian nama atau nomor HP (opsional)",
+          },
+          limit: {
+            type: "number",
+            description: "Jumlah maksimal hasil (default: 10)",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_orders",
+      description:
+        "List order dengan filter opsional. Gunakan untuk melihat order umrah, flight, visa, atau status tertentu.",
+      parameters: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            enum: ["umrah", "flight", "visa_voa", "visa_student"],
+            description: "Tipe order (opsional)",
+          },
+          status: {
+            type: "string",
+            enum: ["Draft", "Confirmed", "Paid", "Completed", "Cancelled"],
+            description: "Status order (opsional)",
+          },
+          limit: {
+            type: "number",
+            description: "Jumlah maksimal hasil (default: 10)",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_itinerary",
+      description:
+        "Ekstrak dan buat itinerary penerbangan dari teks mentah (PNR Galileo, Amadeus, teks email booking, atau teks tiket). Hasilkan itinerary terstruktur yang siap dipakai.",
+      parameters: {
+        type: "object",
+        properties: {
+          text: {
+            type: "string",
+            description: "Teks mentah itinerary/PNR/booking yang akan diekstrak",
+          },
+        },
+        required: ["text"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_exchange_rate",
+      description:
+        "Update kurs mata uang secara manual (EGP, SAR, atau USD ke IDR). Otomatis switch ke mode Manual. Gunakan ketika user bilang 'update kurs EGP jadi X' atau 'set SAR ke Y'.",
+      parameters: {
+        type: "object",
+        properties: {
+          currency: {
+            type: "string",
+            enum: ["EGP", "SAR", "USD"],
+            description: "Kode mata uang yang akan diupdate",
+          },
+          rate: {
+            type: "number",
+            description: "Nilai kurs baru dalam IDR per 1 unit mata uang",
+          },
+        },
+        required: ["currency", "rate"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_daily_mission",
+      description:
+        "Buat misi harian baru untuk agen. Gunakan ketika user minta bikin misi atau task untuk agen. Jika tidak ada deadline, gunakan hari ini + 1 hari.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "Judul singkat misi",
+          },
+          description: {
+            type: "string",
+            description: "Deskripsi lengkap misi — apa yang harus dilakukan agen",
+          },
+          rewardPoints: {
+            type: "number",
+            description: "Poin reward untuk agen yang berhasil (default: 10)",
+          },
+          deadline: {
+            type: "string",
+            description:
+              "Deadline dalam format ISO 8601 (YYYY-MM-DDTHH:MM:SS). Jika tidak disebutkan, gunakan besok jam 23:59:00.",
+          },
+        },
+        required: ["title", "description", "rewardPoints", "deadline"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "calculate_profit",
+      description:
+        "Hitung profit, margin %, dan breakdown dari harga jual dan harga modal. Mendukung IDR dan EGP.",
+      parameters: {
+        type: "object",
+        properties: {
+          sellingPrice: {
+            type: "number",
+            description: "Harga jual ke pelanggan",
+          },
+          costPrice: {
+            type: "number",
+            description: "Harga modal / HPP",
+          },
+          currency: {
+            type: "string",
+            enum: ["IDR", "EGP", "SAR", "USD"],
+            description: "Mata uang (default: IDR)",
+          },
+        },
+        required: ["sellingPrice", "costPrice"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_agent_performance",
+      description:
+        "Dapatkan data performa agen: total poin, jumlah order per agen, ranking. Gunakan ketika user tanya tentang agen terbaik, performa agen, atau leaderboard.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+];
+
+// ── System prompt ─────────────────────────────────────────────────────────────
+
+const SYSTEM_PROMPT = `Kamu adalah asisten AI pintar untuk Temantiket — aplikasi manajemen perjalanan umrah & haji.
+
+KEPRIBADIAN:
+- Bahasa: Indonesia sehari-hari, santai tapi profesional (bisa pakai "Bang", "Gan", dll kalau user informal)
+- Proaktif: Kalau perintah kurang jelas, WAJIB tanya balik sebelum eksekusi
+- Ringkas: Jawab langsung ke intinya, jangan bertele-tele
+- Akurat: Hanya eksekusi tool kalau yakin dengan parameter yang diperlukan
+
+ATURAN PENTING:
+1. Jika user minta sesuatu tapi info kurang lengkap → TANYA BALIK dulu (jangan guess)
+   Contoh: User: "Bikin misi" → Tanya: "Misi apa Bang? Judulnya apa, dan deadline-nya kapan?"
+   
+2. Jika user minta update kurs → konfirmasi mata uang dan nilainya sebelum eksekusi
+   
+3. Untuk create_itinerary → pastikan ada teks mentah PNR/booking dari user
+
+4. Setelah tool berhasil → berikan ringkasan singkat yang informatif
+
+5. Kalau tool gagal → jelaskan penyebabnya dan saran solusinya
+
+6. Kamu bisa eksekusi MULTIPLE tools dalam satu respons jika perlu
+
+KONTEKS SISTEM:
+- Mata uang utama: IDR, EGP (kurs ~515 IDR/EGP), SAR (~4250 IDR/SAR)  
+- Order types: umrah, flight, visa_voa, visa_student
+- Order statuses: Draft, Confirmed, Paid, Completed, Cancelled
+- Agen mendapatkan poin saat order mereka selesai (Completed)
+`;
+
+// ── Tool executor ────────────────────────────────────────────────────────────
+
+async function executeTool(
+  toolName: string,
+  args: Record<string, unknown>,
+): Promise<{ result: string; displayData: Record<string, unknown>; success: boolean }> {
+  const auth = useAuthStore.getState();
+  const ratesStore = useRatesStore.getState();
+  const agencyId = auth.user?.agencyId ?? "";
+  const userId = auth.user?.id ?? "";
+  const egpRate = ratesStore.rates.EGP ?? 515;
+
+  try {
+    switch (toolName) {
+      case "get_dashboard_summary": {
+        const [clients, orders, missions, agentPoints] = await Promise.all([
+          listClients(),
+          listOrders(),
+          listMissions(agencyId),
+          listAgentPoints(),
+        ]);
+        const completedOrders = orders.filter((o) => o.status === "Completed");
+        const totalRevIDR = completedOrders.reduce((s, o) => s + revenueIDR(o, egpRate), 0);
+        const totalProfitIDR = completedOrders.reduce((s, o) => s + profitIDR(o, egpRate), 0);
+        const activeMissions = missions.filter(
+          (m) => new Date(m.deadline) > new Date(),
+        );
+        const pointMap = sumPointsByAgent(agentPoints);
+        const topAgent = Array.from(pointMap.entries()).sort((a, b) => b[1] - a[1])[0];
+
+        const summary = {
+          totalClients: clients.length,
+          totalOrders: orders.length,
+          completedOrders: completedOrders.length,
+          totalRevenue: fmtIDR(totalRevIDR),
+          totalProfit: fmtIDR(totalProfitIDR),
+          activeMissions: activeMissions.length,
+          currentRates: {
+            EGP: ratesStore.rates.EGP,
+            SAR: ratesStore.rates.SAR,
+            USD: ratesStore.rates.USD,
+          },
+          topAgent: topAgent
+            ? { agentId: topAgent[0], points: topAgent[1] }
+            : null,
+        };
+
+        return {
+          result: JSON.stringify(summary),
+          displayData: { type: "dashboard_summary", ...summary },
+          success: true,
+        };
+      }
+
+      case "get_clients": {
+        const { search, limit = 10 } = args as { search?: string; limit?: number };
+        const all = await listClients();
+        const filtered = search
+          ? all.filter(
+              (c) =>
+                c.name.toLowerCase().includes(search.toLowerCase()) ||
+                c.phone.includes(search),
+            )
+          : all;
+        const results = filtered.slice(0, limit).map((c) => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone,
+          email: c.email ?? null,
+          gender: c.gender ?? null,
+          passportNumber: c.passportNumber ?? null,
+        }));
+        return {
+          result: JSON.stringify({ total: filtered.length, clients: results }),
+          displayData: { type: "clients_list", total: filtered.length, clients: results },
+          success: true,
+        };
+      }
+
+      case "get_orders": {
+        const { type, status, limit = 10 } = args as {
+          type?: string;
+          status?: string;
+          limit?: number;
+        };
+        const all = await listOrders();
+        const filtered = all.filter((o) => {
+          if (type && o.type !== type) return false;
+          if (status && o.status !== status) return false;
+          return true;
+        });
+        const results = filtered.slice(0, limit).map((o) => ({
+          id: o.id,
+          type: o.type,
+          status: o.status,
+          title: o.title,
+          totalPrice: o.totalPrice,
+          currency: o.currency,
+          clientId: o.clientId,
+          createdAt: o.createdAt,
+        }));
+        return {
+          result: JSON.stringify({ total: filtered.length, orders: results }),
+          displayData: { type: "orders_list", total: filtered.length, orders: results },
+          success: true,
+        };
+      }
+
+      case "create_itinerary": {
+        const { text } = args as { text: string };
+        if (!text?.trim()) throw new Error("Teks itinerary tidak boleh kosong");
+        const { data, usedAI } = await extractItinerary(text);
+        const legSummaries = data.legs.map(
+          (l) =>
+            `${l.fromCode ?? "?"}→${l.toCode ?? "?"} ${l.flightNumber ?? ""} ${l.departDate ?? ""} ${l.departTime ?? ""}`.trim(),
+        );
+        return {
+          result: JSON.stringify({ ...data, usedAI }),
+          displayData: {
+            type: "itinerary_result",
+            pnr: data.pnr,
+            passengerName: data.passengerName,
+            legs: legSummaries,
+            totalLegs: data.legs.length,
+            usedAI,
+          },
+          success: true,
+        };
+      }
+
+      case "update_exchange_rate": {
+        const { currency, rate } = args as { currency: string; rate: number };
+        if (!["EGP", "SAR", "USD"].includes(currency))
+          throw new Error("Mata uang tidak valid. Pilih EGP, SAR, atau USD.");
+        if (!rate || rate <= 0) throw new Error("Rate harus lebih dari 0");
+
+        ratesStore.setMode("manual");
+        ratesStore.setManualRate(currency as "EGP" | "SAR" | "USD", rate);
+
+        return {
+          result: JSON.stringify({ currency, rate, mode: "manual" }),
+          displayData: {
+            type: "rate_updated",
+            currency,
+            rate: `Rp ${rate.toLocaleString("id-ID")}`,
+            message: `Kurs ${currency} berhasil diupdate ke Rp ${rate.toLocaleString("id-ID")}/${currency}`,
+          },
+          success: true,
+        };
+      }
+
+      case "create_daily_mission": {
+        const { title, description, rewardPoints = 10, deadline } = args as {
+          title: string;
+          description: string;
+          rewardPoints: number;
+          deadline: string;
+        };
+        if (!title?.trim()) throw new Error("Judul misi tidak boleh kosong");
+        if (!agencyId) throw new Error("Agency ID tidak ditemukan — pastikan sudah login");
+
+        const mission = await createMission(
+          agencyId,
+          { title, description, rewardPoints, deadline },
+          userId,
+        );
+        if (!mission) throw new Error("Gagal membuat misi — cek koneksi Supabase");
+
+        return {
+          result: JSON.stringify(mission),
+          displayData: {
+            type: "mission_created",
+            title: mission.title,
+            rewardPoints: mission.rewardPoints,
+            deadline: new Date(mission.deadline).toLocaleString("id-ID"),
+          },
+          success: true,
+        };
+      }
+
+      case "calculate_profit": {
+        const {
+          sellingPrice,
+          costPrice,
+          currency = "IDR",
+        } = args as {
+          sellingPrice: number;
+          costPrice: number;
+          currency?: string;
+        };
+        const profit = sellingPrice - costPrice;
+        const marginPct =
+          sellingPrice > 0 ? ((profit / sellingPrice) * 100).toFixed(1) : "0.0";
+
+        const toIDR = (v: number) => {
+          if (currency === "EGP") return v * egpRate;
+          if (currency === "SAR") return v * (ratesStore.rates.SAR ?? 4250);
+          if (currency === "USD") return v * (ratesStore.rates.USD ?? 16000);
+          return v;
+        };
+
+        const profitIDRVal = toIDR(profit);
+        const revenueIDRVal = toIDR(sellingPrice);
+
+        const fmt = (v: number) =>
+          currency === "IDR"
+            ? fmtIDR(v)
+            : `${currency} ${v.toLocaleString("id-ID")}`;
+
+        return {
+          result: JSON.stringify({ sellingPrice, costPrice, profit, marginPct, currency }),
+          displayData: {
+            type: "profit_calc",
+            hargaJual: fmt(sellingPrice),
+            hargaModal: fmt(costPrice),
+            profit: fmt(profit),
+            profitIDR: fmtIDR(profitIDRVal),
+            revenueIDR: fmtIDR(revenueIDRVal),
+            marginPct: `${marginPct}%`,
+            currency,
+          },
+          success: true,
+        };
+      }
+
+      case "get_agent_performance": {
+        const [orders, agentPoints] = await Promise.all([
+          listOrders(),
+          listAgentPoints(),
+        ]);
+        const pointMap = sumPointsByAgent(agentPoints);
+        const ordersByAgent = new Map<string, number>();
+        for (const o of orders) {
+          if (o.createdByAgent) {
+            ordersByAgent.set(
+              o.createdByAgent,
+              (ordersByAgent.get(o.createdByAgent) ?? 0) + 1,
+            );
+          }
+        }
+        const agentList = Array.from(pointMap.entries())
+          .map(([agentId, points]) => ({
+            agentId,
+            points,
+            totalOrders: ordersByAgent.get(agentId) ?? 0,
+          }))
+          .sort((a, b) => b.points - a.points);
+
+        return {
+          result: JSON.stringify({ agents: agentList }),
+          displayData: {
+            type: "agent_performance",
+            totalAgents: agentList.length,
+            agents: agentList.slice(0, 5),
+          },
+          success: true,
+        };
+      }
+
+      default:
+        throw new Error(`Tool tidak dikenal: ${toolName}`);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Terjadi error tidak dikenal";
+    return {
+      result: JSON.stringify({ error: msg }),
+      displayData: { type: "error", message: msg },
+      success: false,
+    };
+  }
+}
+
+// ── Main chat function ────────────────────────────────────────────────────────
+
+export async function sendAIMessage(
+  messages: ChatMessage[],
+): Promise<AIChatResponse> {
+  const apiKey = (import.meta.env.VITE_OPENAI_API_KEY as string | undefined)?.trim();
+  if (!apiKey || apiKey.length < 10) {
+    return {
+      message:
+        "VITE_OPENAI_API_KEY belum di-set. Tambahkan key OpenAI di Replit Secrets untuk menggunakan AI Command Center.",
+      toolResults: [],
+    };
+  }
+
+  const fullMessages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...messages.map((m) => ({ role: m.role, content: m.content })),
+  ];
+
+  const toolResults: ToolResult[] = [];
+
+  // Agentic loop: terus panggil OpenAI sampai tidak ada tool call
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: fullMessages,
+        tools: TOOLS,
+        tool_choice: "auto",
+        temperature: 0.4,
+        max_tokens: 1500,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`OpenAI error ${response.status}: ${err}`);
+    }
+
+    const data = await response.json();
+    const choice = data.choices?.[0];
+    const assistantMsg = choice?.message;
+
+    if (!assistantMsg) throw new Error("Respons OpenAI kosong");
+
+    // Tambah ke message history
+    fullMessages.push(assistantMsg);
+
+    // Tidak ada tool call → selesai
+    if (!assistantMsg.tool_calls || assistantMsg.tool_calls.length === 0) {
+      return {
+        message: assistantMsg.content ?? "",
+        toolResults,
+      };
+    }
+
+    // Eksekusi semua tool calls secara paralel
+    const toolCallResults = await Promise.all(
+      assistantMsg.tool_calls.map(
+        async (tc: { id: string; function: { name: string; arguments: string } }) => {
+          const args = JSON.parse(tc.function.arguments || "{}") as Record<
+            string,
+            unknown
+          >;
+          const result = await executeTool(tc.function.name, args);
+          toolResults.push({
+            toolName: tc.function.name,
+            displayData: result.displayData,
+            success: result.success,
+          });
+          return {
+            role: "tool" as const,
+            tool_call_id: tc.id,
+            content: result.result,
+          };
+        },
+      ),
+    );
+
+    // Append tool results ke message history dan lanjut loop
+    fullMessages.push(...toolCallResults);
+  }
+}

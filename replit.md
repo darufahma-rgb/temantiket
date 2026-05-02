@@ -143,6 +143,33 @@ Schema managed via Supabase SQL Editor. To initialize:
 - `orders` table — universal orders (umrah/flight/visa_voa/visa_student)
 - Schema: `supabase/migrations/2026_04_30_clients_orders.sql`
 
+## Fase 26: AI Command Center (May 2026)
+
+- Floating chat widget di pojok kanan bawah semua halaman dashboard
+- File: `src/components/AIChatWidget.tsx` (UI) + `src/lib/aiCommandCenter.ts` (engine)
+- OpenAI gpt-4o-mini dengan function calling — model memilih tool yang tepat secara otomatis
+- Agentic loop: AI terus eksekusi tool sampai semua tool calls selesai sebelum kirim respons
+
+**8 Tools yang tersedia:**
+1. `get_dashboard_summary` — Ringkasan bisnis (klien, order, revenue, kurs, misi)
+2. `get_clients` — Cari/list klien berdasarkan nama atau nomor HP
+3. `get_orders` — List order dengan filter type & status
+4. `create_itinerary` — Ekstrak itinerary dari teks PNR/booking mentah
+5. `update_exchange_rate` — Update kurs EGP/SAR/USD ke IDR (auto-switch ke manual mode)
+6. `create_daily_mission` — Buat misi harian untuk agen dengan poin reward & deadline
+7. `calculate_profit` — Hitung profit, margin %, dan konversi ke IDR
+8. `get_agent_performance` — Statistik poin & order per agen, ranking
+
+**UI Features:**
+- Tombol FAB biru bergradient di kanan bawah, badge merah kalau ada pesan belum dibaca
+- Chip suggestion untuk perintah umum di empty state
+- Tool result cards dengan warna berbeda per tipe (biru=dashboard, hijau=klien, dsb)
+- Multi-tool results ditampilkan inline sebelum pesan teks AI
+- Textarea auto-grow, Enter=kirim, Shift+Enter=baris baru
+- Reset percakapan (clear history + API context)
+- Proactive questioning — AI tanya balik kalau perintah kurang jelas
+- Requires `VITE_OPENAI_API_KEY` — graceful error message kalau belum di-set
+
 ## Legacy Umrah Flow
 
 - Calculator → Packages → Trips → Jamaah Manifest (still intact, not removed)
