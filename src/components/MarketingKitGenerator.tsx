@@ -1,17 +1,12 @@
 import { useState } from "react";
 import {
-  Wand2, Copy, CheckCheck, Loader2, RefreshCw,
-  User, MessageCircle, DollarSign, Calendar, FileText,
+  Wand2, Copy, CheckCheck, Loader2, RefreshCw, FileText,
   Plane, BookOpen, Megaphone, Moon, Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useAuthStore } from "@/store/authStore";
 
 /* ─── Kategori ─────────────────────────────────────────── */
 const CATEGORIES = [
@@ -34,13 +29,8 @@ const TONES = [
 async function generateCaptions(params: {
   categoryPrompt: string;
   tone: string;
-  agentName: string;
-  agentWa: string;
-  price: string;
-  departureDate: string;
-  extraNotes: string;
 }): Promise<string[]> {
-  const { categoryPrompt, tone, agentName, agentWa, price, departureDate, extraNotes } = params;
+  const { categoryPrompt, tone } = params;
 
   const toneMap: Record<string, string> = {
     santai:   "casual, akrab, pakai bahasa sehari-hari, sedikit emoji, tidak lebay",
@@ -49,22 +39,12 @@ async function generateCaptions(params: {
     story:    "storytelling singkat, emosional, membayangkan pengalaman ibadah, warm, satu atau dua emoji saja",
   };
 
-  const details = [
-    agentName     && `Nama agen: ${agentName}`,
-    agentWa       && `Nomor WA agen: ${agentWa}`,
-    price         && `Harga/kisaran: ${price}`,
-    departureDate && `Tanggal keberangkatan: ${departureDate}`,
-    extraNotes    && `Info tambahan: ${extraNotes}`,
-  ].filter(Boolean).join("\n");
-
   const systemPrompt = `Kamu adalah copywriter digital marketing ahli untuk travel umrah & haji di Indonesia.
 Tugas: buat 3 variasi caption promo untuk ${categoryPrompt} dengan tone ${toneMap[tone] || tone}.
 Format output: JSON array berisi tepat 3 string. Masing-masing caption max 300 kata, siap paste ke WhatsApp/Instagram.
 Jangan tambahkan penjelasan di luar JSON. Contoh format: ["Caption 1...", "Caption 2...", "Caption 3..."]`;
 
-  const userPrompt = details
-    ? `Buat 3 caption promo ${categoryPrompt}.\n\nDetail:\n${details}`
-    : `Buat 3 caption promo ${categoryPrompt}.`;
+  const userPrompt = `Buat 3 caption promo ${categoryPrompt}.`;
 
   const res = await fetch("/api/ai/chat", {
     method: "POST",
@@ -109,15 +89,8 @@ function Section({ label, icon: Icon, children }: {
 
 /* ─── Main Component ────────────────────────────────────── */
 export function CaptionGenerator() {
-  const me = useAuthStore((s) => s.user);
-
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].key);
   const [activeTone, setActiveTone]         = useState(TONES[0].key);
-  const [agentName, setAgentName]           = useState(me?.displayName ?? "");
-  const [agentWa, setAgentWa]               = useState(me?.email ?? "");
-  const [price, setPrice]                   = useState("");
-  const [departureDate, setDepartureDate]   = useState("");
-  const [extraNotes, setExtraNotes]         = useState("");
   const [results, setResults]               = useState<string[]>([]);
   const [loading, setLoading]               = useState(false);
   const [copiedIdx, setCopiedIdx]           = useState<number | null>(null);
@@ -131,7 +104,6 @@ export function CaptionGenerator() {
       const captions = await generateCaptions({
         categoryPrompt: cat.prompt,
         tone: activeTone,
-        agentName, agentWa, price, departureDate, extraNotes,
       });
       setResults(captions);
     } catch (err) {
@@ -205,51 +177,6 @@ export function CaptionGenerator() {
               </button>
             );
           })}
-        </div>
-      </Section>
-
-      {/* ── Detail Opsional ── */}
-      <Section label="Detail Agen" icon={User}>
-        <p className="text-[11.5px] text-muted-foreground -mt-2 mb-4">
-          Opsional — semakin lengkap, caption makin personal & siap pakai.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              <User className="h-3 w-3" strokeWidth={1.5} /> Nama lo
-            </Label>
-            <Input value={agentName} onChange={(e) => setAgentName(e.target.value)}
-              placeholder="Contoh: Andi Saputra" className="h-9 text-[13px]" maxLength={48} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              <MessageCircle className="h-3 w-3" strokeWidth={1.5} /> Nomor WhatsApp
-            </Label>
-            <Input value={agentWa} onChange={(e) => setAgentWa(e.target.value)}
-              placeholder="0812-3456-7890" className="h-9 text-[13px]" maxLength={32} type="tel" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              <DollarSign className="h-3 w-3" strokeWidth={1.5} /> Kisaran Harga
-            </Label>
-            <Input value={price} onChange={(e) => setPrice(e.target.value)}
-              placeholder="Contoh: mulai 25 juta" className="h-9 text-[13px]" maxLength={64} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              <Calendar className="h-3 w-3" strokeWidth={1.5} /> Tanggal Keberangkatan
-            </Label>
-            <Input value={departureDate} onChange={(e) => setDepartureDate(e.target.value)}
-              placeholder="Contoh: Desember 2025" className="h-9 text-[13px]" maxLength={64} />
-          </div>
-          <div className="space-y-1.5 md:col-span-2">
-            <Label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              <FileText className="h-3 w-3" strokeWidth={1.5} /> Info Tambahan
-            </Label>
-            <Textarea value={extraNotes} onChange={(e) => setExtraNotes(e.target.value)}
-              placeholder="Contoh: include visa, hotel bintang 5, makan 3x, free airport transfer..."
-              className="text-[13px] resize-none min-h-[72px]" maxLength={300} />
-          </div>
         </div>
       </Section>
 
