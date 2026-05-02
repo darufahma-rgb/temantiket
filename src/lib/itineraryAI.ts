@@ -1,10 +1,11 @@
 /**
- * itineraryAI — ekstrak data penerbangan dari raw text (Galileo PNR, Trip.com,
- * email itinerary, dsb) menjadi struktur JSON terstandarisasi.
+ * itineraryAI — ekstrak data penerbangan dari raw text atau gambar
+ * (Galileo PNR, Amadeus, Trip.com, email itinerary, screenshot tiket)
+ * menjadi struktur JSON terstandarisasi.
  *
  * Strategi:
- * 1. Coba OpenAI gpt-4o-mini jika VITE_OPENAI_API_KEY tersedia.
- * 2. Fallback ke regex flightParser (sudah ada, sudah teruji).
+ * 1. extractItinerary(text)      → OpenAI text → regex fallback
+ * 2. extractItineraryFromImage() → OpenAI Vision (wajib key)
  */
 
 import { parseFlightText, KNOWN_AIRPORTS } from "@/features/orders/flightParser";
@@ -18,11 +19,11 @@ export interface FlightLeg {
   fromCity?: string;
   toCode?: string;
   toCity?: string;
-  departDate?: string;  // YYYY-MM-DD
-  departTime?: string;  // HH:MM 24h
+  departDate?: string;   // YYYY-MM-DD
+  departTime?: string;   // HH:MM 24h
   arriveDate?: string;
   arriveTime?: string;
-  duration?: string;    // "8j 35m" (Indonesian format)
+  duration?: string;     // "8j 35m" Indonesian format
   class?: string;
   baggage?: string;
   terminal?: string;
@@ -37,48 +38,73 @@ export interface ItineraryData {
   rawText?: string;
 }
 
-// ── AI Prompt ──────────────────────────────────────────────────────────────
+// ── AI Prompts ─────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are a flight itinerary data extractor for an Indonesian travel agency.
-Given raw text (PNR code, Trip.com page, Galileo output, or itinerary email), extract ALL flight segments.
-
-Return ONLY valid JSON (no markdown, no explanation):
-{
-  "pnr": "booking code or null",
+const BASE_SCHEMA = `{
+  "pnr": "booking/PNR code or null",
   "passengerName": "full name or null",
   "legs": [
     {
-      "airline": "full airline name",
-      "flightNumber": "e.g. QR978",
-      "fromCode": "IATA 3-letter code",
-      "fromCity": "city name",
-      "toCode": "IATA 3-letter code",
-      "toCity": "city name",
+      "airline": "full airline name e.g. Qatar Airways",
+      "flightNumber": "e.g. QR978 (no space)",
+      "fromCode": "IATA 3-letter origin code",
+      "fromCity": "origin city name",
+      "toCode": "IATA 3-letter destination code",
+      "toCity": "destination city name",
       "departDate": "YYYY-MM-DD or null",
       "departTime": "HH:MM 24h or null",
       "arriveDate": "YYYY-MM-DD or null",
       "arriveTime": "HH:MM 24h or null",
       "duration": "Xj Ym format e.g. 8j 35m or null",
       "class": "Economy/Business/First or null",
-      "baggage": "e.g. 30kg or null"
+      "baggage": "e.g. 30kg or null",
+      "terminal": "departure terminal or null"
     }
   ],
-  "totalPrice": number or null,
+  "totalPrice": number_or_null,
   "priceCurrency": "IDR/EGP/USD/SAR or null"
-}
+}`;
 
-Rules:
-- legs is always an array even for single flight
-- Return EVERY leg/segment if multiple
-- dates: YYYY-MM-DD format only
-- times: HH:MM 24h format only
-- duration: Indonesian "Xj Ym" (jam=hours, menit=minutes)
-- If price is in non-IDR, keep original currency
-- null for missing fields`;
+const TEXT_SYSTEM_PROMPT = `You are a precision flight itinerary extractor for an Indonesian travel agency (Temantiket).
+Parse raw input that may be: Galileo PNR codes, Amadeus entries, Trip.com pages, airline e-ticket emails, or plain booking text.
 
-// ── OpenAI caller ──────────────────────────────────────────────────────────
+Return ONLY valid JSON — no markdown fences, no explanation, no trailing text:
+${BASE_SCHEMA}
 
-async function callOpenAI(text: string, apiKey: string): Promise<ItineraryData> {
+CRITICAL RULES:
+- Extract EVERY flight segment as a separate leg in the array (never merge legs).
+- Galileo line format:  <seg#> <AL><FLT> <class> <DDMMM> <dow> <ORIG><DEST> <status><seats> <HHMM_dep> <HHMM_arr> [<DDMMM_arr>]
+  Example: "1 QR 978 Y 15MAR 4 CGKDOH HK1 2355 0430 16MAR"
+  → flightNumber=QR978, fromCode=CGK, toCode=DOH, departTime=23:55, arriveTime=04:30, arriveDate next day
+- Amadeus: similar to Galileo — extract all segments.
+- Trip.com / email: parse departure/arrival times carefully including "next day +1" indicators.
+- Times are ALWAYS HH:MM 24-hour. "2355" → "23:55". "0430" → "04:30".
+- Dates ALWAYS YYYY-MM-DD. "15MAR" → current or nearest future year.
+- If arrival is next day, increment the arriveDate accordingly.
+- flightNumber: combine airline code + number without space: "QR 978" → "QR978".
+- duration: Indonesian format "Xj Ym". Convert "8h 35m" → "8j 35m".
+- Set null for any field that is truly missing — never guess or hallucinate.
+- legs must always be an array, even for a single flight.`;
+
+const IMAGE_SYSTEM_PROMPT = `You are a precision OCR and flight data extractor. Analyze this screenshot of a flight ticket, booking confirmation, or itinerary page.
+
+Extract ALL flight segments visible in the image and return ONLY valid JSON:
+${BASE_SCHEMA}
+
+CRITICAL RULES:
+- Read every text visible in the image carefully — airline name, flight number, airports, dates, times.
+- Times are ALWAYS HH:MM 24-hour format.
+- Dates ALWAYS YYYY-MM-DD.
+- If arrival is on the next day (indicated by "+1" or a different date), increment arriveDate.
+- flightNumber: no space between airline code and number (QR978 not QR 978).
+- Extract ALL legs/segments — if the image shows multiple flights, include all.
+- For transit/connecting flights, create one leg per segment.
+- Set null only for genuinely missing fields — never guess.
+- Return ONLY the JSON, nothing else.`;
+
+// ── OpenAI Text caller ──────────────────────────────────────────────────────
+
+async function callOpenAIText(text: string, apiKey: string): Promise<ItineraryData> {
   const resp = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -87,11 +113,12 @@ async function callOpenAI(text: string, apiKey: string): Promise<ItineraryData> 
     },
     body: JSON.stringify({
       model: "gpt-4o-mini",
-      temperature: 0.05,
-      max_tokens: 2000,
+      temperature: 0,
+      max_tokens: 2500,
+      response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: text.slice(0, 6000) },
+        { role: "system", content: TEXT_SYSTEM_PROMPT },
+        { role: "user", content: text.slice(0, 8000) },
       ],
     }),
   });
@@ -100,11 +127,47 @@ async function callOpenAI(text: string, apiKey: string): Promise<ItineraryData> 
     throw new Error(`OpenAI ${resp.status}: ${errBody.slice(0, 200)}`);
   }
   const json = await resp.json() as { choices: { message: { content: string } }[] };
-  const raw = json.choices?.[0]?.message?.content ?? "{}";
+  return parseOpenAIResponse(json.choices?.[0]?.message?.content ?? "{}", text);
+}
+
+// ── OpenAI Vision caller ───────────────────────────────────────────────────
+
+async function callOpenAIVision(imageDataUrl: string, apiKey: string): Promise<ItineraryData> {
+  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      temperature: 0,
+      max_tokens: 2500,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: IMAGE_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Extract all flight data from this screenshot and return the JSON." },
+            { type: "image_url", image_url: { url: imageDataUrl, detail: "high" } },
+          ],
+        },
+      ],
+    }),
+  });
+  if (!resp.ok) {
+    const errBody = await resp.text().catch(() => "");
+    throw new Error(`OpenAI Vision ${resp.status}: ${errBody.slice(0, 200)}`);
+  }
+  const json = await resp.json() as { choices: { message: { content: string } }[] };
+  return parseOpenAIResponse(json.choices?.[0]?.message?.content ?? "{}", "");
+}
+
+function parseOpenAIResponse(raw: string, originalText: string): ItineraryData {
   const cleaned = raw.replace(/^```json?\s*/i, "").replace(/\s*```$/, "").trim();
   const parsed = JSON.parse(cleaned) as ItineraryData;
   if (!Array.isArray(parsed.legs)) parsed.legs = [];
-  // Clean up null fields
   parsed.legs = parsed.legs.map((leg) => {
     const clean: FlightLeg = {};
     (Object.keys(leg) as (keyof FlightLeg)[]).forEach((k) => {
@@ -113,7 +176,7 @@ async function callOpenAI(text: string, apiKey: string): Promise<ItineraryData> 
     });
     return clean;
   });
-  return { ...parsed, rawText: text };
+  return { ...parsed, rawText: originalText };
 }
 
 // ── Regex fallback ─────────────────────────────────────────────────────────
@@ -142,7 +205,6 @@ function regexFallback(text: string): ItineraryData {
 
 // ── Transit calculation ────────────────────────────────────────────────────
 
-/** Hitung menit transit antara dua leg. Return null jika data tidak cukup. */
 export function calcTransitMinutes(prev: FlightLeg, next: FlightLeg): number | null {
   if (!prev.arriveDate || !prev.arriveTime || !next.departDate || !next.departTime) return null;
   const arrive = new Date(`${prev.arriveDate}T${prev.arriveTime}:00`);
@@ -169,7 +231,7 @@ const AIRPORT_TIPS: Record<string, string> = {
   JED: "Bawa buku vaksin meningitis & sertifikat kesehatan untuk Jeddah",
   MED: "Dokumen umrah/haji wajib lengkap sebelum boarding ke Madinah",
   RUH: "Pastikan e-Visa Saudi sudah terbit sebelum berangkat",
-  DOH: "Transit Doha: ikuti petunjuk \"Transfer\" ke gate connecting flight",
+  DOH: "Transit Doha: ikuti petunjuk Transfer ke gate connecting flight",
   DXB: "Bandara Dubai sangat besar — transit butuh waktu ~45 menit ke gate",
   KUL: "Transit KLIA: gunakan Aerotrain ke Terminal 2 jika perlu",
   SIN: "Transit Changi: cek gate di papan display, antar terminal pakai Skytrain",
@@ -178,29 +240,25 @@ const AIRPORT_TIPS: Record<string, string> = {
 export function buildSmartTips(legs: FlightLeg[]): string[] {
   const tips: string[] = [];
   const addedTips = new Set<string>();
-
   const add = (tip: string) => { if (!addedTips.has(tip)) { addedTips.add(tip); tips.push(tip); } };
 
-  // Per-airport tips
   for (const leg of legs) {
     if (leg.fromCode && AIRPORT_TIPS[leg.fromCode]) add(AIRPORT_TIPS[leg.fromCode]);
     if (leg.toCode && AIRPORT_TIPS[leg.toCode]) add(AIRPORT_TIPS[leg.toCode]);
   }
 
-  // Transit tips
   for (let i = 0; i < legs.length - 1; i++) {
     const transitMin = calcTransitMinutes(legs[i], legs[i + 1]);
     const city = legs[i].toCity ?? legs[i].toCode ?? "transit";
     if (transitMin !== null) {
       if (transitMin < 75) {
-        add(`⚡ Transit ${city} hanya ${fmtMinutes(transitMin)} — segera ke gate connecting flight`);
+        add(`Transit ${city} hanya ${fmtMinutes(transitMin)} — segera ke gate connecting flight`);
       } else if (transitMin > 360) {
-        add(`🕐 Transit panjang di ${city} (${fmtMinutes(transitMin)}) — cek apakah perlu visa transit`);
+        add(`Transit panjang di ${city} (${fmtMinutes(transitMin)}) — cek apakah perlu visa transit`);
       }
     }
   }
 
-  // General tips (always add if space)
   const generals = [
     "Pastikan paspor berlaku minimal 6 bulan sebelum tanggal kepulangan",
     "Bagasi: cek batasan cairan (100ml) & benda tajam untuk kabin",
@@ -214,7 +272,7 @@ export function buildSmartTips(legs: FlightLeg[]): string[] {
   return tips.slice(0, 5);
 }
 
-// ── WhatsApp text builder ──────────────────────────────────────────────────
+// ── WhatsApp text builder — clean format ───────────────────────────────────
 
 function fmtDate(iso?: string): string {
   if (!iso) return "—";
@@ -225,84 +283,98 @@ function fmtDate(iso?: string): string {
 
 export function buildWhatsAppText(data: ItineraryData, egpRate: number): string {
   const lines: string[] = [];
-  lines.push("✈️ *ITINERARY PENERBANGAN*");
-  if (data.pnr) lines.push(`📋 Kode Booking: *${data.pnr}*`);
-  if (data.passengerName) lines.push(`👤 Penumpang: *${data.passengerName}*`);
 
-  // Route summary
+  lines.push("*ITINERARY PENERBANGAN*");
+  lines.push("_Generated by Temantiket — Cepat, Mudah, Amanah_");
+  lines.push("");
+
+  if (data.pnr) lines.push(`Kode Booking : *${data.pnr}*`);
+  if (data.passengerName) lines.push(`Penumpang    : *${data.passengerName}*`);
+
   if (data.legs.length > 0) {
     const first = data.legs[0];
     const last = data.legs[data.legs.length - 1];
-    const routeCodes = data.legs.map((l, i) => i === 0 ? l.fromCode : l.toCode).filter(Boolean).join(" → ");
-    const routeCities = data.legs.map((l, i) => i === 0 ? l.fromCity : l.toCity).filter(Boolean).join(" → ");
-    lines.push(`\n*${routeCodes}*`);
-    if (routeCities) lines.push(`_${routeCities}_`);
-    if (first.departDate) lines.push(`📅 ${fmtDate(first.departDate)} — ${fmtDate(last.arriveDate ?? last.departDate)}`);
+    const routeCodes = data.legs.map((l, i) => (i === 0 ? l.fromCode : l.toCode)).filter(Boolean).join(" - ");
+    const routeCities = data.legs.map((l, i) => (i === 0 ? l.fromCity : l.toCity)).filter(Boolean).join(" - ");
+    lines.push(`Rute         : *${routeCodes}*`);
+    if (routeCities) lines.push(`               ${routeCities}`);
+    if (first.departDate) lines.push(`Tanggal      : ${fmtDate(first.departDate)}${last.arriveDate && last.arriveDate !== first.departDate ? ` s/d ${fmtDate(last.arriveDate)}` : ""}`);
   }
 
   for (let i = 0; i < data.legs.length; i++) {
     const leg = data.legs[i];
-    lines.push(`\n━━━━━━━━━━━━━━━`);
-    lines.push(`*Penerbangan ${data.legs.length > 1 ? i + 1 : ""} ${leg.flightNumber ?? ""}*`.trim());
-    if (leg.airline) lines.push(`✈️ ${leg.airline}`);
-    if (leg.class) lines.push(`💺 Kelas: ${leg.class}`);
-    if (leg.baggage) lines.push(`🧳 Bagasi: ${leg.baggage}`);
+    lines.push("");
+    lines.push(`──────────────────────`);
+    const legLabel = data.legs.length > 1 ? `PENERBANGAN ${i + 1}` : "PENERBANGAN";
+    lines.push(`*${legLabel}${leg.flightNumber ? ` · ${leg.flightNumber}` : ""}*`);
 
-    lines.push(`\n🛫 *${leg.fromCode ?? "—"}* — ${leg.fromCity ?? ""}`);
+    if (leg.airline) lines.push(`Maskapai  : ${leg.airline}`);
+    if (leg.class) lines.push(`Kelas     : ${leg.class}`);
+    if (leg.baggage) lines.push(`Bagasi    : ${leg.baggage}`);
+    if (leg.terminal) lines.push(`Terminal  : ${leg.terminal}`);
+
+    lines.push("");
+    lines.push(`Berangkat`);
+    lines.push(`  ${leg.fromCode ?? "—"} - ${leg.fromCity ?? ""}`);
     if (leg.departDate || leg.departTime) {
-      lines.push(`   ${fmtDate(leg.departDate)} · ${leg.departTime ?? "—"}`);
+      lines.push(`  ${fmtDate(leg.departDate)}   *${leg.departTime ?? "—"}*`);
     }
-    lines.push(`🛬 *${leg.toCode ?? "—"}* — ${leg.toCity ?? ""}`);
-    if (leg.arriveDate || leg.arriveTime) {
-      lines.push(`   ${fmtDate(leg.arriveDate)} · ${leg.arriveTime ?? "—"}`);
-    }
-    if (leg.duration) lines.push(`⏱ Durasi: ${leg.duration}`);
 
-    // Transit info
+    lines.push(`Tiba`);
+    lines.push(`  ${leg.toCode ?? "—"} - ${leg.toCity ?? ""}`);
+    if (leg.arriveDate || leg.arriveTime) {
+      lines.push(`  ${fmtDate(leg.arriveDate)}   *${leg.arriveTime ?? "—"}*`);
+    }
+
+    if (leg.duration) lines.push(`Durasi    : ${leg.duration}`);
+
     if (i < data.legs.length - 1) {
       const next = data.legs[i + 1];
       const transitMin = calcTransitMinutes(leg, next);
       const city = leg.toCity ?? leg.toCode ?? "";
+      lines.push("");
       if (transitMin !== null) {
-        lines.push(`\n🔄 *Transit ${city}: ${fmtMinutes(transitMin)}*`);
+        lines.push(`*[TRANSIT ${city.toUpperCase()} — ${fmtMinutes(transitMin)}]*`);
       } else if (city) {
-        lines.push(`\n🔄 *Transit: ${city}*`);
+        lines.push(`*[TRANSIT ${city.toUpperCase()}]*`);
       }
     }
   }
 
-  // Price
   if (data.totalPrice && data.totalPrice > 0) {
-    lines.push(`\n━━━━━━━━━━━━━━━`);
+    lines.push("");
+    lines.push(`──────────────────────`);
     const currency = data.priceCurrency ?? "IDR";
     if (currency === "IDR") {
       const idr = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(data.totalPrice);
       const egpAmt = egpRate > 0 ? Math.round(data.totalPrice / egpRate) : null;
-      lines.push(`💰 Total: *${idr}*${egpAmt ? ` ≈ EGP ${egpAmt.toLocaleString("id-ID")}` : ""}`);
+      lines.push(`Total : *${idr}*${egpAmt ? `  (≈ EGP ${egpAmt.toLocaleString("id-ID")})` : ""}`);
     } else if (currency === "EGP") {
       const egpFmt = `EGP ${data.totalPrice.toLocaleString("id-ID")}`;
       const idrAmt = egpRate > 0 ? Math.round(data.totalPrice * egpRate) : null;
       const idrFmt = idrAmt ? new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(idrAmt) : null;
-      lines.push(`💰 Total: *${egpFmt}*${idrFmt ? ` ≈ ${idrFmt}` : ""}`);
-    } else if (currency === "USD") {
-      lines.push(`💰 Total: *USD ${data.totalPrice.toLocaleString("en-US")}*`);
+      lines.push(`Total : *${egpFmt}*${idrFmt ? `  (≈ ${idrFmt})` : ""}`);
     } else {
-      lines.push(`💰 Total: *${currency} ${data.totalPrice.toLocaleString("id-ID")}*`);
+      lines.push(`Total : *${currency} ${data.totalPrice.toLocaleString("id-ID")}*`);
     }
   }
 
-  // Smart tips
   const tips = buildSmartTips(data.legs);
   if (tips.length > 0) {
-    lines.push(`\n⚠️ *Info Penting:*`);
-    tips.forEach((tip) => lines.push(`• ${tip}`));
+    lines.push("");
+    lines.push(`──────────────────────`);
+    lines.push(`*INFO PENTING*`);
+    tips.forEach((tip) => lines.push(`- ${tip}`));
   }
 
-  lines.push(`\n_Temantiket — mudah, cepat, amanah_ ✈️`);
+  lines.push("");
+  lines.push(`_Temantiket — mudah, cepat, amanah_`);
+  lines.push(`_Generated by Temantiket_`);
+
   return lines.join("\n");
 }
 
-// ── Main entry ─────────────────────────────────────────────────────────────
+// ── Main entry (text) ──────────────────────────────────────────────────────
 
 export async function extractItinerary(
   rawText: string,
@@ -310,11 +382,24 @@ export async function extractItinerary(
   const apiKey = (import.meta.env.VITE_OPENAI_API_KEY as string | undefined)?.trim();
   if (apiKey && apiKey.length > 10) {
     try {
-      const data = await callOpenAI(rawText, apiKey);
+      const data = await callOpenAIText(rawText, apiKey);
       return { data, usedAI: true };
     } catch (err) {
       console.warn("[itineraryAI] OpenAI gagal, fallback ke regex:", err);
     }
   }
   return { data: regexFallback(rawText), usedAI: false };
+}
+
+// ── Image OCR entry ────────────────────────────────────────────────────────
+
+export async function extractItineraryFromImage(
+  imageDataUrl: string,
+): Promise<{ data: ItineraryData; usedAI: boolean }> {
+  const apiKey = (import.meta.env.VITE_OPENAI_API_KEY as string | undefined)?.trim();
+  if (!apiKey || apiKey.length <= 10) {
+    throw new Error("VITE_OPENAI_API_KEY belum di-set. Upload gambar membutuhkan OpenAI API key.");
+  }
+  const data = await callOpenAIVision(imageDataUrl, apiKey);
+  return { data, usedAI: true };
 }
