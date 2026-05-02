@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppSidebar } from "./AppSidebar";
-import { Menu, LayoutDashboard, Calculator, Package, GitBranch, Settings, FileText, RefreshCw, LogOut, StickyNote, FileSpreadsheet, MoreHorizontal, ChevronRight, Ticket } from "lucide-react";
+import { Menu, LayoutDashboard, Users, ShoppingBag, Settings, RefreshCw, LogOut, StickyNote, FileSpreadsheet, MoreHorizontal, ChevronRight, Ticket, Sparkles, Calculator, Package, MessageSquare, Wallet } from "lucide-react";
 
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -24,20 +24,24 @@ function formatLastSync(d: Date | null): string {
   return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
-// 5 primary tabs (last is "Lainnya" / More) — standard mobile pattern
+// 4 primary tabs + "Lainnya" — reflect the new nav hierarchy
 const primaryNavItems = [
-  { title: "Beranda", url: "/", icon: LayoutDashboard, end: true },
-  { title: "Paket", url: "/packages", icon: Package, end: false },
-  { title: "Kalkulator", url: "/calculator", icon: Calculator, end: false },
-  { title: "Progress", url: "/progress", icon: GitBranch, end: false },
+  { title: "Beranda",    url: "/",          icon: LayoutDashboard, end: true  },
+  { title: "Klien",      url: "/clients",   icon: Users,           end: false },
+  { title: "Orders",     url: "/orders",    icon: ShoppingBag,     end: false },
+  { title: "Itinerary",  url: "/itinerary", icon: Sparkles,        end: false },
 ];
 
-// Secondary items live inside the "Lainnya" bottom sheet
+// Secondary items in the "Lainnya" bottom sheet — grouped by concern
 const moreNavItems = [
-  { title: "Daftar Harga Tiket", url: "/ticket-prices", icon: Ticket, desc: "Harga tiket + margin otomatis" },
-  { title: "Catatan", url: "/notes", icon: StickyNote, desc: "Catatan & memo cepat" },
-  { title: "Export Center", url: "/exports", icon: FileSpreadsheet, desc: "Rooming & manifest Excel" },
-  { title: "Pengaturan", url: "/settings", icon: Settings, desc: "Akun, tim, kurs, tampilan" },
+  { title: "Kalkulator & Kurs",    url: "/calculator",    icon: Calculator,    desc: "Update kurs EGP/USD/SAR & hitung harga" },
+  { title: "Paket Trip",           url: "/packages",      icon: Package,       desc: "Kelola paket umrah & wisata" },
+  { title: "Harga Tiket",          url: "/ticket-prices", icon: Ticket,        desc: "Daftar harga tiket & Smart Import" },
+  { title: "Template BC WA",       url: "/bc-templates",  icon: MessageSquare, desc: "Template broadcast & marketing WA" },
+  { title: "Catatan",              url: "/notes",         icon: StickyNote,    desc: "Catatan & memo cepat" },
+  { title: "Export & Member Card", url: "/exports",       icon: FileSpreadsheet, desc: "Rooming list, manifest & member card" },
+  { title: "Laporan Keuangan",     url: "/reports",       icon: Wallet,        desc: "Laporan & analisis keuangan (Owner)" },
+  { title: "Pengaturan",           url: "/settings",      icon: Settings,      desc: "Akun, tim, kurs, tampilan" },
 ];
 
 interface DashboardLayoutProps {
