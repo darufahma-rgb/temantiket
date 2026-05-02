@@ -1,5 +1,4 @@
 import { createWorker, type Worker as TesseractWorker } from "tesseract.js";
-import { supabase } from "./supabase";
 
 /* ────────────────────────────── Reusable Tesseract worker pool ──────────────
  * createWorker() butuh ~600-1200 ms (download core+traineddata, init API).
@@ -547,15 +546,12 @@ function normalizeOpenAIParsed(parsed: OpenAIParsed): PassportData {
   return out;
 }
 
-async function callOpenAIDirect(dataUrl: string, apiKey: string): Promise<PassportData> {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+async function callOpenAIDirect(dataUrl: string): Promise<PassportData> {
+  const res = await fetch("/api/ai/chat", {
     method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "gpt-4o-mini", // cheapest OpenAI model with vision
+      model: "gpt-4o-mini",
       temperature: 0,
       max_tokens: 400,
       response_format: { type: "json_object" },
@@ -594,12 +590,7 @@ async function callOpenAIDirect(dataUrl: string, apiKey: string): Promise<Passpo
 }
 
 /**
- * AI OCR untuk paspor.
- *
- * Strategi:
- * 1. Kalo `VITE_OPENAI_API_KEY` ada di env → panggil OpenAI gpt-4o-mini langsung dari browser.
- *    (Paling cepat & ga butuh Edge Function deploy.)
- * 2. Kalo ga ada → fallback ke Supabase Edge Function `ocr-passport` (yang juga proxy ke OpenAI).
+ * AI OCR untuk paspor via server proxy (/api/ai/chat).
  *
  * `throwOnError=true` → throw Error dengan pesan jelas (dipake AI-only mode).
  * `throwOnError=false` (default) → return null biar caller bisa fallback ke Tesseract.
@@ -609,7 +600,6 @@ export async function scanPassportAI(
   opts?: { throwOnError?: boolean },
 ): Promise<PassportData | null> {
   const throwOnError = opts?.throwOnError === true;
-  const openaiKey = (import.meta.env.VITE_OPENAI_API_KEY as string | undefined)?.trim();
 
   try {
     const rawDataUrl =
@@ -617,42 +607,7 @@ export async function scanPassportAI(
         ? await fileToDataUrl(imageSource)
         : imageSource;
     const dataUrl = await compressForAI(rawDataUrl);
-
-    // Path 1: direct OpenAI dari browser
-    if (openaiKey) {
-      return await callOpenAIDirect(dataUrl, openaiKey);
-    }
-
-    // Path 2: fallback ke Supabase Edge Function
-    if (!supabase) {
-      throw new Error(
-        "VITE_OPENAI_API_KEY belum di-set & Supabase belum dikonfigurasi. Set salah satu.",
-      );
-    }
-    const { data, error } = await supabase.functions.invoke<{
-      name?: string;
-      passportNumber?: string;
-      nationality?: string;
-      birthDate?: string;
-      expiryDate?: string;
-      gender?: "L" | "P";
-      mrzValid?: boolean;
-      error?: string;
-    }>("ocr-passport", { body: { imageDataUrl: dataUrl } });
-
-    if (error) throw new Error(error.message || "Gagal panggil Edge Function ocr-passport.");
-    if (!data) throw new Error("Edge Function tidak mengembalikan data.");
-    if (data.error) throw new Error(data.error);
-    return {
-      name: data.name,
-      passportNumber: data.passportNumber,
-      nationality: data.nationality,
-      birthDate: data.birthDate,
-      expiryDate: data.expiryDate,
-      gender: data.gender,
-      mrzValid: data.mrzValid === true,
-      source: "openai",
-    };
+    return await callOpenAIDirect(dataUrl);
   } catch (e) {
     if (throwOnError) throw e;
     return null;

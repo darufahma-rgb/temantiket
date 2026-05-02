@@ -224,10 +224,10 @@ REMEMBER: One booking = ONE ticket entry. Transit rows with same Total Amount = 
 
 // ── OpenAI Vision call ────────────────────────────────────────────────────────
 
-async function callOpenAIVision(dataUrl: string, apiKey: string): Promise<ParsedTicketPrice[]> {
-  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+async function callOpenAIVision(dataUrl: string): Promise<ParsedTicketPrice[]> {
+  const resp = await fetch("/api/ai/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "gpt-4o-mini",
       temperature: 0.05,
@@ -602,15 +602,10 @@ export interface ScanResult {
 }
 
 export async function scanTicketPriceScreenshot(imageSource: File | string): Promise<ScanResult> {
-  const apiKey = (import.meta.env.VITE_OPENAI_API_KEY as string | undefined)?.trim();
-  if (!apiKey || apiKey.length < 10) {
-    return { tickets: [], usedAI: false, grouped: 0, error: "VITE_OPENAI_API_KEY belum di-set. Set API key untuk menggunakan AI OCR." };
-  }
-
   try {
     const rawDataUrl = imageSource instanceof File ? await fileToDataUrl(imageSource) : imageSource;
     const dataUrl    = await compressImage(rawDataUrl, 1800);
-    const rawTickets = await callOpenAIVision(dataUrl, apiKey);
+    const rawTickets = await callOpenAIVision(dataUrl);
     // Apply client-side grouper (transit merge + round-trip pairing)
     const tickets = groupRoundTrips(rawTickets);
     const grouped = tickets.filter((t) => t.tripType === "return" || t.multiLeg).length;

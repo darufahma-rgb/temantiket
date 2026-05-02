@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 3001;
 const SUPABASE_URL = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
 const SUPABASE_ANON_KEY = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
 const SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
 
 const app = express();
 app.use(cors());
@@ -205,6 +206,31 @@ app.post('/api/remove-member', async (req, res) => {
     if (delErr) return err(res, 500, delErr.message);
 
     return ok(res, { ok: true });
+  } catch (e) {
+    return err(res, 500, e.message);
+  }
+});
+
+/* ──────────────────────────────────────────────
+   POST /api/ai/chat
+   Server-side OpenAI proxy — keeps OPENAI_API_KEY off the browser bundle.
+   Accepts a full OpenAI chat-completions request body and proxies it.
+────────────────────────────────────────────── */
+app.post('/api/ai/chat', async (req, res) => {
+  try {
+    if (!OPENAI_API_KEY) {
+      return err(res, 503, 'OPENAI_API_KEY belum di-set. Tambahkan di Replit Secrets.');
+    }
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify(req.body),
+    });
+    const text = await response.text();
+    res.status(response.status).set('Content-Type', 'application/json').send(text);
   } catch (e) {
     return err(res, 500, e.message);
   }

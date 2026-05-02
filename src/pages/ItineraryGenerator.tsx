@@ -804,7 +804,7 @@ export default function ItineraryGenerator() {
     } catch { toast.error("Gagal menyalin"); }
   };
 
-  const hasApiKey = !!(import.meta.env.VITE_OPENAI_API_KEY as string | undefined)?.trim();
+  const hasApiKey = true;
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-5">
@@ -904,14 +904,14 @@ export default function ItineraryGenerator() {
             usedAI ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-sky-50 text-sky-700 border-sky-200",
           )}>
             {usedAI ? <Sparkles className="h-3 w-3" /> : <Info className="h-3 w-3" />}
-            {usedAI ? "AI GPT-4o Vision/Mini" : "Parser Regex (set VITE_OPENAI_API_KEY untuk AI)"}
+            {usedAI ? "AI GPT-4o Vision/Mini" : "Parser Regex"}
           </div>
         )}
 
         {!hasApiKey && (
           <p className="text-[11px] text-amber-600 flex items-center gap-1">
             <Info className="h-3 w-3 shrink-0" />
-            <span>Upload Screenshot membutuhkan <code className="bg-amber-50 px-1 rounded font-mono">VITE_OPENAI_API_KEY</code>. Set di Secrets untuk mengaktifkan OCR gambar.</span>
+            <span>OCR gambar aktif via AI server. Hubungi administrator jika tidak berfungsi.</span>
           </p>
         )}
       </div>
@@ -1231,7 +1231,7 @@ export default function ItineraryGenerator() {
           </ol>
           <div className="mt-4 flex items-center justify-center gap-2 text-[11.5px] text-muted-foreground">
             <Info className="h-3 w-3" />
-            Set <code className="bg-secondary px-1 py-0.5 rounded text-[10.5px] font-mono">VITE_OPENAI_API_KEY</code> untuk AI mode & OCR gambar
+            AI mode & OCR gambar aktif jika OPENAI_API_KEY telah dikonfigurasi di server
           </div>
         </div>
       )}

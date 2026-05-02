@@ -641,15 +641,6 @@ async function executeTool(
 export async function sendAIMessage(
   messages: ChatMessage[],
 ): Promise<AIChatResponse> {
-  const apiKey = (import.meta.env.VITE_OPENAI_API_KEY as string | undefined)?.trim();
-  if (!apiKey || apiKey.length < 10) {
-    return {
-      message:
-        "VITE_OPENAI_API_KEY belum di-set. Tambahkan key OpenAI di Replit Secrets untuk menggunakan AI Command Center.",
-      toolResults: [],
-    };
-  }
-
   const fullMessages = [
     { role: "system", content: SYSTEM_PROMPT },
     ...messages.map((m) => ({ role: m.role, content: m.content })),
@@ -660,12 +651,9 @@ export async function sendAIMessage(
   // Agentic loop: terus panggil OpenAI sampai tidak ada tool call
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("/api/ai/chat", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: fullMessages,

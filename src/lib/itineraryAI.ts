@@ -102,15 +102,12 @@ CRITICAL RULES:
 - Set null only for genuinely missing fields — never guess.
 - Return ONLY the JSON, nothing else.`;
 
-// ── OpenAI Text caller ──────────────────────────────────────────────────────
+// ── OpenAI Text caller (via server proxy) ──────────────────────────────────
 
-async function callOpenAIText(text: string, apiKey: string): Promise<ItineraryData> {
-  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+async function callOpenAIText(text: string): Promise<ItineraryData> {
+  const resp = await fetch("/api/ai/chat", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "gpt-4o-mini",
       temperature: 0,
@@ -130,15 +127,12 @@ async function callOpenAIText(text: string, apiKey: string): Promise<ItineraryDa
   return parseOpenAIResponse(json.choices?.[0]?.message?.content ?? "{}", text);
 }
 
-// ── OpenAI Vision caller ───────────────────────────────────────────────────
+// ── OpenAI Vision caller (via server proxy) ────────────────────────────────
 
-async function callOpenAIVision(imageDataUrl: string, apiKey: string): Promise<ItineraryData> {
-  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+async function callOpenAIVision(imageDataUrl: string): Promise<ItineraryData> {
+  const resp = await fetch("/api/ai/chat", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "gpt-4o-mini",
       temperature: 0,
@@ -379,14 +373,11 @@ export function buildWhatsAppText(data: ItineraryData, egpRate: number): string 
 export async function extractItinerary(
   rawText: string,
 ): Promise<{ data: ItineraryData; usedAI: boolean }> {
-  const apiKey = (import.meta.env.VITE_OPENAI_API_KEY as string | undefined)?.trim();
-  if (apiKey && apiKey.length > 10) {
-    try {
-      const data = await callOpenAIText(rawText, apiKey);
-      return { data, usedAI: true };
-    } catch (err) {
-      console.warn("[itineraryAI] OpenAI gagal, fallback ke regex:", err);
-    }
+  try {
+    const data = await callOpenAIText(rawText);
+    return { data, usedAI: true };
+  } catch (err) {
+    console.warn("[itineraryAI] OpenAI gagal, fallback ke regex:", err);
   }
   return { data: regexFallback(rawText), usedAI: false };
 }
@@ -396,10 +387,6 @@ export async function extractItinerary(
 export async function extractItineraryFromImage(
   imageDataUrl: string,
 ): Promise<{ data: ItineraryData; usedAI: boolean }> {
-  const apiKey = (import.meta.env.VITE_OPENAI_API_KEY as string | undefined)?.trim();
-  if (!apiKey || apiKey.length <= 10) {
-    throw new Error("VITE_OPENAI_API_KEY belum di-set. Upload gambar membutuhkan OpenAI API key.");
-  }
-  const data = await callOpenAIVision(imageDataUrl, apiKey);
+  const data = await callOpenAIVision(imageDataUrl);
   return { data, usedAI: true };
 }
