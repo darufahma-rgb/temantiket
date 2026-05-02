@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Users, Trophy, Wallet, TrendingUp, ShieldCheck, Edit2, Check, X,
-  ChevronDown, ChevronUp, BarChart3, Crown, Zap, RefreshCw,
+  ChevronDown, ChevronUp, BarChart3, Crown, Zap, RefreshCw, Target,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
@@ -14,10 +14,13 @@ import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
+import { listSubmissions, sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
+import type { MissionSubmission } from "@/features/missions/types";
 import { getTierInfo, TIERS } from "@/features/agentPoints/agentTiers";
 import { profitIDR, revenueIDR, fmtIDR } from "@/lib/profit";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { MissionCreatorSection } from "@/features/missions/MissionCreatorSection";
 
 const M = { fontFamily: "'Manrope', sans-serif" };
 
@@ -74,6 +77,7 @@ export default function AgentCommandCenter() {
 
   const [members, setMembers] = useState<MemberInfo[]>([]);
   const [points, setPoints] = useState<AgentPoint[]>([]);
+  const [missionSubs, setMissionSubs] = useState<MissionSubmission[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Edit commission state
@@ -93,9 +97,15 @@ export default function AgentCommandCenter() {
   const load = async () => {
     setLoading(true);
     try {
-      const [m, p] = await Promise.all([listMembers(), listAgentPoints()]);
+      const agencyId = user?.agencyId;
+      const [m, p, ms] = await Promise.all([
+        listMembers(),
+        listAgentPoints(),
+        agencyId ? listSubmissions(agencyId) : Promise.resolve([]),
+      ]);
       setMembers(m);
       setPoints(p);
+      setMissionSubs(ms);
       await Promise.all([fetchOrders(), fetchClients()]);
     } catch (err) {
       console.warn("[agent-center] load failed:", err);
@@ -109,7 +119,15 @@ export default function AgentCommandCenter() {
   // ── Derived data ─────────────────────────────────────────────────────────────
   const agentMembers = useMemo(() => members.filter((m) => m.role === "agent"), [members]);
 
-  const pointsByAgent = useMemo(() => sumPointsByAgent(points), [points]);
+  const pointsByAgent = useMemo(() => {
+    const orderPts = sumPointsByAgent(points);
+    const missionPts = sumMissionPointsByAgent(missionSubs);
+    const combined = new Map(orderPts);
+    for (const [agentId, pts] of missionPts) {
+      combined.set(agentId, (combined.get(agentId) ?? 0) + pts);
+    }
+    return combined;
+  }, [points, missionSubs]);
 
   // Client count per agent
   const clientCountByAgent = useMemo(() => {
@@ -628,12 +646,24 @@ export default function AgentCommandCenter() {
             </div>
           </Card>
 
+          {/* ── Mission Creator ────────────────────────────────────────── */}
+          {user?.agencyId && user?.id && (
+            <Card className="p-4">
+              <MissionCreatorSection
+                agencyId={user.agencyId}
+                ownerId={user.id}
+                agentNames={new Map(agentMembers.map((a) => [a.userId, a.displayName]))}
+              />
+            </Card>
+          )}
+
           {/* ── Footer note ─────────────────────────────────────────────── */}
           <div className="rounded-xl border bg-muted/30 p-3 text-[10.5px] text-muted-foreground leading-relaxed">
             <strong className="text-foreground">Catatan:</strong>{" "}
             Komisi = Profit × Komisi% · hanya dihitung dari order berstatus <strong>Completed</strong> dengan profit positif.
             Poin lifetime dihitung dari trigger otomatis DB (10pt per Completed order) dan tidak bisa di-reset manual dari UI —
             hubungi admin database jika diperlukan. Edit komisi langsung di baris tabel dengan ikon ✏️.
+            Poin misi dihitung dari misi yang disetujui admin dan diakumulasi ke total poin agen.
           </div>
         </>
       )}

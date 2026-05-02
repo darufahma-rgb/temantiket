@@ -14,6 +14,9 @@ import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, ORDER_STATUSES, type OrderStatus } 
 import { revenueIDR, profitIDR, fmtIDR } from "@/lib/profit";
 import { AgentTierProgress } from "@/components/AgentTierProgress";
 import { RewardCatalog } from "@/components/RewardCatalog";
+import { AgentMissionWidget } from "@/features/missions/AgentMissionWidget";
+import { listMySubmissions, sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
+import type { MissionSubmission } from "@/features/missions/types";
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
   Draft: "bg-slate-100 text-slate-700",
@@ -30,6 +33,7 @@ export default function AgentDashboard() {
   const { clients, fetchClients } = useClientsStore();
 
   const [points, setPoints] = useState<AgentPoint[]>([]);
+  const [missionSubs, setMissionSubs] = useState<MissionSubmission[]>([]);
   const [loadingPoints, setLoadingPoints] = useState(true);
 
   useEffect(() => {
@@ -39,9 +43,13 @@ export default function AgentDashboard() {
       setLoadingPoints(true);
       const p = await listAgentPoints();
       setPoints(p);
+      if (user?.agencyId && user?.id) {
+        const ms = await listMySubmissions(user.agencyId, user.id);
+        setMissionSubs(ms);
+      }
       setLoadingPoints(false);
     })();
-  }, [fetchOrders, fetchClients, clients.length]);
+  }, [fetchOrders, fetchClients, clients.length, user?.agencyId, user?.id]);
 
   // Filter: orders & clients yg di-bikin sama agent ini.
   // RLS udah ngebatasin di server, tapi defense-in-depth client-side juga.
@@ -55,9 +63,10 @@ export default function AgentDashboard() {
   );
 
   const myPoints = useMemo(() => {
-    const m = sumPointsByAgent(points);
-    return user?.id ? (m.get(user.id) ?? 0) : 0;
-  }, [points, user?.id]);
+    const orderPts = user?.id ? (sumPointsByAgent(points).get(user.id) ?? 0) : 0;
+    const missionPts = user?.id ? (sumMissionPointsByAgent(missionSubs).get(user.id) ?? 0) : 0;
+    return orderPts + missionPts;
+  }, [points, missionSubs, user?.id]);
 
   // Stats
   const stats = useMemo(() => {
@@ -171,6 +180,11 @@ export default function AgentDashboard() {
           accent="from-emerald-100 to-white text-emerald-700 border-emerald-200"
         />
       </div>
+
+      {/* ── Mission Widget ── */}
+      {user?.agencyId && user?.id && (
+        <AgentMissionWidget agencyId={user.agencyId} agentId={user.id} />
+      )}
 
       {/* ── Progress to Next Level + Reward Catalog ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
