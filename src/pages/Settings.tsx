@@ -28,6 +28,7 @@ import { useAuthStore, type LoginEvent, type MemberInfo } from "@/store/authStor
 import { migrateBase64ToStorage, type MigrateProgress } from "@/lib/migrateBase64ToStorage";
 import { useRegionalStore } from "@/store/regionalStore";
 import { useT } from "@/lib/regional";
+import { useOrdersStore } from "@/store/ordersStore";
 
 async function resizeImageToDataUrl(file: File, maxSize = 320, quality = 0.85): Promise<string> {
   const blobUrl = URL.createObjectURL(file);
@@ -175,6 +176,9 @@ export default function Settings() {
   const [commissionDraft, setCommissionDraft] = useState<Record<string, string>>({});
   const setMemberCommission = useAuthStore((s) => s.setMemberCommission);
 
+  // ── Orders (untuk akumulasi fee agen) ────────────────────────────────────
+  const { orders, fetchOrders } = useOrdersStore();
+
   // ── Komisi per produk ────────────────────────────────────────────────────
   const [productCommissions, setProductCommissions] = useState(() => loadProdComm());
   const [savingPC, setSavingPC] = useState(false);
@@ -233,6 +237,7 @@ export default function Settings() {
   useEffect(() => {
     if (tab === "agents") {
       listMembers().then(setMembers).catch((e) => toast.error(`Gagal load member: ${e.message}`));
+      if (orders.length === 0) void fetchOrders();
     }
   }, [tab, listMembers]);
 
@@ -1282,6 +1287,68 @@ export default function Settings() {
                 </div>
               </div>
             )}
+
+            {isOwner && (() => {
+              const agentMembers = members.filter((m) => m.role === "agent");
+              if (agentMembers.length === 0) return null;
+
+              return (
+                <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[hsl(var(--border))]">
+                    <p className="text-sm font-semibold">Akumulasi Fee Komisi Agen</p>
+                    <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">
+                      Total fee yang diterima masing-masing agen dari semua order yang mereka buat.
+                    </p>
+                  </div>
+                  <div className="divide-y divide-[hsl(var(--border))]">
+                    {agentMembers.map((agent) => {
+                      const agentOrders = orders.filter((o) => o.createdByAgent === agent.userId);
+                      const totalFee = agentOrders.reduce((sum, o) => sum + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
+                      const paidFee = agentOrders
+                        .filter((o) => o.status === "Paid" || o.status === "Completed")
+                        .reduce((sum, o) => sum + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
+                      const pendingFee = totalFee - paidFee;
+                      const orderCount = agentOrders.filter((o) => Number((o.metadata as Record<string, unknown>).agentFee) > 0).length;
+                      return (
+                        <div key={agent.userId} className="px-4 py-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold truncate">{agent.displayName || agent.email}</p>
+                              <p className="text-[10px] text-muted-foreground">{orderCount} order dengan fee</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-[15px] font-extrabold font-mono text-foreground">
+                                {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(totalFee)}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">total akumulasi</p>
+                            </div>
+                          </div>
+                          {totalFee > 0 && (
+                            <div className="flex gap-2">
+                              <div className="flex-1 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2">
+                                <p className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wide">Terbayar</p>
+                                <p className="text-[13px] font-bold font-mono text-emerald-700 mt-0.5">
+                                  {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(paidFee)}
+                                </p>
+                              </div>
+                              <div className="flex-1 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2">
+                                <p className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide">Belum Bayar</p>
+                                <p className="text-[13px] font-bold font-mono text-amber-700 mt-0.5">
+                                  {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(pendingFee)}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          {totalFee === 0 && (
+                            <p className="text-[11px] text-muted-foreground italic">Belum ada order dengan fee komisi.</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {isOwner && (
               <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
