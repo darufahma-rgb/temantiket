@@ -1,0 +1,364 @@
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  ArrowLeft, Trophy, Users, ShoppingBag, TrendingUp,
+  Wallet, CheckCircle, Clock, UserCircle, ExternalLink,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/authStore";
+import { useOrdersStore } from "@/store/ordersStore";
+import { useClientsStore } from "@/store/clientsStore";
+import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
+import { listMySubmissions, sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
+import type { MissionSubmission } from "@/features/missions/types";
+import { getTierInfo } from "@/features/agentPoints/agentTiers";
+import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, type OrderType } from "@/features/orders/ordersRepo";
+import { revenueIDR, fmtIDR } from "@/lib/profit";
+
+export default function AgentProfile() {
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const { orders, fetchOrders } = useOrdersStore();
+  const { clients, fetchClients } = useClientsStore();
+
+  const [points, setPoints] = useState<AgentPoint[]>([]);
+  const [missionSubs, setMissionSubs] = useState<MissionSubmission[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    void fetchOrders();
+    if (clients.length === 0) void fetchClients();
+    void (async () => {
+      setLoading(true);
+      const p = await listAgentPoints();
+      setPoints(p);
+      if (user?.agencyId && user?.id) {
+        const ms = await listMySubmissions(user.agencyId, user.id);
+        setMissionSubs(ms);
+      }
+      setLoading(false);
+    })();
+  }, [fetchOrders, fetchClients, clients.length, user?.agencyId, user?.id]);
+
+  const myOrders = useMemo(
+    () => orders.filter((o) => o.createdByAgent === user?.id),
+    [orders, user?.id],
+  );
+  const myClients = useMemo(
+    () => clients.filter((c) => c.createdByAgent === user?.id),
+    [clients, user?.id],
+  );
+
+  const myPoints = useMemo(() => {
+    const orderPts = user?.id ? (sumPointsByAgent(points).get(user.id) ?? 0) : 0;
+    const missionPts = user?.id ? (sumMissionPointsByAgent(missionSubs).get(user.id) ?? 0) : 0;
+    return orderPts + missionPts;
+  }, [points, missionSubs, user?.id]);
+
+  const { current: tier, next, pointsToNext, progress } = useMemo(
+    () => getTierInfo(myPoints),
+    [myPoints],
+  );
+
+  const completedOrders = useMemo(
+    () => myOrders.filter((o) => o.status === "Completed"),
+    [myOrders],
+  );
+  const totalRevenue = useMemo(
+    () => myOrders.reduce((s, o) => s + revenueIDR(o), 0),
+    [myOrders],
+  );
+
+  const feeStats = useMemo(() => {
+    const total = myOrders.reduce(
+      (s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0,
+    );
+    const paid = myOrders
+      .filter((o) => o.status === "Paid" || o.status === "Completed")
+      .reduce((s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
+    return { total, paid, pending: total - paid };
+  }, [myOrders]);
+
+  const portfolio = useMemo(() => {
+    const types: OrderType[] = ["umrah", "flight", "visa_voa", "visa_student"];
+    const counts: Record<string, number> = Object.fromEntries(types.map((t) => [t, 0]));
+    for (const o of myOrders) if (counts[o.type] !== undefined) counts[o.type]++;
+    const max = Math.max(1, ...Object.values(counts));
+    return types.map((t) => ({ type: t, count: counts[t], pct: counts[t] / max }));
+  }, [myOrders]);
+
+  const monthly = useMemo(() => {
+    const now = new Date();
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      return { label: d.toLocaleDateString("id-ID", { month: "short" }), year: d.getFullYear(), month: d.getMonth(), count: 0 };
+    });
+    for (const o of myOrders) {
+      const d = new Date(o.createdAt);
+      const m = months.find((x) => x.year === d.getFullYear() && x.month === d.getMonth());
+      if (m) m.count++;
+    }
+    const max = Math.max(1, ...months.map((m) => m.count));
+    return months.map((m) => ({ ...m, pct: m.count / max }));
+  }, [myOrders]);
+
+  const profilePhoto = (() => {
+    if (!user?.id) return null;
+    try { return localStorage.getItem(`igh.profile.photo.${user.id}`); } catch { return null; }
+  })();
+
+  return (
+    <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
+      <button
+        onClick={() => navigate("/agent")}
+        className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" /> Kembali ke Dashboard
+      </button>
+
+      {/* ── Profile Header ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className={`rounded-3xl bg-gradient-to-br ${tier.gradient} p-5 md:p-6 text-white shadow-lg`}
+      >
+        <div className="flex items-start gap-4">
+          <div className="h-16 w-16 rounded-2xl bg-white/20 border-2 border-white/40 overflow-hidden shrink-0 flex items-center justify-center backdrop-blur">
+            {profilePhoto ? (
+              <img src={profilePhoto} alt="foto" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-2xl font-extrabold">
+                {(user?.displayName ?? "?").charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20 backdrop-blur">
+                {tier.emoji} {tier.label}
+              </span>
+              <span className="text-[11px] opacity-80">
+                {loading ? "…" : myPoints.toLocaleString("id-ID")} poin
+              </span>
+            </div>
+            <h1 className="text-xl font-extrabold mt-1 leading-tight">{user?.displayName ?? "Mitra"}</h1>
+            <p className="text-[12px] opacity-90 truncate">{user?.email}</p>
+            {user?.agencyName && (
+              <p className="text-[11px] opacity-75 mt-0.5">{user.agencyName}</p>
+            )}
+          </div>
+        </div>
+
+        {next && (
+          <div className="mt-4">
+            <div className="flex justify-between text-[10px] opacity-80 mb-1">
+              <span>{tier.label}</span>
+              <span>{pointsToNext} poin lagi → {next.emoji} {next.label}</span>
+            </div>
+            <div className="h-2 rounded-full bg-white/20 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-white transition-all duration-700"
+                style={{ width: `${Math.round(progress * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {tier.perks.map((p) => (
+            <span key={p} className="text-[10px] px-2 py-0.5 rounded-full bg-white/15 backdrop-blur">
+              ✓ {p}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur text-[11px] h-8"
+            onClick={() => navigate("/settings")}
+          >
+            <UserCircle className="h-3.5 w-3.5 mr-1" /> Edit Profil
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur text-[11px] h-8"
+            onClick={() => navigate("/agent/leaderboard")}
+          >
+            <Trophy className="h-3.5 w-3.5 mr-1" /> Leaderboard
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* ── Stats Grid ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { icon: ShoppingBag, label: "Total Order",   value: String(myOrders.length),             sub: `${completedOrders.length} selesai`,  color: "text-violet-600", bg: "bg-violet-50 border-violet-100" },
+          { icon: Users,       label: "Total Klien",   value: String(myClients.length),             sub: "klien aktif",                        color: "text-sky-600",    bg: "bg-sky-50 border-sky-100" },
+          { icon: TrendingUp,  label: "Total Revenue", value: fmtIDR(totalRevenue),                 sub: "dari semua order",                   color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
+          { icon: Trophy,      label: "Total Poin",    value: loading ? "…" : String(myPoints),     sub: `Tier ${tier.label}`,                 color: "text-amber-600",  bg: "bg-amber-50 border-amber-100" },
+        ].map((s) => (
+          <div key={s.label} className={`rounded-2xl border p-3 ${s.bg}`}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{s.label}</span>
+              <s.icon className={`h-3.5 w-3.5 ${s.color}`} />
+            </div>
+            <div className={`text-base font-extrabold font-mono ${s.color}`}>{s.value}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Fee Komisi Akumulasi ── */}
+      <div className="rounded-2xl border border-orange-100 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-orange-100 bg-orange-50 flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-orange-500" />
+          <div>
+            <p className="text-sm font-semibold">Akumulasi Fee Komisi</p>
+            <p className="text-[11px] text-muted-foreground">Total fee yang sudah lo kumpulkan dari semua order</p>
+          </div>
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="text-center py-1">
+            <div className="text-3xl font-extrabold font-mono">{fmtIDR(feeStats.total)}</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">total akumulasi fee</div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 flex items-start gap-2">
+              <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wide">Terbayar</div>
+                <div className="text-sm font-bold font-mono text-emerald-700">{fmtIDR(feeStats.paid)}</div>
+                <div className="text-[10px] text-muted-foreground">order Paid/Completed</div>
+              </div>
+            </div>
+            <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 flex items-start gap-2">
+              <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide">Belum Cair</div>
+                <div className="text-sm font-bold font-mono text-amber-700">{fmtIDR(feeStats.pending)}</div>
+                <div className="text-[10px] text-muted-foreground">order belum selesai</div>
+              </div>
+            </div>
+          </div>
+          {feeStats.total === 0 && (
+            <p className="text-center text-[11px] text-muted-foreground italic py-1">
+              Belum ada fee. Buat order baru untuk mulai akumulasi fee komisi.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Portofolio Produk ── */}
+      <div className="rounded-2xl border bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b">
+          <p className="text-sm font-semibold">Portofolio Produk</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Distribusi order lo berdasarkan tipe produk</p>
+        </div>
+        <div className="p-4 space-y-3">
+          {myOrders.length === 0 ? (
+            <p className="text-center text-[11px] text-muted-foreground py-4 italic">Belum ada order.</p>
+          ) : (
+            portfolio.map(({ type, count, pct }) => (
+              <div key={type}>
+                <div className="flex items-center justify-between text-[12px] mb-1">
+                  <span className="font-medium">{ORDER_TYPE_EMOJI[type]} {ORDER_TYPE_LABEL[type]}</span>
+                  <span className="font-mono font-semibold text-muted-foreground">{count} order</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-orange-400 to-amber-500"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.round(pct * 100)}%` }}
+                    transition={{ duration: 0.7, ease: "easeOut" }}
+                  />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ── Performa 6 Bulan ── */}
+      <div className="rounded-2xl border bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b">
+          <p className="text-sm font-semibold">Performa 6 Bulan Terakhir</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Jumlah order yang dibuat per bulan</p>
+        </div>
+        <div className="p-4">
+          <div className="flex items-end gap-2" style={{ height: "96px" }}>
+            {monthly.map((m) => (
+              <div key={`${m.year}-${m.month}`} className="flex-1 flex flex-col items-center gap-1 h-full">
+                <div className="flex-1 w-full flex items-end">
+                  <motion.div
+                    className="w-full rounded-t-md bg-gradient-to-t from-orange-500 to-amber-400"
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.max(4, Math.round(m.pct * 100))}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
+                    title={`${m.count} order`}
+                  />
+                </div>
+                {m.count > 0 && (
+                  <span className="text-[9px] font-mono font-bold text-orange-600">{m.count}</span>
+                )}
+                <span className="text-[10px] text-muted-foreground leading-none">{m.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Klien Terbaru ── */}
+      {myClients.length > 0 && (
+        <div className="rounded-2xl border bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b flex items-center justify-between">
+            <p className="text-sm font-semibold">Klien Terbaru</p>
+            <button
+              onClick={() => navigate("/clients")}
+              className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+            >
+              Lihat semua <ExternalLink className="h-3 w-3" />
+            </button>
+          </div>
+          <div className="divide-y">
+            {[...myClients]
+              .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+              .slice(0, 5)
+              .map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => navigate(`/clients/${c.id}`)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 text-left transition-colors"
+                >
+                  <div className="h-7 w-7 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 text-[11px] font-bold shrink-0">
+                    {c.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-medium truncate">{c.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{c.phone ?? "—"}</p>
+                  </div>
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Quick Actions ── */}
+      <div className="grid grid-cols-2 gap-3 pb-4">
+        <Button variant="outline" onClick={() => navigate("/settings")} className="h-10">
+          Edit Profil
+        </Button>
+        <Button
+          onClick={() => navigate("/agent")}
+          className="h-10 bg-orange-500 hover:bg-orange-600 text-white"
+        >
+          Ke Dashboard
+        </Button>
+      </div>
+    </div>
+  );
+}

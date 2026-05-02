@@ -30,6 +30,7 @@ import Reports from "./pages/Reports";
 import AgentCommandCenter from "./pages/AgentCommandCenter";
 import AgentDirectory from "./pages/AgentDirectory";
 import AgentDashboard from "./pages/AgentDashboard";
+import AgentProfile from "./pages/AgentProfile";
 import AgentLeaderboard from "./pages/AgentLeaderboard";
 import AgentMarketingKit from "./pages/AgentMarketingKit";
 import BCTemplates from "./pages/BCTemplates";
@@ -231,6 +232,16 @@ function AnimatedRoutes() {
           <RequireAuth>
             <RequireRole roles={["agent"]}>
               <DashboardLayout><AgentDashboard /></DashboardLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/agent/profile"
+        element={
+          <RequireAuth>
+            <RequireRole roles={["agent"]}>
+              <DashboardLayout><AgentProfile /></DashboardLayout>
             </RequireRole>
           </RequireAuth>
         }

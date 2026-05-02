@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Users, ShoppingBag, Trophy, TrendingUp, Sparkles, Plus, Target,
-  Megaphone, Crown, ChevronRight,
+  Megaphone, Crown, ChevronRight, Wallet, UserCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -96,6 +96,26 @@ export default function AgentDashboard() {
     [myOrders],
   );
 
+  // Fee komisi akumulasi
+  const feeStats = useMemo(() => {
+    const total = myOrders.reduce(
+      (s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0,
+    );
+    const paid = myOrders
+      .filter((o) => o.status === "Paid" || o.status === "Completed")
+      .reduce((s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
+    return { total, paid, pending: total - paid };
+  }, [myOrders]);
+
+  // Portofolio produk
+  const portfolio = useMemo(() => {
+    const types = ["umrah", "flight", "visa_voa", "visa_student"] as const;
+    const counts: Record<string, number> = Object.fromEntries(types.map((t) => [t, 0]));
+    for (const o of myOrders) if (counts[o.type] !== undefined) counts[o.type]++;
+    const max = Math.max(1, ...Object.values(counts));
+    return types.map((t) => ({ type: t, count: counts[t], pct: counts[t] / max }));
+  }, [myOrders]);
+
   // Rank user dibanding agent lain (basic — by total points).
   const rank = useMemo(() => {
     if (!user?.id) return { position: null as number | null, total: 0 };
@@ -125,6 +145,13 @@ export default function AgentDashboard() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
+            <Button
+              variant="secondary"
+              className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur"
+              onClick={() => navigate("/agent/profile")}
+            >
+              <UserCircle className="h-4 w-4 mr-1" /> Profil Saya
+            </Button>
             <Button
               variant="secondary"
               className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur"
@@ -171,6 +198,79 @@ export default function AgentDashboard() {
           </motion.div>
         ))}
       </motion.div>
+
+      {/* ── Fee Komisi + Portofolio Produk ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Fee Komisi Akumulasi */}
+        <div className="rounded-2xl border border-orange-100 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-orange-100 bg-orange-50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-orange-500" />
+              <p className="text-[13px] font-semibold">Fee Komisi Lo</p>
+            </div>
+            <button
+              onClick={() => navigate("/agent/profile")}
+              className="text-[10px] font-semibold text-orange-600 hover:underline"
+            >
+              Detail →
+            </button>
+          </div>
+          <div className="p-4 space-y-2">
+            <div className="text-center pb-1">
+              <div className="text-2xl font-extrabold font-mono">{fmtIDR(feeStats.total)}</div>
+              <div className="text-[10px] text-muted-foreground">total akumulasi</div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2">
+                <div className="text-[9px] text-emerald-700 font-bold uppercase tracking-wide">Terbayar</div>
+                <div className="text-[13px] font-bold font-mono text-emerald-700 mt-0.5">{fmtIDR(feeStats.paid)}</div>
+              </div>
+              <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2">
+                <div className="text-[9px] text-amber-700 font-bold uppercase tracking-wide">Belum Cair</div>
+                <div className="text-[13px] font-bold font-mono text-amber-700 mt-0.5">{fmtIDR(feeStats.pending)}</div>
+              </div>
+            </div>
+            {feeStats.total === 0 && (
+              <p className="text-[10px] text-muted-foreground text-center italic pt-1">
+                Buat order dengan fee komisi untuk mulai akumulasi.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Portofolio Produk */}
+        <div className="rounded-2xl border bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b flex items-center justify-between">
+            <p className="text-[13px] font-semibold">Portofolio Produk</p>
+            <button
+              onClick={() => navigate("/agent/profile")}
+              className="text-[10px] font-semibold text-primary hover:underline"
+            >
+              Detail →
+            </button>
+          </div>
+          <div className="p-4 space-y-2.5">
+            {myOrders.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground text-center py-3 italic">Belum ada order.</p>
+            ) : (
+              portfolio.map(({ type, count, pct }) => (
+                <div key={type}>
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className="font-medium">{ORDER_TYPE_EMOJI[type]} {ORDER_TYPE_LABEL[type]}</span>
+                    <span className="font-mono text-muted-foreground">{count}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-orange-400 to-amber-500 transition-all duration-700"
+                      style={{ width: `${Math.round(pct * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* ── Mission Widget ── */}
       {user?.agencyId && user?.id && (
