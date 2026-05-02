@@ -4,6 +4,7 @@ import {
   StickyNote, FileSpreadsheet, Users, ShoppingBag,
   Plane, FileBadge, Wallet, MessageSquare, Sparkles, Ticket,
   GitBranch, Command, Trophy, BookUser, Megaphone, BarChart3,
+  ChevronRight,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ import { useAuthStore } from "@/store/authStore";
 const BG = "#0f1117";
 const BG_POPUP = "#1c2030";
 const DIVIDER = "rgba(255,255,255,0.07)";
+const SIDEBAR_W = 192;
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -46,9 +48,9 @@ const STAFF_GROUPS: GroupDef[] = [
   },
   {
     key: "hub",
-    label: "Hub",
+    label: "Order Hub",
     items: [
-      { title: "Klien (Jamaah)", url: "/clients", icon: Users },
+      { title: "Klien / Jamaah",  url: "/clients",      icon: Users },
       {
         title: "Order Hub",
         url: "/orders",
@@ -59,12 +61,12 @@ const STAFF_GROUPS: GroupDef[] = [
           { title: "Visa Mesir",    url: "/orders/visa_student", icon: FileBadge },
         ],
       },
-      { title: "Harga Tiket", url: "/ticket-prices", icon: Ticket },
+      { title: "Harga Tiket",    url: "/ticket-prices", icon: Ticket },
     ],
   },
   {
     key: "ops",
-    label: "Ops",
+    label: "Operasional",
     items: [
       { title: "Kalkulator & Kurs", url: "/calculator", icon: Calculator },
       { title: "AI Itinerary",      url: "/itinerary",  icon: Sparkles, badge: "AI" },
@@ -75,16 +77,16 @@ const STAFF_GROUPS: GroupDef[] = [
   },
   {
     key: "marketing",
-    label: "Mkt",
+    label: "Marketing",
     items: [
-      { title: "Template BC WA",       url: "/bc-templates",    icon: MessageSquare },
-      { title: "Export & Member Card", url: "/exports",         icon: FileSpreadsheet },
-      { title: "Marketing Kit",        url: "/agent/marketing", icon: Megaphone },
+      { title: "Template Broadcast", url: "/bc-templates",    icon: MessageSquare },
+      { title: "Export & Manifest",  url: "/exports",         icon: FileSpreadsheet },
+      { title: "Marketing Kit",      url: "/agent/marketing", icon: Megaphone },
     ],
   },
   {
     key: "finance",
-    label: "Fin",
+    label: "Keuangan",
     ownerOnly: true,
     items: [
       { title: "Laporan Keuangan", url: "/reports", icon: BarChart3 },
@@ -92,11 +94,11 @@ const STAFF_GROUPS: GroupDef[] = [
   },
   {
     key: "agent",
-    label: "Agen",
+    label: "Sistem Agen",
     items: [
-      { title: "Kontrol Agen & Misi", url: "/agent-center",      icon: Command,   ownerOnly: true },
-      { title: "Direktori Agen",      url: "/agent-directory",   icon: BookUser },
-      { title: "Leaderboard",         url: "/agent/leaderboard", icon: Trophy },
+      { title: "Kontrol & Misi",  url: "/agent-center",      icon: Command,  ownerOnly: true },
+      { title: "Direktori Agen",  url: "/agent-directory",   icon: BookUser },
+      { title: "Leaderboard",     url: "/agent/leaderboard", icon: Trophy },
     ],
   },
 ];
@@ -110,9 +112,9 @@ const AGENT_GROUPS: GroupDef[] = [
   },
   {
     key: "hub",
-    label: "Hub",
+    label: "Order Hub",
     items: [
-      { title: "Klien (Jamaah)", url: "/clients", icon: Users },
+      { title: "Klien / Jamaah", url: "/clients", icon: Users },
       {
         title: "Order Hub",
         url: "/orders",
@@ -127,197 +129,186 @@ const AGENT_GROUPS: GroupDef[] = [
   },
   {
     key: "marketing",
-    label: "Mkt",
+    label: "Marketing",
     items: [
-      { title: "Template BC WA", url: "/bc-templates",      icon: MessageSquare },
-      { title: "Leaderboard",    url: "/agent/leaderboard", icon: Trophy },
+      { title: "Template Broadcast", url: "/bc-templates",      icon: MessageSquare },
+      { title: "Leaderboard",        url: "/agent/leaderboard", icon: Trophy },
     ],
   },
 ];
 
-// ── Tooltip ────────────────────────────────────────────────────────────────
+// ── Shared item button base ────────────────────────────────────────────────
 
-function Tip({ label, badge, children }: { label: string; badge?: string; children: React.ReactNode }) {
+const itemBase =
+  "relative w-full flex items-center gap-2.5 h-9 px-3 rounded-xl text-left transition-all duration-150 cursor-pointer select-none";
+
+// ── Section divider with label ─────────────────────────────────────────────
+
+function SectionLabel({ label }: { label: string }) {
   return (
-    <div className="relative group/tip w-full flex justify-center">
-      {children}
-      <div className="pointer-events-none absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 z-[300] opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150">
-        <div
-          className="relative flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-[7px] text-[11.5px] font-semibold text-white/90 shadow-2xl"
-          style={{ background: BG_POPUP, border: `1px solid ${DIVIDER}` }}
-        >
-          {/* Arrow pointing left */}
-          <span
-            className="absolute -left-[5px] top-1/2 -translate-y-1/2 w-0 h-0"
-            style={{
-              borderTop: "5px solid transparent",
-              borderBottom: "5px solid transparent",
-              borderRight: `5px solid ${BG_POPUP}`,
-            }}
-          />
-          {label}
-          {badge && (
-            <span className="text-[8.5px] font-bold uppercase tracking-wide px-1 py-0.5 rounded bg-sky-500/25 text-sky-400">
-              {badge}
-            </span>
-          )}
-        </div>
-      </div>
+    <div className="flex items-center gap-2 px-3 pt-3 pb-1">
+      <span
+        className="text-[9.5px] font-black uppercase tracking-[0.14em] whitespace-nowrap shrink-0"
+        style={{ color: "rgba(255,255,255,0.28)" }}
+      >
+        {label}
+      </span>
+      <div className="flex-1 h-px" style={{ background: DIVIDER }} />
     </div>
   );
 }
 
-// ── Icon button shared styles ──────────────────────────────────────────────
+// ── Flyout tooltip (only for items that have children) ────────────────────
 
-const btnBase =
-  "relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-150 cursor-pointer";
-
-// ── Nav item with optional flyout ─────────────────────────────────────────
-
-function ToolItem({ item, onClose }: { item: NavItemDef; onClose?: () => void }) {
+function FlyoutMenu({
+  item,
+  onClose,
+}: {
+  item: NavItemDef & { children: NonNullable<NavItemDef["children"]> };
+  onClose?: () => void;
+}) {
   const location = useLocation();
   const [flyout, setFlyout] = useState(false);
+  const anyChildActive = item.children.some((c) => location.pathname.startsWith(c.url));
+  const active = location.pathname.startsWith(item.url) || anyChildActive;
+  const Icon = item.icon;
+
+  return (
+    <div
+      className="relative w-full"
+      onMouseEnter={() => setFlyout(true)}
+      onMouseLeave={() => setFlyout(false)}
+    >
+      <button
+        className={cn(
+          itemBase,
+          active
+            ? "text-sky-400"
+            : "text-white/40 hover:text-white/80 hover:bg-white/[5%]"
+        )}
+        style={active ? { background: "rgba(14,165,233,0.10)" } : {}}
+      >
+        {active && (
+          <motion.span
+            layoutId="toolbar-pill"
+            className="absolute inset-0 rounded-xl"
+            style={{ background: "rgba(14,165,233,0.10)" }}
+            transition={{ type: "spring", stiffness: 500, damping: 40 }}
+          />
+        )}
+        <Icon
+          strokeWidth={active ? 2.1 : 1.5}
+          className="h-[16px] w-[16px] shrink-0 relative z-10"
+        />
+        <span className="relative z-10 text-[12px] font-medium flex-1 truncate">
+          {item.title}
+        </span>
+        <ChevronRight
+          strokeWidth={1.5}
+          className="h-3 w-3 shrink-0 relative z-10 opacity-50"
+        />
+      </button>
+
+      <AnimatePresence>
+        {flyout && (
+          <motion.div
+            initial={{ opacity: 0, x: 4, scale: 0.97 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 4, scale: 0.97 }}
+            transition={{ duration: 0.13, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute left-[calc(100%+6px)] top-0 z-[300] rounded-xl overflow-hidden shadow-2xl"
+            style={{
+              background: BG_POPUP,
+              border: `1px solid ${DIVIDER}`,
+              minWidth: "170px",
+            }}
+          >
+            <div
+              className="px-3 py-2 text-[9px] font-bold uppercase tracking-widest"
+              style={{ color: "rgba(255,255,255,0.3)", borderBottom: `1px solid ${DIVIDER}` }}
+            >
+              {item.title}
+            </div>
+            {item.children.map((child) => {
+              const ChildIcon = child.icon;
+              const cActive = location.pathname.startsWith(child.url);
+              return (
+                <NavLink
+                  key={child.url}
+                  to={child.url}
+                  onClick={() => { setFlyout(false); onClose?.(); }}
+                  className={cn(
+                    "flex items-center gap-2.5 px-3 py-2.5 text-[12.5px] font-medium transition-colors",
+                    cActive
+                      ? "text-sky-400 bg-sky-500/10"
+                      : "text-white/55 hover:text-white/90 hover:bg-white/[5%]"
+                  )}
+                >
+                  <ChildIcon strokeWidth={cActive ? 2.2 : 1.5} className="h-3.5 w-3.5 shrink-0" />
+                  {child.title}
+                </NavLink>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Regular nav item ───────────────────────────────────────────────────────
+
+function NavItem({ item, onClose }: { item: NavItemDef; onClose?: () => void }) {
+  const Icon = item.icon;
 
   if (item.children) {
-    const anyChildActive = item.children.some((c) =>
-      location.pathname.startsWith(c.url)
-    );
-    const active = location.pathname.startsWith(item.url) || anyChildActive;
-
     return (
-      <Tip label={item.title}>
-        <div
-          className="relative"
-          onMouseEnter={() => setFlyout(true)}
-          onMouseLeave={() => setFlyout(false)}
-        >
-          {/* Parent icon */}
-          <button
-            className={cn(
-              btnBase,
-              active
-                ? "text-sky-400"
-                : "text-white/35 hover:text-white/75 hover:bg-white/[5%]"
-            )}
-            style={active ? { background: "rgba(14,165,233,0.12)" } : {}}
-          >
-            {active && (
-              <motion.span
-                layoutId="toolbar-pill"
-                className="absolute inset-0 rounded-xl"
-                style={{ background: "rgba(14,165,233,0.12)" }}
-                transition={{ type: "spring", stiffness: 500, damping: 40 }}
-              />
-            )}
-            <item.icon
-              strokeWidth={active ? 2.1 : 1.5}
-              className="h-[19px] w-[19px] relative z-10"
-            />
-          </button>
-
-          {/* Flyout panel */}
-          <AnimatePresence>
-            {flyout && (
-              <motion.div
-                initial={{ opacity: 0, x: 6, scale: 0.96 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: 6, scale: 0.96 }}
-                transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute left-[calc(100%+10px)] top-0 z-[300] rounded-xl overflow-hidden shadow-2xl"
-                style={{
-                  background: BG_POPUP,
-                  border: `1px solid ${DIVIDER}`,
-                  minWidth: "165px",
-                }}
-              >
-                <div
-                  className="px-3 py-2 text-[9px] font-bold uppercase tracking-widest"
-                  style={{ color: "rgba(255,255,255,0.3)", borderBottom: `1px solid ${DIVIDER}` }}
-                >
-                  {item.title}
-                </div>
-                {item.children.map((child) => {
-                  const ChildIcon = child.icon;
-                  const cActive = location.pathname.startsWith(child.url);
-                  return (
-                    <NavLink
-                      key={child.url}
-                      to={child.url}
-                      onClick={() => { setFlyout(false); onClose?.(); }}
-                      className={cn(
-                        "flex items-center gap-2.5 px-3 py-2.5 text-[12.5px] font-medium transition-colors",
-                        cActive
-                          ? "text-sky-400 bg-sky-500/10"
-                          : "text-white/55 hover:text-white/90 hover:bg-white/[5%]"
-                      )}
-                    >
-                      <ChildIcon strokeWidth={cActive ? 2.2 : 1.5} className="h-3.5 w-3.5 shrink-0" />
-                      {child.title}
-                    </NavLink>
-                  );
-                })}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </Tip>
+      <FlyoutMenu
+        item={item as NavItemDef & { children: NonNullable<NavItemDef["children"]> }}
+        onClose={onClose}
+      />
     );
   }
 
   return (
-    <Tip label={item.title} badge={item.badge}>
-      <NavLink
-        to={item.url}
-        end={item.end}
-        onClick={onClose}
-        className={({ isActive }) =>
-          cn(
-            btnBase,
-            isActive
-              ? "text-sky-400"
-              : "text-white/35 hover:text-white/75 hover:bg-white/[5%]"
-          )
-        }
-      >
-        {({ isActive }) => (
-          <>
-            {isActive && (
-              <motion.span
-                layoutId="toolbar-pill"
-                className="absolute inset-0 rounded-xl"
-                style={{ background: "rgba(14,165,233,0.12)" }}
-                transition={{ type: "spring", stiffness: 500, damping: 40 }}
-              />
-            )}
-            <item.icon
-              strokeWidth={isActive ? 2.1 : 1.5}
-              className="h-[19px] w-[19px] relative z-10 transition-colors"
+    <NavLink
+      to={item.url}
+      end={item.end}
+      onClick={onClose}
+      className={({ isActive }) =>
+        cn(
+          itemBase,
+          isActive
+            ? "text-sky-400"
+            : "text-white/40 hover:text-white/80 hover:bg-white/[5%]"
+        )
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <motion.span
+              layoutId="toolbar-pill"
+              className="absolute inset-0 rounded-xl"
+              style={{ background: "rgba(14,165,233,0.10)" }}
+              transition={{ type: "spring", stiffness: 500, damping: 40 }}
             />
-            {item.badge && isActive && (
-              <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-sky-400 z-10" />
-            )}
-          </>
-        )}
-      </NavLink>
-    </Tip>
-  );
-}
-
-// ── Section divider with optional category label ───────────────────────────
-
-function Divider({ label }: { label?: string }) {
-  return (
-    <div className="flex flex-col items-center w-full mt-2 mb-1.5">
-      {label && (
-        <span
-          className="text-[7px] font-black uppercase tracking-[0.18em] mb-1 select-none"
-          style={{ color: "rgba(255,255,255,0.2)" }}
-        >
-          {label}
-        </span>
+          )}
+          <Icon
+            strokeWidth={isActive ? 2.1 : 1.5}
+            className="h-[16px] w-[16px] shrink-0 relative z-10"
+          />
+          <span className="relative z-10 text-[12px] font-medium flex-1 truncate">
+            {item.title}
+          </span>
+          {item.badge && (
+            <span className="relative z-10 text-[8px] font-black uppercase tracking-wide px-1 py-px rounded bg-sky-500/20 text-sky-400 shrink-0">
+              {item.badge}
+            </span>
+          )}
+        </>
       )}
-      <div className="w-7 h-px" style={{ background: DIVIDER }} />
-    </div>
+    </NavLink>
   );
 }
 
@@ -338,115 +329,127 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
 
   const toolbar = (
     <aside
-      className="flex h-full flex-col items-center py-3 shrink-0"
+      className="flex h-full flex-col py-3 shrink-0"
       style={{
-        width: "64px",
+        width: `${SIDEBAR_W}px`,
         background: BG,
         borderRight: `1px solid ${DIVIDER}`,
       }}
     >
-      {/* ── Logo ── */}
-      <div className="flex items-center justify-center w-full mb-2.5 shrink-0">
+      {/* ── Logo + brand ── */}
+      <div className="flex items-center gap-2.5 px-4 mb-2 shrink-0">
         <img
           src="/temantiket-logo.png"
           alt="Temantiket"
-          className="h-6 w-6 object-contain"
+          className="h-5 w-5 object-contain shrink-0"
           style={{ filter: "brightness(0) invert(1) opacity(0.85)" }}
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
         />
+        <span
+          className="text-[12.5px] font-bold tracking-tight"
+          style={{ color: "rgba(255,255,255,0.82)" }}
+        >
+          temantiket
+        </span>
       </div>
 
-      {/* Sky accent line under logo */}
+      {/* Sky accent line */}
       <div
-        className="w-7 mb-3 shrink-0"
-        style={{ height: "1.5px", background: "linear-gradient(90deg, transparent, rgba(14,165,233,0.6), transparent)" }}
+        className="mx-4 mb-3 shrink-0"
+        style={{ height: "1px", background: "linear-gradient(90deg, rgba(14,165,233,0.6), transparent)" }}
       />
 
       {/* ── Nav groups ── */}
       <div
-        className="flex-1 w-full flex flex-col items-center overflow-y-auto pb-2"
+        className="flex-1 w-full overflow-y-auto"
         style={{ scrollbarWidth: "none" }}
       >
-        {groups.map((group, gi) => {
-          const visibleItems = group.items.filter(
-            (item) => !item.ownerOnly || isOwner
-          );
-          if (visibleItems.length === 0) return null;
-          return (
-            <div key={group.key} className="w-full flex flex-col items-center">
-              {gi > 0 && <Divider label={group.label} />}
-              <div className="flex flex-col items-center gap-0.5 w-full px-2">
+        <div className="px-2 pb-3 space-y-px">
+          {groups.map((group, gi) => {
+            const visibleItems = group.items.filter(
+              (item) => !item.ownerOnly || isOwner
+            );
+            if (visibleItems.length === 0) return null;
+            return (
+              <div key={group.key}>
+                {gi > 0 && group.label && (
+                  <SectionLabel label={group.label} />
+                )}
                 {visibleItems.map((item) => (
-                  <ToolItem key={item.url} item={item} onClose={onClose} />
+                  <NavItem key={item.url} item={item} onClose={onClose} />
                 ))}
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Bottom actions ── */}
       <div
-        className="shrink-0 w-full flex flex-col items-center gap-0.5 pt-2 px-2"
+        className="shrink-0 px-2 pt-2 space-y-px"
         style={{ borderTop: `1px solid ${DIVIDER}` }}
       >
-        {/* Profile avatar */}
+        {/* Profile */}
         {user && (
-          <Tip label={`${user.displayName} · ${user.role}`}>
-            <div className={cn(btnBase, "cursor-default")}>
-              <div
-                className="h-7 w-7 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center shadow-lg"
-                style={{ boxShadow: "0 0 10px rgba(14,165,233,0.35)" }}
-              >
-                <span className="text-[11px] font-bold text-white leading-none">
-                  {user.displayName.charAt(0).toUpperCase()}
-                </span>
-              </div>
+          <div className={cn(itemBase, "cursor-default text-white/50 pointer-events-none")}>
+            <div
+              className="h-6 w-6 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center shrink-0 shadow-md"
+              style={{ boxShadow: "0 0 8px rgba(14,165,233,0.3)" }}
+            >
+              <span className="text-[10px] font-bold text-white leading-none">
+                {user.displayName.charAt(0).toUpperCase()}
+              </span>
             </div>
-          </Tip>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11.5px] font-semibold truncate" style={{ color: "rgba(255,255,255,0.7)" }}>
+                {user.displayName}
+              </p>
+              <p className="text-[9.5px] capitalize" style={{ color: "rgba(255,255,255,0.3)" }}>
+                {user.role}
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Settings */}
-        <Tip label="Pengaturan">
-          <NavLink
-            to="/settings"
-            onClick={onClose}
-            className={({ isActive }) =>
-              cn(btnBase, isActive ? "text-sky-400" : "text-white/35 hover:text-white/75 hover:bg-white/[5%]")
-            }
-          >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <motion.span
-                    layoutId="toolbar-pill"
-                    className="absolute inset-0 rounded-xl"
-                    style={{ background: "rgba(14,165,233,0.12)" }}
-                    transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                  />
-                )}
-                <Settings strokeWidth={isActive ? 2.1 : 1.5} className="h-[19px] w-[19px] relative z-10" />
-              </>
-            )}
-          </NavLink>
-        </Tip>
+        <NavLink
+          to="/settings"
+          onClick={onClose}
+          className={({ isActive }) =>
+            cn(itemBase, isActive ? "text-sky-400" : "text-white/35 hover:text-white/75 hover:bg-white/[5%]")
+          }
+        >
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <motion.span
+                  layoutId="toolbar-pill"
+                  className="absolute inset-0 rounded-xl"
+                  style={{ background: "rgba(14,165,233,0.10)" }}
+                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                />
+              )}
+              <Settings strokeWidth={isActive ? 2.1 : 1.5} className="h-[16px] w-[16px] shrink-0 relative z-10" />
+              <span className="relative z-10 text-[12px] font-medium">Pengaturan</span>
+            </>
+          )}
+        </NavLink>
 
         {/* Logout */}
-        <Tip label="Keluar">
-          <button
-            onClick={() => { logout(); onClose?.(); }}
-            className={cn(btnBase, "text-white/30 hover:text-red-400 hover:bg-red-500/[8%]")}
-          >
-            <LogOut strokeWidth={1.5} className="h-[19px] w-[19px] transition-colors" />
-          </button>
-        </Tip>
+        <button
+          onClick={() => { logout(); onClose?.(); }}
+          className={cn(itemBase, "text-white/30 hover:text-red-400 hover:bg-red-500/[8%]")}
+        >
+          <LogOut strokeWidth={1.5} className="h-[16px] w-[16px] shrink-0" />
+          <span className="text-[12px] font-medium">Keluar</span>
+        </button>
       </div>
     </aside>
   );
 
   return (
     <>
-      {/* Desktop — always-visible slim toolbar */}
+      {/* Desktop — always-visible sidebar */}
       <div className="hidden md:flex shrink-0">{toolbar}</div>
 
       {/* Mobile — slide-in overlay */}
