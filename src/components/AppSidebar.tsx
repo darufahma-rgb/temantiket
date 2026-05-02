@@ -1,27 +1,20 @@
 import { useState } from "react";
 import {
-  LayoutDashboard, Calculator, Package, LogOut, Settings, X,
-  ShieldCheck, StickyNote, FileSpreadsheet, Users, ShoppingBag,
-  ChevronDown, Plane, FileBadge, Wallet, Megaphone, Crown,
-  MessageSquare, Sparkles, Ticket, GitBranch, Command, Trophy,
-  CreditCard, BookUser,
+  LayoutDashboard, Calculator, Package, LogOut, Settings,
+  StickyNote, FileSpreadsheet, Users, ShoppingBag,
+  Plane, FileBadge, Wallet, MessageSquare, Sparkles, Ticket,
+  GitBranch, Command, Trophy, BookUser,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence, type Variants } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
 
-// ── Animation variants ─────────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────
 
-const stagger: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.035, delayChildren: 0.04 } },
-};
-
-const itemVariant: Variants = {
-  hidden: { opacity: 0, x: -8 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } },
-};
+const BG = "#0f1117";
+const BG_POPUP = "#1c2030";
+const DIVIDER = "rgba(255,255,255,0.07)";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -31,409 +24,413 @@ interface NavItemDef {
   icon: React.ElementType;
   end?: boolean;
   badge?: string;
+  children?: Omit<NavItemDef, "children">[];
 }
 
-interface SectionDef {
+interface GroupDef {
   key: string;
-  label: string;
   items: NavItemDef[];
-  collapsible?: boolean;
   ownerOnly?: boolean;
 }
+
+// ── Nav structure ──────────────────────────────────────────────────────────
+
+const STAFF_GROUPS: GroupDef[] = [
+  {
+    key: "main",
+    items: [
+      { title: "Dashboard", url: "/", icon: LayoutDashboard, end: true },
+    ],
+  },
+  {
+    key: "orders",
+    items: [
+      { title: "Klien", url: "/clients", icon: Users },
+      {
+        title: "Order Hub",
+        url: "/orders",
+        icon: ShoppingBag,
+        children: [
+          { title: "Umrah & Haji",  url: "/orders/umrah",        icon: Package },
+          { title: "Tiket Pesawat", url: "/orders/flight",       icon: Plane },
+          { title: "Visa Mesir",    url: "/orders/visa_student", icon: FileBadge },
+        ],
+      },
+      { title: "Harga Tiket",     url: "/ticket-prices",   icon: Ticket },
+      { title: "Direktori Agen",  url: "/agent-directory", icon: BookUser },
+    ],
+  },
+  {
+    key: "ai",
+    items: [
+      { title: "AI Itinerary", url: "/itinerary", icon: Sparkles, badge: "AI" },
+    ],
+  },
+  {
+    key: "ops",
+    items: [
+      { title: "Kalkulator & Kurs", url: "/calculator", icon: Calculator },
+      { title: "Paket Trip",        url: "/packages",   icon: Package },
+      { title: "Progress Jamaah",   url: "/progress",   icon: GitBranch },
+      { title: "Catatan",           url: "/notes",      icon: StickyNote },
+    ],
+  },
+  {
+    key: "marketing",
+    items: [
+      { title: "Template BC WA",   url: "/bc-templates", icon: MessageSquare },
+      { title: "Export & Member Card", url: "/exports",  icon: FileSpreadsheet },
+    ],
+  },
+  {
+    key: "admin",
+    ownerOnly: true,
+    items: [
+      { title: "Laporan Keuangan",    url: "/reports",      icon: Wallet },
+      { title: "Kontrol Agen & Misi", url: "/agent-center", icon: Command },
+    ],
+  },
+];
+
+const AGENT_GROUPS: GroupDef[] = [
+  {
+    key: "main",
+    items: [
+      { title: "Mitra Dashboard", url: "/agent", icon: Trophy, end: true },
+    ],
+  },
+  {
+    key: "orders",
+    items: [
+      { title: "Klien", url: "/clients", icon: Users },
+      {
+        title: "Order Hub",
+        url: "/orders",
+        icon: ShoppingBag,
+        children: [
+          { title: "Umrah & Haji",  url: "/orders/umrah",        icon: Package },
+          { title: "Tiket Pesawat", url: "/orders/flight",       icon: Plane },
+          { title: "Visa Mesir",    url: "/orders/visa_student", icon: FileBadge },
+        ],
+      },
+    ],
+  },
+  {
+    key: "marketing",
+    items: [
+      { title: "Template BC WA", url: "/bc-templates",     icon: MessageSquare },
+      { title: "Leaderboard",    url: "/agent/leaderboard", icon: Trophy },
+    ],
+  },
+];
+
+// ── Tooltip ────────────────────────────────────────────────────────────────
+
+function Tip({ label, badge, children }: { label: string; badge?: string; children: React.ReactNode }) {
+  return (
+    <div className="relative group/tip w-full flex justify-center">
+      {children}
+      <div className="pointer-events-none absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 z-[300] opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150">
+        <div
+          className="relative flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-[7px] text-[11.5px] font-semibold text-white/90 shadow-2xl"
+          style={{ background: BG_POPUP, border: `1px solid ${DIVIDER}` }}
+        >
+          {/* Arrow pointing left */}
+          <span
+            className="absolute -left-[5px] top-1/2 -translate-y-1/2 w-0 h-0"
+            style={{
+              borderTop: "5px solid transparent",
+              borderBottom: "5px solid transparent",
+              borderRight: `5px solid ${BG_POPUP}`,
+            }}
+          />
+          {label}
+          {badge && (
+            <span className="text-[8.5px] font-bold uppercase tracking-wide px-1 py-0.5 rounded bg-sky-500/25 text-sky-400">
+              {badge}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Icon button shared styles ──────────────────────────────────────────────
+
+const btnBase =
+  "relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-150 cursor-pointer";
+
+// ── Nav item with optional flyout ─────────────────────────────────────────
+
+function ToolItem({ item, onClose }: { item: NavItemDef; onClose?: () => void }) {
+  const location = useLocation();
+  const [flyout, setFlyout] = useState(false);
+
+  if (item.children) {
+    const anyChildActive = item.children.some((c) =>
+      location.pathname.startsWith(c.url)
+    );
+    const active = location.pathname.startsWith(item.url) || anyChildActive;
+
+    return (
+      <Tip label={item.title}>
+        <div
+          className="relative"
+          onMouseEnter={() => setFlyout(true)}
+          onMouseLeave={() => setFlyout(false)}
+        >
+          {/* Parent icon */}
+          <button
+            className={cn(
+              btnBase,
+              active
+                ? "text-sky-400"
+                : "text-white/35 hover:text-white/75 hover:bg-white/[5%]"
+            )}
+            style={active ? { background: "rgba(14,165,233,0.12)" } : {}}
+          >
+            {active && (
+              <motion.span
+                layoutId="toolbar-pill"
+                className="absolute inset-0 rounded-xl"
+                style={{ background: "rgba(14,165,233,0.12)" }}
+                transition={{ type: "spring", stiffness: 500, damping: 40 }}
+              />
+            )}
+            <item.icon
+              strokeWidth={active ? 2.1 : 1.5}
+              className="h-[19px] w-[19px] relative z-10"
+            />
+          </button>
+
+          {/* Flyout panel */}
+          <AnimatePresence>
+            {flyout && (
+              <motion.div
+                initial={{ opacity: 0, x: 6, scale: 0.96 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 6, scale: 0.96 }}
+                transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute left-[calc(100%+10px)] top-0 z-[300] rounded-xl overflow-hidden shadow-2xl"
+                style={{
+                  background: BG_POPUP,
+                  border: `1px solid ${DIVIDER}`,
+                  minWidth: "165px",
+                }}
+              >
+                <div
+                  className="px-3 py-2 text-[9px] font-bold uppercase tracking-widest"
+                  style={{ color: "rgba(255,255,255,0.3)", borderBottom: `1px solid ${DIVIDER}` }}
+                >
+                  {item.title}
+                </div>
+                {item.children.map((child) => {
+                  const ChildIcon = child.icon;
+                  const cActive = location.pathname.startsWith(child.url);
+                  return (
+                    <NavLink
+                      key={child.url}
+                      to={child.url}
+                      onClick={() => { setFlyout(false); onClose?.(); }}
+                      className={cn(
+                        "flex items-center gap-2.5 px-3 py-2.5 text-[12.5px] font-medium transition-colors",
+                        cActive
+                          ? "text-sky-400 bg-sky-500/10"
+                          : "text-white/55 hover:text-white/90 hover:bg-white/[5%]"
+                      )}
+                    >
+                      <ChildIcon strokeWidth={cActive ? 2.2 : 1.5} className="h-3.5 w-3.5 shrink-0" />
+                      {child.title}
+                    </NavLink>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </Tip>
+    );
+  }
+
+  return (
+    <Tip label={item.title} badge={item.badge}>
+      <NavLink
+        to={item.url}
+        end={item.end}
+        onClick={onClose}
+        className={({ isActive }) =>
+          cn(
+            btnBase,
+            isActive
+              ? "text-sky-400"
+              : "text-white/35 hover:text-white/75 hover:bg-white/[5%]"
+          )
+        }
+      >
+        {({ isActive }) => (
+          <>
+            {isActive && (
+              <motion.span
+                layoutId="toolbar-pill"
+                className="absolute inset-0 rounded-xl"
+                style={{ background: "rgba(14,165,233,0.12)" }}
+                transition={{ type: "spring", stiffness: 500, damping: 40 }}
+              />
+            )}
+            <item.icon
+              strokeWidth={isActive ? 2.1 : 1.5}
+              className="h-[19px] w-[19px] relative z-10 transition-colors"
+            />
+            {item.badge && isActive && (
+              <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-sky-400 z-10" />
+            )}
+          </>
+        )}
+      </NavLink>
+    </Tip>
+  );
+}
+
+// ── Section divider ────────────────────────────────────────────────────────
+
+function Divider() {
+  return (
+    <div className="flex justify-center w-full my-1.5">
+      <div className="w-7 h-px" style={{ background: DIVIDER }} />
+    </div>
+  );
+}
+
+// ── Main sidebar component ─────────────────────────────────────────────────
 
 interface AppSidebarProps {
   open?: boolean;
   onClose?: () => void;
 }
 
-// ── Nav item component ─────────────────────────────────────────────────────
-
-function NavItem({ title, url, icon: Icon, end = false, badge, onClose }: NavItemDef & { onClose?: () => void }) {
-  const location = useLocation();
-  const active = end
-    ? location.pathname === url
-    : url === "/" ? location.pathname === "/" : location.pathname.startsWith(url);
-
-  return (
-    <NavLink
-      to={url}
-      end={end}
-      onClick={onClose}
-      className={cn(
-        "relative flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium rounded-xl transition-all duration-150 group",
-        active
-          ? "text-sky-600 bg-sky-50"
-          : "text-muted-foreground hover:text-foreground hover:bg-secondary/60 hover:translate-x-0.5",
-      )}
-    >
-      {active && (
-        <motion.span
-          layoutId="sidebar-active-pill"
-          className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-sky-500"
-          transition={{ type: "spring", stiffness: 480, damping: 36 }}
-        />
-      )}
-      <Icon
-        strokeWidth={active ? 2.2 : 1.6}
-        className={cn(
-          "h-[16px] w-[16px] shrink-0 transition-colors duration-150",
-          active ? "text-sky-500" : "",
-        )}
-      />
-      <span className="flex-1 leading-none">{title}</span>
-      {badge && (
-        <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600">
-          {badge}
-        </span>
-      )}
-    </NavLink>
-  );
-}
-
-// ── Collapsible Orders sub-nav ─────────────────────────────────────────────
-
-const ORDER_CHILDREN: NavItemDef[] = [
-  { title: "Umrah & Haji",    url: "/orders/umrah",        icon: Package,   end: false },
-  { title: "Tiket Pesawat",   url: "/orders/flight",       icon: Plane,     end: false },
-  { title: "Visa Mesir",      url: "/orders/visa_student", icon: FileBadge, end: false },
-];
-
-function OrdersGroup({ onClose }: { onClose?: () => void }) {
-  const location = useLocation();
-  const groupActive = location.pathname.startsWith("/orders");
-  const [open, setOpen] = useState<boolean>(() => groupActive);
-
-  const isChildActive = (url: string) => {
-    const type = url.split("/").pop() ?? "";
-    return location.pathname === `/orders/${type}` || location.pathname.startsWith(`/orders/${type}/`);
-  };
-
-  return (
-    <div>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "w-full flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium rounded-xl transition-all duration-150",
-          groupActive
-            ? "text-sky-600 bg-sky-50"
-            : "text-muted-foreground hover:text-foreground hover:bg-secondary/60",
-        )}
-      >
-        {groupActive && (
-          <span className="absolute left-0 h-5 w-[3px] rounded-r-full bg-sky-500" />
-        )}
-        <ShoppingBag strokeWidth={groupActive ? 2.2 : 1.6} className={cn("h-[16px] w-[16px] shrink-0", groupActive ? "text-sky-500" : "")} />
-        <span className="flex-1 leading-none text-left">Orders</span>
-        <ChevronDown
-          strokeWidth={1.5}
-          className={cn("h-3.5 w-3.5 shrink-0 transition-transform duration-200", open && "rotate-180")}
-        />
-      </button>
-
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="ml-3 pl-3 border-l border-border/60 mt-0.5 space-y-0.5 mb-0.5">
-              {ORDER_CHILDREN.map((item) => {
-                const active = isChildActive(item.url);
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.url}
-                    to={item.url}
-                    onClick={onClose}
-                    className={cn(
-                      "flex items-center gap-2.5 px-3 py-1.5 text-[12.5px] font-medium rounded-lg transition-colors duration-150",
-                      active
-                        ? "text-sky-600 bg-sky-50"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/60",
-                    )}
-                  >
-                    <Icon strokeWidth={active ? 2.2 : 1.6} className={cn("h-[14px] w-[14px] shrink-0", active ? "text-sky-500" : "")} />
-                    <span className="flex-1 leading-none">{item.title}</span>
-                  </NavLink>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ── Collapsible section wrapper ────────────────────────────────────────────
-
-function CollapsibleSection({
-  label, items, defaultOpen = true, onClose,
-}: {
-  label: string;
-  items: NavItemDef[];
-  defaultOpen?: boolean;
-  onClose?: () => void;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-1 px-3 py-1 mb-0.5 group"
-      >
-        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 group-hover:text-muted-foreground transition-colors">
-          {label}
-        </span>
-        <ChevronDown
-          strokeWidth={1.5}
-          className={cn("h-3 w-3 text-muted-foreground/40 ml-auto transition-transform duration-200", open && "rotate-180")}
-        />
-      </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden space-y-0.5"
-          >
-            {items.map((item) => (
-              <NavItem key={item.url} {...item} onClose={onClose} />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ── Section label (non-collapsible) ────────────────────────────────────────
-
-function SectionLabel({ label }: { label: string }) {
-  return (
-    <div className="px-3 py-1 mb-0.5">
-      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function SectionDivider() {
-  return <div className="mx-3 border-t border-border/50 my-1" />;
-}
-
-// ── Main sidebar ───────────────────────────────────────────────────────────
-
 export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
   const { user, logout } = useAuthStore();
   const isOwner = user?.role === "owner";
   const isAgent = user?.role === "agent";
 
-  // Sections for agent (minimal view)
-  const agentContent = (
-    <>
-      <motion.div variants={itemVariant}>
-        <NavItem title="Mitra Dashboard" url="/agent" icon={Trophy} end onClose={onClose} />
-      </motion.div>
+  const groups = isAgent
+    ? AGENT_GROUPS
+    : STAFF_GROUPS.filter((g) => !g.ownerOnly || isOwner);
 
-      <SectionDivider />
-      <motion.div variants={itemVariant}><SectionLabel label="Order Hub" /></motion.div>
-      <motion.div variants={itemVariant}>
-        <NavItem title="Klien" url="/clients" icon={Users} onClose={onClose} />
-      </motion.div>
-      <motion.div variants={itemVariant}><OrdersGroup onClose={onClose} /></motion.div>
-
-      <SectionDivider />
-      <motion.div variants={itemVariant}><SectionLabel label="Marketing" /></motion.div>
-      <motion.div variants={itemVariant}>
-        <NavItem title="Template BC WA" url="/bc-templates" icon={MessageSquare} onClose={onClose} />
-      </motion.div>
-      <motion.div variants={itemVariant}>
-        <NavItem title="Marketing Kit" url="/agent/marketing" icon={Megaphone} onClose={onClose} />
-      </motion.div>
-      <motion.div variants={itemVariant}>
-        <NavItem title="Leaderboard" url="/agent/leaderboard" icon={Crown} onClose={onClose} />
-      </motion.div>
-    </>
-  );
-
-  // Sections for owner/staff (full view)
-  const staffContent = (
-    <>
-      {/* MAIN */}
-      <motion.div variants={itemVariant}>
-        <NavItem title="Dashboard" url="/" icon={LayoutDashboard} end onClose={onClose} />
-      </motion.div>
-
-      <SectionDivider />
-
-      {/* ORDER HUB */}
-      <motion.div variants={itemVariant}><SectionLabel label="Order Hub" /></motion.div>
-      <motion.div variants={itemVariant}>
-        <NavItem title="Klien" url="/clients" icon={Users} onClose={onClose} />
-      </motion.div>
-      <motion.div variants={itemVariant}><OrdersGroup onClose={onClose} /></motion.div>
-      <motion.div variants={itemVariant}>
-        <NavItem title="Daftar Harga Tiket" url="/ticket-prices" icon={Ticket} onClose={onClose} />
-      </motion.div>
-      <motion.div variants={itemVariant}>
-        <NavItem title="Direktori Agen" url="/agent-directory" icon={BookUser} onClose={onClose} />
-      </motion.div>
-
-      <SectionDivider />
-
-      {/* AI TOOLS */}
-      <motion.div variants={itemVariant}>
-        <CollapsibleSection
-          label="AI Tools"
-          defaultOpen
-          onClose={onClose}
-          items={[
-            { title: "AI Itinerary Generator", url: "/itinerary",      icon: Sparkles,  badge: "AI" },
-            { title: "Smart Price Importer",    url: "/ticket-prices",  icon: CreditCard, badge: "AI" },
-          ]}
-        />
-      </motion.div>
-
-      <SectionDivider />
-
-      {/* OPERASIONAL */}
-      <motion.div variants={itemVariant}>
-        <CollapsibleSection
-          label="Operasional"
-          defaultOpen
-          onClose={onClose}
-          items={[
-            { title: "Kalkulator & Kurs",  url: "/calculator", icon: Calculator },
-            { title: "Paket Trip",          url: "/packages",   icon: Package },
-            { title: "Progress Jamaah",     url: "/progress",   icon: GitBranch },
-            { title: "Catatan",             url: "/notes",      icon: StickyNote },
-          ]}
-        />
-      </motion.div>
-
-      <SectionDivider />
-
-      {/* MARKETING */}
-      <motion.div variants={itemVariant}>
-        <CollapsibleSection
-          label="Marketing"
-          defaultOpen
-          onClose={onClose}
-          items={[
-            { title: "Template BC WA",       url: "/bc-templates", icon: MessageSquare },
-            { title: "Export & Member Card",  url: "/exports",      icon: FileSpreadsheet },
-          ]}
-        />
-      </motion.div>
-
-      {/* ADMIN — owner only */}
-      {isOwner && (
-        <>
-          <SectionDivider />
-          <motion.div variants={itemVariant}>
-            <CollapsibleSection
-              label="Admin"
-              defaultOpen={false}
-              onClose={onClose}
-              items={[
-                { title: "Laporan Keuangan",    url: "/reports",       icon: Wallet },
-                { title: "Kontrol Agen & Misi", url: "/agent-center",  icon: Command },
-              ]}
-            />
-          </motion.div>
-        </>
-      )}
-    </>
-  );
-
-  const sidebarContent = (
+  const toolbar = (
     <aside
-      className="flex h-full flex-col border-r border-border bg-white/98 backdrop-blur-sm max-md:rounded-r-3xl max-md:border"
-      style={{ width: "var(--sidebar-width, 228px)", boxShadow: "2px 0 16px rgba(0,0,0,0.04)" }}
+      className="flex h-full flex-col items-center py-3 shrink-0"
+      style={{
+        width: "64px",
+        background: BG,
+        borderRight: `1px solid ${DIVIDER}`,
+      }}
     >
-      {/* ── Logo header ── */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0">
-        <div className="flex items-center gap-2">
-          <img
-            src="/temantiket-logo.png"
-            alt="Temantiket"
-            className="h-7 w-auto object-contain"
-          />
-        </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="md:hidden h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-secondary transition-colors"
-          >
-            <X strokeWidth={1.5} className="h-4 w-4" />
-          </button>
-        )}
+      {/* ── Logo ── */}
+      <div className="flex items-center justify-center w-full mb-2.5 shrink-0">
+        <img
+          src="/temantiket-logo.png"
+          alt="Temantiket"
+          className="h-6 w-6 object-contain"
+          style={{ filter: "brightness(0) invert(1) opacity(0.85)" }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+        />
       </div>
 
-      {/* Thin accent line below logo */}
-      <div className="mx-4 mb-3 h-px bg-gradient-to-r from-sky-200/80 via-sky-100/40 to-transparent" />
+      {/* Sky accent line under logo */}
+      <div
+        className="w-7 mb-3 shrink-0"
+        style={{ height: "1.5px", background: "linear-gradient(90deg, transparent, rgba(14,165,233,0.6), transparent)" }}
+      />
 
-      {/* ── Nav ── */}
-      <motion.div
-        className="flex-1 overflow-y-auto px-2 space-y-0.5 pb-3"
-        variants={stagger}
-        initial="hidden"
-        animate="visible"
+      {/* ── Nav groups ── */}
+      <div
+        className="flex-1 w-full flex flex-col items-center overflow-y-auto pb-2"
+        style={{ scrollbarWidth: "none" }}
       >
-        {isAgent ? agentContent : staffContent}
-      </motion.div>
-
-      {/* ── Bottom user + settings ── */}
-      <div className="shrink-0 mx-2 pb-3 pt-2 border-t border-border space-y-0.5">
-        {user && (
-          <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1.5 rounded-xl bg-sky-50 border border-sky-100/80">
-            <div className="h-7 w-7 rounded-full bg-sky-500 flex items-center justify-center shrink-0">
-              <ShieldCheck className="h-3.5 w-3.5 text-white" strokeWidth={2} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[12px] font-bold text-sky-800 truncate leading-tight">
-                {user.displayName}
-              </p>
-              <p className="text-[9.5px] text-sky-400 uppercase tracking-widest font-semibold">
-                {user.role}
-              </p>
+        {groups.map((group, gi) => (
+          <div key={group.key} className="w-full flex flex-col items-center">
+            {gi > 0 && <Divider />}
+            <div className="flex flex-col items-center gap-0.5 w-full px-2">
+              {group.items.map((item) => (
+                <ToolItem key={item.url} item={item} onClose={onClose} />
+              ))}
             </div>
           </div>
+        ))}
+      </div>
+
+      {/* ── Bottom actions ── */}
+      <div
+        className="shrink-0 w-full flex flex-col items-center gap-0.5 pt-2 px-2"
+        style={{ borderTop: `1px solid ${DIVIDER}` }}
+      >
+        {/* Profile avatar */}
+        {user && (
+          <Tip label={`${user.displayName} · ${user.role}`}>
+            <div className={cn(btnBase, "cursor-default")}>
+              <div
+                className="h-7 w-7 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center shadow-lg"
+                style={{ boxShadow: "0 0 10px rgba(14,165,233,0.35)" }}
+              >
+                <span className="text-[11px] font-bold text-white leading-none">
+                  {user.displayName.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            </div>
+          </Tip>
         )}
 
-        <NavItem title="Pengaturan" url="/settings" icon={Settings} onClose={onClose} />
+        {/* Settings */}
+        <Tip label="Pengaturan">
+          <NavLink
+            to="/settings"
+            onClick={onClose}
+            className={({ isActive }) =>
+              cn(btnBase, isActive ? "text-sky-400" : "text-white/35 hover:text-white/75 hover:bg-white/[5%]")
+            }
+          >
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <motion.span
+                    layoutId="toolbar-pill"
+                    className="absolute inset-0 rounded-xl"
+                    style={{ background: "rgba(14,165,233,0.12)" }}
+                    transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                  />
+                )}
+                <Settings strokeWidth={isActive ? 2.1 : 1.5} className="h-[19px] w-[19px] relative z-10" />
+              </>
+            )}
+          </NavLink>
+        </Tip>
 
-        <button
-          onClick={() => { logout(); onClose?.(); }}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium rounded-xl transition-all duration-150 text-muted-foreground hover:text-red-500 hover:bg-red-50 group"
-        >
-          <LogOut strokeWidth={1.6} className="h-[16px] w-[16px] shrink-0 group-hover:text-red-500 transition-colors" />
-          <span className="flex-1 leading-none text-left">Keluar</span>
-        </button>
+        {/* Logout */}
+        <Tip label="Keluar">
+          <button
+            onClick={() => { logout(); onClose?.(); }}
+            className={cn(btnBase, "text-white/30 hover:text-red-400 hover:bg-red-500/[8%]")}
+          >
+            <LogOut strokeWidth={1.5} className="h-[19px] w-[19px] transition-colors" />
+          </button>
+        </Tip>
       </div>
     </aside>
   );
 
   return (
     <>
-      {/* Desktop */}
-      <div className="hidden md:flex shrink-0">
-        {sidebarContent}
-      </div>
+      {/* Desktop — always-visible slim toolbar */}
+      <div className="hidden md:flex shrink-0">{toolbar}</div>
 
-      {/* Mobile overlay */}
+      {/* Mobile — slide-in overlay */}
       <AnimatePresence>
         {open && (
           <div className="md:hidden fixed inset-0 z-50 flex">
             <motion.div
-              className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+              className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -447,7 +444,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 360, damping: 36, mass: 0.88 }}
             >
-              {sidebarContent}
+              {toolbar}
             </motion.div>
           </div>
         )}

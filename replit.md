@@ -82,6 +82,18 @@ Schema managed via Supabase SQL Editor. To initialize:
 | `/harga-tiket` | Public ticket price list (no auth) |
 | `/settings` | App settings |
 
+## Fase 31: Photoshop-Inspired Slim Toolbar Sidebar (May 2026)
+
+- `src/components/AppSidebar.tsx` fully rewritten as a 64px slim vertical toolbar
+- Dark background (#0f1117) with icon-only navigation — no text labels
+- Floating tooltips appear to the right on hover (with left-pointing arrow)
+- Order Hub has a hover-triggered flyout sub-panel showing Umrah, Flight, Visa links
+- Section dividers (thin lines) separate Main / Orders / AI / Ops / Marketing / Admin groups
+- Bottom section: profile avatar (with tooltip showing name + role), Settings, Logout
+- Active item uses shared `layoutId="toolbar-pill"` Framer Motion spring animation between routes
+- Mobile: same slim toolbar slides in as overlay from the left; tap backdrop to close
+- Zero TypeScript errors confirmed after rewrite
+
 ## Fase 25: Full System Dummy Data Injection — Masisir Edition (May 2026)
 
 - `src/pages/DemoSeed.tsx` fully rewritten with "Masisir Edition" seeder section
