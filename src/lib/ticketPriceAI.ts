@@ -321,8 +321,19 @@ function normalizeTicket(t: Partial<ParsedTicketPrice>): ParsedTicketPrice {
 // → merges them into ONE multi-leg entry with single price point
 
 function priceMatch(a: ParsedTicketPrice, b: ParsedTicketPrice): boolean {
+  // Both unpiced (e.g. PNR-only text with no fare) → treat as matching
+  if (a.basePrice == null && b.basePrice == null) return true;
   if (a.basePrice == null || b.basePrice == null) return false;
   return Math.abs(a.basePrice - b.basePrice) / Math.max(Math.abs(a.basePrice), 1) < 0.015; // within 1.5%
+}
+
+/** Days between two YYYY-MM-DD strings (positive = b is later). Returns null if either missing. */
+function daysBetween(a: string | null | undefined, b: string | null | undefined): number | null {
+  if (!a || !b) return null;
+  const da = new Date(a + "T00:00:00").getTime();
+  const db = new Date(b + "T00:00:00").getTime();
+  if (isNaN(da) || isNaN(db)) return null;
+  return (db - da) / 86_400_000;
 }
 
 function buildMultiLegTicket(chain: ParsedTicketPrice[]): ParsedTicketPrice {
@@ -448,8 +459,11 @@ function mergeTransitChains(tickets: ParsedTicketPrice[]): ParsedTicketPrice[] {
         const matchPrice      = priceMatch(lastInChain, candidate);
         // Safety: don't chain if candidate's origin equals first ticket's origin (would loop)
         const noLoop          = candidate.fromCode !== tickets[chain[0]].fromCode;
+        // Only chain legs that depart within 3 days of each other (short layover, not return trip)
+        const gap             = daysBetween(lastInChain.departDate, candidate.departDate);
+        const closeInTime     = gap === null || (gap >= 0 && gap <= 3);
 
-        if (isTransitLink && sameAirline && matchPrice && noLoop) {
+        if (isTransitLink && sameAirline && matchPrice && noLoop && closeInTime) {
           chain.push(j);
           used.add(j);
           extended = true;
@@ -509,6 +523,18 @@ export function groupRoundTrips(tickets: ParsedTicketPrice[]): ParsedTicketPrice
           outbound = b; ret = a;
         }
 
+        // When both tickets are multi-leg, merge their multiLeg data properly
+        // so returnLegs are populated from the return journey's outbound chain
+        let mergedMultiLeg = outbound.multiLeg;
+        if (outbound.multiLeg && ret.multiLeg) {
+          mergedMultiLeg = {
+            ...outbound.multiLeg,
+            returnLegs:         ret.multiLeg.outboundLegs,
+            returnTransitCodes: ret.multiLeg.transitCodes,
+            returnDate:         ret.departDate ?? null,
+          };
+        }
+
         const grouped: ParsedTicketPrice = {
           ...outbound,
           tripType:              "return",
@@ -523,6 +549,7 @@ export function groupRoundTrips(tickets: ParsedTicketPrice[]): ParsedTicketPrice
           returnTransitCode:     ret.transitCode,
           returnTransitCity:     ret.transitCity,
           returnTransitDuration: ret.transitDuration,
+          multiLeg:              mergedMultiLeg,
         };
         result.push(grouped);
         used.add(i);
