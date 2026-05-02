@@ -1651,8 +1651,8 @@ button, [role="button"], a, input, select, textarea {
 /* SVG outline biru di light mode, putih di dark mode. */
 .icon-mark {
   background-color: #1a44d4;
-  -webkit-mask: url('/temantiket-icon-mark.svg') center / contain no-repeat;
-  mask: url('/temantiket-icon-mark.svg') center / contain no-repeat;
+  -webkit-mask: url('/temantiket-icon-mark.png') center / contain no-repeat;
+  mask: url('/temantiket-icon-mark.png') center / contain no-repeat;
   -webkit-mask-mode: luminance;
   mask-mode: luminance;
   transition: background-color 0.2s ease;
