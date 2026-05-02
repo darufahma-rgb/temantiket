@@ -1134,13 +1134,6 @@ export default function Settings() {
                         <Plus className="h-4 w-4 mr-1" /> {invitingMember ? "Mengundang…" : "Undang"}
                       </Button>
                     </div>
-                    {newMemberRole === "agent" && (
-                      <p className="text-[10.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 mt-1">
-                        Catatan: Edge function <code>invite-member</code> harus support role <code>agent</code>.
-                        Kalau invite gagal dgn pesan "role invalid", deploy ulang edge function-nya
-                        (ada di <code>supabase/functions/invite-member/</code>).
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>

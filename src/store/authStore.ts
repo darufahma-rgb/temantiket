@@ -162,32 +162,26 @@ async function loadCurrentUser(): Promise<AuthUser | null> {
 }
 
 async function callEdgeFunction(name: string, body: unknown, accessToken?: string): Promise<unknown> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error("Supabase not configured");
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    apikey: SUPABASE_ANON_KEY,
   };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+  const res = await fetch(`/api/${name}`, {
     method: "POST", headers, body: JSON.stringify(body),
   });
-  // Body bisa kosong (gateway 401 sometimes), atau json shape `{error}` (function)
-  // atau `{message, code}` (gateway). Coba parse dua-duanya.
   const text = await res.text();
   let json: { error?: string; message?: string; msg?: string } = {};
   try { json = text ? JSON.parse(text) : {}; } catch { /* keep empty */ }
   if (!res.ok) {
     const serverMsg = json.error ?? json.message ?? json.msg ?? text.slice(0, 200);
     if (res.status === 401) {
-      // Gateway 401 = JWT expired/invalid sebelum function jalan. Kasih hint
-      // konkret biar user tau harus re-login, bukan generic "(401)".
       throw new Error(
         serverMsg
           ? `Sesi expired / token invalid (401): ${serverMsg}. Coba logout lalu login ulang.`
           : `Sesi expired / token invalid (401). Coba logout lalu login ulang.`,
       );
     }
-    throw new Error(serverMsg || `Function ${name} failed (${res.status})`);
+    throw new Error(serverMsg || `Gagal menghubungi server (${res.status})`);
   }
   return json;
 }

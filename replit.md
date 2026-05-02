@@ -4,11 +4,14 @@ Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn
 
 ## Replit Environment Setup
 
-- **Stack**: Pure frontend SPA (React + Vite), Supabase as BaaS (auth, database, realtime, storage, edge functions)
-- **Dev server**: `npm run dev` on port 5000 (workflow: "Start application")
+- **Stack**: React + Vite SPA + Express backend server, Supabase as BaaS (auth, database, realtime, storage)
+- **Dev server**: `npm run dev` — runs both API server (port 3001) + Vite (port 5000) concurrently
+- **Workflow**: "Start application" → `npm run dev`
 - **Environment variables** (set as Replit shared env vars):
   - `VITE_SUPABASE_URL` — Supabase project URL (required)
   - `VITE_SUPABASE_ANON_KEY` — Supabase anon/public key (required)
+- **Secrets** (set as Replit Secrets):
+  - `SUPABASE_SERVICE_ROLE_KEY` — Required for invite/remove member and bootstrap. Never exposed to browser.
   - `VITE_OPENAI_API_KEY` — Optional: enables direct browser→OpenAI passport OCR, itinerary AI,
     and ticket price AI. App gracefully falls back to Tesseract.js when not set.
 
@@ -19,16 +22,28 @@ npm install
 npm run dev
 ```
 
-App serves on port 5000. The workflow "Start application" handles this automatically.
+Runs API server on port 3001 + Vite on port 5000 concurrently. Workflow "Start application" handles this automatically.
 
 ## Architecture
 
-This is a **Supabase-native SPA** — no separate backend server. All data and auth goes through Supabase:
+- **Frontend**: React SPA served by Vite dev server (port 5000). Supabase JS client for all DB/Auth/Realtime.
+- **Backend API**: Express server (`server/index.cjs`) on port 3001. Handles admin operations that require `SUPABASE_SERVICE_ROLE_KEY`:
+  - `POST /api/bootstrap` — One-time setup: create first agency + owner
+  - `POST /api/invite-member` — Owner invites staff/agent (creates auth user + profiles + agency_members)
+  - `POST /api/remove-member` — Owner removes member (deletes auth user)
+- **Vite proxy**: `/api/invite-member`, `/api/remove-member`, `/api/bootstrap` → `localhost:3001`
 - **Auth**: Supabase Auth with multi-tenant RLS roles (owner/staff/agent)
 - **Database**: Supabase PostgreSQL with Row Level Security
 - **Realtime**: Supabase Realtime subscriptions for live sync across devices
-- **Edge Functions**: Deployed on Supabase (bootstrap, invite-member, remove-member, ocr-passport)
 - **Storage**: Supabase Storage buckets for photos/docs
+
+## Production Build
+
+```bash
+npm run build  # vite build + cp server/index.cjs dist/index.cjs
+```
+
+Production: `node ./dist/index.cjs` — Express serves both API routes and static frontend files.
 
 ## Database Schema
 

@@ -20,6 +20,18 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/frankfurter/, ""),
       },
+      "/api/invite-member": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      "/api/remove-member": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      "/api/bootstrap": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
     },
   },
   plugins: [
