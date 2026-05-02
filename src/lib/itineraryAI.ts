@@ -182,6 +182,14 @@ const PNR_SEG_A =
 const PNR_SEG_B =
   /^\s*(\d+)\s+([A-Z]{2})\s+(\d{1,4})\s+([A-Z])\s+(\d{1,2}[A-Z]{3})\s+\d\s+([A-Z]{3})([A-Z]{3})\s+[A-Z]{2,3}\d+\s+(\d{4})\s+(\d{4})(?:\s+(\d{1,2}[A-Z]{3}))?/;
 
+// PNR variant C: "1 . GF 70 N 03JUN CAIBAH HK1 1715 #0340 O*"
+//   - Line number followed by " . " (space-dot-space)
+//   - Class is separate (not glued to flight#)
+//   - NO day-of-week digit before 6-char route
+//   - Next-day flag "#" is a PREFIX before arrival time (e.g. #0340)
+const PNR_SEG_C =
+  /^\s*(\d+)\s+\.\s+([A-Z]{2})\s+(\d{1,4})\s+([A-Z])\s+(\d{1,2}[A-Z]{3})\s+([A-Z]{3})([A-Z]{3})\s+[A-Z]{2,3}\d+\s+(\d{4})\s+(#?)(\d{4})/;
+
 // RLOC patterns
 const RLOC_RE = /(?:RLOC|RECORD\s+LOCATOR|PNR|LOCATOR)\s*[:\-]?\s*([A-Z0-9]{5,8})/i;
 // Fallback: standalone 6-char alphanum line (Galileo RLOC style)
@@ -281,6 +289,31 @@ function tryPNRSegB(line: string): FlightLeg | null {
 }
 
 /**
+ * Try to parse variant C: "1 . GF 70 N 03JUN CAIBAH HK1 1715 #0340 O*"
+ * — dot after line number, class separate, no DOW digit, "#" prefix for next-day arrival.
+ */
+function tryPNRSegC(line: string): FlightLeg | null {
+  const m = line.match(PNR_SEG_C);
+  if (!m) return null;
+  const [, , airlineCode, flightNo, classCode, dateStr, origCode, destCode, depRaw, nextDayPrefix, arrRaw] = m;
+  const departDate = parseDDMMM(dateStr);
+  const arriveDate = nextDayPrefix === "#" && departDate ? addOneDay(departDate) : departDate;
+  return {
+    airline: KNOWN_AIRLINES[airlineCode] ?? airlineCode,
+    flightNumber: `${airlineCode}${flightNo}`,
+    fromCode: origCode,
+    fromCity: KNOWN_AIRPORTS[origCode],
+    toCode: destCode,
+    toCity: KNOWN_AIRPORTS[destCode],
+    departDate,
+    departTime: toHHMM(depRaw),
+    arriveDate,
+    arriveTime: toHHMM(arrRaw),
+    class: classCode,
+  };
+}
+
+/**
  * Parse Galileo PNR / booking confirmation format (RLOC/GFAX).
  * Handles concatenated airports (CAIBAH), class glued to flt# (70N), and +1/date next-day.
  * Returns ItineraryData if ≥1 segment found, else null.
@@ -290,8 +323,8 @@ export function parseGalileoPNR(text: string): ItineraryData | null {
   const segments: FlightLeg[] = [];
 
   for (const line of lines) {
-    // Try format A first (class glued), then B (class separate)
-    const leg = tryPNRSegA(line) ?? tryPNRSegB(line);
+    // Try format A (class glued), then B (class separate + DOW), then C (dot prefix + # next-day)
+    const leg = tryPNRSegA(line) ?? tryPNRSegB(line) ?? tryPNRSegC(line);
     if (leg) segments.push(leg);
   }
 
