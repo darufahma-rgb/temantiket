@@ -149,10 +149,10 @@ export default function FlyerDialog({ open, onClose, trip, jamaahCount = 0 }: Fl
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <img
-                  src="/logo-igh-tour-white.png"
+                  src="/temantiket-icon.png"
                   alt="Temantiket"
                   crossOrigin="anonymous"
-                  style={{ height: 56, width: "auto", objectFit: "contain" }}
+                  style={{ height: 36, width: 36, objectFit: "contain" }}
                 />
               </div>
               <div style={{ marginTop: 24, fontSize: 14, fontWeight: 600, opacity: 0.9, letterSpacing: 2, textTransform: "uppercase" }}>

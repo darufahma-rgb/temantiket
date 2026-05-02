@@ -119,25 +119,19 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
             <Menu strokeWidth={2} className="h-[20px] w-[20px] text-[hsl(var(--foreground))]" />
           </button>
 
-          {/* Brand — single wordmark logo only */}
+          {/* Brand — icon mark + wordmark */}
           <button
             onClick={() => navigate("/")}
-            className="flex items-center shrink-0 transition-opacity active:opacity-60"
+            className="flex items-center gap-1.5 shrink-0 transition-opacity active:opacity-60"
             aria-label="Beranda Temantiket"
           >
             <img
-              src="/logo-igh-tour-text.png"
-              alt="Temantiket"
-              className="h-[26px] w-auto object-contain"
-              onError={(e) => {
-                const img = e.target as HTMLImageElement;
-                img.style.display = "none";
-                const fb = document.createElement("span");
-                fb.textContent = "Temantiket";
-                fb.className = "text-[14px] font-black tracking-tight text-sky-600";
-                img.parentElement!.appendChild(fb);
-              }}
+              src="/temantiket-icon.png"
+              alt=""
+              className="h-6 w-6 object-contain"
+              style={{ filter: "brightness(0)" }}
             />
+            <span className="text-[14px] font-black tracking-tight text-[hsl(var(--foreground))]">Temantiket</span>
           </button>
 
           <div className="flex-1" />

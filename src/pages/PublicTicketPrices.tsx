@@ -627,9 +627,10 @@ export default function PublicTicketPrices() {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="/temantiket-logo.png"
+              src="/temantiket-icon.png"
               alt="Temantiket"
-              className="h-8 w-auto object-contain"
+              className="h-7 w-7 object-contain"
+              style={{ filter: "brightness(0)" }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
             <div>
@@ -765,7 +766,7 @@ export default function PublicTicketPrices() {
       <footer className="border-t border-slate-200 bg-white mt-8 py-6 px-4">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
           <div className="flex items-center gap-2">
-            <img src="/temantiket-logo.png" alt="" className="h-5 w-auto opacity-40"
+            <img src="/temantiket-icon.png" alt="" className="h-5 w-5 object-contain opacity-40" style={{ filter: "brightness(0)" }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
             <span>Temantiket — Mudah, Cepat, Amanah</span>
           </div>

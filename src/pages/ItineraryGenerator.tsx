@@ -173,9 +173,9 @@ async function renderTravelCard(canvas: HTMLCanvasElement, data: ItineraryData, 
   ctx.fillStyle = "rgba(14,165,233,0.08)";
   ctx.fill();
 
-  const logo = await loadImage("/temantiket-logo.png");
+  const logo = await loadImage("/temantiket-icon.png");
   const logoH = 44;
-  const logoW = logo ? (logo.naturalWidth / logo.naturalHeight) * logoH : 0;
+  const logoW = logo ? logoH : 0;
   let cursorY = 28;
   if (logo) {
     ctx.drawImage(logo, 48, cursorY, logoW, logoH);
@@ -456,9 +456,9 @@ async function renderSocialCard(canvas: HTMLCanvasElement, data: ItineraryData):
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, S, S);
 
-  const logo = await loadImage("/temantiket-logo.png");
+  const logo = await loadImage("/temantiket-icon.png");
   const logoH = 40;
-  const logoW = logo ? (logo.naturalWidth / logo.naturalHeight) * logoH : 0;
+  const logoW = logo ? logoH : 0;
   if (logo) ctx.drawImage(logo, 48, 40, logoW, logoH);
 
   ctx.font = "600 18px system-ui, sans-serif";

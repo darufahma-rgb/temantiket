@@ -248,10 +248,9 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
           style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
         >
           <img
-            src="/temantiket-logo.png"
+            src="/temantiket-icon.png"
             alt="Temantiket"
-            className="h-5 w-5 object-contain"
-            style={{ filter: "brightness(0) invert(1)" }}
+            className="h-6 w-6 object-contain"
             onError={(e) => {
               const img = e.target as HTMLImageElement;
               img.style.display = "none";

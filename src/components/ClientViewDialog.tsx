@@ -309,10 +309,10 @@ const FlightPreview = ({
       <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img
-            src="/logo-igh-tour-white.png"
+            src="/temantiket-icon.png"
             alt="Temantiket"
             crossOrigin="anonymous"
-            style={{ height: 44, width: "auto", objectFit: "contain" }}
+            style={{ height: 32, width: 32, objectFit: "contain" }}
           />
           <div style={{ lineHeight: 1.1 }}>
             <div style={{ fontSize: 11, opacity: 0.75, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase" }}>
@@ -484,10 +484,10 @@ const UmrahPreview = ({
       <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img
-            src="/logo-igh-tour-white.png"
+            src="/temantiket-icon.png"
             alt="Temantiket"
             crossOrigin="anonymous"
-            style={{ height: 44, width: "auto", objectFit: "contain" }}
+            style={{ height: 32, width: 32, objectFit: "contain" }}
           />
           <div style={{ lineHeight: 1.1 }}>
             <div style={{ fontSize: 11, opacity: 0.75, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase" }}>

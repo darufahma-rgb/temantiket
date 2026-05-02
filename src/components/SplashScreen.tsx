@@ -140,9 +140,9 @@ export function SplashScreen() {
                 transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
               >
                 <img
-                  src="/temantiket-logo.png"
+                  src="/temantiket-icon.png"
                   alt="Temantiket"
-                  className="h-14 w-auto object-contain drop-shadow-[0_12px_32px_rgba(14,165,233,0.45)]"
+                  className="h-16 w-16 object-contain drop-shadow-[0_12px_32px_rgba(14,165,233,0.45)]"
                   onError={(e) => {
                     const img = e.target as HTMLImageElement;
                     img.style.display = "none";

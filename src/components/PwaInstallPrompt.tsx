@@ -82,8 +82,8 @@ export function PwaInstallPrompt() {
         >
           {showIosGuide ? (
             <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-xl overflow-hidden shrink-0 shadow">
-                <img src="/logo-igh-tour.png" alt="Temantiket" className="h-full w-full object-contain" />
+              <div className="h-10 w-10 rounded-xl shrink-0 shadow flex items-center justify-center bg-[hsl(var(--secondary))]">
+                <img src="/temantiket-icon.png" alt="Temantiket" className="h-7 w-7 object-contain" style={{ filter: "brightness(0)" }} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[13.5px] text-[hsl(var(--foreground))] leading-tight mb-0.5">
@@ -109,8 +109,8 @@ export function PwaInstallPrompt() {
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl overflow-hidden shrink-0 shadow">
-                <img src="/logo-igh-tour.png" alt="Temantiket" className="h-full w-full object-contain" />
+              <div className="h-10 w-10 rounded-xl shrink-0 shadow flex items-center justify-center bg-[hsl(var(--secondary))]">
+                <img src="/temantiket-icon.png" alt="Temantiket" className="h-7 w-7 object-contain" style={{ filter: "brightness(0)" }} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[13.5px] text-[hsl(var(--foreground))] leading-tight">Pasang Temantiket</p>

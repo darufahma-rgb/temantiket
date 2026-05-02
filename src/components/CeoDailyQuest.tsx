@@ -190,7 +190,7 @@ export function CeoDailyQuest() {
                 {/* Logo mark */}
                 <div className="h-9 w-9 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center shrink-0 border border-white/20">
                   <img
-                    src="/temantiket-logo.png"
+                    src="/temantiket-icon.png"
                     alt="Temantiket"
                     className="h-6 w-6 object-contain"
                     onError={(e) => {
