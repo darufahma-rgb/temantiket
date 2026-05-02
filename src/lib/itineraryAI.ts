@@ -37,6 +37,7 @@ export interface ItineraryData {
   legs: FlightLeg[];
   totalPrice?: number;
   priceCurrency?: "IDR" | "EGP" | "USD" | "SAR";
+  baggage?: string;
   rawText?: string;
 }
 
@@ -670,6 +671,13 @@ function fmtDateLong(iso?: string | null): string {
   } catch { return iso; }
 }
 
+function fmtMonthOnly(iso?: string | null): string {
+  if (!iso) return "";
+  try {
+    return new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(iso + "T00:00:00"));
+  } catch { return ""; }
+}
+
 function fmtTime(t?: string | null): string {
   if (!t) return "—";
   return t.replace(":", ".");
@@ -682,75 +690,82 @@ function fmtCityCode(city?: string | null, code?: string | null, terminal?: stri
   return city ?? "—";
 }
 
+function fmtPrice(amount: number, currency: string): string {
+  if (currency === "IDR") {
+    return "Rp " + amount.toLocaleString("id-ID");
+  }
+  return `${currency} ${amount.toLocaleString("id-ID")}`;
+}
+
 export function buildWhatsAppText(data: ItineraryData, egpRate: number): string {
   const lines: string[] = [];
 
-  lines.push("*Itinerary Penerbangan*");
-  lines.push("_by Temantiket_");
+  const journeys = groupLegsIntoJourneys(data.legs);
+  const isRoundTrip = journeys.length >= 2;
+  const firstLeg = data.legs[0];
+  const lastFirstJourney = journeys[0]?.[journeys[0].length - 1];
+
+  // ── Dynamic title ──
+  const fromCode = firstLeg?.fromCode ?? "";
+  const toCode   = lastFirstJourney?.toCode ?? "";
+  const bulan    = fmtMonthOnly(firstLeg?.departDate);
+  const returnStr = isRoundTrip ? " Return" : "";
+  lines.push(`Tiket Pesawat ${fromCode} - ${toCode}${returnStr} ${bulan}`.trim());
+  lines.push("by Temantiket");
   lines.push("");
 
-  if (data.pnr) lines.push(`Kode Booking : *${data.pnr}*`);
-  if (data.passengerName) lines.push(`Penumpang    : *${data.passengerName}*`);
-  if (data.pnr || data.passengerName) lines.push("");
-
-  const journeys = groupLegsIntoJourneys(data.legs);
-
+  // ── Per-journey blocks ──
   journeys.forEach((journeyLegs, journeyIdx) => {
-    if (journeyIdx > 0) lines.push(""); // blank separator between outbound / return
+    if (journeyIdx > 0) lines.push("");
 
-    const firstLeg = journeyLegs[0];
-    const lastLeg  = journeyLegs[journeyLegs.length - 1];
+    const first = journeyLegs[0];
+    const last  = journeyLegs[journeyLegs.length - 1];
 
-    // ── Departure date header ──
-    const depDateStr = fmtDateLong(firstLeg.departDate);
+    // Departure date header
+    const depDateStr = fmtDateLong(first.departDate);
     if (depDateStr) lines.push(depDateStr);
 
-    // ── Departure line ──
-    const depCity = fmtCityCode(firstLeg.fromCity, firstLeg.fromCode, firstLeg.terminal);
-    lines.push(`✈️ ${fmtTime(firstLeg.departTime)} — Berangkat dari ${depCity} — ${firstLeg.flightNumber ?? ""}`);
+    // Berangkat line
+    const depCity = fmtCityCode(first.fromCity, first.fromCode, first.terminal);
+    lines.push(`Berangkat : ${fmtTime(first.departTime)} — Berangkat dari ${depCity} — ${first.flightNumber ?? ""}`);
 
-    // ── Transit stops (between legs within same journey) ──
+    // Transit lines
     for (let i = 0; i < journeyLegs.length - 1; i++) {
       const leg     = journeyLegs[i];
       const nextLeg = journeyLegs[i + 1];
       const transitCity = leg.toCity ?? leg.toCode ?? "";
       const transitMin  = calcTransitMinutes(leg, nextLeg);
       const durStr = transitMin !== null ? ` — ${fmtMinutes(transitMin)}` : "";
-      lines.push(`🛫 Transit di ${transitCity}${durStr} (tanpa ambil bagasi & check-in ulang)`);
+      lines.push(`Transit : ${transitCity}${durStr} (tanpa ambil bagasi & check-in ulang)`);
     }
 
-    // ── Arrival date header (only if different from departure date) ──
-    const arrDate = lastLeg.arriveDate ?? lastLeg.departDate;
-    const needsArrDateLine = arrDate && arrDate !== firstLeg.departDate;
-    if (needsArrDateLine || journeyLegs.length > 1) lines.push("");
-    if (needsArrDateLine) lines.push(fmtDateLong(arrDate));
+    // Arrival date header (new line only if date changes)
+    const arrDate = last.arriveDate ?? last.departDate;
+    const needsArrDateLine = arrDate && arrDate !== first.departDate;
+    if (needsArrDateLine) {
+      lines.push("");
+      lines.push(fmtDateLong(arrDate));
+    }
 
-    // ── Arrival line ──
-    const arrCity   = fmtCityCode(lastLeg.toCity, lastLeg.toCode, null);
-    const arrFlight = journeyLegs.length > 1 ? lastLeg.flightNumber : firstLeg.flightNumber;
-    lines.push(`🛬 ${fmtTime(lastLeg.arriveTime)} — Tiba di ${arrCity} — ${arrFlight ?? ""}`);
+    // Landing line
+    const arrCity   = fmtCityCode(last.toCity, last.toCode, null);
+    const arrFlight = journeyLegs.length > 1 ? last.flightNumber : first.flightNumber;
+    lines.push(`Landing : ${fmtTime(last.arriveTime)} — Tiba di ${arrCity} — ${arrFlight ?? ""}`);
   });
 
-  // ── Price ──
+  // ── Bagasi & Harga ──
+  lines.push("");
+  lines.push(`Bagasi : ${data.baggage ?? ""}`);
+
+  const currency = data.priceCurrency ?? "IDR";
   if (data.totalPrice && data.totalPrice > 0) {
-    lines.push("");
-    const currency = data.priceCurrency ?? "IDR";
-    if (currency === "IDR") {
-      const idr = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(data.totalPrice);
-      const egpAmt = egpRate > 0 ? Math.round(data.totalPrice / egpRate) : null;
-      lines.push(`💰 Total : *${idr}*${egpAmt ? `  (≈ EGP ${egpAmt.toLocaleString("id-ID")})` : ""}`);
-    } else if (currency === "EGP") {
-      const egpFmt = `EGP ${data.totalPrice.toLocaleString("id-ID")}`;
-      const idrAmt  = egpRate > 0 ? Math.round(data.totalPrice * egpRate) : null;
-      const idrFmt  = idrAmt ? new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(idrAmt) : null;
-      lines.push(`💰 Total : *${egpFmt}*${idrFmt ? `  (≈ ${idrFmt})` : ""}`);
-    } else {
-      lines.push(`💰 Total : *${currency} ${data.totalPrice.toLocaleString("id-ID")}*`);
-    }
+    lines.push(`Harga : ${fmtPrice(data.totalPrice, currency)}`);
+  } else {
+    lines.push(`Harga : `);
   }
 
   lines.push("");
-  lines.push("_Temantiket — mudah, cepat, amanah_");
+  lines.push("_by Temantiket_");
 
   return lines.join("\n");
 }

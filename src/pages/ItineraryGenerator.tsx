@@ -949,7 +949,7 @@ export default function ItineraryGenerator() {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[10.5px] uppercase tracking-wide text-muted-foreground">Nama Penumpang</Label>
                   <Input value={itinerary.passengerName ?? ""} onChange={(e) => setItinerary({ ...itinerary, passengerName: e.target.value })} placeholder="Nama lengkap" className="h-8 text-sm" />
@@ -957,6 +957,26 @@ export default function ItineraryGenerator() {
                 <div className="space-y-1">
                   <Label className="text-[10.5px] uppercase tracking-wide text-muted-foreground">Kode Booking (PNR)</Label>
                   <Input value={itinerary.pnr ?? ""} onChange={(e) => setItinerary({ ...itinerary, pnr: e.target.value.toUpperCase() })} placeholder="ABCDEF" className="h-8 text-sm font-mono" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10.5px] uppercase tracking-wide text-muted-foreground">Bagasi</Label>
+                  <select
+                    value={itinerary.baggage ?? ""}
+                    onChange={(e) => setItinerary({ ...itinerary, baggage: e.target.value || undefined })}
+                    className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                  >
+                    <option value="">— Pilih bagasi —</option>
+                    <option value="20kg">20 kg</option>
+                    <option value="23kg">23 kg</option>
+                    <option value="25kg">25 kg</option>
+                    <option value="30kg">30 kg</option>
+                    <option value="32kg">32 kg</option>
+                    <option value="40kg">40 kg</option>
+                    <option value="46kg">46 kg</option>
+                    <option value="2x23kg">2 × 23 kg</option>
+                    <option value="2x30kg">2 × 30 kg</option>
+                    <option value="Tanpa bagasi">Tanpa bagasi</option>
+                  </select>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10.5px] uppercase tracking-wide text-muted-foreground">Total Harga</Label>
