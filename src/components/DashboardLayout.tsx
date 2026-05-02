@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { AppSidebar } from "./AppSidebar";
 import { AIChatWidget } from "./AIChatWidget";
-import { AIContextualBar } from "./AIContextualBar";
 import { Menu, LayoutDashboard, Users, ShoppingBag, Settings, RefreshCw, LogOut, StickyNote, FileSpreadsheet, MoreHorizontal, ChevronRight, Ticket, Sparkles, Calculator, Package, MessageSquare, Wallet, Search, Bell, Command } from "lucide-react";
 
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -217,7 +216,6 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               exit={{ x: -40, opacity: 0 }}
               transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
-              {!noPadding && <AIContextualBar />}
               {children}
             </motion.main>
           </AnimatePresence>
@@ -586,7 +584,6 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
                 <div className="mx-auto w-full max-w-[1400px]">
-                  {!noPadding && <AIContextualBar />}
                   {children}
                 </div>
               </motion.main>
