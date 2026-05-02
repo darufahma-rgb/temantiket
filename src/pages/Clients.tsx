@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { Users, Plus, Search, Phone, Mail, Pencil, Trash2, ArrowLeft, ShoppingBag } from "lucide-react";
+import { PassportScanButton } from "@/components/PassportScanButton";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -286,8 +287,23 @@ function ClientFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>Data dasar klien — bisa dipakai ulang utk berbagai jenis order.</DialogDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <DialogTitle>{title}</DialogTitle>
+              <DialogDescription>Data dasar klien — bisa dipakai ulang utk berbagai jenis order.</DialogDescription>
+            </div>
+            <PassportScanButton
+              aiOnly
+              label="Scan Paspor"
+              size="sm"
+              className="shrink-0 mt-0.5"
+              onScanned={(data) => {
+                if (data.name) update("name", data.name);
+                if (data.passportNumber) update("passportNumber", data.passportNumber);
+                if (data.birthDate) update("birthDate", data.birthDate);
+              }}
+            />
+          </div>
         </DialogHeader>
         <div className="space-y-3">
           <Field label="Nama *">
