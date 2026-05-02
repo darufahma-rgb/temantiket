@@ -211,10 +211,10 @@ export default function BCTemplates() {
         <div>
           <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-emerald-600" />
-            Template BC WhatsApp
+            Template Broadcast Temantiket
           </h1>
           <p className="text-[12px] text-muted-foreground mt-0.5">
-            Simpan semua template broadcast WA — visa, tiket, umrah, dll. Klik Copy → langsung paste ke WA.
+            Pesan yang tepat, di waktu yang tepat — template siap pakai untuk follow-up, closing, dan broadcast klien Umrah, Haji & tiket. Tinggal copy, paste, kirim. 🚀
           </p>
         </div>
         {canEdit && (

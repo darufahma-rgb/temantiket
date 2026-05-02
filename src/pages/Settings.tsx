@@ -174,6 +174,23 @@ export default function Settings() {
   const [commissionDraft, setCommissionDraft] = useState<Record<string, string>>({});
   const setMemberCommission = useAuthStore((s) => s.setMemberCommission);
 
+  // ── Komisi per produk ────────────────────────────────────────────────────
+  const PRODUCT_COMMISSION_KEY = "temantiket.product_commissions.v1";
+  type ProductCommissions = { umrah: number; haji: number; tiket_pesawat: number; visa: number; paket: number };
+  const DEFAULT_PC: ProductCommissions = { umrah: 0, haji: 0, tiket_pesawat: 0, visa: 0, paket: 0 };
+  function loadProductCommissions(): ProductCommissions {
+    try { return { ...DEFAULT_PC, ...JSON.parse(localStorage.getItem(PRODUCT_COMMISSION_KEY) ?? "{}") }; } catch { return { ...DEFAULT_PC }; }
+  }
+  const [productCommissions, setProductCommissions] = useState<ProductCommissions>(() => loadProductCommissions());
+  const [savingPC, setSavingPC] = useState(false);
+  function handleSaveProductCommissions() {
+    setSavingPC(true);
+    try {
+      localStorage.setItem(PRODUCT_COMMISSION_KEY, JSON.stringify(productCommissions));
+      toast.success("Fee komisi per produk disimpan!");
+    } catch { toast.error("Gagal menyimpan."); } finally { setSavingPC(false); }
+  }
+
   const [migrating, setMigrating] = useState(false);
   const [migrateProgress, setMigrateProgress] = useState<MigrateProgress | null>(null);
 
@@ -1223,6 +1240,53 @@ export default function Settings() {
                 })}
               </div>
             </div>
+
+            {isOwner && (
+              <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
+                <div className="px-4 py-3 border-b border-[hsl(var(--border))]">
+                  <p className="text-sm font-semibold">Fee Komisi per Produk</p>
+                  <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">
+                    Atur nominal fee komisi (IDR) untuk setiap jenis produk. Bisa berbeda-beda sesuai kebijakan agency.
+                  </p>
+                </div>
+                <div className="p-4 space-y-3">
+                  {(
+                    [
+                      { key: "umrah",         label: "🕋 Umrah" },
+                      { key: "haji",          label: "🌙 Haji" },
+                      { key: "tiket_pesawat", label: "✈️ Tiket Pesawat" },
+                      { key: "visa",          label: "🛂 Visa" },
+                      { key: "paket",         label: "📦 Paket Tour" },
+                    ] as { key: keyof ProductCommissions; label: string }[]
+                  ).map(({ key, label }) => (
+                    <div key={key} className="flex items-center gap-3">
+                      <span className="text-[12px] font-medium w-36 shrink-0">{label}</span>
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground font-mono">Rp</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={50000}
+                          value={productCommissions[key]}
+                          onChange={(e) =>
+                            setProductCommissions((p) => ({ ...p, [key]: Math.max(0, Number(e.target.value) || 0) }))
+                          }
+                          className="h-8 pl-9 text-[12px] font-mono"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <Button
+                    onClick={handleSaveProductCommissions}
+                    disabled={savingPC}
+                    className="h-9 px-4 rounded-xl gradient-primary text-white mt-1"
+                  >
+                    <Save className="h-4 w-4 mr-1.5" />
+                    {savingPC ? "Menyimpan…" : "Simpan Fee Komisi"}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {isOwner && (
               <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">

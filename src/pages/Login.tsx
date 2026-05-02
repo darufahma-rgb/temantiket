@@ -190,9 +190,10 @@ export default function Login() {
         transition={{ duration: 0.6, ease: [0.34, 1.2, 0.64, 1] }}
       >
         <img
-          src="/temantiket-logo.svg"
+          src="/temantiket-logo-new.png"
           alt="Temantiket"
-          className="h-12 w-auto object-contain drop-shadow-[0_8px_24px_rgba(14,165,233,0.45)] mb-2"
+          className="h-16 w-auto object-contain mb-2"
+          style={{ mixBlendMode: "screen", filter: "drop-shadow(0 8px 32px rgba(14,165,233,0.55))" }}
         />
 
         <AnimatePresence mode="wait">
