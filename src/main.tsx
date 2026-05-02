@@ -75,7 +75,7 @@ if (!isSupabaseConfigured()) {
     <ConfigErrorScreen
       title="Konfigurasi server belum lengkap"
       detail={
-        "Variabel VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY belum di-set di environment hosting.\n\nBuka dashboard hosting (Vercel) → Settings → Environment Variables, tambahkan kedua variabel itu, lalu redeploy."
+        "Variabel VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY belum di-set di environment.\n\nBuka panel Secrets di Replit, tambahkan kedua variabel tersebut, lalu restart aplikasi."
       }
     />,
   );

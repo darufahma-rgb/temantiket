@@ -2,6 +2,19 @@
 
 Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn/ui.
 
+## Replit Environment Setup
+
+- **Stack**: Pure frontend SPA (React + Vite), Supabase as BaaS (auth, database, realtime, storage, edge functions)
+- **Dev server**: `npm run dev` on port 5000 (workflow: "Start application")
+- **Environment variables** (set in Replit shared env vars):
+  - `VITE_SUPABASE_URL` — Supabase project URL
+  - `VITE_SUPABASE_ANON_KEY` — Supabase anon/public key
+  - `VITE_OPENAI_API_KEY` — Optional: enables direct browser→OpenAI passport OCR (fallback is Supabase Edge Function)
+- **Database schema**: Managed via Supabase SQL Editor. Run `supabase/schema.sql` to initialize, then apply migrations in `supabase/migrations/` in order.
+- **Edge Functions**: Deployed on Supabase (bootstrap, invite-member, remove-member, ocr-passport). See `supabase/functions/README.md`.
+- **Bootstrap**: Visit `/bootstrap` to create the first agency + owner account (one-time setup).
+
+
 ## Mitra Marketing & Retention Pack (May 1, 2026 — Fase 9.5)
 Lapisan tambahan di atas Agent System buat bikin mitra ngerasa Temantiket =
 "alat cari duit" (gamification + marketing power). Bahasa UI: kasual gue/lo.
