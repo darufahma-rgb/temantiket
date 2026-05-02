@@ -8,6 +8,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Bot, Send, Loader2, Sparkles,
   TrendingUp, Users, ShoppingBag, Zap, RefreshCw,
@@ -445,7 +447,74 @@ function MessageBubble({ msg, toolResults }: { msg: ChatMessage; toolResults?: T
             ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-br-sm"
             : "bg-white border border-border/60 text-foreground rounded-bl-sm shadow-sm",
         )}>
-          {msg.content}
+          {isUser ? (
+            msg.content
+          ) : (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                p: ({ children }) => (
+                  <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+                ),
+                strong: ({ children }) => (
+                  <strong className="font-semibold text-foreground">{children}</strong>
+                ),
+                em: ({ children }) => (
+                  <em className="italic opacity-90">{children}</em>
+                ),
+                ul: ({ children }) => (
+                  <ul className="mb-2 last:mb-0 space-y-1 pl-1">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="mb-2 last:mb-0 space-y-1 pl-1 list-decimal list-inside">{children}</ol>
+                ),
+                li: ({ children }) => (
+                  <li className="flex items-start gap-1.5 text-sm">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0" />
+                    <span>{children}</span>
+                  </li>
+                ),
+                h1: ({ children }) => (
+                  <h1 className="text-base font-bold mb-1.5 mt-2 first:mt-0">{children}</h1>
+                ),
+                h2: ({ children }) => (
+                  <h2 className="text-sm font-bold mb-1 mt-2 first:mt-0">{children}</h2>
+                ),
+                h3: ({ children }) => (
+                  <h3 className="text-sm font-semibold mb-1 mt-1.5 first:mt-0">{children}</h3>
+                ),
+                code: ({ children, className }) => {
+                  const isBlock = className?.includes("language-");
+                  return isBlock ? (
+                    <code className="block bg-slate-100 rounded-lg px-3 py-2 text-xs font-mono my-2 overflow-x-auto text-slate-800">
+                      {children}
+                    </code>
+                  ) : (
+                    <code className="bg-slate-100 rounded px-1.5 py-0.5 text-xs font-mono text-slate-800">
+                      {children}
+                    </code>
+                  );
+                },
+                pre: ({ children }) => (
+                  <pre className="bg-slate-100 rounded-lg my-2 overflow-x-auto">{children}</pre>
+                ),
+                blockquote: ({ children }) => (
+                  <blockquote className="border-l-2 border-sky-300 pl-3 my-2 text-muted-foreground italic">
+                    {children}
+                  </blockquote>
+                ),
+                hr: () => <hr className="my-2 border-border/40" />,
+                a: ({ href, children }) => (
+                  <a href={href} target="_blank" rel="noopener noreferrer"
+                    className="text-sky-600 underline underline-offset-2 hover:text-sky-700">
+                    {children}
+                  </a>
+                ),
+              }}
+            >
+              {msg.content}
+            </ReactMarkdown>
+          )}
         </div>
       )}
     </div>
