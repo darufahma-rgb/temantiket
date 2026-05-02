@@ -1,306 +1,58 @@
 # Temantiket — Travel Management App
 
-Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn/ui.
+## Overview
 
-## Fase 19.5 — Global Universal Transit & Multi-Leg Recognition
+Temantiket is a comprehensive travel management application designed for Umrah & Haji trips, built with React, Vite, TypeScript, and shadcn/ui. It aims to streamline operations for travel agencies, managing everything from client and order processing to agent performance and financial reporting. The platform features advanced AI capabilities for tasks like itinerary generation, ticket price extraction, and a conversational command center, enhancing efficiency and customer experience. Key capabilities include multi-leg flight itinerary management, dual-layer navigation, real-time data synchronization, and automated invoice generation. The project envisions becoming a leading solution in the travel tech sector, empowering agencies with intelligent tools and a robust, scalable infrastructure.
 
-### Problem Fixed
-AI was generating TWO separate cards for transit-connected flights (e.g. CAI→BAH + BAH→GOI sharing the same Total Amount: EGP 29,283.8). This caused markup to be applied twice and confused customers with split itineraries.
+## User Preferences
 
-### Root Cause
-GDS booking systems (Galileo etc.) display each segment row separately, each repeating the same Total Amount. The AI (and client grouper) was treating each segment row as an independent booking.
+*   I want iterative development.
+*   I want you to ask before making major changes.
+*   I prefer detailed explanations.
+*   I do not want you to make changes to the `supabase/schema.sql` file.
+*   I do not want you to make changes to the `supabase/migrations/` folder.
+*   I do not want you to make changes to the `supabase/functions/` folder.
+*   I do not want you to make changes to the `public/templates/promo/` folder.
 
-### Solution: Two-Layer Fix
+## System Architecture
 
-#### 1. `ticketPriceAI.ts` — Transit Chain Merger (client-side grouper)
-- New `LegInfo` and `MultiLegData` interfaces for multi-stop itineraries
-- `mergeTransitChains()`: detects when `ticket[n].toCode == ticket[n+1].fromCode` AND same price (within 1.5%) AND same airline → merges into ONE `ParsedTicketPrice` with `multiLeg: MultiLegData`
-- `buildMultiLegTicket()`: combines N outbound legs + N return legs (reversed for return chain) into single entry
-- `groupRoundTrips()` now runs transit merge BEFORE classic round-trip pairing
-- Notes encoding: multi-leg stored as `__ML__:{...}` prefix in `notes` field (no DB migration needed)
-- Updated AI SYSTEM_PROMPT with explicit Transit Chain Detection rule (highest priority)
+The application is a React Single Page Application (SPA) utilizing Vite for the frontend and an Express.js server for backend API endpoints. Supabase serves as the core Backend-as-a-Service (BaaS), handling authentication, database management (PostgreSQL with Row Level Security), real-time subscriptions, and file storage.
 
-#### 2. `TicketPrices.tsx` — Multi-Leg UI
-- `formFromParsed()` uses `encodeMultiLeg()` for ML tickets, `encodeReturnLeg()` for simple RT
-- New `MultiLegChain` component: renders chained legs with amber transit dots and city pills
-- `BoardingPassCard` detects `__ML__:` prefix → renders header as "CAI ↔ GOI (via BAH)" badge, body as outbound + return MultiLegChain stacks, price box shows "Harga Paket PP / pax" with single markup
-- Pending scan preview cards: show "Multi-Leg PP" badge, full per-leg breakdown list, single selling price
+**UI/UX Decisions:**
 
-### Result
-- CAI→BAH + BAH→GOI → **ONE card**: CAI ↔ GOI (via BAH), markup applied once
-- Supports N transits: CAI→BAH→MCT→CGK all collapsed into one card
-- WhatsApp message shows full leg-by-leg breakdown for multi-leg bookings
+*   **Color Scheme:** Branding colors are Temantiket navy (`#0b1628` / `#0f2044`) with an accent of sky-500 (`#0ea5e9`).
+*   **Navigation:** Features a dual-layer sidebar navigation. Layer 1 is a 60px slim icon bar for main sections (Dashboard, Operations, Marketing, Finance, Agent System). Layer 2 is a 196px slide-out panel providing detailed text menus per category, appearing on icon click. The sidebar uses a dark background (`#0f1117`) with icon-only navigation and floating tooltips on hover. Active items are indicated by a bar with a smooth Framer Motion spring animation.
+*   **Boarding Pass Cards:** Designed for clear display of flight information, including large ETD/ETA times, transit indicators, and airline logos fetched from Airhex CDN.
+*   **Multi-Leg UI:** Chained legs are rendered with amber transit dots and city pills, consolidating complex itineraries into single, readable cards.
 
-## Fase 35 — Dual-Layer Sidebar Navigation
+**Technical Implementations:**
 
-- **AppSidebar** sekarang pakai dual-layer:
-  - **Layer 1** (60px slim icon bar): icon grup Dashboard, Operasional, Marketing, Keuangan, Sistem Agen
-  - **Layer 2** (196px slide-out panel): muncul saat klik icon, berisi menu teks detail per kategori
-  - Warna branding Temantiket navy (#0b1628 / #0f2044) + accent sky-500 (#0ea5e9)
-  - Active indicator bar di kiri, smooth spring animation, hover effects
-- **Routing fix**: `/agent/leaderboard` dan `/agent/marketing` sekarang bisa diakses semua role (owner/staff/agent), tidak lagi gated ke agent-only
-- **Realtime Leaderboard**: `agent_points` ditambahkan ke Supabase realtime channel — Leaderboard auto-refresh saat ada poin baru
-- **Marketing Kit**: SVG templates ada di `/public/templates/promo/` (umrah-hemat, tiket-pesawat, visa-cepat) — download PNG 1080×1080 IG-ready
+*   **Multi-Leg Recognition:** Implemented a `Transit Chain Merger` on the client-side (`ticketPriceAI.ts`) to detect and merge transit-connected flights into a single itinerary unit. This prevents double markup and clarifies pricing for users. The UI component `MultiLegChain` renders these complex itineraries.
+*   **AI Integration:** Leverages OpenAI's `gpt-4o-mini` with Vision capabilities for tasks such as:
+    *   **Ticket Price Extraction:** AI extracts flight details, including numbers, timings, terminals, and transit information from screenshots.
+    *   **Itinerary Generation:** Extracts itineraries from raw PNR/booking text.
+    *   **Conversational Command Center:** A floating chat widget (`AIChatWidget.tsx`) uses function calling to interact with 8 distinct tools (e.g., `get_dashboard_summary`, `create_daily_mission`, `calculate_profit`). It includes a context-aware `AIContextualBar` that suggests commands based on the active page.
+    *   **Passport OCR:** Direct browser-to-OpenAI passport OCR.
+*   **Automated Invoice Generation:** Utilizes `pdf-lib` to generate A4 invoices with dynamic data, custom template overlays, and auto-generated invoice numbers. Integrated with the AI Command Center for on-demand generation and WhatsApp sharing.
+*   **PNR Command Center:** A universal PNR input widget (`PNRCommandCenter.tsx`) automates extraction of flight/hotel/tour data and can auto-create client, order, invoice, and WhatsApp reminders.
+*   **Agent Management System:** Supports multiple roles (owner, staff, agent) with a points-based reward system. `agent_points` are awarded on order completion, and `reward_redemptions` tracks point-to-reward exchanges. Agent wallet functionality is implemented using localStorage for commission conversion.
+*   **Order Hub:** Manages universal orders (Umrah, Flight, Visa) and client data.
+*   **Reporting:** Features a financial reports section, including a ledger tab (`Buku Besar`) that tracks paid/completed orders with historical exchange rates and running balances.
+*   **Real-time Features:** Supabase Realtime subscriptions enable live synchronization across devices, including real-time updates for the Agent Leaderboard.
+*   **Environment Setup:** Development uses `npm run dev` to concurrently run the Express API server (port 3001) and Vite development server (port 5000). Production builds use `npm run build` and serve static files from Express.
+*   **Database Management:** Schema is managed via Supabase SQL Editor, with migrations applied chronologically.
 
-## Replit Environment Setup
+## External Dependencies
 
-- **Stack**: React + Vite SPA + Express backend server, Supabase as BaaS (auth, database, realtime, storage)
-- **Dev server**: `npm run dev` — runs both API server (port 3001) + Vite (port 5000) concurrently
-- **Workflow**: "Start application" → `npm run dev`
-- **Environment variables** (set as Replit shared env vars):
-  - `VITE_SUPABASE_URL` — Supabase project URL (required)
-  - `VITE_SUPABASE_ANON_KEY` — Supabase anon/public key (required)
-- **Secrets** (set as Replit Secrets):
-  - `SUPABASE_SERVICE_ROLE_KEY` — Required for invite/remove member and bootstrap. Never exposed to browser.
-  - `VITE_OPENAI_API_KEY` — Optional: enables direct browser→OpenAI passport OCR, itinerary AI,
-    and ticket price AI. App gracefully falls back to Tesseract.js when not set.
-
-## Running the App
-
-```bash
-npm install
-npm run dev
-```
-
-Runs API server on port 3001 + Vite on port 5000 concurrently. Workflow "Start application" handles this automatically.
-
-## Architecture
-
-- **Frontend**: React SPA served by Vite dev server (port 5000). Supabase JS client for all DB/Auth/Realtime.
-- **Backend API**: Express server (`server/index.cjs`) on port 3001. Handles admin operations that require `SUPABASE_SERVICE_ROLE_KEY`:
-  - `POST /api/bootstrap` — One-time setup: create first agency + owner
-  - `POST /api/invite-member` — Owner invites staff/agent (creates auth user + profiles + agency_members)
-  - `POST /api/remove-member` — Owner removes member (deletes auth user)
-- **Vite proxy**: `/api/invite-member`, `/api/remove-member`, `/api/bootstrap` → `localhost:3001`
-- **Auth**: Supabase Auth with multi-tenant RLS roles (owner/staff/agent)
-- **Database**: Supabase PostgreSQL with Row Level Security
-- **Realtime**: Supabase Realtime subscriptions for live sync across devices
-- **Storage**: Supabase Storage buckets for photos/docs
-
-## Production Build
-
-```bash
-npm run build  # vite build + cp server/index.cjs dist/index.cjs
-```
-
-Production: `node ./dist/index.cjs` — Express serves both API routes and static frontend files.
-
-## Database Schema
-
-Schema managed via Supabase SQL Editor. To initialize:
-1. Run `supabase/schema.sql` in Supabase SQL Editor
-2. Apply migrations in `supabase/migrations/` in chronological order
-3. Deploy Edge Functions (see `supabase/functions/README.md`)
-4. Visit `/bootstrap` to create the first agency + owner account
-
-## Replit Migration Notes
-
-- Migrated from Replit Agent to Replit environment (May 2026)
-- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are stored as Replit shared env vars (not hardcoded)
-- Supabase Auth kept intentionally — custom multi-tenant RLS roles (owner/staff/agent) are incompatible with Replit Auth
-- No server-side layer added — correct architecture for a Supabase-native SPA
-- OpenAI integration is optional — set `VITE_OPENAI_API_KEY` in Replit Secrets to enable AI features (passport OCR, itinerary AI, ticket price AI, AI command center). App falls back to Tesseract.js for OCR when not set.
-- Workflow "Start application" runs `npm run dev` on port 5000
-- Supabase Edge Functions (bootstrap, invite-member, remove-member, ocr-passport) remain deployed on Supabase — no Replit server needed
-
-## Key Pages & Routes
-
-| Route | Description |
-|-------|-------------|
-| `/login` | Login page |
-| `/bootstrap` | One-time setup: create first agency + owner |
-| `/` | Dashboard (owner/staff) or redirect to `/agent` |
-| `/packages` | Package management |
-| `/clients` | Client (jamaah) management |
-| `/orders` | Order Hub (umrah/flight/visa) |
-| `/calculator` | Umrah cost calculator |
-| `/reports` | Financial reports (owner only) |
-| `/agent` | Mitra/Agent dashboard |
-| `/agent-center` | Agent management (owner only) |
-| `/m/:slug` | Public member card (no auth) |
-| `/leaderboard` | Public leaderboard (no auth) |
-| `/harga-tiket` | Public ticket price list (no auth) |
-| `/settings` | App settings |
-
-## Fase 31: Photoshop-Inspired Slim Toolbar Sidebar (May 2026)
-
-- `src/components/AppSidebar.tsx` fully rewritten as a 64px slim vertical toolbar
-- Dark background (#0f1117) with icon-only navigation — no text labels
-- Floating tooltips appear to the right on hover (with left-pointing arrow)
-- Order Hub has a hover-triggered flyout sub-panel showing Umrah, Flight, Visa links
-- Section dividers (thin lines) separate Main / Orders / AI / Ops / Marketing / Admin groups
-- Bottom section: profile avatar (with tooltip showing name + role), Settings, Logout
-- Active item uses shared `layoutId="toolbar-pill"` Framer Motion spring animation between routes
-- Mobile: same slim toolbar slides in as overlay from the left; tap backdrop to close
-- Zero TypeScript errors confirmed after rewrite
-
-## Fase 25: Full System Dummy Data Injection — Masisir Edition (May 2026)
-
-- `src/pages/DemoSeed.tsx` fully rewritten with "Masisir Edition" seeder section
-  - 5 Al-Azhar student clients (realistic Indonesian names, Cairo addresses)
-  - 10 orders mixing EGP/SAR currencies with markup metadata (`originalCurrency`, `originalPrice`, `originalCost`, `markup`, `markupIDR`) for Reports page
-  - 5 Cairo route ticket prices in EGP (CAI→JED, CAI→MED, CAI→DXB, CAI→KWI, CAI→RUH)
-  - 3 mission templates + 3 missions + 2 submissions
-  - 5 catatan (notes) with Masisir prefix
-  - 3 BC (broadcast) templates with Masisir prefix
-- Cleanup function removes all "Masisir —" prefixed data across all entity types
-- Original "Seed Dasar" retained as collapsible section
-- EGP rate: ~515 IDR/EGP; SAR rate: ~4250 IDR/SAR
-
-## Fase 25b: Itinerary History (localStorage) in ItineraryGenerator (May 2026)
-
-- localStorage key: `temantiket.itinerary.history.v1`, max 20 entries
-- Auto-saves every itinerary to history when `itinerary` state is set (useEffect)
-- Labels auto-generated from route codes + first airline/flight number
-- "Riwayat Itinerary" collapsible panel shown in empty state when history exists
-  - Shows label, PNR, passenger name, price, relative timestamp
-  - "Muat" button reloads saved itinerary into active session
-  - Per-row delete (trash icon) with hover reveal
-- Demo data: 2 itineraries seeded via `seedMasisirItineraries()` in DemoSeed
-
-## Fase 19.2: Deep Data Extraction for Ticket Prices (May 2026)
-
-- Extended AI prompt: now extracts flight number, ETD, ETA, terminal, transit code/city/duration
-- Extended `ticket_prices` table: 7 new columns (flight_number, etd, eta, terminal, transit_code, transit_city, transit_duration)
-- Boarding-pass style card UI with large ETD/ETA times, transit indicator, tear-off divider
-- Airline logos auto-fetched from airhex CDN by IATA code
-- Direct/Transit badge on every card
-- Public share page `/harga-tiket` (no auth) — Temantiket branded, shows harga jual only (no modal)
-- Share Link Publik button in admin page + URL info bar with copy/open actions
-- Admin sees base price + markup breakdown; public sees harga jual only
-- Migration SQL: `supabase/migrations/2026_05_19_ticket_prices_v2.sql`
-
-## Fase 21: Public Access Link for Ticket Price List (May 2, 2026)
-
-- Public routes: `/harga-tiket`, `/promo`, `/prices` — no auth required
-- Dynamic SEO meta injection in `PublicTicketPrices.tsx` (title, description, og:title, og:description, og:url, twitter:*, robots)
-- `SharePanel` component in admin `TicketPrices.tsx`
-
-## Fase 19: AI Ticket Price List (May 19, 2026)
-
-- `ticket_prices` table for storing airline ticket base prices per agency
-- AI screenshot extraction via OpenAI gpt-4o-mini Vision
-- RLS: member select, non-agent insert/update, owner delete
-- Schema: `supabase/migrations/2026_05_19_ticket_prices.sql`
-
-## Fase 17: Community Referral Hub (May 17, 2026)
-
-- `clients.referral_stamps` column for bonus stamps from referrals
-- RPC `get_member_card` updated to return `referralStamps`
-- RPC `get_top_members(p_limit)` — public leaderboard data
-- RPC `increment_referral_stamp(p_client_id)` — admin-only, atomic +1 referral stamp
-- Schema: `supabase/migrations/2026_05_17_referral_hub.sql`
-
-## Fase 15: Client Document Vault (May 15, 2026)
-
-- `client_documents` table for per-client document storage (base64 data_url)
-- Categories: paspor, visa, tiket, lainnya
-- Departure/Return 24h alert on dashboard
-- Schema: `supabase/migrations/2026_05_15_client_documents.sql`
-
-## Agent (Mitra) Management System (Apr 30, 2026)
-
-- `agency_members.role` supports: `owner`, `staff`, `agent`
-- `agent_points` table with auto-award trigger on order completion
-- `reward_redemptions` table for point-to-reward exchange
-- Schema: `supabase/migrations/2026_04_30_agents_system.sql`
-
-## Order Hub (Apr 30, 2026)
-
-- `clients` table — independent contacts per agency
-- `orders` table — universal orders (umrah/flight/visa_voa/visa_student)
-- Schema: `supabase/migrations/2026_04_30_clients_orders.sql`
-
-## Fase 26: AI Command Center (May 2026)
-
-- Floating chat widget di pojok kanan bawah semua halaman dashboard
-- File: `src/components/AIChatWidget.tsx` (UI) + `src/lib/aiCommandCenter.ts` (engine)
-- OpenAI gpt-4o-mini dengan function calling — model memilih tool yang tepat secara otomatis
-- Agentic loop: AI terus eksekusi tool sampai semua tool calls selesai sebelum kirim respons
-
-**8 Tools yang tersedia:**
-1. `get_dashboard_summary` — Ringkasan bisnis (klien, order, revenue, kurs, misi)
-2. `get_clients` — Cari/list klien berdasarkan nama atau nomor HP
-3. `get_orders` — List order dengan filter type & status
-4. `create_itinerary` — Ekstrak itinerary dari teks PNR/booking mentah
-5. `update_exchange_rate` — Update kurs EGP/SAR/USD ke IDR (auto-switch ke manual mode)
-6. `create_daily_mission` — Buat misi harian untuk agen dengan poin reward & deadline
-7. `calculate_profit` — Hitung profit, margin %, dan konversi ke IDR
-8. `get_agent_performance` — Statistik poin & order per agen, ranking
-
-**UI Features:**
-- Tombol FAB biru bergradient di kanan bawah, badge merah kalau ada pesan belum dibaca
-- **AIContextualBar** — strip di atas setiap halaman dengan chip perintah kontekstual
-  - Dashboard: performa bisnis, agen terbaik, buat misi, status order
-  - Clients: cari klien, list terbaru, filter order klien
-  - Orders: filter status/tipe, revenue, list terbaru
-  - Itinerary: contoh PNR Galileo, Amadeus, dan teks booking langsung
-  - Calculator: hitung profit IDR/EGP, update kurs EGP/SAR/USD
-  - Reports: revenue, profit, performa agen
-  - Agent Center: buat misi, ranking agen, total poin
-  - Ticket Prices: order flight, kurs, profit tiket
-  - BC Templates: list klien, data bisnis untuk broadcast
-  - Notes: ringkasan bisnis, status order
-  - Settings: update semua kurs langsung dari settings
-  - Packages: profit paket, klien dengan order umrah
-- Chip suggestion **context-aware** — berubah sesuai halaman aktif
-- Klik chip → langsung isi input chat (tidak auto-send, bisa diedit dulu)
-- Tool result cards dengan warna berbeda per tipe (biru=dashboard, hijau=klien, dsb)
-- Multi-tool results ditampilkan inline sebelum pesan teks AI
-- Textarea auto-grow, Enter=kirim, Shift+Enter=baris baru
-- Reset percakapan (clear history + API context)
-- Proactive questioning — AI tanya balik kalau perintah kurang jelas
-- Requires `VITE_OPENAI_API_KEY` — graceful error message kalau belum di-set
-- Files: `src/store/aiChatStore.ts` (shared state), `src/components/AIContextualBar.tsx` (bar)
-
-## Fase 27: Automated Invoice Generator
-
-**Files:**
-- `src/lib/invoiceGenerator.ts` — Core PDF engine (pdf-lib). Renders A4 invoice: header gelap, detail rows, total box, watermark "by Temantiket". Supports custom template image overlay. Auto-generates invoice number `INV-YYYYMMDD-NNNN`.
-- `src/store/invoiceStore.ts` — Zustand store: templateDataUrl (localStorage), lastInvoiceDataUrl (for AI trigger).
-- `src/components/InvoiceButton.tsx` — "Cetak Invoice" button di setiap OrderDetail. Generates PDF, auto-download, stores blob di invoiceStore.
-- `src/components/InvoiceTemplateUploader.tsx` — Upload custom template image via Settings > Invoice tab.
-
-**Integration points:**
-- `src/pages/OrderDetail.tsx` — InvoiceButton ditambah ke header buttons (semua tipe order: flight, umrah, visa).
-- `src/pages/Settings.tsx` — Tab baru "Invoice": upload template, petunjuk pemakaian, format nomor invoice.
-- `src/lib/aiCommandCenter.ts` — Tool `generate_invoice`: cari order by clientName/orderId, generate PDF, store data URL, return invoice_ready result.
-- `src/components/AIChatWidget.tsx` — `invoice_ready` result card: tampilkan nomor, klien, total + tombol Download PDF langsung dari chat.
-- `src/components/AIContextualBar.tsx` — Chip "Bikinin invoice untuk order flight terbaru" di halaman Orders.
-
-**Flow:**
-1. Klik "Cetak Invoice" di OrderDetail → PDF langsung download (< 1 detik).
-2. Atau ketik ke AI: "Bikinin invoice untuk [nama klien]" → AI generate → card muncul di chat → klik Download PDF.
-3. Custom template: Settings > Invoice > Upload gambar → semua invoice berikutnya pakai template tsb sebagai background + data di-overlay.
-
-## Fase 28.1: PNR Command Center
-
-**Files:**
-- `src/components/PNRCommandCenter.tsx` — Universal PNR input widget with auto-extract (flight/hotel/tour), smart confirm modal, auto-creates client/order/invoice/WA reminder.
-
-**Integration:** Embedded in `src/pages/Dashboard.tsx` above DepartureTodayAlert.
-
-## Fase 29: Full Ecosystem Integration & Automated Workflow
-
-**New files:**
-- `src/lib/ledgerSync.ts` — `buildRateSnapshotPatch()` freezes EGP/SAR rate in `order.metadata` when status → Paid/Completed. `buildLedgerEntries()` + `ledgerSummary()` build the Buku Besar from Paid/Completed orders.
-- `src/lib/agentWallet.ts` — localStorage-based agent wallet. `POINT_TO_IDR_RATE = 1000` (1 poin = Rp 1.000). Functions: `convertMissionPoints()`, `recordPayout()`, `walletBalance()`.
-- `src/components/WaShareButton.tsx` — Universal WA dispatch button. mode="file" tries Web Share API (PDF attachment) first, falls back to wa.me text link. Accepts `phone`, `pdfBytes`, `text`.
-- `src/components/AgentWalletCard.tsx` — Per-agent wallet UI: balance, convertible mission points, Convert button (creates wallet transaction), Catat Pencairan button, transaction history.
-
-**Modified files:**
-- `src/pages/OrderDetail.tsx` — On status → Paid/Completed: snapshots EGP/SAR rate in `order.metadata` via `buildRateSnapshotPatch()`; shows toast "+1 poin Member Card [ClientName]" (integration 2) + "Buku Besar diperbarui" with rate info (integration 1). InvoiceButton now receives `phone={linkedClient?.phone}`.
-- `src/components/InvoiceButton.tsx` — After PDF generation, stores `lastPdfBytes` in state + builds pre-filled WA message. Shows `WaShareButton` inline (integration 4).
-- `src/pages/Reports.tsx` — Added "📊 Ringkasan" / "📒 Buku Besar" tab switcher. Ledger tab shows full-history table of Paid/Completed orders with running balance, EGP/SAR rate snapshot, margin %, cumulative profit (integration 1).
-- `src/pages/AgentCommandCenter.tsx` — Added `missionPointsByAgent` map (separate from combined order+mission points). In per-agent Commission Tracker expander, renders `AgentWalletCard` for mission-point → komisi conversion (integration 3).
-
-**Integration summary:**
-1. **Invoice → Ledger**: Rate snapshot frozen at payment time; Buku Besar tab shows all paid orders with historical rates + running balance.
-2. **Order → Member Points**: Toast notification fires when any order transitions to Paid/Completed, linking it to the client's Member Card stamp.
-3. **Mission → Agent Wallet**: Owner converts approved mission points to IDR komisi credit; wallet tracks credit/payout history in localStorage.
-4. **One-Click WA Dispatch**: Invoice PDF shareable via Web Share API (WhatsApp attachment) or wa.me pre-filled message, triggered directly from InvoiceButton after generation.
-
-## Legacy Umrah Flow
-
-- Calculator → Packages → Trips → Jamaah Manifest (still intact, not removed)
-- Schema: `supabase/schema.sql`
+*   **Supabase:** Primary BaaS for authentication, PostgreSQL database, real-time subscriptions, and storage.
+*   **OpenAI API:** Utilized for AI features such as `gpt-4o-mini` for Vision capabilities, itinerary generation, ticket price extraction, and the AI command center.
+*   **Tesseract.js:** Fallback OCR solution when OpenAI API key is not configured.
+*   **Vite:** Frontend build tool and development server.
+*   **Express.js:** Backend server for API routes requiring service role keys (e.g., user invitation/removal, bootstrap).
+*   **shadcn/ui:** UI component library.
+*   **React:** Frontend JavaScript library.
+*   **TypeScript:** Type-safe JavaScript.
+*   **Framer Motion:** For UI animations, particularly in the navigation.
+*   **Airhex CDN:** Used for fetching airline logos based on IATA codes.
+*   **pdf-lib:** JavaScript library for creating and modifying PDF documents (used in invoice generation).
+*   **Zustand:** State management library (used for invoice store and AI chat store).
