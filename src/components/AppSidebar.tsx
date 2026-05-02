@@ -1,10 +1,9 @@
-import { useState } from "react";
 import {
   LayoutDashboard, Calculator, Package, LogOut, Settings,
   StickyNote, FileSpreadsheet, Users, ShoppingBag,
-  Plane, FileBadge, Wallet, MessageSquare, Sparkles, Ticket,
+  MessageSquare, Sparkles, Ticket,
   GitBranch, Command, Trophy, BookUser, Megaphone, BarChart3,
-  ChevronDown, Star, Zap, Bot,
+  Bot,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -34,22 +33,39 @@ interface SectionDef {
 
 const STAFF_SECTIONS: SectionDef[] = [
   {
-    key: "main",
-    label: "Menu Utama",
-    collapsible: true,
+    key: "home",
+    label: "",
     items: [
-      { title: "Dashboard",          url: "/",               icon: LayoutDashboard, end: true },
-      { title: "Klien & Jamaah",     url: "/clients",        icon: Users },
-      { title: "Order Hub",          url: "/orders",         icon: ShoppingBag },
-      { title: "Harga Tiket",        url: "/ticket-prices",  icon: Ticket },
-      { title: "AI Itinerary",       url: "/itinerary",      icon: Sparkles, badge: "AI" },
-      { title: "Kalkulator & Kurs",  url: "/calculator",     icon: Calculator },
-      { title: "Paket Trip",         url: "/packages",       icon: Package },
-      { title: "Progress Jamaah",    url: "/progress",       icon: GitBranch },
-      { title: "Catatan",            url: "/notes",          icon: StickyNote },
+      { title: "Dashboard", url: "/", icon: LayoutDashboard, end: true },
+    ],
+  },
+  {
+    key: "bisnis",
+    label: "Bisnis",
+    items: [
+      { title: "Klien & Jamaah",  url: "/clients", icon: Users },
+      { title: "Order Hub",       url: "/orders",  icon: ShoppingBag },
+    ],
+  },
+  {
+    key: "tools",
+    label: "Tools",
+    items: [
+      { title: "Harga Tiket",       url: "/ticket-prices", icon: Ticket },
+      { title: "AI Itinerary",      url: "/itinerary",     icon: Sparkles, badge: "AI" },
+      { title: "Kalkulator & Kurs", url: "/calculator",    icon: Calculator },
+      { title: "Paket Trip",        url: "/packages",      icon: Package },
+      { title: "Progress Jamaah",   url: "/progress",      icon: GitBranch },
+    ],
+  },
+  {
+    key: "konten",
+    label: "Konten",
+    items: [
       { title: "Template Broadcast", url: "/bc-templates",   icon: MessageSquare },
-      { title: "Export & Manifest",  url: "/exports",        icon: FileSpreadsheet },
       { title: "Marketing Kit",      url: "/agent/marketing",icon: Megaphone },
+      { title: "Catatan",            url: "/notes",          icon: StickyNote },
+      { title: "Export & Manifest",  url: "/exports",        icon: FileSpreadsheet },
     ],
   },
   {
@@ -57,46 +73,63 @@ const STAFF_SECTIONS: SectionDef[] = [
     label: "Keuangan",
     ownerOnly: true,
     items: [
-      { title: "Laporan Keuangan",   url: "/reports",        icon: BarChart3 },
+      { title: "Laporan Keuangan", url: "/reports", icon: BarChart3 },
     ],
   },
   {
     key: "agent",
-    label: "Sistem Agen",
+    label: "Agen",
     items: [
-      { title: "Kontrol & Misi",     url: "/agent-center",      icon: Command, ownerOnly: true },
-      { title: "Direktori Agen",     url: "/agent-directory",   icon: BookUser },
-      { title: "Leaderboard",        url: "/agent/leaderboard", icon: Trophy },
+      { title: "Kontrol & Misi",  url: "/agent-center",      icon: Command, ownerOnly: true },
+      { title: "Direktori Agen",  url: "/agent-directory",   icon: BookUser },
+      { title: "Leaderboard",     url: "/agent/leaderboard", icon: Trophy },
     ],
   },
   {
     key: "settings",
-    label: "Pengaturan",
+    label: "",
     items: [
-      { title: "Pengaturan",         url: "/settings",          icon: Settings },
+      { title: "Pengaturan", url: "/settings", icon: Settings },
     ],
   },
 ];
 
 const AGENT_SECTIONS: SectionDef[] = [
   {
-    key: "main",
-    label: "Menu Utama",
-    collapsible: true,
+    key: "home",
+    label: "",
     items: [
-      { title: "Mitra Dashboard",    url: "/agent",              icon: Trophy, end: true },
-      { title: "Klien & Jamaah",     url: "/clients",            icon: Users },
-      { title: "Order Hub",          url: "/orders",             icon: ShoppingBag },
+      { title: "Mitra Dashboard", url: "/agent", icon: Trophy, end: true },
+    ],
+  },
+  {
+    key: "bisnis",
+    label: "Bisnis",
+    items: [
+      { title: "Klien & Jamaah", url: "/clients", icon: Users },
+      { title: "Order Hub",      url: "/orders",  icon: ShoppingBag },
+    ],
+  },
+  {
+    key: "konten",
+    label: "Konten",
+    items: [
       { title: "Template Broadcast", url: "/bc-templates",       icon: MessageSquare },
       { title: "Marketing Kit",      url: "/agent/marketing",    icon: Megaphone },
-      { title: "Leaderboard",        url: "/agent/leaderboard",  icon: Trophy },
+    ],
+  },
+  {
+    key: "agen",
+    label: "Agen",
+    items: [
+      { title: "Leaderboard", url: "/agent/leaderboard", icon: Trophy },
     ],
   },
   {
     key: "settings",
-    label: "Pengaturan",
+    label: "",
     items: [
-      { title: "Pengaturan",         url: "/settings",           icon: Settings },
+      { title: "Pengaturan", url: "/settings", icon: Settings },
     ],
   },
 ];
@@ -182,49 +215,30 @@ function SidebarSection({
   onClose?: () => void;
 }) {
   const visibleItems = section.items.filter((i) => !i.ownerOnly || isOwner);
-  const [collapsed, setCollapsed] = useState(false);
 
   if (visibleItems.length === 0) return null;
 
+  const hasLabel = section.label.length > 0;
+
   return (
     <div>
-      <button
-        onClick={section.collapsible ? () => setCollapsed((c) => !c) : undefined}
-        className={cn(
-          "flex items-center justify-between w-full px-2.5 pb-1 pt-0.5",
-          section.collapsible ? "cursor-pointer" : "cursor-default"
-        )}
-      >
-        <span className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-[hsl(var(--muted-foreground))/60]" style={{ opacity: 0.55 }}>
-          {section.label}
-        </span>
-        {section.collapsible && (
-          <motion.div
-            animate={{ rotate: collapsed ? 0 : 180 }}
-            transition={{ duration: 0.2 }}
+      {hasLabel && (
+        <div className="flex items-center gap-2 px-2.5 mb-1 mt-0.5">
+          <span
+            className="text-[9px] font-bold uppercase tracking-[0.16em] shrink-0"
+            style={{ color: "hsl(var(--muted-foreground))", opacity: 0.45 }}
           >
-            <ChevronDown className="h-3 w-3" style={{ color: "hsl(var(--muted-foreground))", opacity: 0.5 }} />
-          </motion.div>
-        )}
-      </button>
+            {section.label}
+          </span>
+          <div className="flex-1 h-px" style={{ background: "hsl(var(--border))", opacity: 0.6 }} />
+        </div>
+      )}
 
-      <AnimatePresence initial={false}>
-        {!collapsed && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="space-y-[2px]">
-              {visibleItems.map((item) => (
-                <SidebarNavItem key={item.url} item={item} onClose={onClose} />
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="space-y-[2px]">
+        {visibleItems.map((item) => (
+          <SidebarNavItem key={item.url} item={item} onClose={onClose} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -305,7 +319,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
 
       {/* ── Nav sections ── */}
       <div
-        className="flex-1 overflow-y-auto px-2.5 pb-3 space-y-3"
+        className="flex-1 overflow-y-auto px-2.5 pb-3 space-y-2.5"
         style={{ scrollbarWidth: "none" }}
       >
         {sections.map((section) => (
