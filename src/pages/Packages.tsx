@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -230,7 +231,12 @@ export default function Packages() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5 md:gap-4">
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5 md:gap-4"
+          initial="hidden"
+          animate="visible"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } } }}
+        >
           {filtered.map((pkg) => {
             const enriched = pkg as EnrichedPackage;
             const occupied = jamaahByPackage[pkg.id]?.length ?? 0;
@@ -241,11 +247,15 @@ export default function Packages() {
             const progressColor = occupancyPct >= 90 ? "from-emerald-500 to-green-500" : occupancyPct >= 60 ? "from-sky-400 to-sky-500" : "from-amber-400 to-amber-500";
 
             return (
-              <div
+              <motion.div
                 key={pkg.id}
                 onClick={() => navigate(`/packages/${pkg.id}`)}
                 className="group overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-[0_14px_40px_-24px_rgba(14,165,233,0.55)] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_20px_48px_-24px_rgba(15,23,42,0.30)]"
                 style={{ fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif" }}
+                variants={{
+                  hidden: { opacity: 0, y: 18, scale: 0.96 },
+                  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
+                }}
               >
                 <div className="relative h-16 md:h-24 overflow-hidden">
                   {pkg.coverImage ? (
@@ -368,10 +378,10 @@ export default function Packages() {
                     OCR
                   </button>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       <PackageFormDialog

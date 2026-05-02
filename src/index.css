@@ -1656,3 +1656,66 @@ button, [role="button"], a, input, select, textarea {
 [data-theme="dark"] .icon-adaptive {
   filter: none;
 }
+
+/* ── Micro-animation utilities ──────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.94) translateY(6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0);   }
+  50%       { transform: translateY(-5px); }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(26, 68, 212, 0.28); }
+  50%       { box-shadow: 0 0 0 10px rgba(26, 68, 212, 0);   }
+}
+@keyframes shimmerSlide {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+/* utility classes */
+.animate-fade-up   { animation: fadeUp      0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-in   { animation: fadeIn      0.3s  ease both; }
+.animate-scale-in  { animation: scaleIn     0.3s  cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-float     { animation: float       3s    ease-in-out infinite; }
+.animate-pulse-glow{ animation: pulseGlow   2s    ease-in-out infinite; }
+.animate-slide-right { animation: slideRight 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerSlide 1.8s ease-in-out infinite;
+}
+
+/* stagger helpers — add to a list parent to auto-stagger children */
+.stagger-children > * { animation-fill-mode: both; }
+.stagger-children > *:nth-child(1)  { animation-delay: 0ms;   }
+.stagger-children > *:nth-child(2)  { animation-delay: 45ms;  }
+.stagger-children > *:nth-child(3)  { animation-delay: 90ms;  }
+.stagger-children > *:nth-child(4)  { animation-delay: 135ms; }
+.stagger-children > *:nth-child(5)  { animation-delay: 180ms; }
+.stagger-children > *:nth-child(6)  { animation-delay: 225ms; }
+.stagger-children > *:nth-child(7)  { animation-delay: 270ms; }
+.stagger-children > *:nth-child(8)  { animation-delay: 315ms; }
+.stagger-children > *:nth-child(9)  { animation-delay: 360ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 405ms; }
+.stagger-children > *:nth-child(n+11) { animation-delay: 450ms; }

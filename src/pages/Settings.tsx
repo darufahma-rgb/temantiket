@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { User, Bell, Shield, Palette, Globe, Save, Camera, TrendingUp, RefreshCw, Users, Plus, Trash2, Radio, PencilLine, KeyRound, Clock, CheckCircle2, Lock, History, FileEdit, FileX, FilePlus, Activity, XCircle, AlertCircle, Database, Cloud, HardDrive, UserCheck, MessageCircle, Instagram, FileText } from "lucide-react";
 import { InvoiceTemplateUploader } from "@/components/InvoiceTemplateUploader";
 import { loadIghAdminSettings, saveIghAdminSettings, formatWhatsappDisplay, type IghAdminSettings } from "@/lib/ighSettings";
@@ -435,6 +436,14 @@ export default function Settings() {
 
       {/* ── Content ── */}
       <div className="flex-1 min-w-0">
+        <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, x: 8 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -8 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        >
 
         {tab === "profile" && (
           <div className="space-y-4 max-w-xl">
@@ -1290,6 +1299,8 @@ export default function Settings() {
             </Button>
           </div>
         )}
+        </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

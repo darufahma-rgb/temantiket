@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { ShoppingBag, Plus, Search, ArrowLeft } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,7 +85,12 @@ export default function Orders() {
     : "Semua Order";
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-5">
+    <motion.div
+      className="p-4 md:p-6 max-w-6xl mx-auto space-y-5"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {(typeFilter || clientIdParam) && (
@@ -137,25 +143,38 @@ export default function Orders() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <motion.div
+          className="space-y-2"
+          initial="hidden"
+          animate="visible"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.042, delayChildren: 0.04 } } }}
+        >
           {filtered.map((o) => (
-            <Link key={o.id} to={`/orders/detail/${o.id}`}
-              className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3 hover:bg-secondary/50 hover:border-primary/30 transition">
-              <div className="min-w-0 flex items-center gap-3">
-                <span className="text-2xl">{ORDER_TYPE_EMOJI[o.type]}</span>
-                <div className="min-w-0">
-                  <div className="font-semibold text-sm truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</div>
-                  <div className="text-[11.5px] text-muted-foreground truncate">
-                    {ORDER_TYPE_LABEL[o.type]}
-                    {o.clientId && clientNameById.get(o.clientId) && ` · ${clientNameById.get(o.clientId)}`}
-                    {" · "}{o.status}
+            <motion.div
+              key={o.id}
+              variants={{
+                hidden: { opacity: 0, y: 8 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } },
+              }}
+            >
+              <Link to={`/orders/detail/${o.id}`}
+                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3 hover:bg-secondary/50 hover:border-primary/30 transition-all hover:shadow-sm">
+                <div className="min-w-0 flex items-center gap-3">
+                  <span className="text-2xl">{ORDER_TYPE_EMOJI[o.type]}</span>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</div>
+                    <div className="text-[11.5px] text-muted-foreground truncate">
+                      {ORDER_TYPE_LABEL[o.type]}
+                      {o.clientId && clientNameById.get(o.clientId) && ` · ${clientNameById.get(o.clientId)}`}
+                      {" · "}{o.status}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="text-sm font-mono font-semibold shrink-0">{fmtIDR(o.totalPrice)}</div>
-            </Link>
+                <div className="text-sm font-mono font-semibold shrink-0">{fmtIDR(o.totalPrice)}</div>
+              </Link>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       <NewOrderDialog
@@ -170,7 +189,7 @@ export default function Orders() {
           navigate(`/orders/detail/${o.id}`);
         }}
       />
-    </div>
+    </motion.div>
   );
 }
 

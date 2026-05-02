@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   TrendingUp, TrendingDown, Wallet, Receipt, ShieldCheck, Filter,
   Crown, ArrowDown, Users, Trophy, Handshake, Building2,
@@ -409,7 +410,12 @@ export default function Reports() {
       {activeTab === "summary" && <>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <motion.div
+        className="grid grid-cols-2 md:grid-cols-4 gap-3"
+        initial="hidden"
+        animate="visible"
+        variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } } }}
+      >
         <SummaryCard
           label="Total Profit"
           value={fmtIDR(totals.profit)}
@@ -435,7 +441,7 @@ export default function Reports() {
           icon={Users}
           tone="violet"
         />
-      </div>
+      </motion.div>
 
       {/* Direct vs Agent split */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

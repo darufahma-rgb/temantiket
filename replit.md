@@ -52,7 +52,7 @@ The application is a React Single Page Application (SPA) utilizing Vite for the 
 *   **shadcn/ui:** UI component library.
 *   **React:** Frontend JavaScript library.
 *   **TypeScript:** Type-safe JavaScript.
-*   **Framer Motion:** For UI animations, particularly in the navigation.
+*   **Framer Motion:** For UI animations — page transitions (x-slide via DashboardLayout AnimatePresence), stagger list/card animations on Orders, Packages, TripDetail (jamaah grid), Reports (stat cards), AgentDashboard (stat cards), ExportCenter, AgentDirectory, OrderDetail, and tab-switch animations in Settings.
 *   **Airhex CDN:** Used for fetching airline logos based on IATA codes.
 *   **pdf-lib:** JavaScript library for creating and modifying PDF documents (used in invoice generation).
 *   **Zustand:** State management library (used for invoice store and AI chat store).

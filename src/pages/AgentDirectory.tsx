@@ -4,6 +4,7 @@ import {
   TrendingUp, Trophy, ShoppingBag, UserCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -311,7 +312,12 @@ export default function AgentDirectory() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto py-6 px-4 space-y-6">
+    <motion.div
+      className="max-w-5xl mx-auto py-6 px-4 space-y-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+    >
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -499,6 +505,6 @@ export default function AgentDirectory() {
         onClose={() => { setDialogOpen(false); setSelectedAgent(null); }}
         onGoMission={(agent) => goToMission(agent)}
       />
-    </div>
+    </motion.div>
   );
 }

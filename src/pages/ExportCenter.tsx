@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
+import { motion } from "framer-motion";
 import { Download, FileSpreadsheet, Users, Plane, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,7 +93,12 @@ export default function ExportCenter() {
   const needReviewCount = jamaah.filter((j) => j.needsReview).length;
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 max-w-4xl space-y-6">
+    <motion.div
+      className="container mx-auto p-4 sm:p-6 max-w-4xl space-y-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+    >
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <FileSpreadsheet className="h-6 w-6 text-primary" />
@@ -197,6 +203,6 @@ export default function ExportCenter() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </motion.div>
   );
 }

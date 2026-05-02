@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   Users, ShoppingBag, Trophy, TrendingUp, Sparkles, Plus, Target,
   Megaphone, Crown, ChevronRight,
@@ -150,36 +151,26 @@ export default function AgentDashboard() {
       </div>
 
       {/* Hero stats — 4 cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard
-          icon={Trophy}
-          label="Total Poin"
-          value={loadingPoints ? "…" : myPoints.toString()}
-          accent="from-amber-100 to-white text-amber-700 border-amber-200"
-          big
-          sub={rank.position ? `Peringkat #${rank.position} dari ${rank.total} mitra` : undefined}
-        />
-        <StatCard
-          icon={Users}
-          label="Total Klien"
-          value={stats.totalClients.toString()}
-          accent="from-sky-100 to-white text-sky-700 border-sky-200"
-        />
-        <StatCard
-          icon={ShoppingBag}
-          label="Total Order"
-          value={stats.totalOrders.toString()}
-          sub={`${stats.completedOrders} selesai`}
-          accent="from-violet-100 to-white text-violet-700 border-violet-200"
-        />
-        <StatCard
-          icon={TrendingUp}
-          label="Komisi Lo"
-          value={fmtIDR(stats.myEarnings)}
-          sub={stats.commissionPct > 0 ? `${stats.commissionPct}% dari profit` : "Belum diatur"}
-          accent="from-emerald-100 to-white text-emerald-700 border-emerald-200"
-        />
-      </div>
+      <motion.div
+        className="grid grid-cols-2 md:grid-cols-4 gap-3"
+        initial="hidden"
+        animate="visible"
+        variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } } }}
+      >
+        {([
+          { icon: Trophy,     label: "Total Poin",   value: loadingPoints ? "…" : myPoints.toString(), accent: "from-amber-100 to-white text-amber-700 border-amber-200",   big: true,  sub: rank.position ? `Peringkat #${rank.position} dari ${rank.total} mitra` : undefined },
+          { icon: Users,      label: "Total Klien",  value: stats.totalClients.toString(),              accent: "from-sky-100 to-white text-sky-700 border-sky-200" },
+          { icon: ShoppingBag,label: "Total Order",  value: stats.totalOrders.toString(),               accent: "from-violet-100 to-white text-violet-700 border-violet-200", sub: `${stats.completedOrders} selesai` },
+          { icon: TrendingUp, label: "Komisi Lo",    value: fmtIDR(stats.myEarnings),                   accent: "from-emerald-100 to-white text-emerald-700 border-emerald-200", sub: stats.commissionPct > 0 ? `${stats.commissionPct}% dari profit` : "Belum diatur" },
+        ] as const).map((card) => (
+          <motion.div
+            key={card.label}
+            variants={{ hidden: { opacity: 0, y: 12, scale: 0.96 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } }}
+          >
+            <StatCard {...card} />
+          </motion.div>
+        ))}
+      </motion.div>
 
       {/* ── Mission Widget ── */}
       {user?.agencyId && user?.id && (

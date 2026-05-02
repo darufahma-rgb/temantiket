@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { ArrowLeft, Trash2, Save, ExternalLink, Eye } from "lucide-react";
 import ClientViewDialog from "@/components/ClientViewDialog";
 import { Button } from "@/components/ui/button";
@@ -140,7 +141,12 @@ export default function OrderDetail() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-5">
+    <motion.div
+      className="p-4 md:p-6 max-w-4xl mx-auto space-y-5"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <Button variant="ghost" size="sm" onClick={() => navigate(`/orders/${order.type}`)} className="h-8 px-2">
@@ -331,7 +337,7 @@ export default function OrderDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </motion.div>
   );
 }
 

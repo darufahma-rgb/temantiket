@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -812,18 +813,31 @@ export default function TripDetail() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <motion.div
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          initial="hidden"
+          animate="visible"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } } }}
+        >
           {jamaah.map((j) => (
-            <JamaahCard key={j.id} jamaah={j} tripId={id!} onDelete={setDeleteTarget} onPreview={setPreviewTarget} />
+            <motion.div
+              key={j.id}
+              variants={{ hidden: { opacity: 0, y: 12, scale: 0.97 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } }}
+            >
+              <JamaahCard jamaah={j} tripId={id!} onDelete={setDeleteTarget} onPreview={setPreviewTarget} />
+            </motion.div>
           ))}
-          <button onClick={() => setAddOpen(true)}
-            className="rounded-2xl border-2 border-dashed border-[hsl(var(--border))] flex flex-col items-center justify-center gap-2 py-10 hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-all group">
+          <motion.button
+            onClick={() => setAddOpen(true)}
+            className="rounded-2xl border-2 border-dashed border-[hsl(var(--border))] flex flex-col items-center justify-center gap-2 py-10 hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-all group"
+            variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0.3 } } }}
+          >
             <div className="h-9 w-9 flex items-center justify-center transition-colors">
               <Plus strokeWidth={1.5} className="h-4 w-4 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))]" />
             </div>
             <span className="text-sm text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] font-medium">Tambah Jamaah</span>
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       )}
 
       {id && <AddJamaahDialog open={addOpen} tripId={id} onClose={() => setAddOpen(false)} />}
