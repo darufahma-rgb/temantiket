@@ -233,6 +233,19 @@ export default function OrderDetail() {
         <Field label={`Harga Jual (${order.currency})`}>
           <Input type="number" value={String(draft.totalPrice ?? 0)} onChange={(e) => setDraft({ ...draft, totalPrice: Number(e.target.value) || 0 })} />
         </Field>
+        <Field label="Fee Komisi Agen (IDR)">
+          <Input
+            type="number"
+            value={String(Number(((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>).agentFee ?? 0))}
+            onChange={(e) => setDraft({
+              ...draft,
+              metadata: {
+                ...((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>),
+                agentFee: Number(e.target.value) || 0,
+              },
+            })}
+          />
+        </Field>
         <Field label="Klien">
           <Select value={(draft.clientId ?? order.clientId) || "__none"} onValueChange={(v) => setDraft({ ...draft, clientId: v === "__none" ? null : v })}>
             <SelectTrigger><SelectValue placeholder="Pilih klien" /></SelectTrigger>
@@ -287,12 +300,50 @@ export default function OrderDetail() {
       )}
 
       {/* Total preview */}
-      <div className="rounded-2xl bg-gradient-to-br from-sky-50 to-white border border-sky-100 p-5">
-        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total</div>
-        <div className="text-2xl md:text-3xl font-extrabold font-mono mt-1">
-          {fmtIDR(Number(draft.totalPrice ?? order.totalPrice))}
-        </div>
-      </div>
+      {(() => {
+        const total = Number(draft.totalPrice ?? order.totalPrice);
+        const cost = Number(draft.costPrice ?? order.costPrice ?? 0);
+        const meta = (draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>;
+        const agentFee = Number(meta.agentFee ?? 0);
+        const profit = total - cost;
+        const net = profit - agentFee;
+        const profitPositive = profit >= 0;
+        const netPositive = net >= 0;
+        return (
+          <div className="rounded-2xl bg-gradient-to-br from-sky-50 to-white border border-sky-100 p-5 space-y-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Harga Jual</div>
+              <div className="text-2xl md:text-3xl font-extrabold font-mono mt-1">
+                {fmtIDR(total)}
+              </div>
+            </div>
+            {cost > 0 && (
+              <div className="border-t border-sky-100 pt-3 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Profit Kotor</span>
+                  <span className={`font-bold font-mono ${profitPositive ? "text-emerald-700" : "text-red-600"}`}>
+                    {profitPositive ? "+" : ""}{fmtIDR(profit)}
+                  </span>
+                </div>
+                {agentFee > 0 && (
+                  <>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Fee Komisi Agen</span>
+                      <span className="font-mono text-orange-600">−{fmtIDR(agentFee)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm font-semibold border-t border-sky-100 pt-2">
+                      <span>Net Profit</span>
+                      <span className={`font-bold font-mono ${netPositive ? "text-sky-700" : "text-red-600"}`}>
+                        {netPositive ? "+" : ""}{fmtIDR(net)}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Metadata viewer (esp. for umrah breakdown) */}
       {order.metadata && Object.keys(order.metadata).length > 0 && (

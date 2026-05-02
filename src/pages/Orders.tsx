@@ -21,6 +21,7 @@ import {
 import { PassportScanButton } from "@/components/PassportScanButton";
 import { decidePassportSync } from "@/features/clients/passportSync";
 import { toast } from "sonner";
+import { getCommissionForOrderType, loadProductCommissions } from "@/lib/productCommissions";
 
 // Mata uang default per tipe order — visa Mesir dijual dalam EGP, sisanya IDR.
 const CURRENCY_BY_TYPE: Record<OrderType, "IDR" | "EGP"> = {
@@ -193,7 +194,8 @@ export default function Orders() {
         defaultType={typeFilter ?? "umrah"}
         defaultClientId={clientIdParam}
         onSubmit={async (draft) => {
-          const o = await addOrder({ ...draft, metadata: {}, tripId: null, packageId: null, jamaahId: null, notes: null });
+          const { agentFee, ...rest } = draft;
+          const o = await addOrder({ ...rest, metadata: { agentFee }, tripId: null, packageId: null, jamaahId: null, notes: null });
           toast.success("Order dibuat");
           setAddOpen(false);
           navigate(`/orders/detail/${o.id}`);
@@ -228,6 +230,7 @@ function NewOrderDialog({
   onSubmit: (draft: {
     type: OrderType; status: "Draft"; title: string | null;
     totalPrice: number; costPrice: number; currency: string; clientId: string | null;
+    agentFee: number;
   }) => Promise<void>;
 }) {
   const { clients, addClient, patchClient } = useClientsStore();
@@ -244,6 +247,7 @@ function NewOrderDialog({
   // Track apakah user udah pilih currency manual — kalau iya, jangan ikut
   // berubah saat tipe order diganti.
   const [currencyEdited, setCurrencyEdited] = useState(false);
+  const [agentFee, setAgentFee] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   const currencySymbol = CURRENCY_SYMBOL[currency];
@@ -258,6 +262,9 @@ function NewOrderDialog({
       setClientId(defaultClientId ?? "");
       setCurrency(CURRENCY_BY_TYPE[defaultType]);
       setCurrencyEdited(false);
+      // Auto-fill fee komisi dari settings saat dialog dibuka
+      const fee = getCommissionForOrderType(defaultType, loadProductCommissions());
+      setAgentFee(fee > 0 ? String(fee) : "");
     }
   }, [open, defaultType, defaultClientId]);
 
@@ -266,6 +273,13 @@ function NewOrderDialog({
     if (!open || currencyEdited) return;
     setCurrency(CURRENCY_BY_TYPE[type]);
   }, [open, type, currencyEdited]);
+
+  // Auto-update agent fee saat tipe order berubah.
+  useEffect(() => {
+    if (!open) return;
+    const fee = getCommissionForOrderType(type, loadProductCommissions());
+    setAgentFee(fee > 0 ? String(fee) : "");
+  }, [open, type]);
 
   // Auto-fill judul: "[Tipe Order] - [Nama Klien]" (atau cuma tipe kalau gak
   // ada klien). Cuma jalan kalau user belum ngetik manual.
@@ -428,20 +442,60 @@ function NewOrderDialog({
             </div>
           </div>
 
+          {/* Fee Komisi Agen */}
+          <div className="space-y-1">
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Fee Komisi Agen
+            </Label>
+            <div className="flex items-center gap-1.5">
+              <span className="px-2 h-9 rounded-md border bg-muted/40 text-[11px] font-semibold inline-flex items-center shrink-0">
+                Rp
+              </span>
+              <Input
+                type="number"
+                inputMode="numeric"
+                value={agentFee}
+                onChange={(e) => setAgentFee(e.target.value)}
+                placeholder="0 (auto dari settings)"
+                className="flex-1 min-w-0"
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground pt-0.5">
+              Auto-isi dari pengaturan fee per produk · bisa diubah manual
+            </p>
+          </div>
+
           {/* Profit preview */}
           {(Number(totalPrice) > 0 || Number(costPrice) > 0) && (() => {
             const profit = (Number(totalPrice) || 0) - (Number(costPrice) || 0);
+            const fee = Number(agentFee) || 0;
+            const net = profit - fee;
             const positive = profit >= 0;
+            const netPositive = net >= 0;
             return (
-              <div className={`rounded-xl border px-3 py-2 flex items-center justify-between gap-2 ${
-                positive ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
-              }`}>
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Profit
-                </span>
-                <span className={`text-[14px] font-extrabold font-mono ${positive ? "text-emerald-700" : "text-red-600"}`}>
-                  {positive ? "+" : ""}{currencySymbol} {Math.abs(profit).toLocaleString("id-ID")}
-                </span>
+              <div className="space-y-1.5">
+                <div className={`rounded-xl border px-3 py-2 flex items-center justify-between gap-2 ${
+                  positive ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
+                }`}>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Profit Kotor
+                  </span>
+                  <span className={`text-[14px] font-extrabold font-mono ${positive ? "text-emerald-700" : "text-red-600"}`}>
+                    {positive ? "+" : ""}{currencySymbol} {Math.abs(profit).toLocaleString("id-ID")}
+                  </span>
+                </div>
+                {fee > 0 && (
+                  <div className={`rounded-xl border px-3 py-2 flex items-center justify-between gap-2 ${
+                    netPositive ? "bg-sky-50 border-sky-200" : "bg-red-50 border-red-200"
+                  }`}>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Net (- fee agen)
+                    </span>
+                    <span className={`text-[14px] font-extrabold font-mono ${netPositive ? "text-sky-700" : "text-red-600"}`}>
+                      {netPositive ? "+" : ""}{currencySymbol} {Math.abs(net).toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -461,6 +515,7 @@ function NewOrderDialog({
                   costPrice: Number(costPrice) || 0,
                   currency,
                   clientId: clientId || null,
+                  agentFee: Number(agentFee) || 0,
                 });
               } catch (e) {
                 toast.error("Gagal simpan", { description: e instanceof Error ? e.message : "Coba lagi." });

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { loadProductCommissions as loadProdComm, saveProductCommissions as saveProdComm, type ProductCommissions } from "@/lib/productCommissions";
 import { AnimatePresence, motion } from "framer-motion";
 import { User, Bell, Shield, Palette, Globe, Save, Camera, TrendingUp, RefreshCw, Users, Plus, Trash2, Radio, PencilLine, KeyRound, Clock, CheckCircle2, Lock, History, FileEdit, FileX, FilePlus, Activity, XCircle, AlertCircle, Database, Cloud, HardDrive, UserCheck, MessageCircle, Instagram, FileText } from "lucide-react";
 import { InvoiceTemplateUploader } from "@/components/InvoiceTemplateUploader";
@@ -175,18 +176,12 @@ export default function Settings() {
   const setMemberCommission = useAuthStore((s) => s.setMemberCommission);
 
   // ── Komisi per produk ────────────────────────────────────────────────────
-  const PRODUCT_COMMISSION_KEY = "temantiket.product_commissions.v1";
-  type ProductCommissions = { umrah: number; haji: number; tiket_pesawat: number; visa: number; paket: number };
-  const DEFAULT_PC: ProductCommissions = { umrah: 0, haji: 0, tiket_pesawat: 0, visa: 0, paket: 0 };
-  function loadProductCommissions(): ProductCommissions {
-    try { return { ...DEFAULT_PC, ...JSON.parse(localStorage.getItem(PRODUCT_COMMISSION_KEY) ?? "{}") }; } catch { return { ...DEFAULT_PC }; }
-  }
-  const [productCommissions, setProductCommissions] = useState<ProductCommissions>(() => loadProductCommissions());
+  const [productCommissions, setProductCommissions] = useState(() => loadProdComm());
   const [savingPC, setSavingPC] = useState(false);
   function handleSaveProductCommissions() {
     setSavingPC(true);
     try {
-      localStorage.setItem(PRODUCT_COMMISSION_KEY, JSON.stringify(productCommissions));
+      saveProdComm(productCommissions);
       toast.success("Fee komisi per produk disimpan!");
     } catch { toast.error("Gagal menyimpan."); } finally { setSavingPC(false); }
   }
