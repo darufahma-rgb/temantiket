@@ -4,6 +4,7 @@ import { LiveClock } from "@/components/LiveClock";
 import { AdminWhatsappCard } from "@/components/AdminWhatsappCard";
 import { MitraLeaderboardCard } from "@/components/MitraLeaderboardCard";
 import { CeoDailyQuest } from "@/components/CeoDailyQuest";
+import { DepartureTodayAlert } from "@/components/DepartureTodayAlert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,8 @@ import { listAllAgencyPayments, sumPaid, type Payment } from "@/features/payment
 import type { Jamaah } from "@/features/trips/tripsRepo";
 import { useRatesStore } from "@/store/ratesStore";
 import { usePackagesStore } from "@/store/packagesStore";
+import { useOrdersStore } from "@/store/ordersStore";
+import { useClientsStore } from "@/store/clientsStore";
 import { useAuthStore } from "@/store/authStore";
 import { formatDateStr, getLocale, useT } from "@/lib/regional";
 import { useRegionalStore } from "@/store/regionalStore";
@@ -707,6 +710,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { trips, loadingTrips, fetchTrips, removeTrip } = useTripsStore();
   const { items: packages, loaded: packagesLoaded, refresh: refreshPackages } = usePackagesStore();
+  const { orders, fetchOrders } = useOrdersStore();
+  const { clients, fetchClients } = useClientsStore();
   const user = useAuthStore((s) => s.user);
   const { language } = useRegionalStore();
   const locale = getLocale(language);
@@ -727,6 +732,8 @@ export default function Dashboard() {
 
   useEffect(() => { fetchTrips(); }, [fetchTrips]);
   useEffect(() => { if (!packagesLoaded) refreshPackages(); }, [packagesLoaded, refreshPackages]);
+  useEffect(() => { void fetchOrders(); }, [fetchOrders]);
+  useEffect(() => { void fetchClients(); }, [fetchClients]);
   useEffect(() => {
     let alive = true;
     listAllAgencyJamaah()
@@ -959,6 +966,9 @@ export default function Dashboard() {
             </button>
           ))}
         </motion.div>
+
+        {/* ── Departure / Return 24h alerts ── */}
+        <DepartureTodayAlert packages={packages} orders={orders} clients={clients} />
 
         {/* ── Payment alerts H-30 ── */}
         <PaymentAlerts trips={trips} />

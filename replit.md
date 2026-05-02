@@ -15,6 +15,39 @@ Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn
 - **Bootstrap**: Visit `/bootstrap` to create the first agency + owner account (one-time setup).
 
 
+## Fase 15: Client Document Vault & Automated After-Sales Service (May 2, 2026)
+
+### 1. Document Vault (`src/components/ClientDocVault.tsx`)
+Section baru di halaman detail klien (`/clients/:id`), diantara Member Card dan daftar Order.
+- Upload dokumen (JPG/PNG/PDF, maks 4 MB) dengan kategori: Paspor 📗, Visa 📋, Tiket 🎫, Lainnya 📁.
+- Preview thumbnail inline (gambar) atau ikon PDF.
+- Tombol per dokumen: Lihat (preview fullscreen dialog), Download, Hapus.
+- **Tombol "Kirim Notif [Kategori] ke WhatsApp Klien"** per kelompok kategori — membuka wa.me dengan pesan otomatis yang sudah menyebut nama klien + link Member Card.
+- Storage: `client_documents` Supabase table (base64 `data_url`, RLS per agency). Migration: `supabase/migrations/2026_05_15_client_documents.sql`.
+- Repo: `src/features/clients/clientDocsRepo.ts` (`listClientDocs`, `createClientDoc`, `deleteClientDoc`).
+
+### 2. Departure/Return 24h Alert (`src/components/DepartureTodayAlert.tsx`)
+Komponen baru di Admin Dashboard, muncul di atas PaymentAlerts jika ada klien berangkat/pulang hari ini.
+- **"Berangkat Hari Ini ✈️"** (card biru): list klien yang paketnya `departure_date` = hari ini.
+- **"Baru Pulang 🏠"** (card hijau): list klien yang paketnya `return_date` = hari ini atau kemarin.
+- Setiap baris: nama klien + nama paket + tombol **"Kirim WA"** (membuka wa.me dengan template pesan lengkap).
+- Klik nama klien → navigasi ke halaman detail klien.
+- Auto-hidden jika tidak ada berangkat/pulang hari itu (komponen return null).
+- Data source: cross-reference `packages` (dari `usePackagesStore`) + `orders` + `clients`.
+
+### 3. WhatsApp Template Engine
+Dua fungsi template builder di `DepartureTodayAlert.tsx`:
+- **`buildDepartureWAText()`**: pesan "Selamat Berangkat" + nama paket + link Member Card.
+- **`buildReturnWAText()`**: pesan "Selamat Datang Kembali" + link Member Card.
+- `ClientDocVault.tsx` punya **`buildDocWhatsAppText()`**: pesan notif dokumen per kategori + link Member Card.
+- Semua template pakai format personal (nama depan saja) dan bahasa Indonesia yang hangat.
+
+### Setup Steps (WAJIB jalankan di Supabase):
+1. Supabase SQL Editor → paste `supabase/migrations/2026_05_15_client_documents.sql` → RUN.
+2. Dashboard akan otomatis load data berangkat/pulang hari ini dari packages yang sudah ada.
+
+---
+
 ## Mitra Marketing & Retention Pack (May 1, 2026 — Fase 9.5)
 Lapisan tambahan di atas Agent System buat bikin mitra ngerasa Temantiket =
 "alat cari duit" (gamification + marketing power). Bahasa UI: kasual gue/lo.

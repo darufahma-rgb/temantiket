@@ -18,6 +18,7 @@ import { ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI } from "@/features/orders/ordersRepo
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "sonner";
 import MemberCard from "@/components/MemberCard";
+import { ClientDocVault } from "@/components/ClientDocVault";
 import { buildMemberSlug, buildPublicMemberUrl } from "@/lib/memberSlug";
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -159,6 +160,9 @@ function ClientDetailInner({ id }: { id: string }) {
           </a>
         </p>
       </section>
+
+      {/* Document Vault */}
+      <ClientDocVault client={client} memberIndex={memberIndex} />
 
       {/* Orders milik klien */}
       <section className="space-y-3">
