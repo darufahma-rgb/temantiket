@@ -3,7 +3,8 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Download, Hand, Loader2, MousePointer2, Redo2, Sliders, Undo2, X, Zap, ZapOff } from "lucide-react";
 import { toast } from "sonner";
-import { downloadIghPdf, renderIghPdfPreview, type IghPdfData } from "@/lib/generateIghPdf";
+import { renderIghPdfPreview, type IghPdfData } from "@/lib/generateIghPdf";
+import { downloadIghPdfRemote } from "@/lib/exportPdfApi";
 import { loadIghLayoutConfig, saveIghLayoutConfig, type IghLayoutConfig, type IghLayoutMode } from "@/lib/ighPdfConfig";
 import { PdfLayoutTuner } from "./PdfLayoutTuner";
 import { PdfInteractiveOverlay } from "./PdfInteractiveOverlay";
@@ -217,7 +218,7 @@ export function PdfPreviewDialog({ open, onOpenChange, data }: Props) {
     if (downloading) return;
     setDownloading(true);
     try {
-      await downloadIghPdf(data, undefined, layout);
+      await downloadIghPdfRemote(data, undefined, layout);
       toast.success("PDF berhasil diunduh");
     } catch (err) {
       console.error(err);

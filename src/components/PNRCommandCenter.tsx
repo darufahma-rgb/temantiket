@@ -27,7 +27,8 @@ import {
   type ItineraryData,
   type FlightLeg,
 } from "@/lib/itineraryAI";
-import { generateInvoicePdf, nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
+import { nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
+import { generateInvoicePdfRemote } from "@/lib/exportPdfApi";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
 import { normalizePhoneForWa } from "@/lib/memberSlug";
 import type { ClientDraft } from "@/features/clients/clientsRepo";
@@ -550,7 +551,7 @@ export function PNRCommandCenter() {
           ? { id: clientId, name: clientName, phone: "", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
           : null;
 
-        const pdfBytes = await generateInvoicePdf({
+        const pdfBytes = await generateInvoicePdfRemote({
           invoiceNumber: invoiceNum,
           invoiceDate,
           order: savedOrder,

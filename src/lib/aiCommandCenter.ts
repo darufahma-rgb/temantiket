@@ -21,7 +21,8 @@ import { extractItinerary } from "@/lib/itineraryAI";
 import { fmtIDR, profitIDR, revenueIDR } from "@/lib/profit";
 import { useRatesStore } from "@/store/ratesStore";
 import { useAuthStore } from "@/store/authStore";
-import { generateInvoicePdf, nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
+import { nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
+import { generateInvoicePdfRemote } from "@/lib/exportPdfApi";
 import { useInvoiceStore } from "@/store/invoiceStore";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
 
@@ -577,7 +578,7 @@ async function executeTool(
         const { templateDataUrl } = useInvoiceStore.getState();
         const invoiceNumber = nextInvoiceNumber();
 
-        const pdfBytes = await generateInvoicePdf({
+        const pdfBytes = await generateInvoicePdfRemote({
           invoiceNumber,
           invoiceDate: todayString(),
           order: targetOrder,

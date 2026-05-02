@@ -7,7 +7,8 @@ import { useState } from "react";
 import { FileDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { generateInvoicePdf, nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
+import { nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
+import { generateInvoicePdfRemote } from "@/lib/exportPdfApi";
 import { useInvoiceStore } from "@/store/invoiceStore";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
 import { WaShareButton } from "@/components/WaShareButton";
@@ -41,7 +42,7 @@ export function InvoiceButton({ order, client, variant = "outline", size = "sm",
       const invoiceNumber = nextInvoiceNumber();
       const invoiceDate   = todayString();
 
-      const pdfBytes = await generateInvoicePdf({
+      const pdfBytes = await generateInvoicePdfRemote({
         invoiceNumber,
         invoiceDate,
         order,

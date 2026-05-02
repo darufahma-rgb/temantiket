@@ -33,13 +33,14 @@ The application is a React Single Page Application (SPA) utilizing Vite for the 
     *   **Itinerary Generation:** Extracts itineraries from raw PNR/booking text.
     *   **Conversational Command Center:** A floating chat widget (`AIChatWidget.tsx`) uses function calling to interact with 8 distinct tools (e.g., `get_dashboard_summary`, `create_daily_mission`, `calculate_profit`). It includes a context-aware `AIContextualBar` that suggests commands based on the active page.
     *   **Passport OCR:** Direct browser-to-OpenAI passport OCR.
-*   **Automated Invoice Generation:** Utilizes `pdf-lib` to generate A4 invoices with dynamic data, custom template overlays, and auto-generated invoice numbers. Integrated with the AI Command Center for on-demand generation and WhatsApp sharing.
+*   **Automated Invoice Generation:** Utilizes `pdf-lib` to generate A4 invoices with dynamic data, custom template overlays, and auto-generated invoice numbers. PDF generation is offloaded to Vercel serverless functions (`api/export/invoice.js`, `api/export/igh.js`) with automatic browser-side fallback via `src/lib/exportPdfApi.ts`. Integrated with the AI Command Center for on-demand generation and WhatsApp sharing.
 *   **PNR Command Center:** A universal PNR input widget (`PNRCommandCenter.tsx`) automates extraction of flight/hotel/tour data and can auto-create client, order, invoice, and WhatsApp reminders.
 *   **Agent Management System:** Supports multiple roles (owner, staff, agent) with a points-based reward system. `agent_points` are awarded on order completion, and `reward_redemptions` tracks point-to-reward exchanges. Agent wallet functionality is implemented using localStorage for commission conversion.
 *   **Order Hub:** Manages universal orders (Umrah, Flight, Visa) and client data.
 *   **Reporting:** Features a financial reports section, including a ledger tab (`Buku Besar`) that tracks paid/completed orders with historical exchange rates and running balances.
 *   **Real-time Features:** Supabase Realtime subscriptions enable live synchronization across devices, including real-time updates for the Agent Leaderboard.
-*   **Environment Setup:** Development uses `npm run dev` to concurrently run the Express API server (port 3001) and Vite development server (port 5000). Production builds use `npm run build` and serve static files from Express.
+*   **Environment Setup:** Development uses `npm run dev` to concurrently run the Express API server (port 3001) and Vite development server (port 5000). Production (Vercel) serves static frontend + serverless functions from `api/` directory. The `vercel.json` rewrite excludes `/api/*` from SPA redirect.
+*   **Vercel Serverless Functions:** All backend endpoints live in `api/` — `api/ai/chat.js` (OpenAI proxy), `api/bootstrap.js`, `api/invite-member.js`, `api/remove-member.js`, `api/export/invoice.js`, `api/export/igh.js`. Required Vercel env vars: `OPENAI_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
 *   **Database Management:** Schema is managed via Supabase SQL Editor, with migrations applied chronologically.
 
 ## External Dependencies
