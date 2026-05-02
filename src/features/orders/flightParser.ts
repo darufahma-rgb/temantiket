@@ -76,6 +76,19 @@ const AIRLINE_BY_IATA: Record<string, string> = {
   PR: "Philippine Airlines",
   VN: "Vietnam Airlines",
   TZ: "Scoot Tigerair",
+  // Gulf / Middle East
+  GF: "Gulf Air",
+  G9: "Air Arabia",
+  FZ: "flydubai",
+  WY: "Oman Air",
+  KU: "Kuwait Airways",
+  RJ: "Royal Jordanian",
+  ME: "Middle East Airlines",
+  GS: "Air Arabia Abu Dhabi",
+  // African / others common in Umrah routes
+  ET: "Ethiopian Airlines",
+  AT: "Royal Air Maroc",
+  TU: "Tunisair",
 };
 
 /**
@@ -83,6 +96,7 @@ const AIRLINE_BY_IATA: Record<string, string> = {
  * Indonesia / Umrah / regional Asia.
  */
 const CITY_BY_IATA: Record<string, string> = {
+  // Indonesia
   CGK: "Jakarta",
   HLP: "Jakarta (Halim)",
   SUB: "Surabaya",
@@ -96,25 +110,47 @@ const CITY_BY_IATA: Record<string, string> = {
   BPN: "Balikpapan",
   PKU: "Pekanbaru",
   PLM: "Palembang",
-  // Jeddah / Madinah / Riyadh
+  // Saudi Arabia / Umrah / Haji
   JED: "Jeddah",
   MED: "Madinah",
   RUH: "Riyadh",
   DMM: "Dammam",
-  // Hub regional & long-haul
+  // Middle East hubs
+  BAH: "Bahrain",
+  KWI: "Kuwait City",
+  AMM: "Amman",
+  MCT: "Muscat",
+  AHB: "Abha",
+  TIF: "Taif",
+  // Gulf & regional hubs
   KUL: "Kuala Lumpur",
   SIN: "Singapore",
   BKK: "Bangkok",
   DOH: "Doha",
   DXB: "Dubai",
   AUH: "Abu Dhabi",
+  SHJ: "Sharjah",
   IST: "Istanbul",
+  // Africa / North Africa
   CAI: "Cairo",
+  ALG: "Algiers",
+  TUN: "Tunis",
+  CMN: "Casablanca",
+  ADD: "Addis Ababa",
+  // Asia & long-haul
   HKG: "Hong Kong",
   TPE: "Taipei",
   ICN: "Seoul",
   HND: "Tokyo",
   NRT: "Tokyo (Narita)",
+  BOM: "Mumbai",
+  DEL: "New Delhi",
+  GOI: "Goa",
+  HYD: "Hyderabad",
+  MAA: "Chennai",
+  COK: "Kochi",
+  CCU: "Kolkata",
+  // Europe
   AMS: "Amsterdam",
   CDG: "Paris",
   LHR: "London",
