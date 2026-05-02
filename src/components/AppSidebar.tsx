@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, Calculator, Package, GitBranch, LogOut, Settings, X,
   ShieldCheck, StickyNote, FileSpreadsheet, Users, ShoppingBag, ChevronDown,
-  Plane, FileBadge, Wallet, Trophy, Megaphone, Crown, MessageSquare,
+  Plane, FileBadge, Wallet, Trophy, Megaphone, Crown, MessageSquare, Command,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -126,6 +126,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
               label: t.nav_group_admin,
               items: [
                 { title: t.nav_reports, url: "/reports", icon: Wallet, end: false },
+                { title: "Agent Command Center", url: "/agent-center", icon: Command, end: false },
               ],
             }]
           : []),
