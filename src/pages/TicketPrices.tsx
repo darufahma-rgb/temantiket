@@ -1463,7 +1463,7 @@ export default function TicketPrices() {
               {markup > 0 && <span className="ml-2 text-emerald-600">• Markup {fmtIDR(markup)}/pax sudah termasuk</span>}
             </p>
             <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <img src="/temantiket-icon.png" alt="" className="h-4 w-4 object-contain opacity-50" style={{ filter: "brightness(0)" }} />
+              <img src="/temantiket-icon.png" alt="" className="h-4 w-4 object-contain opacity-50 icon-adaptive" />
               <span>Temantiket</span>
             </div>
           </div>

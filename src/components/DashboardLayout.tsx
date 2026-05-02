@@ -128,8 +128,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
             <img
               src="/temantiket-icon.png"
               alt=""
-              className="h-6 w-6 object-contain"
-              style={{ filter: "brightness(0)" }}
+              className="h-6 w-6 object-contain icon-adaptive"
             />
             <span className="text-[14px] font-black tracking-tight text-[hsl(var(--foreground))]">Temantiket</span>
           </button>

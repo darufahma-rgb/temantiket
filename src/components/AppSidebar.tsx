@@ -243,24 +243,15 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
     >
       {/* ── Logo area ── */}
       <div className="flex items-center gap-2.5 px-5 py-4 shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-        <div
-          className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
-          style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
-        >
-          <img
-            src="/temantiket-icon.png"
-            alt="Temantiket"
-            className="h-6 w-6 object-contain"
-            onError={(e) => {
-              const img = e.target as HTMLImageElement;
-              img.style.display = "none";
-              const span = document.createElement("span");
-              span.textContent = "T";
-              span.className = "text-white font-black text-lg";
-              img.parentElement!.appendChild(span);
-            }}
-          />
-        </div>
+        <img
+          src="/temantiket-icon.png"
+          alt="Temantiket"
+          className="h-8 w-8 object-contain shrink-0 icon-adaptive"
+          onError={(e) => {
+            const img = e.target as HTMLImageElement;
+            img.style.display = "none";
+          }}
+        />
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-black text-[hsl(var(--foreground))] leading-none tracking-tight">Temantiket</p>
           <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5 leading-none">Travel Management</p>

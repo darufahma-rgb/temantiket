@@ -187,19 +187,13 @@ export function CeoDailyQuest() {
 
             <div className="relative flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                {/* Logo mark */}
-                <div className="h-9 w-9 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center shrink-0 border border-white/20">
-                  <img
-                    src="/temantiket-icon.png"
-                    alt="Temantiket"
-                    className="h-6 w-6 object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                      (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
-                    }}
-                  />
-                  <Crown className="h-4 w-4 text-yellow-300 hidden" />
-                </div>
+                {/* Logo mark — always white on the dark gradient card */}
+                <img
+                  src="/temantiket-icon.png"
+                  alt="Temantiket"
+                  className="h-8 w-8 object-contain shrink-0"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
 
                 <div>
                   <div className="flex items-center gap-2">

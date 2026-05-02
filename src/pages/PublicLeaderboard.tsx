@@ -52,7 +52,7 @@ export default function PublicLeaderboard() {
       {/* Header */}
       <header className="px-4 py-4 flex items-center justify-between border-b border-sky-100/60 bg-white/70 backdrop-blur sticky top-0 z-10">
         <Link to="/" className="flex items-center gap-2">
-          <img src="/temantiket-icon.png" alt="Temantiket" className="h-7 w-7 object-contain" style={{ filter: "brightness(0)" }} />
+          <img src="/temantiket-icon.png" alt="Temantiket" className="h-7 w-7 object-contain icon-adaptive" />
           <span className="text-sm font-bold text-sky-700">Temantiket</span>
         </Link>
         <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
