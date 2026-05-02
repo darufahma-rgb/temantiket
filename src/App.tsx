@@ -33,6 +33,7 @@ import AgentLeaderboard from "./pages/AgentLeaderboard";
 import AgentMarketingKit from "./pages/AgentMarketingKit";
 import BCTemplates from "./pages/BCTemplates";
 import ItineraryGenerator from "./pages/ItineraryGenerator";
+import DemoSeed from "./pages/DemoSeed";
 import { useRatesStore } from "@/store/ratesStore";
 import { usePackagesStore } from "@/store/packagesStore";
 import { useTripsStore } from "@/store/tripsStore";
@@ -272,6 +273,7 @@ function AnimatedRoutes() {
       />
       <Route path="/bc-templates" element={<RequireAuth><DashboardLayout><BCTemplates /></DashboardLayout></RequireAuth>} />
       <Route path="/itinerary" element={<RequireAuth><DashboardLayout><ItineraryGenerator /></DashboardLayout></RequireAuth>} />
+      <Route path="/demo-seed" element={<RequireAuth><DashboardLayout><DemoSeed /></DashboardLayout></RequireAuth>} />
       <Route path="/settings" element={<RequireAuth><DashboardLayout><Settings /></DashboardLayout></RequireAuth>} />
       <Route path="/auth" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<NotFound />} />
