@@ -14,6 +14,7 @@ export interface PublicMemberCard {
     name: string;
     createdAt: string;
     memberIndex: number;
+    referralStamps: number;
   };
   orders: PublicMemberStamp[];
 }

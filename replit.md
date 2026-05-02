@@ -15,6 +15,58 @@ Aplikasi manajemen trip Umrah & Haji berbasis React + Vite + TypeScript + shadcn
 - **Bootstrap**: Visit `/bootstrap` to create the first agency + owner account (one-time setup).
 
 
+## Fase 17: Community Referral Hub & Client-to-Agent Bridge (May 2, 2026)
+
+### 1. Client Referral Link — Public Member Card (`/m/:slug`)
+- **"Ajak Teman" button**: share referral link via WhatsApp menggunakan teks pre-fill yang sudah di-templatkan.
+- **"Salin Link"**: copy URL member card ke clipboard.
+- **Referral stamp badge**: jika `referralStamps > 0`, tampil badge hijau "🎁 +N bonus referral".
+- **Full Card badge**: tampil jika totalStamps >= 16 (🎉 Crown badge).
+- **Stamp History**: referral bonus stamps ditampilkan sebagai row virtual 🎁 "Bonus Referral" di bawah order stamps.
+
+### 2. Agent Recruitment Path
+- Tombol **"Mau jadi Agen Temantiket?"** (amber gradient card) muncul otomatis jika `totalStamps >= 8`.
+- Klik → buka WhatsApp admin dengan teks pre-fill yang menyebut nama, member ID, dan jumlah stamp.
+- Threshold dapat diubah via konstanta `AGENT_THRESHOLD` di `PublicMemberCard.tsx`.
+
+### 3. Public Leaderboard (`/leaderboard`)
+- Route publik (no auth) — `src/pages/PublicLeaderboard.tsx`.
+- Data via RPC `get_top_members` (SECURITY DEFINER, anon-safe): top N members by totalStamps.
+- Tampilkan: rank medal (🥇🥈🥉), first name only (privacy), member ID, stamp bar, referral bonus badge.
+- Link ke leaderboard ada di header Public Member Card.
+- Includes "Cara Dapat Stamp" section + "Mau masuk leaderboard?" CTA.
+
+### 4. AI Social Share Card — Tab baru di `/itinerary`
+- Tab **"📲 Share WA Group"** di AI Itinerary Generator.
+- WA Group teks pre-fill: route, tanggal, CTA Temantiket — copy atau langsung buka WA.
+- Canvas 1080×1080 **Social Card** (IG Square format): dark navy + diagonal accent, airport codes besar, route, CTA Temantiket.
+- Download PNG + render ulang button.
+
+### 5. Database Migration
+File: `supabase/migrations/2026_05_17_referral_hub.sql`
+- `ALTER TABLE clients ADD COLUMN referral_stamps int DEFAULT 0`
+- Update RPC `get_member_card` → return `referralStamps` dalam response
+- New RPC `get_top_members(p_limit)` → public leaderboard data
+- New RPC `increment_referral_stamp(p_client_id)` → admin-only, atomic +1 referral stamp
+
+### Setup Steps (WAJIB jalankan di Supabase):
+1. Supabase SQL Editor → paste `supabase/migrations/2026_05_17_referral_hub.sql` → RUN.
+2. Leaderboard & referral stamps akan aktif setelah migration.
+3. Award referral stamp: admin call `increment_referral_stamp(client_uuid)` atau via admin UI (coming next).
+
+### New files:
+- `src/pages/PublicLeaderboard.tsx` — public leaderboard page
+- `src/features/portal/leaderboardRepo.ts` — `fetchTopMembers()` + `incrementReferralStamp()`
+- `supabase/migrations/2026_05_17_referral_hub.sql`
+
+### Modified files:
+- `src/pages/PublicMemberCard.tsx` — Ajak Teman + Mau jadi Agen + referral stamps display
+- `src/features/portal/memberCardRepo.ts` — added `referralStamps` to `PublicMemberCard` type
+- `src/pages/ItineraryGenerator.tsx` — Social Share tab (canvas 1080×1080 + WA group text)
+- `src/App.tsx` — `/leaderboard` public route
+
+---
+
 ## Fase 15: Client Document Vault & Automated After-Sales Service (May 2, 2026)
 
 ### 1. Document Vault (`src/components/ClientDocVault.tsx`)

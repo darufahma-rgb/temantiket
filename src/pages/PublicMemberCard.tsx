@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, AlertCircle, Sparkles, MessageCircle, History } from "lucide-react";
+import {
+  Loader2, AlertCircle, Sparkles, MessageCircle, History,
+  Share2, Users, Trophy, Gift, Crown,
+} from "lucide-react";
 import MemberCard from "@/components/MemberCard";
 import { lookupMemberCard, type PublicMemberCard, type PublicMemberStamp } from "@/features/portal/memberCardRepo";
 import { buildPublicMemberUrl, normalizePhoneForWa } from "@/lib/memberSlug";
@@ -9,33 +12,28 @@ import { loadIghAdminSettings } from "@/lib/ighSettings";
 
 /**
  * Halaman publik (anon, read-only) Member Card Temantiket.
+ * Route: `/m/:slug`
  *
- * Route: `/m/:slug` — slug = `firstname-NNNN`, mis. `/m/danang-0010`.
- *
- * Keamanan:
- *   • Hanya call RPC `get_member_card` (SECURITY DEFINER, projection minimal).
- *   • Tidak ada form, tidak ada mutate, tidak ada akses ke store auth.
- *   • Tidak nampilin phone/email/paspor/alamat/harga klien.
- *   • Komponen MemberCard di-render TANPA tombol Download/Share — hanya flip.
- *
- * Marketing:
- *   • Stamp History list (read-only, type + tanggal aja).
- *   • CTA "Pesan Tiket/Visa Lagi" → buka WhatsApp admin Temantiket.
- *   • OG meta tags (di index.html) bikin link punya thumbnail kartu pas di-share.
+ * Fase 17 additions:
+ *   • "Ajak Teman" — share link referral via WhatsApp
+ *   • "Mau jadi Agen?" — tampil jika totalStamps >= AGENT_THRESHOLD
+ *   • Referral stamp badge (bonus stamps dari referral teman)
  */
+
+const AGENT_THRESHOLD = 8; // Jumlah stamp minimum untuk tombol "Mau jadi Agen?"
 
 // ── Type label & icon helpers ─────────────────────────────────────────────
 const TYPE_LABEL: Record<string, string> = {
-  umrah: "Umrah Transit Saudi",
-  flight: "Tiket Pesawat",
-  visa_voa: "Visa on Arrival",
+  umrah:        "Umrah Transit Saudi",
+  flight:       "Tiket Pesawat",
+  visa_voa:     "Visa on Arrival",
   visa_student: "Visa Pelajar / Entry",
 };
 
 const TYPE_EMOJI: Record<string, string> = {
-  umrah: "🕋",
-  flight: "✈️",
-  visa_voa: "🔺",
+  umrah:        "🕋",
+  flight:       "✈️",
+  visa_voa:     "🔺",
   visa_student: "📘",
 };
 
@@ -60,6 +58,7 @@ export default function PublicMemberCardPage() {
   const [data, setData] = useState<PublicMemberCard | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<"not_found" | "invalid_slug" | "network" | null>(null);
+  const [referralCopied, setReferralCopied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,26 +74,79 @@ export default function PublicMemberCardPage() {
     return () => { cancelled = true; };
   }, [slug]);
 
-  // Set per-page <title> (tetap, walau OG tags di index.html scraper-friendly).
   useEffect(() => {
     const prev = document.title;
     if (data?.client.name) document.title = `${data.client.name} — Temantiket Member Card`;
     return () => { document.title = prev; };
   }, [data?.client.name]);
 
-  // CTA WhatsApp admin Temantiket
+  // Admin WA CTA
   const adminWa = useMemo(() => {
     const admin = loadIghAdminSettings();
     return normalizePhoneForWa(admin.adminWhatsapp);
   }, []);
+
+  const publicUrl = useMemo(() => buildPublicMemberUrl(slug ?? ""), [slug]);
+
+  // Total stamps = orders + referral bonus
+  const totalStamps = useMemo(() => {
+    if (!data) return 0;
+    return data.orders.length + (data.client.referralStamps ?? 0);
+  }, [data]);
+
+  const isGoldMember = totalStamps >= AGENT_THRESHOLD;
+
+  // "Pesan Tiket Lagi" WA URL
   const ctaText = useMemo(() => {
     const name = data?.client.name?.trim().split(/\s+/)[0] || "Sahabat";
-    return `Halo Admin Temantiket, gue ${name} (member ID TMNTKT${String(data?.client.memberIndex ?? 0).padStart(4, "0")}). Mau pesan tiket/visa lagi nih, bisa bantu cek opsinya?`;
-  }, [data?.client.name, data?.client.memberIndex]);
+    const memberId = `TMNTKT${String(data?.client.memberIndex ?? 0).padStart(4, "0")}`;
+    return `Halo Admin Temantiket, gue ${name} (${memberId}). Mau pesan tiket/visa lagi nih, bisa bantu cek opsinya?`;
+  }, [data]);
   const ctaUrl = useMemo(() => {
-    const text = encodeURIComponent(ctaText);
-    return adminWa ? `https://wa.me/${adminWa}?text=${text}` : `https://wa.me/?text=${text}`;
+    const encoded = encodeURIComponent(ctaText);
+    return adminWa ? `https://wa.me/${adminWa}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
   }, [adminWa, ctaText]);
+
+  // "Ajak Teman" referral share text
+  const referralText = useMemo(() => {
+    const name = data?.client.name?.trim().split(/\s+/)[0] || "Aku";
+    return (
+      `✈️ ${name} ngajak kamu gabung Temantiket!\n\n` +
+      `Temantiket — travel agency terpercaya buat tiket umrah, pesawat & visa. ` +
+      `Cek kartu member gue di sini:\n${publicUrl}\n\n` +
+      `Daftar & order lewat Temantiket, kita sama-sama dapet reward! 🎁`
+    );
+  }, [data, publicUrl]);
+  const referralWaUrl = useMemo(() => {
+    return `https://wa.me/?text=${encodeURIComponent(referralText)}`;
+  }, [referralText]);
+
+  // "Mau jadi Agen?" WA text
+  const agentText = useMemo(() => {
+    const name = data?.client.name?.trim() || "Saya";
+    const memberId = `TMNTKT${String(data?.client.memberIndex ?? 0).padStart(4, "0")}`;
+    return (
+      `Halo Admin Temantiket! 👋\n\n` +
+      `Saya ${name} (Member ${memberId}) tertarik untuk bergabung sebagai Agen Temantiket.\n\n` +
+      `Sudah ${totalStamps} transaksi & kepercayaan penuh dengan layanan Temantiket. ` +
+      `Bisa share info syarat & benefit jadi agen? Terima kasih! ✈️`
+    );
+  }, [data, totalStamps]);
+  const agentWaUrl = useMemo(() => {
+    const encoded = encodeURIComponent(agentText);
+    return adminWa ? `https://wa.me/${adminWa}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+  }, [adminWa, agentText]);
+
+  // Copy referral link
+  const handleCopyReferral = async () => {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setReferralCopied(true);
+      setTimeout(() => setReferralCopied(false), 2500);
+    } catch {
+      /* silently fail — user can manually copy the URL */
+    }
+  };
 
   // Sort history paling baru di atas
   const history = useMemo(() => {
@@ -109,12 +161,20 @@ export default function PublicMemberCardPage() {
       {/* Header */}
       <header className="px-4 py-4 flex items-center justify-between border-b border-sky-100/60 bg-white/70 backdrop-blur sticky top-0 z-10">
         <Link to="/" className="flex items-center gap-2">
-          <img src="/logo-igh-tour.png" alt="Temantiket" className="h-8 w-auto" />
-          <span className="text-sm font-bold text-sky-700">Temantiket</span>
+          <img src="/temantiket-logo.png" alt="Temantiket" className="h-8 w-auto" />
         </Link>
-        <span className="text-[11px] text-[hsl(var(--muted-foreground))] inline-flex items-center gap-1">
-          <Sparkles className="h-3 w-3" /> Member Card
-        </span>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/leaderboard"
+            className="text-[11px] text-sky-600 hover:text-sky-800 flex items-center gap-1 font-medium"
+          >
+            <Trophy className="h-3 w-3" /> Leaderboard
+          </Link>
+          <span className="text-sky-200">·</span>
+          <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+            <Sparkles className="h-3 w-3" /> Member Card
+          </span>
+        </div>
       </header>
 
       <main className="flex-1 max-w-md mx-auto w-full px-4 py-6 md:py-10">
@@ -158,15 +218,15 @@ export default function PublicMemberCardPage() {
               <p className="text-[11px] uppercase tracking-wider text-sky-700/70 font-semibold">
                 Temantiket Member
               </p>
-              <h1 className="text-xl md:text-2xl font-extrabold text-[hsl(var(--foreground))] mt-1">
+              <h1 className="text-xl md:text-2xl font-extrabold text-foreground mt-1">
                 {data.client.name}
               </h1>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Tap kartu untuk lihat sisi belakang & cek poin lo
               </p>
             </div>
 
-            {/* Member Card (read-only — flip masih jalan, no download/share) */}
+            {/* Member Card (read-only — flip masih jalan) */}
             <div className="rounded-2xl bg-white/80 backdrop-blur border border-sky-100 p-4 shadow-sm">
               <MemberCard
                 client={{
@@ -184,14 +244,89 @@ export default function PublicMemberCardPage() {
               />
             </div>
 
+            {/* Stamp summary badge */}
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <div className="inline-flex items-center gap-1.5 bg-sky-100 text-sky-800 text-[12px] font-semibold px-3 py-1.5 rounded-full border border-sky-200">
+                ✈️ {data.orders.length} stamp dari transaksi
+              </div>
+              {(data.client.referralStamps ?? 0) > 0 && (
+                <div className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 text-[12px] font-semibold px-3 py-1.5 rounded-full border border-emerald-200">
+                  <Gift className="h-3 w-3" /> +{data.client.referralStamps} bonus referral
+                </div>
+              )}
+              {totalStamps >= 16 && (
+                <div className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-[12px] font-semibold px-3 py-1.5 rounded-full border border-amber-200">
+                  <Crown className="h-3 w-3" /> Full Card! 🎉
+                </div>
+              )}
+            </div>
+
             {/* Progress / motivational banner */}
             <div className="rounded-xl bg-gradient-to-br from-sky-100 to-cyan-100 border border-sky-200 p-4 text-center">
               <p className="text-[12.5px] text-sky-900 leading-relaxed">
                 <strong>Pantau terus stamp lo!</strong><br />
                 Tiap transaksi sukses (umrah / tiket / visa) bakal otomatis nambah satu stamp.
-                Penuhin 16 kotaknya buat reward spesial dari Temantiket. ✈️
+                Penuhin 16 kotaknya buat <strong>reward spesial</strong> dari Temantiket. ✈️
               </p>
             </div>
+
+            {/* ── Fase 17: Ajak Teman ──────────────────────────────── */}
+            <div className="rounded-2xl bg-white border border-sky-100 shadow-sm p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-sky-600" />
+                <h2 className="text-sm font-bold text-sky-900">Ajak Teman, Dapat Reward!</h2>
+              </div>
+              <p className="text-[12.5px] text-sky-800 leading-relaxed">
+                Share link member card lo ke teman. Kalau mereka order lewat Temantiket,{" "}
+                <strong>lo dapet +1 bonus stamp referral</strong> dari admin. 🎁
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                <a
+                  href={referralWaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#1eb858] text-white text-[13px] font-bold py-2.5 rounded-xl transition-colors shadow-sm"
+                >
+                  <Share2 className="h-3.5 w-3.5" /> Ajak via WhatsApp
+                </a>
+                <button
+                  type="button"
+                  onClick={handleCopyReferral}
+                  className="flex items-center gap-1.5 bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 text-[13px] font-semibold py-2.5 px-3 rounded-xl transition-colors"
+                >
+                  {referralCopied ? "✓ Tersalin!" : "Salin Link"}
+                </button>
+              </div>
+              <p className="text-[10.5px] text-muted-foreground font-mono break-all bg-sky-50 rounded-lg px-2 py-1.5 border border-sky-100">
+                {publicUrl}
+              </p>
+            </div>
+
+            {/* ── Fase 17: Mau jadi Agen? (Gold Member only) ───────── */}
+            {isGoldMember && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-300 shadow-sm p-4 space-y-3"
+              >
+                <div className="flex items-center gap-2">
+                  <Crown className="h-4 w-4 text-amber-600" />
+                  <h2 className="text-sm font-bold text-amber-900">Lo Udah Jadi Gold Member! 🏅</h2>
+                </div>
+                <p className="text-[12.5px] text-amber-800 leading-relaxed">
+                  Dengan <strong>{totalStamps} stamp</strong>, lo udah masuk kategori pelanggan terbaik Temantiket.
+                  Mau naikin level & jadi <strong>Agen Resmi Temantiket</strong>? Komisi, akses eksklusif, dan banyak lagi!
+                </p>
+                <a
+                  href={agentWaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full bg-amber-500 hover:bg-amber-600 text-white text-[13px] font-bold py-3 rounded-xl transition-colors shadow-sm"
+                >
+                  <Crown className="h-4 w-4" /> Mau jadi Agen Temantiket?
+                </a>
+              </motion.div>
+            )}
 
             {/* Stamp History — read-only */}
             <section className="rounded-2xl bg-white border border-sky-100 overflow-hidden shadow-sm">
@@ -199,12 +334,19 @@ export default function PublicMemberCardPage() {
                 <h2 className="text-sm font-bold text-sky-900 inline-flex items-center gap-1.5">
                   <History className="h-4 w-4" /> Stamp History
                 </h2>
-                <span className="text-[11px] text-sky-700/80 font-mono">
-                  {history.length}/16
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {(data.client.referralStamps ?? 0) > 0 && (
+                    <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                      +{data.client.referralStamps} referral
+                    </span>
+                  )}
+                  <span className="text-[11px] text-sky-700/80 font-mono">
+                    {data.orders.length}/16
+                  </span>
+                </div>
               </header>
               {history.length === 0 ? (
-                <div className="px-4 py-8 text-center text-xs text-[hsl(var(--muted-foreground))]">
+                <div className="px-4 py-8 text-center text-xs text-muted-foreground">
                   Belum ada stamp. Pesan tiket atau paket umrah pertama lo buat mulai koleksi! ✈️
                 </div>
               ) : (
@@ -215,10 +357,10 @@ export default function PublicMemberCardPage() {
                         {stampEmoji(stamp)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[hsl(var(--foreground))] truncate">
+                        <p className="text-sm font-semibold text-foreground truncate">
                           {stampLabel(stamp)}
                         </p>
-                        <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                        <p className="text-[11px] text-muted-foreground">
                           {fmtDateLong(stamp.createdAt)}
                         </p>
                       </div>
@@ -227,6 +369,23 @@ export default function PublicMemberCardPage() {
                       </span>
                     </li>
                   ))}
+                  {/* Referral bonus stamps — shown as virtual entries */}
+                  {(data.client.referralStamps ?? 0) > 0 &&
+                    Array.from({ length: data.client.referralStamps }).map((_, i) => (
+                      <li key={`ref-${i}`} className="px-4 py-3 flex items-center gap-3 bg-emerald-50/40">
+                        <div className="h-9 w-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-base shrink-0">
+                          🎁
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground">Bonus Referral</p>
+                          <p className="text-[11px] text-muted-foreground">Teman berhasil daftar & order</p>
+                        </div>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          +1 stamp
+                        </span>
+                      </li>
+                    ))
+                  }
                 </ul>
               )}
             </section>
@@ -245,17 +404,15 @@ export default function PublicMemberCardPage() {
               </p>
             </a>
 
-            <p className="text-center text-[11px] text-[hsl(var(--muted-foreground))] pt-2">
+            <p className="text-center text-[11px] text-muted-foreground pt-2">
               Bookmark link ini biar gampang cek lagi:&nbsp;
-              <span className="font-mono break-all">
-                {buildPublicMemberUrl(slug ?? "")}
-              </span>
+              <span className="font-mono break-all">{publicUrl}</span>
             </p>
           </motion.div>
         )}
       </main>
 
-      <footer className="px-4 py-4 text-center text-[10px] text-[hsl(var(--muted-foreground))] border-t border-sky-100/60">
+      <footer className="px-4 py-4 text-center text-[10px] text-muted-foreground border-t border-sky-100/60">
         © Temantiket — Member Card View · Read-Only · Tidak ada data sensitif yang ditampilkan.
       </footer>
     </div>

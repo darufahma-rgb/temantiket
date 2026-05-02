@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Sparkles, Copy, Check, Download, MessageCircle, ChevronDown, ChevronUp,
-  Plane, RefreshCw, Pencil, Info, Wand2, ExternalLink,
+  Plane, RefreshCw, Pencil, Info, Wand2, Share2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -342,6 +342,152 @@ async function renderTravelCard(
   ctx.textAlign = "left";
 }
 
+// ── Social Share Card renderer (1080×1080 square) ─────────────────────────
+
+async function renderSocialCard(canvas: HTMLCanvasElement, data: ItineraryData): Promise<void> {
+  const S = 1080;
+  canvas.width = S;
+  canvas.height = S;
+  const ctx = canvas.getContext("2d")!;
+
+  // Background
+  const bg = ctx.createLinearGradient(0, 0, S, S);
+  bg.addColorStop(0, "#050E1F");
+  bg.addColorStop(0.6, "#0A1A35");
+  bg.addColorStop(1, "#061522");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, S, S);
+
+  // Diagonal accent stripe
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  ctx.fillStyle = "#0EA5E9";
+  ctx.beginPath();
+  ctx.moveTo(S * 0.55, 0); ctx.lineTo(S, 0); ctx.lineTo(S * 0.45, S); ctx.lineTo(0, S);
+  ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // Glow top-left
+  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 480);
+  glow.addColorStop(0, "rgba(14,165,233,0.14)");
+  glow.addColorStop(1, "rgba(14,165,233,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, S, S);
+
+  // Logo
+  const logo = await loadImage("/temantiket-logo.png");
+  const logoH = 44;
+  const logoW = logo ? (logo.naturalWidth / logo.naturalHeight) * logoH : 0;
+  if (logo) ctx.drawImage(logo, 48, 44, logoW, logoH);
+
+  // "Itinerary Gue Udah Jadi!" headline
+  ctx.font = "700 22px system-ui, sans-serif";
+  ctx.fillStyle = "#7DD3FC";
+  ctx.letterSpacing = "1px";
+  ctx.textAlign = "right";
+  ctx.fillText("✈️  ITINERARY GUE UDAH JADI!", S - 48, 72);
+  ctx.letterSpacing = "0px";
+  ctx.textAlign = "left";
+
+  // ── Route display ─────────────────────────────────────────────────────
+  const firstLeg = data.legs[0];
+  const lastLeg = data.legs[data.legs.length - 1];
+  const fromCode = firstLeg?.fromCode ?? "???";
+  const toCode = lastLeg?.toCode ?? "???";
+  const fromCity = firstLeg?.fromCity ?? "";
+  const toCity = lastLeg?.toCity ?? "";
+
+  // Collect all transit codes
+  const allCodes = data.legs.map((l, i) => (i === 0 ? l.fromCode : l.toCode)).filter(Boolean) as string[];
+
+  // Big route codes center
+  const centerY = S * 0.45;
+  ctx.font = "black 96px system-ui, sans-serif";
+  ctx.fillStyle = "#FFFFFF";
+  ctx.textAlign = "left";
+  ctx.fillText(fromCode, 60, centerY);
+
+  ctx.textAlign = "right";
+  ctx.fillText(toCode, S - 60, centerY);
+
+  // Arrow + planes in center
+  ctx.font = "44px system-ui, sans-serif";
+  ctx.fillStyle = "#0EA5E9";
+  ctx.textAlign = "center";
+  ctx.fillText("✈", S / 2, centerY - 12);
+
+  // Dashed line
+  ctx.setLineDash([8, 8]);
+  ctx.strokeStyle = "rgba(14,165,233,0.4)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const fromW = (() => { ctx.save(); ctx.font = "black 96px system-ui, sans-serif"; const w = ctx.measureText(fromCode).width; ctx.restore(); return w; })();
+  ctx.moveTo(60 + fromW + 16, centerY - 32);
+  ctx.lineTo(S / 2 - 34, centerY - 32);
+  ctx.stroke();
+  ctx.beginPath();
+  const toW = (() => { ctx.save(); ctx.font = "black 96px system-ui, sans-serif"; const w = ctx.measureText(toCode).width; ctx.restore(); return w; })();
+  ctx.moveTo(S / 2 + 34, centerY - 32);
+  ctx.lineTo(S - 60 - toW - 16, centerY - 32);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // City names
+  ctx.font = "500 22px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(186,230,253,0.75)";
+  ctx.textAlign = "left";
+  ctx.fillText(fromCity, 60, centerY + 30);
+  ctx.textAlign = "right";
+  ctx.fillText(toCity, S - 60, centerY + 30);
+
+  // Transit stops (if any)
+  if (data.legs.length > 1) {
+    const midCodes = allCodes.slice(1, -1).join(" · ");
+    if (midCodes) {
+      ctx.font = "400 18px system-ui, sans-serif";
+      ctx.fillStyle = "rgba(253,230,138,0.85)";
+      ctx.textAlign = "center";
+      ctx.fillText(`🔄  Transit: ${midCodes}`, S / 2, centerY + 66);
+    }
+  }
+
+  // Date + flight number
+  const dateY = centerY + (data.legs.length > 1 ? 106 : 80);
+  ctx.font = "600 20px system-ui, sans-serif";
+  ctx.fillStyle = "#38BDF8";
+  ctx.textAlign = "center";
+  const dateStr = firstLeg?.departDate
+    ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(new Date(firstLeg.departDate + "T00:00:00"))
+    : "";
+  const flightStr = [firstLeg?.airline, firstLeg?.flightNumber].filter(Boolean).join(" · ");
+  ctx.fillText([dateStr, flightStr].filter(Boolean).join("  ·  "), S / 2, dateY);
+
+  // ── Divider ────────────────────────────────────────────────────────────
+  const divY = S * 0.7;
+  ctx.strokeStyle = "rgba(14,165,233,0.2)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(48, divY); ctx.lineTo(S - 48, divY); ctx.stroke();
+
+  // ── CTA section ────────────────────────────────────────────────────────
+  ctx.font = "700 26px system-ui, sans-serif";
+  ctx.fillStyle = "#FFFFFF";
+  ctx.textAlign = "center";
+  ctx.fillText("Itinerary udah rapi, tiket & visa", S / 2, divY + 48);
+  ctx.fillText("diurus sama Temantiket! 🙌", S / 2, divY + 84);
+
+  ctx.font = "400 18px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(186,230,253,0.7)";
+  ctx.fillText("Mau itinerary estetik kayak gini?", S / 2, divY + 126);
+  ctx.fillText("Chat Temantiket sekarang ✈️", S / 2, divY + 152);
+
+  // Bottom tag
+  ctx.font = "400 16px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(125,211,252,0.45)";
+  ctx.fillText("temantiket — mudah, cepat, amanah", S / 2, S - 44);
+  ctx.textAlign = "left";
+}
+
 // ── Editable leg form ──────────────────────────────────────────────────────
 
 function LegEditor({
@@ -409,7 +555,7 @@ function LegField({
 
 // ── Main page ──────────────────────────────────────────────────────────────
 
-type Tab = "wa" | "card";
+type Tab = "wa" | "card" | "share";
 
 export default function ItineraryGenerator() {
   const rates = useRatesStore((s) => s.rates);
@@ -423,8 +569,11 @@ export default function ItineraryGenerator() {
   const [copied, setCopied] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [isRenderingCard, setIsRenderingCard] = useState(false);
+  const [isRenderingShare, setIsRenderingShare] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const shareCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // WA text — recompute when itinerary changes
   const waText = itinerary ? buildWhatsAppText(itinerary, egpRate) : "";
@@ -513,6 +662,72 @@ export default function ItineraryGenerator() {
     link.href = canvasRef.current.toDataURL("image/png");
     link.click();
     toast.success("Travel Card didownload!");
+  };
+
+  // ── Social Share handlers ─────────────────────────────────────────────────
+
+  const renderSocialShare = useCallback(async () => {
+    if (!itinerary || !shareCanvasRef.current) return;
+    setIsRenderingShare(true);
+    try {
+      await renderSocialCard(shareCanvasRef.current, itinerary);
+    } catch (e) {
+      console.error("[ItineraryGenerator] social share render failed:", e);
+      toast.error("Gagal render Social Share Card");
+    } finally {
+      setIsRenderingShare(false);
+    }
+  }, [itinerary]);
+
+  useEffect(() => {
+    if (activeTab === "share" && itinerary) {
+      void renderSocialShare();
+    }
+  }, [activeTab, itinerary, renderSocialShare]);
+
+  const handleShareDownload = () => {
+    if (!shareCanvasRef.current) return;
+    const link = document.createElement("a");
+    link.download = `share-temantiket-${itinerary?.pnr ?? Date.now()}.png`;
+    link.href = shareCanvasRef.current.toDataURL("image/png");
+    link.click();
+    toast.success("Social Card didownload!");
+  };
+
+  const buildShareGroupText = (): string => {
+    const first = itinerary?.legs[0];
+    const last = itinerary?.legs[(itinerary?.legs.length ?? 1) - 1];
+    const route = [first?.fromCode, last?.toCode].filter(Boolean).join(" → ");
+    const date = first?.departDate
+      ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(new Date(first.departDate + "T00:00:00"))
+      : "";
+    return [
+      `✈️ *Itinerary Gue Udah Jadi!*`,
+      ``,
+      `Gue baru dapet itinerary estetik dari *Temantiket* 🔥`,
+      route ? `Route: *${route}*` : "",
+      date ? `Tanggal: ${date}` : "",
+      ``,
+      `Mau itinerary rapi kayak gini juga? Rekomen banget buat umrah & tiket hemat! ✈️`,
+      ``,
+      `_Temantiket — mudah, cepat, amanah_`,
+    ].filter((l, i, arr) => !(l === "" && arr[i - 1] === "")).join("\n");
+  };
+
+  const handleShareWAGroup = () => {
+    const text = buildShareGroupText();
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  };
+
+  const handleCopyShareText = async () => {
+    try {
+      await navigator.clipboard.writeText(buildShareGroupText());
+      setShareCopied(true);
+      toast.success("Teks share disalin!");
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      toast.error("Gagal menyalin");
+    }
   };
 
   return (
@@ -713,13 +928,17 @@ export default function ItineraryGenerator() {
 
             {/* Tabs */}
             <div className="rounded-2xl border border-border bg-white overflow-hidden">
-              <div className="flex border-b border-border">
-                {([["wa", "💬 Teks WhatsApp"], ["card", "🎨 Travel Card (Instagram)"]] as [Tab, string][]).map(([t, label]) => (
+              <div className="flex border-b border-border overflow-x-auto">
+                {([
+                  ["wa",    "💬 WhatsApp"],
+                  ["card",  "🎨 Travel Card"],
+                  ["share", "📲 Share WA Group"],
+                ] as [Tab, string][]).map(([t, label]) => (
                   <button
                     key={t}
                     onClick={() => setActiveTab(t)}
                     className={cn(
-                      "flex-1 py-3 text-[13px] font-semibold transition-colors",
+                      "flex-1 min-w-[100px] py-3 text-[12.5px] font-semibold transition-colors whitespace-nowrap px-2",
                       activeTab === t
                         ? "bg-sky-50 text-sky-700 border-b-2 border-sky-500"
                         : "text-muted-foreground hover:bg-secondary/50",
@@ -761,23 +980,66 @@ export default function ItineraryGenerator() {
                     </Button>
                     <span className="text-[11px] text-muted-foreground">Instagram Portrait · siap posting</span>
                   </div>
-
-                  {/* Canvas preview — scaled down for display */}
                   <div className="relative rounded-xl overflow-hidden bg-secondary/30 border border-border flex items-center justify-center min-h-[300px]">
                     {isRenderingCard && (
                       <div className="absolute inset-0 flex items-center justify-center bg-secondary/60 z-10 rounded-xl">
                         <RefreshCw className="h-6 w-6 animate-spin text-sky-500" />
                       </div>
                     )}
-                    <canvas
-                      ref={canvasRef}
-                      style={{
-                        maxWidth: "100%",
-                        height: "auto",
-                        display: "block",
-                        borderRadius: "12px",
-                      }}
-                    />
+                    <canvas ref={canvasRef} style={{ maxWidth: "100%", height: "auto", display: "block", borderRadius: "12px" }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Social Share tab */}
+              {activeTab === "share" && (
+                <div className="p-4 space-y-4">
+                  {/* Teks share WA Group */}
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 space-y-2">
+                    <h3 className="text-[12px] font-bold text-emerald-800 flex items-center gap-1.5">
+                      <Share2 className="h-3.5 w-3.5" /> Teks untuk WA Group
+                    </h3>
+                    <pre className="whitespace-pre-wrap text-[12px] font-mono text-emerald-900 leading-relaxed">
+                      {buildShareGroupText()}
+                    </pre>
+                    <div className="flex gap-2 pt-1">
+                      <Button size="sm" onClick={handleCopyShareText} variant="outline" className="gap-1.5 border-emerald-300 text-emerald-700">
+                        {shareCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        {shareCopied ? "Tersalin!" : "Salin Teks"}
+                      </Button>
+                      <Button size="sm" onClick={handleShareWAGroup} className="gap-1.5 bg-[#25D366] hover:bg-[#1eb858] border-0">
+                        <MessageCircle className="h-3.5 w-3.5" /> Share ke WA Group
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Social Card Image */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[12px] font-semibold text-foreground">
+                        📸 Social Card (1080×1080 · IG Square / WA Group)
+                      </p>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={renderSocialShare} disabled={isRenderingShare} variant="outline" className="gap-1.5 h-7 text-[11px]">
+                          <RefreshCw className={cn("h-3 w-3", isRenderingShare && "animate-spin")} />
+                          Render
+                        </Button>
+                        <Button size="sm" onClick={handleShareDownload} disabled={isRenderingShare} className="gap-1.5 h-7 text-[11px]">
+                          <Download className="h-3 w-3" /> Download
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Download gambar → kirim ke WA Group bareng teks di atas buat social proof yang keren!
+                    </p>
+                    <div className="relative rounded-xl overflow-hidden bg-secondary/30 border border-border flex items-center justify-center min-h-[260px]">
+                      {isRenderingShare && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-secondary/60 z-10 rounded-xl">
+                          <RefreshCw className="h-6 w-6 animate-spin text-sky-500" />
+                        </div>
+                      )}
+                      <canvas ref={shareCanvasRef} style={{ maxWidth: "100%", height: "auto", display: "block", borderRadius: "12px" }} />
+                    </div>
                   </div>
                 </div>
               )}
