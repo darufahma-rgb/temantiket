@@ -4,6 +4,7 @@ import {
   MessageCircle, AlertTriangle, Check, X, ChevronDown, ChevronUp,
   Tag, RefreshCw, Settings2, ImagePlus, Plane, Share2, Copy,
   Clock, MapPin, ArrowRight, ExternalLink, Instagram, Link2,
+  ArrowLeftRight, RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,8 @@ import { useAuthStore } from "@/store/authStore";
 import { useRatesStore } from "@/store/ratesStore";
 import {
   scanTicketPriceScreenshot, getAirlineLogoUrl, getAirlineGradient,
-  type ParsedTicketPrice,
+  encodeReturnLeg, decodeReturnLeg, isReturnTrip,
+  type ParsedTicketPrice, type ReturnLegData,
 } from "@/lib/ticketPriceAI";
 import {
   listTicketPrices, createTicketPrice, updateTicketPrice, deleteTicketPrice,
@@ -48,12 +50,16 @@ const EMPTY_FORM: FormState = {
 };
 
 function formFromParsed(p: ParsedTicketPrice): FormState {
+  // For return trips, encode the return leg into the notes field for persistence.
+  const notes = (p.tripType === "return" || p.tripType === "multi_city")
+    ? encodeReturnLeg(p)
+    : null;
   return {
     airline: p.airline, airlineCode: p.airlineCode,
     fromCode: p.fromCode, fromCity: p.fromCity,
     toCode: p.toCode, toCity: p.toCity,
     departDate: p.departDate, basePrice: p.basePrice ?? 0,
-    currency: p.currency, validUntil: null, notes: null, isPublished: true,
+    currency: p.currency, validUntil: null, notes, isPublished: true,
     flightNumber: p.flightNumber ?? null,
     etd: p.etd ?? null, eta: p.eta ?? null,
     terminal: p.terminal ?? null,
@@ -89,6 +95,68 @@ function AirlineLogo({ code, airline, size = 40 }: { code: string; airline: stri
   );
 }
 
+// ── Flight leg mini display (used inside round-trip card) ────────────────────
+function LegRow({
+  label, fromCode, toCode, fromCity, toCity, flightNumber, etd, eta,
+  transitCode, transitCity, transitDuration, date,
+}: {
+  label: string;
+  fromCode: string; toCode: string;
+  fromCity?: string | null; toCity?: string | null;
+  flightNumber?: string | null;
+  etd?: string | null; eta?: string | null;
+  transitCode?: string | null; transitCity?: string | null;
+  transitDuration?: string | null;
+  date?: string | null;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
+        <span className={cn(
+          "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full",
+          label === "Berangkat" ? "bg-sky-100 text-sky-700" : "bg-violet-100 text-violet-700"
+        )}>{label}</span>
+        {flightNumber && <span className="text-[9.5px] font-mono text-slate-500">{flightNumber}</span>}
+        {date && <span className="text-[9px] text-slate-400 ml-auto">{fmtDate(date)}</span>}
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 text-left">
+          <p className="text-[18px] font-black text-slate-900 leading-none tracking-tight">{fromCode}</p>
+          {fromCity && <p className="text-[9px] text-slate-400 leading-tight truncate max-w-[70px]">{fromCity}</p>}
+          {etd && <p className="text-[13px] font-extrabold text-sky-700 mt-1 tabular-nums leading-none">{etd}</p>}
+        </div>
+        <div className="flex flex-col items-center shrink-0 px-1">
+          {transitCode ? (
+            <>
+              <div className="flex items-center gap-0.5">
+                <div className="h-px w-3 bg-slate-200" />
+                <div className="h-1.5 w-1.5 rounded-full bg-amber-400 border border-amber-300" />
+                <div className="h-px w-3 bg-slate-200" />
+              </div>
+              <p className="text-[8px] text-amber-600 font-bold">{transitCode}</p>
+              {transitDuration && <p className="text-[7px] text-slate-400">{transitDuration}</p>}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-0.5">
+                <div className="h-px w-4 bg-slate-200" />
+                <Plane className="w-3 h-3 text-slate-400" />
+                <div className="h-px w-4 bg-slate-200" />
+              </div>
+              <span className="text-[7.5px] text-slate-300 font-medium">Direct</span>
+            </>
+          )}
+        </div>
+        <div className="flex-1 text-right">
+          <p className="text-[18px] font-black text-slate-900 leading-none tracking-tight">{toCode}</p>
+          {toCity && <p className="text-[9px] text-slate-400 leading-tight truncate max-w-[70px] ml-auto">{toCity}</p>}
+          {eta && <p className="text-[13px] font-extrabold text-sky-700 mt-1 tabular-nums leading-none">{eta}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Boarding-pass style Price Card ───────────────────────────────────────────
 export function BoardingPassCard({
   item, markup, rates, isAdmin, onEdit, onDelete, onTogglePublish, waNumber, showBasePrice = false,
@@ -107,15 +175,23 @@ export function BoardingPassCard({
   const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
   const isDirect = !item.transitCode;
 
+  // Detect round-trip from encoded notes
+  const { leg: returnLeg, userNotes } = decodeReturnLeg(item.notes);
+  const isRT = !!returnLeg;
+
   const waText = encodeURIComponent(
     `Halo Temantiket! Saya tertarik dengan tiket berikut:\n\n` +
-    `✈️ *${item.airline}*${item.flightNumber ? ` (${item.flightNumber})` : ""}\n` +
-    `🗺️ Rute: *${item.fromCode} → ${item.toCode}*\n` +
-    `${item.fromCity ? `   ${item.fromCity} → ${item.toCity}\n` : ""}` +
-    `${item.etd || item.eta ? `🕐 ${item.etd ?? "—"} → ${item.eta ?? "—"}\n` : ""}` +
-    `${item.transitCode ? `🔄 Transit: ${item.transitCity ?? item.transitCode}${item.transitDuration ? ` (${item.transitDuration})` : ""}\n` : ""}` +
-    `📅 Tanggal: ${item.departDate ? fmtDate(item.departDate) : "Fleksibel"}\n` +
-    `💰 Harga: *${fmtIDR(sell)}/pax*\n\n` +
+    `✈️ *${item.airline}*\n` +
+    (isRT
+      ? `🗺️ Rute PP: *${item.fromCode} ⇄ ${item.toCode}*\n` +
+        `   Berangkat: ${item.fromCode}→${item.toCode}${item.flightNumber ? ` (${item.flightNumber})` : ""}${item.etd ? ` jam ${item.etd}` : ""}${item.departDate ? ` · ${fmtDate(item.departDate)}` : ""}\n` +
+        `   Pulang: ${returnLeg?.returnFromCode ?? ""}→${returnLeg?.returnToCode ?? ""}${returnLeg?.returnFlightNumber ? ` (${returnLeg.returnFlightNumber})` : ""}${returnLeg?.returnEtd ? ` jam ${returnLeg.returnEtd}` : ""}${returnLeg?.returnDate ? ` · ${fmtDate(returnLeg.returnDate)}` : ""}\n`
+      : `🗺️ Rute: *${item.fromCode} → ${item.toCode}*\n` +
+        `${item.fromCity ? `   ${item.fromCity} → ${item.toCity}\n` : ""}` +
+        `${item.etd || item.eta ? `🕐 ${item.etd ?? "—"} → ${item.eta ?? "—"}\n` : ""}` +
+        `${item.transitCode ? `🔄 Transit: ${item.transitCity ?? item.transitCode}${item.transitDuration ? ` (${item.transitDuration})` : ""}\n` : ""}` +
+        `📅 Tanggal: ${item.departDate ? fmtDate(item.departDate) : "Fleksibel"}\n`) +
+    `💰 Harga: *${fmtIDR(sell)}${isRT ? "/paket PP" : "/pax"}*\n\n` +
     `Mohon infokan ketersediaan dan detailnya. Terima kasih!`
   );
 
@@ -156,7 +232,7 @@ export function BoardingPassCard({
             <p className="font-bold text-[13px] leading-tight truncate">{item.airline}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-[10px] text-white/70 font-mono">{item.airlineCode}</span>
-              {item.flightNumber && (
+              {item.flightNumber && !isRT && (
                 <span className="text-[10px] bg-white/20 rounded px-1.5 py-0.5 font-mono font-semibold tracking-wide">
                   {item.flightNumber}
                 </span>
@@ -165,7 +241,12 @@ export function BoardingPassCard({
           </div>
         </div>
         <div className="text-right shrink-0">
-          {isDirect ? (
+          {isRT ? (
+            <span className="text-[9px] bg-white/25 text-white rounded-full px-2 py-0.5 font-bold uppercase tracking-wider flex items-center gap-1">
+              <ArrowLeftRight className="w-2.5 h-2.5" />
+              Pulang-Pergi
+            </span>
+          ) : isDirect ? (
             <span className="text-[9px] bg-white/20 text-white/90 rounded-full px-2 py-0.5 font-semibold uppercase tracking-wider">
               Direct
             </span>
@@ -180,98 +261,125 @@ export function BoardingPassCard({
       {/* ── Boarding-pass body ───────────────────────────────────────────── */}
       <div className="flex-1 px-4 py-4 space-y-3">
 
-        {/* Route + Times */}
-        <div className="flex items-center gap-2">
-          {/* From */}
-          <div className="flex-1 text-left">
-            <p className="text-2xl font-black text-slate-900 leading-none tracking-tight">{item.fromCode}</p>
-            {item.fromCity && (
-              <p className="text-[10px] text-slate-400 mt-0.5 leading-tight truncate max-w-[80px]">{item.fromCity}</p>
-            )}
-            {item.etd && (
-              <p className="text-[15px] font-extrabold text-sky-700 mt-1.5 tabular-nums leading-none">{item.etd}</p>
-            )}
-            {item.terminal && (
-              <p className="text-[9px] text-slate-400 mt-0.5 font-medium">{item.terminal}</p>
-            )}
+        {isRT ? (
+          /* ── ROUND-TRIP: show both legs ── */
+          <div className="space-y-2.5">
+            <LegRow
+              label="Berangkat"
+              fromCode={item.fromCode} toCode={item.toCode}
+              fromCity={item.fromCity} toCity={item.toCity}
+              flightNumber={item.flightNumber}
+              etd={item.etd} eta={item.eta}
+              transitCode={item.transitCode} transitCity={item.transitCity}
+              transitDuration={item.transitDuration}
+              date={item.departDate}
+            />
+            <div className="relative flex items-center -mx-4 px-4">
+              <div className="flex-1 border-t border-dashed border-slate-200" />
+              <div className="absolute -left-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
+              <div className="absolute -right-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
+              <RotateCcw className="h-3 w-3 text-violet-400 mx-2 shrink-0" />
+              <div className="flex-1 border-t border-dashed border-slate-200" />
+            </div>
+            <LegRow
+              label="Pulang"
+              fromCode={returnLeg!.returnFromCode ?? "???"}
+              toCode={returnLeg!.returnToCode ?? "???"}
+              fromCity={returnLeg!.returnFromCity}
+              toCity={returnLeg!.returnToCity}
+              flightNumber={returnLeg!.returnFlightNumber}
+              etd={returnLeg!.returnEtd} eta={returnLeg!.returnEta}
+              transitCode={returnLeg!.returnTransitCode}
+              transitCity={returnLeg!.returnTransitCity}
+              transitDuration={returnLeg!.returnTransitDuration}
+              date={returnLeg!.returnDate}
+            />
           </div>
-
-          {/* Middle: flight path */}
-          <div className="flex flex-col items-center gap-1 shrink-0 px-1">
-            {isDirect ? (
-              <>
-                <div className="flex items-center gap-1">
-                  <div className="h-px w-6 bg-slate-200" />
-                  <Plane className="w-3.5 h-3.5 text-slate-400" />
-                  <div className="h-px w-6 bg-slate-200" />
-                </div>
-                <span className="text-[9px] text-slate-300 font-medium">Direct</span>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-0.5">
-                  <div className="h-px w-4 bg-slate-200" />
-                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400 border-2 border-amber-300" />
-                  <div className="h-px w-4 bg-slate-200" />
-                </div>
-                <p className="text-[9px] text-amber-600 font-bold text-center leading-tight">
-                  {item.transitCode}
-                </p>
-                {item.transitDuration && (
-                  <p className="text-[8px] text-slate-400 text-center">{item.transitDuration}</p>
+        ) : (
+          /* ── ONE-WAY: existing single-leg layout ── */
+          <>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 text-left">
+                <p className="text-2xl font-black text-slate-900 leading-none tracking-tight">{item.fromCode}</p>
+                {item.fromCity && <p className="text-[10px] text-slate-400 mt-0.5 leading-tight truncate max-w-[80px]">{item.fromCity}</p>}
+                {item.etd && <p className="text-[15px] font-extrabold text-sky-700 mt-1.5 tabular-nums leading-none">{item.etd}</p>}
+                {item.terminal && <p className="text-[9px] text-slate-400 mt-0.5 font-medium">{item.terminal}</p>}
+              </div>
+              <div className="flex flex-col items-center gap-1 shrink-0 px-1">
+                {isDirect ? (
+                  <>
+                    <div className="flex items-center gap-1">
+                      <div className="h-px w-6 bg-slate-200" />
+                      <Plane className="w-3.5 h-3.5 text-slate-400" />
+                      <div className="h-px w-6 bg-slate-200" />
+                    </div>
+                    <span className="text-[9px] text-slate-300 font-medium">Direct</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-0.5">
+                      <div className="h-px w-4 bg-slate-200" />
+                      <div className="h-1.5 w-1.5 rounded-full bg-amber-400 border-2 border-amber-300" />
+                      <div className="h-px w-4 bg-slate-200" />
+                    </div>
+                    <p className="text-[9px] text-amber-600 font-bold text-center leading-tight">{item.transitCode}</p>
+                    {item.transitDuration && <p className="text-[8px] text-slate-400 text-center">{item.transitDuration}</p>}
+                  </>
                 )}
-              </>
+              </div>
+              <div className="flex-1 text-right">
+                <p className="text-2xl font-black text-slate-900 leading-none tracking-tight">{item.toCode}</p>
+                {item.toCity && <p className="text-[10px] text-slate-400 mt-0.5 leading-tight truncate max-w-[80px] ml-auto">{item.toCity}</p>}
+                {item.eta && <p className="text-[15px] font-extrabold text-sky-700 mt-1.5 tabular-nums leading-none">{item.eta}</p>}
+              </div>
+            </div>
+            {item.transitCode && item.transitCity && (
+              <div className="flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-amber-50 border border-amber-100">
+                <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
+                <span className="text-[10.5px] text-amber-700 font-medium">
+                  Transit: {item.transitCity} ({item.transitCode})
+                  {item.transitDuration && <span className="text-amber-500"> · {item.transitDuration}</span>}
+                </span>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Tear-off divider (one-way only — RT already has its own divider) */}
+        {!isRT && (
+          <div className="relative flex items-center gap-2 -mx-4 px-4">
+            <div className="h-px flex-1 border-t border-dashed border-slate-200" />
+            <div className="absolute -left-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
+            <div className="absolute -right-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
+          </div>
+        )}
+
+        {/* Date + valid (one-way only — RT shows dates inline in each leg) */}
+        {!isRT && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+              <Clock className="w-3 h-3 text-slate-400" />
+              <span>{item.departDate ? fmtDate(item.departDate) : "Tanggal Fleksibel"}</span>
+            </div>
+            {item.validUntil && (
+              <span className={cn("text-[10px]", expired ? "text-red-500" : "text-slate-400")}>
+                {expired ? "⛔ Expired" : `⏰ s/d ${fmtDate(item.validUntil)}`}
+              </span>
             )}
           </div>
+        )}
 
-          {/* To */}
-          <div className="flex-1 text-right">
-            <p className="text-2xl font-black text-slate-900 leading-none tracking-tight">{item.toCode}</p>
-            {item.toCity && (
-              <p className="text-[10px] text-slate-400 mt-0.5 leading-tight truncate max-w-[80px] ml-auto">{item.toCity}</p>
-            )}
-            {item.eta && (
-              <p className="text-[15px] font-extrabold text-sky-700 mt-1.5 tabular-nums leading-none">{item.eta}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Transit detail row (if transit) */}
-        {item.transitCode && item.transitCity && (
-          <div className="flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-amber-50 border border-amber-100">
-            <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
-            <span className="text-[10.5px] text-amber-700 font-medium">
-              Transit: {item.transitCity} ({item.transitCode})
-              {item.transitDuration && <span className="text-amber-500"> · {item.transitDuration}</span>}
+        {/* Valid until for RT */}
+        {isRT && item.validUntil && (
+          <div className="flex justify-end">
+            <span className={cn("text-[10px]", expired ? "text-red-500" : "text-slate-400")}>
+              {expired ? "⛔ Expired" : `⏰ s/d ${fmtDate(item.validUntil)}`}
             </span>
           </div>
         )}
 
-        {/* Tear-off divider */}
-        <div className="relative flex items-center gap-2 -mx-4 px-4">
-          <div className="h-px flex-1 border-t border-dashed border-slate-200" />
-          <div className="absolute -left-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
-          <div className="absolute -right-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
-        </div>
-
-        {/* Date + valid */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-            <Clock className="w-3 h-3 text-slate-400" />
-            <span>{item.departDate ? fmtDate(item.departDate) : "Tanggal Fleksibel"}</span>
-          </div>
-          {item.validUntil && (
-            <span className={cn("text-[10px]", expired ? "text-red-500" : "text-slate-400")}>
-              {expired ? "⛔ Expired" : `⏰ s/d ${fmtDate(item.validUntil)}`}
-            </span>
-          )}
-        </div>
-
         {/* Price box */}
-        <div className={cn(
-          "rounded-xl px-3 py-2.5",
-          expired ? "bg-red-50" : "bg-sky-50",
-        )}>
+        <div className={cn("rounded-xl px-3 py-2.5", expired ? "bg-red-50" : isRT ? "bg-violet-50" : "bg-sky-50")}>
           {expired ? (
             <div className="text-center">
               <p className="text-sm font-bold text-red-600">Harga Expired</p>
@@ -279,70 +387,62 @@ export function BoardingPassCard({
             </div>
           ) : (
             <>
-              <p className="text-[10px] text-sky-600 font-medium uppercase tracking-wide">Harga Jual / pax</p>
-              <p className="text-[22px] font-black text-sky-700 leading-tight tabular-nums">{fmtIDR(sell)}</p>
+              <p className={cn("text-[10px] font-medium uppercase tracking-wide", isRT ? "text-violet-600" : "text-sky-600")}>
+                {isRT ? "Harga Paket PP / pax" : "Harga Jual / pax"}
+              </p>
+              <p className={cn("text-[22px] font-black leading-tight tabular-nums", isRT ? "text-violet-700" : "text-sky-700")}>
+                {fmtIDR(sell)}
+              </p>
               {showBasePrice && markup > 0 && (
                 <p className="text-[10px] text-slate-400">
                   Modal: {item.currency} {item.basePrice.toLocaleString("id-ID")} + markup {fmtIDR(markup)}
                 </p>
               )}
               {!showBasePrice && (
-                <p className="text-[10px] text-slate-400">sudah termasuk margin keuntungan</p>
+                <p className="text-[10px] text-slate-400">
+                  {isRT ? "harga paket pulang-pergi, sudah termasuk margin" : "sudah termasuk margin keuntungan"}
+                </p>
               )}
             </>
           )}
         </div>
 
-        {/* Notes */}
-        {item.notes && (
+        {/* User notes (strip RT prefix) */}
+        {userNotes && (
+          <p className="text-[11px] text-slate-500 italic leading-snug">{userNotes}</p>
+        )}
+        {!isRT && item.notes && (
           <p className="text-[11px] text-slate-500 italic leading-snug">{item.notes}</p>
         )}
 
         {/* CTA row */}
         <div className="flex gap-2 pt-0.5">
           {expired ? (
-            <Button
-              asChild size="sm" variant="outline"
-              className="flex-1 text-xs border-slate-300 text-slate-600"
-            >
+            <Button asChild size="sm" variant="outline" className="flex-1 text-xs border-slate-300 text-slate-600">
               <a href={waLink} target="_blank" rel="noreferrer">
-                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
-                Hubungi Admin
+                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Hubungi Admin
               </a>
             </Button>
           ) : (
-            <Button
-              asChild size="sm"
-              className="flex-1 text-xs bg-green-600 hover:bg-green-700 text-white"
-            >
+            <Button asChild size="sm" className="flex-1 text-xs bg-green-600 hover:bg-green-700 text-white">
               <a href={waLink} target="_blank" rel="noreferrer">
-                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
-                Pesan via WA
+                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Pesan via WA
               </a>
             </Button>
           )}
-
-          {/* Admin controls */}
           {isAdmin && onTogglePublish && onEdit && onDelete && (
             <div className="flex gap-1">
-              <Button
-                size="icon" variant="ghost" className="h-8 w-8 text-slate-500"
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500"
                 title={item.isPublished ? "Sembunyikan" : "Tampilkan"}
-                onClick={() => onTogglePublish(item.id, !item.isPublished)}
-              >
+                onClick={() => onTogglePublish(item.id, !item.isPublished)}>
                 {item.isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
               </Button>
-              <Button
-                size="icon" variant="ghost" className="h-8 w-8 text-slate-500"
-                title="Edit" onClick={() => onEdit(item)}
-              >
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500"
+                title="Edit" onClick={() => onEdit(item)}>
                 <Edit3 className="w-3.5 h-3.5" />
               </Button>
-              <Button
-                size="icon" variant="ghost"
-                className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
-                title="Hapus" onClick={() => onDelete(item.id)}
-              >
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
+                title="Hapus" onClick={() => onDelete(item.id)}>
                 <Trash2 className="w-3.5 h-3.5" />
               </Button>
             </div>
@@ -748,7 +848,15 @@ export default function TicketPrices() {
     }
     setParsedTickets(result.tickets);
     setPendingForms(result.tickets.map(formFromParsed));
-    toast.success(`AI berhasil menemukan ${result.tickets.length} tiket dari screenshot!`);
+    const rtCount = result.grouped ?? 0;
+    toast.success(
+      `AI menemukan ${result.tickets.length} entri tiket!`,
+      {
+        description: rtCount > 0
+          ? `${rtCount} paket pulang-pergi otomatis digabung ✈️↩️ Markup diterapkan sekali per paket.`
+          : "Periksa detail sebelum menyimpan.",
+      }
+    );
   }
 
   function updatePending(idx: number, patch: Partial<FormState>) {
@@ -1000,7 +1108,7 @@ export default function TicketPrices() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-slate-700">
-                    ✅ {pendingForms.length} tiket ditemukan — periksa dan simpan:
+                    ✅ {pendingForms.length} entri ditemukan — periksa dan simpan:
                   </p>
                   <Button
                     size="sm"
@@ -1015,20 +1123,31 @@ export default function TicketPrices() {
                   </Button>
                 </div>
                 <div className="space-y-3">
-                  {pendingForms.map((form, idx) => (
-                    <div key={idx} className="border border-sky-200 rounded-xl p-3 bg-sky-50/50 space-y-3">
+                  {pendingForms.map((form, idx) => {
+                    const { leg: rtLeg } = decodeReturnLeg(form.notes);
+                    const isRTForm = !!rtLeg;
+                    return (
+                    <div key={idx} className={cn(
+                      "border rounded-xl p-3 space-y-3",
+                      isRTForm ? "border-violet-200 bg-violet-50/40" : "border-sky-200 bg-sky-50/50"
+                    )}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <AirlineLogo code={form.airlineCode} airline={form.airline} size={28} />
                           <div>
-                            <p className="text-xs font-bold text-slate-800">{form.airline || "—"}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-xs font-bold text-slate-800">{form.airline || "—"}</p>
+                              {isRTForm && (
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
+                                  <ArrowLeftRight className="w-2.5 h-2.5" />PP
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[10px] text-slate-500 font-mono">
-                              {form.fromCode} → {form.toCode}
-                              {form.flightNumber && ` · ${form.flightNumber}`}
-                              {form.etd && ` · ${form.etd}`}
-                              {form.eta && `→${form.eta}`}
-                              {form.transitCode && ` via ${form.transitCode}`}
-                              {form.basePrice ? ` · ${form.currency} ${form.basePrice.toLocaleString("id-ID")}` : ""}
+                              {isRTForm
+                                ? `${form.fromCode} ⇄ ${form.toCode} · ${form.flightNumber ?? ""}${rtLeg?.returnFlightNumber ? `/${rtLeg.returnFlightNumber}` : ""} · Total: ${form.currency} ${form.basePrice?.toLocaleString("id-ID") ?? "—"}`
+                                : `${form.fromCode} → ${form.toCode}${form.flightNumber ? ` · ${form.flightNumber}` : ""}${form.etd ? ` · ${form.etd}` : ""}${form.eta ? `→${form.eta}` : ""}${form.transitCode ? ` via ${form.transitCode}` : ""}${form.basePrice ? ` · ${form.currency} ${form.basePrice.toLocaleString("id-ID")}` : ""}`
+                              }
                             </p>
                           </div>
                         </div>
@@ -1040,6 +1159,14 @@ export default function TicketPrices() {
                           <X className="w-3.5 h-3.5" />
                         </Button>
                       </div>
+                      {isRTForm && (
+                        <div className="rounded-lg bg-violet-100/60 border border-violet-200 px-2.5 py-1.5 text-[10.5px] text-violet-700 font-medium">
+                          ↗ Berangkat: {form.fromCode}→{form.toCode}{form.etd ? ` jam ${form.etd}` : ""}
+                          {form.departDate ? ` · ${fmtDate(form.departDate)}` : ""}
+                          {" · "}↩ Pulang: {rtLeg?.returnFromCode}→{rtLeg?.returnToCode}{rtLeg?.returnEtd ? ` jam ${rtLeg.returnEtd}` : ""}
+                          {rtLeg?.returnDate ? ` · ${fmtDate(rtLeg.returnDate)}` : ""}
+                        </div>
+                      )}
                       {/* Quick edit inline */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div className="space-y-0.5 col-span-2">
@@ -1115,12 +1242,13 @@ export default function TicketPrices() {
                       </div>
                       {form.basePrice > 0 && (
                         <p className="text-[11px] text-emerald-600 font-medium">
-                          💰 Harga jual: {fmtIDR(sellingPrice(form.basePrice, form.currency, rates, markup))}
-                          {markup > 0 && ` (modal ${form.currency} ${form.basePrice.toLocaleString("id-ID")} + markup ${fmtIDR(markup)})`}
+                          💰 {isRTForm ? "Harga paket PP" : "Harga jual"}: {fmtIDR(sellingPrice(form.basePrice, form.currency, rates, markup))}
+                          {markup > 0 && ` (modal ${form.currency} ${form.basePrice.toLocaleString("id-ID")} + markup ${fmtIDR(markup)}${isRTForm ? " — markup sekali untuk paket PP" : ""})`}
                         </p>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
