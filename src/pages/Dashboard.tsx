@@ -844,79 +844,54 @@ export default function Dashboard() {
 
           {/* ── Hero card ── */}
           <div
-            className="rounded-3xl overflow-hidden relative shadow-xl"
-            style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 45%,#1a44d4 100%)" }}
+            className="rounded-2xl p-4"
+            style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 55%,#1a44d4 100%)" }}
           >
-            {/* Glow blobs */}
-            <div className="absolute -top-10 -right-10 h-44 w-44 rounded-full bg-sky-400/20 blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-indigo-500/20 blur-xl pointer-events-none" />
-            {/* Geometric ring decorations */}
-            <div className="absolute top-4 right-4 h-20 w-20 rounded-full border border-white/10 pointer-events-none" />
-            <div className="absolute top-8 right-8 h-10 w-10 rounded-full border border-white/8 pointer-events-none" />
-            {/* Mosque watermark */}
-            <div className="absolute bottom-0 right-3 text-[72px] leading-none opacity-[0.07] pointer-events-none select-none" aria-hidden>🕌</div>
-
-            <div className="relative p-4">
-              {/* Top row */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-[8px] font-extrabold uppercase tracking-[0.18em] text-amber-300/80">
-                      {nearestDeparture ? "✈ Trip Terdekat" : "☪ Ringkasan"}
-                    </span>
-                  </div>
-                  <h2 className="text-[18px] font-extrabold text-white leading-tight truncate drop-shadow">
-                    {nearestDeparture?.name ?? "Belum ada jadwal"}
-                  </h2>
-                  {nearestDeparture?.departureDate && (
-                    <p className="text-[9.5px] text-sky-300/80 mt-0.5 leading-snug">
-                      {formatDate(nearestDeparture.departureDate)}
-                    </p>
-                  )}
-                </div>
-                {nearestDeparture ? (
-                  <div className="shrink-0 bg-amber-400 rounded-2xl px-3 py-2 text-center shadow-lg shadow-amber-900/30">
-                    <p className="text-[18px] font-extrabold text-amber-900 leading-none tabular-nums whitespace-nowrap">
-                      {daysUntil(nearestDeparture.departureDate!)}
-                    </p>
-                    <p className="text-[7px] font-bold text-amber-800 uppercase tracking-wide mt-0.5">menuju</p>
-                  </div>
-                ) : (
-                  <div className="shrink-0 bg-white/10 rounded-2xl px-3 py-2 text-center border border-white/15">
-                    <p className="text-[22px] leading-none">🕋</p>
-                    <p className="text-[7px] text-sky-200/70 mt-0.5 uppercase tracking-wide">Umrah</p>
-                  </div>
+            {/* Trip name + countdown */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[8px] font-semibold uppercase tracking-widest text-sky-400/70 mb-1">
+                  {nearestDeparture ? "Trip Terdekat" : "Ringkasan"}
+                </p>
+                <h2 className="text-[16px] font-bold text-white leading-tight truncate">
+                  {nearestDeparture?.name ?? "Belum ada jadwal"}
+                </h2>
+                {nearestDeparture?.departureDate && (
+                  <p className="text-[9.5px] text-sky-300/60 mt-0.5">
+                    {formatDate(nearestDeparture.departureDate)}
+                  </p>
                 )}
               </div>
-
-              {/* Stats row */}
-              <div className="flex items-stretch gap-1.5 mt-3.5">
-                {[
-                  { label: "Trip",    value: trips.length,  emoji: "🌙" },
-                  { label: "Aktif",   value: activeTrips,   emoji: "✈️" },
-                  { label: "Jamaah",  value: totalJamaah,   emoji: "👥" },
-                  { label: "Selesai", value: doneTrips,     emoji: "✅" },
-                ].map((s) => (
-                  <div key={s.label}
-                    className="flex-1 rounded-xl px-1 py-2 text-center"
-                    style={{ background: "rgba(255,255,255,0.08)", borderWidth: 1, borderStyle: "solid", borderColor: "rgba(255,255,255,0.12)" }}
-                  >
-                    <p className="text-[11px] leading-none">{s.emoji}</p>
-                    <p className="text-[17px] font-extrabold text-white leading-none mt-0.5 tabular-nums">{s.value}</p>
-                    <p className="text-[6.5px] text-sky-300/70 uppercase tracking-wide mt-0.5 leading-none">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* CTA */}
-              <button
-                onClick={() => navigate("/packages")}
-                className="mt-3.5 w-full flex items-center justify-center gap-1.5 bg-amber-400 hover:bg-amber-300 active:scale-[0.98] transition-all text-amber-900 rounded-2xl py-2.5 text-[12px] font-extrabold shadow-lg shadow-amber-900/20"
-              >
-                {nearestDeparture ? "Lihat Detail Paket" : "Buat Paket Trip"}
-                <ArrowRight className="h-3.5 w-3.5" />
-              </button>
+              {nearestDeparture && (
+                <span className="shrink-0 text-[10px] font-semibold text-white/80 bg-white/10 border border-white/15 rounded-xl px-2.5 py-1 mt-0.5 whitespace-nowrap">
+                  {daysUntil(nearestDeparture.departureDate!)}
+                </span>
+              )}
             </div>
+
+            {/* Stats: divider row */}
+            <div className="flex items-center mt-3.5 pt-3 border-t border-white/10">
+              {[
+                { label: "Trip",    value: trips.length },
+                { label: "Aktif",   value: activeTrips  },
+                { label: "Jamaah",  value: totalJamaah  },
+                { label: "Selesai", value: doneTrips    },
+              ].map((s, i) => (
+                <div key={s.label} className={cn("flex-1 text-center", i > 0 && "border-l border-white/10")}>
+                  <p className="text-[17px] font-extrabold text-white tabular-nums leading-none">{s.value}</p>
+                  <p className="text-[7px] text-sky-300/50 uppercase tracking-wide mt-0.5">{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA link */}
+            <button
+              onClick={() => navigate("/packages")}
+              className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-sky-300 active:opacity-60 transition-opacity"
+            >
+              {nearestDeparture ? "Lihat Paket" : "Buat Paket Trip"}
+              <ArrowRight className="h-3 w-3" />
+            </button>
           </div>
 
           {/* ── Menu Utama ── */}
@@ -1097,76 +1072,38 @@ export default function Dashboard() {
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
           <div
-            className="relative overflow-hidden rounded-3xl p-5 md:p-6"
-            style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 40%,#1a44d4 75%,#2563eb 100%)" }}
+            className="rounded-3xl p-5 md:p-6"
+            style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 50%,#1a44d4 100%)" }}
           >
-            {/* Glow blobs */}
-            <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-sky-400/20 blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-indigo-400/20 blur-2xl pointer-events-none" />
-            {/* Ring decorations */}
-            <div className="absolute top-6 right-6 h-32 w-32 rounded-full border border-white/8 pointer-events-none" />
-            <div className="absolute top-12 right-12 h-16 w-16 rounded-full border border-white/6 pointer-events-none" />
-            {/* Mosque watermark */}
-            <div className="absolute bottom-0 right-6 text-[96px] leading-none opacity-[0.06] pointer-events-none select-none" aria-hidden>🕌</div>
-
-            <div className="relative flex items-center justify-between gap-4">
-              {/* Left: greeting + info */}
+            <div className="flex items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-amber-300/80 mb-1">
-                  ✈ Temantiket Dashboard
-                </p>
-                <h1 className="text-[22px] md:text-[26px] font-extrabold text-white leading-tight tracking-tight drop-shadow">
-                  {getGreeting(user?.displayName ?? "Admin", t)} <span className="inline-block">👋</span>
+                <h1 className="text-[22px] md:text-[24px] font-bold text-white leading-tight">
+                  {getGreeting(user?.displayName ?? "Admin", t)} 👋
                 </h1>
-                <p className="text-[11px] text-sky-300/80 capitalize font-medium mt-0.5">
+                <p className="text-[11px] text-sky-300/70 capitalize mt-0.5">
                   {formatTodayFull(locale)}
                 </p>
                 {nearestDeparture ? (
-                  <div className="flex items-center gap-1.5 mt-2.5">
-                    <div
-                      className="inline-flex items-center gap-1.5 rounded-full pl-2 pr-3 py-1 text-[10.5px] font-semibold border border-white/20 backdrop-blur"
-                      style={{ background: "rgba(255,255,255,0.12)" }}
-                    >
-                      <Plane strokeWidth={2} className="h-3 w-3 text-amber-300 shrink-0" />
-                      <span className="text-sky-200/80">{t.dash_nearest_departure}</span>
-                      <strong className="text-white truncate max-w-[120px]">{nearestDeparture.name}</strong>
-                      <span className="text-amber-300 shrink-0 font-bold">· {daysUntil(nearestDeparture.departureDate!)}</span>
-                    </div>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <Plane strokeWidth={2} className="h-3 w-3 text-sky-400 shrink-0" />
+                    <span className="text-[10.5px] text-sky-200/70">{t.dash_nearest_departure}</span>
+                    <strong className="text-[10.5px] text-white truncate max-w-[140px]">{nearestDeparture.name}</strong>
+                    <span className="text-[10.5px] text-sky-300 shrink-0">· {daysUntil(nearestDeparture.departureDate!)}</span>
                   </div>
                 ) : (
-                  <p className="text-[10px] text-sky-300/70 mt-1.5 italic">{t.dash_no_schedule}</p>
+                  <p className="text-[10px] text-sky-300/60 mt-1.5 italic">{t.dash_no_schedule}</p>
                 )}
               </div>
-
-              {/* Right: stats + refresh */}
-              <div className="flex flex-col items-end gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-white/20 text-white/80 hover:bg-white/10 text-[11px] font-semibold transition disabled:opacity-50"
-                  style={{ background: "rgba(255,255,255,0.08)" }}
-                >
-                  <RefreshCw strokeWidth={2.2} className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
-                  <span>{refreshing ? "Memuat…" : "Refresh"}</span>
-                </button>
-                <div className="flex items-center gap-2">
-                  {[
-                    { label: "Trip",    value: trips.length,  emoji: "🌙" },
-                    { label: "Aktif",   value: activeTrips,   emoji: "✈️" },
-                    { label: "Jamaah",  value: totalJamaah,   emoji: "👥" },
-                  ].map((s) => (
-                    <div key={s.label}
-                      className="rounded-2xl px-3 py-2 text-center min-w-[56px]"
-                      style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.14)" }}
-                    >
-                      <p className="text-[12px] leading-none">{s.emoji}</p>
-                      <p className="text-[18px] font-extrabold text-white leading-none tabular-nums mt-0.5">{s.value}</p>
-                      <p className="text-[8px] text-sky-300/70 uppercase tracking-wide mt-0.5">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[11px] font-medium text-white/70 hover:text-white border border-white/15 hover:border-white/30 transition disabled:opacity-40"
+                style={{ background: "rgba(255,255,255,0.07)" }}
+              >
+                <RefreshCw strokeWidth={2.2} className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+                {refreshing ? "Memuat…" : "Refresh"}
+              </button>
             </div>
           </div>
         </motion.div>

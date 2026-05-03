@@ -81,9 +81,11 @@ export function LiveClock({ compact = false }: { compact?: boolean }) {
                 </span>
               </div>
               <div className={compact
-                ? "live-clock-time font-mono font-extrabold text-[13px] leading-tight tabular-nums mt-0.5"
-                : "live-clock-time font-mono font-extrabold text-[15px] md:text-[16px] leading-tight tabular-nums mt-0.5"
-              }>
+                ? "live-clock-time font-extrabold text-[13px] leading-tight tabular-nums mt-0.5"
+                : "live-clock-time font-extrabold text-[15px] md:text-[16px] leading-tight tabular-nums mt-0.5"
+              }
+                style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontVariantNumeric: "tabular-nums" }}
+              >
                 {formatTime(now, z.timeZone)}
               </div>
               <div className="live-clock-day text-[8.5px] md:text-[10px] leading-tight truncate">

@@ -62,10 +62,9 @@ const STAFF_SECTIONS: SectionDef[] = [
     key: "konten",
     label: "Konten",
     items: [
-      { title: "Template Broadcast", url: "/bc-templates",   icon: MessageSquare },
-      { title: "Caption Generator",   url: "/agent/marketing",icon: Megaphone },
-      { title: "Catatan",            url: "/notes",          icon: StickyNote },
-      { title: "Export & Manifest",  url: "/exports",        icon: FileSpreadsheet },
+      { title: "Template Broadcast", url: "/bc-templates",    icon: MessageSquare },
+      { title: "Caption Generator",  url: "/agent/marketing", icon: Megaphone },
+      { title: "Catatan",            url: "/notes",           icon: StickyNote },
     ],
   },
   {
@@ -74,6 +73,7 @@ const STAFF_SECTIONS: SectionDef[] = [
     ownerOnly: true,
     items: [
       { title: "Laporan Keuangan", url: "/reports", icon: BarChart3 },
+      { title: "Export & Manifest", url: "/exports", icon: FileSpreadsheet },
     ],
   },
   {
