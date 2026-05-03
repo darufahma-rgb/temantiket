@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, MapPin, Calendar as CalendarIcon, Trash2, Plane, Camera, Calculator, Users, CheckCircle, TrendingUp, ArrowRight, FileBarChart, Bus, Train, AlertCircle, Clock, Star, ChevronRight, Wallet, RefreshCw, ShoppingBag } from "lucide-react";
+import { Plus, MapPin, Calendar as CalendarIcon, Trash2, Plane, Camera, Calculator, Users, CheckCircle, TrendingUp, ArrowRight, FileBarChart, Bus, Train, AlertCircle, Clock, Star, ChevronRight, Wallet, RefreshCw, ShoppingBag, Search, Package, Sparkles, SlidersHorizontal } from "lucide-react";
 import { useTripsStore, type Trip } from "@/store/tripsStore";
 import { listAllAgencyJamaah } from "@/features/trips/tripsRepo";
 import { listAllAgencyPayments, sumPaid, type Payment } from "@/features/payments/paymentsRepo";
@@ -790,8 +790,272 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-full min-h-0">
-      {/* ── Main content ── */}
-      <div className="flex-1 overflow-auto min-w-0 pb-2 md:p-6 lg:p-8 md:pb-6">
+      {/* ══════════════════════════════════════════════════════════════
+           MOBILE LAYOUT  (hidden on md+)
+      ══════════════════════════════════════════════════════════════ */}
+      <div className="md:hidden flex-1 overflow-auto min-w-0">
+        <div className="px-3.5 pt-2 pb-6 space-y-3">
+
+          {/* ── Greeting row ── */}
+          <div className="flex items-center gap-2.5">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white text-[15px] font-extrabold shrink-0 shadow-md">
+              {(user?.displayName ?? "A").charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[9.5px] text-[hsl(var(--muted-foreground))] leading-none">Halo,</p>
+              <h1 className="text-[15px] font-extrabold text-[hsl(var(--foreground))] leading-tight truncate">
+                {user?.displayName?.split(" ")[0] ?? "Admin"}! 👋
+              </h1>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <p className="text-[8.5px] text-[hsl(var(--muted-foreground))] capitalize text-right leading-tight max-w-[72px]">
+                {formatTodayFull(locale)}
+              </p>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="h-8 w-8 rounded-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60 shrink-0"
+              >
+                <RefreshCw strokeWidth={2} className={cn("h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]", refreshing && "animate-spin")} />
+              </button>
+            </div>
+          </div>
+
+          {/* ── Search bar ── */}
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))] pointer-events-none" />
+            <input
+              type="text"
+              readOnly
+              onClick={() => navigate("/clients")}
+              placeholder="Cari klien, trip, order…"
+              className="w-full h-11 pl-10 pr-14 rounded-2xl text-[12.5px] outline-none cursor-pointer bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]"
+            />
+            <button
+              onClick={() => navigate("/clients")}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-xl bg-sky-500 flex items-center justify-center active:scale-95 transition-transform shadow-sm"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 text-white" />
+            </button>
+          </div>
+
+          {/* ── Hero card ── */}
+          <div className="rounded-3xl bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 p-4 text-white relative overflow-hidden shadow-lg shadow-sky-300/30">
+            <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-white/10 pointer-events-none" />
+            <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-white/10 pointer-events-none" />
+            <div className="relative">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[8.5px] font-bold uppercase tracking-widest opacity-70">
+                    {nearestDeparture ? "Trip Terdekat" : "Ringkasan Dashboard"}
+                  </p>
+                  <h2 className="text-[17px] font-extrabold leading-tight mt-0.5 truncate">
+                    {nearestDeparture?.name ?? "Belum ada jadwal"}
+                  </h2>
+                  {nearestDeparture?.departureDate && (
+                    <p className="text-[9.5px] opacity-80 mt-0.5 leading-snug">
+                      {formatDate(nearestDeparture.departureDate)}
+                    </p>
+                  )}
+                </div>
+                {nearestDeparture && (
+                  <span className="bg-white/25 rounded-2xl px-2.5 py-1 text-[9.5px] font-extrabold whitespace-nowrap shrink-0 border border-white/30 mt-0.5">
+                    {daysUntil(nearestDeparture.departureDate!)}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-stretch gap-1.5 mt-3">
+                {[
+                  { label: "Total Trip", value: trips.length },
+                  { label: "Aktif",      value: activeTrips },
+                  { label: "Jamaah",     value: totalJamaah },
+                  { label: "Selesai",    value: doneTrips },
+                ].map((s) => (
+                  <div key={s.label} className="flex-1 bg-white/20 rounded-xl px-1.5 py-2 text-center">
+                    <p className="text-[17px] font-extrabold leading-none tabular-nums">{s.value}</p>
+                    <p className="text-[7px] opacity-70 mt-0.5 leading-none uppercase tracking-wide">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => navigate("/packages")}
+                className="mt-3 inline-flex items-center gap-1.5 bg-white text-sky-600 rounded-full px-4 py-1.5 text-[11px] font-bold shadow-sm active:scale-95 transition-transform"
+              >
+                {nearestDeparture ? "Lihat Paket" : "Buat Paket Trip"}
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+
+          {/* ── Menu Utama ── */}
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <h3 className="text-[13px] font-bold text-[hsl(var(--foreground))]">Menu Utama</h3>
+              <button onClick={() => setAddOpen(true)} className="text-[10.5px] text-sky-500 font-semibold active:opacity-70">+ Trip Baru</button>
+            </div>
+            <div className="flex gap-3.5 overflow-x-auto scrollbar-none pb-1 -mx-0.5 px-0.5">
+              {([
+                { icon: Package,     label: "Paket",      path: "/packages",   bg: "bg-orange-100", fg: "text-orange-500" },
+                { icon: Users,       label: "Jamaah",     path: "/progress",   bg: "bg-sky-100",    fg: "text-sky-600"    },
+                { icon: ShoppingBag, label: "Order",      path: "/orders",     bg: "bg-violet-100", fg: "text-violet-500" },
+                { icon: Calculator,  label: "Kalkulator", path: "/calculator", bg: "bg-emerald-100",fg: "text-emerald-600" },
+                { icon: FileBarChart,label: "Laporan",    path: "/reports",    bg: "bg-amber-100",  fg: "text-amber-600"  },
+                { icon: Sparkles,    label: "Itinerary",  path: "/itinerary",  bg: "bg-fuchsia-100",fg: "text-fuchsia-500" },
+              ] as const).map((item) => (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className="flex flex-col items-center gap-1.5 min-w-[54px] shrink-0 active:scale-95 transition-transform"
+                >
+                  <div className={`h-[52px] w-[52px] rounded-2xl ${item.bg} flex items-center justify-center shadow-sm border border-white/60`}>
+                    <item.icon strokeWidth={1.8} className={`h-[22px] w-[22px] ${item.fg}`} />
+                  </div>
+                  <span className="text-[9.5px] font-semibold text-[hsl(var(--foreground))] text-center leading-tight">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Alerts ── */}
+          <DepartureTodayAlert packages={packages} orders={orders} clients={clients} />
+          <PaymentAlerts trips={trips} />
+
+          {/* ── Pending packages quick-action row ── */}
+          {pendingPackages.length > 0 && (
+            <button
+              onClick={() => navigate("/packages")}
+              className="w-full flex items-center gap-3 bg-amber-50 rounded-2xl border border-amber-200 px-3.5 py-3 active:scale-[0.98] transition-transform text-left"
+            >
+              <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                <AlertCircle strokeWidth={1.8} className="h-5 w-5 text-amber-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12.5px] font-bold text-[hsl(var(--foreground))]">Perlu Perhatian</p>
+                <p className="text-[10px] text-[hsl(var(--muted-foreground))] leading-tight">{pendingPackages.length} paket butuh tindakan segera</p>
+              </div>
+              <span className="text-[13px] font-extrabold text-amber-600 shrink-0 tabular-nums">{pendingPackages.length}</span>
+              <ChevronRight className="h-4 w-4 text-[hsl(var(--muted-foreground))] shrink-0" />
+            </button>
+          )}
+
+          {/* ── PNR ── */}
+          <PNRCommandCenter />
+
+          {/* ── Admin WA Card ── */}
+          <AdminWhatsappCard />
+
+          {/* ── Owner-only widgets ── */}
+          {user?.role === "owner" && (
+            <>
+              <MitraLeaderboardCard />
+              <CeoDailyQuest />
+            </>
+          )}
+
+          {/* ── LiveClock ── */}
+          <LiveClock compact />
+
+          {/* ── Package status chips ── */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+            {([
+              { icon: Star,        label: t.dash_total_packages,     value: packages.length,                                       color: "text-amber-600 bg-amber-50 border-amber-200"  },
+              { icon: AlertCircle, label: t.dash_need_action,        value: pendingPackages.length,                                color: pendingPackages.length > 0 ? "text-red-600 bg-red-50 border-red-200" : "text-gray-400 bg-gray-50 border-gray-200" },
+              { icon: Clock,       label: t.dash_paid_packages,      value: packages.filter(p => p.status === "Paid").length,      color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
+              { icon: CheckCircle, label: t.dash_completed_packages, value: packages.filter(p => p.status === "Completed").length, color: "text-purple-600 bg-purple-50 border-purple-200" },
+            ] as const).map((item) => (
+              <button
+                key={item.label}
+                onClick={() => navigate("/packages")}
+                className={cn("shrink-0 flex items-center gap-1 h-7 px-2.5 rounded-full border text-[10px] font-semibold active:scale-95 transition-transform", item.color)}
+              >
+                <item.icon strokeWidth={2} className="h-3.5 w-3.5" />
+                <span className="tabular-nums font-extrabold">{item.value}</span>
+                <span className="opacity-75">{item.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* ── Shortcut bar ── */}
+          <div className="grid grid-cols-3 gap-1.5">
+            {([
+              { icon: Calculator,   label: t.dash_open_calculator, path: "/calculator" },
+              { icon: ShoppingBag,  label: "Order Hub",             path: "/orders"     },
+              { icon: FileBarChart, label: t.dash_progress_report,  path: "/progress"   },
+            ] as const).map((btn) => (
+              <button
+                key={btn.path}
+                onClick={() => navigate(btn.path)}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-2 py-2.5 hover:border-sky-400 hover:bg-sky-50 transition-colors active:scale-[0.97]"
+              >
+                <btn.icon strokeWidth={1.5} className="h-3.5 w-3.5 text-sky-500 shrink-0" />
+                <span className="text-[10px] font-semibold text-[hsl(var(--foreground))] truncate">{btn.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* ── Trip section ── */}
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-[13.5px] font-bold text-[hsl(var(--foreground))]">{t.dash_packages_title}</h2>
+            <div className="flex gap-2.5">
+              {(["all", "upcoming", "done"] as const).map((key) => {
+                const labels = { all: t.dash_filter_all, upcoming: t.dash_filter_active, done: t.dash_filter_done };
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setTab(key)}
+                    className={cn("text-[10.5px] font-semibold pb-0.5 border-b-2 transition-colors", tab === key ? "border-sky-500 text-sky-500" : "border-transparent text-[hsl(var(--muted-foreground))]")}
+                  >{labels[key]}</button>
+                );
+              })}
+            </div>
+          </div>
+
+          {loadingTrips ? (
+            <div className="grid gap-2 grid-cols-2">
+              {[1, 2].map(i => (
+                <div key={i} className="rounded-xl border overflow-hidden animate-pulse">
+                  <div className="h-16 bg-[hsl(var(--secondary))]" />
+                  <div className="p-2 space-y-1.5">
+                    <div className="h-3 bg-[hsl(var(--secondary))] rounded w-3/4" />
+                    <div className="h-2.5 bg-[hsl(var(--secondary))] rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-white via-sky-50/40 to-sky-100/60 px-4 py-8 text-center flex flex-col items-center">
+              <div className="h-14 w-14 rounded-2xl bg-white flex items-center justify-center shadow-sm border border-sky-100 mb-3">
+                <Plane strokeWidth={1.5} className="h-7 w-7 text-sky-500" />
+              </div>
+              <p className="text-[13px] font-bold text-[hsl(var(--foreground))]">{t.dash_no_packages}</p>
+              <p className="text-[10.5px] text-[hsl(var(--muted-foreground))] mt-1 leading-snug max-w-[200px]">{t.dash_no_packages_desc}</p>
+              <button
+                onClick={() => setAddOpen(true)}
+                className="mt-4 inline-flex items-center gap-1.5 h-9 px-5 rounded-full text-[11.5px] font-bold text-white shadow-md active:scale-95 transition-transform"
+                style={{ background: "linear-gradient(135deg,#0ea5e9,#1a44d4)" }}
+              >
+                <Plus strokeWidth={2} className="h-3.5 w-3.5" /> {t.dash_create_first}
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-2 grid-cols-2">
+              {filtered.map((trip) => <TripCard key={trip.id} trip={trip} onDelete={setDeleteTarget} />)}
+              <button
+                onClick={() => setAddOpen(true)}
+                className="rounded-xl border-2 border-dashed border-[hsl(var(--border))] flex flex-col items-center justify-center gap-2 min-h-[80px] hover:border-sky-400 hover:bg-sky-50/50 transition-all group active:scale-[0.98]"
+              >
+                <Plus strokeWidth={1.5} className="h-4 w-4 text-[hsl(var(--muted-foreground))] group-hover:text-sky-500" />
+                <span className="text-[10.5px] text-[hsl(var(--muted-foreground))] group-hover:text-sky-500 font-medium">{t.dash_add_package}</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+           DESKTOP LAYOUT  (hidden on mobile)
+      ══════════════════════════════════════════════════════════════ */}
+      <div className="hidden md:block flex-1 overflow-auto min-w-0 p-6 lg:p-8 pb-6">
 
         {/* ── Greeting hero ── */}
         <motion.div
