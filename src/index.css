@@ -1266,14 +1266,14 @@ svg.lucide:where(.text-destructive, .text-success, .text-warning, .text-white,
    above the header in standalone PWA mode). */
 @media (max-width: 768px) {
   .pwa-header {
-    padding-top: 0.4rem;
-    padding-bottom: 0.4rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
   }
   /* Bottom nav vertical padding handled by inline class (pt-1 + pb-... on inner flex). */
   .pwa-main-content {
     /* Reserve room for the bottom nav. Inner flex of nav already accounts for
-       safe-area-inset-bottom via inline `pb-[max(8px,env(safe-area-inset-bottom))]`. */
-    padding-bottom: calc(60px + env(safe-area-inset-bottom)) !important;
+       safe-area-inset-bottom via inline `pb-[max(6px,env(safe-area-inset-bottom))]`. */
+    padding-bottom: calc(50px + env(safe-area-inset-bottom)) !important;
   }
 }
 

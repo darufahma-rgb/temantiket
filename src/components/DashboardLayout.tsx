@@ -101,7 +101,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
         <motion.header
           className="pwa-header flex items-center gap-2 px-3.5 shrink-0"
           style={{
-            minHeight: "52px",
+            minHeight: "44px",
             background: "hsl(var(--card))",
             borderBottom: "1px solid hsl(var(--border))",
           }}
@@ -112,31 +112,31 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
           {/* Hamburger */}
           <button
             aria-label="Buka menu"
-            className="flex items-center justify-center shrink-0 h-9 w-9 -ml-1.5 rounded-xl transition-opacity active:opacity-60"
+            className="flex items-center justify-center shrink-0 h-8 w-8 -ml-1 rounded-lg transition-opacity active:opacity-60"
             onClick={() => setSidebarOpen(true)}
           >
-            <Menu strokeWidth={2} className="h-[20px] w-[20px] text-[hsl(var(--foreground))]" />
+            <Menu strokeWidth={2} className="h-[18px] w-[18px] text-[hsl(var(--foreground))]" />
           </button>
 
           {/* Brand — icon mark + wordmark */}
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-1.5 shrink-0 transition-opacity active:opacity-60"
+            className="flex items-center gap-1 shrink-0 transition-opacity active:opacity-60"
             aria-label="Beranda Temantiket"
           >
             <img
               src="/temantiket-icon.svg"
               alt=""
-              className="h-6 w-6 object-contain icon-adaptive"
+              className="h-5 w-5 object-contain icon-adaptive"
             />
-            <span className="text-[14px] font-black tracking-tight text-[hsl(var(--foreground))]">Temantiket</span>
+            <span className="text-[13px] font-black tracking-tight text-[hsl(var(--foreground))]">Temantiket</span>
           </button>
 
           <div className="flex-1" />
 
           {/* Sync status — green/yellow/red dot + last sync */}
           <div
-            className="flex items-center gap-1 shrink-0 mr-1.5"
+            className="flex items-center gap-1 shrink-0 mr-1"
             title={syncTitle}
             aria-label={syncTitle}
           >
@@ -149,7 +149,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 style={{ background: syncInfo.color, boxShadow: syncInfo.glow }}
               />
             </span>
-            <span className="text-[9.5px] font-semibold text-[hsl(var(--muted-foreground))] leading-none tabular-nums">
+            <span className="text-[8.5px] font-semibold text-[hsl(var(--muted-foreground))] leading-none tabular-nums">
               {syncStatus === "offline" ? "Offline" : formatLastSync(lastSync)}
             </span>
           </div>
@@ -157,12 +157,12 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
           {/* Live rate indicator — full numbers, tap to refresh */}
           <button
             onClick={() => refreshRates()}
-            className="flex items-center gap-1.5 shrink-0 h-9 pl-2 pr-1.5 rounded-2xl bg-gradient-to-r from-sky-50 via-sky-100 to-sky-50 border border-sky-100/80 shadow-[0_1px_2px_rgba(14,165,233,0.08)] transition-all active:scale-95"
+            className="flex items-center gap-1 shrink-0 h-7 pl-1.5 pr-1 rounded-xl bg-gradient-to-r from-sky-50 via-sky-100 to-sky-50 border border-sky-100/80 shadow-[0_1px_2px_rgba(14,165,233,0.08)] transition-all active:scale-95"
             style={{ fontVariantNumeric: "tabular-nums" }}
             title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")} · Tap untuk perbarui` : "Tap untuk perbarui"}
             aria-label="Kurs live"
           >
-            <span className="relative flex h-1.5 w-1.5 ml-0.5">
+            <span className="relative flex h-1.5 w-1.5">
               <span
                 className={cn(
                   "absolute inline-flex h-full w-full rounded-full opacity-75",
@@ -175,27 +175,27 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               />
             </span>
 
-            <div className="flex items-center gap-1.5 leading-none">
+            <div className="flex items-center gap-1 leading-none">
               <div className="flex flex-col items-end gap-[1px]">
-                <span className="text-[8px] font-bold uppercase tracking-wider text-sky-500/80 leading-none">USD</span>
-                <span className="text-[11px] font-extrabold text-sky-800 leading-none tabular-nums">
+                <span className="text-[7.5px] font-bold uppercase tracking-wider text-sky-500/80 leading-none">USD</span>
+                <span className="text-[10px] font-extrabold text-sky-800 leading-none tabular-nums">
                   {rates.USD ? rates.USD.toLocaleString("id-ID", { maximumFractionDigits: 0 }) : "—"}
                 </span>
               </div>
-              <span className="h-5 w-px bg-sky-200/80" />
+              <span className="h-4 w-px bg-sky-200/80" />
               <div className="flex flex-col items-end gap-[1px]">
-                <span className="text-[8px] font-bold uppercase tracking-wider text-sky-500/80 leading-none">SAR</span>
-                <span className="text-[11px] font-extrabold text-sky-800 leading-none tabular-nums">
+                <span className="text-[7.5px] font-bold uppercase tracking-wider text-sky-500/80 leading-none">SAR</span>
+                <span className="text-[10px] font-extrabold text-sky-800 leading-none tabular-nums">
                   {rates.SAR ? rates.SAR.toLocaleString("id-ID", { maximumFractionDigits: 0 }) : "—"}
                 </span>
               </div>
             </div>
 
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-xl bg-white/70 ml-0.5">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-lg bg-white/70">
               <RefreshCw
                 strokeWidth={2.2}
                 className={cn(
-                  "h-3 w-3 text-sky-500",
+                  "h-2.5 w-2.5 text-sky-500",
                   ratesLoading && "animate-spin"
                 )}
               />
@@ -229,7 +229,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
             borderTop: "1px solid hsl(var(--border))",
           }}
         >
-          <div className="flex items-stretch px-1 pt-1 pb-[max(8px,env(safe-area-inset-bottom))]">
+          <div className="flex items-stretch px-0.5 pt-0.5 pb-[max(6px,env(safe-area-inset-bottom))]">
             {primaryNavItems.map((item) => {
               const isActive = activeCheck(item.url, item.end);
               return (
@@ -240,23 +240,23 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                   className="flex-1 flex flex-col items-center"
                 >
                   <motion.div
-                    className="flex flex-col items-center gap-[3px] w-full pt-1.5 pb-0.5"
+                    className="flex flex-col items-center gap-[2px] w-full pt-1 pb-0.5"
                     whileTap={{ scale: 0.9 }}
                     transition={{ duration: 0.1 }}
                   >
-                    <div className="w-full flex justify-center -mt-1 mb-0.5">
+                    <div className="w-full flex justify-center -mt-0.5 mb-0.5">
                       <AnimatePresence>
                         {isActive ? (
                           <motion.div
                             layoutId="nav-bar"
-                            className="h-[2.5px] w-6 rounded-full bg-sky-500"
+                            className="h-[2px] w-5 rounded-full bg-sky-500"
                             initial={{ opacity: 0, scaleX: 0 }}
                             animate={{ opacity: 1, scaleX: 1 }}
                             exit={{ opacity: 0, scaleX: 0 }}
                             transition={{ type: "spring", stiffness: 500, damping: 35 }}
                           />
                         ) : (
-                          <div className="h-[2.5px] w-6" />
+                          <div className="h-[2px] w-5" />
                         )}
                       </AnimatePresence>
                     </div>
@@ -264,14 +264,14 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                     <item.icon
                       strokeWidth={isActive ? 2.3 : 1.7}
                       className={cn(
-                        "h-[20px] w-[20px] transition-colors duration-150",
+                        "h-[18px] w-[18px] transition-colors duration-150",
                         isActive ? "text-sky-500" : "text-[hsl(var(--muted-foreground))]"
                       )}
                     />
 
                     <span
                       className={cn(
-                        "text-[10px] font-semibold leading-none tracking-tight transition-colors duration-150 mt-1",
+                        "text-[9px] font-semibold leading-none tracking-tight transition-colors duration-150 mt-0.5",
                         isActive ? "text-sky-500" : "text-[hsl(var(--muted-foreground))]"
                       )}
                     >
@@ -289,36 +289,36 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               aria-label="Lainnya"
             >
               <motion.div
-                className="flex flex-col items-center gap-[3px] w-full pt-1.5 pb-0.5"
+                className="flex flex-col items-center gap-[2px] w-full pt-1 pb-0.5"
                 whileTap={{ scale: 0.9 }}
                 transition={{ duration: 0.1 }}
               >
-                <div className="w-full flex justify-center -mt-1 mb-0.5">
+                <div className="w-full flex justify-center -mt-0.5 mb-0.5">
                   <AnimatePresence>
                     {moreActive ? (
                       <motion.div
                         layoutId="nav-bar"
-                        className="h-[2.5px] w-6 rounded-full bg-sky-500"
+                        className="h-[2px] w-5 rounded-full bg-sky-500"
                         initial={{ opacity: 0, scaleX: 0 }}
                         animate={{ opacity: 1, scaleX: 1 }}
                         exit={{ opacity: 0, scaleX: 0 }}
                         transition={{ type: "spring", stiffness: 500, damping: 35 }}
                       />
                     ) : (
-                      <div className="h-[2.5px] w-6" />
+                      <div className="h-[2px] w-5" />
                     )}
                   </AnimatePresence>
                 </div>
                 <MoreHorizontal
                   strokeWidth={moreActive ? 2.3 : 1.7}
                   className={cn(
-                    "h-[20px] w-[20px] transition-colors duration-150",
+                    "h-[18px] w-[18px] transition-colors duration-150",
                     moreActive ? "text-sky-500" : "text-[hsl(var(--muted-foreground))]"
                   )}
                 />
                 <span
                   className={cn(
-                    "text-[10px] font-semibold leading-none tracking-tight transition-colors duration-150 mt-1",
+                    "text-[9px] font-semibold leading-none tracking-tight transition-colors duration-150 mt-0.5",
                     moreActive ? "text-sky-500" : "text-[hsl(var(--muted-foreground))]"
                   )}
                 >

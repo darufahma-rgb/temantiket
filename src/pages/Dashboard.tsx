@@ -800,45 +800,45 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="dashboard-hero relative overflow-hidden rounded-xl md:rounded-3xl border p-2.5 md:p-5">
+          <div className="dashboard-hero relative overflow-hidden rounded-xl md:rounded-3xl border p-2 md:p-5">
             <div className="dashboard-hero-glow-tr absolute -top-12 -right-10 h-32 w-32 rounded-full pointer-events-none" />
             <div className="dashboard-hero-glow-bl absolute -bottom-8 -left-6 h-24 w-24 rounded-full pointer-events-none" />
 
             <div className="relative flex items-center justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <h1 className="text-[14px] md:text-[22px] font-extrabold text-sky-950 leading-tight tracking-tight">
+                <h1 className="text-[13px] md:text-[22px] font-extrabold text-sky-950 leading-tight tracking-tight">
                   {getGreeting(user?.displayName ?? "Admin", t)} <span className="inline-block">👋</span>
                 </h1>
-                <p className="text-[10px] md:text-[12.5px] text-sky-700/80 mt-0.5 capitalize font-medium">
+                <p className="text-[9.5px] md:text-[12.5px] text-sky-700/80 capitalize font-medium leading-tight">
                   {formatTodayFull(locale)}
                 </p>
                 {nearestDeparture ? (
-                  <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                    <div className="inline-flex items-center gap-1 bg-white/80 backdrop-blur text-sky-700 rounded-full pl-1.5 pr-2.5 py-0.5 text-[10px] font-semibold border border-sky-200/60 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-1 mt-1">
+                    <div className="inline-flex items-center gap-1 bg-white/80 backdrop-blur text-sky-700 rounded-full pl-1 pr-2 py-0.5 text-[9.5px] font-semibold border border-sky-200/60 shadow-sm">
                       <Plane strokeWidth={2} className="h-2.5 w-2.5 shrink-0" />
                       <span className="opacity-80">{t.dash_nearest_departure}</span>
-                      <strong className="truncate max-w-[90px]">{nearestDeparture.name}</strong>
+                      <strong className="truncate max-w-[80px]">{nearestDeparture.name}</strong>
                       <span className="text-sky-500 shrink-0">· {daysUntil(nearestDeparture.departureDate!)}</span>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-[10px] text-sky-800/70 mt-1 italic leading-snug">
+                  <p className="text-[9.5px] text-sky-800/70 mt-0.5 italic leading-snug">
                     {t.dash_no_schedule}
                   </p>
                 )}
               </div>
-              <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <div className="flex flex-col items-end gap-1 shrink-0">
                 <button
                   type="button"
                   onClick={handleRefresh}
                   disabled={refreshing}
                   title="Muat ulang data dari Supabase"
                   aria-label="Refresh dashboard"
-                  className="group inline-flex items-center gap-1 h-7 md:h-9 px-2 md:px-3 rounded-full bg-white/80 backdrop-blur border border-sky-200/70 text-sky-700 hover:bg-white hover:border-sky-300 shadow-sm text-[10px] md:text-[12px] font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="group inline-flex items-center gap-1 h-6 md:h-9 px-1.5 md:px-3 rounded-full bg-white/80 backdrop-blur border border-sky-200/70 text-sky-700 hover:bg-white hover:border-sky-300 shadow-sm text-[9.5px] md:text-[12px] font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <RefreshCw
                     strokeWidth={2.2}
-                    className={cn("h-3 w-3 md:h-4 md:w-4", refreshing && "animate-spin")}
+                    className={cn("h-2.5 w-2.5 md:h-4 md:w-4", refreshing && "animate-spin")}
                   />
                   <span className="hidden sm:inline">{refreshing ? "Memuat…" : "Refresh"}</span>
                 </button>

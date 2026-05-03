@@ -128,13 +128,13 @@ export default function AgentDashboard() {
   return (
     <div className="pb-4 md:p-6 max-w-6xl md:mx-auto space-y-2.5 md:space-y-5">
       {/* Header — mitra branding */}
-      <div className="rounded-2xl md:rounded-3xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-400 p-3 md:p-6 text-white shadow-lg">
+      <div className="rounded-xl md:rounded-3xl bg-gradient-to-br from-orange-500 via-orange-400 to-amber-400 p-2 md:p-6 text-white shadow-lg">
         <div className="flex items-start justify-between gap-2 md:flex-col md:gap-3">
           <div className="min-w-0 flex-1">
-            <div className="text-[9px] md:text-[11px] font-semibold uppercase tracking-widest opacity-90">
+            <div className="text-[8.5px] md:text-[11px] font-semibold uppercase tracking-widest opacity-90">
               Mitra Dashboard
             </div>
-            <h1 className="text-[16px] md:text-2xl font-extrabold mt-0.5 leading-tight">
+            <h1 className="text-[13px] md:text-2xl font-extrabold leading-tight">
               Halo, {user?.displayName ?? "Mitra"} 👋
             </h1>
             <p className="hidden md:block text-[12.5px] opacity-90 mt-1 leading-snug">
@@ -144,7 +144,7 @@ export default function AgentDashboard() {
               )}
             </p>
             {stats.commissionPct > 0 && (
-              <p className="md:hidden text-[10px] opacity-90 mt-0.5">Komisi: <span className="font-bold">{stats.commissionPct}%</span></p>
+              <p className="md:hidden text-[9.5px] opacity-90">Komisi: <span className="font-bold">{stats.commissionPct}%</span></p>
             )}
           </div>
           {/* Desktop buttons in flex-wrap */}
@@ -164,7 +164,7 @@ export default function AgentDashboard() {
           </div>
         </div>
         {/* Mobile: compact icon-button row */}
-        <div className="md:hidden flex gap-1.5 mt-2.5 overflow-x-auto scrollbar-none -mx-0.5 pb-0.5">
+        <div className="md:hidden flex gap-1 mt-1.5 overflow-x-auto scrollbar-none -mx-0.5 pb-0.5">
           {[
             { icon: UserCircle, label: "Profil", path: "/agent/profile" },
             { icon: Megaphone, label: "Marketing", path: "/agent/marketing" },
