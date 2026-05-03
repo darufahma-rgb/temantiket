@@ -11,7 +11,6 @@ import Index from "./pages/Index.tsx";
 import Calculator from "./pages/Calculator";
 import Packages from "./pages/Packages";
 import PackageDetail from "./pages/PackageDetail";
-import ProgressTracker from "./pages/ProgressTracker";
 import TripDetail from "./pages/TripDetail";
 import JamaahProfile from "./pages/JamaahProfile";
 import Settings from "./pages/Settings";
@@ -210,7 +209,7 @@ function AnimatedRoutes() {
       <Route path="/calculator" element={<RequireAuth><DashboardLayout><Calculator /></DashboardLayout></RequireAuth>} />
       <Route path="/packages" element={<RequireAuth><DashboardLayout><Packages /></DashboardLayout></RequireAuth>} />
       <Route path="/packages/:id" element={<RequireAuth><DashboardLayout><PackageDetail /></DashboardLayout></RequireAuth>} />
-      <Route path="/progress" element={<RequireAuth><DashboardLayout><ProgressTracker /></DashboardLayout></RequireAuth>} />
+      <Route path="/progress" element={<Navigate to="/packages?tab=progress" replace />} />
       <Route path="/trips/:id" element={<RequireAuth><DashboardLayout><TripDetail /></DashboardLayout></RequireAuth>} />
       <Route path="/trips/:id/jamaah/:jamaahId" element={<RequireAuth><DashboardLayout><JamaahProfile /></DashboardLayout></RequireAuth>} />
       {/* Alias /paket — terminologi UI sesuai sidebar "Paket Trip" */}

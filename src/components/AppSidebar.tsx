@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Calculator, Package, LogOut, Settings,
   StickyNote, FileSpreadsheet, Users, ShoppingBag,
   MessageSquare, Sparkles, Ticket,
-  GitBranch, Command, Trophy, BookUser, Megaphone, BarChart3,
+  Command, Trophy, BookUser, Megaphone, BarChart3,
   Bot,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -55,7 +55,6 @@ const STAFF_SECTIONS: SectionDef[] = [
       { title: "Itinerary",          url: "/itinerary",     icon: Sparkles, badge: "AI" },
       { title: "Kalkulator & Kurs", url: "/calculator",    icon: Calculator },
       { title: "Paket Trip",        url: "/packages",      icon: Package },
-      { title: "Progress Jamaah",   url: "/progress",      icon: GitBranch },
     ],
   },
   {

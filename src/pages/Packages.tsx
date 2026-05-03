@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import ProgressTracker from "@/pages/ProgressTracker";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,8 @@ function getLogistics(pkg: EnrichedPackage) {
 
 export default function Packages() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") === "progress" ? "progress" : "paket";
   const { items, loading, create, update, remove } = usePackages();
   const rates = useRatesStore((s) => s.rates);
   const { formatCurrency } = useRegional();
@@ -193,16 +196,48 @@ export default function Packages() {
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-base md:text-2xl font-bold text-[hsl(var(--foreground))] leading-tight">Paket Trip</h1>
-          <p className="text-[11px] md:text-xs text-[hsl(var(--muted-foreground))] mt-0.5">Kelola semua paket perjalanan kamu.</p>
+          <p className="text-[11px] md:text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
+            {activeTab === "paket" ? "Kelola semua paket perjalanan kamu." : "Pantau progres jamaah & status paket."}
+          </p>
         </div>
-        <Button
-          onClick={openCreate}
-          className="btn-glow h-8 md:h-9 px-2.5 md:px-3 rounded-xl text-[12px] md:text-sm shrink-0"
-        >
-          <Plus className="h-3.5 w-3.5 mr-1" />
-          Tambah
-        </Button>
+        {activeTab === "paket" && (
+          <Button
+            onClick={openCreate}
+            className="btn-glow h-8 md:h-9 px-2.5 md:px-3 rounded-xl text-[12px] md:text-sm shrink-0"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Tambah
+          </Button>
+        )}
       </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 rounded-xl bg-[hsl(var(--secondary))] w-fit">
+        {([
+          { key: "paket",    label: "Paket",    icon: PackageIcon },
+          { key: "progress", label: "Progress", icon: TrendingUp  },
+        ] as const).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setSearchParams(key === "paket" ? {} : { tab: key })}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all",
+              activeTab === key
+                ? "bg-white shadow-sm text-[hsl(var(--foreground))]"
+                : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Progress tab */}
+      {activeTab === "progress" && <ProgressTracker />}
+
+      {/* Paket tab content */}
+      {activeTab === "paket" && <>
 
       {/* Search */}
       <div className="relative">
@@ -410,6 +445,7 @@ export default function Packages() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </>}
     </div>
   );
 }
