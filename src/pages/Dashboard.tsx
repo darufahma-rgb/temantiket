@@ -789,12 +789,12 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex h-full min-h-0">
+    <div className="xl:flex xl:min-h-0">
       {/* ══════════════════════════════════════════════════════════════
            MOBILE LAYOUT  (hidden on md+)
       ══════════════════════════════════════════════════════════════ */}
-      <div className="md:hidden flex-1 overflow-auto min-w-0">
-        <div className="px-3.5 pt-2 pb-6 space-y-3">
+      <div className="md:hidden">
+        <div className="pb-4 space-y-3">
 
           {/* ── Greeting row ── */}
           <div className="flex items-center gap-2.5">
@@ -1062,7 +1062,7 @@ export default function Dashboard() {
       {/* ══════════════════════════════════════════════════════════════
            DESKTOP LAYOUT  (hidden on mobile)
       ══════════════════════════════════════════════════════════════ */}
-      <div className="hidden md:block flex-1 overflow-auto min-w-0 p-6 lg:p-8 pb-6">
+      <div className="hidden md:block xl:flex-1 xl:min-w-0 pb-6">
 
         {/* ── Greeting hero ── */}
         <motion.div

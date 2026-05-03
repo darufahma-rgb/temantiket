@@ -82,7 +82,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
             </button>
 
             {/* Search bar */}
-            <div className="flex-1 max-w-[200px] xs:max-w-xs md:max-w-md relative">
+            <div className="flex-1 md:max-w-md relative">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 h-[15px] w-[15px] pointer-events-none"
                 style={{ color: "hsl(var(--muted-foreground))" }}
@@ -118,7 +118,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               </span>
             </div>
 
-            <div className="flex-1" />
+            <div className="hidden md:block flex-1" />
 
             <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
 
@@ -140,11 +140,11 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                   className="text-[11px] font-semibold text-[hsl(var(--muted-foreground))]"
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
-                  USD{" "}
+                  <span className="hidden sm:inline">USD </span>
                   <span className="text-sky-500 font-bold">
-                    Rp{rates.USD?.toLocaleString("id-ID") ?? "—"}
+                    Rp{rates.USD ? (rates.USD >= 10000 ? `${(rates.USD/1000).toFixed(1)}k` : rates.USD.toLocaleString("id-ID")) : "—"}
                   </span>
-                  <span className="hidden sm:inline">
+                  <span className="hidden lg:inline">
                     <span className="mx-1.5 opacity-30">·</span>
                     SAR{" "}
                     <span className="text-sky-500 font-bold">
