@@ -209,7 +209,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
             <motion.main
               key={location.pathname}
               className={`pwa-main-content absolute inset-0 overflow-auto ${
-                noPadding ? "" : "p-3"
+                noPadding ? "" : "px-3 pt-2 pb-2"
               }`}
               initial={{ x: 40, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}

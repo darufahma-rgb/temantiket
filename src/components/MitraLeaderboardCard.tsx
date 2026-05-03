@@ -148,30 +148,30 @@ export function MitraLeaderboardCard() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white overflow-hidden"
+      className="rounded-xl md:rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white overflow-hidden"
     >
       <button
         type="button"
         onClick={() => navigate("/reports")}
-        className="w-full px-3.5 pt-3 pb-1.5 flex items-center justify-between hover:bg-amber-50/40 transition-colors"
+        className="w-full px-3 pt-2 pb-1 flex items-center justify-between hover:bg-amber-50/40 transition-colors"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <div className="h-7 w-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-            <Trophy className="h-3.5 w-3.5" strokeWidth={2.2} />
+          <div className="h-6 w-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+            <Trophy className="h-3 w-3" strokeWidth={2.2} />
           </div>
           <div className="min-w-0 text-left">
-            <p className="text-[12.5px] font-bold text-amber-900 leading-tight">
+            <p className="text-[11.5px] font-bold text-amber-900 leading-tight">
               Leaderboard Mitra · {monthLabel}
             </p>
-            <p className="text-[10px] text-amber-700/70 leading-tight mt-0.5">
-              {agentMembers.length} mitra terdaftar · klik utk full report
+            <p className="text-[9.5px] text-amber-700/70 leading-tight mt-0.5">
+              {agentMembers.length} mitra · tap utk full report
             </p>
           </div>
         </div>
-        <ChevronRight className="h-4 w-4 text-amber-500 shrink-0" />
+        <ChevronRight className="h-3.5 w-3.5 text-amber-500 shrink-0" />
       </button>
 
-      <div className="px-2 pb-2.5 pt-1 grid grid-cols-3 gap-1.5">
+      <div className="px-2 pb-2 pt-0.5 grid grid-cols-3 gap-1.5">
         {top3.map((row, i) => (
           <div
             key={row.agentId}

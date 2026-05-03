@@ -52,18 +52,18 @@ export function AdminWhatsappCard({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-3 flex items-center gap-3",
+        "rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-2.5 flex items-center gap-2",
         className,
       )}
     >
-      <div className="h-9 w-9 rounded-xl bg-[#25D366] flex items-center justify-center shrink-0 shadow-sm">
-        <MessageCircle className="h-4 w-4 text-white" strokeWidth={2.5} />
+      <div className="h-7 w-7 md:h-9 md:w-9 rounded-lg md:rounded-xl bg-[#25D366] flex items-center justify-center shrink-0 shadow-sm">
+        <MessageCircle className="h-3.5 w-3.5 md:h-4 md:w-4 text-white" strokeWidth={2.5} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[10.5px] font-semibold text-emerald-700 uppercase tracking-wider">
+        <p className="text-[9.5px] md:text-[10.5px] font-semibold text-emerald-700 uppercase tracking-wider leading-tight">
           WhatsApp Admin
         </p>
-        <p className="text-[13.5px] font-bold text-[hsl(var(--foreground))] truncate">
+        <p className="text-[12px] md:text-[13.5px] font-bold text-[hsl(var(--foreground))] truncate leading-tight">
           {display}
         </p>
       </div>
@@ -72,7 +72,7 @@ export function AdminWhatsappCard({ className }: { className?: string }) {
           type="button"
           onClick={handleCopy}
           className={cn(
-            "h-8 w-8 rounded-lg flex items-center justify-center transition-colors",
+            "h-7 w-7 rounded-lg flex items-center justify-center transition-colors",
             copied
               ? "bg-emerald-500 text-white"
               : "bg-white text-emerald-700 hover:bg-emerald-100 border border-emerald-200",
@@ -80,17 +80,17 @@ export function AdminWhatsappCard({ className }: { className?: string }) {
           title="Salin nomor"
           aria-label="Salin nomor WhatsApp"
         >
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
         </button>
         <a
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="h-8 w-8 rounded-lg flex items-center justify-center bg-[#25D366] text-white hover:bg-[#1ebe57] transition-colors"
+          className="h-7 w-7 rounded-lg flex items-center justify-center bg-[#25D366] text-white hover:bg-[#1ebe57] transition-colors"
           title="Buka WhatsApp"
           aria-label="Buka WhatsApp"
         >
-          <ExternalLink className="h-3.5 w-3.5" />
+          <ExternalLink className="h-3 w-3" />
         </a>
       </div>
     </div>

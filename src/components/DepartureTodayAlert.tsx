@@ -146,23 +146,23 @@ function AlertRow({
   const waUrl = buildWAUrl(item.clientPhone, waText);
 
   return (
-    <div className="flex items-center gap-2.5 rounded-xl bg-white border border-sky-100 p-3 hover:border-sky-300 hover:shadow-sm transition-all">
+    <div className="flex items-center gap-2 rounded-xl bg-white border border-sky-100 p-2 hover:border-sky-300 hover:shadow-sm transition-all">
       <button
         type="button"
         onClick={() => onNavigate(item.clientId)}
-        className="flex-1 min-w-0 flex items-center gap-2.5 text-left"
+        className="flex-1 min-w-0 flex items-center gap-2 text-left"
       >
         <div
           className={cn(
-            "h-9 w-9 rounded-xl shrink-0 flex items-center justify-center text-white text-lg",
-            type === "departing" ? "bg-sky-500" : "bg-emerald-500",
+            "h-8 w-8 rounded-lg shrink-0 flex items-center justify-center text-base",
+            type === "departing" ? "bg-sky-100" : "bg-emerald-100",
           )}
         >
           {type === "departing" ? "✈️" : "🏠"}
         </div>
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-foreground truncate">{item.clientName}</p>
-          <p className="text-[11px] text-muted-foreground truncate">{item.packageName}</p>
+          <p className="text-[12px] font-semibold text-foreground truncate">{item.clientName}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{item.packageName}</p>
         </div>
       </button>
       <a
@@ -170,17 +170,17 @@ function AlertRow({
         target="_blank"
         rel="noopener noreferrer"
         title={`Kirim pesan ${type === "departing" ? "keberangkatan" : "kepulangan"} ke ${item.clientName}`}
-        className="shrink-0 h-8 px-2.5 rounded-lg bg-[#25D366] text-white flex items-center gap-1.5 text-[11px] font-semibold hover:bg-[#1ebe57] transition-colors"
+        className="shrink-0 h-7 px-2 rounded-lg bg-[#25D366] text-white flex items-center gap-1 text-[10.5px] font-semibold hover:bg-[#1ebe57] transition-colors"
       >
-        <MessageCircle className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Kirim WA</span>
+        <MessageCircle className="h-3 w-3" />
+        <span className="hidden sm:inline">WA</span>
       </a>
       <button
         type="button"
         onClick={() => onNavigate(item.clientId)}
-        className="shrink-0 h-8 w-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+        className="shrink-0 h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
       >
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRight className="h-3.5 w-3.5" />
       </button>
     </div>
   );
@@ -215,43 +215,43 @@ export function DepartureTodayAlert({ packages, orders, clients }: DepartureToda
 
   return (
     <motion.div
-      className="mb-4 md:mb-5 space-y-3"
+      className="mb-1.5 md:mb-5 space-y-1.5"
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.12, ease: "easeOut" }}
     >
       {/* ── Departing ── */}
       {departing.length > 0 && (
-        <div className="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-blue-50 overflow-hidden">
+        <div className="rounded-xl md:rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-blue-50 overflow-hidden">
           <button
             onClick={() => setDepCollapsed((c) => !c)}
-            className="w-full px-4 md:px-5 py-3 flex items-center justify-between gap-3 hover:bg-sky-100/40 transition-colors"
+            className="w-full px-3 py-2 flex items-center justify-between gap-2 hover:bg-sky-100/40 transition-colors"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-8 w-8 rounded-xl bg-sky-500 flex items-center justify-center shrink-0">
-                <Send strokeWidth={2} className="h-4 w-4 text-white" />
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-7 w-7 rounded-lg bg-sky-500 flex items-center justify-center shrink-0">
+                <Send strokeWidth={2} className="h-3.5 w-3.5 text-white" />
               </div>
               <div className="text-left min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-[13.5px] md:text-[14px] font-bold text-sky-700">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h2 className="text-[12px] md:text-[14px] font-bold text-sky-700">
                     Berangkat Hari Ini ✈️
                   </h2>
-                  <span className="h-5 px-2 rounded-full bg-sky-500 text-white text-[10px] font-bold flex items-center">
+                  <span className="h-4 px-1.5 rounded-full bg-sky-500 text-white text-[9.5px] font-bold flex items-center">
                     {departing.length}
                   </span>
                 </div>
-                <p className="text-[11px] text-sky-600/80 mt-0.5">
-                  Kirim pesan keberangkatan ke klien yang berangkat hari ini
+                <p className="text-[10px] text-sky-600/80 truncate">
+                  Kirim pesan keberangkatan ke klien hari ini
                 </p>
               </div>
             </div>
             <ChevronRight
               strokeWidth={2}
-              className={cn("h-4 w-4 text-sky-500 shrink-0 transition-transform", !depCollapsed && "rotate-90")}
+              className={cn("h-3.5 w-3.5 text-sky-500 shrink-0 transition-transform", !depCollapsed && "rotate-90")}
             />
           </button>
           {!depCollapsed && (
-            <div className="px-3 md:px-4 pb-3 md:pb-4 space-y-2">
+            <div className="px-2.5 pb-2.5 space-y-1.5">
               {departing.map((item) => (
                 <AlertRow key={`${item.clientId}-${item.packageId}`} item={item} type="departing" onNavigate={handleNavigate} />
               ))}
@@ -262,36 +262,36 @@ export function DepartureTodayAlert({ packages, orders, clients }: DepartureToda
 
       {/* ── Returning ── */}
       {returning.length > 0 && (
-        <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 overflow-hidden">
+        <div className="rounded-xl md:rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 overflow-hidden">
           <button
             onClick={() => setRetCollapsed((c) => !c)}
-            className="w-full px-4 md:px-5 py-3 flex items-center justify-between gap-3 hover:bg-emerald-100/40 transition-colors"
+            className="w-full px-3 py-2 flex items-center justify-between gap-2 hover:bg-emerald-100/40 transition-colors"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-8 w-8 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0">
-                <Home strokeWidth={2} className="h-4 w-4 text-white" />
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-7 w-7 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
+                <Home strokeWidth={2} className="h-3.5 w-3.5 text-white" />
               </div>
               <div className="text-left min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-[13.5px] md:text-[14px] font-bold text-emerald-700">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h2 className="text-[12px] md:text-[14px] font-bold text-emerald-700">
                     Baru Pulang 🏠
                   </h2>
-                  <span className="h-5 px-2 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center">
+                  <span className="h-4 px-1.5 rounded-full bg-emerald-500 text-white text-[9.5px] font-bold flex items-center">
                     {returning.length}
                   </span>
                 </div>
-                <p className="text-[11px] text-emerald-600/80 mt-0.5">
+                <p className="text-[10px] text-emerald-600/80 truncate">
                   Sambut klien yang baru kembali dari perjalanan
                 </p>
               </div>
             </div>
             <ChevronRight
               strokeWidth={2}
-              className={cn("h-4 w-4 text-emerald-500 shrink-0 transition-transform", !retCollapsed && "rotate-90")}
+              className={cn("h-3.5 w-3.5 text-emerald-500 shrink-0 transition-transform", !retCollapsed && "rotate-90")}
             />
           </button>
           {!retCollapsed && (
-            <div className="px-3 md:px-4 pb-3 md:pb-4 space-y-2">
+            <div className="px-2.5 pb-2.5 space-y-1.5">
               {returning.map((item) => (
                 <AlertRow key={`${item.clientId}-${item.packageId}`} item={item} type="returning" onNavigate={handleNavigate} />
               ))}

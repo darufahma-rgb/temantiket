@@ -641,58 +641,58 @@ function PaymentAlerts({ trips }: { trips: Trip[] }) {
 
   return (
     <motion.div
-      className="mb-4 md:mb-5"
+      className="mb-1.5 md:mb-5"
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.14, ease: "easeOut" }}
     >
-      <div className="rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-sky-50 overflow-hidden">
+      <div className="rounded-xl md:rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-sky-50 overflow-hidden">
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="w-full px-4 md:px-5 py-3 flex items-center justify-between gap-3 hover:bg-red-100/40 transition-colors"
+          className="w-full px-3 py-2 flex items-center justify-between gap-2 hover:bg-red-100/40 transition-colors"
         >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-8 w-8 rounded-xl bg-red-500 flex items-center justify-center shrink-0">
-              <Wallet strokeWidth={2} className="h-4 w-4 text-white" />
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-7 w-7 rounded-lg bg-red-500 flex items-center justify-center shrink-0">
+              <Wallet strokeWidth={2} className="h-3.5 w-3.5 text-white" />
             </div>
             <div className="text-left min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-[13.5px] md:text-[14px] font-bold text-red-700">Tagihan Belum Lunas (H-30)</h2>
-                <span className="h-5 px-2 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center">{alerts.length}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h2 className="text-[12px] md:text-[14px] font-bold text-red-700">Tagihan Belum Lunas (H-30)</h2>
+                <span className="h-4 px-1.5 rounded-full bg-red-500 text-white text-[9.5px] font-bold flex items-center">{alerts.length}</span>
               </div>
-              <p className="text-[11px] text-red-600/80 mt-0.5 truncate">
-                Total kurang bayar: <strong>{fmtIDRShort(totalOutstanding)}</strong>
+              <p className="text-[10px] text-red-600/80 truncate">
+                Kurang bayar: <strong>{fmtIDRShort(totalOutstanding)}</strong>
               </p>
             </div>
           </div>
-          <ChevronRight strokeWidth={2} className={cn("h-4 w-4 text-red-500 shrink-0 transition-transform", !collapsed && "rotate-90")} />
+          <ChevronRight strokeWidth={2} className={cn("h-3.5 w-3.5 text-red-500 shrink-0 transition-transform", !collapsed && "rotate-90")} />
         </button>
 
         {!collapsed && (
-          <div className="px-3 md:px-4 pb-3 md:pb-4 space-y-2">
+          <div className="px-2.5 pb-2.5 space-y-1.5">
             {alerts.slice(0, 8).map((a) => (
               <button
                 key={a.jamaah.id}
                 onClick={() => navigate(`/trips/${a.trip.id}/jamaah/${a.jamaah.id}`)}
-                className="w-full flex items-center gap-3 rounded-xl bg-white border border-red-100 p-3 hover:border-red-300 hover:shadow-sm transition-all text-left"
+                className="w-full flex items-center gap-2.5 rounded-xl bg-white border border-red-100 p-2 hover:border-red-300 hover:shadow-sm transition-all text-left"
               >
                 <div className={cn(
-                  "h-9 w-9 rounded-xl shrink-0 flex items-center justify-center text-white text-sm font-bold",
+                  "h-8 w-8 rounded-lg shrink-0 flex items-center justify-center text-white text-[11px] font-bold",
                   a.daysLeft <= 7 ? "bg-red-500" : a.daysLeft <= 14 ? "bg-sky-500" : "bg-amber-500"
                 )}>
                   {a.daysLeft <= 0 ? "H!" : `H-${a.daysLeft}`}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-[hsl(var(--foreground))] truncate">{a.jamaah.name}</p>
-                  <p className="text-[11px] text-[hsl(var(--muted-foreground))] truncate">
+                  <p className="text-[12px] font-semibold text-[hsl(var(--foreground))] truncate">{a.jamaah.name}</p>
+                  <p className="text-[10px] text-[hsl(var(--muted-foreground))] truncate">
                     {a.trip.emoji} {a.trip.name}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[12.5px] font-bold text-red-600 leading-tight">{fmtIDRShort(a.outstanding)}</p>
-                  <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5">kurang</p>
+                  <p className="text-[11.5px] font-bold text-red-600 leading-tight">{fmtIDRShort(a.outstanding)}</p>
+                  <p className="text-[9.5px] text-[hsl(var(--muted-foreground))] mt-0.5">kurang</p>
                 </div>
-                <ChevronRight strokeWidth={1.5} className="h-4 w-4 text-[hsl(var(--muted-foreground))] shrink-0" />
+                <ChevronRight strokeWidth={1.5} className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] shrink-0" />
               </button>
             ))}
             {alerts.length > 8 && (
@@ -791,55 +791,54 @@ export default function Dashboard() {
   return (
     <div className="flex h-full min-h-0">
       {/* ── Main content ── */}
-      <div className="flex-1 overflow-auto min-w-0 pb-4 md:p-6 lg:p-8 md:pb-6">
+      <div className="flex-1 overflow-auto min-w-0 pb-2 md:p-6 lg:p-8 md:pb-6">
 
         {/* ── Greeting hero ── */}
         <motion.div
-          className="mb-2 md:mb-5"
+          className="mb-1.5 md:mb-5"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="dashboard-hero relative overflow-hidden rounded-2xl md:rounded-3xl border p-3 md:p-5">
-            {/* Decorative glow — sky orbs di pojok, dark mode pakai biru lebih terang */}
+          <div className="dashboard-hero relative overflow-hidden rounded-xl md:rounded-3xl border p-2.5 md:p-5">
             <div className="dashboard-hero-glow-tr absolute -top-12 -right-10 h-32 w-32 rounded-full pointer-events-none" />
             <div className="dashboard-hero-glow-bl absolute -bottom-8 -left-6 h-24 w-24 rounded-full pointer-events-none" />
 
-            <div className="relative flex items-start justify-between gap-3">
+            <div className="relative flex items-center justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <h1 className="text-[15.5px] md:text-[22px] font-extrabold text-sky-950 leading-tight tracking-tight">
+                <h1 className="text-[14px] md:text-[22px] font-extrabold text-sky-950 leading-tight tracking-tight">
                   {getGreeting(user?.displayName ?? "Admin", t)} <span className="inline-block">👋</span>
                 </h1>
-                <p className="text-[11px] md:text-[12.5px] text-sky-700/80 mt-1 capitalize font-medium">
+                <p className="text-[10px] md:text-[12.5px] text-sky-700/80 mt-0.5 capitalize font-medium">
                   {formatTodayFull(locale)}
                 </p>
                 {nearestDeparture ? (
-                  <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                    <div className="inline-flex items-center gap-1.5 bg-white/80 backdrop-blur text-sky-700 rounded-full pl-2 pr-3 py-1 text-[11px] font-semibold border border-sky-200/60 shadow-sm">
-                      <Plane strokeWidth={2} className="h-3 w-3 shrink-0" />
+                  <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                    <div className="inline-flex items-center gap-1 bg-white/80 backdrop-blur text-sky-700 rounded-full pl-1.5 pr-2.5 py-0.5 text-[10px] font-semibold border border-sky-200/60 shadow-sm">
+                      <Plane strokeWidth={2} className="h-2.5 w-2.5 shrink-0" />
                       <span className="opacity-80">{t.dash_nearest_departure}</span>
-                      <strong className="truncate max-w-[120px]">{nearestDeparture.name}</strong>
+                      <strong className="truncate max-w-[90px]">{nearestDeparture.name}</strong>
                       <span className="text-sky-500 shrink-0">· {daysUntil(nearestDeparture.departureDate!)}</span>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-[11.5px] text-sky-800/70 mt-2.5 italic leading-snug">
+                  <p className="text-[10px] text-sky-800/70 mt-1 italic leading-snug">
                     {t.dash_no_schedule}
                   </p>
                 )}
               </div>
-              <div className="flex flex-col items-end gap-2 shrink-0">
+              <div className="flex flex-col items-end gap-1.5 shrink-0">
                 <button
                   type="button"
                   onClick={handleRefresh}
                   disabled={refreshing}
                   title="Muat ulang data dari Supabase"
                   aria-label="Refresh dashboard"
-                  className="group inline-flex items-center gap-1.5 h-8 md:h-9 px-2.5 md:px-3 rounded-full bg-white/80 backdrop-blur border border-sky-200/70 text-sky-700 hover:bg-white hover:border-sky-300 shadow-sm text-[11px] md:text-[12px] font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="group inline-flex items-center gap-1 h-7 md:h-9 px-2 md:px-3 rounded-full bg-white/80 backdrop-blur border border-sky-200/70 text-sky-700 hover:bg-white hover:border-sky-300 shadow-sm text-[10px] md:text-[12px] font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <RefreshCw
                     strokeWidth={2.2}
-                    className={cn("h-3.5 w-3.5 md:h-4 md:w-4", refreshing && "animate-spin")}
+                    className={cn("h-3 w-3 md:h-4 md:w-4", refreshing && "animate-spin")}
                   />
                   <span className="hidden sm:inline">{refreshing ? "Memuat…" : "Refresh"}</span>
                 </button>
@@ -853,7 +852,7 @@ export default function Dashboard() {
 
         {/* ── Live Clock (multi-timezone) ── */}
         <motion.div
-          className="mb-2 md:mb-4"
+          className="mb-1.5 md:mb-4"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
@@ -864,7 +863,7 @@ export default function Dashboard() {
 
         {/* ── Admin WhatsApp quick-contact (untuk admin internal) ── */}
         <motion.div
-          className="mb-2 md:mb-4"
+          className="mb-1.5 md:mb-4"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.07, ease: [0.16, 1, 0.3, 1] }}
@@ -874,17 +873,17 @@ export default function Dashboard() {
 
         {/* ── Mitra (Agent) Leaderboard preview — owner only ── */}
         {user?.role === "owner" && (
-          <div className="mb-2 md:mb-4">
+          <div className="mb-1.5 md:mb-4">
             <MitraLeaderboardCard />
           </div>
         )}
 
         {/* ── CEO Daily Quest — owner only ── */}
-        {user?.role === "owner" && <div className="mb-2 md:mb-0"><CeoDailyQuest /></div>}
+        {user?.role === "owner" && <div className="mb-1.5 md:mb-0"><CeoDailyQuest /></div>}
 
         {/* ── Primary stat cards (4 main metrics) ── */}
         <motion.div
-          className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 mb-2 md:gap-2.5 md:mb-4"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 mb-1.5 md:gap-2.5 md:mb-4"
           variants={stagger}
           initial="hidden"
           animate="visible"
@@ -899,17 +898,17 @@ export default function Dashboard() {
               key={stat.label}
               onClick={stat.onClick}
               className={cn(
-                "relative overflow-hidden flex items-center gap-2 rounded-xl md:rounded-2xl border border-[hsl(var(--border))] p-2.5 md:p-3.5 hover:shadow-md hover:border-[hsl(var(--primary))]/40 transition-all duration-200 text-left active:scale-[0.97]",
+                "relative overflow-hidden flex items-center gap-1.5 rounded-xl md:rounded-2xl border border-[hsl(var(--border))] p-2 md:p-3.5 hover:shadow-md hover:border-[hsl(var(--primary))]/40 transition-all duration-200 text-left active:scale-[0.97]",
                 "bg-gradient-to-br", stat.tint
               )}
               variants={fadeUp}
             >
-              <div className={cn("h-7 w-7 md:h-10 md:w-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0", stat.iconBg)}>
-                <stat.icon strokeWidth={2} className="h-[13px] w-[13px] md:h-5 md:w-5" />
+              <div className={cn("h-6 w-6 md:h-10 md:w-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0", stat.iconBg)}>
+                <stat.icon strokeWidth={2} className="h-[11px] w-[11px] md:h-5 md:w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[15px] md:text-[22px] font-extrabold text-[hsl(var(--foreground))] leading-none tracking-tight tabular-nums">{stat.value}</p>
-                <p className="text-[9.5px] md:text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5 md:mt-1 leading-tight truncate font-medium">{stat.label}</p>
+                <p className="text-[14px] md:text-[22px] font-extrabold text-[hsl(var(--foreground))] leading-none tracking-tight tabular-nums">{stat.value}</p>
+                <p className="text-[9px] md:text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5 md:mt-1 leading-tight truncate font-medium">{stat.label}</p>
               </div>
             </motion.button>
           ))}
@@ -944,7 +943,7 @@ export default function Dashboard() {
 
         {/* ── Mobile: compact package summary chips ── */}
         <motion.div
-          className="md:hidden flex items-center gap-1.5 mb-2 overflow-x-auto scrollbar-none"
+          className="md:hidden flex items-center gap-1.5 mb-1.5 overflow-x-auto scrollbar-none"
           style={{ scrollSnapType: "x proximity" }}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -981,48 +980,48 @@ export default function Dashboard() {
         {/* ── Perlu Perhatian ── */}
         {pendingPackages.length > 0 && (
           <motion.div
-            className="mb-2 md:mb-4"
+            className="mb-1.5 md:mb-4"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.18, ease: "easeOut" }}
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <AlertCircle strokeWidth={1.5} className="h-4 w-4 text-amber-500" />
-                <h2 className="text-[13.5px] md:text-[14px] font-bold text-[hsl(var(--foreground))]">{t.dash_needs_attention}</h2>
-                <span className="h-5 px-2 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold flex items-center">{pendingPackages.length}</span>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <AlertCircle strokeWidth={1.5} className="h-3.5 w-3.5 text-amber-500" />
+                <h2 className="text-[12px] md:text-[14px] font-bold text-[hsl(var(--foreground))]">{t.dash_needs_attention}</h2>
+                <span className="h-4 px-1.5 rounded-full bg-amber-100 text-amber-700 text-[9.5px] font-bold flex items-center">{pendingPackages.length}</span>
               </div>
               <button onClick={() => navigate("/packages")}
-                className="text-[11px] text-[hsl(var(--primary))] font-medium hover:underline flex items-center gap-1">
-                {t.dash_view_all} <ChevronRight strokeWidth={2} className="h-3 w-3" />
+                className="text-[10px] text-[hsl(var(--primary))] font-medium hover:underline flex items-center gap-0.5">
+                {t.dash_view_all} <ChevronRight strokeWidth={2} className="h-2.5 w-2.5" />
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {pendingPackages.slice(0, 4).map((pkg) => (
                 <div
                   key={pkg.id}
                   onClick={() => navigate("/packages")}
-                  className="flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-white px-3 py-2.5 cursor-pointer hover:border-[hsl(var(--primary))]/40 hover:shadow-sm transition-all"
+                  className="flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-white px-2.5 py-1.5 cursor-pointer hover:border-[hsl(var(--primary))]/40 hover:shadow-sm transition-all"
                 >
-                  <div className="h-9 w-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+                  <div className="h-8 w-8 md:h-9 md:w-9 rounded-lg md:rounded-xl flex items-center justify-center text-base shrink-0"
                     style={{ background: "linear-gradient(135deg,#f0f9ff,#bae6fd)" }}>
                     {pkg.emoji}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12.5px] font-semibold text-[hsl(var(--foreground))] truncate">{pkg.name}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-[hsl(var(--muted-foreground))]">
-                      <MapPin strokeWidth={1.5} className="h-3 w-3 shrink-0" />
+                    <p className="text-[11.5px] font-semibold text-[hsl(var(--foreground))] truncate">{pkg.name}</p>
+                    <div className="flex items-center gap-1 mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">
+                      <MapPin strokeWidth={1.5} className="h-2.5 w-2.5 shrink-0" />
                       <span className="truncate">{pkg.destination}</span>
                       {pkg.departureDate && (
                         <>
                           <span>·</span>
-                          <CalendarIcon strokeWidth={1.5} className="h-3 w-3 shrink-0" />
+                          <CalendarIcon strokeWidth={1.5} className="h-2.5 w-2.5 shrink-0" />
                           <span>{daysUntil(pkg.departureDate)}</span>
                         </>
                       )}
                     </div>
                   </div>
-                  <span className={cn("text-[10px] font-semibold px-2 py-1 rounded-full shrink-0", STATUS_COLORS[pkg.status] ?? "bg-gray-100 text-gray-500")}>
+                  <span className={cn("text-[9.5px] font-semibold px-1.5 py-0.5 rounded-full shrink-0", STATUS_COLORS[pkg.status] ?? "bg-gray-100 text-gray-500")}>
                     {STATUS_LABELS[pkg.status] ?? pkg.status}
                   </span>
                 </div>
@@ -1039,39 +1038,30 @@ export default function Dashboard() {
 
         {/* ── Kalkulator & Laporan & Order shortcut bar ── */}
         <motion.div
-          className="grid grid-cols-3 gap-1.5 mb-2 md:gap-2.5 md:mb-5"
+          className="grid grid-cols-3 gap-1.5 mb-1.5 md:gap-2.5 md:mb-5"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.22, ease: "easeOut" }}
         >
-          <button
-            onClick={() => navigate("/calculator")}
-            className="flex items-center gap-1.5 md:gap-2 rounded-lg md:rounded-xl border border-[hsl(var(--border))] bg-white px-2.5 md:px-3 py-2 md:py-2.5 hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-[border-color,background-color] duration-200 group active:scale-[0.98]"
-          >
-            <Calculator strokeWidth={1.5} className="h-4 w-4 text-[hsl(var(--primary))] shrink-0" />
-            <span className="text-[12px] md:text-[13px] font-medium text-[hsl(var(--foreground))] truncate">{t.dash_open_calculator}</span>
-            <ArrowRight strokeWidth={1.5} className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] transition-colors ml-auto shrink-0" />
-          </button>
-          <button
-            onClick={() => navigate("/orders")}
-            className="flex items-center gap-1.5 md:gap-2 rounded-lg md:rounded-xl border border-[hsl(var(--border))] bg-white px-2.5 md:px-3 py-2 md:py-2.5 hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-[border-color,background-color] duration-200 group active:scale-[0.98]"
-          >
-            <ShoppingBag strokeWidth={1.5} className="h-4 w-4 text-[hsl(var(--primary))] shrink-0" />
-            <span className="text-[12px] md:text-[13px] font-medium text-[hsl(var(--foreground))] truncate">Order Hub</span>
-            <ArrowRight strokeWidth={1.5} className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] transition-colors ml-auto shrink-0" />
-          </button>
-          <button
-            onClick={() => navigate("/progress")}
-            className="flex items-center gap-1.5 md:gap-2 rounded-lg md:rounded-xl border border-[hsl(var(--border))] bg-white px-2.5 md:px-3 py-2 md:py-2.5 hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-[border-color,background-color] duration-200 group active:scale-[0.98]"
-          >
-            <FileBarChart strokeWidth={1.5} className="h-4 w-4 text-[hsl(var(--primary))] shrink-0" />
-            <span className="text-[12px] md:text-[13px] font-medium text-[hsl(var(--foreground))] truncate">{t.dash_progress_report}</span>
-            <ArrowRight strokeWidth={1.5} className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] transition-colors ml-auto shrink-0" />
-          </button>
+          {[
+            { icon: Calculator, label: t.dash_open_calculator, path: "/calculator" },
+            { icon: ShoppingBag, label: "Order Hub", path: "/orders" },
+            { icon: FileBarChart, label: t.dash_progress_report, path: "/progress" },
+          ].map((btn) => (
+            <button
+              key={btn.path}
+              onClick={() => navigate(btn.path)}
+              className="flex items-center justify-center md:justify-start gap-1 md:gap-2 rounded-lg md:rounded-xl border border-[hsl(var(--border))] bg-white px-1.5 md:px-3 py-2 md:py-2.5 hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-[border-color,background-color] duration-200 group active:scale-[0.98]"
+            >
+              <btn.icon strokeWidth={1.5} className="h-3.5 w-3.5 md:h-4 md:w-4 text-[hsl(var(--primary))] shrink-0" />
+              <span className="text-[10.5px] md:text-[13px] font-medium text-[hsl(var(--foreground))] truncate">{btn.label}</span>
+              <ArrowRight strokeWidth={1.5} className="hidden md:block h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] transition-colors ml-auto shrink-0" />
+            </button>
+          ))}
         </motion.div>
 
         {/* Section header */}
-        <div className="flex items-center justify-between gap-2 mb-2 md:gap-3 md:mb-4">
+        <div className="flex items-center justify-between gap-2 mb-1.5 md:gap-3 md:mb-4">
           <div>
             <h1 className="text-[13.5px] md:text-xl font-bold text-[hsl(var(--foreground))]">{t.dash_packages_title}</h1>
               <div className="flex gap-2 md:gap-3 mt-0.5">

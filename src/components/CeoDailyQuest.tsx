@@ -171,13 +171,13 @@ export function CeoDailyQuest() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-3 md:mb-5"
+        className="mb-1.5 md:mb-5"
       >
-        <div className="rounded-2xl border border-blue-200/70 overflow-hidden shadow-sm">
+        <div className="rounded-xl md:rounded-2xl border border-blue-200/70 overflow-hidden shadow-sm">
 
           {/* ── Header ───────────────────────────────────────────────────── */}
           <div
-            className="relative overflow-hidden px-4 py-3.5 cursor-pointer select-none"
+            className="relative overflow-hidden px-3 py-2.5 cursor-pointer select-none"
             style={{ background: "linear-gradient(135deg, #0c1e3e 0%, #0f3460 45%, #0c2d6e 100%)" }}
             onClick={() => setCollapsed((c) => !c)}
           >
@@ -250,7 +250,7 @@ export function CeoDailyQuest() {
                 className="overflow-hidden bg-white"
               >
                 {/* ── Financial Snapshot ─────────────────────────────────── */}
-                <div className="px-4 pt-3.5 pb-3 border-b border-slate-100">
+                <div className="px-3 pt-2.5 pb-2 border-b border-slate-100">
                   <p className="text-[9.5px] font-bold text-slate-400 uppercase tracking-widest mb-2">
                     Financial Snapshot · Hari Ini
                   </p>
@@ -317,7 +317,7 @@ export function CeoDailyQuest() {
                 </div>
 
                 {/* ── Mission Checklist ───────────────────────────────────── */}
-                <div className="px-4 pt-3 pb-2">
+                <div className="px-3 pt-2 pb-1.5">
                   <div className="flex items-center justify-between mb-2.5">
                     <p className="text-[9.5px] font-bold text-slate-400 uppercase tracking-widest">
                       Strategic Checklist
@@ -343,7 +343,7 @@ export function CeoDailyQuest() {
                           exit={{ opacity: 0, x: 8, height: 0 }}
                           transition={{ duration: 0.2, ease: "easeOut" }}
                           className={cn(
-                            "group flex items-center gap-2.5 rounded-xl px-3 py-2.5 border transition-all cursor-pointer",
+                            "group flex items-center gap-2 rounded-xl px-2.5 py-1.5 border transition-all cursor-pointer",
                             m.done
                               ? "bg-slate-50 border-slate-100 opacity-60"
                               : "bg-white border-slate-150 hover:border-blue-200 hover:bg-blue-50/30"
@@ -420,7 +420,7 @@ export function CeoDailyQuest() {
                 </div>
 
                 {/* ── Add mission panel ───────────────────────────────────── */}
-                <div className="px-4 pb-3.5 pt-1.5 border-t border-slate-100">
+                <div className="px-3 pb-2.5 pt-1 border-t border-slate-100">
                   <AnimatePresence>
                     {showAdd && (
                       <motion.div
