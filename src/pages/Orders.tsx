@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
-import { ShoppingBag, Plus, Search, ArrowLeft } from "lucide-react";
+import { ShoppingBag, Plus, Search, ArrowLeft, ChevronRight, TrendingUp, Wallet } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,14 @@ import { PassportScanButton } from "@/components/PassportScanButton";
 import { decidePassportSync } from "@/features/clients/passportSync";
 import { toast } from "sonner";
 import { getCommissionForOrderType, loadProductCommissions } from "@/lib/productCommissions";
+import { cn } from "@/lib/utils";
+
+function fmtIDRShort(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}M`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}Jt`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}Rb`;
+  return String(n);
+}
 
 // Mata uang default per tipe order — visa Mesir dijual dalam EGP, sisanya IDR.
 const CURRENCY_BY_TYPE: Record<OrderType, "IDR" | "EGP"> = {
@@ -81,113 +89,304 @@ export default function Orders() {
     return out;
   }, [orders, typeFilter, clientIdParam, q, clientNameById]);
 
+  const totalRevenue = useMemo(() => orders.reduce((s, o) => s + (o.totalPrice ?? 0), 0), [orders]);
+  const draftCount   = useMemo(() => orders.filter(o => o.status === "Draft").length, [orders]);
+  const doneCount    = useMemo(() => orders.filter(o => ["Done", "Paid", "Completed"].includes(o.status)).length, [orders]);
+
   const heading = typeFilter
     ? `Order — ${ORDER_TYPE_LABEL[typeFilter]}`
     : "Semua Order";
 
+  const STATUS_STYLE: Record<string, string> = {
+    Draft:     "bg-gray-100 text-gray-500",
+    Confirmed: "bg-amber-100 text-amber-700",
+    Paid:      "bg-emerald-100 text-emerald-700",
+    Done:      "bg-purple-100 text-purple-700",
+    Completed: "bg-purple-100 text-purple-700",
+  };
+
   return (
-    <motion.div
-      className="p-4 md:p-6 max-w-6xl mx-auto space-y-5"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {(typeFilter || clientIdParam) && (
-            <Button variant="ghost" size="sm" onClick={() => navigate("/orders")} className="h-8 px-2">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          )}
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-              {typeFilter ? <span className="text-2xl">{ORDER_TYPE_EMOJI[typeFilter]}</span> : <ShoppingBag className="h-5 w-5" />}
-              {heading}
-            </h1>
-            {clientIdParam && clientNameById.get(clientIdParam) && (
-              <p className="text-[12px] text-muted-foreground mt-0.5">
-                Filter: klien <span className="font-semibold">{clientNameById.get(clientIdParam)}</span>
-              </p>
+    <>
+      {/* ══════════════════════════════════════════════════════════
+           MOBILE LAYOUT  (md:hidden)
+      ══════════════════════════════════════════════════════════ */}
+      <div className="md:hidden">
+        <div className="px-3.5 pt-2 pb-6 space-y-3">
+
+          {/* ── Header row ── */}
+          <div className="flex items-center gap-2.5">
+            <div className="h-10 w-10 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
+              {typeFilter
+                ? <span className="text-[22px]">{ORDER_TYPE_EMOJI[typeFilter]}</span>
+                : <ShoppingBag className="h-5 w-5 text-violet-500" />}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[9.5px] text-[hsl(var(--muted-foreground))] leading-none uppercase tracking-wide">Order</p>
+              <h1 className="text-[15px] font-extrabold text-[hsl(var(--foreground))] leading-tight truncate">
+                {typeFilter ? ORDER_TYPE_LABEL[typeFilter] : "Order Hub"}
+              </h1>
+            </div>
+            {(typeFilter || clientIdParam) && (
+              <button
+                onClick={() => navigate("/orders")}
+                className="h-8 w-8 rounded-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center justify-center active:scale-95 transition-transform shrink-0"
+              >
+                <ArrowLeft className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+              </button>
+            )}
+            <button
+              onClick={() => setAddOpen(true)}
+              className="h-8 px-3.5 rounded-full bg-sky-500 text-white text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-transform shadow-sm shrink-0"
+            >
+              <Plus className="h-3.5 w-3.5" /> Baru
+            </button>
+          </div>
+
+          {/* ── Hero stats card ── */}
+          <div className="rounded-3xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 p-4 text-white relative overflow-hidden shadow-lg shadow-violet-300/30">
+            <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-white/10 pointer-events-none" />
+            <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-white/10 pointer-events-none" />
+            <div className="relative">
+              <p className="text-[8.5px] font-bold uppercase tracking-widest opacity-70">Total Order</p>
+              <h2 className="text-[26px] font-extrabold leading-tight mt-0.5 tabular-nums">{orders.length}</h2>
+              <div className="flex items-stretch gap-1.5 mt-3">
+                {[
+                  { icon: Wallet,      label: "Revenue",  value: `Rp ${fmtIDRShort(totalRevenue)}` },
+                  { icon: ShoppingBag, label: "Draft",    value: String(draftCount) },
+                  { icon: TrendingUp,  label: "Selesai",  value: String(doneCount) },
+                ].map((s) => (
+                  <div key={s.label} className="flex-1 bg-white/20 rounded-xl px-2 py-1.5 text-center">
+                    <p className="text-[12px] font-extrabold leading-none">{s.value}</p>
+                    <p className="text-[7px] opacity-75 mt-0.5 leading-none uppercase tracking-wide">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Type filter chips ── */}
+          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5 -mx-0.5 px-0.5">
+            <button
+              onClick={() => navigate(clientIdParam ? `/orders?clientId=${clientIdParam}` : "/orders")}
+              className={cn(
+                "shrink-0 h-8 px-3.5 rounded-full text-[11px] font-bold border transition active:scale-95 whitespace-nowrap",
+                !typeFilter ? "bg-violet-500 text-white border-transparent shadow-sm" : "bg-white text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
+              )}
+            >Semua</button>
+            {ORDER_TYPES.map((t) => (
+              <button
+                key={t}
+                onClick={() => navigate(`/orders/${t}${clientIdParam ? `?clientId=${clientIdParam}` : ""}`)}
+                className={cn(
+                  "shrink-0 h-8 px-3.5 rounded-full text-[11px] font-bold border transition active:scale-95 flex items-center gap-1 whitespace-nowrap",
+                  typeFilter === t ? "bg-violet-500 text-white border-transparent shadow-sm" : "bg-white text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
+                )}
+              >
+                <span>{ORDER_TYPE_EMOJI[t]}</span>{ORDER_TYPE_LABEL[t]}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Search bar ── */}
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))] pointer-events-none" />
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Cari judul / klien / status…"
+              className="w-full h-11 pl-10 pr-10 rounded-2xl text-[12.5px] outline-none bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]"
+            />
+            {q && (
+              <button
+                onClick={() => setQ("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-[hsl(var(--border))] flex items-center justify-center text-[hsl(var(--muted-foreground))] text-[10px] font-bold active:scale-90"
+              >✕</button>
             )}
           </div>
+
+          {/* ── Client filter badge ── */}
+          {clientIdParam && clientNameById.get(clientIdParam) && (
+            <div className="flex items-center gap-2.5 bg-violet-50 border border-violet-200 rounded-2xl px-3.5 py-2.5">
+              <div className="h-7 w-7 rounded-full bg-violet-500 flex items-center justify-center text-white text-[11px] font-extrabold shrink-0">
+                {clientNameById.get(clientIdParam)!.charAt(0).toUpperCase()}
+              </div>
+              <p className="text-[11.5px] text-violet-800 font-semibold flex-1 truncate">
+                Klien: {clientNameById.get(clientIdParam)}
+              </p>
+              <button onClick={() => navigate("/orders")} className="text-[10px] text-violet-500 font-bold active:opacity-70 shrink-0">Hapus</button>
+            </div>
+          )}
+
+          {/* ── Order list ── */}
+          {loadingOrders && orders.length === 0 ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl border animate-pulse p-3.5 flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-[hsl(var(--secondary))] shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 bg-[hsl(var(--secondary))] rounded w-3/4" />
+                    <div className="h-2.5 bg-[hsl(var(--secondary))] rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[hsl(var(--border))] px-4 py-10 text-center flex flex-col items-center">
+              <div className="h-14 w-14 rounded-2xl bg-violet-50 flex items-center justify-center mb-3 border border-violet-100">
+                <ShoppingBag className="h-7 w-7 text-violet-400" />
+              </div>
+              <p className="text-[13px] font-bold text-[hsl(var(--foreground))]">Belum ada order</p>
+              <p className="text-[10.5px] text-[hsl(var(--muted-foreground))] mt-1 leading-snug">Buat order baru untuk memulai.</p>
+              <button
+                onClick={() => setAddOpen(true)}
+                className="mt-4 inline-flex items-center gap-1.5 h-9 px-5 rounded-full text-[11.5px] font-bold text-white shadow-md active:scale-95 transition-transform"
+                style={{ background: "linear-gradient(135deg,#8b5cf6,#4f46e5)" }}
+              >
+                <Plus className="h-3.5 w-3.5" /> Order Baru
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filtered.map((o) => {
+                const clientName = o.clientId ? clientNameById.get(o.clientId) : null;
+                return (
+                  <button
+                    key={o.id}
+                    onClick={() => navigate(`/orders/detail/${o.id}`)}
+                    className="w-full flex items-center gap-3 rounded-2xl border border-[hsl(var(--border))] bg-white px-3.5 py-3 text-left active:scale-[0.98] transition-transform hover:border-violet-300 hover:shadow-sm"
+                  >
+                    <div className="h-11 w-11 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center text-[22px] shrink-0">
+                      {ORDER_TYPE_EMOJI[o.type]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12.5px] font-bold text-[hsl(var(--foreground))] truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</p>
+                      <p className="text-[10px] text-[hsl(var(--muted-foreground))] truncate mt-0.5">
+                        {ORDER_TYPE_LABEL[o.type]}{clientName ? ` · ${clientName}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className={cn("text-[9.5px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap", STATUS_STYLE[o.status] ?? "bg-gray-100 text-gray-500")}>
+                        {o.status}
+                      </span>
+                      <span className="text-[11px] font-extrabold text-[hsl(var(--foreground))] tabular-nums">{fmtIDR(o.totalPrice)}</span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-[hsl(var(--muted-foreground))] shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus className="h-4 w-4 mr-1.5" /> Order Baru
-        </Button>
       </div>
 
-      {/* Type filter chips */}
-      <div className="flex flex-wrap gap-2">
-        <FilterChip active={!typeFilter} onClick={() => navigate(clientIdParam ? `/orders?clientId=${clientIdParam}` : "/orders")}>
-          Semua
-        </FilterChip>
-        {ORDER_TYPES.map((t) => (
-          <FilterChip key={t} active={typeFilter === t} onClick={() => navigate(`/orders/${t}${clientIdParam ? `?clientId=${clientIdParam}` : ""}`)}>
-            <span className="mr-1">{ORDER_TYPE_EMOJI[t]}</span>{ORDER_TYPE_LABEL[t]}
-          </FilterChip>
-        ))}
-      </div>
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari judul / klien / status…" className="pl-9 h-10" />
-      </div>
-
-      {loadingOrders && orders.length === 0 ? (
-        <div className="text-sm text-muted-foreground">Memuat…</div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border p-10 text-center">
-          <ShoppingBag className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">Belum ada order. Buat order baru untuk memulai.</p>
-          <Button className="mt-4" onClick={() => setAddOpen(true)}>
+      {/* ══════════════════════════════════════════════════════════
+           DESKTOP LAYOUT  (hidden md:block)
+      ══════════════════════════════════════════════════════════ */}
+      <motion.div
+        className="hidden md:block p-4 md:p-6 max-w-6xl mx-auto space-y-5"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            {(typeFilter || clientIdParam) && (
+              <Button variant="ghost" size="sm" onClick={() => navigate("/orders")} className="h-8 px-2">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+                {typeFilter ? <span className="text-2xl">{ORDER_TYPE_EMOJI[typeFilter]}</span> : <ShoppingBag className="h-5 w-5" />}
+                {heading}
+              </h1>
+              {clientIdParam && clientNameById.get(clientIdParam) && (
+                <p className="text-[12px] text-muted-foreground mt-0.5">
+                  Filter: klien <span className="font-semibold">{clientNameById.get(clientIdParam)}</span>
+                </p>
+              )}
+            </div>
+          </div>
+          <Button onClick={() => setAddOpen(true)}>
             <Plus className="h-4 w-4 mr-1.5" /> Order Baru
           </Button>
         </div>
-      ) : (
-        <motion.div
-          className="space-y-2"
-          initial="hidden"
-          animate="visible"
-          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.042, delayChildren: 0.04 } } }}
-        >
-          {filtered.map((o) => (
-            <motion.div
-              key={o.id}
-              variants={{
-                hidden: { opacity: 0, y: 8 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } },
-              }}
-            >
-              <Link to={`/orders/detail/${o.id}`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3 hover:bg-secondary/50 hover:border-primary/30 transition-all hover:shadow-sm">
-                <div className="min-w-0 flex items-center gap-3">
-                  <span className="text-2xl">{ORDER_TYPE_EMOJI[o.type]}</span>
-                  <div className="min-w-0">
-                    <div className="font-semibold text-sm truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</div>
-                    <div className="text-[11.5px] text-muted-foreground truncate">
-                      {ORDER_TYPE_LABEL[o.type]}
-                      {o.clientId && clientNameById.get(o.clientId) && (
-                        <>
-                          {" · "}
-                          <span
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/clients/${o.clientId}`); }}
-                            className="hover:underline hover:text-primary cursor-pointer"
-                          >
-                            {clientNameById.get(o.clientId)}
-                          </span>
-                        </>
-                      )}
-                      {" · "}{o.status}
+
+        {/* Type filter chips */}
+        <div className="flex flex-wrap gap-2">
+          <FilterChip active={!typeFilter} onClick={() => navigate(clientIdParam ? `/orders?clientId=${clientIdParam}` : "/orders")}>
+            Semua
+          </FilterChip>
+          {ORDER_TYPES.map((t) => (
+            <FilterChip key={t} active={typeFilter === t} onClick={() => navigate(`/orders/${t}${clientIdParam ? `?clientId=${clientIdParam}` : ""}`)}>
+              <span className="mr-1">{ORDER_TYPE_EMOJI[t]}</span>{ORDER_TYPE_LABEL[t]}
+            </FilterChip>
+          ))}
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari judul / klien / status…" className="pl-9 h-10" />
+        </div>
+
+        {loadingOrders && orders.length === 0 ? (
+          <div className="text-sm text-muted-foreground">Memuat…</div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border p-10 text-center">
+            <ShoppingBag className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">Belum ada order. Buat order baru untuk memulai.</p>
+            <Button className="mt-4" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4 mr-1.5" /> Order Baru
+            </Button>
+          </div>
+        ) : (
+          <motion.div
+            className="space-y-2"
+            initial="hidden"
+            animate="visible"
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.042, delayChildren: 0.04 } } }}
+          >
+            {filtered.map((o) => (
+              <motion.div
+                key={o.id}
+                variants={{
+                  hidden: { opacity: 0, y: 8 },
+                  visible: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } },
+                }}
+              >
+                <Link to={`/orders/detail/${o.id}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3 hover:bg-secondary/50 hover:border-primary/30 transition-all hover:shadow-sm">
+                  <div className="min-w-0 flex items-center gap-3">
+                    <span className="text-2xl">{ORDER_TYPE_EMOJI[o.type]}</span>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</div>
+                      <div className="text-[11.5px] text-muted-foreground truncate">
+                        {ORDER_TYPE_LABEL[o.type]}
+                        {o.clientId && clientNameById.get(o.clientId) && (
+                          <>
+                            {" · "}
+                            <span
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/clients/${o.clientId}`); }}
+                              className="hover:underline hover:text-primary cursor-pointer"
+                            >
+                              {clientNameById.get(o.clientId)}
+                            </span>
+                          </>
+                        )}
+                        {" · "}{o.status}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="text-sm font-mono font-semibold shrink-0">{fmtIDR(o.totalPrice)}</div>
-              </Link>
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
+                  <div className="text-sm font-mono font-semibold shrink-0">{fmtIDR(o.totalPrice)}</div>
+                </Link>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </motion.div>
 
+      {/* ── Dialog (shared) ── */}
       <NewOrderDialog
         open={addOpen}
         onOpenChange={setAddOpen}
@@ -201,7 +400,7 @@ export default function Orders() {
           navigate(`/orders/detail/${o.id}`);
         }}
       />
-    </motion.div>
+    </>
   );
 }
 
