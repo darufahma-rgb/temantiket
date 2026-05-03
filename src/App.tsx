@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, useLocation, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,35 +7,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { OfflineBar } from "@/components/OfflineBar";
-import Index from "./pages/Index.tsx";
-import Calculator from "./pages/Calculator";
-import Packages from "./pages/Packages";
-import PackageDetail from "./pages/PackageDetail";
-import TripDetail from "./pages/TripDetail";
-import JamaahProfile from "./pages/JamaahProfile";
-import Settings from "./pages/Settings";
-import Login from "./pages/Login";
-import PublicCheck from "./pages/PublicCheck";
-import PublicLeaderboard from "./pages/PublicLeaderboard";
-import PublicMemberCard from "./pages/PublicMemberCard";
-import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound.tsx";
-import Notes from "./pages/Notes";
-import ExportCenter from "./pages/ExportCenter";
-import Clients from "./pages/Clients";
-import Orders from "./pages/Orders";
-import OrderDetail from "./pages/OrderDetail";
-import Reports from "./pages/Reports";
-import AgentCommandCenter from "./pages/AgentCommandCenter";
-import AgentDashboard from "./pages/AgentDashboard";
-import AgentProfile from "./pages/AgentProfile";
-import AgentLeaderboard from "./pages/AgentLeaderboard";
-import AgentMarketingKit from "./pages/AgentMarketingKit";
-import BCTemplates from "./pages/BCTemplates";
-import ItineraryGenerator from "./pages/ItineraryGenerator";
-import DemoSeed from "./pages/DemoSeed";
-import TicketPrices from "./pages/TicketPrices";
-import PublicTicketPrices from "./pages/PublicTicketPrices";
 import { useRatesStore } from "@/store/ratesStore";
 import { usePackagesStore } from "@/store/packagesStore";
 import { useTripsStore } from "@/store/tripsStore";
@@ -49,7 +20,52 @@ import { startRealtimeSync } from "@/lib/supabaseRealtime";
 import { initSyncStatusListeners } from "@/store/syncStatusStore";
 import { toast } from "sonner";
 
-const queryClient = new QueryClient();
+const Index = lazy(() => import("./pages/Index"));
+const Calculator = lazy(() => import("./pages/Calculator"));
+const Packages = lazy(() => import("./pages/Packages"));
+const PackageDetail = lazy(() => import("./pages/PackageDetail"));
+const TripDetail = lazy(() => import("./pages/TripDetail"));
+const JamaahProfile = lazy(() => import("./pages/JamaahProfile"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Login = lazy(() => import("./pages/Login"));
+const PublicCheck = lazy(() => import("./pages/PublicCheck"));
+const PublicLeaderboard = lazy(() => import("./pages/PublicLeaderboard"));
+const PublicMemberCard = lazy(() => import("./pages/PublicMemberCard"));
+const Auth = lazy(() => import("./pages/Auth"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Notes = lazy(() => import("./pages/Notes"));
+const ExportCenter = lazy(() => import("./pages/ExportCenter"));
+const Clients = lazy(() => import("./pages/Clients"));
+const Orders = lazy(() => import("./pages/Orders"));
+const OrderDetail = lazy(() => import("./pages/OrderDetail"));
+const Reports = lazy(() => import("./pages/Reports"));
+const AgentCommandCenter = lazy(() => import("./pages/AgentCommandCenter"));
+const AgentDashboard = lazy(() => import("./pages/AgentDashboard"));
+const AgentProfile = lazy(() => import("./pages/AgentProfile"));
+const AgentLeaderboard = lazy(() => import("./pages/AgentLeaderboard"));
+const AgentMarketingKit = lazy(() => import("./pages/AgentMarketingKit"));
+const BCTemplates = lazy(() => import("./pages/BCTemplates"));
+const ItineraryGenerator = lazy(() => import("./pages/ItineraryGenerator"));
+const DemoSeed = lazy(() => import("./pages/DemoSeed"));
+const TicketPrices = lazy(() => import("./pages/TicketPrices"));
+const PublicTicketPrices = lazy(() => import("./pages/PublicTicketPrices"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground text-sm">
+    Memuat…
+  </div>
+);
 
 function StoreBootstrap() {
   const refreshRates = useRatesStore((s) => s.refresh);
@@ -64,7 +80,6 @@ function StoreBootstrap() {
     void Promise.all([refreshPackages(), fetchTrips(), fetchClients(), fetchOrders()]);
   }, [refreshRates, refreshPackages, fetchTrips, fetchClients, fetchOrders, isAuthenticated]);
 
-  // Realtime sync — subscribe perubahan dari device lain
   useEffect(() => {
     if (!isAuthenticated || !isSupabaseConfigured()) return;
     const unsubscribe = startRealtimeSync();
@@ -140,11 +155,6 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-/**
- * Role guard — wajib dipake di luar `RequireAuth`. Kalo user authenticated
- * tapi role-nya bukan owner, redirect ke "/" (Dashboard) supaya halaman
- * sensitif kayak Laporan Keuangan gak bocor lewat link langsung.
- */
 function RequireRole({
   roles,
   children,
@@ -162,18 +172,12 @@ function RequireRole({
     );
   }
   if (!user || !roles.includes(user.role)) {
-    // Agent yg coba akses route owner/staff → bounce ke dashboard agent.
-    // Owner/staff yg coba akses /agent → bounce ke /.
     const fallback = user?.role === "agent" ? "/agent" : "/";
     return <Navigate to={fallback} replace />;
   }
   return <>{children}</>;
 }
 
-/**
- * Index redirect — kalau user role 'agent' landing di '/', auto-redirect
- * ke '/agent' (Mitra Dashboard). Owner/staff biasa render Index normal.
- */
 function HomeRedirect() {
   const user = useAuthStore((s) => s.user);
   if (user?.role === "agent") return <Navigate to="/agent" replace />;
@@ -194,104 +198,100 @@ function SyncStatusBootstrap() {
 function AnimatedRoutes() {
   const location = useLocation();
   return (
-    <Routes location={location}>
-      <Route path="/login" element={<Login />} />
-      <Route path="/bootstrap" element={<Auth />} />
-      <Route path="/cek" element={<PublicCheck />} />
-      <Route path="/cek/:code" element={<PublicCheck />} />
-      <Route path="/m/:slug" element={<PublicMemberCard />} />
-      <Route path="/leaderboard" element={<PublicLeaderboard />} />
-      <Route path="/harga-tiket" element={<PublicTicketPrices />} />
-      <Route path="/promo" element={<PublicTicketPrices />} />
-      <Route path="/prices" element={<PublicTicketPrices />} />
+    <Suspense fallback={<PageLoader />}>
+      <Routes location={location}>
+        <Route path="/login" element={<Login />} />
+        <Route path="/bootstrap" element={<Auth />} />
+        <Route path="/cek" element={<PublicCheck />} />
+        <Route path="/cek/:code" element={<PublicCheck />} />
+        <Route path="/m/:slug" element={<PublicMemberCard />} />
+        <Route path="/leaderboard" element={<PublicLeaderboard />} />
+        <Route path="/harga-tiket" element={<PublicTicketPrices />} />
+        <Route path="/promo" element={<PublicTicketPrices />} />
+        <Route path="/prices" element={<PublicTicketPrices />} />
 
-      <Route path="/" element={<RequireAuth><HomeRedirect /></RequireAuth>} />
-      <Route path="/calculator" element={<RequireAuth><DashboardLayout><Calculator /></DashboardLayout></RequireAuth>} />
-      <Route path="/packages" element={<RequireAuth><DashboardLayout><Packages /></DashboardLayout></RequireAuth>} />
-      <Route path="/packages/:id" element={<RequireAuth><DashboardLayout><PackageDetail /></DashboardLayout></RequireAuth>} />
-      <Route path="/progress" element={<Navigate to="/packages?tab=progress" replace />} />
-      <Route path="/trips/:id" element={<RequireAuth><DashboardLayout><TripDetail /></DashboardLayout></RequireAuth>} />
-      <Route path="/trips/:id/jamaah/:jamaahId" element={<RequireAuth><DashboardLayout><JamaahProfile /></DashboardLayout></RequireAuth>} />
-      {/* Alias /paket — terminologi UI sesuai sidebar "Paket Trip" */}
-      <Route path="/paket/:id" element={<RequireAuth><DashboardLayout><TripDetail /></DashboardLayout></RequireAuth>} />
-      <Route path="/paket/:id/jamaah/:jamaahId" element={<RequireAuth><DashboardLayout><JamaahProfile /></DashboardLayout></RequireAuth>} />
-      <Route path="/notes" element={<RequireAuth><DashboardLayout><Notes /></DashboardLayout></RequireAuth>} />
-      <Route path="/exports" element={<RequireAuth><DashboardLayout><ExportCenter /></DashboardLayout></RequireAuth>} />
-      {/* ── Order Hub ── */}
-      <Route path="/clients" element={<RequireAuth><DashboardLayout><Clients /></DashboardLayout></RequireAuth>} />
-      <Route path="/clients/:id" element={<RequireAuth><DashboardLayout><Clients /></DashboardLayout></RequireAuth>} />
-      <Route path="/orders" element={<RequireAuth><DashboardLayout><Orders /></DashboardLayout></RequireAuth>} />
-      <Route path="/orders/detail/:id" element={<RequireAuth><DashboardLayout><OrderDetail /></DashboardLayout></RequireAuth>} />
-      <Route path="/orders/:type" element={<RequireAuth><DashboardLayout><Orders /></DashboardLayout></RequireAuth>} />
-      {/* ── Agent-only: Mitra Dashboard ── */}
-      <Route
-        path="/agent"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["agent"]}>
-              <DashboardLayout><AgentDashboard /></DashboardLayout>
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/agent/profile"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["agent"]}>
-              <DashboardLayout><AgentProfile /></DashboardLayout>
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/agent/leaderboard"
-        element={
-          <RequireAuth>
-            <DashboardLayout><AgentLeaderboard /></DashboardLayout>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/agent/marketing"
-        element={
-          <RequireAuth>
-            <DashboardLayout><AgentMarketingKit /></DashboardLayout>
-          </RequireAuth>
-        }
-      />
-      {/* ── Owner-only: Laporan Keuangan ── */}
-      <Route
-        path="/reports"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["owner"]}>
-              <DashboardLayout><Reports /></DashboardLayout>
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      {/* ── Redirect old directory URL ── */}
-      <Route path="/agent-directory" element={<Navigate to="/agent-center" replace />} />
-      {/* ── Owner/staff: Manajemen Agen (unified) ── */}
-      <Route
-        path="/agent-center"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["owner", "staff"]}>
-              <DashboardLayout><AgentCommandCenter /></DashboardLayout>
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      <Route path="/bc-templates" element={<RequireAuth><DashboardLayout><BCTemplates /></DashboardLayout></RequireAuth>} />
-      <Route path="/itinerary" element={<RequireAuth><DashboardLayout><ItineraryGenerator /></DashboardLayout></RequireAuth>} />
-      <Route path="/demo-seed" element={<RequireAuth><DashboardLayout><DemoSeed /></DashboardLayout></RequireAuth>} />
-      <Route path="/ticket-prices" element={<RequireAuth><DashboardLayout><TicketPrices /></DashboardLayout></RequireAuth>} />
-      <Route path="/settings" element={<RequireAuth><DashboardLayout><Settings /></DashboardLayout></RequireAuth>} />
-      <Route path="/auth" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="/" element={<RequireAuth><HomeRedirect /></RequireAuth>} />
+        <Route path="/calculator" element={<RequireAuth><DashboardLayout><Calculator /></DashboardLayout></RequireAuth>} />
+        <Route path="/packages" element={<RequireAuth><DashboardLayout><Packages /></DashboardLayout></RequireAuth>} />
+        <Route path="/packages/:id" element={<RequireAuth><DashboardLayout><PackageDetail /></DashboardLayout></RequireAuth>} />
+        <Route path="/progress" element={<Navigate to="/packages?tab=progress" replace />} />
+        <Route path="/trips/:id" element={<RequireAuth><DashboardLayout><TripDetail /></DashboardLayout></RequireAuth>} />
+        <Route path="/trips/:id/jamaah/:jamaahId" element={<RequireAuth><DashboardLayout><JamaahProfile /></DashboardLayout></RequireAuth>} />
+        <Route path="/paket/:id" element={<RequireAuth><DashboardLayout><TripDetail /></DashboardLayout></RequireAuth>} />
+        <Route path="/paket/:id/jamaah/:jamaahId" element={<RequireAuth><DashboardLayout><JamaahProfile /></DashboardLayout></RequireAuth>} />
+        <Route path="/notes" element={<RequireAuth><DashboardLayout><Notes /></DashboardLayout></RequireAuth>} />
+        <Route path="/exports" element={<RequireAuth><DashboardLayout><ExportCenter /></DashboardLayout></RequireAuth>} />
+        <Route path="/clients" element={<RequireAuth><DashboardLayout><Clients /></DashboardLayout></RequireAuth>} />
+        <Route path="/clients/:id" element={<RequireAuth><DashboardLayout><Clients /></DashboardLayout></RequireAuth>} />
+        <Route path="/orders" element={<RequireAuth><DashboardLayout><Orders /></DashboardLayout></RequireAuth>} />
+        <Route path="/orders/detail/:id" element={<RequireAuth><DashboardLayout><OrderDetail /></DashboardLayout></RequireAuth>} />
+        <Route path="/orders/:type" element={<RequireAuth><DashboardLayout><Orders /></DashboardLayout></RequireAuth>} />
+        <Route
+          path="/agent"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["agent"]}>
+                <DashboardLayout><AgentDashboard /></DashboardLayout>
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/agent/profile"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["agent"]}>
+                <DashboardLayout><AgentProfile /></DashboardLayout>
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/agent/leaderboard"
+          element={
+            <RequireAuth>
+              <DashboardLayout><AgentLeaderboard /></DashboardLayout>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/agent/marketing"
+          element={
+            <RequireAuth>
+              <DashboardLayout><AgentMarketingKit /></DashboardLayout>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["owner"]}>
+                <DashboardLayout><Reports /></DashboardLayout>
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route path="/agent-directory" element={<Navigate to="/agent-center" replace />} />
+        <Route
+          path="/agent-center"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["owner", "staff"]}>
+                <DashboardLayout><AgentCommandCenter /></DashboardLayout>
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+        <Route path="/bc-templates" element={<RequireAuth><DashboardLayout><BCTemplates /></DashboardLayout></RequireAuth>} />
+        <Route path="/itinerary" element={<RequireAuth><DashboardLayout><ItineraryGenerator /></DashboardLayout></RequireAuth>} />
+        <Route path="/demo-seed" element={<RequireAuth><DashboardLayout><DemoSeed /></DashboardLayout></RequireAuth>} />
+        <Route path="/ticket-prices" element={<RequireAuth><DashboardLayout><TicketPrices /></DashboardLayout></RequireAuth>} />
+        <Route path="/settings" element={<RequireAuth><DashboardLayout><Settings /></DashboardLayout></RequireAuth>} />
+        <Route path="/auth" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   );
 }
 

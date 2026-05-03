@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { Users, Plus, Search, Phone, Mail, Pencil, Trash2, ArrowLeft, ShoppingBag } from "lucide-react";
 import { PassportScanButton } from "@/components/PassportScanButton";
@@ -365,6 +367,7 @@ export default function Clients() {
   const { orders, fetchOrders } = useOrdersStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [q, setQ] = useState("");
+  const debouncedQ = useDebounce(q, 300);
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
@@ -382,7 +385,7 @@ export default function Clients() {
   }, [orders]);
 
   const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
+    const s = debouncedQ.trim().toLowerCase();
     if (!s) return clients;
     return clients.filter((c) =>
       c.name.toLowerCase().includes(s) ||
@@ -390,7 +393,7 @@ export default function Clients() {
       (c.email ?? "").toLowerCase().includes(s) ||
       (c.passportNumber ?? "").toLowerCase().includes(s),
     );
-  }, [q, clients]);
+  }, [debouncedQ, clients]);
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-5">

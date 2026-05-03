@@ -4,12 +4,12 @@
  */
 import imageCompression from "browser-image-compression";
 
-const SKIP_BELOW_BYTES = 200 * 1024; // 200 KB
+const SKIP_BELOW_BYTES = 150 * 1024; // 150 KB
 const DEFAULT_OPTIONS = {
-  maxSizeMB: 0.6,           // target ~600 KB
-  maxWidthOrHeight: 1800,   // enough for passport scans
+  maxSizeMB: 0.4,           // target ~400 KB (turun dari 0.6)
+  maxWidthOrHeight: 1600,   // cukup untuk scan paspor (turun dari 1800)
   useWebWorker: true,
-  initialQuality: 0.82,
+  initialQuality: 0.80,
   fileType: "image/jpeg",
 };
 

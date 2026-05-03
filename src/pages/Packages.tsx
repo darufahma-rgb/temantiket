@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ProgressTracker from "@/pages/ProgressTracker";
 import { motion } from "framer-motion";
@@ -103,6 +105,7 @@ export default function Packages() {
   const rates = useRatesStore((s) => s.rates);
   const { formatCurrency } = useRegional();
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, 300);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Package | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -126,15 +129,15 @@ export default function Packages() {
   }, [localVersion, items.length]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
     if (!q) return items;
     return items.filter(
       (p) => p.name.toLowerCase().includes(q) || p.destination.toLowerCase().includes(q),
     );
-  }, [items, query]);
+  }, [items, debouncedQuery]);
 
-  const openCreate = () => { setEditing(null); setFormOpen(true); };
-  const openEdit = (pkg: Package) => { setEditing(pkg); setFormOpen(true); };
+  const openCreate = useCallback(() => { setEditing(null); setFormOpen(true); }, []);
+  const openEdit = useCallback((pkg: Package) => { setEditing(pkg); setFormOpen(true); }, []);
 
   const jamaahByPackage = useMemo(() => {
     return allJamaah.reduce<Record<string, Jamaah[]>>((acc, jamaah) => {
@@ -160,10 +163,10 @@ export default function Packages() {
     return { revenue: perPax * occupied, margin };
   };
 
-  const openShortcut = (event: React.MouseEvent, path: string) => {
+  const openShortcut = useCallback((event: React.MouseEvent, path: string) => {
     event.stopPropagation();
     navigate(path);
-  };
+  }, [navigate]);
 
   const handleSubmit = async (draft: Parameters<typeof create>[0]) => {
     if (editing) {

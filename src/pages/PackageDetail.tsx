@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Calculator, Calendar, CreditCard, Eye, FileKey, Layers,
@@ -679,6 +681,7 @@ export default function PackageDetail() {
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [clientViewOpen, setClientViewOpen] = useState(false);
+  const [jamaahSearch, setJamaahSearch] = useState("");
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") === "jamaah" ? "jamaah" : "calculator");
   const [deleteTarget, setDeleteTarget] = useState<Jamaah | null>(null);
   // Detail drawer — `detailJamaahId` jadi source-of-truth supaya drawer auto-refresh
@@ -688,6 +691,30 @@ export default function PackageDetail() {
     () => jamaah.find((j) => j.id === detailJamaahId) ?? null,
     [jamaah, detailJamaahId],
   );
+  const debouncedJamaahSearch = useDebounce(jamaahSearch, 300);
+  const filteredJamaah = useMemo(() => {
+    const q = debouncedJamaahSearch.trim().toLowerCase();
+    if (!q) return jamaah;
+    return jamaah.filter(
+      (j) =>
+        j.name.toLowerCase().includes(q) ||
+        (j.passportNumber ?? "").toLowerCase().includes(q) ||
+        (j.phone ?? "").toLowerCase().includes(q),
+    );
+  }, [jamaah, debouncedJamaahSearch]);
+  const jamaahRows = useMemo(() => {
+    const rows: Jamaah[][] = [];
+    for (let i = 0; i < filteredJamaah.length; i += 2) {
+      rows.push(filteredJamaah.slice(i, i + 2));
+    }
+    return rows;
+  }, [filteredJamaah]);
+  const jamaahVirtualizer = useWindowVirtualizer({
+    count: jamaahRows.length,
+    estimateSize: () => 80,
+    overscan: 4,
+  });
+  const openJamaahDetail = useCallback((j: Jamaah) => setDetailJamaahId(j.id), []);
   const [showSummary, setShowSummary] = useState(true);
   const [localRateSAR, setLocalRateSAR] = useState(0);
   const [localRateUSD, setLocalRateUSD] = useState(0);
@@ -1942,16 +1969,51 @@ export default function PackageDetail() {
               </div>
             </div>
           ) : (
-            <div className="grid gap-2 md:grid-cols-2">
-              {jamaah.map((person) => (
-                <JamaahMiniCard
-                  key={person.id}
-                  jamaah={person}
-                  onDelete={setDeleteTarget}
-                  onOpen={(j) => setDetailJamaahId(j.id)}
-                />
-              ))}
-            </div>
+            <>
+              {jamaah.length > 6 && (
+                <div className="relative">
+                  <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <Input
+                    value={jamaahSearch}
+                    onChange={(e) => setJamaahSearch(e.target.value)}
+                    placeholder="Cari nama / paspor / telp…"
+                    className="pl-9 h-9 text-[12px] rounded-xl"
+                  />
+                </div>
+              )}
+              {filteredJamaah.length === 0 ? (
+                <p className="text-[12px] text-muted-foreground py-6 text-center">Jamaah tidak ditemukan.</p>
+              ) : (
+                <div
+                  style={{ height: `${jamaahVirtualizer.getTotalSize()}px`, position: "relative" }}
+                >
+                  {jamaahVirtualizer.getVirtualItems().map((vRow) => (
+                    <div
+                      key={vRow.key}
+                      data-index={vRow.index}
+                      ref={jamaahVirtualizer.measureElement}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${vRow.start}px)`,
+                      }}
+                      className="grid gap-2 md:grid-cols-2 pb-2"
+                    >
+                      {jamaahRows[vRow.index].map((person) => (
+                        <JamaahMiniCard
+                          key={person.id}
+                          jamaah={person}
+                          onDelete={setDeleteTarget}
+                          onOpen={openJamaahDetail}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>
