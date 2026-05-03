@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { loadProductCommissions as loadProdComm, saveProductCommissions as saveProdComm, type ProductCommissions } from "@/lib/productCommissions";
+import {
+  loadAgentPhones, saveAgentPhone, recordFeePayment, loadFeePayments, openWaMessage,
+  type FeePaymentRecord,
+} from "@/lib/agentFeePayments";
 import { AnimatePresence, motion } from "framer-motion";
-import { User, Bell, Shield, Palette, Globe, Save, Camera, TrendingUp, RefreshCw, Users, Plus, Trash2, Radio, PencilLine, KeyRound, Clock, CheckCircle2, Lock, History, FileEdit, FileX, FilePlus, Activity, XCircle, AlertCircle, Database, Cloud, HardDrive, UserCheck, MessageCircle, Instagram, FileText } from "lucide-react";
+import { User, Bell, Shield, Palette, Globe, Save, Camera, TrendingUp, RefreshCw, Users, Plus, Trash2, Radio, PencilLine, KeyRound, Clock, CheckCircle2, Lock, History, FileEdit, FileX, FilePlus, Activity, XCircle, AlertCircle, Database, Cloud, HardDrive, UserCheck, MessageCircle, Instagram, FileText, Phone, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { InvoiceTemplateUploader } from "@/components/InvoiceTemplateUploader";
 import { loadIghAdminSettings, saveIghAdminSettings, formatWhatsappDisplay, type IghAdminSettings } from "@/lib/ighSettings";
 import { supabase, isSupabaseConfigured, SUPABASE_URL } from "@/lib/supabase";
@@ -178,6 +182,15 @@ export default function Settings() {
 
   // ── Orders (untuk akumulasi fee agen) ────────────────────────────────────
   const { orders, fetchOrders } = useOrdersStore();
+
+  // ── WA Fee Notification ───────────────────────────────────────────────────
+  const [agentPhones, setAgentPhones] = useState<Record<string, string>>(() => loadAgentPhones());
+  const [feePayments, setFeePayments] = useState<FeePaymentRecord[]>(() => loadFeePayments());
+  const [waDialogAgent, setWaDialogAgent] = useState<import("@/store/authStore").MemberInfo | null>(null);
+  const [waAmount, setWaAmount] = useState("");
+  const [waNote, setWaNote] = useState("");
+  const [waPhone, setWaPhone] = useState("");
+  const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
 
   // ── Komisi per produk ────────────────────────────────────────────────────
   const [productCommissions, setProductCommissions] = useState(() => loadProdComm());
@@ -1289,6 +1302,7 @@ export default function Settings() {
             )}
 
             {isOwner && (() => {
+              const fmtRp = (v: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);
               const agentMembers = members.filter((m) => m.role === "agent");
               if (agentMembers.length === 0) return null;
 
@@ -1297,51 +1311,117 @@ export default function Settings() {
                   <div className="px-4 py-3 border-b border-[hsl(var(--border))]">
                     <p className="text-sm font-semibold">Akumulasi Fee Komisi Agen</p>
                     <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">
-                      Total fee yang diterima masing-masing agen dari semua order yang mereka buat.
+                      Total fee per agen · simpan nomor WA & kirim notifikasi langsung ke WhatsApp mereka.
                     </p>
                   </div>
                   <div className="divide-y divide-[hsl(var(--border))]">
                     {agentMembers.map((agent) => {
                       const agentOrders = orders.filter((o) => o.createdByAgent === agent.userId);
                       const totalFee = agentOrders.reduce((sum, o) => sum + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
-                      const paidFee = agentOrders
+                      const derivedPaid = agentOrders
                         .filter((o) => o.status === "Paid" || o.status === "Completed")
                         .reduce((sum, o) => sum + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
-                      const pendingFee = totalFee - paidFee;
                       const orderCount = agentOrders.filter((o) => Number((o.metadata as Record<string, unknown>).agentFee) > 0).length;
+                      const manuallyPaid = feePayments.filter((p) => p.agentId === agent.userId).reduce((s, p) => s + p.amount, 0);
+                      const lastPayment = feePayments.filter((p) => p.agentId === agent.userId)[0];
+                      const savedPhone = agentPhones[agent.userId] ?? "";
+                      const isExpanded = expandedAgent === agent.userId;
+
                       return (
-                        <div key={agent.userId} className="px-4 py-3 space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0">
+                        <div key={agent.userId} className="px-4 py-3 space-y-2.5">
+                          {/* Row header */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold truncate">{agent.displayName || agent.email}</p>
                               <p className="text-[10px] text-muted-foreground">{orderCount} order dengan fee</p>
+                              {lastPayment && (
+                                <p className="text-[10px] text-emerald-600 mt-0.5">
+                                  ✓ Terakhir bayar {fmtRp(lastPayment.amount)} · {new Date(lastPayment.paidAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                                </p>
+                              )}
                             </div>
                             <div className="text-right shrink-0">
-                              <p className="text-[15px] font-extrabold font-mono text-foreground">
-                                {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(totalFee)}
-                              </p>
+                              <p className="text-[15px] font-extrabold font-mono text-foreground">{fmtRp(totalFee)}</p>
                               <p className="text-[10px] text-muted-foreground">total akumulasi</p>
                             </div>
                           </div>
+
+                          {/* Breakdown */}
                           {totalFee > 0 && (
                             <div className="flex gap-2">
                               <div className="flex-1 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2">
-                                <p className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wide">Terbayar</p>
-                                <p className="text-[13px] font-bold font-mono text-emerald-700 mt-0.5">
-                                  {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(paidFee)}
-                                </p>
+                                <p className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wide">Dari Order Selesai</p>
+                                <p className="text-[13px] font-bold font-mono text-emerald-700 mt-0.5">{fmtRp(derivedPaid)}</p>
                               </div>
                               <div className="flex-1 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2">
-                                <p className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide">Belum Bayar</p>
-                                <p className="text-[13px] font-bold font-mono text-amber-700 mt-0.5">
-                                  {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(pendingFee)}
-                                </p>
+                                <p className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide">Manual Dibayar</p>
+                                <p className="text-[13px] font-bold font-mono text-amber-700 mt-0.5">{fmtRp(manuallyPaid)}</p>
                               </div>
                             </div>
                           )}
                           {totalFee === 0 && (
                             <p className="text-[11px] text-muted-foreground italic">Belum ada order dengan fee komisi.</p>
                           )}
+
+                          {/* WA Number + Kirim Notif */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                <Input
+                                  type="tel"
+                                  placeholder="Nomor WA agen (08xx / 628xx)"
+                                  value={agentPhones[agent.userId] ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setAgentPhones((prev) => ({ ...prev, [agent.userId]: val }));
+                                    saveAgentPhone(agent.userId, val);
+                                  }}
+                                  className="h-8 text-[12px] flex-1"
+                                />
+                              </div>
+                              <Button
+                                size="sm"
+                                disabled={!savedPhone || totalFee === 0}
+                                className="h-8 px-3 bg-green-600 hover:bg-green-700 text-white text-[11px] shrink-0 gap-1.5"
+                                onClick={() => {
+                                  setWaDialogAgent(agent);
+                                  setWaPhone(savedPhone);
+                                  setWaAmount(String(totalFee - manuallyPaid > 0 ? totalFee - manuallyPaid : totalFee));
+                                  setWaNote("");
+                                }}
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                                Kirim WA
+                              </Button>
+                            </div>
+
+                            {/* Riwayat pembayaran toggle */}
+                            {feePayments.filter((p) => p.agentId === agent.userId).length > 0 && (
+                              <button
+                                onClick={() => setExpandedAgent(isExpanded ? null : agent.userId)}
+                                className="flex items-center gap-1 text-[10.5px] text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                {isExpanded ? "Sembunyikan" : "Lihat"} riwayat pembayaran ({feePayments.filter((p) => p.agentId === agent.userId).length})
+                              </button>
+                            )}
+                            {isExpanded && (
+                              <div className="rounded-xl border bg-muted/30 divide-y text-[11px]">
+                                {feePayments.filter((p) => p.agentId === agent.userId).map((p) => (
+                                  <div key={p.id} className="flex items-center justify-between px-3 py-2 gap-2">
+                                    <div>
+                                      <span className="font-mono font-semibold text-emerald-700">{fmtRp(p.amount)}</span>
+                                      {p.note && <span className="text-muted-foreground ml-1.5">— {p.note}</span>}
+                                    </div>
+                                    <span className="text-muted-foreground shrink-0">
+                                      {new Date(p.paidAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
@@ -1349,6 +1429,94 @@ export default function Settings() {
                 </div>
               );
             })()}
+
+            {/* ── WA Fee Payment Dialog ── */}
+            <Dialog open={!!waDialogAgent} onOpenChange={(v) => { if (!v) setWaDialogAgent(null); }}>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4 text-green-600" />
+                    Kirim Notif WA Pembayaran Fee
+                  </DialogTitle>
+                  <DialogDescription>
+                    {waDialogAgent?.displayName || waDialogAgent?.email}
+                  </DialogDescription>
+                </DialogHeader>
+                {waDialogAgent && (() => {
+                  const fmtRp = (v: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);
+                  const agencyName = user?.agencyName ?? "Agency";
+                  const agentName = waDialogAgent.displayName || waDialogAgent.email;
+                  const dateStr = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
+                  const amount = Number(waAmount) || 0;
+                  const preview = `Halo ${agentName}! 🎉\n\nFee komisi kamu sebesar *${fmtRp(amount)}* sudah kami bayarkan pada ${dateStr}.${waNote ? `\n\nCatatan: ${waNote}` : ""}\n\nTerima kasih atas kerja keras dan dedikasinya bersama *${agencyName}*! 🙏\n\n_– Tim ${agencyName}_`;
+
+                  return (
+                    <div className="space-y-3 mt-1">
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Nomor WA Agen</Label>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <Input
+                            type="tel"
+                            value={waPhone}
+                            onChange={(e) => setWaPhone(e.target.value)}
+                            placeholder="08xx atau 628xx"
+                            className="h-9 text-[13px]"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Jumlah yang Dibayarkan (IDR)</Label>
+                        <Input
+                          type="number"
+                          value={waAmount}
+                          onChange={(e) => setWaAmount(e.target.value)}
+                          placeholder="0"
+                          className="h-9 text-[13px] font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Catatan (opsional)</Label>
+                        <Input
+                          value={waNote}
+                          onChange={(e) => setWaNote(e.target.value)}
+                          placeholder="misal: pembayaran fee Feb 2026"
+                          className="h-9 text-[13px]"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Preview Pesan</Label>
+                        <div className="rounded-xl border bg-muted/30 px-3 py-2.5 text-[11px] leading-relaxed whitespace-pre-wrap text-foreground">
+                          {preview}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => setWaDialogAgent(null)}>
+                          Batal
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={!waPhone || !amount}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-1.5"
+                          onClick={() => {
+                            const rec = recordFeePayment(waDialogAgent.userId, amount, waNote);
+                            setFeePayments((p) => [rec, ...p]);
+                            saveAgentPhone(waDialogAgent.userId, waPhone);
+                            setAgentPhones((prev) => ({ ...prev, [waDialogAgent.userId]: waPhone }));
+                            openWaMessage(waPhone, preview);
+                            setWaDialogAgent(null);
+                            toast.success(`Notif WA dikirim ke ${agentName}`, { description: `Fee ${fmtRp(amount)} dicatat.` });
+                          }}
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                          Buka WhatsApp
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </DialogContent>
+            </Dialog>
 
             {isOwner && (
               <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
