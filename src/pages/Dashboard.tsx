@@ -797,14 +797,14 @@ export default function Dashboard() {
         <div className="pb-4 space-y-3">
 
           {/* ── Greeting row ── */}
-          <div className="flex items-center gap-2.5">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white text-[15px] font-extrabold shrink-0 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-2xl flex items-center justify-center text-white text-[16px] font-extrabold shrink-0 shadow-md" style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}>
               {(user?.displayName ?? "A").charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[9.5px] text-[hsl(var(--muted-foreground))] leading-none">Halo,</p>
-              <h1 className="text-[15px] font-extrabold text-[hsl(var(--foreground))] leading-tight truncate">
-                {user?.displayName?.split(" ")[0] ?? "Admin"}! 👋
+              <p className="text-[10px] text-[hsl(var(--muted-foreground))] leading-none font-medium">Selamat datang 👋</p>
+              <h1 className="text-[16px] font-extrabold text-[hsl(var(--foreground))] leading-tight truncate mt-0.5">
+                {user?.displayName?.split(" ")[0] ?? "Admin"}!
               </h1>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -814,7 +814,7 @@ export default function Dashboard() {
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="h-8 w-8 rounded-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60 shrink-0"
+                className="h-8 w-8 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60 shrink-0"
               >
                 <RefreshCw strokeWidth={2} className={cn("h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]", refreshing && "animate-spin")} />
               </button>
@@ -844,11 +844,18 @@ export default function Dashboard() {
 
           {/* ── Hero card ── */}
           <div
-            className="rounded-2xl p-4"
+            className="rounded-2xl p-4 relative overflow-hidden"
             style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 55%,#1a44d4 100%)" }}
           >
+            {/* Decorative */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div className="absolute -top-10 -right-10 h-44 w-44 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,255,255,0.07) 0%, transparent 65%)" }} />
+              <div className="absolute -bottom-8 left-0 right-0 h-24" style={{ background: "radial-gradient(ellipse at 50% 100%, rgba(26,68,212,0.3) 0%, transparent 70%)" }} />
+              <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "20px 20px" }} />
+            </div>
+
             {/* Trip name + countdown */}
-            <div className="flex items-start justify-between gap-3">
+            <div className="relative flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[8px] font-semibold uppercase tracking-widest text-sky-400/70 mb-1">
                   {nearestDeparture ? "Trip Terdekat" : "Ringkasan"}
@@ -870,7 +877,7 @@ export default function Dashboard() {
             </div>
 
             {/* Stats: divider row */}
-            <div className="flex items-center mt-3.5 pt-3 border-t border-white/10">
+            <div className="relative flex items-center mt-4 pt-3.5 border-t border-white/10">
               {[
                 { label: "Trip",    value: trips.length },
                 { label: "Aktif",   value: activeTrips  },
@@ -878,8 +885,8 @@ export default function Dashboard() {
                 { label: "Selesai", value: doneTrips    },
               ].map((s, i) => (
                 <div key={s.label} className={cn("flex-1 text-center", i > 0 && "border-l border-white/10")}>
-                  <p className="text-[17px] font-extrabold text-white tabular-nums leading-none">{s.value}</p>
-                  <p className="text-[7px] text-sky-300/50 uppercase tracking-wide mt-0.5">{s.label}</p>
+                  <p className="text-[22px] font-black text-white tabular-nums leading-none">{s.value}</p>
+                  <p className="text-[8px] text-sky-300/60 uppercase tracking-wide mt-1 font-semibold">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -902,20 +909,20 @@ export default function Dashboard() {
             </div>
             <div className="flex gap-3.5 overflow-x-auto scrollbar-none pb-1 -mx-0.5 px-0.5">
               {([
-                { icon: Package,     label: "Paket",      path: "/packages",   bg: "bg-orange-100", fg: "text-orange-500" },
-                { icon: Users,       label: "Jamaah",     path: "/progress",   bg: "bg-sky-100",    fg: "text-sky-600"    },
-                { icon: ShoppingBag, label: "Order",      path: "/orders",     bg: "bg-violet-100", fg: "text-violet-500" },
-                { icon: Calculator,  label: "Kalkulator", path: "/calculator", bg: "bg-emerald-100",fg: "text-emerald-600" },
-                { icon: FileBarChart,label: "Laporan",    path: "/reports",    bg: "bg-amber-100",  fg: "text-amber-600"  },
-                { icon: Sparkles,    label: "Itinerary",  path: "/itinerary",  bg: "bg-fuchsia-100",fg: "text-fuchsia-500" },
+                { icon: Package,     label: "Paket",      path: "/packages",   gradient: "linear-gradient(135deg,#f97316,#ea580c)" },
+                { icon: Users,       label: "Jamaah",     path: "/progress",   gradient: "linear-gradient(135deg,#0ea5e9,#0284c7)" },
+                { icon: ShoppingBag, label: "Order",      path: "/orders",     gradient: "linear-gradient(135deg,#8b5cf6,#6d28d9)" },
+                { icon: Calculator,  label: "Kalkulator", path: "/calculator", gradient: "linear-gradient(135deg,#10b981,#059669)" },
+                { icon: FileBarChart,label: "Laporan",    path: "/reports",    gradient: "linear-gradient(135deg,#f59e0b,#d97706)" },
+                { icon: Sparkles,    label: "Itinerary",  path: "/itinerary",  gradient: "linear-gradient(135deg,#ec4899,#9333ea)" },
               ] as const).map((item) => (
                 <button
                   key={item.path}
                   onClick={() => navigate(item.path)}
-                  className="flex flex-col items-center gap-1.5 min-w-[54px] shrink-0 active:scale-95 transition-transform"
+                  className="flex flex-col items-center gap-1.5 min-w-[56px] shrink-0 active:scale-95 transition-transform"
                 >
-                  <div className={`h-[52px] w-[52px] rounded-2xl ${item.bg} flex items-center justify-center shadow-sm border border-white/60`}>
-                    <item.icon strokeWidth={1.8} className={`h-[22px] w-[22px] ${item.fg}`} />
+                  <div className="h-[54px] w-[54px] rounded-2xl flex items-center justify-center shadow-md" style={{ background: item.gradient }}>
+                    <item.icon strokeWidth={1.8} className="h-[23px] w-[23px] text-white" />
                   </div>
                   <span className="text-[9.5px] font-semibold text-[hsl(var(--foreground))] text-center leading-tight">{item.label}</span>
                 </button>
@@ -1072,26 +1079,33 @@ export default function Dashboard() {
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
           <div
-            className="rounded-3xl p-5 md:p-6"
+            className="rounded-3xl p-6 md:p-8 relative overflow-hidden"
             style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 50%,#1a44d4 100%)" }}
           >
-            <div className="flex items-center justify-between gap-4">
+            {/* Decorative background */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div className="absolute -top-20 -right-20 h-72 w-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,255,255,0.07) 0%, transparent 65%)" }} />
+              <div className="absolute -bottom-16 left-1/3 h-56 w-56 rounded-full" style={{ background: "radial-gradient(circle, rgba(26,68,212,0.35) 0%, transparent 70%)" }} />
+              <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "28px 28px" }} />
+            </div>
+
+            <div className="relative flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
-                <h1 className="text-[22px] md:text-[24px] font-bold text-white leading-tight">
+                <h1 className="text-[26px] md:text-[30px] font-black text-white leading-tight tracking-tight">
                   {getGreeting(user?.displayName ?? "Admin", t)} 👋
                 </h1>
-                <p className="text-[11px] text-sky-300/70 capitalize mt-0.5">
+                <p className="text-[11.5px] text-sky-300/70 capitalize mt-1 font-medium">
                   {formatTodayFull(locale)}
                 </p>
                 {nearestDeparture ? (
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <Plane strokeWidth={2} className="h-3 w-3 text-sky-400 shrink-0" />
-                    <span className="text-[10.5px] text-sky-200/70">{t.dash_nearest_departure}</span>
-                    <strong className="text-[10.5px] text-white truncate max-w-[140px]">{nearestDeparture.name}</strong>
-                    <span className="text-[10.5px] text-sky-300 shrink-0">· {daysUntil(nearestDeparture.departureDate!)}</span>
+                  <div className="flex items-center gap-2 mt-3 w-fit px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10" style={{ background: "rgba(255,255,255,0.09)" }}>
+                    <Plane strokeWidth={2} className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+                    <span className="text-[11px] text-sky-200/80">{t.dash_nearest_departure}</span>
+                    <strong className="text-[11px] text-white truncate max-w-[180px] font-bold">{nearestDeparture.name}</strong>
+                    <span className="text-[11px] text-sky-300 shrink-0 font-semibold">· {daysUntil(nearestDeparture.departureDate!)}</span>
                   </div>
                 ) : (
-                  <p className="text-[10px] text-sky-300/60 mt-1.5 italic">{t.dash_no_schedule}</p>
+                  <p className="text-[11px] text-sky-300/60 mt-2 italic">{t.dash_no_schedule}</p>
                 )}
               </div>
               <button
@@ -1099,7 +1113,7 @@ export default function Dashboard() {
                 onClick={handleRefresh}
                 disabled={refreshing}
                 className="shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[11px] font-medium text-white/70 hover:text-white border border-white/15 hover:border-white/30 transition disabled:opacity-40"
-                style={{ background: "rgba(255,255,255,0.07)" }}
+                style={{ background: "rgba(255,255,255,0.09)" }}
               >
                 <RefreshCw strokeWidth={2.2} className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
                 {refreshing ? "Memuat…" : "Refresh"}
@@ -1137,36 +1151,36 @@ export default function Dashboard() {
         )}
 
         {/* ── CEO Daily Quest — owner only ── */}
-        {user?.role === "owner" && <div className="mb-1.5 md:mb-0"><CeoDailyQuest /></div>}
+        {user?.role === "owner" && <div className="mb-5"><CeoDailyQuest /></div>}
 
         {/* ── Primary stat cards (4 main metrics) ── */}
         <motion.div
-          className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 mb-1.5 md:gap-2.5 md:mb-4"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5"
           variants={stagger}
           initial="hidden"
           animate="visible"
         >
           {[
-            { icon: Plane, label: t.dash_total_trip, value: trips.length, tint: "from-blue-50 to-sky-50", iconBg: "bg-blue-500/10 text-blue-600", onClick: () => {} },
-            { icon: TrendingUp, label: t.dash_active_trip, value: activeTrips, tint: "from-emerald-50 to-teal-50", iconBg: "bg-emerald-500/10 text-emerald-600", onClick: () => setTab("upcoming") },
-            { icon: CheckCircle, label: t.dash_done_trip, value: doneTrips, tint: "from-purple-50 to-fuchsia-50", iconBg: "bg-purple-500/10 text-purple-600", onClick: () => setTab("done") },
-            { icon: Users, label: t.dash_total_jamaah, value: totalJamaah, tint: "from-sky-50 to-sky-100", iconBg: "bg-sky-500/10 text-sky-600", onClick: () => navigate("/progress") },
+            { icon: Plane,       label: t.dash_total_trip,   value: trips.length, iconBg: "bg-blue-500",    onClick: () => {} },
+            { icon: TrendingUp,  label: t.dash_active_trip,  value: activeTrips,  iconBg: "bg-emerald-500", onClick: () => setTab("upcoming") },
+            { icon: CheckCircle, label: t.dash_done_trip,    value: doneTrips,    iconBg: "bg-purple-500",  onClick: () => setTab("done") },
+            { icon: Users,       label: t.dash_total_jamaah, value: totalJamaah,  iconBg: "bg-sky-500",     onClick: () => navigate("/progress") },
           ].map((stat) => (
             <motion.button
               key={stat.label}
               onClick={stat.onClick}
-              className={cn(
-                "relative overflow-hidden flex items-center gap-1.5 rounded-xl md:rounded-2xl border border-[hsl(var(--border))] p-2 md:p-3.5 hover:shadow-md hover:border-[hsl(var(--primary))]/40 transition-all duration-200 text-left active:scale-[0.97]",
-                "bg-gradient-to-br", stat.tint
-              )}
+              className="relative overflow-hidden flex items-center gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 hover:shadow-lg hover:border-[hsl(var(--primary))]/30 transition-all duration-200 text-left active:scale-[0.98] group"
               variants={fadeUp}
             >
-              <div className={cn("h-6 w-6 md:h-10 md:w-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0", stat.iconBg)}>
-                <stat.icon strokeWidth={2} className="h-[11px] w-[11px] md:h-5 md:w-5" />
+              <div className="absolute -bottom-4 -right-4 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity duration-300">
+                <stat.icon strokeWidth={0.8} className="h-24 w-24" />
+              </div>
+              <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm", stat.iconBg)}>
+                <stat.icon strokeWidth={1.8} className="h-6 w-6 text-white" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[14px] md:text-[22px] font-extrabold text-[hsl(var(--foreground))] leading-none tracking-tight tabular-nums">{stat.value}</p>
-                <p className="text-[9px] md:text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5 md:mt-1 leading-tight truncate font-medium">{stat.label}</p>
+                <p className="text-[32px] font-black text-[hsl(var(--foreground))] leading-none tracking-tight tabular-nums">{stat.value}</p>
+                <p className="text-[12px] text-[hsl(var(--muted-foreground))] mt-1.5 font-medium leading-tight">{stat.label}</p>
               </div>
             </motion.button>
           ))}
@@ -1174,26 +1188,29 @@ export default function Dashboard() {
 
         {/* ── Secondary package stats (desktop only — too dense on mobile) ── */}
         <motion.div
-          className="hidden md:grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-5"
+          className="hidden md:grid grid-cols-4 gap-3 mb-5"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
         >
           {[
-            { icon: Star, label: t.dash_total_packages, value: packages.length, color: "bg-amber-50 text-amber-600", onClick: () => navigate("/packages") },
-            { icon: AlertCircle, label: t.dash_need_action, value: pendingPackages.length, color: pendingPackages.length > 0 ? "bg-red-50 text-red-500" : "bg-gray-50 text-gray-400", onClick: () => navigate("/packages") },
-            { icon: Clock, label: t.dash_paid_packages, value: packages.filter(p => p.status === "Paid").length, color: "bg-emerald-50 text-emerald-600", onClick: () => navigate("/packages") },
-            { icon: CheckCircle, label: t.dash_completed_packages, value: packages.filter(p => p.status === "Completed").length, color: "bg-purple-50 text-purple-600", onClick: () => navigate("/packages") },
+            { icon: Star,        label: t.dash_total_packages,     value: packages.length,                                       iconBg: "bg-amber-100",   iconFg: "text-amber-600",   borderColor: "#F59E0B", onClick: () => navigate("/packages") },
+            { icon: AlertCircle, label: t.dash_need_action,        value: pendingPackages.length,                                iconBg: pendingPackages.length > 0 ? "bg-red-100" : "bg-gray-100", iconFg: pendingPackages.length > 0 ? "text-red-600" : "text-gray-400", borderColor: pendingPackages.length > 0 ? "#EF4444" : "#9CA3AF", onClick: () => navigate("/packages") },
+            { icon: Clock,       label: t.dash_paid_packages,      value: packages.filter(p => p.status === "Paid").length,      iconBg: "bg-emerald-100", iconFg: "text-emerald-600", borderColor: "#10B981", onClick: () => navigate("/packages") },
+            { icon: CheckCircle, label: t.dash_completed_packages, value: packages.filter(p => p.status === "Completed").length, iconBg: "bg-violet-100",  iconFg: "text-violet-600",  borderColor: "#8B5CF6", onClick: () => navigate("/packages") },
           ].map((item) => (
             <button
               key={item.label}
               onClick={item.onClick}
-              className="flex items-center gap-2.5 rounded-xl border border-[hsl(var(--border))] bg-white p-3 hover:shadow-sm hover:border-[hsl(var(--primary))]/40 transition-all text-left active:scale-[0.98]"
+              className="flex items-center gap-3 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] border-l-[3px] p-3.5 hover:shadow-md hover:bg-[hsl(var(--secondary))] transition-all text-left active:scale-[0.98]"
+              style={{ borderLeftColor: item.borderColor }}
             >
-              <item.icon strokeWidth={1.5} className="h-5 w-5 text-sky-500 shrink-0" />
+              <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center shrink-0", item.iconBg)}>
+                <item.icon strokeWidth={1.6} className={cn("h-4 w-4", item.iconFg)} />
+              </div>
               <div className="min-w-0">
-                <p className="text-[18px] font-bold text-[hsl(var(--foreground))] leading-none">{item.value}</p>
-                <p className="text-[10.5px] text-[hsl(var(--muted-foreground))] mt-0.5 truncate">{item.label}</p>
+                <p className="text-[20px] font-bold text-[hsl(var(--foreground))] leading-none tabular-nums">{item.value}</p>
+                <p className="text-[10.5px] text-[hsl(var(--muted-foreground))] mt-0.5 leading-tight truncate">{item.label}</p>
               </div>
             </button>
           ))}
@@ -1296,39 +1313,41 @@ export default function Dashboard() {
 
         {/* ── Kalkulator & Laporan & Order shortcut bar ── */}
         <motion.div
-          className="grid grid-cols-3 gap-1.5 mb-1.5 md:gap-2.5 md:mb-5"
+          className="grid grid-cols-3 gap-3 mb-5"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.22, ease: "easeOut" }}
         >
           {[
-            { icon: Calculator, label: t.dash_open_calculator, path: "/calculator" },
-            { icon: ShoppingBag, label: "Order Hub", path: "/orders" },
-            { icon: FileBarChart, label: t.dash_progress_report, path: "/progress" },
+            { icon: Calculator,   label: t.dash_open_calculator, path: "/calculator", gradient: "linear-gradient(135deg,#0ea5e9,#0284c7)" },
+            { icon: ShoppingBag,  label: "Order Hub",             path: "/orders",     gradient: "linear-gradient(135deg,#8b5cf6,#6d28d9)" },
+            { icon: FileBarChart, label: t.dash_progress_report,  path: "/progress",   gradient: "linear-gradient(135deg,#f59e0b,#d97706)" },
           ].map((btn) => (
             <button
               key={btn.path}
               onClick={() => navigate(btn.path)}
-              className="flex items-center justify-center md:justify-start gap-1 md:gap-2 rounded-lg md:rounded-xl border border-[hsl(var(--border))] bg-white px-1.5 md:px-3 py-2 md:py-2.5 hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-[border-color,background-color] duration-200 group active:scale-[0.98]"
+              className="flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3.5 hover:border-[hsl(var(--primary))]/40 hover:shadow-md transition-all duration-200 group text-left active:scale-[0.98]"
             >
-              <btn.icon strokeWidth={1.5} className="h-3.5 w-3.5 md:h-4 md:w-4 text-[hsl(var(--primary))] shrink-0" />
-              <span className="text-[10.5px] md:text-[13px] font-medium text-[hsl(var(--foreground))] truncate">{btn.label}</span>
-              <ArrowRight strokeWidth={1.5} className="hidden md:block h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] transition-colors ml-auto shrink-0" />
+              <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm" style={{ background: btn.gradient }}>
+                <btn.icon strokeWidth={1.8} className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-[13px] font-semibold text-[hsl(var(--foreground))] flex-1 truncate">{btn.label}</span>
+              <ArrowRight strokeWidth={1.5} className="h-4 w-4 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] transition-colors shrink-0" />
             </button>
           ))}
         </motion.div>
 
         {/* Section header */}
-        <div className="flex items-center justify-between gap-2 mb-1.5 md:gap-3 md:mb-4">
+        <div className="flex items-center justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-[13.5px] md:text-xl font-bold text-[hsl(var(--foreground))]">{t.dash_packages_title}</h1>
-              <div className="flex gap-2 md:gap-3 mt-0.5">
+            <h1 className="text-xl md:text-2xl font-bold text-[hsl(var(--foreground))]">{t.dash_packages_title}</h1>
+            <div className="flex gap-3 mt-1">
               {[["all", t.dash_filter_all], ["upcoming", t.dash_filter_active], ["done", t.dash_filter_done]].map(([key, label]) => (
                 <button
                   key={key}
                   onClick={() => setTab(key as typeof tab)}
                   className={cn(
-                    "text-[11px] md:text-[13px] font-medium pb-1 border-b-2 transition-smooth",
+                    "text-[13px] font-medium pb-1 border-b-2 transition-smooth",
                     tab === key
                       ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]"
                       : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
@@ -1339,6 +1358,14 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
+          <button
+            onClick={() => setAddOpen(true)}
+            className="flex items-center gap-2 h-9 px-4 rounded-xl text-white text-[12.5px] font-bold shadow-md hover:opacity-90 active:scale-95 transition-all shrink-0"
+            style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
+          >
+            <Plus strokeWidth={2.5} className="h-3.5 w-3.5" />
+            <span>Tambah Trip</span>
+          </button>
         </div>
 
         {/* Cards grid */}
