@@ -72,6 +72,12 @@
     }
   }
 
+  @media (max-width: 767px) {
+    html {
+      font-size: 13.5px;
+    }
+  }
+
   :root[data-theme="dark"] {
     /* ── Brand Dark Mode — "Deep Navy" ──
        Rich Black #00072d bg · Dark Navy #051650 card · Navy #0a2472 chip
