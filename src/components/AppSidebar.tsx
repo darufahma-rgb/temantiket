@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
 
 const ACCENT = "#1a44d4";
-const SIDEBAR_W = 248;
+const SIDEBAR_W = 264;
 
 interface NavItemDef {
   title: string;
@@ -148,7 +148,7 @@ function SidebarNavItem({ item, onClose }: { item: NavItemDef; onClose?: () => v
       onClick={onClose}
       className={({ isActive }) =>
         cn(
-          "relative flex items-center gap-2.5 h-[34px] px-2.5 rounded-lg text-left transition-all duration-150 w-full group",
+          "relative flex items-center gap-3 h-[40px] px-3 rounded-lg text-left transition-all duration-150 w-full group",
           isActive
             ? "text-white"
             : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))]"
@@ -168,7 +168,7 @@ function SidebarNavItem({ item, onClose }: { item: NavItemDef; onClose?: () => v
 
           <span
             className={cn(
-              "relative z-10 flex items-center justify-center h-[22px] w-[22px] rounded-md shrink-0 transition-all duration-150",
+              "relative z-10 flex items-center justify-center h-[26px] w-[26px] rounded-md shrink-0 transition-all duration-150",
               isActive
                 ? "bg-white/15"
                 : "bg-transparent group-hover:bg-[hsl(var(--secondary))]"
@@ -176,12 +176,12 @@ function SidebarNavItem({ item, onClose }: { item: NavItemDef; onClose?: () => v
           >
             <Icon
               strokeWidth={isActive ? 2.2 : 1.8}
-              className="h-[13px] w-[13px] transition-colors"
+              className="h-[15px] w-[15px] transition-colors"
               style={{ color: isActive ? "white" : undefined }}
             />
           </span>
 
-          <span className="relative z-10 text-[12.5px] font-medium flex-1 truncate leading-none">
+          <span className="relative z-10 text-[13px] font-medium flex-1 truncate leading-none">
             {item.title}
           </span>
 
@@ -221,9 +221,9 @@ function SidebarSection({
   return (
     <div>
       {hasLabel && (
-        <div className="flex items-center gap-2 px-2.5 mb-1 mt-0.5">
+        <div className="flex items-center gap-2 px-3 mb-1.5 mt-1">
           <span
-            className="text-[9px] font-bold uppercase tracking-[0.16em] shrink-0"
+            className="text-[10px] font-bold uppercase tracking-[0.16em] shrink-0"
             style={{ color: "hsl(var(--muted-foreground))", opacity: 0.45 }}
           >
             {section.label}
@@ -232,7 +232,7 @@ function SidebarSection({
         </div>
       )}
 
-      <div className="space-y-[2px]">
+      <div className="space-y-1">
         {visibleItems.map((item) => (
           <SidebarNavItem key={item.url} item={item} onClose={onClose} />
         ))}
@@ -291,7 +291,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
       {user && (
         <button
           onClick={() => { navigate("/settings"); onClose?.(); }}
-          className="flex items-center gap-2.5 mx-3 mt-3 mb-2 px-2.5 py-2 rounded-xl hover:bg-[hsl(var(--accent))] transition-colors text-left group"
+          className="flex items-center gap-2.5 mx-3 mt-3 mb-2.5 px-3 py-2.5 rounded-xl hover:bg-[hsl(var(--accent))] transition-colors text-left group"
         >
           <div
             className="h-7 w-7 rounded-lg flex items-center justify-center text-white text-[11px] font-black shrink-0"
@@ -317,7 +317,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
 
       {/* ── Nav sections ── */}
       <div
-        className="flex-1 overflow-y-auto px-2.5 pb-3 space-y-2.5"
+        className="flex-1 overflow-y-auto px-3 pb-3 space-y-4"
         style={{ scrollbarWidth: "none" }}
       >
         {sections.map((section) => (
