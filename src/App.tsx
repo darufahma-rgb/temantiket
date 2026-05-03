@@ -28,7 +28,6 @@ import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
 import Reports from "./pages/Reports";
 import AgentCommandCenter from "./pages/AgentCommandCenter";
-import AgentDirectory from "./pages/AgentDirectory";
 import AgentDashboard from "./pages/AgentDashboard";
 import AgentProfile from "./pages/AgentProfile";
 import AgentLeaderboard from "./pages/AgentLeaderboard";
@@ -273,23 +272,14 @@ function AnimatedRoutes() {
           </RequireAuth>
         }
       />
-      {/* ── Owner/staff: Agent Directory ── */}
-      <Route
-        path="/agent-directory"
-        element={
-          <RequireAuth>
-            <RequireRole roles={["owner", "staff"]}>
-              <DashboardLayout><AgentDirectory /></DashboardLayout>
-            </RequireRole>
-          </RequireAuth>
-        }
-      />
-      {/* ── Owner-only: Agent Command Center ── */}
+      {/* ── Redirect old directory URL ── */}
+      <Route path="/agent-directory" element={<Navigate to="/agent-center" replace />} />
+      {/* ── Owner/staff: Manajemen Agen (unified) ── */}
       <Route
         path="/agent-center"
         element={
           <RequireAuth>
-            <RequireRole roles={["owner"]}>
+            <RequireRole roles={["owner", "staff"]}>
               <DashboardLayout><AgentCommandCenter /></DashboardLayout>
             </RequireRole>
           </RequireAuth>

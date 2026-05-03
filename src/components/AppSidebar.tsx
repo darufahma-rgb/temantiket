@@ -80,8 +80,7 @@ const STAFF_SECTIONS: SectionDef[] = [
     key: "agent",
     label: "Agen",
     items: [
-      { title: "Kontrol & Misi",  url: "/agent-center",      icon: Command, ownerOnly: true },
-      { title: "Direktori Agen",  url: "/agent-directory",   icon: BookUser },
+      { title: "Manajemen Agen",   url: "/agent-center",      icon: BookUser },
       { title: "Leaderboard",     url: "/agent/leaderboard", icon: Trophy },
     ],
   },
