@@ -307,7 +307,7 @@ function TripCard({ trip, onDelete }: { trip: Trip; onDelete: (t: Trip) => void 
     >
       {/* Cover area */}
       <div
-        className="relative h-24 sm:h-32 md:h-40 flex items-center justify-center overflow-hidden"
+        className="relative h-16 sm:h-28 md:h-40 flex items-center justify-center overflow-hidden"
         style={trip.coverImage ? {} : { background: `linear-gradient(135deg, ${from}, ${to})` }}
       >
         {trip.coverImage ? (
@@ -317,14 +317,14 @@ function TripCard({ trip, onDelete }: { trip: Trip; onDelete: (t: Trip) => void 
             className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
-          <span className="text-4xl md:text-7xl drop-shadow-lg select-none">{trip.emoji}</span>
+          <span className="text-2xl md:text-7xl drop-shadow-lg select-none">{trip.emoji}</span>
         )}
 
         {/* Overlay gradient for readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none" />
 
         {/* Duration badge */}
-        <span className="absolute bottom-2 left-2 md:bottom-3 md:left-3 text-[10px] md:text-[11px] font-semibold bg-white/20 backdrop-blur-sm text-white px-2 md:px-2.5 py-0.5 md:py-1 rounded-full z-10">
+        <span className="absolute bottom-1.5 left-1.5 md:bottom-3 md:left-3 text-[9px] md:text-[11px] font-semibold bg-white/20 backdrop-blur-sm text-white px-1.5 md:px-2.5 py-0.5 md:py-1 rounded-full z-10">
           {nightCount(trip.startDate, trip.endDate)}
         </span>
 
@@ -356,15 +356,15 @@ function TripCard({ trip, onDelete }: { trip: Trip; onDelete: (t: Trip) => void 
       </div>
 
       {/* Info */}
-      <div className="p-2.5 md:p-3.5">
-        <h3 className="font-semibold text-[13px] md:text-[13.5px] text-[hsl(var(--foreground))] line-clamp-1">{trip.name}</h3>
-        <div className="flex items-center gap-1 mt-0.5 md:mt-1 text-[11px] md:text-xs text-[hsl(var(--muted-foreground))]">
-          <MapPin strokeWidth={1.5} className="h-3 w-3 shrink-0 text-[hsl(var(--primary))]" />
+      <div className="p-2 md:p-3.5">
+        <h3 className="font-semibold text-[11.5px] md:text-[13.5px] text-[hsl(var(--foreground))] line-clamp-1 leading-tight">{trip.name}</h3>
+        <div className="flex items-center gap-1 mt-0.5 text-[10px] md:text-xs text-[hsl(var(--muted-foreground))]">
+          <MapPin strokeWidth={1.5} className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0 text-[hsl(var(--primary))]" />
           <span className="line-clamp-1">{trip.destination}</span>
         </div>
-        <div className="flex items-center gap-1 mt-0.5 text-[11px] md:text-xs text-[hsl(var(--muted-foreground))]">
-          <CalendarIcon strokeWidth={1.5} className="h-3 w-3 shrink-0" />
-          <span>{formatDate(trip.startDate)} – {formatDate(trip.endDate)}</span>
+        <div className="flex items-center gap-1 mt-0.5 text-[10px] md:text-xs text-[hsl(var(--muted-foreground))]">
+          <CalendarIcon strokeWidth={1.5} className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
+          <span className="truncate">{formatDate(trip.startDate)} – {formatDate(trip.endDate)}</span>
         </div>
       </div>
     </motion.div>
@@ -791,11 +791,11 @@ export default function Dashboard() {
   return (
     <div className="flex h-full min-h-0">
       {/* ── Main content ── */}
-      <div className="flex-1 overflow-auto min-w-0 p-3 md:p-6 lg:p-8 pb-6">
+      <div className="flex-1 overflow-auto min-w-0 pb-4 md:p-6 lg:p-8 md:pb-6">
 
         {/* ── Greeting hero ── */}
         <motion.div
-          className="mb-3 md:mb-6"
+          className="mb-2 md:mb-5"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
@@ -853,17 +853,18 @@ export default function Dashboard() {
 
         {/* ── Live Clock (multi-timezone) ── */}
         <motion.div
-          className="mb-3 md:mb-5"
+          className="mb-2 md:mb-4"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
         >
-          <LiveClock />
+          <div className="md:hidden"><LiveClock compact /></div>
+          <div className="hidden md:block"><LiveClock /></div>
         </motion.div>
 
         {/* ── Admin WhatsApp quick-contact (untuk admin internal) ── */}
         <motion.div
-          className="mb-3 md:mb-5"
+          className="mb-2 md:mb-4"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.07, ease: [0.16, 1, 0.3, 1] }}
@@ -873,17 +874,17 @@ export default function Dashboard() {
 
         {/* ── Mitra (Agent) Leaderboard preview — owner only ── */}
         {user?.role === "owner" && (
-          <div className="mb-3 md:mb-5">
+          <div className="mb-2 md:mb-4">
             <MitraLeaderboardCard />
           </div>
         )}
 
         {/* ── CEO Daily Quest — owner only ── */}
-        {user?.role === "owner" && <CeoDailyQuest />}
+        {user?.role === "owner" && <div className="mb-2 md:mb-0"><CeoDailyQuest /></div>}
 
         {/* ── Primary stat cards (4 main metrics) ── */}
         <motion.div
-          className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3 md:gap-2.5 md:mb-5"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 mb-2 md:gap-2.5 md:mb-4"
           variants={stagger}
           initial="hidden"
           animate="visible"
@@ -898,17 +899,17 @@ export default function Dashboard() {
               key={stat.label}
               onClick={stat.onClick}
               className={cn(
-                "relative overflow-hidden flex items-center gap-2.5 rounded-2xl border border-[hsl(var(--border))] p-3 md:p-3.5 hover:shadow-md hover:border-[hsl(var(--primary))]/40 transition-all duration-200 text-left active:scale-[0.97]",
+                "relative overflow-hidden flex items-center gap-2 rounded-xl md:rounded-2xl border border-[hsl(var(--border))] p-2.5 md:p-3.5 hover:shadow-md hover:border-[hsl(var(--primary))]/40 transition-all duration-200 text-left active:scale-[0.97]",
                 "bg-gradient-to-br", stat.tint
               )}
               variants={fadeUp}
             >
-              <div className={cn("h-8 w-8 md:h-10 md:w-10 rounded-xl flex items-center justify-center shrink-0", stat.iconBg)}>
-                <stat.icon strokeWidth={2} className="h-[16px] w-[16px] md:h-5 md:w-5" />
+              <div className={cn("h-7 w-7 md:h-10 md:w-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0", stat.iconBg)}>
+                <stat.icon strokeWidth={2} className="h-[13px] w-[13px] md:h-5 md:w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[16px] md:text-[22px] font-extrabold text-[hsl(var(--foreground))] leading-none tracking-tight tabular-nums">{stat.value}</p>
-                <p className="text-[10.5px] md:text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5 md:mt-1 truncate font-medium">{stat.label}</p>
+                <p className="text-[15px] md:text-[22px] font-extrabold text-[hsl(var(--foreground))] leading-none tracking-tight tabular-nums">{stat.value}</p>
+                <p className="text-[9.5px] md:text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5 md:mt-1 leading-tight truncate font-medium">{stat.label}</p>
               </div>
             </motion.button>
           ))}
@@ -943,7 +944,7 @@ export default function Dashboard() {
 
         {/* ── Mobile: compact package summary chips ── */}
         <motion.div
-          className="md:hidden flex items-center gap-2 mb-3.5 -mx-3 px-3 overflow-x-auto scrollbar-none"
+          className="md:hidden flex items-center gap-1.5 mb-2 overflow-x-auto scrollbar-none"
           style={{ scrollSnapType: "x proximity" }}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -958,7 +959,7 @@ export default function Dashboard() {
             <button
               key={item.label}
               onClick={() => navigate("/packages")}
-              className={cn("shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full border text-[11.5px] font-semibold active:scale-95 transition-transform", item.color)}
+              className={cn("shrink-0 flex items-center gap-1 h-7 px-2.5 rounded-full border text-[10.5px] font-semibold active:scale-95 transition-transform", item.color)}
               style={{ scrollSnapAlign: "start" }}
             >
               <item.icon strokeWidth={2} className="h-3.5 w-3.5" />
@@ -980,12 +981,12 @@ export default function Dashboard() {
         {/* ── Perlu Perhatian ── */}
         {pendingPackages.length > 0 && (
           <motion.div
-            className="mb-4 md:mb-5"
+            className="mb-2 md:mb-4"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.18, ease: "easeOut" }}
           >
-            <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <AlertCircle strokeWidth={1.5} className="h-4 w-4 text-amber-500" />
                 <h2 className="text-[13.5px] md:text-[14px] font-bold text-[hsl(var(--foreground))]">{t.dash_needs_attention}</h2>
@@ -1038,7 +1039,7 @@ export default function Dashboard() {
 
         {/* ── Kalkulator & Laporan & Order shortcut bar ── */}
         <motion.div
-          className="grid grid-cols-3 gap-2 mb-3.5 md:gap-2.5 md:mb-5"
+          className="grid grid-cols-3 gap-1.5 mb-2 md:gap-2.5 md:mb-5"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.22, ease: "easeOut" }}
@@ -1070,16 +1071,16 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Section header */}
-        <div className="flex items-center justify-between gap-2.5 mb-3 md:gap-3 md:mb-4">
+        <div className="flex items-center justify-between gap-2 mb-2 md:gap-3 md:mb-4">
           <div>
-            <h1 className="text-base md:text-xl font-bold text-[hsl(var(--foreground))]">{t.dash_packages_title}</h1>
-              <div className="flex gap-2.5 md:gap-3 mt-1">
+            <h1 className="text-[13.5px] md:text-xl font-bold text-[hsl(var(--foreground))]">{t.dash_packages_title}</h1>
+              <div className="flex gap-2 md:gap-3 mt-0.5">
               {[["all", t.dash_filter_all], ["upcoming", t.dash_filter_active], ["done", t.dash_filter_done]].map(([key, label]) => (
                 <button
                   key={key}
                   onClick={() => setTab(key as typeof tab)}
                   className={cn(
-                    "text-[12px] md:text-[13px] font-medium pb-1 border-b-2 transition-smooth",
+                    "text-[11px] md:text-[13px] font-medium pb-1 border-b-2 transition-smooth",
                     tab === key
                       ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]"
                       : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
@@ -1094,7 +1095,7 @@ export default function Dashboard() {
 
         {/* Cards grid */}
         {loadingTrips ? (
-          <div className="grid gap-2.5 md:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 md:gap-3 grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="rounded-2xl border border-[hsl(var(--border))] overflow-hidden animate-pulse">
                 <div className="h-36 bg-[hsl(var(--secondary))]" />
@@ -1141,17 +1142,17 @@ export default function Dashboard() {
             </div>
           </motion.div>
         ) : (
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 md:gap-3 grid-cols-2 lg:grid-cols-3">
             {filtered.map((trip) => (
               <TripCard key={trip.id} trip={trip} onDelete={setDeleteTarget} />
             ))}
             {/* Add card */}
             <button onClick={() => setAddOpen(true)}
-              className="rounded-xl md:rounded-2xl border-2 border-dashed border-[hsl(var(--border))] flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[120px] sm:min-h-[220px] hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-all group">
-              <div className="h-9 w-9 md:h-11 md:w-11 flex items-center justify-center transition-colors">
-                <Plus strokeWidth={1.5} className="h-5 w-5 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))]" />
+              className="rounded-xl md:rounded-2xl border-2 border-dashed border-[hsl(var(--border))] flex flex-col items-center justify-center gap-1.5 md:gap-3 min-h-[80px] sm:min-h-[200px] hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-all group">
+              <div className="h-8 w-8 md:h-11 md:w-11 flex items-center justify-center transition-colors">
+                <Plus strokeWidth={1.5} className="h-4 w-4 md:h-5 md:w-5 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))]" />
               </div>
-              <span className="text-xs md:text-sm text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] font-medium">{t.dash_add_package}</span>
+              <span className="text-[11px] md:text-sm text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] font-medium">{t.dash_add_package}</span>
             </button>
           </div>
         )}
