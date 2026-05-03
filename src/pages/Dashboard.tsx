@@ -822,22 +822,25 @@ export default function Dashboard() {
           </div>
 
           {/* ── Search bar ── */}
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))] pointer-events-none" />
-            <input
-              type="text"
-              readOnly
-              onClick={() => navigate("/clients")}
-              placeholder="Cari klien, trip, order…"
-              className="w-full h-11 pl-10 pr-14 rounded-2xl text-[12.5px] outline-none cursor-pointer bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]"
-            />
-            <button
-              onClick={() => navigate("/clients")}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-xl bg-sky-500 flex items-center justify-center active:scale-95 transition-transform shadow-sm"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-white" />
-            </button>
-          </div>
+          <button
+            onClick={() => navigate("/clients")}
+            className="w-full flex items-center gap-2.5 h-11 px-3.5 rounded-2xl text-left active:scale-[0.99] transition-all shadow-sm"
+            style={{
+              background: "hsl(var(--secondary))",
+              border: "1px solid hsl(var(--border))",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+            }}
+          >
+            <div className="h-7 w-7 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}>
+              <Search className="h-3.5 w-3.5 text-white" />
+            </div>
+            <span className="flex-1 text-[12px] text-[hsl(var(--muted-foreground))]">
+              Cari klien, trip, order…
+            </span>
+            <kbd className="hidden xs:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-mono text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border))] bg-[hsl(var(--background))] opacity-70">
+              ⌘K
+            </kbd>
+          </button>
 
           {/* ── Hero card ── */}
           <div

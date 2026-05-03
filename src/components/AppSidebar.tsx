@@ -52,7 +52,7 @@ const STAFF_SECTIONS: SectionDef[] = [
     label: "Tools",
     items: [
       { title: "Harga Tiket",       url: "/ticket-prices", icon: Ticket },
-      { title: "AI Itinerary",      url: "/itinerary",     icon: Sparkles, badge: "AI" },
+      { title: "Itinerary",          url: "/itinerary",     icon: Sparkles, badge: "AI" },
       { title: "Kalkulator & Kurs", url: "/calculator",    icon: Calculator },
       { title: "Paket Trip",        url: "/packages",      icon: Package },
       { title: "Progress Jamaah",   url: "/progress",      icon: GitBranch },
@@ -350,7 +350,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[11.5px] font-bold leading-tight" style={{ color: ACCENT }}>
-              AI Itinerary
+              Itinerary
             </p>
             <p className="text-[9.5px] text-[hsl(var(--muted-foreground))] leading-tight mt-[1px]" style={{ opacity: 0.7 }}>
               Buat program perjalanan otomatis
