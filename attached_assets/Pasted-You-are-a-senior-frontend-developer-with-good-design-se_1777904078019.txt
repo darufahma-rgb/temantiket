@@ -1,0 +1,51 @@
+You are a senior frontend developer with good design sense, working on a Vite + React + TypeScript + Tailwind project.
+
+### Current Page:
+Halaman `/promo` saat ini menampilkan:
+- Header sederhana "Tiket Umroh & Haji"
+- Area kosong besar dengan tulisan "Belum ada harga yang dipublikasikan"
+- Tombol "Tanya via WhatsApp"
+
+### Tugas:
+**Redesign ulang** halaman ini agar terlihat lebih modern, bersih, profesional, dan menarik.
+
+### Perubahan yang Diinginkan:
+
+**1. Judul Halaman**
+Ganti judul utama menjadi:
+**"Harga Tiket Pesawat by Temantiket"**
+
+**2. Desain Keseluruhan**
+- Buat tampilan yang lebih premium dan modern.
+- Gunakan warna yang konsisten dengan branding Temantiket (biru navy + aksen cyan/biru muda).
+- Layout harus rapi dan nyaman dilihat di desktop maupun mobile.
+- Tambahkan sedikit ilustrasi atau icon yang relevan (pesawat, globe, dll) agar tidak terlalu kosong.
+
+**3. Struktur Halaman yang Direkomendasikan:**
+
+- **Hero Section** (atas)
+  - Judul besar: "Harga Tiket Pesawat by Temantiket"
+  - Sub judul yang menjelaskan keunggulan (harga kompetitif, proses cepat, amanah, dll)
+  - Tombol utama: "Tanya via WhatsApp" (tetap pertahankan)
+
+- **Empty State / Informasi** (tengah)
+  - Karena belum ada harga yang dipublikasikan, buat empty state yang lebih cantik dan informatif.
+  - Bisa tambahkan teks seperti: "Harga tiket pesawat kami selalu update dan kompetitif. Hubungi tim kami untuk mendapatkan penawaran terbaik sesuai rute yang kamu inginkan."
+
+- **Keunggulan / Why Us** (opsional tapi direkomendasikan)
+  - 3-4 poin singkat kenapa harus pesan lewat Temantiket (contoh: Harga terbaik, Proses cepat, Support 24 jam, dll)
+
+- **Call to Action** (bawah)
+  - Tombol besar "Hubungi Kami via WhatsApp"
+
+**4. Detail Teknis**
+- Gunakan Tailwind CSS
+- Buat komponen yang rapi dan reusable
+- Responsive (mobile friendly)
+- Font dan spacing yang konsisten dengan halaman lain di project
+- Tambahkan sedikit animasi halus jika memungkinkan (opsional)
+
+**5. Tujuan Akhir**
+Halaman ini nantinya akan digunakan untuk menampilkan daftar harga tiket. Oleh karena itu, desainnya harus sudah siap untuk diisi dengan data harga di masa depan (bisa dalam bentuk card atau tabel yang rapi).
+
+Mulai redesign halaman `/promo` sesuai semua poin di atas.

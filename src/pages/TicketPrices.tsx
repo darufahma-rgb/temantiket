@@ -1225,17 +1225,35 @@ export default function TicketPrices() {
     setPendingForms((prev) => prev.map((f, i) => i === idx ? { ...f, ...patch } : f));
   }
 
+  function updatePendingRT(idx: number, patch: Partial<ReturnLegData>) {
+    setPendingForms((prev) => prev.map((f, i) => {
+      if (i !== idx) return f;
+      const { leg, userNotes: un } = decodeReturnLeg(f.notes);
+      if (!leg) return f;
+      const updated = { ...leg, ...patch };
+      const rtStr = `__RT__:${JSON.stringify(updated)}`;
+      const newNotes = un ? `${rtStr}\n${un}` : rtStr;
+      return { ...f, notes: newNotes };
+    }));
+  }
+
   async function savePending() {
     setSaving(true);
+    const results = await Promise.allSettled(
+      pendingForms.map((form) => createTicketPrice({ ...form, sortOrder: 0 }))
+    );
     let saved = 0;
-    for (const form of pendingForms) {
-      try {
-        const item = await createTicketPrice({ ...form, sortOrder: 0 });
-        setPrices((prev) => [item, ...prev]);
+    const newItems: TicketPrice[] = [];
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled") {
+        newItems.push(r.value);
         saved++;
-      } catch (e) {
-        toast.error(`Gagal simpan ${form.airline}: ${String(e)}`);
+      } else {
+        toast.error(`Gagal simpan ${pendingForms[i].airline}: ${String(r.reason)}`);
       }
+    });
+    if (newItems.length > 0) {
+      setPrices((prev) => [...newItems, ...prev]);
     }
     if (saved > 0) {
       toast.success(`${saved} harga tiket berhasil disimpan!`);
@@ -1861,6 +1879,13 @@ export default function TicketPrices() {
                       )}
 
                       {/* Quick edit inline */}
+                      {isPPForm && (
+                        <div className="flex items-center gap-2">
+                          <div className="h-px flex-1 bg-sky-200" />
+                          <span className="text-[9px] font-bold uppercase tracking-widest text-sky-600">↗ Berangkat</span>
+                          <div className="h-px flex-1 bg-sky-200" />
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div className="space-y-0.5 col-span-2">
                           <Label className="text-[10px] text-slate-500">Maskapai</Label>
@@ -1938,6 +1963,50 @@ export default function TicketPrices() {
                           </div>
                         )}
                       </div>
+
+                      {/* ── Return leg editable fields (simple RT only) ── */}
+                      {isRTForm && rtLeg && (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <div className="h-px flex-1 bg-violet-200" />
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-violet-600">↩ Pulang</span>
+                            <div className="h-px flex-1 bg-violet-200" />
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-lg bg-violet-50/60 border border-violet-200 p-2">
+                            <div className="space-y-0.5">
+                              <Label className="text-[10px] text-violet-600">No. Penerbangan</Label>
+                              <Input className="h-7 text-xs font-mono uppercase" value={rtLeg.returnFlightNumber ?? ""}
+                                onChange={(e) => updatePendingRT(idx, { returnFlightNumber: e.target.value.toUpperCase() || null })} />
+                            </div>
+                            <div className="space-y-0.5">
+                              <Label className="text-[10px] text-violet-600">Dari</Label>
+                              <Input className="h-7 text-xs font-mono uppercase" maxLength={3} value={rtLeg.returnFromCode ?? ""}
+                                onChange={(e) => updatePendingRT(idx, { returnFromCode: e.target.value.toUpperCase() || null })} />
+                            </div>
+                            <div className="space-y-0.5">
+                              <Label className="text-[10px] text-violet-600">Ke</Label>
+                              <Input className="h-7 text-xs font-mono uppercase" maxLength={3} value={rtLeg.returnToCode ?? ""}
+                                onChange={(e) => updatePendingRT(idx, { returnToCode: e.target.value.toUpperCase() || null })} />
+                            </div>
+                            <div className="space-y-0.5">
+                              <Label className="text-[10px] text-violet-600">Tgl Pulang</Label>
+                              <Input className="h-7 text-xs" type="date" value={rtLeg.returnDate ?? ""}
+                                onChange={(e) => updatePendingRT(idx, { returnDate: e.target.value || null })} />
+                            </div>
+                            <div className="space-y-0.5">
+                              <Label className="text-[10px] text-violet-600">ETD Pulang</Label>
+                              <Input className="h-7 text-xs font-mono" placeholder="08:00" value={rtLeg.returnEtd ?? ""}
+                                onChange={(e) => updatePendingRT(idx, { returnEtd: e.target.value || null })} />
+                            </div>
+                            <div className="space-y-0.5">
+                              <Label className="text-[10px] text-violet-600">ETA Pulang</Label>
+                              <Input className="h-7 text-xs font-mono" placeholder="18:30" value={rtLeg.returnEta ?? ""}
+                                onChange={(e) => updatePendingRT(idx, { returnEta: e.target.value || null })} />
+                            </div>
+                          </div>
+                        </>
+                      )}
+
                       {form.basePrice > 0 && (
                         <p className="text-[11px] text-emerald-600 font-medium">
                           💰 {isPPForm ? "Harga paket PP" : "Harga jual"}: {fmtIDR(sellingPrice(form.basePrice, form.currency, rates, markup))}
