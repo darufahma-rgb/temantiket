@@ -312,7 +312,7 @@ export default function Notes() {
           method: "POST",
           headers: await getAIHeaders(),
           body: JSON.stringify({
-            model: "gpt-4o-mini",
+            model: "gpt-4.1-nano",
             messages: [
               {
                 role: "system",
