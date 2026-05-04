@@ -789,12 +789,12 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="xl:flex xl:min-h-0 xl:gap-8 pt-4 md:pt-6">
+    <div className="xl:flex xl:min-h-0 xl:gap-8 pt-4 md:pt-6 md:px-5 lg:px-8">
       {/* ══════════════════════════════════════════════════════════════
            MOBILE LAYOUT  (hidden on md+)
       ══════════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
-        <div className="pb-4 space-y-3">
+        <div className="pb-4 px-4 space-y-5">
 
           {/* ── Greeting row ── */}
           <div className="flex items-center gap-3">
@@ -907,7 +907,7 @@ export default function Dashboard() {
               <h3 className="text-[13px] font-bold text-[hsl(var(--foreground))]">Menu Utama</h3>
               <button onClick={() => setAddOpen(true)} className="text-[10.5px] text-sky-500 font-semibold active:opacity-70">+ Trip Baru</button>
             </div>
-            <div className="flex gap-3.5 overflow-x-auto scrollbar-none pb-1 -mx-0.5 px-0.5">
+            <div className="flex gap-3.5 overflow-x-auto scrollbar-none pb-1 -mx-4 px-4">
               {([
                 { icon: Package,     label: "Paket",      path: "/packages",   gradient: "linear-gradient(135deg,#f97316,#ea580c)" },
                 { icon: Users,       label: "Jamaah",     path: "/progress",   gradient: "linear-gradient(135deg,#0ea5e9,#0284c7)" },
@@ -970,7 +970,7 @@ export default function Dashboard() {
           <LiveClock compact />
 
           {/* ── Package status chips ── */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5 -mx-4 px-4">
             {([
               { icon: Star,        label: t.dash_total_packages,     value: packages.length,                                       color: "text-amber-600 bg-amber-50 border-amber-200"  },
               { icon: AlertCircle, label: t.dash_need_action,        value: pendingPackages.length,                                color: pendingPackages.length > 0 ? "text-red-600 bg-red-50 border-red-200" : "text-gray-400 bg-gray-50 border-gray-200" },
