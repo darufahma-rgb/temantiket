@@ -139,20 +139,18 @@ app.post('/api/invite-member', async (req, res) => {
       return err(res, 400, 'Password minimal 8 karakter');
     }
 
-    const { data: existingList } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    const existing = existingList?.users?.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
-    );
-    if (existing) {
-      return err(res, 409, `Email "${email}" sudah terdaftar sebagai user lain`);
-    }
-
     const fullName = (displayName ?? '').trim() || email.split('@')[0];
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email, password, email_confirm: true,
       user_metadata: { display_name: fullName },
     });
     if (createErr || !created.user) {
+      // Supabase returns "User already registered" when email is taken
+      const isDuplicate = createErr?.message?.toLowerCase().includes('already registered')
+        || createErr?.message?.toLowerCase().includes('already exists');
+      if (isDuplicate) {
+        return err(res, 409, `Email "${email}" sudah terdaftar sebagai user lain`);
+      }
       return err(res, 500, `Gagal buat user: ${createErr?.message ?? 'unknown'}`);
     }
     const newUserId = created.user.id;

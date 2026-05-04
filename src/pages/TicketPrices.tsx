@@ -1238,28 +1238,53 @@ export default function TicketPrices() {
   }
 
   async function savePending() {
+    if (saving) return;
+    const forms = pendingForms;
+    const now = new Date().toISOString();
+    const agencyId = user?.agencyId ?? "local";
+
+    // 1. Optimistic: add temp items instantly so UI feels immediate
+    const optimisticItems: TicketPrice[] = forms.map((form, i) => ({
+      ...form,
+      id: `opt-${Date.now()}-${i}`,
+      agencyId,
+      sortOrder: 0,
+      isPublished: form.isPublished ?? true,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    setPrices((prev) => [...optimisticItems, ...prev]);
+    setParsedTickets([]);
+    setPendingForms([]);
     setSaving(true);
+
+    // 2. Persist to Supabase in background
     const results = await Promise.allSettled(
-      pendingForms.map((form) => createTicketPrice({ ...form, sortOrder: 0 }))
+      forms.map((form) => createTicketPrice({ ...form, sortOrder: 0 }))
     );
+
     let saved = 0;
-    const newItems: TicketPrice[] = [];
+    const realItems: TicketPrice[] = [];
+    const failedOptIds: string[] = [];
+
     results.forEach((r, i) => {
       if (r.status === "fulfilled") {
-        newItems.push(r.value);
+        realItems.push(r.value);
         saved++;
       } else {
-        toast.error(`Gagal simpan ${pendingForms[i].airline}: ${String(r.reason)}`);
+        failedOptIds.push(optimisticItems[i].id);
+        toast.error(`Gagal simpan ${forms[i].airline}: ${String(r.reason)}`);
       }
     });
-    if (newItems.length > 0) {
-      setPrices((prev) => [...newItems, ...prev]);
-    }
-    if (saved > 0) {
-      toast.success(`${saved} harga tiket berhasil disimpan!`);
-      setParsedTickets([]);
-      setPendingForms([]);
-    }
+
+    // 3. Replace optimistic items with real server items; remove failed ones
+    setPrices((prev) => {
+      const optIds = new Set(optimisticItems.map((o) => o.id));
+      const withoutOpt = prev.filter((p) => !optIds.has(p.id));
+      return [...realItems, ...withoutOpt];
+    });
+
+    if (saved > 0) toast.success(`${saved} harga tiket berhasil disimpan!`);
     setSaving(false);
   }
 
