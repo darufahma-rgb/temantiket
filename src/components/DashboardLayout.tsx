@@ -111,25 +111,17 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               boxShadow: "0 8px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07), inset 0 0.5px 0 rgba(255,255,255,0.18)",
             }}
           >
-            {/* Left — avatar + greeting */}
+            {/* Left — Temantiket logo icon, no box */}
             <button
-              onClick={() => navigate("/settings")}
-              className="flex items-center gap-2 min-w-0 active:opacity-70 transition-opacity"
+              onClick={() => navigate("/")}
+              className="flex items-center active:opacity-70 transition-opacity shrink-0"
             >
-              <div
-                className="h-[30px] w-[30px] rounded-xl flex items-center justify-center text-white text-[11px] font-black shrink-0"
-                style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
-              >
-                {displayName.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex flex-col min-w-0 leading-none">
-                <span className="text-[11px] text-[hsl(var(--muted-foreground))] font-medium">
-                  {new Date().getHours() < 12 ? "Selamat pagi" : new Date().getHours() < 17 ? "Selamat siang" : "Selamat sore"}
-                </span>
-                <span className="text-[13px] font-extrabold text-[hsl(var(--foreground))] truncate max-w-[90px]">
-                  {displayName.split(" ")[0]}
-                </span>
-              </div>
+              <img
+                src="/temantiket-icon.png"
+                alt="Temantiket"
+                className="h-[28px] w-[28px] object-contain"
+                style={{ filter: "brightness(0) saturate(100%) invert(27%) sepia(89%) saturate(1200%) hue-rotate(214deg) brightness(90%) contrast(110%)" }}
+              />
             </button>
 
             <div className="flex-1" />
