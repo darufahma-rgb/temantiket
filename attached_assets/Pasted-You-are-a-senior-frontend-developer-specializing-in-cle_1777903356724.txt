@@ -1,0 +1,40 @@
+You are a senior frontend developer specializing in clean and consistent UI/UX using Tailwind CSS.
+
+### Current Problem:
+Di halaman Dashboard, terdapat masalah spacing/padding yang tidak konsisten, yaitu:
+- Jarak (padding/margin) antara **Sidebar kiri** dengan area konten tengah tidak sama dengan jarak antara area konten tengah dengan **panel kanan** (Kalender).
+- Beberapa section dan card memiliki padding yang tidak seragam.
+- Tampilan secara keseluruhan terasa kurang presisi dan kurang estetik.
+
+### Tugas:
+Perbaiki layout dan spacing di halaman **Dashboard** agar terlihat lebih rapi, presisi, dan profesional.
+
+### Requirements:
+
+**1. Layout Structure**
+Dashboard saat ini menggunakan 3 kolom:
+- Kolom kiri: Sidebar navigasi
+- Kolom tengah: Konten utama (Welcome banner, Waktu Dunia, WhatsApp Admin, CEO Daily Quest, Financial Snapshot, dll)
+- Kolom kanan: Kalender + Jadwal Terdekat + Transportasi + Laporan
+
+**2. Spacing yang Harus Diperbaiki:**
+- Buat **horizontal spacing** yang konsisten di seluruh halaman:
+  - Jarak antara Sidebar kiri ↔ Konten tengah
+  - Jarak antara Konten tengah ↔ Panel kanan
+  - Gunakan nilai spacing yang sama (contoh: `gap-6` atau `gap-8` di seluruh halaman)
+- Pastikan semua card dan section memiliki **internal padding** yang konsisten (contoh: `p-6` atau `p-5`)
+- Perbaiki vertical spacing antar section agar tidak terlalu renggang atau terlalu rapat.
+
+**3. Rekomendasi Teknis:**
+- Gunakan `flex` atau `grid` dengan `gap` yang konsisten.
+- Terapkan spacing scale Tailwind secara konsisten (hindari campur aduk `p-4`, `p-5`, `p-6` secara acak).
+- Pastikan container utama memiliki padding horizontal yang sama di semua sisi.
+- Perhatikan juga responsive behavior (saat di layar lebih kecil).
+
+**4. Hasil yang Diharapkan:**
+- Dashboard terlihat lebih bersih dan presisi.
+- Semua elemen memiliki jarak yang seimbang.
+- Tampilan lebih estetik dan profesional.
+
+Perbaiki file Dashboard (kemungkinan `Dashboard.tsx` atau `pages/Dashboard.tsx`) beserta komponen-komponen di dalamnya.
+Fokus utama pada konsistensi spacing dan alignment.
