@@ -36,6 +36,10 @@ export default defineConfig(({ mode }) => ({
         target: "http://localhost:3001",
         changeOrigin: true,
       },
+      "/api/export": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
     },
   },
   plugins: [
