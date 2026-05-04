@@ -217,26 +217,26 @@ export default function Packages() {
   const deletingPkg = items.find((p) => p.id === deletingId);
 
   return (
-    <div className="space-y-3 md:space-y-4">
+    <div className="space-y-2 md:space-y-4">
 
       {/* ── Page header ── */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <h1 className="text-base md:text-2xl font-bold text-[hsl(var(--foreground))] leading-tight">Paket Trip</h1>
-          <p className="text-[11px] md:text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
+          <p className="text-[11px] md:text-xs text-[hsl(var(--muted-foreground))] mt-0.5 hidden sm:block">
             {activeTab === "paket" ? "Kelola semua paket perjalanan kamu." : "Pantau progres jamaah & status paket."}
           </p>
         </div>
         {activeTab === "paket" && (
-          <Button onClick={openCreate} className="btn-glow h-8 md:h-9 px-2.5 md:px-3 rounded-xl text-[12px] md:text-sm shrink-0">
-            <Plus className="h-3.5 w-3.5 mr-1" />
+          <Button onClick={openCreate} className="btn-glow h-7 md:h-9 px-2.5 md:px-3 rounded-xl text-[11px] md:text-sm shrink-0">
+            <Plus className="h-3 w-3 mr-1" />
             Tambah
           </Button>
         )}
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex gap-1 p-1 rounded-xl bg-[hsl(var(--secondary))] w-fit">
+      <div className="flex gap-0.5 p-0.5 rounded-lg bg-[hsl(var(--secondary))] w-fit">
         {([
           { key: "paket",    label: "Paket",    icon: PackageIcon },
           { key: "progress", label: "Progress", icon: TrendingUp  },
@@ -245,11 +245,11 @@ export default function Packages() {
             key={key}
             onClick={() => setSearchParams(key === "paket" ? {} : { tab: key })}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all",
+              "flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all",
               activeTab === key ? "bg-white shadow-sm text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
             )}
           >
-            <Icon className="h-3.5 w-3.5" />
+            <Icon className="h-3 w-3" />
             {label}
           </button>
         ))}
@@ -285,7 +285,7 @@ export default function Packages() {
             </div>
             <div
               ref={filterScrollRef}
-              className="flex gap-2 overflow-x-auto pb-0.5"
+              className="flex gap-1.5 overflow-x-auto pb-0.5"
               style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
             >
               {CATEGORIES.map(({ key, label }) => (
@@ -293,7 +293,7 @@ export default function Packages() {
                   key={key}
                   onClick={() => setCategory(key)}
                   className={cn(
-                    "shrink-0 h-7 px-3 rounded-full text-[11px] font-semibold transition-all",
+                    "shrink-0 h-6 px-2.5 rounded-full text-[10px] font-semibold transition-all",
                     category === key
                       ? "bg-[#1a44d4] text-white shadow-sm"
                       : "bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border))]"
@@ -323,14 +323,14 @@ export default function Packages() {
               <p className="text-[12px] text-[hsl(var(--muted-foreground))]">Memuat paket…</p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="rounded-2xl border-2 border-dashed border-[hsl(var(--border))] py-10 text-center space-y-3 mx-0">
-              <PackageIcon strokeWidth={1.5} className="h-8 w-8 text-[hsl(var(--muted-foreground))] mx-auto" />
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">
+            <div className="rounded-2xl border-2 border-dashed border-[hsl(var(--border))] py-7 text-center space-y-2 mx-0">
+              <PackageIcon strokeWidth={1.5} className="h-6 w-6 text-[hsl(var(--muted-foreground))] mx-auto" />
+              <p className="text-[12px] text-[hsl(var(--muted-foreground))]">
                 {query || category !== "all" ? "Paket tidak ditemukan." : "Belum ada paket."}
               </p>
               {!query && category === "all" && (
-                <Button variant="outline" onClick={openCreate} className="h-8 text-sm rounded-xl">
-                  <Plus className="h-3.5 w-3.5 mr-1.5" /> Buat paket pertama
+                <Button variant="outline" onClick={openCreate} className="h-7 text-[11px] rounded-xl">
+                  <Plus className="h-3 w-3 mr-1" /> Buat paket pertama
                 </Button>
               )}
             </div>
@@ -338,7 +338,7 @@ export default function Packages() {
             <>
               {/* ── MOBILE card list ── */}
               <motion.div
-                className="md:hidden -mx-5 px-5 space-y-6"
+                className="md:hidden -mx-5 px-5 space-y-2.5"
                 initial="hidden"
                 animate="visible"
                 variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } } }}
@@ -366,8 +366,8 @@ export default function Packages() {
                         visible:  { opacity: 1, y: 0,  scale: 1, transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1] } },
                       }}
                     >
-                      {/* ── Cover image 16:9 ── */}
-                      <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
+                      {/* ── Cover image — compact fixed height ── */}
+                      <div className="relative w-full h-[120px]">
                         {pkg.coverImage ? (
                           <img src={pkg.coverImage} alt={pkg.name} className="w-full h-full object-cover" />
                         ) : (
@@ -419,7 +419,7 @@ export default function Packages() {
                       </div>
 
                       {/* ── Card body ── */}
-                      <div className="p-4 space-y-3.5">
+                      <div className="p-3 space-y-2">
 
                         {/* Name + destination */}
                         <div>
@@ -433,19 +433,19 @@ export default function Packages() {
                         </div>
 
                         {/* ── Horizontal info bar ── */}
-                        <div className="flex items-center gap-4">
-                          <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-[hsl(var(--foreground))]">
-                            <Clock className="h-3.5 w-3.5 shrink-0 text-[#1a44d4]" strokeWidth={1.8} />
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex items-center gap-1 text-[10.5px] font-semibold text-[hsl(var(--foreground))]">
+                            <Clock className="h-3 w-3 shrink-0 text-[#1a44d4]" strokeWidth={1.8} />
                             {logistics.days}
                           </span>
-                          <span className="h-3 w-px bg-[hsl(var(--border))]" />
-                          <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-[hsl(var(--foreground))]">
-                            <Users className="h-3.5 w-3.5 shrink-0 text-[#1a44d4]" strokeWidth={1.8} />
+                          <span className="h-2.5 w-px bg-[hsl(var(--border))]" />
+                          <span className="flex items-center gap-1 text-[10.5px] font-semibold text-[hsl(var(--foreground))]">
+                            <Users className="h-3 w-3 shrink-0 text-[#1a44d4]" strokeWidth={1.8} />
                             Sisa {remaining}
                           </span>
-                          <span className="h-3 w-px bg-[hsl(var(--border))]" />
-                          <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-[hsl(var(--foreground))]">
-                            <Tag className="h-3.5 w-3.5 shrink-0 text-[#1a44d4]" strokeWidth={1.8} />
+                          <span className="h-2.5 w-px bg-[hsl(var(--border))]" />
+                          <span className="flex items-center gap-1 text-[10.5px] font-semibold text-[hsl(var(--foreground))]">
+                            <Tag className="h-3 w-3 shrink-0 text-[#1a44d4]" strokeWidth={1.8} />
                             {formatJt(perPax)}
                           </span>
                         </div>
@@ -465,38 +465,38 @@ export default function Packages() {
                         </div>
 
                         {/* ── Action row ── */}
-                        <div className="flex items-center gap-2 pt-0.5">
+                        <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => navigate(`/packages/${pkg.id}`)}
-                            className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl text-white text-[13px] font-bold transition-all active:scale-[0.98]"
+                            className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg text-white text-[11px] font-bold transition-all active:scale-[0.98]"
                             style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
                           >
                             Lihat Detail
-                            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.2} />
+                            <ChevronRight className="h-3 w-3 shrink-0" strokeWidth={2.2} />
                           </button>
                           <button
                             onClick={(e) => openShortcut(e, `/packages/${pkg.id}?tab=calculator`)}
-                            className="flex flex-col items-center justify-center h-11 w-11 rounded-xl transition-all active:scale-95"
+                            className="flex items-center justify-center h-8 w-8 rounded-lg transition-all active:scale-95"
                             style={{ background: "hsl(var(--secondary))", border: "1px solid hsl(var(--border))" }}
                             title="Kalkulasi"
                           >
-                            <Calculator className="h-4 w-4 text-[hsl(var(--muted-foreground))]" strokeWidth={1.8} />
+                            <Calculator className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" strokeWidth={1.8} />
                           </button>
                           <button
                             onClick={(e) => openShortcut(e, `/packages/${pkg.id}?tab=jamaah`)}
-                            className="flex flex-col items-center justify-center h-11 w-11 rounded-xl transition-all active:scale-95"
+                            className="flex items-center justify-center h-8 w-8 rounded-lg transition-all active:scale-95"
                             style={{ background: "hsl(var(--secondary))", border: "1px solid hsl(var(--border))" }}
                             title="Jamaah"
                           >
-                            <Users className="h-4 w-4 text-[hsl(var(--muted-foreground))]" strokeWidth={1.8} />
+                            <Users className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" strokeWidth={1.8} />
                           </button>
                           <button
                             onClick={(e) => openShortcut(e, `/packages/${pkg.id}?tab=jamaah&ocr=1`)}
-                            className="flex flex-col items-center justify-center h-11 w-11 rounded-xl transition-all active:scale-95"
+                            className="flex items-center justify-center h-8 w-8 rounded-lg transition-all active:scale-95"
                             style={{ background: "hsl(var(--secondary))", border: "1px solid hsl(var(--border))" }}
                             title="OCR Paspor"
                           >
-                            <ScanLine className="h-4 w-4 text-[hsl(var(--muted-foreground))]" strokeWidth={1.8} />
+                            <ScanLine className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" strokeWidth={1.8} />
                           </button>
                         </div>
                       </div>
