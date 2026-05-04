@@ -794,7 +794,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="xl:flex xl:min-h-0 xl:gap-8 pt-4 md:pt-6 md:px-5 lg:px-8">
+    <div className="xl:flex xl:min-h-0 xl:gap-6 pt-4 md:pt-6">
       {/* ══════════════════════════════════════════════════════════════
            MOBILE LAYOUT  (hidden on md+)
       ══════════════════════════════════════════════════════════════ */}
@@ -1068,7 +1068,7 @@ export default function Dashboard() {
       {/* ══════════════════════════════════════════════════════════════
            DESKTOP LAYOUT  (hidden on mobile)
       ══════════════════════════════════════════════════════════════ */}
-      <div className="hidden md:block xl:flex-1 xl:min-w-0 pb-8 xl:pl-8">
+      <div className="hidden md:block xl:flex-1 xl:min-w-0 pb-8">
 
         {/* ── Greeting hero ── */}
         <motion.div
