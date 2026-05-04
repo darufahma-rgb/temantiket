@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Copy, Plus, Pencil, Trash2, Check, Search, MessageSquare,
-  ChevronDown, ChevronUp, Sparkles, X,
+  ChevronDown, ChevronUp, Sparkles, X, Rocket,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -26,8 +26,6 @@ import {
   BC_CATEGORIES, type BCTemplate, type BCTemplateDraft, type BCCategory,
 } from "@/features/bcTemplates/bcTemplatesRepo";
 import { useAuthStore } from "@/store/authStore";
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 const EMPTY_DRAFT: BCTemplateDraft = {
   title: "",
@@ -54,8 +52,6 @@ const VAR_SUGGESTIONS: { label: string; var: string }[] = [
   { label: "WA Agen",           var: "WA_AGEN" },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function BCTemplates() {
   const user = useAuthStore((s) => s.user);
   const isAgent = user?.role === "agent";
@@ -66,22 +62,20 @@ export default function BCTemplates() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<BCCategory | "all">("all");
 
-  // Form dialog
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<BCTemplate | null>(null);
   const [draft, setDraft] = useState<BCTemplateDraft>(EMPTY_DRAFT);
   const [saving, setSaving] = useState(false);
 
-  // Copy dialog (untuk isi variabel)
   const [copyTarget, setCopyTarget] = useState<BCTemplate | null>(null);
   const [varValues, setVarValues] = useState<Record<string, string>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<BCTemplate | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // ── Load ────────────────────────────────────────────────────────────────
+  const tabsRef = useRef<HTMLDivElement>(null);
+
   const refresh = async () => {
     try {
       const list = await listTemplates();
@@ -95,7 +89,6 @@ export default function BCTemplates() {
 
   useEffect(() => { void refresh(); }, []);
 
-  // ── Filter & group ───────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return templates.filter((t) => {
@@ -124,7 +117,6 @@ export default function BCTemplates() {
     return m;
   }, [templates]);
 
-  // ── Form handlers ────────────────────────────────────────────────────────
   const openAdd = () => {
     setEditTarget(null);
     setDraft(EMPTY_DRAFT);
@@ -156,7 +148,6 @@ export default function BCTemplates() {
     }
   };
 
-  // ── Copy handlers ────────────────────────────────────────────────────────
   const handleCopyClick = (t: BCTemplate) => {
     const vars = extractVariables(t.body);
     if (vars.length === 0) {
@@ -184,7 +175,6 @@ export default function BCTemplates() {
     setCopyTarget(null);
   };
 
-  // ── Delete ───────────────────────────────────────────────────────────────
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -200,163 +190,175 @@ export default function BCTemplates() {
     }
   };
 
-  // ── Preview (live) di copy dialog ────────────────────────────────────────
   const livePreview = copyTarget ? applyVariables(copyTarget.body, varValues) : "";
 
-  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-5">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-emerald-600" />
-            Template Broadcast Temantiket
-          </h1>
-          <p className="text-[12px] text-muted-foreground mt-0.5">
-            Pesan yang tepat, di waktu yang tepat — template siap pakai untuk follow-up, closing, dan broadcast klien Umrah, Haji & tiket. Tinggal copy, paste, kirim. 🚀
-          </p>
-        </div>
-        {canEdit && (
-          <Button onClick={openAdd} className="bg-emerald-600 hover:bg-emerald-700">
-            <Plus className="h-4 w-4 mr-1.5" /> Tambah Template
-          </Button>
-        )}
-      </div>
+    <div className="flex flex-col min-h-full bg-[#f0f4f8]">
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cari judul atau isi template…"
-          className="pl-9 h-9 text-[13px]"
-        />
-        {search && (
+      {/* ── Hero Section ──────────────────────────────────────────────── */}
+      <div className="bg-white px-4 pt-5 pb-4 border-b border-slate-100">
+        {/* Icon + title */}
+        <div className="flex items-start gap-3 mb-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <MessageSquare className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-[18px] font-extrabold text-slate-900 leading-tight">
+              Template Broadcast
+              <span className="text-emerald-600"> Temantiket</span>
+            </h1>
+            <p className="text-[12px] text-slate-500 mt-0.5 leading-relaxed">
+              Pesan siap kirim untuk follow-up, closing & broadcast klien Umrah, Haji & tiket. 🚀
+            </p>
+          </div>
+        </div>
+
+        {/* Add button — full width on mobile */}
+        {canEdit && (
           <button
-            onClick={() => setSearch("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={openAdd}
+            className="w-full flex items-center justify-center gap-2 h-11 rounded-2xl bg-emerald-600 active:bg-emerald-700 text-white text-[14px] font-bold shadow-sm transition-colors"
           >
-            <X className="h-3.5 w-3.5" />
+            <Plus className="h-4 w-4" />
+            Tambah Template
           </button>
         )}
       </div>
 
-      {/* Category tabs */}
-      <div className="flex gap-2 flex-wrap">
-        <TabChip
-          active={activeTab === "all"}
-          onClick={() => setActiveTab("all")}
-          label="Semua"
-          emoji="📋"
-          count={counts.get("all") ?? 0}
-        />
-        {BC_CATEGORIES.map((cat) => (
-          <TabChip
-            key={cat.key}
-            active={activeTab === cat.key}
-            onClick={() => setActiveTab(cat.key)}
-            label={cat.label}
-            emoji={cat.emoji}
-            count={counts.get(cat.key) ?? 0}
-          />
-        ))}
-      </div>
+      {/* ── Sticky Search + Tabs ───────────────────────────────────────── */}
+      <div className="sticky top-0 z-20 bg-[#f0f4f8] shadow-[0_1px_0_0_rgba(0,0,0,0.06)]">
 
-      {/* Content */}
-      {loading ? (
-        <div className="py-16 text-center text-[12px] text-muted-foreground italic">
-          Memuat template…
+        {/* Search bar */}
+        <div className="px-4 pt-3 pb-2">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari judul atau isi template..."
+              className="w-full h-11 pl-10 pr-10 rounded-2xl border border-slate-200 bg-white text-[14px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent shadow-sm transition-all"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center"
+              >
+                <X className="h-3 w-3 text-slate-600" />
+              </button>
+            )}
+          </div>
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="py-16 text-center">
-          <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <p className="text-[14px] font-semibold">
-            {search ? "Tidak ada template yang cocok" : "Belum ada template"}
-          </p>
-          <p className="text-[11.5px] text-muted-foreground mt-1">
-            {canEdit
-              ? "Klik \"Tambah Template\" untuk bikin template BC pertama lo."
-              : "Hubungi admin agency lo untuk tambah template."}
-          </p>
-          {canEdit && !search && (
-            <Button onClick={openAdd} className="mt-4 bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="h-4 w-4 mr-1.5" /> Tambah Template
-            </Button>
-          )}
-        </div>
-      ) : activeTab === "all" ? (
-        // Grouped by category
-        <div className="space-y-5">
-          {BC_CATEGORIES.map((cat) => {
-            const items = grouped.get(cat.key);
-            if (!items?.length) return null;
-            return (
-              <CategorySection
-                key={cat.key}
-                cat={cat}
-                items={items}
-                canEdit={canEdit}
-                copiedId={copiedId}
-                onCopy={handleCopyClick}
-                onEdit={openEdit}
-                onDelete={setDeleteTarget}
-              />
-            );
-          })}
-        </div>
-      ) : (
-        // Single category flat list
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {filtered.map((t) => (
-            <TemplateCard
-              key={t.id}
-              template={t}
-              canEdit={canEdit}
-              isCopied={copiedId === t.id}
-              onCopy={() => handleCopyClick(t)}
-              onEdit={() => openEdit(t)}
-              onDelete={() => setDeleteTarget(t)}
+
+        {/* Category tabs — horizontal scroll, no wrap */}
+        <div
+          ref={tabsRef}
+          className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-none"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          <TabChip
+            active={activeTab === "all"}
+            onClick={() => setActiveTab("all")}
+            label="Semua"
+            emoji="📋"
+            count={counts.get("all") ?? 0}
+          />
+          {BC_CATEGORIES.map((cat) => (
+            <TabChip
+              key={cat.key}
+              active={activeTab === cat.key}
+              onClick={() => setActiveTab(cat.key)}
+              label={cat.label}
+              emoji={cat.emoji}
+              count={counts.get(cat.key) ?? 0}
             />
           ))}
         </div>
-      )}
+      </div>
 
-      {/* ── Form Dialog (Add / Edit) ─────────────────────────────────────── */}
+      {/* ── Content ───────────────────────────────────────────────────── */}
+      <div className="flex-1 px-4 py-3 pb-24">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-[13px] text-slate-500">Memuat template…</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            hasSearch={!!search}
+            canEdit={canEdit}
+            onAdd={openAdd}
+          />
+        ) : activeTab === "all" ? (
+          <div className="space-y-3">
+            {BC_CATEGORIES.map((cat) => {
+              const items = grouped.get(cat.key);
+              if (!items?.length) return null;
+              return (
+                <CategorySection
+                  key={cat.key}
+                  cat={cat}
+                  items={items}
+                  canEdit={canEdit}
+                  copiedId={copiedId}
+                  onCopy={handleCopyClick}
+                  onEdit={openEdit}
+                  onDelete={setDeleteTarget}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {filtered.map((t) => (
+              <TemplateCard
+                key={t.id}
+                template={t}
+                canEdit={canEdit}
+                isCopied={copiedId === t.id}
+                onCopy={() => handleCopyClick(t)}
+                onEdit={() => openEdit(t)}
+                onDelete={() => setDeleteTarget(t)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Form Dialog (Add / Edit) ───────────────────────────────────── */}
       <Dialog open={formOpen} onOpenChange={(v) => !v && setFormOpen(false)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl mx-4 sm:mx-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-emerald-600" />
+            <DialogTitle className="flex items-center gap-2 text-[15px]">
+              <div className="w-7 h-7 rounded-xl bg-emerald-50 flex items-center justify-center">
+                <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
+              </div>
               {editTarget ? "Edit Template" : "Tambah Template Baru"}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            {/* Title + Category */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-4 py-1">
+            <div className="grid grid-cols-1 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Judul Template *
                 </Label>
                 <Input
                   value={draft.title}
                   onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
                   placeholder="Contoh: Info Visa on Arrival Turki"
-                  className="h-9 text-[13px]"
+                  className="h-11 text-[13px] rounded-xl"
                   maxLength={120}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Kategori *
                 </Label>
                 <Select
                   value={draft.category}
                   onValueChange={(v) => setDraft((d) => ({ ...d, category: v as BCCategory }))}
                 >
-                  <SelectTrigger className="h-9 text-[13px]">
+                  <SelectTrigger className="h-11 text-[13px] rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -370,11 +372,10 @@ export default function BCTemplates() {
               </div>
             </div>
 
-            {/* Variable suggestions */}
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3 text-amber-500" />
-                Variabel Dinamis — klik untuk sisipkan ke body
+                Variabel Dinamis
               </Label>
               <div className="flex flex-wrap gap-1.5">
                 {VAR_SUGGESTIONS.map((v) => (
@@ -384,61 +385,57 @@ export default function BCTemplates() {
                     onClick={() =>
                       setDraft((d) => ({ ...d, body: d.body + `{{${v.var}}}` }))
                     }
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-mono font-semibold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-colors"
-                    title={`Sisipkan {{${v.var}}}`}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 active:bg-amber-100 transition-colors"
                   >
                     + {v.label}
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground italic">
-                Format: <code className="bg-muted px-1 rounded">{"{{NAMA_VARIABEL}}"}</code> — saat
-                copy, lo bisa isi nilainya dulu sebelum template di-paste ke WA.
+              <p className="text-[10.5px] text-slate-400 italic">
+                Format: <code className="bg-slate-100 px-1 rounded">{"{{NAMA_VARIABEL}}"}</code> — saat copy, isi nilainya dulu sebelum paste ke WA.
               </p>
             </div>
 
-            {/* Body textarea */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Isi Template *
                 </Label>
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10.5px] text-slate-400">
                   {draft.body.length} karakter
                   {extractVariables(draft.body).length > 0 && (
-                    <> · <span className="text-amber-700 font-bold">{extractVariables(draft.body).length} variabel</span></>
+                    <> · <span className="text-amber-600 font-bold">{extractVariables(draft.body).length} variabel</span></>
                   )}
                 </span>
               </div>
               <Textarea
                 value={draft.body}
                 onChange={(e) => setDraft((d) => ({ ...d, body: e.target.value }))}
-                placeholder={"Halo {{NAMA_KLIEN}} 👋\n\nKami ingin menginformasikan bahwa visa Anda sudah siap!\n\n📋 Detail:\n- Jenis Visa: {{JENIS_VISA}}\n- Status: {{STATUS_VISA}}\n\nSilahkan hubungi kami jika ada pertanyaan.\n\nTerima kasih 🙏"}
-                className="min-h-[200px] text-[13px] font-mono resize-y leading-relaxed"
+                placeholder={"Halo {{NAMA_KLIEN}} 👋\n\nVisa Anda sudah siap!\n\n📋 Detail:\n- Jenis: {{JENIS_VISA}}\n- Status: {{STATUS_VISA}}\n\nTerima kasih 🙏"}
+                className="min-h-[180px] text-[13px] font-mono resize-y leading-relaxed rounded-xl"
               />
             </div>
 
-            {/* Live preview */}
             {draft.body && (
-              <div className="rounded-xl border bg-muted/20 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
                   Preview
                 </p>
-                <pre className="text-[12px] whitespace-pre-wrap leading-relaxed text-foreground break-words">
+                <pre className="text-[12px] whitespace-pre-wrap leading-relaxed text-slate-700 break-words">
                   {draft.body}
                 </pre>
               </div>
             )}
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setFormOpen(false)} disabled={saving}>
+          <DialogFooter className="gap-2 pt-1">
+            <Button variant="outline" onClick={() => setFormOpen(false)} disabled={saving} className="rounded-xl h-11">
               Batal
             </Button>
             <Button
               onClick={() => void handleSave()}
               disabled={saving}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-emerald-600 hover:bg-emerald-700 rounded-xl h-11 flex-1"
             >
               {saving ? "Menyimpan…" : editTarget ? "Simpan Perubahan" : "Simpan Template"}
             </Button>
@@ -446,27 +443,27 @@ export default function BCTemplates() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Copy Dialog (isi variabel) ───────────────────────────────────── */}
+      {/* ── Copy Dialog ───────────────────────────────────────────────── */}
       <Dialog open={!!copyTarget} onOpenChange={(v) => !v && setCopyTarget(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl mx-4 sm:mx-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Copy className="h-4 w-4 text-emerald-600" />
-              Isi Variabel — {copyTarget?.title}
+            <DialogTitle className="flex items-center gap-2 text-[15px]">
+              <div className="w-7 h-7 rounded-xl bg-emerald-50 flex items-center justify-center">
+                <Copy className="h-3.5 w-3.5 text-emerald-600" />
+              </div>
+              {copyTarget?.title}
             </DialogTitle>
           </DialogHeader>
 
           {copyTarget && (
-            <div className="space-y-4 py-2">
-              <p className="text-[11.5px] text-muted-foreground">
-                Isi variabel di bawah ini untuk personalisasi pesan sebelum di-copy.
+            <div className="space-y-3 py-1">
+              <p className="text-[12px] text-slate-500">
+                Isi variabel untuk personalisasi pesan sebelum di-copy ke WA.
               </p>
-
-              {/* Variable inputs */}
-              <div className="grid grid-cols-1 gap-2.5">
+              <div className="space-y-2.5">
                 {extractVariables(copyTarget.body).map((varName) => (
                   <div key={varName} className="space-y-1">
-                    <Label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground font-mono">
+                    <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 font-mono">
                       {varName.replace(/_/g, " ")}
                     </Label>
                     <Input
@@ -475,31 +472,30 @@ export default function BCTemplates() {
                         setVarValues((v) => ({ ...v, [varName]: e.target.value }))
                       }
                       placeholder={`Isi ${varName.replace(/_/g, " ").toLowerCase()}…`}
-                      className="h-9 text-[13px]"
+                      className="h-11 text-[13px] rounded-xl"
                     />
                   </div>
                 ))}
               </div>
 
-              {/* Live preview */}
-              <div className="rounded-xl border bg-emerald-50 border-emerald-200 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-700 mb-2">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 mb-2">
                   Preview Pesan
                 </p>
-                <pre className="text-[12px] whitespace-pre-wrap leading-relaxed text-foreground break-words">
+                <pre className="text-[12px] whitespace-pre-wrap leading-relaxed text-slate-800 break-words">
                   {livePreview}
                 </pre>
               </div>
             </div>
           )}
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setCopyTarget(null)}>
+          <DialogFooter className="gap-2 pt-1">
+            <Button variant="outline" onClick={() => setCopyTarget(null)} className="rounded-xl h-11">
               Batal
             </Button>
             <Button
               onClick={handleCopyWithVars}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-emerald-600 hover:bg-emerald-700 rounded-xl h-11 flex-1"
             >
               <Copy className="h-4 w-4 mr-1.5" />
               Copy Pesan
@@ -508,22 +504,21 @@ export default function BCTemplates() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Delete Confirm ───────────────────────────────────────────────── */}
+      {/* ── Delete Confirm ────────────────────────────────────────────── */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl mx-4 sm:mx-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Template?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Template <strong>"{deleteTarget?.title}"</strong> akan dihapus permanen.
-              Tindakan ini tidak bisa dibatalkan.
+            <AlertDialogTitle className="text-[15px]">Hapus Template?</AlertDialogTitle>
+            <AlertDialogDescription className="text-[13px]">
+              Template <strong>"{deleteTarget?.title}"</strong> akan dihapus permanen dan tidak bisa dikembalikan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting} className="rounded-xl h-11">Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); void handleDelete(); }}
               disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl h-11"
             >
               {deleting ? "Menghapus…" : "Ya, Hapus"}
             </AlertDialogAction>
@@ -534,7 +529,7 @@ export default function BCTemplates() {
   );
 }
 
-// ── Sub-components ──────────────────────────────────────────────────────────
+// ── TabChip ──────────────────────────────────────────────────────────────────
 
 function TabChip({
   active, onClick, label, emoji, count,
@@ -543,18 +538,18 @@ function TabChip({
     <button
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px] font-semibold border transition-all",
+        "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-[12.5px] font-semibold border whitespace-nowrap transition-all flex-shrink-0",
         active
           ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-          : "bg-white text-muted-foreground border-border hover:border-emerald-400 hover:text-emerald-700",
+          : "bg-white text-slate-600 border-slate-200 active:border-emerald-400",
       )}
     >
-      <span>{emoji}</span>
+      <span className="text-[13px]">{emoji}</span>
       {label}
       <span
         className={cn(
-          "ml-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-          active ? "bg-white/25 text-white" : "bg-muted text-muted-foreground",
+          "text-[10.5px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center",
+          active ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500",
         )}
       >
         {count}
@@ -562,6 +557,41 @@ function TabChip({
     </button>
   );
 }
+
+// ── EmptyState ───────────────────────────────────────────────────────────────
+
+function EmptyState({
+  hasSearch, canEdit, onAdd,
+}: { hasSearch: boolean; canEdit: boolean; onAdd: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+      <div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center mb-4">
+        <MessageSquare className="h-7 w-7 text-slate-400" />
+      </div>
+      <p className="text-[15px] font-bold text-slate-700 mb-1">
+        {hasSearch ? "Tidak ada hasil" : "Belum ada template"}
+      </p>
+      <p className="text-[12.5px] text-slate-500 leading-relaxed max-w-[260px]">
+        {hasSearch
+          ? "Coba kata kunci lain atau hapus filter pencarian."
+          : canEdit
+          ? "Buat template BC pertama untuk mempercepat broadcast ke klien."
+          : "Hubungi admin agency untuk menambahkan template."}
+      </p>
+      {canEdit && !hasSearch && (
+        <button
+          onClick={onAdd}
+          className="mt-5 inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-emerald-600 text-white text-[13px] font-bold active:bg-emerald-700 transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          Tambah Template
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── CategorySection ──────────────────────────────────────────────────────────
 
 function CategorySection({
   cat, items, canEdit, copiedId, onCopy, onEdit, onDelete,
@@ -576,19 +606,26 @@ function CategorySection({
 }) {
   const [open, setOpen] = useState(true);
   return (
-    <div className="rounded-2xl border overflow-hidden">
+    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3.5 active:bg-slate-50 transition-colors"
       >
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{cat.emoji}</span>
-          <span className="text-[13px] font-bold">{cat.label}</span>
+        <div className="flex items-center gap-2.5">
+          <span className="text-[18px] leading-none">{cat.emoji}</span>
+          <span className="text-[13.5px] font-bold text-slate-800">{cat.label}</span>
           <span className={cn("text-[10.5px] font-bold px-2 py-0.5 rounded-full border", cat.color)}>
-            {items.length} template
+            {items.length}
           </span>
         </div>
-        {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        <div className={cn(
+          "w-6 h-6 rounded-full flex items-center justify-center transition-colors",
+          open ? "bg-slate-100" : "bg-slate-50",
+        )}>
+          {open
+            ? <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
+            : <ChevronDown className="h-3.5 w-3.5 text-slate-500" />}
+        </div>
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -596,10 +633,10 @@ function CategorySection({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            <div className="px-3 pb-3 pt-0.5 space-y-2.5">
               {items.map((t) => (
                 <TemplateCard
                   key={t.id}
@@ -619,6 +656,8 @@ function CategorySection({
   );
 }
 
+// ── TemplateCard ─────────────────────────────────────────────────────────────
+
 function TemplateCard({
   template, canEdit, isCopied, onCopy, onEdit, onDelete,
 }: {
@@ -632,88 +671,83 @@ function TemplateCard({
   const [expanded, setExpanded] = useState(false);
   const cat = BC_CATEGORIES.find((c) => c.key === template.category)!;
   const vars = extractVariables(template.body);
-  const preview = template.body.slice(0, 180);
-  const isLong = template.body.length > 180;
+  const preview = template.body.slice(0, 160);
+  const isLong = template.body.length > 160;
 
   return (
     <motion.div
       layout
-      className="rounded-xl border bg-white p-3 hover:shadow-md transition-shadow flex flex-col gap-2.5"
+      className="rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden"
     >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full border", cat.color)}>
-              {cat.emoji} {cat.label}
+      {/* Card header */}
+      <div className="px-3.5 pt-3 pb-2">
+        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+          <span className={cn("text-[10.5px] font-bold px-2 py-0.5 rounded-full border", cat.color)}>
+            {cat.emoji} {cat.label}
+          </span>
+          {vars.length > 0 && (
+            <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+              🔧 {vars.length} var
             </span>
-            {vars.length > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                🔧 {vars.length} variabel
-              </span>
-            )}
-          </div>
-          <h3 className="text-[13px] font-bold mt-1 leading-tight">{template.title}</h3>
+          )}
         </div>
+        <h3 className="text-[13.5px] font-bold text-slate-900 leading-snug">
+          {template.title}
+        </h3>
       </div>
 
       {/* Body preview */}
-      <div
-        className="text-[11.5px] text-muted-foreground leading-relaxed bg-muted/20 rounded-lg p-2.5 border font-mono cursor-pointer"
-        onClick={() => isLong && setExpanded((v) => !v)}
-      >
-        <pre className="whitespace-pre-wrap break-words">
+      <div className="mx-3.5 mb-2.5 rounded-xl border border-slate-200 bg-white p-3">
+        <pre className="text-[11.5px] text-slate-600 whitespace-pre-wrap break-words leading-relaxed font-mono">
           {expanded ? template.body : preview}
           {isLong && !expanded && "…"}
         </pre>
         {isLong && (
           <button
-            onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
-            className="text-[10.5px] text-primary font-semibold mt-1 hover:underline"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-[11px] text-emerald-600 font-semibold mt-1.5"
           >
             {expanded ? "Sembunyikan ↑" : "Lihat selengkapnya ↓"}
           </button>
         )}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 mt-auto">
-        <Button
-          size="sm"
+      {/* Actions row */}
+      <div className="px-3.5 pb-3.5 flex items-center gap-2">
+        {/* Copy button — takes most space */}
+        <button
           onClick={onCopy}
           className={cn(
-            "flex-1 h-8 text-[11.5px]",
+            "flex-1 h-10 rounded-xl flex items-center justify-center gap-1.5 text-[13px] font-bold text-white transition-colors",
             isCopied
-              ? "bg-emerald-600 hover:bg-emerald-700"
-              : "bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700",
+              ? "bg-emerald-600"
+              : "bg-gradient-to-r from-emerald-500 to-green-600 active:from-emerald-600 active:to-green-700",
           )}
         >
           {isCopied ? (
-            <><Check className="h-3.5 w-3.5 mr-1" /> Tercopy!</>
+            <><Check className="h-4 w-4" /> Tercopy!</>
           ) : (
-            <><Copy className="h-3.5 w-3.5 mr-1" /> {vars.length > 0 ? "Copy & Isi" : "Copy"}</>
+            <><Copy className="h-4 w-4" /> {vars.length > 0 ? "Copy & Isi" : "Copy"}</>
           )}
-        </Button>
+        </button>
+
+        {/* Edit + Delete — icon only, compact */}
         {canEdit && (
           <>
-            <Button
-              size="sm"
-              variant="outline"
+            <button
               onClick={onEdit}
-              className="h-8 w-8 p-0"
+              className="w-10 h-10 rounded-xl border border-slate-200 bg-white flex items-center justify-center active:bg-slate-50 transition-colors"
               title="Edit"
             >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
+              <Pencil className="h-4 w-4 text-slate-600" />
+            </button>
+            <button
               onClick={onDelete}
-              className="h-8 w-8 p-0 hover:border-destructive hover:text-destructive"
+              className="w-10 h-10 rounded-xl border border-red-100 bg-red-50 flex items-center justify-center active:bg-red-100 transition-colors"
               title="Hapus"
             >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+              <Trash2 className="h-4 w-4 text-red-500" />
+            </button>
           </>
         )}
       </div>
