@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Wand2, Copy, CheckCheck, Loader2, RefreshCw, FileText,
-  Plane, BookOpen, Megaphone, Moon, Sparkles,
+  Plane, BookOpen, Megaphone, Moon, Sparkles, AlignLeft,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -25,26 +25,66 @@ const TONES = [
   { key: "story",    label: "Storytelling", desc: "Emosional, cerita perjalanan" },
 ];
 
+/* ─── TemanTiket Brand System Prompt ───────────────────── */
+const BRAND_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter & Brand Guardian resmi TemanTiket.
+
+TemanTiket adalah brand travel Umrah & Haji yang:
+- Sangat ramah, hangat, dan kekeluargaan (seperti teman dekat yang lagi ngasih saran terbaik)
+- Santai tapi tetap terpercaya dan profesional
+- Selalu menekankan bahwa umrah bisa hemat TANPA mengorbankan kenyamanan, kualitas, dan ketenangan
+- Bahasa sehari-hari yang enak dibaca: "kamu", "kita", "yuk", "ayo", "nggak harus mahal", "kesempatan emas", "berangkat bareng"
+- Emoji yang pas, tidak berlebihan, dan mendukung emosi (✈️ 🕋 ⭐ 🙏 ❤️ 🌟 🔥)
+- Selalu membangun trust dan semangat positif
+
+ATURAN KETAT YANG HARUS DIIKUTI:
+1. Selalu buat tepat 3 variasi caption yang berbeda karakter.
+2. Setiap caption maksimal 280 karakter (termasuk emoji & spasi).
+3. Tone harus 100% khas TemanTiket: ramah, tidak kaku, tidak terlalu salesy, tidak norak.
+4. Setiap caption WAJIB punya Call-to-Action yang kuat dan natural (DM sekarang, daftar sekarang, hubungi kami, yuk berangkat bareng, dll).
+5. Emoji hanya dipakai kalau benar-benar mendukung, maksimal 3-4 per caption.
+6. Hindari kata-kata: "paling murah", "gratis", "limited time offer" berlebihan, atau bahasa terlalu marketing.
+7. Buat variasi yang berbeda:
+   - Variasi 1: Lebih ke manfaat + kenyamanan
+   - Variasi 2: Lebih ke kesempatan / value
+   - Variasi 3: Lebih emosional atau ajakan kuat
+
+OUTPUT FORMAT (WAJIB IKUTI PERSIS):
+VARIASI 1
+[isi caption di sini]
+
+VARIASI 2
+[isi caption di sini]
+
+VARIASI 3
+[isi caption di sini]
+
+Jangan tambahkan penjelasan lain di luar 3 variasi tersebut.`;
+
+/* ─── Tone instructions ─────────────────────────────────── */
+const TONE_LABEL: Record<string, string> = {
+  santai:   "Friendly, casual, akrab → bahasa santai kayak ngobrol sama temen",
+  formal:   "Profesional & terpercaya → lebih meyakinkan, tenang, penuh jaminan",
+  hardsell: "FOMO, urgent, ajak action → ada sedikit urgensi tapi tetap ramah",
+  story:    "Emosional, cerita perjalanan → lebih ke perasaan, impian, dan pengalaman",
+};
+
 /* ─── API ───────────────────────────────────────────────── */
 async function generateCaptions(params: {
   categoryPrompt: string;
   tone: string;
+  packageDetail?: string;
 }): Promise<string[]> {
-  const { categoryPrompt, tone } = params;
+  const { categoryPrompt, tone, packageDetail } = params;
 
-  const toneMap: Record<string, string> = {
-    santai:   "casual, akrab, pakai bahasa sehari-hari, sedikit emoji, tidak lebay",
-    formal:   "formal, profesional, terpercaya, bahasa Indonesia baku, minim emoji",
-    hardsell: "high-energy, ada urgensi/FOMO, CTA kuat, pakai emoji banyak, persuasif",
-    story:    "storytelling singkat, emosional, membayangkan pengalaman ibadah, warm, satu atau dua emoji saja",
-  };
+  const toneInstruction = TONE_LABEL[tone] ?? tone;
+  const detailSection = packageDetail?.trim()
+    ? `\n\nDetail paket:\n${packageDetail.trim()}`
+    : "";
 
-  const systemPrompt = `Kamu adalah copywriter digital marketing ahli untuk travel umrah & haji di Indonesia.
-Tugas: buat 3 variasi caption promo untuk ${categoryPrompt} dengan tone ${toneMap[tone] || tone}.
-Format output: JSON array berisi tepat 3 string. Masing-masing caption max 300 kata, siap paste ke WhatsApp/Instagram.
-Jangan tambahkan penjelasan di luar JSON. Contoh format: ["Caption 1...", "Caption 2...", "Caption 3..."]`;
-
-  const userPrompt = `Buat 3 caption promo ${categoryPrompt}.`;
+  const userPrompt =
+    `Buat 3 caption marketing untuk ${categoryPrompt}.\n` +
+    `Tone yang diminta: ${toneInstruction}.` +
+    detailSection;
 
   const res = await fetch("/api/ai/chat", {
     method: "POST",
@@ -52,22 +92,39 @@ Jangan tambahkan penjelasan di luar JSON. Contoh format: ["Caption 1...", "Capti
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: BRAND_SYSTEM_PROMPT },
         { role: "user",   content: userPrompt },
       ],
       temperature: 0.85,
-      max_tokens: 1800,
+      max_tokens: 1200,
     }),
   });
 
   if (!res.ok) throw new Error(`AI error ${res.status}`);
   const data = await res.json();
-  const raw = data.choices?.[0]?.message?.content ?? "";
-  const match = raw.match(/\[[\s\S]*\]/);
-  if (!match) throw new Error("Format respons AI tidak valid");
-  const parsed: unknown = JSON.parse(match[0]);
-  if (!Array.isArray(parsed)) throw new Error("Bukan array");
-  return parsed.slice(0, 3).map(String);
+  const raw: string = data.choices?.[0]?.message?.content ?? "";
+
+  const captions = parseVariasiFormat(raw);
+  if (captions.length < 1) throw new Error("Format respons AI tidak valid");
+  return captions;
+}
+
+/**
+ * Parse VARIASI 1 / VARIASI 2 / VARIASI 3 output format.
+ * Falls back to double-newline splitting if markers are absent.
+ */
+function parseVariasiFormat(raw: string): string[] {
+  const results: string[] = [];
+  const blocks = raw.split(/VARIASI\s+\d+/i).map((s) => s.trim()).filter(Boolean);
+  for (const block of blocks) {
+    const text = block.replace(/^[\n\r:]+/, "").trim();
+    if (text) results.push(text);
+  }
+  if (results.length >= 1) return results.slice(0, 3);
+
+  // Fallback: split by double newline
+  const lines = raw.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+  return lines.slice(0, 3);
 }
 
 /* ─── Section wrapper ───────────────────────────────────── */
@@ -91,6 +148,7 @@ function Section({ label, icon: Icon, children }: {
 export function CaptionGenerator() {
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].key);
   const [activeTone, setActiveTone]         = useState(TONES[0].key);
+  const [packageDetail, setPackageDetail]   = useState("");
   const [results, setResults]               = useState<string[]>([]);
   const [loading, setLoading]               = useState(false);
   const [copiedIdx, setCopiedIdx]           = useState<number | null>(null);
@@ -104,6 +162,7 @@ export function CaptionGenerator() {
       const captions = await generateCaptions({
         categoryPrompt: cat.prompt,
         tone: activeTone,
+        packageDetail,
       });
       setResults(captions);
     } catch (err) {
@@ -180,6 +239,24 @@ export function CaptionGenerator() {
         </div>
       </Section>
 
+      {/* ── Detail Paket (optional) ── */}
+      <Section label="Detail Paket (opsional)" icon={AlignLeft}>
+        <textarea
+          value={packageDetail}
+          onChange={(e) => setPackageDetail(e.target.value)}
+          placeholder={
+            "Contoh:\nPaket Umrah 12 hari, berangkat 15 Maret 2025\n" +
+            "Hotel bintang 4, Makkah & Madinah walking distance\n" +
+            "Harga mulai Rp 28 juta/orang, kuota terbatas 40 seat"
+          }
+          rows={4}
+          className="w-full rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-3 text-[13px] text-foreground placeholder-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 focus:border-[#1a44d4]/50 transition-all"
+        />
+        <p className="text-[10.5px] text-muted-foreground mt-1.5">
+          Semakin detail info paket, semakin relevan caption yang dihasilkan AI.
+        </p>
+      </Section>
+
       {/* ── Generate Button ── */}
       <Button
         onClick={() => void handleGenerate()}
@@ -234,7 +311,7 @@ export function CaptionGenerator() {
           >
             <div className="flex items-center gap-2 py-1">
               <div className="h-px flex-1 bg-border/60" />
-              <span className="text-[11px] text-muted-foreground tracking-wide">3 variasi caption</span>
+              <span className="text-[11px] text-muted-foreground tracking-wide">3 variasi • TemanTiket Brand Voice</span>
               <div className="h-px flex-1 bg-border/60" />
             </div>
 
@@ -247,9 +324,14 @@ export function CaptionGenerator() {
                 className="rounded-xl border border-border/70 bg-white p-4 md:p-5 hover:border-foreground/25 transition-colors"
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-                    Variasi {idx + 1}
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+                      Variasi {idx + 1}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/55">
+                      {caption.length} karakter
+                    </span>
+                  </div>
                   <button
                     onClick={() => void handleCopy(caption, idx)}
                     className={cn(
