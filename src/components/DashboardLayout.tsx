@@ -290,7 +290,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                   isActive ? "text-[#1a44d4]" : "text-[hsl(var(--muted-foreground))]"
                 )}
               />
-              <span className={cn("text-[9px] font-semibold leading-none transition-colors", isActive ? "text-[#1a44d4]" : "text-[hsl(var(--muted-foreground))]")}>
+              <span className={cn("mobile-nav-label transition-colors", isActive ? "text-[#1a44d4]" : "text-[hsl(var(--muted-foreground))]")}>
                 {item.label}
               </span>
             </button>
@@ -357,7 +357,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                         />
                       </div>
                       <span
-                        className="text-[9px] font-semibold text-center leading-tight"
+                        className="mobile-nav-label text-center"
                         style={{ color: isActive ? "#1a44d4" : "hsl(var(--muted-foreground))" }}
                       >
                         {item.label}

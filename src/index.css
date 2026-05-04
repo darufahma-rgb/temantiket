@@ -74,7 +74,10 @@
 
   @media (max-width: 767px) {
     html {
-      font-size: 13.5px;
+      /* Mobile base: 14px → all rem units scale ~15% smaller than 16px desktop.
+         text-xs=10.5px  text-sm=12.25px  text-base=14px  text-lg=15.75px
+         text-xl=17.5px  text-2xl=21px  — perfect mobile type hierarchy.    */
+      font-size: 14px;
     }
   }
 
@@ -637,7 +640,8 @@
 
   @media (max-width: 640px) {
     html {
-      font-size: 16px;
+      /* Note: font-size is already 14px from the 767px rule above.
+         Do NOT set 16px here — that would cancel the mobile scale. */
       overflow-x: hidden;
     }
 
@@ -1727,3 +1731,134 @@ button, [role="button"], a, input, select, textarea {
 .stagger-children > *:nth-child(9)  { animation-delay: 360ms; }
 .stagger-children > *:nth-child(10) { animation-delay: 405ms; }
 .stagger-children > *:nth-child(n+11) { animation-delay: 450ms; }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   FASE 46 — Global Mobile Typography System
+   Semantic type-scale utility classes + global mobile line-height polish.
+
+   Base: html { font-size: 14px } on ≤ 767px (set above) gives this scale:
+     text-xs   = 0.75rem  = 10.5px   → captions, nav labels, fine print
+     text-sm   = 0.875rem = 12.25px  → body text, secondary info
+     text-base = 1rem     = 14px     → card titles, names
+     text-lg   = 1.125rem = 15.75px  → sub-headings
+     text-xl   = 1.25rem  = 17.5px   → page titles (H1 small)
+     text-2xl  = 1.5rem   = 21px     → page titles (H1 large)
+
+   All existing Tailwind text-* classes automatically scale ~15% smaller on
+   mobile — no per-component changes needed for most pages.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Semantic mobile typography utilities ─────────────────────────────────── */
+
+/* H1 — Page Title  (Dashboard, Klien & Jamaah, Laporan…)
+   text-xl → text-2xl range · font-bold · tight tracking                     */
+.mobile-h1 {
+  font-size: clamp(1.2rem, 5vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.025em;
+  color: hsl(var(--foreground));
+}
+
+/* H2 — Section Label  (MAIN MENU, ORDER TERBARU, STATISTIK…)
+   Small · uppercase · semibold · muted — visually receded group header       */
+.mobile-h2 {
+  font-size: 0.6875rem;         /* 10.5px at 16px root · 9.6px at 14px root */
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+/* H3 — Card Title / Name  (Nama Jamaah, Nama Paket Trip…)
+   text-base · bold · snug leading                                            */
+.mobile-h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: hsl(var(--foreground));
+}
+
+/* Body — Secondary Info  (Nomor WA, sisa tagihan, status keberangkatan…)
+   text-sm range · normal weight · comfortable line-height                    */
+.mobile-body {
+  font-size: 0.8125rem;         /* 13px at 16px root · 11.4px at 14px root */
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
+/* Caption — Fine Print  (timestamp, metadata, helper text…)
+   text-xs range · muted · relaxed enough to stay readable                    */
+.mobile-caption {
+  font-size: 0.6875rem;         /* 11px at 16px root · 9.6px at 14px root  */
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Button / Interactive — compact label inside CTA buttons and action bars    */
+.mobile-btn {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.005em;
+}
+
+/* Nav Label — Bottom Navigation bar tabs  (Home, Paket, Order, Klien…)
+   Ultra-compact · semibold · high-legibility                                 */
+.mobile-nav-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+/* ── Global mobile line-height + readability polish ──────────────────────── */
+@media (max-width: 767px) {
+  /* Body copy: comfortable breathing room */
+  .mobile-compact p,
+  .mobile-compact li {
+    line-height: 1.55;
+  }
+
+  /* Headings: tight leading saves vertical space on small screens */
+  .mobile-compact h1 {
+    line-height: 1.22;
+    letter-spacing: -0.025em;
+  }
+  .mobile-compact h2 {
+    line-height: 1.28;
+    letter-spacing: -0.01em;
+  }
+  .mobile-compact h3,
+  .mobile-compact h4 {
+    line-height: 1.32;
+  }
+
+  /* Muted text: slight opacity lift so it reads against white/card bg       */
+  .mobile-compact .text-muted-foreground {
+    opacity: 0.88;
+  }
+
+  /* Prevent badge/chip text from wrapping in narrow cards                   */
+  .mobile-compact [class*="rounded-full"] span,
+  .mobile-compact [class*="rounded-full"] {
+    white-space: nowrap;
+  }
+
+  /* Data tables: compact cells on mobile                                     */
+  .mobile-compact td,
+  .mobile-compact th {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  /* Monospace values (prices, codes): tighten tracking on mobile             */
+  .mobile-compact .font-mono {
+    letter-spacing: -0.02em;
+  }
+}
