@@ -4,7 +4,8 @@ import {
   Users, Trophy, Wallet, TrendingUp, ShieldCheck, Edit2, Check, X,
   ChevronDown, ChevronUp, BarChart3, Crown, Zap, RefreshCw, Target,
   FileBarChart, UserPlus, Mail, Lock, Percent, Loader2, Search, Eye,
-  ShoppingBag, UserCheck, ChevronRight, ClipboardList,
+  ShoppingBag, UserCheck, ChevronRight, ClipboardList, Phone, MessageCircle,
+  ToggleLeft, StickyNote, CheckCircle2, Star, Globe, LayoutGrid,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
@@ -15,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -75,95 +77,284 @@ function StatCard({
   );
 }
 
+// ── Validation helpers ─────────────────────────────────────────────────────────
+function normalizeWa(raw: string): string {
+  let d = raw.replace(/\D/g, "");
+  if (d.startsWith("0")) d = "62" + d.slice(1);
+  return d;
+}
+function isValidWa(raw: string): boolean {
+  const d = normalizeWa(raw);
+  return /^62\d{8,13}$/.test(d);
+}
+
 // ── Add Agent Dialog ───────────────────────────────────────────────────────────
 function AddAgentDialog({ open, onClose, onSuccess }: {
   open: boolean; onClose: () => void; onSuccess: () => void;
 }) {
   const { inviteMember } = useAuthStore();
-  const [name, setName]         = useState("");
-  const [email, setEmail]       = useState("");
-  const [pass, setPass]         = useState("");
-  const [commission, setCommission] = useState<number>(10);
-  const [loading, setLoading]   = useState(false);
 
-  function reset() { setName(""); setEmail(""); setPass(""); setCommission(10); }
+  const [name,       setName]       = useState("");
+  const [email,      setEmail]      = useState("");
+  const [pass,       setPass]       = useState("");
+  const [wa,         setWa]         = useState("");
+  const [commission, setCommission] = useState<number>(10);
+  const [status,     setStatus]     = useState<"active" | "inactive">("active");
+  const [notes,      setNotes]      = useState("");
+  const [loading,    setLoading]    = useState(false);
+
+  // Field-level errors
+  const [errs, setErrs] = useState<Record<string, string>>({});
+
+  function reset() {
+    setName(""); setEmail(""); setPass(""); setWa("");
+    setCommission(10); setStatus("active"); setNotes(""); setErrs({});
+  }
+
+  function validate(): boolean {
+    const e: Record<string, string> = {};
+    if (!name.trim())              e.name  = "Nama lengkap wajib diisi.";
+    if (!email.trim() || !email.includes("@")) e.email = "Format email tidak valid.";
+    if (pass.length < 8)           e.pass  = "Password minimal 8 karakter.";
+    if (wa.trim() && !isValidWa(wa)) e.wa  = "Format nomor WA tidak valid (cth: 08123456789).";
+    if (!wa.trim())                e.wa    = "Nomor WhatsApp wajib diisi.";
+    setErrs(e);
+    return Object.keys(e).length === 0;
+  }
 
   async function handleSubmit() {
-    if (!name.trim() || !email.trim() || !pass) {
-      toast.error("Lengkapi semua field: nama, email, dan password."); return;
-    }
-    if (pass.length < 8) { toast.error("Password minimal 8 karakter."); return; }
-    if (!email.includes("@")) { toast.error("Format email tidak valid."); return; }
+    if (!validate()) return;
     setLoading(true);
     try {
-      await inviteMember(email.trim(), pass, name.trim(), "agent");
+      await inviteMember(email.trim(), pass, name.trim(), "agent", {
+        commissionPct:   commission,
+        whatsappNumber:  normalizeWa(wa),
+        agentStatus:     status,
+        agentNotes:      notes.trim() || undefined,
+      });
       toast.success(`Agen "${name.trim()}" berhasil ditambahkan!`, {
-        description: `Komisi ${commission}% akan aktif setelah data tersimpan.`,
+        description: `Komisi ${commission}% · WA ${normalizeWa(wa)} · Status: ${status === "active" ? "Aktif" : "Nonaktif"}`,
       });
       reset(); onSuccess(); onClose();
-    } catch (err) {
-      toast.error(`Gagal tambah agen: ${err instanceof Error ? err.message : String(err)}`);
+    } catch (e) {
+      toast.error(`Gagal tambah agen: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setLoading(false);
     }
   }
 
+  const AUTO_ITEMS: { icon: React.ComponentType<{ className?: string }>; label: string; color: string }[] = [
+    { icon: Users,         label: "Profil agen otomatis dibuat",              color: "text-sky-600"    },
+    { icon: Wallet,        label: "Wallet komisi otomatis dibuat",             color: "text-emerald-600" },
+    { icon: Target,        label: "Bisa langsung dapat misi global",           color: "text-violet-600" },
+    { icon: ShoppingBag,   label: "Bisa login dan buat order",                 color: "text-amber-600"  },
+    { icon: LayoutGrid,    label: "Muncul di Leaderboard & Direktori",         color: "text-rose-500"   },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); onClose(); } }}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <div className="h-8 w-8 rounded-full bg-sky-100 flex items-center justify-center shrink-0">
-              <UserPlus className="h-4 w-4 text-sky-600" />
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="flex items-center gap-2.5 text-base">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shrink-0 shadow-sm">
+              <UserPlus className="h-4.5 w-4.5 text-white h-4 w-4" />
             </div>
-            Tambah Agen Baru
+            <div>
+              <div>Tambah Agen Baru</div>
+              <DialogDescription className="text-[11px] mt-0.5 font-normal">
+                Isi profil lengkap agen — bisa langsung login, buat order, dan terima komisi.
+              </DialogDescription>
+            </div>
           </DialogTitle>
-          <DialogDescription className="text-xs">
-            Agen bisa langsung login, buat order, dan dapet poin komisi otomatis.
-          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 mt-1">
-          <div className="space-y-1">
-            <Label className="text-xs flex items-center gap-1"><Users className="h-3 w-3" /> Nama Lengkap</Label>
-            <Input placeholder="cth: Ahmad Fauzi" value={name} onChange={(e) => setName(e.target.value)} className="h-9 text-sm" disabled={loading} />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs flex items-center gap-1"><Mail className="h-3 w-3" /> Email Login</Label>
-            <Input type="email" placeholder="agen@email.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-9 text-sm" disabled={loading} />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs flex items-center gap-1">
-              <Lock className="h-3 w-3" /> Password Awal <span className="text-muted-foreground">(min 8 karakter)</span>
-            </Label>
-            <Input type="password" placeholder="••••••••" value={pass} onChange={(e) => setPass(e.target.value)} className="h-9 text-sm" disabled={loading} />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs flex items-center gap-1"><Percent className="h-3 w-3" /> Komisi per Order (%)</Label>
-            <div className="flex items-center gap-2">
-              <Input type="number" min={0} max={100} step={0.5} value={commission}
-                onChange={(e) => setCommission(Number(e.target.value) || 0)}
-                className="h-9 text-sm font-mono w-24" disabled={loading} />
-              <span className="text-xs text-muted-foreground flex-1">Dihitung dari profit order yang completed.</span>
+
+        <div className="space-y-4 mt-1">
+          {/* ── Seksi: Identitas ─────────────────────── */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Identitas Agen</p>
+
+            {/* Nama */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <Users className="h-3 w-3 text-sky-500" /> Nama Lengkap <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                placeholder="cth: Ahmad Fauzi"
+                value={name}
+                onChange={(e) => { setName(e.target.value); setErrs((p) => ({ ...p, name: "" })); }}
+                className={`h-9 text-sm ${errs.name ? "border-red-400 focus-visible:ring-red-300" : ""}`}
+                disabled={loading}
+              />
+              {errs.name && <p className="text-[10.5px] text-red-500">{errs.name}</p>}
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <Mail className="h-3 w-3 text-sky-500" /> Email Login <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="email"
+                placeholder="agen@email.com"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setErrs((p) => ({ ...p, email: "" })); }}
+                className={`h-9 text-sm ${errs.email ? "border-red-400 focus-visible:ring-red-300" : ""}`}
+                disabled={loading}
+              />
+              {errs.email
+                ? <p className="text-[10.5px] text-red-500">{errs.email}</p>
+                : <p className="text-[10.5px] text-muted-foreground">Digunakan untuk login ke aplikasi.</p>}
+            </div>
+
+            {/* Password */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <Lock className="h-3 w-3 text-sky-500" /> Password Awal <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="password"
+                placeholder="Min 8 karakter"
+                value={pass}
+                onChange={(e) => { setPass(e.target.value); setErrs((p) => ({ ...p, pass: "" })); }}
+                className={`h-9 text-sm ${errs.pass ? "border-red-400 focus-visible:ring-red-300" : ""}`}
+                disabled={loading}
+              />
+              {errs.pass
+                ? <p className="text-[10.5px] text-red-500">{errs.pass}</p>
+                : (
+                  <div className="flex gap-0.5 mt-0.5">
+                    {[4, 6, 8].map((n) => (
+                      <div key={n} className={`h-1 flex-1 rounded-full transition-colors ${
+                        pass.length >= n ? (pass.length >= 10 ? "bg-emerald-400" : "bg-amber-400") : "bg-secondary"
+                      }`} />
+                    ))}
+                    <span className="text-[9.5px] text-muted-foreground ml-1 self-center">
+                      {pass.length < 8 ? `${8 - pass.length} char lagi` : pass.length >= 10 ? "Kuat" : "Cukup"}
+                    </span>
+                  </div>
+                )}
+            </div>
+
+            {/* WhatsApp */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <MessageCircle className="h-3 w-3 text-emerald-500" /> Nomor WhatsApp <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-mono text-muted-foreground select-none">+62</span>
+                <Input
+                  type="tel"
+                  placeholder="812-3456-7890"
+                  value={wa}
+                  onChange={(e) => { setWa(e.target.value); setErrs((p) => ({ ...p, wa: "" })); }}
+                  className={`h-9 text-sm pl-10 ${errs.wa ? "border-red-400 focus-visible:ring-red-300" : ""}`}
+                  disabled={loading}
+                />
+              </div>
+              {errs.wa
+                ? <p className="text-[10.5px] text-red-500">{errs.wa}</p>
+                : <p className="text-[10.5px] text-muted-foreground">Untuk dihubungi terkait order & komisi.</p>}
             </div>
           </div>
-          <div className="rounded-xl bg-sky-50 border border-sky-100 px-3 py-2.5 space-y-1">
-            <p className="text-[11px] font-semibold text-sky-700">Yang otomatis terhubung:</p>
-            {[
-              "Profil agen muncul di Direktori & Leaderboard",
-              "Poin gamifikasi terakumulasi tiap order selesai",
-              "Wallet komisi terupdate real-time",
-              "Bisa diberi misi dari halaman Misi",
-              "Marketing Kit & template promo siap diakses",
-            ].map((item) => (
-              <div key={item} className="flex items-start gap-1.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-sky-400 mt-1.5 shrink-0" />
-                <span className="text-[10.5px] text-sky-700">{item}</span>
+
+          {/* ── Seksi: Pengaturan ────────────────────── */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Pengaturan</p>
+
+            {/* Komisi + Status side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <Percent className="h-3 w-3 text-amber-500" /> Komisi per Order
+                </Label>
+                <div className="relative">
+                  <Input
+                    type="number" min={0} max={100} step={0.5}
+                    value={commission}
+                    onChange={(e) => setCommission(Number(e.target.value) || 0)}
+                    className="h-9 text-sm font-mono pr-7"
+                    disabled={loading}
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Dari profit order selesai.</p>
               </div>
-            ))}
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <ToggleLeft className="h-3 w-3 text-violet-500" /> Status Agen
+                </Label>
+                <div className="flex gap-1.5 mt-0.5">
+                  {(["active", "inactive"] as const).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setStatus(s)}
+                      className={`flex-1 h-9 rounded-lg border text-xs font-semibold transition-colors ${
+                        status === s
+                          ? s === "active"
+                            ? "bg-emerald-500 border-emerald-500 text-white"
+                            : "bg-slate-400 border-slate-400 text-white"
+                          : "border-border text-muted-foreground hover:border-slate-300"
+                      }`}
+                    >
+                      {s === "active" ? "Aktif" : "Nonaktif"}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground">Default: Aktif.</p>
+              </div>
+            </div>
+
+            {/* Catatan */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <StickyNote className="h-3 w-3 text-slate-400" /> Catatan Khusus
+                <span className="text-[9.5px] font-normal text-muted-foreground">(opsional)</span>
+              </Label>
+              <Textarea
+                placeholder="cth: Agen spesialis umroh, area Jawa Barat…"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="text-sm resize-none min-h-[68px]"
+                disabled={loading}
+              />
+            </div>
           </div>
-          <div className="flex gap-2 pt-1">
-            <Button variant="outline" className="flex-1 h-10" onClick={() => { reset(); onClose(); }} disabled={loading}>Batal</Button>
-            <Button className="flex-1 h-10 font-bold bg-sky-600 hover:bg-sky-700 text-white" onClick={handleSubmit} disabled={loading}>
+
+          {/* ── Preview checklist ─────────────────────── */}
+          <div className="rounded-xl bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-100 px-3.5 py-3 space-y-2">
+            <p className="text-[11px] font-bold text-sky-800 flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-sky-500" />
+              Yang otomatis dibuat saat agen ditambahkan:
+            </p>
+            <div className="grid grid-cols-1 gap-1.5">
+              {AUTO_ITEMS.map(({ icon: Icon, label, color }) => (
+                <div key={label} className="flex items-center gap-2">
+                  <div className="h-4 w-4 rounded-full bg-white border border-sky-100 flex items-center justify-center shrink-0 shadow-sm">
+                    <Icon className={`h-2.5 w-2.5 ${color}`} />
+                  </div>
+                  <span className="text-[10.5px] text-sky-800 font-medium">{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Tombol aksi ───────────────────────────── */}
+          <div className="flex gap-2 pt-0.5">
+            <Button
+              variant="outline" className="flex-1 h-10"
+              onClick={() => { reset(); onClose(); }}
+              disabled={loading}
+            >
+              Batal
+            </Button>
+            <Button
+              className="flex-1 h-10 font-bold bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white shadow-sm"
+              onClick={handleSubmit}
+              disabled={loading}
+            >
               {loading
                 ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Menambahkan…</>
                 : <><UserPlus className="h-3.5 w-3.5 mr-1.5" /> Tambah Agen</>}

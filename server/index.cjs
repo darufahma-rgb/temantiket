@@ -127,6 +127,13 @@ app.post('/api/invite-member', async (req, res) => {
     const rawRole = req.body.role;
     const role = rawRole === 'agent' ? 'agent' : rawRole === 'owner' ? 'owner' : 'staff';
 
+    // Extra agent fields (agent-only, optional)
+    const commissionPct = typeof req.body.commissionPct === 'number'
+      ? Math.max(0, Math.min(100, req.body.commissionPct)) : null;
+    const whatsappNumber = (req.body.whatsappNumber ?? '').toString().trim() || null;
+    const agentStatus    = req.body.agentStatus === 'inactive' ? 'inactive' : 'active';
+    const agentNotes     = (req.body.agentNotes ?? '').toString().trim() || null;
+
     if (!email || !password) return err(res, 400, 'email & password wajib diisi');
     if (typeof password !== 'string' || password.length < 8) {
       return err(res, 400, 'Password minimal 8 karakter');
@@ -150,26 +157,31 @@ app.post('/api/invite-member', async (req, res) => {
     }
     const newUserId = created.user.id;
 
-    const { error: addErr } = await admin.from('agency_members').insert({
+    // Insert membership — include commission_pct if provided
+    const membershipRow = {
       agency_id: callerMembership.agency_id, user_id: newUserId, role,
-    });
+      ...(commissionPct !== null ? { commission_pct: commissionPct } : {}),
+    };
+    const { error: addErr } = await admin.from('agency_members').insert(membershipRow);
     if (addErr) {
       await admin.auth.admin.deleteUser(newUserId).catch(() => {});
       return err(res, 500, `Gagal tambah membership (auth user di-rollback): ${addErr.message}`);
     }
 
-    const { error: profileErr } = await admin.from('profiles').upsert(
-      { id: newUserId, email, full_name: fullName },
-      { onConflict: 'id' }
-    );
-    if (profileErr) {
-      return ok(res, {
-        ok: true, userId: newUserId, email, role, fullName,
-        warning: `User dibuat tapi gagal isi profile: ${profileErr.message}`,
-      });
-    }
+    // Upsert profile — include extra agent fields gracefully
+    const profileRow = { id: newUserId, email, full_name: fullName };
+    if (whatsappNumber) profileRow.phone_wa = whatsappNumber;
+    if (agentNotes)     profileRow.notes    = agentNotes;
+    if (role === 'agent') profileRow.is_active = (agentStatus !== 'inactive');
 
-    return ok(res, { ok: true, userId: newUserId, email, role, fullName });
+    const { error: profileErr } = await admin.from('profiles').upsert(profileRow, { onConflict: 'id' });
+    const warnings = [];
+    if (profileErr) warnings.push(`profile: ${profileErr.message}`);
+
+    return ok(res, {
+      ok: true, userId: newUserId, email, role, fullName,
+      ...(warnings.length ? { warnings } : {}),
+    });
   } catch (e) {
     return err(res, 500, e.message);
   }

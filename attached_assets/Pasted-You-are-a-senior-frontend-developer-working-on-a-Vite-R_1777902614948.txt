@@ -1,0 +1,62 @@
+You are a senior frontend developer working on a Vite + React + TypeScript + Tailwind + Supabase project.
+
+### Current Modal:
+Ada modal "Tambah Agen Baru" yang sudah ada (lihat screenshot). Saat ini hanya ada field:
+- Nama Lengkap
+- Email Login
+- Password Awal
+- % Komisi per Order
+- Keterangan otomatis yang terhubung
+
+### Masalah:
+Form ini belum mencerminkan fitur-fitur agen yang sebenarnya kita butuhkan, seperti:
+- Profil agen lengkap
+- Nomor WhatsApp (penting untuk dihubungi)
+- Sistem Misi & Point
+- Daftar customer yang di-closing
+- Wallet & Komisi
+- Performa agen
+
+### Tugas:
+Perbarui form **Tambah Agen Baru** agar lebih sesuai dengan kebutuhan fitur agen yang lengkap.
+
+### Requirements:
+
+**1. Field yang Harus Ada di Form:**
+- Nama Lengkap (required)
+- Email Login (required)
+- Password Awal (required, min 8 karakter)
+- Nomor WhatsApp (required) — ini penting
+- % Komisi per Order (%)
+- Status agen (Aktif / Nonaktif) — default Aktif
+- Catatan khusus dari owner (opsional, textarea)
+
+**2. Informasi Tambahan yang Ditampilkan:**
+Di bagian bawah form, tampilkan checklist atau keterangan yang jelas tentang apa yang otomatis dibuat saat agen ditambahkan, misalnya:
+- Profil agen otomatis dibuat
+- Wallet komisi otomatis dibuat
+- Bisa langsung dapat misi global
+- Bisa login dan buat order
+- Muncul di Leaderboard & Direktori
+
+**3. Logic Saat Submit:**
+Saat tombol "Tambah Agen" diklik:
+- Buat data agen di tabel `agents`
+- Otomatis buat record terkait:
+  - `agent_profiles`
+  - `agent_wallets`
+  - Assign misi global yang aktif (jika ada)
+- Tampilkan notifikasi sukses yang jelas
+- Tutup modal dan refresh daftar agen
+
+**4. UI/UX:**
+- Buat form lebih rapi dan modern
+- Gunakan validasi yang baik (required fields, format nomor WA, dll)
+- Tambahkan helper text di setiap field
+- Responsive dan konsisten dengan desain existing
+
+**5. Bonus (jika memungkinkan):**
+- Tambahkan opsi "Kirim email undangan login ke agen" (checkbox)
+- Preview singkat data yang akan dibuat sebelum submit
+
+Update modal ini dan pastikan alur pembuatan agen sudah mendukung fitur-fitur lanjutan (Profile, Misi, Wallet, dll).

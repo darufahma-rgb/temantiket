@@ -81,7 +81,13 @@ interface AuthState {
   clearNewLogin: () => void;
 
   // Tenant management (owner only)
-  inviteMember: (email: string, password: string, displayName: string, role?: UserRole) => Promise<void>;
+  inviteMember: (
+    email: string,
+    password: string,
+    displayName: string,
+    role?: UserRole,
+    extra?: { commissionPct?: number; whatsappNumber?: string; agentStatus?: "active" | "inactive"; agentNotes?: string },
+  ) => Promise<{ userId: string }>;
   removeMember: (userId: string) => Promise<void>;
   listMembers: () => Promise<MemberInfo[]>;
   setMemberCommission: (userId: string, pct: number) => Promise<void>;
@@ -298,12 +304,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   clearError: () => set({ error: null }),
   clearNewLogin: () => set({ newLoginAt: null }),
 
-  inviteMember: async (email, password, displayName, role = "staff") => {
+  inviteMember: async (email, password, displayName, role = "staff", extra = {}) => {
     const { user } = get();
     if (!user || user.role !== "owner") throw new Error("Hanya owner yang bisa invite.");
     const token = await getFreshAccessToken();
     if (!token) throw new Error("Session tidak valid — login ulang dulu.");
-    await callEdgeFunction("invite-member", { email, password, displayName, role }, token);
+    const result = await callEdgeFunction("invite-member", {
+      email, password, displayName, role, ...extra,
+    }, token) as { userId: string };
+    return { userId: result.userId };
   },
 
   removeMember: async (userId) => {
