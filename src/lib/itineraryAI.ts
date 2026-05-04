@@ -11,7 +11,7 @@
  */
 
 import { parseFlightText, KNOWN_AIRPORTS, KNOWN_AIRLINES } from "@/features/orders/flightParser";
-import { getAIHeaders } from "@/lib/aiFetch";
+import { callAI } from "@/lib/aiFetch";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -449,24 +449,16 @@ CRITICAL RULES:
 // ── OpenAI Text caller (via server proxy) ──────────────────────────────────
 
 async function callOpenAIText(text: string): Promise<ItineraryData> {
-  const resp = await fetch("/api/ai/chat", {
-    method: "POST",
-    headers: await getAIHeaders(),
-    body: JSON.stringify({
-      model: "gpt-4.1-nano",
-      temperature: 0,
-      max_tokens: 2500,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: TEXT_SYSTEM_PROMPT },
-        { role: "user", content: text.slice(0, 8000) },
-      ],
-    }),
+  const resp = await callAI({
+    model: "gpt-4.1-nano",
+    temperature: 0,
+    max_tokens: 2500,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: TEXT_SYSTEM_PROMPT },
+      { role: "user", content: text.slice(0, 8000) },
+    ],
   });
-  if (!resp.ok) {
-    const errBody = await resp.text().catch(() => "");
-    throw new Error(`OpenAI ${resp.status}: ${errBody.slice(0, 200)}`);
-  }
   const json = await resp.json() as { choices: { message: { content: string } }[] };
   return parseOpenAIResponse(json.choices?.[0]?.message?.content ?? "{}", text);
 }
@@ -474,37 +466,34 @@ async function callOpenAIText(text: string): Promise<ItineraryData> {
 // ── OpenAI Vision caller (via server proxy) ────────────────────────────────
 
 async function callOpenAIVision(imageDataUrl: string): Promise<ItineraryData> {
-  const resp = await fetch("/api/ai/chat", {
-    method: "POST",
-    headers: await getAIHeaders(),
-    body: JSON.stringify({
-      model: "gpt-4.1-nano",
-      temperature: 0,
-      max_tokens: 2500,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: IMAGE_SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Extract all flight data from this screenshot and return the JSON. Each row = 1 leg." },
-            { type: "image_url", image_url: { url: imageDataUrl, detail: "high" } },
-          ],
-        },
-      ],
-    }),
-  });
-  if (!resp.ok) {
-    const errBody = await resp.text().catch(() => "");
-    throw new Error(`OpenAI Vision ${resp.status}: ${errBody.slice(0, 200)}`);
-  }
+  const resp = await callAI({
+    model: "gpt-4.1-nano",
+    temperature: 0,
+    max_tokens: 2500,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: IMAGE_SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Extract all flight data from this screenshot and return the JSON. Each row = 1 leg." },
+          { type: "image_url", image_url: { url: imageDataUrl, detail: "high" } },
+        ],
+      },
+    ],
+  }, { timeoutMs: 90_000 });
   const json = await resp.json() as { choices: { message: { content: string } }[] };
   return parseOpenAIResponse(json.choices?.[0]?.message?.content ?? "{}", "");
 }
 
 function parseOpenAIResponse(raw: string, originalText: string): ItineraryData {
   const cleaned = raw.replace(/^```json?\s*/i, "").replace(/\s*```$/, "").trim();
-  const parsed = JSON.parse(cleaned) as ItineraryData;
+  let parsed: ItineraryData;
+  try {
+    parsed = JSON.parse(cleaned) as ItineraryData;
+  } catch {
+    throw new Error("AI mengembalikan format JSON tidak valid — coba lagi");
+  }
   if (!Array.isArray(parsed.legs)) parsed.legs = [];
   parsed.legs = parsed.legs.map((leg) => {
     const clean: FlightLeg = {};

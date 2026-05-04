@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { getAIHeaders } from "@/lib/aiFetch";
+import { callAI } from "@/lib/aiFetch";
 
 /* ─── Mode ──────────────────────────────────────────────── */
 type Mode = "manual" | "poster";
@@ -130,21 +130,16 @@ async function generateFromDetail(params: {
   const waSection = waNumber?.trim() ? `\n\nNomor WA untuk CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}` : "";
   const userPrompt = `Buat 1 caption marketing untuk ${categoryPrompt}.\nTone yang diminta: ${toneInstruction}.${detailSection}${waSection}`;
 
-  const res = await fetch("/api/ai/chat", {
-    method: "POST",
-    headers: await getAIHeaders(),
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: BRAND_SYSTEM_PROMPT },
-        { role: "user",   content: userPrompt },
-      ],
-      temperature: 0.85,
-      max_tokens: 700,
-    }),
+  const res = await callAI({
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: BRAND_SYSTEM_PROMPT },
+      { role: "user",   content: userPrompt },
+    ],
+    temperature: 0.85,
+    max_tokens: 700,
   });
 
-  if (!res.ok) throw new Error(`AI error ${res.status}`);
   const data = await res.json();
   const caption: string = (data.choices?.[0]?.message?.content ?? "").trim();
   if (!caption) throw new Error("Format respons AI tidak valid");
@@ -162,30 +157,22 @@ async function generateFromPoster(params: {
   const waSection = waNumber?.trim() ? `\nNomor WA untuk baris CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}` : "";
   const userPrompt = `Scan poster ini dan buat 1 caption sesuai struktur dan aturan di instruksi sistem.\nTone: ${toneInstruction}.${waSection}`;
 
-  const res = await fetch("/api/ai/chat", {
-    method: "POST",
-    headers: await getAIHeaders(),
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: VISION_SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: userPrompt },
-            { type: "image_url", image_url: { url: imageDataUrl, detail: "auto" } },
-          ],
-        },
-      ],
-      temperature: 0.8,
-      max_tokens: 700,
-    }),
-  });
+  const res = await callAI({
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: VISION_SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: userPrompt },
+          { type: "image_url", image_url: { url: imageDataUrl, detail: "auto" } },
+        ],
+      },
+    ],
+    temperature: 0.8,
+    max_tokens: 700,
+  }, { timeoutMs: 90_000 });
 
-  if (!res.ok) {
-    if (res.status === 413) throw new Error("Gambar masih terlalu besar setelah kompresi. Coba gunakan gambar yang lebih kecil atau resolusi lebih rendah.");
-    throw new Error(`AI error ${res.status}`);
-  }
   const data = await res.json();
   const caption: string = (data.choices?.[0]?.message?.content ?? "").trim();
   if (!caption) throw new Error("Format respons AI tidak valid");

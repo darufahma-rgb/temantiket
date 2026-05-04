@@ -606,16 +606,32 @@ app.post('/api/ai/chat', async (req, res) => {
     if (!OPENAI_API_KEY) {
       return err(res, 503, 'OPENAI_API_KEY belum di-set. Tambahkan di Replit Secrets.');
     }
-    const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify(req.body),
-    });
-    const text = await response.text();
-    res.status(response.status).set('Content-Type', 'application/json').send(text);
+
+    // 90-second hard timeout so the Node.js server never hangs indefinitely
+    // waiting on a slow/unresponsive OpenAI response.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90_000);
+
+    try {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify(req.body),
+        signal: controller.signal,
+      });
+      const text = await response.text();
+      res.status(response.status).set('Content-Type', 'application/json').send(text);
+    } catch (fetchErr) {
+      if (fetchErr.name === 'AbortError') {
+        return err(res, 504, 'OpenAI request timeout (90 s) — coba lagi.');
+      }
+      throw fetchErr;
+    } finally {
+      clearTimeout(timer);
+    }
   } catch (e) {
     return err(res, 500, e.message);
   }

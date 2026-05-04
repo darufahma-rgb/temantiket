@@ -14,7 +14,7 @@
  *   - Reuses parseGalileoDisplay + parseGalileoPNR from itineraryAI.ts
  */
 import { parseGalileoDisplay, parseGalileoPNR, type ItineraryData } from "@/lib/itineraryAI";
-import { getAIHeaders } from "@/lib/aiFetch";
+import { callAI } from "@/lib/aiFetch";
 
 export type TripType = "one_way" | "return" | "multi_city";
 
@@ -252,34 +252,25 @@ REMEMBER: One booking = ONE ticket entry. Transit rows with same Total Amount = 
 // ── OpenAI Vision call ────────────────────────────────────────────────────────
 
 async function callOpenAIVision(dataUrl: string): Promise<ParsedTicketPrice[]> {
-  const resp = await fetch("/api/ai/chat", {
-    method: "POST",
-    headers: await getAIHeaders(),
-    body: JSON.stringify({
-      model: "gpt-4.1-nano",
-      temperature: 0.05,
-      max_tokens: 4000,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Extract ALL flight ticket data. IMPORTANT: If rows share the same Total Amount AND the arrival airport of one row equals the departure airport of the next row, merge them into ONE ticket with transit. fromCode = first origin, toCode = FINAL destination (not the transit). Return JSON with 'tickets' array.",
-            },
-            { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
-          ],
-        },
-      ],
-    }),
-  });
-
-  if (!resp.ok) {
-    const body = await resp.text().catch(() => "");
-    throw new Error(`OpenAI ${resp.status}: ${body.slice(0, 300)}`);
-  }
+  const resp = await callAI({
+    model: "gpt-4.1-nano",
+    temperature: 0.05,
+    max_tokens: 4000,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Extract ALL flight ticket data. IMPORTANT: If rows share the same Total Amount AND the arrival airport of one row equals the departure airport of the next row, merge them into ONE ticket with transit. fromCode = first origin, toCode = FINAL destination (not the transit). Return JSON with 'tickets' array.",
+          },
+          { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
+        ],
+      },
+    ],
+  }, { timeoutMs: 90_000 });
 
   const json = await resp.json() as { choices: { message: { content: string } }[] };
   const raw = json.choices?.[0]?.message?.content ?? "{}";

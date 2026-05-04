@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useT } from "@/lib/regional";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { pullNotes, upsertNote, deleteNoteCloud, syncNotesFull, type NoteCloud } from "@/lib/cloudSync";
-import { getAIHeaders } from "@/lib/aiFetch";
+import { callAI } from "@/lib/aiFetch";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -359,15 +359,12 @@ export default function Notes() {
     try {
       let formatted = content;
       try {
-        const res = await fetch("/api/ai/chat", {
-          method: "POST",
-          headers: await getAIHeaders(),
-          body: JSON.stringify({
-            model: "gpt-4.1-nano",
-            messages: [
-              {
-                role: "system",
-                content: `Kamu adalah Content Formatter profesional untuk Temantiket.
+        const res = await callAI({
+          model: "gpt-4.1-nano",
+          messages: [
+            {
+              role: "system",
+              content: `Kamu adalah Content Formatter profesional untuk Temantiket.
 
 Tugas: Terima teks mentah dari user, lalu rapikan menjadi format Markdown yang bersih, terstruktur, dan langsung bisa di-paste ke WhatsApp atau dokumen internal tanpa perlu diedit lagi.
 
@@ -393,24 +390,19 @@ CONTOH OUTPUT YANG BENAR:
 
 **Catatan**
 Hubungi Temantiket untuk konfirmasi jadwal keberangkatan.`,
-              },
-              {
-                role: "user",
-                content: `Rapikan catatan berikut:\n\n${content.trim()}`,
-              },
-            ],
-            temperature: 0.35,
-            max_tokens: 1500,
-          }),
+            },
+            {
+              role: "user",
+              content: `Rapikan catatan berikut:\n\n${content.trim()}`,
+            },
+          ],
+          temperature: 0.35,
+          max_tokens: 1500,
         });
-        if (res.ok) {
-          const data = await res.json();
-          const aiResult: string = data.choices?.[0]?.message?.content?.trim() ?? "";
-          if (aiResult) formatted = aiResult;
-          else formatted = smartFormat(content);
-        } else {
-          formatted = smartFormat(content);
-        }
+        const data = await res.json();
+        const aiResult: string = data.choices?.[0]?.message?.content?.trim() ?? "";
+        if (aiResult) formatted = aiResult;
+        else formatted = smartFormat(content);
       } catch {
         formatted = smartFormat(content);
       }

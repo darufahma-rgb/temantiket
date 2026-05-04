@@ -25,7 +25,7 @@ import { nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
 import { generateInvoicePdfRemote } from "@/lib/exportPdfApi";
 import { useInvoiceStore } from "@/store/invoiceStore";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
-import { getAIHeaders } from "@/lib/aiFetch";
+import { callAI } from "@/lib/aiFetch";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -696,26 +696,21 @@ export async function sendAIMessage(
 
   const toolResults: ToolResult[] = [];
 
-  // Agentic loop: terus panggil OpenAI sampai tidak ada tool call
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const response = await fetch("/api/ai/chat", {
-      method: "POST",
-      headers: await getAIHeaders(),
-      body: JSON.stringify({
-        model: "gpt-4.1-nano",
-        messages: fullMessages,
-        tools: TOOLS,
-        tool_choice: "auto",
-        temperature: 0.5,
-        max_tokens: 2500,
-      }),
-    });
+  // Agentic loop: terus panggil OpenAI sampai tidak ada tool call.
+  // MAX_ITERATIONS mencegah loop tak terbatas jika OpenAI terus mengembalikan tool calls.
+  const MAX_ITERATIONS = 8;
+  let iterations = 0;
 
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`OpenAI error ${response.status}: ${err}`);
-    }
+  while (iterations < MAX_ITERATIONS) {
+    iterations++;
+    const response = await callAI({
+      model: "gpt-4.1-nano",
+      messages: fullMessages,
+      tools: TOOLS,
+      tool_choice: "auto",
+      temperature: 0.5,
+      max_tokens: 2500,
+    });
 
     const data = await response.json();
     const choice = data.choices?.[0];
