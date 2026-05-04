@@ -466,15 +466,15 @@ export function CeoDailyQuest() {
                   <div className="flex items-center gap-2 mt-0.5">
                     <button
                       onClick={() => setShowAdd((v) => !v)}
-                      className="inline-flex items-center gap-1.5 text-[11px] text-sky-600 font-semibold hover:text-sky-700 transition-colors"
+                      className="inline-flex items-center gap-1 text-[9px] text-sky-600 font-semibold hover:text-sky-700 transition-colors"
                     >
-                      <Plus className="h-3.5 w-3.5" />
+                      <Plus className="h-2.5 w-2.5" />
                       Tambah Misi Custom
                     </button>
                     <span className="text-slate-200">·</span>
                     <button
                       onClick={() => navigate("/reports")}
-                      className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 font-medium hover:text-blue-600 transition-colors"
+                      className="inline-flex items-center gap-1 text-[9px] text-slate-400 font-medium hover:text-blue-600 transition-colors"
                     >
                       <Zap className="h-3 w-3" />
                       Lihat Laporan Lengkap

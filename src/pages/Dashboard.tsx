@@ -1018,7 +1018,7 @@ export default function Dashboard() {
                   <button
                     key={key}
                     onClick={() => setTab(key)}
-                    className={cn("text-[10.5px] font-semibold pb-0.5 border-b-2 transition-colors", tab === key ? "border-sky-500 text-sky-500" : "border-transparent text-[hsl(var(--muted-foreground))]")}
+                    className={cn("text-[9px] font-semibold pb-0.5 border-b-2 transition-colors", tab === key ? "border-sky-500 text-sky-500" : "border-transparent text-[hsl(var(--muted-foreground))]")}
                   >{labels[key]}</button>
                 );
               })}
