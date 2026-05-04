@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Target, Clock, CheckCircle2, XCircle, Upload, Star, Send, Zap, History, Trophy,
 } from "lucide-react";
@@ -14,6 +14,7 @@ import {
   listMissions, listMySubmissions, submitMission, uploadProofImage,
 } from "./missionsRepo";
 import type { DailyMission, MissionSubmission } from "./types";
+import { onMissionsChanged } from "@/lib/supabaseRealtime";
 
 interface Props {
   agencyId: string;
@@ -277,8 +278,12 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
   const [tab, setTab] = useState<ActiveTab>("active");
+  const [isLive, setIsLive] = useState(false);
 
-  async function reload() {
+  // Track previous submission statuses so we can detect admin review changes
+  const prevSubStatusRef = useRef<Map<string, string>>(new Map());
+
+  const reload = useCallback(async (fromRealtime = false) => {
     const [m, s] = await Promise.all([
       listMissions(agencyId),
       listMySubmissions(agencyId, agentId),
@@ -286,12 +291,50 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
     setAllMissions(m);
     setSubmissions(s);
     setLoading(false);
-  }
 
+    if (fromRealtime) {
+      // Detect status changes and notify the agent
+      for (const sub of s) {
+        const prev = prevSubStatusRef.current.get(sub.missionId);
+        if (prev && prev !== sub.status) {
+          const mission = m.find((x) => x.id === sub.missionId);
+          const title = mission?.title ?? "Misi";
+          if (sub.status === "approved") {
+            toast.success(`🎉 "${title}" disetujui! +${sub.rewardPoints} poin`, {
+              duration: 5000,
+            });
+            setShowConfetti(true);
+          } else if (sub.status === "rejected") {
+            toast.error(`❌ "${title}" ditolak. Kamu bisa coba lagi.`, {
+              duration: 5000,
+            });
+          }
+        }
+      }
+    }
+
+    // Update ref for next comparison
+    const nextMap = new Map<string, string>();
+    for (const sub of s) nextMap.set(sub.missionId, sub.status);
+    prevSubStatusRef.current = nextMap;
+  }, [agencyId, agentId]);
+
+  // Initial load
   useEffect(() => {
     if (!agencyId || !agentId) return;
-    void reload();
-  }, [agencyId, agentId]);
+    void reload(false);
+  }, [agencyId, agentId, reload]);
+
+  // Realtime subscription — fires whenever mission_submissions or daily_missions change
+  useEffect(() => {
+    if (!agencyId || !agentId) return;
+    setIsLive(true);
+    const unsub = onMissionsChanged(() => { void reload(true); });
+    return () => {
+      unsub();
+      setIsLive(false);
+    };
+  }, [agencyId, agentId, reload]);
 
   // Active missions = not expired OR the agent has a submission for it
   const activeMissions = useMemo(
@@ -327,7 +370,18 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
               <Target className="w-4 h-4 text-sky-600" />
             </div>
             <div>
-              <p className="font-bold text-slate-800 text-sm leading-tight">Misi Harian</p>
+              <div className="flex items-center gap-1.5">
+                <p className="font-bold text-slate-800 text-sm leading-tight">Misi Harian</p>
+                {isLive && (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                    </span>
+                    Live
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-slate-400">
                 {activeMissions.filter((m) => !isPast(new Date(m.deadline))).length} misi aktif
               </p>
@@ -384,7 +438,7 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
                     submission={submissions.find((s) => s.missionId === m.id)}
                     agencyId={agencyId}
                     agentId={agentId}
-                    onSubmitDone={reload}
+                    onSubmitDone={() => void reload(false)}
                     onNewApproval={() => setShowConfetti(true)}
                   />
                 ))

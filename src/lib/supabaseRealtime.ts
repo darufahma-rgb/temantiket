@@ -30,6 +30,19 @@ export function onAgentPointsChanged(fn: AgentPointsListener): () => void {
   return () => agentPointsListeners.delete(fn);
 }
 
+/**
+ * Listeners untuk mission_submissions + daily_missions.
+ * AgentMissionWidget & AgentProfile subscribe biar status misi auto-refresh
+ * tanpa reload saat admin approve / reject bukti.
+ */
+type MissionListener = () => void;
+const missionListeners = new Set<MissionListener>();
+
+export function onMissionsChanged(fn: MissionListener): () => void {
+  missionListeners.add(fn);
+  return () => missionListeners.delete(fn);
+}
+
 export function startRealtimeSync(): () => void {
   if (!isSupabaseConfigured() || channel) return () => undefined;
 
@@ -55,6 +68,12 @@ export function startRealtimeSync(): () => void {
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "agent_points" }, () => {
       for (const fn of agentPointsListeners) fn();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "mission_submissions" }, () => {
+      for (const fn of missionListeners) fn();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "daily_missions" }, () => {
+      for (const fn of missionListeners) fn();
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "pdf_layout_presets" }, () => {
       // Refresh cache lalu broadcast ke semua tuner yang sedang dibuka.

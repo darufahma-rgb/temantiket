@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -11,6 +11,7 @@ import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
 import { listMySubmissions, sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
+import { onMissionsChanged } from "@/lib/supabaseRealtime";
 import type { MissionSubmission } from "@/features/missions/types";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, type OrderType } from "@/features/orders/ordersRepo";
@@ -26,6 +27,12 @@ export default function AgentProfile() {
   const [missionSubs, setMissionSubs] = useState<MissionSubmission[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const refreshMissions = useCallback(async () => {
+    if (!user?.agencyId || !user?.id) return;
+    const ms = await listMySubmissions(user.agencyId, user.id);
+    setMissionSubs(ms);
+  }, [user?.agencyId, user?.id]);
+
   useEffect(() => {
     void fetchOrders();
     if (clients.length === 0) void fetchClients();
@@ -33,13 +40,16 @@ export default function AgentProfile() {
       setLoading(true);
       const p = await listAgentPoints();
       setPoints(p);
-      if (user?.agencyId && user?.id) {
-        const ms = await listMySubmissions(user.agencyId, user.id);
-        setMissionSubs(ms);
-      }
+      await refreshMissions();
       setLoading(false);
     })();
-  }, [fetchOrders, fetchClients, clients.length, user?.agencyId, user?.id]);
+  }, [fetchOrders, fetchClients, clients.length, user?.agencyId, user?.id, refreshMissions]);
+
+  // Realtime: auto-refresh mission points when admin approves / rejects
+  useEffect(() => {
+    const unsub = onMissionsChanged(() => { void refreshMissions(); });
+    return unsub;
+  }, [refreshMissions]);
 
   const myOrders = useMemo(
     () => orders.filter((o) => o.createdByAgent === user?.id),
