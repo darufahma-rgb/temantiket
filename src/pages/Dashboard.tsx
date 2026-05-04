@@ -1069,7 +1069,7 @@ export default function Dashboard() {
       {/* ══════════════════════════════════════════════════════════════
            DESKTOP LAYOUT  (hidden on mobile)
       ══════════════════════════════════════════════════════════════ */}
-      <div className="hidden md:block xl:flex-1 xl:min-w-0 pb-8">
+      <div className="hidden md:block xl:flex-1 xl:min-w-0 pb-8 xl:pl-8">
 
         {/* ── Greeting hero ── */}
         <motion.div
