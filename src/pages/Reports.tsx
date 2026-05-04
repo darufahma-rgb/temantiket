@@ -340,79 +340,204 @@ export default function Reports() {
     catch { return iso; }
   };
 
+  const agentFilterLabel = agentFilter === "all"
+    ? "Semua sumber"
+    : agentFilter === "direct"
+    ? "Direct"
+    : (members.find(m => m.userId === agentFilter)?.displayName ?? "Mitra");
+
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-5">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-primary" />
-            Laporan Keuangan
-          </h1>
-          <p className="text-[12px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-            Owner only · Periode: <span className="font-semibold">{RANGE_LABEL[range]}</span>
-            {user?.agencyName && <> · {user.agencyName}</>}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+    <div className="max-w-6xl mx-auto pb-8 md:py-6 md:px-6 md:space-y-5">
+
+      {/* ══════════════════════════════════════════════════════
+           MOBILE LAYOUT
+      ══════════════════════════════════════════════════════ */}
+      <div className="md:hidden px-4 space-y-4">
+
+        {/* ── Header row ── */}
+        <div className="flex items-center gap-2.5">
+          <Wallet className="h-5 w-5 shrink-0 text-blue-600" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[8px] font-semibold uppercase tracking-widest text-muted-foreground leading-none">Keuangan</p>
+            <h1 className="text-[14px] font-extrabold text-foreground leading-tight mt-0.5">Laporan Keuangan</h1>
+          </div>
+          <button
             onClick={() => navigate("/exports")}
+            className="h-9 px-3 rounded-xl text-[11px] font-bold border border-[hsl(var(--border))] bg-white flex items-center gap-1.5 active:scale-95 transition-transform shrink-0"
           >
-            <FileDown className="h-3.5 w-3.5" /> Export Data
-          </Button>
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => (
-                <SelectItem key={k} value={k}>{RANGE_LABEL[k]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <FileDown className="h-3.5 w-3.5 text-blue-600" />
+            Export
+          </button>
+        </div>
+
+        {/* ── Hero banner ── */}
+        <div
+          className="rounded-2xl px-4 py-3.5 text-white relative overflow-hidden"
+          style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 55%,#1a44d4 100%)" }}
+        >
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <div className="absolute -top-10 -right-10 h-44 w-44 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,255,255,0.07) 0%, transparent 65%)" }} />
+            <div className="absolute -bottom-8 left-0 right-0 h-24" style={{ background: "radial-gradient(ellipse at 50% 100%, rgba(26,68,212,0.3) 0%, transparent 70%)" }} />
+            <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "20px 20px" }} />
+          </div>
+          <div className="relative flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p className="text-[8px] font-semibold uppercase tracking-widest text-sky-400/70 mb-0.5">Net Profit</p>
+              <p className={`text-[28px] font-black leading-none tabular-nums ${totals.profit < 0 ? "text-red-300" : "text-white"}`}>
+                {fmtIDR(totals.profit)}
+              </p>
+            </div>
+            <div className="h-9 w-9 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 mt-0.5 backdrop-blur-sm">
+              <TrendingUp className="h-5 w-5 text-white" />
+            </div>
+          </div>
+          <div className="relative flex items-center pt-3 border-t border-white/10">
+            {[
+              { label: "Revenue",   value: fmtIDR(totals.revenue) },
+              { label: "Modal",     value: fmtIDR(totals.cost)    },
+              { label: "Orders",    value: String(totals.count)   },
+            ].map((s, i) => (
+              <div key={s.label} className={`flex-1 text-center ${i > 0 ? "border-l border-white/10" : ""}`}>
+                <p className="text-[11px] font-black text-white tabular-nums leading-none truncate px-1">{s.value}</p>
+                <p className="text-[7.5px] text-sky-300/60 uppercase tracking-wide mt-1 font-semibold">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Filter pills ── */}
+        <div className="space-y-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none">
+            {(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => (
+              <button
+                key={k}
+                onClick={() => setRange(k)}
+                className={`h-8 px-3.5 rounded-full text-[11.5px] font-bold whitespace-nowrap shrink-0 transition-all active:scale-95 ${
+                  range === k
+                    ? "text-white shadow-sm"
+                    : "bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border))]"
+                }`}
+                style={range === k ? { background: "linear-gradient(135deg,#1a44d4,#0a2472)" } : undefined}
+              >
+                {RANGE_LABEL[k]}
+              </button>
+            ))}
+          </div>
           <Select value={agentFilter} onValueChange={(v) => setAgentFilter(v as AgentFilter)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Sumber order" />
+            <SelectTrigger className="h-9 rounded-xl text-[12px] font-semibold border-[hsl(var(--border))]">
+              <div className="flex items-center gap-1.5">
+                <Filter className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
+                <SelectValue placeholder="Semua sumber">{agentFilterLabel}</SelectValue>
+              </div>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Semua sumber</SelectItem>
               <SelectItem value="direct">Direct (owner/staff)</SelectItem>
               {agentMembers.length > 0 && (
-                <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  Per Mitra
-                </div>
+                <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">Per Mitra</div>
               )}
               {agentMembers.map((a) => (
-                <SelectItem key={a.userId} value={a.userId}>
-                  {a.displayName}
-                </SelectItem>
+                <SelectItem key={a.userId} value={a.userId}>{a.displayName}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-      </div>
 
-      {/* ── Tab bar ──────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 border-b border-border pb-0">
-        {(["summary", "ledger"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-[12px] font-semibold rounded-t-xl border border-b-0 transition-colors -mb-px ${
-              activeTab === tab
-                ? "bg-background border-border text-foreground"
-                : "bg-muted/30 border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab === "summary" ? "📊 Ringkasan" : "📒 Buku Besar"}
-          </button>
-        ))}
-      </div>
+        {/* ── Tab pills (mobile) ── */}
+        <div className="flex gap-2 p-1 rounded-2xl bg-[hsl(var(--secondary))]">
+          {(["summary", "ledger"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 h-9 rounded-xl text-[12px] font-bold transition-all ${
+                activeTab === tab
+                  ? "bg-white text-[hsl(var(--foreground))] shadow-sm"
+                  : "text-[hsl(var(--muted-foreground))]"
+              }`}
+            >
+              {tab === "summary" ? "📊 Ringkasan" : "📒 Buku Besar"}
+            </button>
+          ))}
+        </div>
+
+      </div>{/* end md:hidden */}
+
+      {/* ══════════════════════════════════════════════════════
+           DESKTOP LAYOUT
+      ══════════════════════════════════════════════════════ */}
+      <div className="hidden md:block space-y-5 px-0">
+
+        {/* ── Desktop header ── */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2.5">
+              <Wallet className="h-6 w-6 text-blue-600" />
+              Laporan Keuangan
+            </h1>
+            <p className="text-[12px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+              Owner only · Periode: <span className="font-semibold">{RANGE_LABEL[range]}</span>
+              {user?.agencyName && <> · {user.agencyName}</>}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline" size="sm"
+              className="h-8 text-xs gap-1.5 border-blue-200 text-blue-700 hover:bg-blue-50"
+              onClick={() => navigate("/exports")}
+            >
+              <FileDown className="h-3.5 w-3.5" /> Export Data
+            </Button>
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
+              <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => (
+                  <SelectItem key={k} value={k}>{RANGE_LABEL[k]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={agentFilter} onValueChange={(v) => setAgentFilter(v as AgentFilter)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sumber order" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua sumber</SelectItem>
+                <SelectItem value="direct">Direct (owner/staff)</SelectItem>
+                {agentMembers.length > 0 && (
+                  <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">Per Mitra</div>
+                )}
+                {agentMembers.map((a) => (
+                  <SelectItem key={a.userId} value={a.userId}>{a.displayName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* ── Desktop tab bar ── */}
+        <div className="flex gap-1 border-b border-border pb-0">
+          {(["summary", "ledger"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-[12px] font-semibold rounded-t-xl border border-b-0 transition-colors -mb-px ${
+                activeTab === tab
+                  ? "bg-background border-border text-foreground"
+                  : "bg-muted/30 border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab === "summary" ? "📊 Ringkasan" : "📒 Buku Besar"}
+            </button>
+          ))}
+        </div>
+
+      </div>{/* end hidden md:block */}
+
+      {/* ══════════════════════════════════════════════════════
+           SHARED CONTENT (both mobile + desktop)
+      ══════════════════════════════════════════════════════ */}
+      <div className="px-4 md:px-0 space-y-4 md:space-y-5">
 
       {/* ── Summary tab ──────────────────────────────────────────────────── */}
       {activeTab === "summary" && <>
@@ -980,6 +1105,8 @@ export default function Reports() {
         Atur komisi per-mitra di <strong>Pengaturan → Tim</strong>. Poin di-award otomatis 10 poin
         per order yg statusnya berubah ke <strong>Completed</strong>.
       </div>
+
+      </div>{/* end shared content */}
     </div>
   );
 }
