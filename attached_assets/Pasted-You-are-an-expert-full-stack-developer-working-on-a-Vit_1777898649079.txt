@@ -1,0 +1,96 @@
+You are an expert full-stack developer working on a Vite + React + TypeScript + Tailwind + Supabase project called TemanTiket (travel management app for Umrah & Haji).
+
+### Project Context:
+- Tech stack: Vite + React 18 + TypeScript + Tailwind CSS + Supabase (database + auth)
+- Existing features: Agent management (add agent modal already exists), commission system, wallet, leaderboard, and basic gamification points.
+- The app has two main roles: Owner (admin) and Agent.
+- All text in the UI must be in **Indonesian**.
+
+### Task:
+Create a complete, production-ready **Agent Profile Page** with a powerful **Mission / Quest system**.
+
+### Page Requirements:
+
+**1. Route & Access**
+- Create a new page/route: `/agents/:agentId` (Agent Profile)
+- Owner can access any agent's profile.
+- Agent can access their own profile (when logged in as agent).
+
+**2. Page Layout (use clean modern UI with Tailwind)**
+- Top Header:
+  - Agent photo (avatar)
+  - Full name + Status badge (Aktif / Nonaktif)
+  - Join date
+  - Big button: "Hubungi via WhatsApp" (opens wa.me with the agent's number)
+  - Level/Badge based on total points (Bronze / Silver / Gold / Platinum)
+
+- Four main sections (use Tabs or clean cards):
+  1. **Overview & Statistics**
+     - Total orders generated
+     - Total revenue generated
+     - Current points
+     - Current rank in leaderboard
+     - Conversion rate (optional)
+     - Commission rate
+
+  2. **Misi (Missions / Quests)**
+     - Section for Owner: Form to create new Global Mission (title, description, point_reward, deadline)
+     - When owner creates a mission, it should automatically appear for ALL agents.
+     - List of missions with:
+       - Mission title & description
+       - Point reward
+       - Status: Belum dikerjakan / Sedang dikerjakan / Selesai
+       - Button for Agent: "Selesaikan Misi" (self-claim) — optionally with proof upload (image)
+     - Show completed missions history with date completed
+
+  3. **Daftar Customer Closing**
+     - Table or clean list showing customers this agent has closed
+     - Columns: Nama Customer, Tanggal Closing, Status Order, Revenue, Action (view detail)
+     - If no data yet, show empty state with nice illustration
+
+  4. **Informasi Agen & Kontak**
+     - Email, WhatsApp number, Commission %, Wallet balance
+     - Edit button (for owner)
+
+**3. Mission System Logic (Very Important)**
+- There are two types of missions:
+  - Global Mission (created once by owner → automatically assigned to all agents)
+  - Personal Mission (optional, created for specific agent)
+- Agent can self-complete missions (change status to completed + add completed_at timestamp)
+- Points are automatically added to agent's total when mission is completed
+- Store mission data in Supabase
+
+**4. Database Schema Suggestion (include in the code comments)**
+Create these tables if they don't exist:
+- `missions` (id, title, description, point_reward, type: 'global' | 'personal', created_by, deadline, is_active)
+- `agent_missions` (id, agent_id, mission_id, status, completed_at, proof_url)
+- `agent_customers` (id, agent_id, customer_id, order_id, closed_at, revenue)
+- Add `total_points` and `level` to agents table or create `agent_stats` table
+
+**5. Technical Requirements**
+- Use TypeScript strictly
+- Use Supabase client for all data fetching and mutations
+- Use React hooks (useState, useEffect, useParams)
+- Make it responsive (mobile friendly)
+- Add loading states and error handling
+- Use nice empty states and success toasts (you can use sonner or react-hot-toast)
+- Component structure suggestion:
+  - components/agents/AgentProfile.tsx
+  - components/agents/MissionList.tsx
+  - components/agents/CustomerClosingTable.tsx
+  - components/agents/CreateMissionModal.tsx
+  - hooks/useAgentProfile.ts (optional but recommended)
+
+**6. Extra Polish (Nice to have)**
+- Real-time update using Supabase Realtime (optional but good)
+- Confirmation modal when agent marks mission as completed
+- Search & filter on mission list and customer list
+- Beautiful empty states
+
+### Output Instructions:
+- Generate complete, clean, and well-commented code.
+- Provide the full file structure suggestion.
+- Include the Supabase table creation SQL at the top as comments.
+- Make the UI beautiful and consistent with modern SaaS dashboard style (similar to the existing "Tambah Agen Baru" modal).
+
+Start by creating the main `AgentProfile.tsx` page and all necessary components.

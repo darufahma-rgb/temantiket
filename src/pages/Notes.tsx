@@ -254,18 +254,55 @@ export default function Notes() {
     setFormatting(id);
     try {
       let formatted = content;
-      if (typeof window !== "undefined" && (window as any).ai?.generateText) {
-        try {
-          const result = await (window as any).ai.generateText({
-            prompt: `Rapihkan teks berikut: perbaiki tanda baca, kapitalisasi, format bullet jika ada. Kembalikan hanya teks yang sudah dirapihkan tanpa tambahan apapun.\n\n${content}`,
-          });
-          formatted = typeof result === "string" ? result : result?.text ?? content;
-        } catch {
+      try {
+        const res = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              {
+                role: "system",
+                content: `Kamu adalah Senior Technical Writer & Project Assistant di TemanTiket.
+
+Tugas kamu: Menerima catatan revisi yang masih mentah/kasar, lalu menulis ulang menjadi versi yang jauh lebih rapi, profesional, dan enak dibaca, dengan diksi yang tepat dan sesuai konteks project management.
+
+Aturan penting yang HARUS diikuti:
+1. Pertahankan 100% maksud asli user. Jangan menambah atau mengurangi isi.
+2. Perbaiki struktur, tata bahasa, ejaan, dan alur kalimat agar lebih profesional.
+3. Gunakan diksi yang lebih baik, jelas, dan ringkas (hindari bahasa terlalu santai atau bertele-tele).
+4. Ubah setiap poin menjadi action item yang lebih jelas dan actionable kalau memungkinkan.
+5. Gunakan format bullet list yang konsisten dan rapi (gunakan • sebagai bullet).
+6. Jika ada poin yang mirip atau bisa digabung, gabungkan agar lebih efisien (tanpa mengubah arti).
+7. Hasil akhir harus terasa seperti catatan revisi yang ditulis oleh orang yang terbiasa dokumentasi project.
+8. Output HANYA berisi bullet list yang sudah dirapikan. Jangan tambahkan kata pengantar atau penutup.
+
+Contoh perubahan diksi:
+- "masih belum bisa, lama gak selesai-selesai" → "Masih belum selesai diimplementasikan"
+- "harus diperbaiki" → "Diperlukan perbaikan pada..."
+- "gue ngasih komisi dengan nominal paten" → "Komisi agen diberikan secara nominal tetap"`,
+              },
+              {
+                role: "user",
+                content: `Rapikan catatan revisi berikut:\n\n${content.trim()}`,
+              },
+            ],
+            temperature: 0.35,
+            max_tokens: 1500,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const aiResult: string = data.choices?.[0]?.message?.content?.trim() ?? "";
+          if (aiResult) formatted = aiResult;
+          else formatted = smartFormat(content);
+        } else {
           formatted = smartFormat(content);
         }
-      } else {
+      } catch {
         formatted = smartFormat(content);
       }
+
       if (id === "new") {
         setNewContent(formatted);
       } else if (id === editingId) {
