@@ -3,6 +3,7 @@ import { AppSidebar } from "./AppSidebar";
 import { AIChatWidget } from "./AIChatWidget";
 import {
   Menu, RefreshCw, Sparkles, Search, Bell,
+  LayoutDashboard, ShoppingBag, Users, Settings, X,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -31,38 +32,113 @@ interface DashboardLayoutProps {
   noPadding?: boolean;
 }
 
+const BOTTOM_NAV = [
+  { icon: LayoutDashboard, label: "Home",  path: "/" },
+  { icon: ShoppingBag,     label: "Order", path: "/orders" },
+  { icon: Users,           label: "Agen",  path: "/agent-center" },
+  { icon: Settings,        label: "Profil", path: "/settings" },
+];
+
 export function DashboardLayout({ children, noPadding = false }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
 
   const { rates, mode: rateMode, loading: ratesLoading, lastUpdated, refresh: refreshRates } = useRatesStore();
-  const { user: currentUser, logout } = useAuthStore();
+  const { user: currentUser } = useAuthStore();
   const syncStatus = useSyncStatusStore((s) => s.status);
-  const lastSync    = useSyncStatusStore((s) => s.lastSync);
-  const lastError   = useSyncStatusStore((s) => s.lastError);
-  const syncInfo    = SYNC_DOT[syncStatus];
-  const syncTitle   = `${syncInfo.label}${lastSync ? ` · ${formatLastSync(lastSync)}` : ""}${lastError ? ` · ${lastError}` : ""}`;
+  const lastSync   = useSyncStatusStore((s) => s.lastSync);
+  const lastError  = useSyncStatusStore((s) => s.lastError);
+  const syncInfo   = SYNC_DOT[syncStatus];
+  const syncTitle  = `${syncInfo.label}${lastSync ? ` · ${formatLastSync(lastSync)}` : ""}${lastError ? ` · ${lastError}` : ""}`;
 
-  const handleLogout = () => { logout(); navigate("/login"); };
-  const displayName  = currentUser?.displayName ?? "Temantiket";
+  const displayName = currentUser?.displayName ?? "Temantiket";
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setSearchOpen(false);
+      setSearchQuery("");
+      navigate("/clients");
+    }
+  };
 
   return (
     <>
-      {/* ── Unified layout — same structure for mobile and desktop ── */}
       <div
         className="app-shell mobile-compact flex w-screen overflow-hidden"
         style={{ background: "hsl(var(--background))" }}
       >
-        {/* Sidebar — always-visible on desktop, drawer on mobile */}
         <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        {/* Right column: header + content */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
-          {/* ── Unified Header ── */}
+          {/* ── Mobile slim header (48px) — hidden on md+ ── */}
+          <header
+            className="md:hidden flex items-center gap-2 px-4 shrink-0 z-40"
+            style={{
+              height: "48px",
+              background: "hsl(var(--card))",
+              borderBottom: "1px solid hsl(var(--border))",
+            }}
+          >
+            <button
+              aria-label="Buka menu"
+              className="flex items-center justify-center h-8 w-8 -ml-0.5 rounded-lg transition-opacity active:opacity-60 shrink-0"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu strokeWidth={2} className="h-[17px] w-[17px] text-[hsl(var(--foreground))]" />
+            </button>
+
+            <div className="flex-1 flex items-center gap-2 min-w-0">
+              <div
+                className="h-[26px] w-[26px] rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0"
+                style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
+              >
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-[12.5px] font-bold text-[hsl(var(--foreground))] truncate leading-none">
+                {displayName}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => refreshRates()}
+                title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")}` : "Tap untuk perbarui"}
+                className="flex items-center gap-1 h-7 px-2 rounded-lg active:opacity-70 transition-opacity"
+                style={{ border: "1px solid hsl(var(--border))", background: "hsl(var(--secondary))" }}
+              >
+                <span
+                  className="h-1.5 w-1.5 rounded-full shrink-0"
+                  style={{ background: rateMode === "manual" ? "#1a44d4" : "#10b981" }}
+                />
+                <span className="text-[10px] font-bold text-sky-600 tabular-nums">
+                  {rates.USD ? `${(rates.USD / 1000).toFixed(1)}k` : "—"}
+                </span>
+                <RefreshCw className={cn("h-2.5 w-2.5 shrink-0 text-[hsl(var(--muted-foreground))]", ratesLoading && "animate-spin")} strokeWidth={2} />
+              </button>
+
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="flex items-center justify-center h-8 w-8 rounded-lg transition-opacity active:opacity-60 shrink-0"
+              >
+                <Search strokeWidth={2} className="h-[16px] w-[16px] text-[hsl(var(--muted-foreground))]" />
+              </button>
+
+              <span
+                className="h-2 w-2 rounded-full shrink-0"
+                title={syncTitle}
+                style={{ background: syncInfo.color, boxShadow: syncInfo.glow }}
+              />
+            </div>
+          </header>
+
+          {/* ── Desktop full header — hidden on mobile ── */}
           <motion.header
-            className="flex items-center gap-2 md:gap-3 px-5 md:px-7 lg:px-8 xl:pl-16 shrink-0"
+            className="hidden md:flex items-center gap-2 md:gap-3 px-5 md:px-7 lg:px-8 xl:pl-16 shrink-0"
             style={{
               height: "56px",
               background: "hsl(var(--card))",
@@ -72,16 +148,6 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
           >
-            {/* Hamburger — mobile only (sidebar is drawer on mobile) */}
-            <button
-              aria-label="Buka menu"
-              className="md:hidden flex items-center justify-center h-8 w-8 -ml-0.5 rounded-lg transition-opacity active:opacity-60 shrink-0"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu strokeWidth={2} className="h-[18px] w-[18px] text-[hsl(var(--foreground))]" />
-            </button>
-
-            {/* Search bar */}
             <div className="flex-1 md:max-w-md relative">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 h-[15px] w-[15px] pointer-events-none"
@@ -121,8 +187,6 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
             <div className="hidden md:block flex-1" />
 
             <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-
-              {/* Live rates pill */}
               <button
                 onClick={() => refreshRates()}
                 title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")} · Tap untuk perbarui` : "Tap untuk perbarui"}
@@ -142,7 +206,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 >
                   <span className="hidden sm:inline">USD </span>
                   <span className="text-sky-500 font-bold">
-                    Rp{rates.USD ? (rates.USD >= 10000 ? `${(rates.USD/1000).toFixed(1)}k` : rates.USD.toLocaleString("id-ID")) : "—"}
+                    Rp{rates.USD ? (rates.USD >= 10000 ? `${(rates.USD / 1000).toFixed(1)}k` : rates.USD.toLocaleString("id-ID")) : "—"}
                   </span>
                   <span className="hidden lg:inline">
                     <span className="mx-1.5 opacity-30">·</span>
@@ -159,7 +223,6 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 />
               </button>
 
-              {/* AI Assistant — hidden on very small phones */}
               <button
                 onClick={() => navigate("/itinerary")}
                 className="keep-icon-bg hidden sm:flex items-center gap-2 h-9 px-3 md:px-3.5 rounded-xl text-white text-[12px] font-semibold transition-all hover:opacity-90 active:scale-95 shrink-0"
@@ -169,7 +232,6 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 <span className="hidden md:inline">AI Assistant</span>
               </button>
 
-              {/* Sync status dot */}
               <div
                 className="hidden sm:flex items-center gap-1.5 h-9 px-2.5 rounded-xl shrink-0"
                 style={{ border: "1px solid hsl(var(--border))" }}
@@ -192,7 +254,6 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 </span>
               </div>
 
-              {/* Notification bell */}
               <button
                 className="keep-icon-bg hidden sm:flex relative h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-[hsl(var(--secondary))] shrink-0"
                 style={{ border: "1px solid hsl(var(--border))" }}
@@ -201,7 +262,6 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 <Bell className="h-4 w-4" style={{ color: "hsl(var(--muted-foreground))" }} strokeWidth={1.8} />
               </button>
 
-              {/* User avatar + name */}
               <button
                 onClick={() => navigate("/settings")}
                 className="flex items-center gap-2 h-9 pl-1.5 pr-1.5 md:pl-2 md:pr-3 rounded-xl transition-colors hover:bg-[hsl(var(--secondary))] shrink-0"
@@ -232,7 +292,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               <motion.main
                 key={location.pathname}
                 className={`absolute inset-0 overflow-auto ${
-                  noPadding ? "pb-0" : "p-5 md:p-7 lg:p-8"
+                  noPadding ? "pb-20 md:pb-0" : "p-5 pb-24 md:p-7 md:pb-7 lg:p-8"
                 }`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -248,7 +308,117 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
         </div>
       </div>
 
-      {/* ── AI Command Center — floating widget, semua halaman ── */}
+      {/* ── Mobile floating bottom nav (glassmorphism) ── */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center"
+        style={{
+          height: "60px",
+          background: "color-mix(in srgb, hsl(var(--card)) 88%, transparent)",
+          backdropFilter: "blur(20px) saturate(1.8)",
+          WebkitBackdropFilter: "blur(20px) saturate(1.8)",
+          borderTop: "1px solid hsl(var(--border))",
+          boxShadow: "0 -4px 24px rgba(0,0,0,0.06)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
+      >
+        {BOTTOM_NAV.map((item) => {
+          const isActive =
+            item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
+          return (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className="relative flex-1 flex flex-col items-center justify-center gap-[3px] h-full transition-all active:scale-90 pt-1"
+            >
+              <item.icon
+                strokeWidth={isActive ? 2.2 : 1.6}
+                className={cn(
+                  "h-[19px] w-[19px] transition-colors",
+                  isActive ? "text-[#1a44d4]" : "text-[hsl(var(--muted-foreground))]"
+                )}
+              />
+              <span
+                className={cn(
+                  "text-[9px] font-semibold transition-colors leading-none",
+                  isActive ? "text-[#1a44d4]" : "text-[hsl(var(--muted-foreground))]"
+                )}
+              >
+                {item.label}
+              </span>
+              {isActive && (
+                <span
+                  className="absolute top-0 left-1/2 -translate-x-1/2 h-[2.5px] w-8 rounded-b-full"
+                  style={{ background: "#1a44d4" }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ── Mobile search overlay ── */}
+      <AnimatePresence>
+        {searchOpen && (
+          <motion.div
+            className="md:hidden fixed inset-0 z-[60]"
+            style={{ background: "rgba(0,0,0,0.45)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            onClick={() => setSearchOpen(false)}
+          >
+            <motion.div
+              className="absolute top-0 left-0 right-0 p-4 pb-5"
+              style={{
+                background: "hsl(var(--card))",
+                borderBottom: "1px solid hsl(var(--border))",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+              }}
+              initial={{ y: -16, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -16, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <form onSubmit={handleSearchSubmit} className="flex items-center gap-3">
+                <div className="flex-1 relative">
+                  <Search
+                    className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none"
+                    style={{ color: "hsl(var(--muted-foreground))" }}
+                    strokeWidth={1.8}
+                  />
+                  <input
+                    autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari klien, trip, order…"
+                    className="w-full h-11 pl-10 pr-4 rounded-xl text-[13px] outline-none transition-all"
+                    style={{
+                      background: "hsl(var(--secondary))",
+                      border: "1.5px solid #1a44d4",
+                      boxShadow: "0 0 0 3px rgba(26,68,212,0.10)",
+                      color: "hsl(var(--foreground))",
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                  className="h-10 w-10 flex items-center justify-center rounded-xl transition-colors hover:bg-[hsl(var(--secondary))] shrink-0"
+                >
+                  <X strokeWidth={2} className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+                </button>
+              </form>
+              <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-2 px-1">
+                Tekan Enter untuk mencari klien &amp; jamaah
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── AI Command Center ── */}
       <AIChatWidget />
     </>
   );

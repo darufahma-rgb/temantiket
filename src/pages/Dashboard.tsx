@@ -794,16 +794,16 @@ export default function Dashboard() {
            MOBILE LAYOUT  (hidden on md+)
       ══════════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
-        <div className="pb-4 px-4 space-y-5">
+        <div className="pb-4 px-5 space-y-5">
 
           {/* ── Greeting row ── */}
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl flex items-center justify-center text-white text-[16px] font-extrabold shrink-0 shadow-md" style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}>
+            <div className="h-9 w-9 rounded-xl flex items-center justify-center text-white text-[12px] font-extrabold shrink-0 shadow-sm" style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}>
               {(user?.displayName ?? "A").charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] text-[hsl(var(--muted-foreground))] leading-none font-medium">Selamat datang 👋</p>
-              <h1 className="text-[16px] font-extrabold text-[hsl(var(--foreground))] leading-tight truncate mt-0.5">
+              <p className="text-[9px] text-[hsl(var(--muted-foreground))] leading-none font-medium">Selamat datang 👋</p>
+              <h1 className="text-[13px] font-extrabold text-[hsl(var(--foreground))] leading-tight truncate mt-0.5">
                 {user?.displayName?.split(" ")[0] ?? "Admin"}!
               </h1>
             </div>
@@ -821,11 +821,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* ── Search bar ── */}
+          {/* ── Search bar — hidden on mobile (use header search icon instead) ── */}
           <button
             onClick={() => navigate("/clients")}
             className="w-full flex items-center gap-2.5 h-11 px-3.5 rounded-2xl text-left active:scale-[0.99] transition-all shadow-sm"
             style={{
+              display: "none",
               background: "hsl(var(--secondary))",
               border: "1px solid hsl(var(--border))",
               boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
@@ -844,7 +845,7 @@ export default function Dashboard() {
 
           {/* ── Hero card ── */}
           <div
-            className="rounded-2xl p-4 relative overflow-hidden"
+            className="rounded-2xl p-3.5 relative overflow-hidden"
             style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 55%,#1a44d4 100%)" }}
           >
             {/* Decorative */}
@@ -860,7 +861,7 @@ export default function Dashboard() {
                 <p className="text-[8px] font-semibold uppercase tracking-widest text-sky-400/70 mb-1">
                   {nearestDeparture ? "Trip Terdekat" : "Ringkasan"}
                 </p>
-                <h2 className="text-[16px] font-bold text-white leading-tight truncate">
+                <h2 className="text-[13px] font-bold text-white leading-tight truncate">
                   {nearestDeparture?.name ?? "Belum ada jadwal"}
                 </h2>
                 {nearestDeparture?.departureDate && (
@@ -877,7 +878,7 @@ export default function Dashboard() {
             </div>
 
             {/* Stats: divider row */}
-            <div className="relative flex items-center mt-4 pt-3.5 border-t border-white/10">
+            <div className="relative flex items-center mt-3 pt-2.5 border-t border-white/10">
               {[
                 { label: "Trip",    value: trips.length },
                 { label: "Aktif",   value: activeTrips  },
@@ -885,8 +886,8 @@ export default function Dashboard() {
                 { label: "Selesai", value: doneTrips    },
               ].map((s, i) => (
                 <div key={s.label} className={cn("flex-1 text-center", i > 0 && "border-l border-white/10")}>
-                  <p className="text-[22px] font-black text-white tabular-nums leading-none">{s.value}</p>
-                  <p className="text-[8px] text-sky-300/60 uppercase tracking-wide mt-1 font-semibold">{s.label}</p>
+                  <p className="text-[17px] font-black text-white tabular-nums leading-none">{s.value}</p>
+                  <p className="text-[7.5px] text-sky-300/60 uppercase tracking-wide mt-0.5 font-semibold">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -904,8 +905,8 @@ export default function Dashboard() {
           {/* ── Menu Utama ── */}
           <div>
             <div className="flex items-center justify-between mb-2.5">
-              <h3 className="text-[13px] font-bold text-[hsl(var(--foreground))]">Menu Utama</h3>
-              <button onClick={() => setAddOpen(true)} className="text-[10.5px] text-sky-500 font-semibold active:opacity-70">+ Trip Baru</button>
+              <h3 className="text-[11.5px] font-bold text-[hsl(var(--foreground))]">Menu Utama</h3>
+              <button onClick={() => setAddOpen(true)} className="text-[9.5px] text-sky-500 font-semibold active:opacity-70">+ Trip Baru</button>
             </div>
             <div className="flex gap-3.5 overflow-x-auto scrollbar-none pb-1 -mx-4 px-4">
               {([
@@ -919,12 +920,12 @@ export default function Dashboard() {
                 <button
                   key={item.path}
                   onClick={() => navigate(item.path)}
-                  className="flex flex-col items-center gap-1.5 min-w-[56px] shrink-0 active:scale-95 transition-transform"
+                  className="flex flex-col items-center gap-1.5 min-w-[48px] shrink-0 active:scale-90 transition-transform"
                 >
-                  <div className="h-[54px] w-[54px] rounded-2xl flex items-center justify-center shadow-md" style={{ background: item.gradient }}>
-                    <item.icon strokeWidth={1.8} className="h-[23px] w-[23px] text-white" />
+                  <div className="h-[44px] w-[44px] rounded-[13px] flex items-center justify-center" style={{ border: "1.5px solid rgba(26,68,212,0.22)", background: "rgba(26,68,212,0.06)" }}>
+                    <item.icon strokeWidth={1.8} className="h-[19px] w-[19px] text-[#1a44d4]" />
                   </div>
-                  <span className="text-[9.5px] font-semibold text-[hsl(var(--foreground))] text-center leading-tight">{item.label}</span>
+                  <span className="text-[9px] font-semibold text-[hsl(var(--foreground))] text-center leading-tight">{item.label}</span>
                 </button>
               ))}
             </div>
@@ -1009,7 +1010,7 @@ export default function Dashboard() {
 
           {/* ── Trip section ── */}
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-[13.5px] font-bold text-[hsl(var(--foreground))]">{t.dash_packages_title}</h2>
+            <h2 className="text-[12px] font-bold text-[hsl(var(--foreground))]">{t.dash_packages_title}</h2>
             <div className="flex gap-2.5">
               {(["all", "upcoming", "done"] as const).map((key) => {
                 const labels = { all: t.dash_filter_all, upcoming: t.dash_filter_active, done: t.dash_filter_done };
