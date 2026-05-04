@@ -11,6 +11,7 @@
  */
 
 import { parseFlightText, KNOWN_AIRPORTS, KNOWN_AIRLINES } from "@/features/orders/flightParser";
+import { getAIHeaders } from "@/lib/aiFetch";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -450,7 +451,7 @@ CRITICAL RULES:
 async function callOpenAIText(text: string): Promise<ItineraryData> {
   const resp = await fetch("/api/ai/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await getAIHeaders(),
     body: JSON.stringify({
       model: "gpt-4o-mini",
       temperature: 0,
@@ -475,7 +476,7 @@ async function callOpenAIText(text: string): Promise<ItineraryData> {
 async function callOpenAIVision(imageDataUrl: string): Promise<ItineraryData> {
   const resp = await fetch("/api/ai/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await getAIHeaders(),
     body: JSON.stringify({
       model: "gpt-4o-mini",
       temperature: 0,

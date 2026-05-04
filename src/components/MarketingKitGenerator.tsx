@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { getAIHeaders } from "@/lib/aiFetch";
 
 /* ─── Mode ──────────────────────────────────────────────── */
 type Mode = "manual" | "poster";
@@ -164,7 +165,7 @@ async function generateFromDetail(params: {
 
   const res = await fetch("/api/ai/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await getAIHeaders(),
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [
@@ -204,7 +205,7 @@ async function generateFromPoster(params: {
 
   const res = await fetch("/api/ai/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await getAIHeaders(),
     body: JSON.stringify({
       model: "gpt-4o",
       messages: [

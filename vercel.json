@@ -4,6 +4,12 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "functions": {
+    "api/export/igh.js":     { "maxDuration": 30 },
+    "api/export/invoice.js": { "maxDuration": 30 },
+    "api/ai/chat.js":        { "maxDuration": 30 },
+    "api/ocr-passport.js":   { "maxDuration": 30 }
+  },
   "rewrites": [
     { "source": "/((?!api/|assets/|.*\\..*).*)", "destination": "/index.html" }
   ],

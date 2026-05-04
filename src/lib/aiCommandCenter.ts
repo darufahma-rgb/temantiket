@@ -25,6 +25,7 @@ import { nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
 import { generateInvoicePdfRemote } from "@/lib/exportPdfApi";
 import { useInvoiceStore } from "@/store/invoiceStore";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
+import { getAIHeaders } from "@/lib/aiFetch";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -700,7 +701,7 @@ export async function sendAIMessage(
   while (true) {
     const response = await fetch("/api/ai/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await getAIHeaders(),
       body: JSON.stringify({
         model: "gpt-4o",
         messages: fullMessages,

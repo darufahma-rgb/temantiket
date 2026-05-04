@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useT } from "@/lib/regional";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { pullNotes, syncNotesFull, type NoteCloud } from "@/lib/cloudSync";
+import { getAIHeaders } from "@/lib/aiFetch";
 
 const STORAGE_KEY = "travelhub.notes.v2";
 
@@ -257,7 +258,7 @@ export default function Notes() {
       try {
         const res = await fetch("/api/ai/chat", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: await getAIHeaders(),
           body: JSON.stringify({
             model: "gpt-4o-mini",
             messages: [

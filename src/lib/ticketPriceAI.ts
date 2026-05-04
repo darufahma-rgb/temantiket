@@ -14,6 +14,7 @@
  *   - Reuses parseGalileoDisplay + parseGalileoPNR from itineraryAI.ts
  */
 import { parseGalileoDisplay, parseGalileoPNR, type ItineraryData } from "@/lib/itineraryAI";
+import { getAIHeaders } from "@/lib/aiFetch";
 
 export type TripType = "one_way" | "return" | "multi_city";
 
@@ -253,7 +254,7 @@ REMEMBER: One booking = ONE ticket entry. Transit rows with same Total Amount = 
 async function callOpenAIVision(dataUrl: string): Promise<ParsedTicketPrice[]> {
   const resp = await fetch("/api/ai/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await getAIHeaders(),
     body: JSON.stringify({
       model: "gpt-4o-mini",
       temperature: 0.05,
