@@ -366,8 +366,8 @@ export default function BCTemplates() {
 
       {/* ── Form Dialog (Add / Edit) ───────────────────────────────────── */}
       <Dialog open={formOpen} onOpenChange={(v) => !v && setFormOpen(false)}>
-        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl mx-4 sm:mx-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col rounded-2xl mx-4 sm:mx-auto p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
             <DialogTitle className="flex items-center gap-2 text-[15px]">
               <div className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center">
                 <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
@@ -376,7 +376,7 @@ export default function BCTemplates() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-1">
+          <div className="space-y-4 py-4 px-5 overflow-y-auto flex-1">
             <div className="grid grid-cols-1 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -468,7 +468,7 @@ export default function BCTemplates() {
             )}
           </div>
 
-          <DialogFooter className="gap-2 pt-1">
+          <DialogFooter className="gap-2 px-5 py-4 border-t border-slate-100 flex-shrink-0 bg-white">
             <Button variant="outline" onClick={() => setFormOpen(false)} disabled={saving} className="rounded-xl h-11">
               Batal
             </Button>
