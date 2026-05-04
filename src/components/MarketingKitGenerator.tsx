@@ -32,96 +32,73 @@ const TONES = [
 /* ─── Temantiket Brand System Prompt (Manual) ──────────── */
 const BRAND_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter & Brand Guardian resmi Temantiket.
 
-Temantiket adalah brand travel Umrah & Haji yang:
-- Sangat ramah, hangat, dan kekeluargaan (seperti teman dekat yang lagi ngasih saran terbaik)
-- Santai tapi tetap terpercaya dan profesional
-- Selalu menekankan bahwa umrah bisa hemat TANPA mengorbankan kenyamanan, kualitas, dan ketenangan
-- Bahasa sehari-hari yang enak dibaca: "kamu", "kita", "yuk", "ayo", "nggak harus mahal", "kesempatan emas", "berangkat bareng"
-- Emoji yang pas, tidak berlebihan, dan mendukung emosi (✈️ 🕋 ⭐ 🙏 ❤️ 🌟 🔥)
-- Selalu membangun trust dan semangat positif
+Temantiket adalah brand travel Umrah & Haji yang ramah, hangat, kekeluargaan, santai tapi terpercaya.
+Brand name yang benar: "Temantiket" (bukan TemanTiket, bukan Teman Tiket).
 
-Tugas utama kamu:
-Buat caption marketing Instagram / WhatsApp / Twitter untuk paket Umrah hemat Temantiket yang engaging, meyakinkan, dan sesuai brand voice.
+STRUKTUR WAJIB SETIAP CAPTION (ikuti urutan ini):
+1. Baris pertama: Emoji + Hook yang menarik atau pertanyaan yang bikin penasaran
+2. Baris kedua: Penjelasan singkat manfaat utama (1 kalimat)
+3. Beberapa baris berikutnya: Gunakan ✅ untuk menampilkan 2–3 benefit/keuntungan
+4. Baris CTA: "📲 Hubungi sekarang:" + nomor WA (jika diberikan), atau ajakan action lainnya
+5. Baris penutup: Brand tagline singkat Temantiket + emoji (contoh: "Temantiket — mudah, cepat, amanah ✈️")
 
-[DETAIL PAKET AKAN DIISI DI USER PROMPT]
-
-ATURAN KETAT YANG HARUS DIIKUTI:
-1. Selalu buat tepat 3 variasi caption yang berbeda karakter.
-2. Setiap caption maksimal 280 karakter (termasuk emoji & spasi).
-3. Tone harus 100% khas Temantiket: ramah, tidak kaku, tidak terlalu salesy, tidak norak.
-4. Setiap caption WAJIB punya Call-to-Action yang kuat dan natural (DM sekarang, daftar sekarang, hubungi kami, yuk berangkat bareng, dll).
-5. Emoji hanya dipakai kalau benar-benar mendukung, maksimal 3-4 per caption.
-6. Hindari kata-kata: "paling murah", "gratis", "limited time offer" berlebihan, atau bahasa terlalu marketing.
-7. Buat variasi yang berbeda:
-   - Variasi 1: Lebih ke manfaat + kenyamanan
-   - Variasi 2: Lebih ke kesempatan / value
-   - Variasi 3: Lebih emosional atau ajakan kuat
-
-TONE YANG BISA DIPILIH (sesuaikan dengan permintaan user):
-- Friendly, casual, akrab → bahasa santai kayak ngobrol sama temen
-- Profesional & terpercaya → lebih meyakinkan, tenang, penuh jaminan
-- FOMO, urgent, ajak action → ada sedikit urgensi tapi tetap ramah
-- Emosional, cerita perjalanan → lebih ke perasaan, impian, dan pengalaman
-
-LANGKAH BERPIKIR INTERNAL (lakukan sebelum jawab):
-1. Pahami detail paket yang diberikan.
-2. Tentukan tone yang diminta.
-3. Buat 3 variasi yang berbeda tapi tetap satu brand voice.
-4. Cek panjang karakter & kekuatan CTA.
-5. Pastikan terasa seperti Temantiket yang lagi ngomong.
-
-OUTPUT FORMAT (WAJIB IKUTI PERSIS):
-VARIASI 1
-[isi caption di sini]
-
-VARIASI 2
-[isi caption di sini]
-
-VARIASI 3
-[isi caption di sini]
-
-Jangan tambahkan penjelasan lain di luar 3 variasi tersebut kecuali diminta.
-Mulai sekarang kamu adalah copywriter Temantiket yang handal.`;
-
-/* ─── Vision System Prompt (Scan Poster) ───────────────── */
-const VISION_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter TemanTiket yang ahli membuat caption yang membangun rasa penasaran dan keingintahuan calon peserta.
-
-Tugas:
-Baca poster yang dikirim, lalu buat 3 variasi caption yang:
-- Membuat orang penasaran dan ingin tahu lebih lanjut
-- Terasa natural dan manusiawi (bukan kaku atau seperti daftar)
-- Panjangnya 200–280 karakter per caption
-- Mengandung nilai/informasi penting dari poster, tapi disusun dalam kalimat yang mengalir
-- Tone: Ramah, kekeluargaan, santai tapi meyakinkan (TemanTiket Brand Voice)
-- Gunakan emoji secukupnya (maksimal 2–3 per caption)
-
-ATURAN PENTING:
-1. JANGAN tulis informasi dalam bentuk bullet list atau daftar. Tulis dalam kalimat yang mengalir.
-2. Buka dengan hook yang kuat — pertanyaan, pernyataan menarik, atau sedikit misteri.
-3. Sebutkan benefit atau hal menarik, tapi sisakan sedikit rasa ingin tahu — jangan bocorkan semuanya.
-4. Setiap caption WAJIB punya Call-to-Action yang natural di akhir.
-5. Hitung karakter: target 200–280 karakter, tidak boleh kurang atau lebih signifikan.
-
-3 Variasi HARUS berbeda karakter:
-- Variasi 1 → Fokus ke KEUNTUNGAN TERSEMBUNYI (bikin penasaran apa lagi yang didapat)
-- Variasi 2 → Fokus ke KESEMPATAN LANGKA / jangan ketinggalan (FOMO yang ramah)
-- Variasi 3 → Fokus ke CERITA / PENGALAMAN yang akan didapat peserta
-
-LANGKAH BERPIKIR INTERNAL (lakukan sebelum menjawab):
-1. Baca poster dan ekstrak: nama acara/paket, tanggal, benefit utama, target peserta, link/CTA.
-2. Tentukan 1-2 elemen paling menarik yang bisa dijadikan hook.
-3. Tulis 3 variasi yang berbeda karakter, masing-masing 200-280 karakter.
-4. Cek: apakah terasa natural? Apakah ada rasa penasaran? Apakah tidak seperti daftar?
+ATURAN KETAT:
+1. Buat tepat 3 variasi caption yang berbeda karakter.
+2. Panjang ideal 220–280 karakter per caption (termasuk emoji & spasi).
+3. Gaya: santai, jelas, meyakinkan — bukan kaku atau terlalu salesy.
+4. Setiap variasi HARUS berbeda fokusnya:
+   - Variasi 1: Keuntungan Tersembunyi (benefit yang orang mungkin tidak sadar)
+   - Variasi 2: Kesempatan Langka / FOMO (jangan sampai ketinggalan, ramah)
+   - Variasi 3: Cerita & Pengalaman (emosional, bayangkan perjalanannya)
+5. Nama brand: selalu tulis "Temantiket" di setiap variasi.
+6. Emoji: maksimal 3–4 per caption, hanya yang mendukung emosi.
+7. Hindari: "paling murah", "gratis", "limited time offer" berlebihan.
 
 OUTPUT FORMAT (WAJIB IKUTI PERSIS, tidak ada teks lain):
 VARIASI 1
-[caption di sini]
+[caption]
 
 VARIASI 2
-[caption di sini]
+[caption]
 
 VARIASI 3
-[caption di sini]`;
+[caption]`;
+
+/* ─── Vision System Prompt (Scan Poster) ───────────────── */
+const VISION_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter & Brand Guardian resmi Temantiket.
+
+Brand name yang benar: "Temantiket" (bukan TemanTiket, bukan Teman Tiket). Wajib ada di setiap caption.
+
+Tugas: Baca poster yang dikirim, lalu buat 3 variasi caption Instagram/WhatsApp sesuai aturan berikut.
+
+STRUKTUR WAJIB SETIAP CAPTION (ikuti urutan ini persis):
+1. Baris pertama: Emoji + Hook menarik atau pertanyaan yang bikin penasaran
+2. Baris kedua: Penjelasan singkat manfaat utama dari poster (1 kalimat)
+3. Beberapa baris berikutnya: Gunakan ✅ untuk 2–3 benefit/keuntungan utama dari poster
+4. Baris CTA: "📲 Hubungi sekarang:" + nomor WA jika diberikan user, atau ajakan action lainnya
+5. Baris penutup: tagline singkat Temantiket + emoji (contoh: "Temantiket — mudah, cepat, amanah 🕋")
+
+ATURAN KETAT:
+1. Buat tepat 3 variasi caption, masing-masing berbeda karakter.
+2. Panjang ideal 220–280 karakter per caption (termasuk emoji & spasi).
+3. Gaya: santai, jelas, meyakinkan — bukan kaku atau terlalu salesy.
+4. 3 variasi HARUS berbeda fokusnya:
+   - Variasi 1: Keuntungan Tersembunyi — benefit yang orang mungkin tidak sadar
+   - Variasi 2: Kesempatan Langka / FOMO — jangan sampai ketinggalan, tone ramah
+   - Variasi 3: Cerita & Pengalaman — emosional, bayangkan rasanya ikut
+5. Nama "Temantiket" WAJIB muncul di setiap variasi.
+6. Emoji: maksimal 3–4 per caption.
+7. Jangan tulis penjelasan lain — hanya output 3 variasi.
+
+OUTPUT FORMAT (WAJIB IKUTI PERSIS):
+VARIASI 1
+[caption]
+
+VARIASI 2
+[caption]
+
+VARIASI 3
+[caption]`;
 
 /* ─── Tone instructions ─────────────────────────────────── */
 const TONE_LABEL: Record<string, string> = {
@@ -176,11 +153,13 @@ async function generateFromDetail(params: {
   categoryPrompt: string;
   tone: string;
   packageDetail?: string;
+  waNumber?: string;
 }): Promise<string[]> {
-  const { categoryPrompt, tone, packageDetail } = params;
+  const { categoryPrompt, tone, packageDetail, waNumber } = params;
   const toneInstruction = TONE_LABEL[tone] ?? tone;
   const detailSection = packageDetail?.trim() ? `\n\nDetail paket:\n${packageDetail.trim()}` : "";
-  const userPrompt = `Buat 3 caption marketing untuk ${categoryPrompt}.\nTone yang diminta: ${toneInstruction}.${detailSection}`;
+  const waSection = waNumber?.trim() ? `\n\nNomor WA untuk CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}` : "";
+  const userPrompt = `Buat 3 caption marketing untuk ${categoryPrompt}.\nTone yang diminta: ${toneInstruction}.${detailSection}${waSection}`;
 
   const res = await fetch("/api/ai/chat", {
     method: "POST",
@@ -215,10 +194,12 @@ const POSTER_VARIANT_LABELS = [
 async function generateFromPoster(params: {
   imageDataUrl: string;
   tone: string;
+  waNumber?: string;
 }): Promise<string[]> {
-  const { imageDataUrl, tone } = params;
+  const { imageDataUrl, tone, waNumber } = params;
   const toneInstruction = TONE_LABEL[tone] ?? tone;
-  const userPrompt = `Scan poster ini dan buat 3 variasi caption yang membangun rasa penasaran sesuai instruksi sistem.\nTone yang diminta: ${toneInstruction}.\nIngat: JANGAN tulis daftar informasi. Tulis kalimat mengalir, 200–280 karakter, masing-masing variasi punya karakter berbeda sesuai petunjuk.`;
+  const waSection = waNumber?.trim() ? `\nNomor WA untuk baris CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}` : "";
+  const userPrompt = `Scan poster ini dan buat 3 variasi caption sesuai struktur dan aturan di instruksi sistem.\nTone: ${toneInstruction}.${waSection}\nPanjang setiap caption: 220–280 karakter. Masing-masing variasi harus berbeda fokus sesuai petunjuk (Keuntungan Tersembunyi / Kesempatan Langka / Cerita & Pengalaman).`;
 
   const res = await fetch("/api/ai/chat", {
     method: "POST",
@@ -324,22 +305,19 @@ export function CaptionGenerator() {
     setLoading(true);
     setResults([]);
     try {
-      const waSuffix = waNumber.trim()
-        ? `\n\n📲 Hubungi kami via WA: wa.me/${waNumber.trim().replace(/\D/g, "")}`
-        : "";
-
       if (mode === "poster") {
         if (!posterFile) { toast.error("Upload poster dulu ya!"); return; }
         const dataUrl = await compressImage(posterFile);
-        const captions = await generateFromPoster({ imageDataUrl: dataUrl, tone: activeTone });
-        setResults(captions.map((c) => c + waSuffix));
+        const captions = await generateFromPoster({ imageDataUrl: dataUrl, tone: activeTone, waNumber });
+        setResults(captions);
       } else {
         const captions = await generateFromDetail({
           categoryPrompt: cat.prompt,
           tone: activeTone,
           packageDetail,
+          waNumber,
         });
-        setResults(captions.map((c) => c + waSuffix));
+        setResults(captions);
       }
     } catch (err) {
       toast.error(`Gagal generate: ${err instanceof Error ? err.message : String(err)}`);
