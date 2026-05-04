@@ -219,7 +219,6 @@ select
   'IDR',
   jsonb_build_object(
     'source', 'backfill_jamaah',
-    'bookingCode', j.booking_code,
     'paymentStatus', j.payment_status
   ),
   case when t.id is not null then j.trip_id else null end,
