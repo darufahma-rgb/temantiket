@@ -1,0 +1,46 @@
+npm error code ERESOLVE
+npm error ERESOLVE could not resolve
+npm error
+npm error While resolving: drizzle-zod@0.8.3
+npm error Found: react@18.3.1
+npm error node_modules/react
+npm error   react@"^18.3.1" from the root project
+npm error   peer react@">=16.8.0" from @floating-ui/react-dom@2.1.8
+npm error   node_modules/@floating-ui/react-dom
+npm error     @floating-ui/react-dom@"^2.0.0" from @radix-ui/react-popper@1.2.8
+npm error     node_modules/@radix-ui/react-popper
+npm error       @radix-ui/react-popper@"1.2.8" from @radix-ui/react-hover-card@1.1.15
+npm error       node_modules/@radix-ui/react-hover-card
+npm error         @radix-ui/react-hover-card@"^1.1.15" from the root project
+npm error       4 more (@radix-ui/react-menu, @radix-ui/react-popover, ...)
+npm error   95 more (@radix-ui/react-accordion, ...)
+
+npm error Could not resolve dependency:
+npm error peer drizzle-orm@">=0.36.0" from drizzle-zod@0.8.3
+npm error node_modules/drizzle-zod
+npm error   drizzle-zod@"^0.8.3" from the root project
+
+npm error   node_modules/react-native
+npm error     peer react-native@"*" from @op-engineering/op-sqlite@15.2.12
+npm error     node_modules/@op-engineering/op-sqlite
+npm error       peerOptional @op-engineering/op-sqlite@">=2" from drizzle-orm@0.45.2
+npm error       node_modules/drizzle-orm
+npm error         peer drizzle-orm@">=0.36.0" from drizzle-zod@0.8.3
+npm error         node_modules/drizzle-zod
+npm error     peer react-native@"*" from expo-sqlite@55.0.15
+npm error     node_modules/expo-sqlite
+npm error       peerOptional expo-sqlite@">=14.0.0" from drizzle-orm@0.45.2
+npm error       node_modules/drizzle-orm
+npm error         peer drizzle-orm@">=0.36.0" from drizzle-zod@0.8.3
+npm error         node_modules/drizzle-zod
+npm error     4 more (expo, @expo/dom-webview, @expo/metro-runtime, react-native-webview)
+
+npm error Fix the upstream dependency conflict, or retry
+npm error this command with --force or --legacy-peer-deps
+npm error to accept an incorrect (and potentially broken) dependency resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error /vercel/.npm/_logs/2026-05-04T15_22_13_378Z-eresolve-report.txt
+npm error A complete log of this run can be found in: /vercel/.npm/_logs/2026-05-04T15_22_13_378Z-debug-0.log
+Error: Command "npm install" exited with 1
