@@ -84,37 +84,25 @@ Jangan tambahkan penjelasan lain di luar 3 variasi tersebut kecuali diminta.
 Mulai sekarang kamu adalah copywriter TemanTiket yang handal.`;
 
 /* ─── Vision System Prompt (Scan Poster) ───────────────── */
-const VISION_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter + Vision Expert resmi TemanTiket.
+const VISION_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter TemanTiket.
 
-TemanTiket adalah brand Umrah & Haji yang ramah, kekeluargaan, santai tapi terpercaya. Bahasa yang digunakan: hangat, mudah dimengerti, banyak pakai "kamu", "yuk", "ayo", "nggak harus mahal". Selalu tekankan hemat tapi tetap nyaman & berkualitas. Emoji yang pas (✈️ 🕋 ⭐ 🙏 ❤️).
+Tugas: Baca poster yang dikirim user, ekstrak informasi penting (nama paket, harga, durasi, highlight, dll), lalu buat 3 variasi caption marketing dengan gaya TemanTiket.
 
-Tugas kamu:
-User akan upload gambar poster paket Umrah. Kamu harus:
-1. Membaca & mengekstrak SEMUA informasi penting dari poster tersebut (pakai kemampuan vision/OCR mu).
-2. Identifikasi dengan jelas: nama paket, harga, durasi, highlight fasilitas, rute, tanggal keberangkatan (jika ada), dan keunggulan utama.
-3. Buat 3 variasi caption marketing yang menarik berdasarkan informasi yang diekstrak.
-
-ATURAN KETAT:
-- Ekstrak informasi seakurat mungkin dari gambar poster (jangan tebak-tebak).
-- Jika ada teks yang kurang jelas, tetap usahakan ambil yang paling penting.
-- Caption harus 100% dalam gaya TemanTiket (ramah, meyakinkan, tidak norak).
-- Maksimal 280 karakter per caption.
-- Setiap caption WAJIB punya CTA yang kuat dan natural.
-- Emoji maksimal 3-4 per caption, hanya yang relevan.
-- Buat 3 variasi yang berbeda karakternya.
-
-OUTPUT FORMAT (WAJIB IKUTI PERSIS):
+Aturan:
+- Buat tepat 3 variasi
+- Maksimal 280 karakter per caption
+- Tone sesuai permintaan user (Santai / Formal / Hard Selling / Storytelling)
+- Pakai emoji yang pas
+- Setiap caption harus punya CTA yang kuat
+- Output format:
 VARIASI 1
-[caption di sini]
+[caption]
 
 VARIASI 2
-[caption di sini]
+[caption]
 
 VARIASI 3
-[caption di sini]
-
-Jangan tambah penjelasan lain. Langsung kasih 3 variasi caption saja.
-Mulai sekarang kamu adalah copywriter TemanTiket yang jago baca poster dan bikin caption yang engaging.`;
+[caption]`;
 
 /* ─── Tone instructions ─────────────────────────────────── */
 const TONE_LABEL: Record<string, string> = {
@@ -138,6 +126,29 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
     reader.readAsDataURL(file);
+  });
+}
+
+/* ─── Image compression (resize + JPEG encode) ──────────── */
+function compressImage(file: File, maxWidth = 1400, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("Gagal memuat gambar")); };
+    img.src = objectUrl;
   });
 }
 
@@ -203,7 +214,10 @@ async function generateFromPoster(params: {
     }),
   });
 
-  if (!res.ok) throw new Error(`AI error ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 413) throw new Error("Gambar masih terlalu besar setelah kompresi. Coba gunakan gambar yang lebih kecil atau resolusi lebih rendah.");
+    throw new Error(`AI error ${res.status}`);
+  }
   const data = await res.json();
   const raw: string = data.choices?.[0]?.message?.content ?? "";
   const captions = parseVariasiFormat(raw);
@@ -250,8 +264,8 @@ export function CaptionGenerator() {
       toast.error("File harus berupa gambar (JPG, PNG, WebP, dll)");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Ukuran gambar maksimal 10 MB");
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ukuran gambar maksimal 5 MB sebelum dikompresi");
       return;
     }
     setPosterFile(file);
@@ -290,7 +304,7 @@ export function CaptionGenerator() {
 
       if (mode === "poster") {
         if (!posterFile) { toast.error("Upload poster dulu ya!"); return; }
-        const dataUrl = await fileToDataUrl(posterFile);
+        const dataUrl = await compressImage(posterFile);
         const captions = await generateFromPoster({ imageDataUrl: dataUrl, tone: activeTone });
         setResults(captions.map((c) => c + waSuffix));
       } else {
@@ -445,7 +459,7 @@ export function CaptionGenerator() {
                       {isDragging ? "Lepaskan gambar di sini" : "Upload poster paket"}
                     </p>
                     <p className="text-[11.5px] text-muted-foreground mt-0.5">
-                      Drag & drop atau klik untuk pilih — JPG, PNG, WebP (maks. 10 MB)
+                      Drag & drop atau klik untuk pilih — JPG, PNG, WebP (maks. 5 MB)
                     </p>
                   </div>
                 </div>
