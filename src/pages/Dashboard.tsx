@@ -775,6 +775,11 @@ export default function Dashboard() {
     .filter((p) => p.departureDate && new Date(p.departureDate + "T00:00:00").getTime() >= Date.now())
     .sort((a, b) => new Date(a.departureDate!).getTime() - new Date(b.departureDate!).getTime())[0];
 
+  const flightOrders = orders.filter((o) => o.type === "flight").length;
+  const visaMesirOrders = orders.filter((o) => o.type === "visa_student").length;
+  const voaOrders = orders.filter((o) => o.type === "visa_voa").length;
+  const totalSalesOrders = flightOrders + visaMesirOrders + voaOrders;
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
@@ -855,49 +860,42 @@ export default function Dashboard() {
               <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "20px 20px" }} />
             </div>
 
-            {/* Trip name + countdown */}
-            <div className="relative flex items-start justify-between gap-3">
+            {/* Header */}
+            <div className="relative flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[8px] font-semibold uppercase tracking-widest text-sky-400/70 mb-1">
-                  {nearestDeparture ? "Trip Terdekat" : "Ringkasan"}
+                  Penjualan
                 </p>
-                <h2 className="text-[13px] font-bold text-white leading-tight truncate">
-                  {nearestDeparture?.name ?? "Belum ada jadwal"}
+                <h2 className="text-[13px] font-bold text-white leading-tight">
+                  Tiket Pesawat, Visa &amp; VOA
                 </h2>
-                {nearestDeparture?.departureDate && (
-                  <p className="text-[9.5px] text-sky-300/60 mt-0.5">
-                    {formatDate(nearestDeparture.departureDate)}
-                  </p>
-                )}
               </div>
-              {nearestDeparture && (
-                <span className="shrink-0 text-[10px] font-semibold text-white/80 bg-white/10 border border-white/15 rounded-xl px-2.5 py-1 mt-0.5 whitespace-nowrap">
-                  {daysUntil(nearestDeparture.departureDate!)}
-                </span>
-              )}
+              <span className="shrink-0 text-[10px] font-semibold text-white/80 bg-white/10 border border-white/15 rounded-xl px-2.5 py-1 whitespace-nowrap">
+                {totalSalesOrders} Total
+              </span>
             </div>
 
-            {/* Stats: divider row */}
-            <div className="relative flex items-center mt-3 pt-2.5 border-t border-white/10">
+            {/* Stats: 3 columns */}
+            <div className="relative flex items-stretch mt-3 pt-2.5 border-t border-white/10 gap-0">
               {[
-                { label: "Trip",    value: trips.length },
-                { label: "Aktif",   value: activeTrips  },
-                { label: "Jamaah",  value: totalJamaah  },
-                { label: "Selesai", value: doneTrips    },
+                { label: "Tiket Pesawat", value: flightOrders,    icon: "✈️" },
+                { label: "Visa Mesir",    value: visaMesirOrders, icon: "🇪🇬" },
+                { label: "VOA",           value: voaOrders,       icon: "🛂" },
               ].map((s, i) => (
-                <div key={s.label} className={cn("flex-1 text-center", i > 0 && "border-l border-white/10")}>
-                  <p className="text-[17px] font-black text-white tabular-nums leading-none">{s.value}</p>
-                  <p className="text-[7.5px] text-sky-300/60 uppercase tracking-wide mt-0.5 font-semibold">{s.label}</p>
+                <div key={s.label} className={cn("flex-1 text-center flex flex-col items-center gap-0.5", i > 0 && "border-l border-white/10")}>
+                  <span className="text-[13px] leading-none">{s.icon}</span>
+                  <p className="text-[20px] font-black text-white tabular-nums leading-none mt-0.5">{s.value}</p>
+                  <p className="text-[7px] text-sky-300/60 uppercase tracking-wide font-semibold leading-tight mt-0.5 px-1">{s.label}</p>
                 </div>
               ))}
             </div>
 
             {/* CTA link */}
             <button
-              onClick={() => navigate("/packages")}
+              onClick={() => navigate("/orders")}
               className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-sky-300 active:opacity-60 transition-opacity"
             >
-              {nearestDeparture ? "Lihat Paket" : "Buat Paket Trip"}
+              Lihat Semua Order
               <ArrowRight className="h-3 w-3" />
             </button>
           </div>
