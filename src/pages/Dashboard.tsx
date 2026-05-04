@@ -1069,11 +1069,11 @@ export default function Dashboard() {
       {/* ══════════════════════════════════════════════════════════════
            DESKTOP LAYOUT  (hidden on mobile)
       ══════════════════════════════════════════════════════════════ */}
-      <div className="hidden md:block xl:flex-1 xl:min-w-0 pb-6">
+      <div className="hidden md:block xl:flex-1 xl:min-w-0 pb-8">
 
         {/* ── Greeting hero ── */}
         <motion.div
-          className="mb-1.5 md:mb-5"
+          className="mb-6"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
@@ -1124,7 +1124,7 @@ export default function Dashboard() {
 
         {/* ── Live Clock (multi-timezone) ── */}
         <motion.div
-          className="mb-1.5 md:mb-4"
+          className="mb-6"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
@@ -1135,7 +1135,7 @@ export default function Dashboard() {
 
         {/* ── Admin WhatsApp quick-contact (untuk admin internal) ── */}
         <motion.div
-          className="mb-1.5 md:mb-4"
+          className="mb-6"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.07, ease: [0.16, 1, 0.3, 1] }}
@@ -1145,17 +1145,17 @@ export default function Dashboard() {
 
         {/* ── Mitra (Agent) Leaderboard preview — owner only ── */}
         {user?.role === "owner" && (
-          <div className="mb-1.5 md:mb-4">
+          <div className="mb-6">
             <MitraLeaderboardCard />
           </div>
         )}
 
         {/* ── CEO Daily Quest — owner only ── */}
-        {user?.role === "owner" && <div className="mb-5"><CeoDailyQuest /></div>}
+        {user?.role === "owner" && <div className="mb-6"><CeoDailyQuest /></div>}
 
         {/* ── Primary stat cards (4 main metrics) ── */}
         <motion.div
-          className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
           variants={stagger}
           initial="hidden"
           animate="visible"
@@ -1188,7 +1188,7 @@ export default function Dashboard() {
 
         {/* ── Secondary package stats (desktop only — too dense on mobile) ── */}
         <motion.div
-          className="hidden md:grid grid-cols-4 gap-3 mb-5"
+          className="hidden md:grid grid-cols-4 gap-4 mb-6"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
@@ -1202,7 +1202,7 @@ export default function Dashboard() {
             <button
               key={item.label}
               onClick={item.onClick}
-              className="flex items-center gap-3 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] border-l-[3px] p-3.5 hover:shadow-md hover:bg-[hsl(var(--secondary))] transition-all text-left active:scale-[0.98]"
+              className="flex items-center gap-3 rounded-2xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] border-l-[3px] p-3.5 hover:shadow-md hover:bg-[hsl(var(--secondary))] transition-all text-left active:scale-[0.98]"
               style={{ borderLeftColor: item.borderColor }}
             >
               <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center shrink-0", item.iconBg)}>
@@ -1255,12 +1255,12 @@ export default function Dashboard() {
         {/* ── Perlu Perhatian ── */}
         {pendingPackages.length > 0 && (
           <motion.div
-            className="mb-1.5 md:mb-4"
+            className="mb-6"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.18, ease: "easeOut" }}
           >
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-1.5">
                 <AlertCircle strokeWidth={1.5} className="h-3.5 w-3.5 text-amber-500" />
                 <h2 className="text-[12px] md:text-[14px] font-bold text-[hsl(var(--foreground))]">{t.dash_needs_attention}</h2>
@@ -1271,12 +1271,12 @@ export default function Dashboard() {
                 {t.dash_view_all} <ChevronRight strokeWidth={2} className="h-2.5 w-2.5" />
               </button>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2.5">
               {pendingPackages.slice(0, 4).map((pkg) => (
                 <div
                   key={pkg.id}
                   onClick={() => navigate("/packages")}
-                  className="flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-white px-2.5 py-1.5 cursor-pointer hover:border-[hsl(var(--primary))]/40 hover:shadow-sm transition-all"
+                  className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--border))] bg-white px-3.5 py-2.5 cursor-pointer hover:border-[hsl(var(--primary))]/40 hover:shadow-sm transition-all"
                 >
                   <div className="h-8 w-8 md:h-9 md:w-9 rounded-lg md:rounded-xl flex items-center justify-center text-base shrink-0"
                     style={{ background: "linear-gradient(135deg,#f0f9ff,#bae6fd)" }}>
@@ -1313,7 +1313,7 @@ export default function Dashboard() {
 
         {/* ── Kalkulator & Laporan & Order shortcut bar ── */}
         <motion.div
-          className="grid grid-cols-3 gap-3 mb-5"
+          className="grid grid-cols-3 gap-4 mb-6"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.22, ease: "easeOut" }}
@@ -1338,7 +1338,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Section header */}
-        <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center justify-between gap-3 mb-5">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-[hsl(var(--foreground))]">{t.dash_packages_title}</h1>
             <div className="flex gap-3 mt-1">
@@ -1370,7 +1370,7 @@ export default function Dashboard() {
 
         {/* Cards grid */}
         {loadingTrips ? (
-          <div className="grid gap-2 md:gap-3 grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:gap-5 grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="rounded-2xl border border-[hsl(var(--border))] overflow-hidden animate-pulse">
                 <div className="h-36 bg-[hsl(var(--secondary))]" />
@@ -1417,7 +1417,7 @@ export default function Dashboard() {
             </div>
           </motion.div>
         ) : (
-          <div className="grid gap-2 md:gap-3 grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:gap-5 grid-cols-2 lg:grid-cols-3">
             {filtered.map((trip) => (
               <TripCard key={trip.id} trip={trip} onDelete={setDeleteTarget} />
             ))}
