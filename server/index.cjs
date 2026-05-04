@@ -524,7 +524,7 @@ Rules:
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-nano',
         temperature: 0,
         max_tokens: 400,
         response_format: { type: 'json_object' },

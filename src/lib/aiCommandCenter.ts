@@ -703,7 +703,7 @@ export async function sendAIMessage(
       method: "POST",
       headers: await getAIHeaders(),
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4.1-nano",
         messages: fullMessages,
         tools: TOOLS,
         tool_choice: "auto",

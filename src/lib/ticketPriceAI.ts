@@ -256,7 +256,7 @@ async function callOpenAIVision(dataUrl: string): Promise<ParsedTicketPrice[]> {
     method: "POST",
     headers: await getAIHeaders(),
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-nano",
       temperature: 0.05,
       max_tokens: 4000,
       response_format: { type: "json_object" },

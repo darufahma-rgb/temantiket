@@ -668,7 +668,7 @@ export function AIChatWidget() {
                 <div className="font-bold text-[15px] text-white leading-tight tracking-tight">AITEM</div>
                 <div className="text-[10.5px] text-white/65 flex items-center gap-1.5 mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block shrink-0" />
-                  Siap membantu • gpt-4o-mini
+                  Siap membantu • gpt-4.1-nano
                 </div>
               </div>
               <button

@@ -453,7 +453,7 @@ async function callOpenAIText(text: string): Promise<ItineraryData> {
     method: "POST",
     headers: await getAIHeaders(),
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-nano",
       temperature: 0,
       max_tokens: 2500,
       response_format: { type: "json_object" },
@@ -478,7 +478,7 @@ async function callOpenAIVision(imageDataUrl: string): Promise<ItineraryData> {
     method: "POST",
     headers: await getAIHeaders(),
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-nano",
       temperature: 0,
       max_tokens: 2500,
       response_format: { type: "json_object" },
