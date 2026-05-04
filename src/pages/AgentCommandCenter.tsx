@@ -662,7 +662,7 @@ export default function AgentCommandCenter() {
                             <td className="px-3 py-3">
                               <div className="flex items-center justify-center gap-1.5">
                                 <Button variant="outline" size="sm" className="h-7 px-2.5 text-[11px] gap-1"
-                                  onClick={() => { setSelectedAgent(agent); setProfileOpen(true); }}>
+                                  onClick={() => navigate(`/agents/${agent.userId}`)}>
                                   <Eye className="h-3 w-3" /> Profil
                                 </Button>
                                 <Button size="sm" className="h-7 px-2.5 text-[11px] gap-1 bg-sky-600 hover:bg-sky-700 text-white"
