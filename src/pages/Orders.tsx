@@ -111,169 +111,210 @@ export default function Orders() {
            MOBILE LAYOUT  (md:hidden)
       ══════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
-        <div className="px-3 pt-1.5 pb-6 space-y-2">
+        <div className="pb-6 px-5 space-y-4">
 
           {/* ── Header row ── */}
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
-              {typeFilter
-                ? <span className="text-[16px]">{ORDER_TYPE_EMOJI[typeFilter]}</span>
-                : <ShoppingBag className="h-4 w-4 text-violet-500" />}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[8.5px] text-[hsl(var(--muted-foreground))] leading-none uppercase tracking-wide">Order</p>
-              <h1 className="text-[13.5px] font-extrabold text-[hsl(var(--foreground))] leading-tight truncate">
-                {typeFilter ? ORDER_TYPE_LABEL[typeFilter] : "Order Hub"}
-              </h1>
-            </div>
-            {(typeFilter || clientIdParam) && (
+          <div className="flex items-center gap-2.5">
+            {(typeFilter || clientIdParam) ? (
               <button
                 onClick={() => navigate("/orders")}
-                className="h-7 w-7 rounded-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center justify-center active:scale-95 transition-transform shrink-0"
+                className="h-9 w-9 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center justify-center active:scale-95 transition-transform shrink-0"
               >
-                <ArrowLeft className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
+                <ArrowLeft className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
               </button>
+            ) : (
+              <div
+                className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+                style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
+              >
+                <ShoppingBag className="h-4 w-4 text-white" />
+              </div>
             )}
+            <div className="min-w-0 flex-1">
+              <p className="text-[8px] font-semibold uppercase tracking-widest text-[hsl(var(--muted-foreground))] leading-none">Order Hub</p>
+              <h1 className="text-[14px] font-extrabold text-[hsl(var(--foreground))] leading-tight truncate mt-0.5">
+                {typeFilter ? ORDER_TYPE_LABEL[typeFilter] : "Semua Order"}
+              </h1>
+            </div>
             <button
               onClick={() => setAddOpen(true)}
-              className="h-7 px-3 rounded-full bg-sky-500 text-white text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-transform shadow-sm shrink-0"
+              className="h-9 px-4 rounded-xl text-white text-[11px] font-bold flex items-center gap-1.5 active:scale-95 transition-transform shadow-sm shrink-0"
+              style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
             >
-              <Plus className="h-3 w-3" /> Baru
+              <Plus className="h-3.5 w-3.5" /> Baru
             </button>
           </div>
 
-          {/* ── Hero stats card ── */}
-          <div className="rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 px-3.5 py-3 text-white relative overflow-hidden shadow-md shadow-violet-300/30">
-            <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-white/10 pointer-events-none" />
-            <div className="absolute -bottom-4 -left-4 h-14 w-14 rounded-full bg-white/10 pointer-events-none" />
-            <div className="relative flex items-center gap-3">
-              <div className="shrink-0">
-                <p className="text-[7.5px] font-bold uppercase tracking-widest opacity-70">Total Order</p>
-                <p className="text-[22px] font-extrabold leading-none tabular-nums mt-0.5">{orders.length}</p>
+          {/* ── Hero stats banner ── */}
+          <div
+            className="rounded-2xl px-4 py-3.5 text-white relative overflow-hidden"
+            style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 55%,#1a44d4 100%)" }}
+          >
+            {/* Decorative circles */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div className="absolute -top-10 -right-10 h-44 w-44 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,255,255,0.07) 0%, transparent 65%)" }} />
+              <div className="absolute -bottom-8 left-0 right-0 h-24" style={{ background: "radial-gradient(ellipse at 50% 100%, rgba(26,68,212,0.3) 0%, transparent 70%)" }} />
+              <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "20px 20px" }} />
+            </div>
+
+            {/* Top row: label + total */}
+            <div className="relative flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="text-[8px] font-semibold uppercase tracking-widest text-sky-400/70 mb-0.5">Total Order</p>
+                <p className="text-[28px] font-black text-white leading-none tabular-nums">{orders.length}</p>
               </div>
-              <div className="flex-1 flex items-stretch gap-1.5">
-                {[
-                  { label: "Revenue", value: `Rp ${fmtIDRShort(totalRevenue)}` },
-                  { label: "Draft",   value: String(draftCount)                },
-                  { label: "Selesai", value: String(doneCount)                 },
-                ].map((s) => (
-                  <div key={s.label} className="flex-1 bg-white/20 rounded-lg px-1.5 py-1.5 text-center">
-                    <p className="text-[11px] font-extrabold leading-none tabular-nums">{s.value}</p>
-                    <p className="text-[6.5px] opacity-70 mt-0.5 leading-none uppercase tracking-wide">{s.label}</p>
-                  </div>
-                ))}
+              <div className="h-9 w-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 mt-0.5">
+                <ShoppingBag className="h-4.5 w-4.5 text-white/80" />
               </div>
+            </div>
+
+            {/* Divider stat row */}
+            <div className="relative flex items-center pt-3 border-t border-white/10">
+              {[
+                { label: "Revenue",  value: `Rp ${fmtIDRShort(totalRevenue)}` },
+                { label: "Draft",    value: String(draftCount) },
+                { label: "Selesai",  value: String(doneCount) },
+              ].map((s, i) => (
+                <div key={s.label} className={cn("flex-1 text-center", i > 0 && "border-l border-white/10")}>
+                  <p className="text-[13px] font-black text-white tabular-nums leading-none">{s.value}</p>
+                  <p className="text-[7.5px] text-sky-300/60 uppercase tracking-wide mt-1 font-semibold">{s.label}</p>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* ── Type filter chips ── */}
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5 -mx-0.5 px-0.5">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5 -mx-5 px-5">
             <button
               onClick={() => navigate(clientIdParam ? `/orders?clientId=${clientIdParam}` : "/orders")}
               className={cn(
-                "shrink-0 h-7 px-3 rounded-full text-[10.5px] font-bold border transition active:scale-95 whitespace-nowrap",
-                !typeFilter ? "bg-violet-500 text-white border-transparent" : "bg-white text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
+                "shrink-0 h-8 px-3.5 rounded-full text-[11px] font-bold border transition-all active:scale-95 whitespace-nowrap",
+                !typeFilter
+                  ? "text-white border-transparent shadow-sm"
+                  : "bg-white text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
               )}
+              style={!typeFilter ? { background: "linear-gradient(135deg,#1a44d4,#0a2472)" } : {}}
             >Semua</button>
             {ORDER_TYPES.map((t) => (
               <button
                 key={t}
                 onClick={() => navigate(`/orders/${t}${clientIdParam ? `?clientId=${clientIdParam}` : ""}`)}
                 className={cn(
-                  "shrink-0 h-7 px-3 rounded-full text-[10.5px] font-bold border transition active:scale-95 flex items-center gap-1 whitespace-nowrap",
-                  typeFilter === t ? "bg-violet-500 text-white border-transparent" : "bg-white text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
+                  "shrink-0 h-8 px-3.5 rounded-full text-[11px] font-bold border transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap",
+                  typeFilter === t
+                    ? "text-white border-transparent shadow-sm"
+                    : "bg-white text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
                 )}
+                style={typeFilter === t ? { background: "linear-gradient(135deg,#1a44d4,#0a2472)" } : {}}
               >
-                <span className="text-[12px]">{ORDER_TYPE_EMOJI[t]}</span>{ORDER_TYPE_LABEL[t]}
+                <span className="text-[13px]">{ORDER_TYPE_EMOJI[t]}</span>
+                {ORDER_TYPE_LABEL[t]}
               </button>
             ))}
           </div>
 
           {/* ── Search bar ── */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] pointer-events-none" />
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 h-6 w-6 rounded-lg flex items-center justify-center pointer-events-none shrink-0"
+              style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
+            >
+              <Search className="h-3 w-3 text-white" />
+            </div>
             <input
               type="text"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Cari judul / klien / status…"
-              className="w-full h-9 pl-9 pr-9 rounded-xl text-[12px] outline-none bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]"
+              className="w-full h-11 pl-12 pr-10 rounded-2xl text-[12.5px] outline-none bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all"
             />
             {q && (
               <button
                 onClick={() => setQ("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-[hsl(var(--muted-foreground))] text-[10px] font-bold active:scale-90"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-[hsl(var(--muted-foreground))]/20 flex items-center justify-center text-[hsl(var(--muted-foreground))] text-[10px] font-bold active:scale-90 transition-transform"
               >✕</button>
             )}
           </div>
 
           {/* ── Client filter badge ── */}
           {clientIdParam && clientNameById.get(clientIdParam) && (
-            <div className="flex items-center gap-2 bg-violet-50 border border-violet-200 rounded-xl px-3 py-2">
-              <div className="h-6 w-6 rounded-full bg-violet-500 flex items-center justify-center text-white text-[10px] font-extrabold shrink-0">
+            <div className="flex items-center gap-2.5 bg-sky-50 border border-sky-200 rounded-2xl px-3.5 py-2.5">
+              <div
+                className="h-7 w-7 rounded-xl flex items-center justify-center text-white text-[11px] font-extrabold shrink-0"
+                style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
+              >
                 {clientNameById.get(clientIdParam)!.charAt(0).toUpperCase()}
               </div>
-              <p className="text-[11px] text-violet-800 font-semibold flex-1 truncate">
+              <p className="text-[11px] text-sky-800 font-semibold flex-1 truncate">
                 Klien: {clientNameById.get(clientIdParam)}
               </p>
-              <button onClick={() => navigate("/orders")} className="text-[9.5px] text-violet-500 font-bold active:opacity-70 shrink-0">Hapus</button>
+              <button onClick={() => navigate("/orders")} className="text-[10px] text-sky-500 font-bold active:opacity-70 shrink-0">Hapus ✕</button>
             </div>
           )}
 
           {/* ── Order list ── */}
           {loadingOrders && orders.length === 0 ? (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="rounded-xl border animate-pulse p-2.5 flex items-center gap-2.5">
-                  <div className="h-9 w-9 rounded-lg bg-[hsl(var(--secondary))] shrink-0" />
-                  <div className="flex-1 space-y-1.5">
-                    <div className="h-3 bg-[hsl(var(--secondary))] rounded w-3/4" />
-                    <div className="h-2.5 bg-[hsl(var(--secondary))] rounded w-1/2" />
+                <div key={i} className="rounded-2xl border border-[hsl(var(--border))] animate-pulse p-3.5 flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-[hsl(var(--secondary))] shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 bg-[hsl(var(--secondary))] rounded-full w-3/4" />
+                    <div className="h-2.5 bg-[hsl(var(--secondary))] rounded-full w-1/2" />
+                  </div>
+                  <div className="space-y-1.5 items-end flex flex-col shrink-0">
+                    <div className="h-3 bg-[hsl(var(--secondary))] rounded-full w-12" />
+                    <div className="h-2.5 bg-[hsl(var(--secondary))] rounded-full w-16" />
                   </div>
                 </div>
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[hsl(var(--border))] px-4 py-8 text-center flex flex-col items-center">
-              <div className="h-12 w-12 rounded-2xl bg-violet-50 flex items-center justify-center mb-2.5 border border-violet-100">
-                <ShoppingBag className="h-6 w-6 text-violet-400" />
+            <div className="rounded-2xl border border-dashed border-[hsl(var(--border))] px-4 py-10 text-center flex flex-col items-center">
+              <div
+                className="h-14 w-14 rounded-2xl flex items-center justify-center mb-3 shadow-sm"
+                style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
+              >
+                <ShoppingBag className="h-6 w-6 text-white" />
               </div>
-              <p className="text-[12.5px] font-bold text-[hsl(var(--foreground))]">Belum ada order</p>
-              <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5 leading-snug">Buat order baru untuk memulai.</p>
+              <p className="text-[13px] font-bold text-[hsl(var(--foreground))]">Belum ada order</p>
+              <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-1 leading-snug">Buat order baru untuk memulai.</p>
               <button
                 onClick={() => setAddOpen(true)}
-                className="mt-3 inline-flex items-center gap-1.5 h-8 px-4 rounded-full text-[11px] font-bold text-white shadow-md active:scale-95 transition-transform"
-                style={{ background: "linear-gradient(135deg,#8b5cf6,#4f46e5)" }}
+                className="mt-4 inline-flex items-center gap-1.5 h-9 px-5 rounded-xl text-[12px] font-bold text-white shadow-sm active:scale-95 transition-transform"
+                style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
               >
-                <Plus className="h-3 w-3" /> Order Baru
+                <Plus className="h-3.5 w-3.5" /> Order Baru
               </button>
             </div>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {filtered.map((o) => {
                 const clientName = o.clientId ? clientNameById.get(o.clientId) : null;
                 return (
                   <button
                     key={o.id}
                     onClick={() => navigate(`/orders/detail/${o.id}`)}
-                    className="w-full flex items-center gap-2.5 rounded-xl border border-[hsl(var(--border))] bg-white px-3 py-2.5 text-left active:scale-[0.98] transition-transform hover:border-violet-300 hover:shadow-sm"
+                    className="w-full flex items-center gap-3 rounded-2xl border border-[hsl(var(--border))] bg-white px-3.5 py-3 text-left active:scale-[0.985] transition-all hover:border-sky-200 hover:shadow-sm"
                   >
-                    <div className="h-9 w-9 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center text-[17px] shrink-0">
+                    <div
+                      className="h-10 w-10 rounded-xl flex items-center justify-center text-[18px] shrink-0 shadow-sm"
+                      style={{ background: "linear-gradient(135deg,#f0f4ff,#e0e8ff)" }}
+                    >
                       {ORDER_TYPE_EMOJI[o.type]}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-bold text-[hsl(var(--foreground))] truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</p>
-                      <p className="text-[9.5px] text-[hsl(var(--muted-foreground))] truncate mt-0.5">
+                      <p className="text-[12.5px] font-bold text-[hsl(var(--foreground))] truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</p>
+                      <p className="text-[10px] text-[hsl(var(--muted-foreground))] truncate mt-0.5">
                         {ORDER_TYPE_LABEL[o.type]}{clientName ? ` · ${clientName}` : ""}
                       </p>
                     </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap", STATUS_STYLE[o.status] ?? "bg-gray-100 text-gray-500")}>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className={cn("text-[9.5px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap", STATUS_STYLE[o.status] ?? "bg-gray-100 text-gray-500")}>
                         {o.status}
                       </span>
-                      <span className="text-[11px] font-extrabold text-[hsl(var(--foreground))] tabular-nums">{fmtIDR(o.totalPrice)}</span>
+                      <span className="text-[11.5px] font-extrabold text-[hsl(var(--foreground))] tabular-nums">{fmtIDR(o.totalPrice)}</span>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-[hsl(var(--muted-foreground))] shrink-0" />
+                    <ChevronRight className="h-4 w-4 text-[hsl(var(--muted-foreground))]/50 shrink-0 -ml-1" />
                   </button>
                 );
               })}
