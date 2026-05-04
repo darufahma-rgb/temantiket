@@ -230,21 +230,27 @@ export default function BCTemplates() {
 
         {/* Search bar */}
         <div className="px-4 pt-3 pb-2">
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <div className="relative flex items-center">
+            <div className="absolute left-3.5 flex items-center justify-center w-7 h-7 rounded-xl bg-blue-50 pointer-events-none">
+              <Search className="h-3.5 w-3.5 text-blue-500" />
+            </div>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari judul atau isi template..."
-              className="w-full h-11 pl-10 pr-10 rounded-2xl border border-slate-200 bg-white text-[14px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent shadow-sm transition-all"
+              placeholder="Cari template…"
+              className="w-full h-12 pl-12 pr-10 rounded-2xl border border-slate-200 bg-white text-[13.5px] font-medium text-slate-800 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-all"
             />
-            {search && (
+            {search ? (
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center"
+                className="absolute right-3 w-6 h-6 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center transition-colors"
               >
                 <X className="h-3 w-3 text-slate-600" />
               </button>
+            ) : (
+              <span className="absolute right-3.5 text-[10px] font-semibold text-slate-300 select-none hidden sm:block">
+                ⌘K
+              </span>
             )}
           </div>
         </div>
