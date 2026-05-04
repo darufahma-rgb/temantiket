@@ -60,19 +60,21 @@ function formFromParsed(p: ParsedTicketPrice): FormState {
   } else if (p.tripType === "return" || p.tripType === "multi_city") {
     notes = encodeReturnLeg(p);
   }
-  // Fase 20: populate validUntil from returnDate for round trips,
-  // or from multiLeg.returnDate for multi-leg round trips.
-  const validUntil =
-    p.returnDate ??
-    (p.multiLeg?.returnDate ?? null);
 
+  // For multi-leg trips, derive outbound-only flight number from the leg chain
+  // so the primary flightNumber field doesn't include return-leg flights.
+  const outboundFlightNumber = p.multiLeg
+    ? p.multiLeg.outboundLegs.map((l) => l.flightNumber).filter(Boolean).join("/") || p.flightNumber
+    : p.flightNumber;
+
+  // validUntil is a price-expiry date set by the agent, not derived from trip dates.
   return {
     airline: p.airline, airlineCode: p.airlineCode,
     fromCode: p.fromCode, fromCity: p.fromCity,
     toCode: p.toCode, toCity: p.toCity,
     departDate: p.departDate, basePrice: p.basePrice ?? 0,
-    currency: p.currency, validUntil, notes, isPublished: true,
-    flightNumber: p.flightNumber ?? null,
+    currency: p.currency, validUntil: null, notes, isPublished: true,
+    flightNumber: outboundFlightNumber ?? null,
     etd: p.etd ?? null, eta: p.eta ?? null,
     terminal: p.terminal ?? null,
     transitCode: p.transitCode ?? null,
@@ -1747,6 +1749,17 @@ export default function TicketPrices() {
                     const { leg: rtLeg } = isMLForm ? { leg: null } : decodeReturnLeg(form.notes);
                     const isRTForm = !!rtLeg;
                     const isPPForm = isMLForm || isRTForm;
+                    // Build per-card flight-number display from multiLeg leg data (if available)
+                    // so outbound and return flights are shown separately and accurately.
+                    const mlOutFlights = pendingML
+                      ? pendingML.outboundLegs.map((l) => l.flightNumber).filter(Boolean).join("/")
+                      : null;
+                    const mlRetFlights = pendingML?.returnLegs?.length
+                      ? pendingML.returnLegs.map((l) => l.flightNumber).filter(Boolean).join("/")
+                      : null;
+                    const mlFlightDisplay = mlOutFlights
+                      ? mlRetFlights ? `${mlOutFlights} / ${mlRetFlights}` : mlOutFlights
+                      : form.flightNumber ?? "";
                     return (
                     <div key={idx} className={cn(
                       "border rounded-xl p-3 space-y-3",
@@ -1771,7 +1784,7 @@ export default function TicketPrices() {
                             </div>
                             <p className="text-[10px] text-slate-500 font-mono">
                               {isMLForm
-                                ? `${buildRouteLabel(pendingML!)} · ${form.flightNumber ?? ""} · Total: ${form.currency} ${form.basePrice?.toLocaleString("id-ID") ?? "—"}`
+                                ? `${buildRouteLabel(pendingML!)} · ${mlFlightDisplay} · Total: ${form.currency} ${form.basePrice?.toLocaleString("id-ID") ?? "—"}`
                                 : isRTForm
                                   ? `${form.fromCode} ⇄ ${form.toCode} · ${form.flightNumber ?? ""}${rtLeg?.returnFlightNumber ? `/${rtLeg.returnFlightNumber}` : ""} · Total: ${form.currency} ${form.basePrice?.toLocaleString("id-ID") ?? "—"}`
                                   : `${form.fromCode} → ${form.toCode}${form.flightNumber ? ` · ${form.flightNumber}` : ""}${form.etd ? ` · ${form.etd}` : ""}${form.eta ? `→${form.eta}` : ""}${form.transitCode ? ` via ${form.transitCode}` : ""}${form.basePrice ? ` · ${form.currency} ${form.basePrice.toLocaleString("id-ID")}` : ""}`
