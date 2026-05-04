@@ -3,7 +3,7 @@ import {
   StickyNote, FileSpreadsheet, Users, ShoppingBag,
   MessageSquare, Sparkles, Ticket,
   Command, Trophy, BookUser, Megaphone, BarChart3,
-  Bot,
+  Bot, FileEdit,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -62,8 +62,9 @@ const STAFF_SECTIONS: SectionDef[] = [
     label: "Konten",
     items: [
       { title: "Template Broadcast", url: "/bc-templates",    icon: MessageSquare },
-      { title: "Caption Generator",  url: "/agent/marketing", icon: Megaphone },
-      { title: "Catatan",            url: "/notes",           icon: StickyNote },
+      { title: "Caption Generator",  url: "/agent/marketing",       icon: Megaphone },
+      { title: "Catatan Revisi",     url: "/agent/revision-notes",  icon: FileEdit  },
+      { title: "Catatan",            url: "/notes",                 icon: StickyNote },
     ],
   },
   {
@@ -113,7 +114,8 @@ const AGENT_SECTIONS: SectionDef[] = [
     label: "Konten",
     items: [
       { title: "Template Broadcast", url: "/bc-templates",       icon: MessageSquare },
-      { title: "Caption Generator",   url: "/agent/marketing",    icon: Megaphone },
+      { title: "Caption Generator",   url: "/agent/marketing",       icon: Megaphone },
+      { title: "Catatan Revisi",     url: "/agent/revision-notes",  icon: FileEdit  },
     ],
   },
   {

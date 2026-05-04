@@ -44,6 +44,7 @@ import AgentDashboard from "./pages/AgentDashboard";
 import AgentProfile from "./pages/AgentProfile";
 import AgentLeaderboard from "./pages/AgentLeaderboard";
 import AgentMarketingKit from "./pages/AgentMarketingKit";
+import AgentRevisionNotes from "./pages/AgentRevisionNotes";
 import BCTemplates from "./pages/BCTemplates";
 import ItineraryGenerator from "./pages/ItineraryGenerator";
 import DemoSeed from "./pages/DemoSeed";
@@ -253,6 +254,14 @@ function AnimatedRoutes() {
           element={
             <RequireAuth>
               <DashboardLayout><AgentMarketingKit /></DashboardLayout>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/agent/revision-notes"
+          element={
+            <RequireAuth>
+              <DashboardLayout><AgentRevisionNotes /></DashboardLayout>
             </RequireAuth>
           }
         />
