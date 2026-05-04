@@ -120,7 +120,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 src="/temantiket-icon.png"
                 alt="Temantiket"
                 className="h-[28px] w-[28px] object-contain"
-                style={{ filter: "brightness(0) saturate(100%) invert(27%) sepia(89%) saturate(1200%) hue-rotate(214deg) brightness(90%) contrast(110%)" }}
+                style={{ filter: "contrast(9999) brightness(0) invert(27%) sepia(89%) saturate(1200%) hue-rotate(214deg) brightness(90%)" }}
               />
             </button>
 
