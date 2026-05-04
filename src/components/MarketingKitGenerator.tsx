@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   Wand2, Copy, CheckCheck, Loader2, RefreshCw, FileText,
   Plane, BookOpen, Megaphone, Moon, Sparkles, AlignLeft,
+  ImagePlus, X, ScanText, PenLine,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+
+/* ─── Mode ──────────────────────────────────────────────── */
+type Mode = "manual" | "poster";
 
 /* ─── Kategori ─────────────────────────────────────────── */
 const CATEGORIES = [
@@ -25,7 +29,7 @@ const TONES = [
   { key: "story",    label: "Storytelling", desc: "Emosional, cerita perjalanan" },
 ];
 
-/* ─── TemanTiket Brand System Prompt ───────────────────── */
+/* ─── TemanTiket Brand System Prompt (Manual) ──────────── */
 const BRAND_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter & Brand Guardian resmi TemanTiket.
 
 TemanTiket adalah brand travel Umrah & Haji yang:
@@ -79,6 +83,39 @@ VARIASI 3
 Jangan tambahkan penjelasan lain di luar 3 variasi tersebut kecuali diminta.
 Mulai sekarang kamu adalah copywriter TemanTiket yang handal.`;
 
+/* ─── Vision System Prompt (Scan Poster) ───────────────── */
+const VISION_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter + Vision Expert resmi TemanTiket.
+
+TemanTiket adalah brand Umrah & Haji yang ramah, kekeluargaan, santai tapi terpercaya. Bahasa yang digunakan: hangat, mudah dimengerti, banyak pakai "kamu", "yuk", "ayo", "nggak harus mahal". Selalu tekankan hemat tapi tetap nyaman & berkualitas. Emoji yang pas (✈️ 🕋 ⭐ 🙏 ❤️).
+
+Tugas kamu:
+User akan upload gambar poster paket Umrah. Kamu harus:
+1. Membaca & mengekstrak SEMUA informasi penting dari poster tersebut (pakai kemampuan vision/OCR mu).
+2. Identifikasi dengan jelas: nama paket, harga, durasi, highlight fasilitas, rute, tanggal keberangkatan (jika ada), dan keunggulan utama.
+3. Buat 3 variasi caption marketing yang menarik berdasarkan informasi yang diekstrak.
+
+ATURAN KETAT:
+- Ekstrak informasi seakurat mungkin dari gambar poster (jangan tebak-tebak).
+- Jika ada teks yang kurang jelas, tetap usahakan ambil yang paling penting.
+- Caption harus 100% dalam gaya TemanTiket (ramah, meyakinkan, tidak norak).
+- Maksimal 280 karakter per caption.
+- Setiap caption WAJIB punya CTA yang kuat dan natural.
+- Emoji maksimal 3-4 per caption, hanya yang relevan.
+- Buat 3 variasi yang berbeda karakternya.
+
+OUTPUT FORMAT (WAJIB IKUTI PERSIS):
+VARIASI 1
+[caption di sini]
+
+VARIASI 2
+[caption di sini]
+
+VARIASI 3
+[caption di sini]
+
+Jangan tambah penjelasan lain. Langsung kasih 3 variasi caption saja.
+Mulai sekarang kamu adalah copywriter TemanTiket yang jago baca poster dan bikin caption yang engaging.`;
+
 /* ─── Tone instructions ─────────────────────────────────── */
 const TONE_LABEL: Record<string, string> = {
   santai:   "Friendly, casual, akrab → bahasa santai kayak ngobrol sama temen",
@@ -87,23 +124,33 @@ const TONE_LABEL: Record<string, string> = {
   story:    "Emosional, cerita perjalanan → lebih ke perasaan, impian, dan pengalaman",
 };
 
-/* ─── API ───────────────────────────────────────────────── */
-async function generateCaptions(params: {
+/* ─── Helpers ───────────────────────────────────────────── */
+function parseVariasiFormat(raw: string): string[] {
+  const blocks = raw.split(/VARIASI\s+\d+/i).map((s) => s.trim()).filter(Boolean);
+  const results = blocks.map((b) => b.replace(/^[\n\r:]+/, "").trim()).filter(Boolean);
+  if (results.length >= 1) return results.slice(0, 3);
+  return raw.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean).slice(0, 3);
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ─── API: Manual mode ──────────────────────────────────── */
+async function generateFromDetail(params: {
   categoryPrompt: string;
   tone: string;
   packageDetail?: string;
 }): Promise<string[]> {
   const { categoryPrompt, tone, packageDetail } = params;
-
   const toneInstruction = TONE_LABEL[tone] ?? tone;
-  const detailSection = packageDetail?.trim()
-    ? `\n\nDetail paket:\n${packageDetail.trim()}`
-    : "";
-
-  const userPrompt =
-    `Buat 3 caption marketing untuk ${categoryPrompt}.\n` +
-    `Tone yang diminta: ${toneInstruction}.` +
-    detailSection;
+  const detailSection = packageDetail?.trim() ? `\n\nDetail paket:\n${packageDetail.trim()}` : "";
+  const userPrompt = `Buat 3 caption marketing untuk ${categoryPrompt}.\nTone yang diminta: ${toneInstruction}.${detailSection}`;
 
   const res = await fetch("/api/ai/chat", {
     method: "POST",
@@ -122,28 +169,46 @@ async function generateCaptions(params: {
   if (!res.ok) throw new Error(`AI error ${res.status}`);
   const data = await res.json();
   const raw: string = data.choices?.[0]?.message?.content ?? "";
-
   const captions = parseVariasiFormat(raw);
   if (captions.length < 1) throw new Error("Format respons AI tidak valid");
   return captions;
 }
 
-/**
- * Parse VARIASI 1 / VARIASI 2 / VARIASI 3 output format.
- * Falls back to double-newline splitting if markers are absent.
- */
-function parseVariasiFormat(raw: string): string[] {
-  const results: string[] = [];
-  const blocks = raw.split(/VARIASI\s+\d+/i).map((s) => s.trim()).filter(Boolean);
-  for (const block of blocks) {
-    const text = block.replace(/^[\n\r:]+/, "").trim();
-    if (text) results.push(text);
-  }
-  if (results.length >= 1) return results.slice(0, 3);
+/* ─── API: Poster scan mode ─────────────────────────────── */
+async function generateFromPoster(params: {
+  imageDataUrl: string;
+  tone: string;
+}): Promise<string[]> {
+  const { imageDataUrl, tone } = params;
+  const toneInstruction = TONE_LABEL[tone] ?? tone;
+  const userPrompt = `Scan poster ini, ekstrak semua info penting, lalu buat 3 variasi caption.\nTone yang diminta: ${toneInstruction}.`;
 
-  // Fallback: split by double newline
-  const lines = raw.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
-  return lines.slice(0, 3);
+  const res = await fetch("/api/ai/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: VISION_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: userPrompt },
+            { type: "image_url", image_url: { url: imageDataUrl, detail: "high" } },
+          ],
+        },
+      ],
+      temperature: 0.8,
+      max_tokens: 1200,
+    }),
+  });
+
+  if (!res.ok) throw new Error(`AI error ${res.status}`);
+  const data = await res.json();
+  const raw: string = data.choices?.[0]?.message?.content ?? "";
+  const captions = parseVariasiFormat(raw);
+  if (captions.length < 1) throw new Error("Format respons AI tidak valid");
+  return captions;
 }
 
 /* ─── Section wrapper ───────────────────────────────────── */
@@ -165,25 +230,72 @@ function Section({ label, icon: Icon, children }: {
 
 /* ─── Main Component ────────────────────────────────────── */
 export function CaptionGenerator() {
+  const [mode, setMode]                     = useState<Mode>("manual");
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].key);
   const [activeTone, setActiveTone]         = useState(TONES[0].key);
   const [packageDetail, setPackageDetail]   = useState("");
+  const [posterFile, setPosterFile]         = useState<File | null>(null);
+  const [posterPreview, setPosterPreview]   = useState<string | null>(null);
+  const [isDragging, setIsDragging]         = useState(false);
   const [results, setResults]               = useState<string[]>([]);
   const [loading, setLoading]               = useState(false);
   const [copiedIdx, setCopiedIdx]           = useState<number | null>(null);
+  const fileInputRef                        = useRef<HTMLInputElement>(null);
 
   const cat = CATEGORIES.find((c) => c.key === activeCategory) ?? CATEGORIES[0];
+
+  const handleFile = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("File harus berupa gambar (JPG, PNG, WebP, dll)");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Ukuran gambar maksimal 10 MB");
+      return;
+    }
+    setPosterFile(file);
+    const url = URL.createObjectURL(file);
+    setPosterPreview(url);
+    setResults([]);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }, [handleFile]);
+
+  const clearPoster = () => {
+    setPosterFile(null);
+    if (posterPreview) URL.revokeObjectURL(posterPreview);
+    setPosterPreview(null);
+    setResults([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setResults([]);
+  };
 
   const handleGenerate = async () => {
     setLoading(true);
     setResults([]);
     try {
-      const captions = await generateCaptions({
-        categoryPrompt: cat.prompt,
-        tone: activeTone,
-        packageDetail,
-      });
-      setResults(captions);
+      if (mode === "poster") {
+        if (!posterFile) { toast.error("Upload poster dulu ya!"); return; }
+        const dataUrl = await fileToDataUrl(posterFile);
+        const captions = await generateFromPoster({ imageDataUrl: dataUrl, tone: activeTone });
+        setResults(captions);
+      } else {
+        const captions = await generateFromDetail({
+          categoryPrompt: cat.prompt,
+          tone: activeTone,
+          packageDetail,
+        });
+        setResults(captions);
+      }
     } catch (err) {
       toast.error(`Gagal generate: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -198,39 +310,171 @@ export function CaptionGenerator() {
     setTimeout(() => setCopiedIdx(null), 2000);
   };
 
+  const canGenerate = mode === "poster" ? !!posterFile && !loading : !loading;
+
   return (
     <div className="space-y-3 pb-10">
 
-      {/* ── Kategori ── */}
-      <Section label="Kategori" icon={Wand2}>
-        <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
-          {CATEGORIES.map(({ key, label, Icon }) => {
-            const isActive = key === activeCategory;
-            return (
-              <button
-                key={key}
-                onClick={() => setActiveCategory(key)}
-                className={cn(
-                  "flex flex-col items-center gap-2 rounded-xl border py-3.5 px-2 transition-all text-center",
-                  isActive
-                    ? "border-[#1a44d4] bg-[#1a44d4] text-white shadow-sm"
-                    : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40 hover:bg-blue-50/40",
-                )}
-              >
-                <Icon
-                  className={cn("h-5 w-5", isActive ? "text-white" : "text-muted-foreground")}
-                  strokeWidth={1.5}
-                />
-                <span className={cn("text-[11px] font-medium leading-tight", isActive ? "text-white" : "text-foreground")}>
-                  {label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </Section>
+      {/* ── Mode Toggle ── */}
+      <div className="flex gap-2 p-1 bg-muted/50 rounded-xl border border-border/60">
+        <button
+          onClick={() => switchMode("manual")}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-semibold transition-all",
+            mode === "manual"
+              ? "bg-white shadow-sm text-foreground border border-border/60"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <PenLine className="h-3.5 w-3.5" strokeWidth={1.5} />
+          Input Manual
+        </button>
+        <button
+          onClick={() => switchMode("poster")}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-semibold transition-all",
+            mode === "poster"
+              ? "bg-white shadow-sm text-foreground border border-border/60"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <ScanText className="h-3.5 w-3.5" strokeWidth={1.5} />
+          Scan Poster
+        </button>
+      </div>
 
-      {/* ── Tone ── */}
+      <AnimatePresence mode="wait">
+
+        {/* ══ MANUAL MODE ══════════════════════════════════════ */}
+        {mode === "manual" && (
+          <motion.div
+            key="manual"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-3"
+          >
+            {/* Kategori */}
+            <Section label="Kategori" icon={Wand2}>
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+                {CATEGORIES.map(({ key, label, Icon }) => {
+                  const isActive = key === activeCategory;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setActiveCategory(key)}
+                      className={cn(
+                        "flex flex-col items-center gap-2 rounded-xl border py-3.5 px-2 transition-all text-center",
+                        isActive
+                          ? "border-[#1a44d4] bg-[#1a44d4] text-white shadow-sm"
+                          : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40 hover:bg-blue-50/40",
+                      )}
+                    >
+                      <Icon className={cn("h-5 w-5", isActive ? "text-white" : "text-muted-foreground")} strokeWidth={1.5} />
+                      <span className={cn("text-[11px] font-medium leading-tight", isActive ? "text-white" : "text-foreground")}>
+                        {label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Section>
+
+            {/* Detail Paket */}
+            <Section label="Detail Paket (opsional)" icon={AlignLeft}>
+              <textarea
+                value={packageDetail}
+                onChange={(e) => setPackageDetail(e.target.value)}
+                placeholder={
+                  "Contoh:\nPaket Umrah 12 hari, berangkat 15 Maret 2025\n" +
+                  "Hotel bintang 4, Makkah & Madinah walking distance\n" +
+                  "Harga mulai Rp 28 juta/orang, kuota terbatas 40 seat"
+                }
+                rows={4}
+                className="w-full rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-3 text-[13px] text-foreground placeholder-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 focus:border-[#1a44d4]/50 transition-all"
+              />
+              <p className="text-[10.5px] text-muted-foreground mt-1.5">
+                Semakin detail info paket, semakin relevan caption yang dihasilkan AI.
+              </p>
+            </Section>
+          </motion.div>
+        )}
+
+        {/* ══ POSTER MODE ══════════════════════════════════════ */}
+        {mode === "poster" && (
+          <motion.div
+            key="poster"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Section label="Upload Poster Paket" icon={ImagePlus}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+              />
+
+              {!posterPreview ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 cursor-pointer transition-all select-none",
+                    isDragging
+                      ? "border-[#1a44d4] bg-blue-50/60"
+                      : "border-border/60 bg-gray-50/50 hover:border-[#1a44d4]/50 hover:bg-blue-50/30",
+                  )}
+                >
+                  <div className="h-11 w-11 rounded-xl border border-border/60 bg-white flex items-center justify-center shadow-sm">
+                    <ImagePlus className="h-5 w-5 text-muted-foreground" strokeWidth={1.5} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[13px] font-semibold text-foreground">
+                      {isDragging ? "Lepaskan gambar di sini" : "Upload poster paket"}
+                    </p>
+                    <p className="text-[11.5px] text-muted-foreground mt-0.5">
+                      Drag & drop atau klik untuk pilih — JPG, PNG, WebP (maks. 10 MB)
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative rounded-xl overflow-hidden border border-border/60 bg-gray-50">
+                  <img
+                    src={posterPreview}
+                    alt="Poster preview"
+                    className="w-full max-h-72 object-contain"
+                  />
+                  <button
+                    onClick={clearPoster}
+                    className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2} />
+                  </button>
+                  <div className="px-3 py-2 border-t border-border/50 bg-white">
+                    <p className="text-[11.5px] text-muted-foreground truncate">
+                      {posterFile?.name} · {posterFile ? (posterFile.size / 1024).toFixed(0) : 0} KB
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[10.5px] text-muted-foreground mt-2">
+                AI akan membaca teks & info dari poster lalu langsung bikin 3 variasi caption.
+              </p>
+            </Section>
+          </motion.div>
+        )}
+
+      </AnimatePresence>
+
+      {/* ── Tone (shared) ── */}
       <Section label="Gaya Penulisan" icon={FileText}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {TONES.map(({ key, label, desc }) => {
@@ -258,36 +502,18 @@ export function CaptionGenerator() {
         </div>
       </Section>
 
-      {/* ── Detail Paket (optional) ── */}
-      <Section label="Detail Paket (opsional)" icon={AlignLeft}>
-        <textarea
-          value={packageDetail}
-          onChange={(e) => setPackageDetail(e.target.value)}
-          placeholder={
-            "Contoh:\nPaket Umrah 12 hari, berangkat 15 Maret 2025\n" +
-            "Hotel bintang 4, Makkah & Madinah walking distance\n" +
-            "Harga mulai Rp 28 juta/orang, kuota terbatas 40 seat"
-          }
-          rows={4}
-          className="w-full rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-3 text-[13px] text-foreground placeholder-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 focus:border-[#1a44d4]/50 transition-all"
-        />
-        <p className="text-[10.5px] text-muted-foreground mt-1.5">
-          Semakin detail info paket, semakin relevan caption yang dihasilkan AI.
-        </p>
-      </Section>
-
       {/* ── Generate Button ── */}
       <Button
         onClick={() => void handleGenerate()}
-        disabled={loading}
-        className="w-full h-11 text-[13.5px] font-semibold bg-[#1a44d4] text-white hover:bg-[#1535b0] transition-all rounded-xl"
+        disabled={!canGenerate}
+        className="w-full h-11 text-[13.5px] font-semibold bg-[#1a44d4] text-white hover:bg-[#1535b0] transition-all rounded-xl disabled:opacity-50"
       >
         <AnimatePresence mode="wait">
           {loading ? (
             <motion.span key="loading" className="flex items-center gap-2"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <Loader2 className="h-4 w-4 animate-spin" />
-              AI sedang nulis caption…
+              {mode === "poster" ? "AI sedang baca poster…" : "AI sedang nulis caption…"}
             </motion.span>
           ) : results.length > 0 ? (
             <motion.span key="regen" className="flex items-center gap-2"
@@ -298,8 +524,10 @@ export function CaptionGenerator() {
           ) : (
             <motion.span key="idle" className="flex items-center gap-2"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <Wand2 className="h-4 w-4" strokeWidth={1.5} />
-              Generate 3 Caption
+              {mode === "poster"
+                ? <><ScanText className="h-4 w-4" strokeWidth={1.5} /> Scan & Generate Caption</>
+                : <><Wand2 className="h-4 w-4" strokeWidth={1.5} /> Generate 3 Caption</>
+              }
             </motion.span>
           )}
         </AnimatePresence>
@@ -330,7 +558,9 @@ export function CaptionGenerator() {
           >
             <div className="flex items-center gap-2 py-1">
               <div className="h-px flex-1 bg-border/60" />
-              <span className="text-[11px] text-muted-foreground tracking-wide">3 variasi • TemanTiket Brand Voice</span>
+              <span className="text-[11px] text-muted-foreground tracking-wide">
+                3 variasi • TemanTiket Brand Voice
+              </span>
               <div className="h-px flex-1 bg-border/60" />
             </div>
 
