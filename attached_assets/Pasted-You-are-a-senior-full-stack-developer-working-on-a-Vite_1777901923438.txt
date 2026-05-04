@@ -1,0 +1,50 @@
+You are a senior full-stack developer working on a Vite + React + TypeScript + Tailwind + Supabase project.
+
+### Current Feature:
+Ada fitur "Scan & Generate Caption" di halaman caption generator.
+User upload poster → AI (OpenAI Vision) membaca poster → menghasilkan 3 variasi caption.
+
+### Masalah Saat Ini:
+- Hasil caption terlalu kaku, seperti daftar informasi.
+- Beberapa variasi terlalu pendek dan kurang informatif.
+- Kurang membangun rasa penasaran (curiosity) di calon customer.
+- Belum ada image compression, sering error 413.
+
+### Tugas:
+Perbaiki dan sempurnakan fitur **Generate Caption dari Poster** dengan requirement berikut:
+
+### 1. Caption Style yang Diinginkan
+Buat 3 variasi caption dengan karakteristik:
+- Bahasa natural dan manusiawi (seperti orang ngobrol)
+- Membangun rasa penasaran / curiosity (bikin orang ingin tahu lebih lanjut)
+- Panjang ideal: **200 - 280 karakter** per variasi
+- Tidak terlalu pendek, tidak terlalu panjang
+- Mengandung informasi penting dari poster, tapi disusun dalam kalimat yang mengalir
+- Tone: Ramah, kekeluargaan, santai tapi meyakinkan (TemanTiket Brand Voice)
+- Gunakan emoji secukupnya (maksimal 2-3)
+
+3 Variasi harus berbeda:
+- Variasi 1 → Lebih ke manfaat & keuntungan yang bikin penasaran
+- Variasi 2 → Lebih santai dan mengajak
+- Variasi 3 → Lebih FOMO / jangan sampai ketinggalan
+
+### 2. Technical Requirements
+- Sebelum mengirim gambar ke OpenAI Vision, **compress & resize** gambar terlebih dahulu (maksimal lebar 1400px, convert ke JPEG quality 0.85).
+- Tangani error 413 dengan baik.
+- Gunakan model `gpt-4o` atau `gpt-4o-mini`.
+- Gunakan system prompt yang sudah dioptimasi untuk menghasilkan caption bergaya di atas.
+
+### 3. UI/UX
+- Setelah generate, tampilkan 3 variasi caption dengan rapi.
+- Setiap variasi punya tombol "Salin".
+- Tambahkan indikator jumlah karakter.
+- Loading state yang jelas saat proses generate.
+- Error handling yang user-friendly.
+
+### 4. Output yang Diharapkan
+- Buat / update component untuk fitur ini.
+- Buat utility `compressImage.ts` jika belum ada.
+- Update logic pemanggilan OpenAI Vision.
+- Pastikan hasil caption mengikuti gaya yang diminta (natural + penasaran + panjang pas).
+
+Berikan code yang lengkap, bersih, dan siap digunakan.

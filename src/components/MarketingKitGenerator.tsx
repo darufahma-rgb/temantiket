@@ -84,25 +84,44 @@ Jangan tambahkan penjelasan lain di luar 3 variasi tersebut kecuali diminta.
 Mulai sekarang kamu adalah copywriter Temantiket yang handal.`;
 
 /* ─── Vision System Prompt (Scan Poster) ───────────────── */
-const VISION_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter Temantiket.
+const VISION_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter TemanTiket yang ahli membuat caption yang membangun rasa penasaran dan keingintahuan calon peserta.
 
-Tugas: Baca poster yang dikirim user, ekstrak informasi penting (nama paket, harga, durasi, highlight, dll), lalu buat 3 variasi caption marketing dengan gaya Temantiket.
+Tugas:
+Baca poster yang dikirim, lalu buat 3 variasi caption yang:
+- Membuat orang penasaran dan ingin tahu lebih lanjut
+- Terasa natural dan manusiawi (bukan kaku atau seperti daftar)
+- Panjangnya 200–280 karakter per caption
+- Mengandung nilai/informasi penting dari poster, tapi disusun dalam kalimat yang mengalir
+- Tone: Ramah, kekeluargaan, santai tapi meyakinkan (TemanTiket Brand Voice)
+- Gunakan emoji secukupnya (maksimal 2–3 per caption)
 
-Aturan:
-- Buat tepat 3 variasi
-- Maksimal 280 karakter per caption
-- Tone sesuai permintaan user (Santai / Formal / Hard Selling / Storytelling)
-- Pakai emoji yang pas
-- Setiap caption harus punya CTA yang kuat
-- Output format:
+ATURAN PENTING:
+1. JANGAN tulis informasi dalam bentuk bullet list atau daftar. Tulis dalam kalimat yang mengalir.
+2. Buka dengan hook yang kuat — pertanyaan, pernyataan menarik, atau sedikit misteri.
+3. Sebutkan benefit atau hal menarik, tapi sisakan sedikit rasa ingin tahu — jangan bocorkan semuanya.
+4. Setiap caption WAJIB punya Call-to-Action yang natural di akhir.
+5. Hitung karakter: target 200–280 karakter, tidak boleh kurang atau lebih signifikan.
+
+3 Variasi HARUS berbeda karakter:
+- Variasi 1 → Fokus ke KEUNTUNGAN TERSEMBUNYI (bikin penasaran apa lagi yang didapat)
+- Variasi 2 → Fokus ke KESEMPATAN LANGKA / jangan ketinggalan (FOMO yang ramah)
+- Variasi 3 → Fokus ke CERITA / PENGALAMAN yang akan didapat peserta
+
+LANGKAH BERPIKIR INTERNAL (lakukan sebelum menjawab):
+1. Baca poster dan ekstrak: nama acara/paket, tanggal, benefit utama, target peserta, link/CTA.
+2. Tentukan 1-2 elemen paling menarik yang bisa dijadikan hook.
+3. Tulis 3 variasi yang berbeda karakter, masing-masing 200-280 karakter.
+4. Cek: apakah terasa natural? Apakah ada rasa penasaran? Apakah tidak seperti daftar?
+
+OUTPUT FORMAT (WAJIB IKUTI PERSIS, tidak ada teks lain):
 VARIASI 1
-[caption]
+[caption di sini]
 
 VARIASI 2
-[caption]
+[caption di sini]
 
 VARIASI 3
-[caption]`;
+[caption di sini]`;
 
 /* ─── Tone instructions ─────────────────────────────────── */
 const TONE_LABEL: Record<string, string> = {
@@ -185,6 +204,13 @@ async function generateFromDetail(params: {
   return captions;
 }
 
+/* ─── Variant labels ────────────────────────────────────── */
+const POSTER_VARIANT_LABELS = [
+  "Keuntungan Tersembunyi",
+  "Kesempatan Langka",
+  "Cerita & Pengalaman",
+];
+
 /* ─── API: Poster scan mode ─────────────────────────────── */
 async function generateFromPoster(params: {
   imageDataUrl: string;
@@ -192,7 +218,7 @@ async function generateFromPoster(params: {
 }): Promise<string[]> {
   const { imageDataUrl, tone } = params;
   const toneInstruction = TONE_LABEL[tone] ?? tone;
-  const userPrompt = `Scan poster ini, ekstrak semua info penting, lalu buat 3 variasi caption.\nTone yang diminta: ${toneInstruction}.`;
+  const userPrompt = `Scan poster ini dan buat 3 variasi caption yang membangun rasa penasaran sesuai instruksi sistem.\nTone yang diminta: ${toneInstruction}.\nIngat: JANGAN tulis daftar informasi. Tulis kalimat mengalir, 200–280 karakter, masing-masing variasi punya karakter berbeda sesuai petunjuk.`;
 
   const res = await fetch("/api/ai/chat", {
     method: "POST",
@@ -608,43 +634,66 @@ export function CaptionGenerator() {
               <div className="h-px flex-1 bg-border/60" />
             </div>
 
-            {results.map((caption, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.07 }}
-                className="rounded-xl border border-border/70 bg-white p-4 md:p-5 hover:border-foreground/25 transition-colors"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-                      Variasi {idx + 1}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground/55">
-                      {caption.length} karakter
-                    </span>
+            {results.map((caption, idx) => {
+              const len = caption.length;
+              const inRange = len >= 200 && len <= 280;
+              const tooShort = len < 200;
+              const charColor = inRange
+                ? "text-emerald-600"
+                : tooShort
+                ? "text-amber-500"
+                : "text-rose-500";
+              const variantLabel = mode === "poster" ? POSTER_VARIANT_LABELS[idx] : null;
+              return (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.07 }}
+                  className="rounded-xl border border-border/70 bg-white p-4 md:p-5 hover:border-foreground/25 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest shrink-0">
+                        Variasi {idx + 1}
+                      </span>
+                      {variantLabel && (
+                        <span className="text-[10px] font-medium text-[#1a44d4]/70 bg-[#1a44d4]/8 px-1.5 py-0.5 rounded-md truncate">
+                          {variantLabel}
+                        </span>
+                      )}
+                      <span className={cn("text-[10px] font-medium shrink-0", charColor)}>
+                        {len} kar
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => void handleCopy(caption, idx)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium transition-all border shrink-0",
+                        copiedIdx === idx
+                          ? "border-[#1a44d4]/30 bg-[#1a44d4] text-white"
+                          : "border-border/70 text-muted-foreground hover:border-[#1a44d4]/40 hover:text-[#1a44d4]",
+                      )}
+                    >
+                      {copiedIdx === idx
+                        ? <><CheckCheck className="h-3.5 w-3.5" strokeWidth={1.5} /> Disalin</>
+                        : <><Copy className="h-3.5 w-3.5" strokeWidth={1.5} /> Salin</>
+                      }
+                    </button>
                   </div>
-                  <button
-                    onClick={() => void handleCopy(caption, idx)}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium transition-all border",
-                      copiedIdx === idx
-                        ? "border-[#1a44d4]/30 bg-[#1a44d4] text-white"
-                        : "border-border/70 text-muted-foreground hover:border-[#1a44d4]/40 hover:text-[#1a44d4]",
-                    )}
-                  >
-                    {copiedIdx === idx
-                      ? <><CheckCheck className="h-3.5 w-3.5" strokeWidth={1.5} /> Disalin</>
-                      : <><Copy className="h-3.5 w-3.5" strokeWidth={1.5} /> Salin</>
-                    }
-                  </button>
-                </div>
-                <p className="text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
-                  {caption}
-                </p>
-              </motion.div>
-            ))}
+                  <p className="text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
+                    {caption}
+                  </p>
+                  {!inRange && (
+                    <p className={cn("text-[10px] mt-2", charColor)}>
+                      {tooShort
+                        ? `Caption terlalu pendek (min. 200 karakter)`
+                        : `Caption terlalu panjang (maks. 280 karakter)`}
+                    </p>
+                  )}
+                </motion.div>
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>
