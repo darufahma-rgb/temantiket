@@ -70,39 +70,73 @@ export interface NoteCloud {
   updatedAt: number;
 }
 
-const noteFromRow = (r: Record<string, unknown>): NoteCloud => ({
-  id: String(r.id),
-  title: String(r.title ?? ""),
-  content: String(r.content ?? ""),
-  color: String(r.color ?? "bg-white border-slate-200"),
-  pinned: Boolean(r.pinned),
-  tags: (r.tags as string[]) ?? [],
-  createdAt: Number(r.created_at ?? Date.now()),
-  updatedAt: Number(r.updated_at ?? Date.now()),
-});
+const noteFromRow = (r: Record<string, unknown>): NoteCloud => {
+  // created_at / updated_at dari Postgres bisa ISO string atau number (ms).
+  // Normalise ke number (ms) supaya konsisten dengan local Note format.
+  const parseTs = (v: unknown): number => {
+    if (typeof v === "number") return v;
+    if (typeof v === "string") {
+      const ms = Date.parse(v);
+      return Number.isFinite(ms) ? ms : Date.now();
+    }
+    return Date.now();
+  };
+  return {
+    id: String(r.id),
+    title: String(r.title ?? ""),
+    content: String(r.content ?? ""),
+    color: String(r.color ?? "bg-white border-slate-200"),
+    pinned: Boolean(r.pinned),
+    tags: (r.tags as string[]) ?? [],
+    createdAt: parseTs(r.created_at),
+    updatedAt: parseTs(r.updated_at),
+  };
+};
+
+// BUG FIX: timestamps WAJIB di-convert ke ISO string untuk kolom timestamptz
+// Supabase. Sebelumnya dikirim sebagai raw Number (ms epoch) → upsert gagal
+// diam-diam dan data tidak tersimpan.
 const noteToRow = (n: NoteCloud, agencyId?: string) => ({
   id: n.id, title: n.title, content: n.content, color: n.color,
   pinned: !!n.pinned, tags: n.tags ?? [],
-  created_at: n.createdAt, updated_at: n.updatedAt,
+  created_at: new Date(n.createdAt).toISOString(),
+  updated_at: new Date(n.updatedAt).toISOString(),
   ...(agencyId ? { agency_id: agencyId } : {}),
 });
 
 export async function pullNotes(): Promise<NoteCloud[] | null> {
   if (!isSupabaseConfigured()) return null;
   const { data, error } = await supabase!.from("notes").select("*");
-  if (error) return null;
+  if (error) {
+    console.warn("[cloudSync] pullNotes gagal:", error.message);
+    return null;
+  }
   return (data ?? []).map(noteFromRow);
 }
 
 export async function pushNotes(notes: NoteCloud[]): Promise<void> {
   if (!isSupabaseConfigured() || notes.length === 0) return;
   const agencyId = requireAgencyId();
-  await supabase!.from("notes").upsert(notes.map((n) => noteToRow(n, agencyId)));
+  const { error } = await supabase!
+    .from("notes")
+    .upsert(notes.map((n) => noteToRow(n, agencyId)), { onConflict: "id" });
+  if (error) throw new Error(`Gagal simpan catatan ke cloud: ${error.message}`);
+}
+
+/** Upsert satu catatan. Dipakai saat edit/tambah agar lebih targeted. */
+export async function upsertNote(note: NoteCloud): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const agencyId = requireAgencyId();
+  const { error } = await supabase!
+    .from("notes")
+    .upsert(noteToRow(note, agencyId), { onConflict: "id" });
+  if (error) throw new Error(`Gagal simpan catatan ke cloud: ${error.message}`);
 }
 
 export async function deleteNoteCloud(id: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
-  await supabase!.from("notes").delete().eq("id", id);
+  const { error } = await supabase!.from("notes").delete().eq("id", id);
+  if (error) throw new Error(`Gagal hapus catatan dari cloud: ${error.message}`);
 }
 
 /** Sync seluruh notes set: hapus yg di cloud tapi gak ada lokal, upsert sisanya. */
@@ -112,7 +146,10 @@ export async function syncNotesFull(notes: NoteCloud[]): Promise<void> {
   if (!cloud) return;
   const localIds = new Set(notes.map((n) => n.id));
   const toDelete = cloud.filter((c) => !localIds.has(c.id)).map((c) => c.id);
-  if (toDelete.length > 0) await supabase!.from("notes").delete().in("id", toDelete);
+  if (toDelete.length > 0) {
+    const { error } = await supabase!.from("notes").delete().in("id", toDelete);
+    if (error) console.warn("[cloudSync] syncNotesFull delete gagal:", error.message);
+  }
   if (notes.length > 0) await pushNotes(notes);
 }
 

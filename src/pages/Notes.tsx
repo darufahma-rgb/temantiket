@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useT } from "@/lib/regional";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { pullNotes, syncNotesFull, type NoteCloud } from "@/lib/cloudSync";
+import { pullNotes, upsertNote, deleteNoteCloud, syncNotesFull, type NoteCloud } from "@/lib/cloudSync";
 import { getAIHeaders } from "@/lib/aiFetch";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -173,15 +173,12 @@ export default function Notes() {
   // first effect run akan kirim local empty + delete semua note di cloud.
   const pulledRef = useRef(!isSupabaseConfigured());
 
+  // localStorage-only sync — cloud mutations happen explicitly in each action.
   useEffect(() => {
     saveNotes(notes);
-    if (!pulledRef.current) return;
-    if (isSupabaseConfigured()) {
-      void syncNotesFull(notes as NoteCloud[]).catch(() => undefined);
-    }
   }, [notes]);
 
-  // Pull from cloud on mount
+  // Pull from cloud on mount — merge by updatedAt so local edits are never overwritten.
   useEffect(() => {
     if (!isSupabaseConfigured()) {
       pulledRef.current = true;
@@ -190,19 +187,36 @@ export default function Notes() {
     let cancelled = false;
     void pullNotes().then((cloud) => {
       if (cancelled) return;
-      if (cloud && cloud.length > 0) {
-        setNotes(cloud as Note[]);
-        saveNotes(cloud as Note[]);
-      }
-      // Open the gate AFTER pull completes (whether cloud was empty or not).
-      // If cloud was empty but local has notes, the next mutation will push them.
-      // If both empty, nothing to push. Either way we no longer wipe the cloud.
       pulledRef.current = true;
-      // If local has notes that cloud doesn't yet, push them once now.
-      const localNotes = loadNotes();
-      if (localNotes.length > 0 && (!cloud || cloud.length === 0)) {
-        void syncNotesFull(localNotes as NoteCloud[]).catch(() => undefined);
+      if (!cloud || cloud.length === 0) {
+        // Cloud empty: push local notes to initialise cloud, but don't wipe local.
+        const localNotes = loadNotes();
+        if (localNotes.length > 0) {
+          void syncNotesFull(localNotes as NoteCloud[]).catch(() => undefined);
+        }
+        return;
       }
+      // Merge strategy: for each note, keep the version with the higher updatedAt.
+      // This prevents cloud (potentially stale due to a failed push) from silently
+      // overwriting local edits made before the next successful sync.
+      setNotes((localNotes) => {
+        const localById = new Map(localNotes.map((n) => [n.id, n]));
+        const cloudById = new Map((cloud as Note[]).map((n) => [n.id, n]));
+        const allIds = new Set([...localById.keys(), ...cloudById.keys()]);
+        const merged: Note[] = [];
+        for (const id of allIds) {
+          const local = localById.get(id);
+          const remote = cloudById.get(id);
+          if (!local) { merged.push(remote!); continue; }
+          if (!remote) { merged.push(local); continue; }
+          // Keep whichever was updated more recently.
+          merged.push(remote.updatedAt > local.updatedAt ? remote : local);
+        }
+        saveNotes(merged);
+        return merged;
+      });
+    }).catch(() => {
+      pulledRef.current = true;
     });
     return () => { cancelled = true; };
   }, []);
@@ -258,6 +272,10 @@ export default function Notes() {
     setTagInput("");
     setShowAddForm(false);
     toast.success("Catatan ditambahkan.");
+    // Explicit cloud push — don't rely on the useEffect to sync.
+    void upsertNote(note as NoteCloud).catch((e: unknown) => {
+      toast.error(`Catatan tersimpan lokal, tapi gagal sync ke cloud: ${e instanceof Error ? e.message : String(e)}`);
+    });
   };
 
   const startEdit = (note: Note) => {
@@ -271,22 +289,38 @@ export default function Notes() {
 
   const saveEdit = () => {
     if (!editingId) return;
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === editingId
-          ? {
-              ...n,
-              title: editTitle.trim() || "Catatan",
-              content: editContent,
-              color: editColor,
-              tags: editTags,
-              updatedAt: Date.now(),
-            }
-          : n
-      )
-    );
+    const updatedAt = Date.now();
+    let updatedNote: Note | undefined;
+    setNotes((prev) => {
+      const next = prev.map((n) => {
+        if (n.id !== editingId) return n;
+        updatedNote = {
+          ...n,
+          title: editTitle.trim() || "Catatan",
+          content: editContent,
+          color: editColor,
+          tags: editTags,
+          updatedAt,
+        };
+        return updatedNote;
+      });
+      return next;
+    });
     setEditingId(null);
     toast.success("Catatan disimpan.");
+    // Explicit cloud upsert immediately after local save.
+    // Without this, only localStorage is updated and cloud stays stale.
+    setTimeout(() => {
+      if (updatedNote) {
+        void upsertNote(updatedNote as NoteCloud).catch((e: unknown) => {
+          toast.error(
+            `Catatan tersimpan lokal, tapi gagal sync ke cloud: ${
+              e instanceof Error ? e.message : String(e)
+            }`,
+          );
+        });
+      }
+    }, 0);
   };
 
   const cancelEdit = () => setEditingId(null);
@@ -295,12 +329,29 @@ export default function Notes() {
     setNotes((prev) => prev.filter((n) => n.id !== id));
     if (expandedNote?.id === id) setExpandedNote(null);
     toast.success("Catatan dihapus.");
+    void deleteNoteCloud(id).catch((e: unknown) => {
+      toast.error(
+        `Catatan dihapus lokal, tapi gagal hapus dari cloud: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      );
+    });
   };
 
   const togglePin = (id: string) => {
+    let toggled: Note | undefined;
     setNotes((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, pinned: !n.pinned } : n))
+      prev.map((n) => {
+        if (n.id !== id) return n;
+        toggled = { ...n, pinned: !n.pinned, updatedAt: Date.now() };
+        return toggled;
+      }),
     );
+    setTimeout(() => {
+      if (toggled) {
+        void upsertNote(toggled as NoteCloud).catch(() => undefined);
+      }
+    }, 0);
   };
 
   const handleRapihkan = async (id: string, content: string) => {
@@ -369,13 +420,21 @@ Hubungi Temantiket untuk konfirmasi jadwal keberangkatan.`,
       } else if (id === editingId) {
         setEditContent(formatted);
       } else {
+        const updatedAt = Date.now();
+        let rapihNote: Note | undefined;
         setNotes((prev) =>
-          prev.map((n) =>
-            n.id === id ? { ...n, content: formatted, updatedAt: Date.now() } : n
-          )
+          prev.map((n) => {
+            if (n.id !== id) return n;
+            rapihNote = { ...n, content: formatted, updatedAt };
+            return rapihNote;
+          })
         );
         if (expandedNote?.id === id)
           setExpandedNote((prev) => (prev ? { ...prev, content: formatted } : prev));
+        // Sync rapihkan result to cloud immediately.
+        if (rapihNote) {
+          void upsertNote(rapihNote as NoteCloud).catch(() => undefined);
+        }
       }
       toast.success("Catatan dirapihkan!");
     } finally {
