@@ -45,7 +45,7 @@ ALUR WAJIB SETIAP CAPTION (ikuti urutan ini persis — semua dalam satu blok tek
 
 ATURAN KETAT:
 1. Buat tepat 3 variasi caption yang berbeda karakter dan sudut pandang.
-2. Target panjang 230–270 karakter per caption (termasuk emoji & spasi) — hitung dengan cermat.
+2. Target panjang 600–1000 karakter per caption (termasuk emoji & spasi) — hitung dengan cermat.
 3. Gaya: mengalir natural, santai, meyakinkan — bukan daftar poin kaku atau terlalu salesy.
 4. Setiap variasi WAJIB berbeda fokusnya:
    - Variasi 1 (Keuntungan Tersembunyi): ungkap benefit yang jarang orang sadari.
@@ -82,7 +82,7 @@ ALUR WAJIB SETIAP CAPTION (dalam satu blok teks mengalir, BUKAN poin terpisah):
 
 ATURAN KETAT:
 1. Buat tepat 3 variasi caption, masing-masing berbeda karakter dan sudut pandang.
-2. Target panjang 230–270 karakter per caption (termasuk emoji & spasi) — hitung dengan cermat.
+2. Target panjang 600–1000 karakter per caption (termasuk emoji & spasi) — hitung dengan cermat.
 3. Gaya: mengalir natural, santai, meyakinkan — bukan daftar kaku atau terlalu salesy.
 4. Setiap variasi WAJIB berbeda fokusnya:
    - Variasi 1 (Keuntungan Tersembunyi): ungkap benefit yang jarang orang sadari dari poster ini.
@@ -201,7 +201,7 @@ async function generateFromPoster(params: {
   const { imageDataUrl, tone, waNumber } = params;
   const toneInstruction = TONE_LABEL[tone] ?? tone;
   const waSection = waNumber?.trim() ? `\nNomor WA untuk baris CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}` : "";
-  const userPrompt = `Scan poster ini dan buat 3 variasi caption sesuai struktur dan aturan di instruksi sistem.\nTone: ${toneInstruction}.${waSection}\nPanjang setiap caption: 220–280 karakter. Masing-masing variasi harus berbeda fokus sesuai petunjuk (Keuntungan Tersembunyi / Kesempatan Langka / Cerita & Pengalaman).`;
+  const userPrompt = `Scan poster ini dan buat 3 variasi caption sesuai struktur dan aturan di instruksi sistem.\nTone: ${toneInstruction}.${waSection}\nPanjang setiap caption: 600–1000 karakter. Masing-masing variasi harus berbeda fokus sesuai petunjuk (Keuntungan Tersembunyi / Kesempatan Langka / Cerita & Pengalaman).`;
 
   const res = await fetch("/api/ai/chat", {
     method: "POST",
@@ -616,8 +616,8 @@ export function CaptionGenerator() {
 
             {results.map((caption, idx) => {
               const len = caption.length;
-              const inRange = len >= 230 && len <= 270;
-              const tooShort = len < 230;
+              const inRange = len >= 600 && len <= 1000;
+              const tooShort = len < 600;
               const charColor = inRange
                 ? "text-emerald-600"
                 : tooShort
@@ -667,8 +667,8 @@ export function CaptionGenerator() {
                   {!inRange && (
                     <p className={cn("text-[10px] mt-2", charColor)}>
                       {tooShort
-                        ? `Caption terlalu pendek (ideal 230–270 karakter)`
-                        : `Caption terlalu panjang (ideal 230–270 karakter)`}
+                        ? `Caption terlalu pendek (ideal 600–1000 karakter)`
+                        : `Caption terlalu panjang (ideal 600–1000 karakter)`}
                     </p>
                   )}
                 </motion.div>
