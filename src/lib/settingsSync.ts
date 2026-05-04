@@ -8,10 +8,14 @@
  * Pattern: localStorage is always the instant cache; every save also
  * fires a fire-and-forget upsert to Supabase.  On app startup, call
  * pullAgencySettings / pullUserSettings to hydrate localStorage from cloud.
+ *
+ * Each push/pull updates the per-feature sync status via featureSyncStore
+ * so UI components can show a live dot next to each save button.
  */
 
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { requireAgencyId, getCurrentAgencyId } from "@/store/authStore";
+import { beginFeatureSync, resolveFeatureSync } from "@/store/featureSyncStore";
 
 // ── Agency-scoped settings ─────────────────────────────────────────────────
 
@@ -38,15 +42,23 @@ export async function pullAgencySetting<T>(key: string): Promise<T | null> {
 }
 
 export async function pushAgencySetting(key: string, value: unknown): Promise<void> {
-  if (!isSupabaseConfigured()) return;
+  const canSync = beginFeatureSync(key);
+  if (!canSync) return;
   try {
     const agencyId = requireAgencyId();
     const { error } = await supabase!
       .from("agency_settings")
       .upsert({ agency_id: agencyId, key, value, updated_at: new Date().toISOString() });
-    if (error) console.warn(`[settingsSync] pushAgencySetting(${key}) gagal:`, error.message);
+    if (error) {
+      console.warn(`[settingsSync] pushAgencySetting(${key}) gagal:`, error.message);
+      resolveFeatureSync(key, error.message);
+    } else {
+      resolveFeatureSync(key);
+    }
   } catch (e) {
+    const msg = (e as Error).message ?? String(e);
     console.warn(`[settingsSync] pushAgencySetting(${key}) exception:`, e);
+    resolveFeatureSync(key, msg);
   }
 }
 
@@ -73,13 +85,21 @@ export async function pullUserSetting<T>(userId: string, key: string): Promise<T
 }
 
 export async function pushUserSetting(userId: string, key: string, value: unknown): Promise<void> {
-  if (!isSupabaseConfigured() || !userId) return;
+  const canSync = beginFeatureSync(key);
+  if (!canSync) return;
   try {
     const { error } = await supabase!
       .from("user_settings")
       .upsert({ user_id: userId, key, value, updated_at: new Date().toISOString() });
-    if (error) console.warn(`[settingsSync] pushUserSetting(${key}) gagal:`, error.message);
+    if (error) {
+      console.warn(`[settingsSync] pushUserSetting(${key}) gagal:`, error.message);
+      resolveFeatureSync(key, error.message);
+    } else {
+      resolveFeatureSync(key);
+    }
   } catch (e) {
+    const msg = (e as Error).message ?? String(e);
     console.warn(`[settingsSync] pushUserSetting(${key}) exception:`, e);
+    resolveFeatureSync(key, msg);
   }
 }

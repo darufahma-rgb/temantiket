@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { CloudSyncBadge } from "@/components/CloudSyncBadge";
 import { loadProductCommissions as loadProdComm, saveProductCommissions as saveProdComm, pullProductCommissions, type ProductCommissions } from "@/lib/productCommissions";
 import {
   loadAgentPhones, saveAgentPhone, recordFeePayment, loadFeePayments, openWaMessage,
@@ -634,7 +635,8 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex items-center justify-end gap-2">
+                <CloudSyncBadge featureKey="admin_settings" />
                 <Button
                   onClick={handleSaveIghAdmin}
                   disabled={savingIghAdmin}
@@ -1097,7 +1099,10 @@ export default function Settings() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label className="text-sm font-semibold">Buffer / Markup Harga</Label>
-                  <span className="text-sm font-bold text-sky-500">{markupPct.toFixed(1)}%</span>
+                  <div className="flex items-center gap-2">
+                    <CloudSyncBadge featureKey="ticket_markup" />
+                    <span className="text-sm font-bold text-sky-500">{markupPct.toFixed(1)}%</span>
+                  </div>
                 </div>
                 <Slider
                   min={0}
@@ -1282,14 +1287,17 @@ export default function Settings() {
                       </div>
                     </div>
                   ))}
-                  <Button
-                    onClick={handleSaveProductCommissions}
-                    disabled={savingPC}
-                    className="h-9 px-4 rounded-xl gradient-primary text-white mt-1"
-                  >
-                    <Save className="h-4 w-4 mr-1.5" />
-                    {savingPC ? "Menyimpan…" : "Simpan Fee Komisi"}
-                  </Button>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Button
+                      onClick={handleSaveProductCommissions}
+                      disabled={savingPC}
+                      className="h-9 px-4 rounded-xl gradient-primary text-white"
+                    >
+                      <Save className="h-4 w-4 mr-1.5" />
+                      {savingPC ? "Menyimpan…" : "Simpan Fee Komisi"}
+                    </Button>
+                    <CloudSyncBadge featureKey="product_commissions" />
+                  </div>
                 </div>
               </div>
             )}
@@ -1581,9 +1589,13 @@ export default function Settings() {
         {/* Save */}
         {tab !== "audit" && tab !== "status" && tab !== "invoice" && (
           <div className="mt-6 pt-4 border-t border-[hsl(var(--border))] max-w-xl">
-            <Button onClick={handleSave} className="gradient-primary text-white shadow-glow hover:opacity-90 rounded-xl h-9 px-5 text-sm">
-              <Save strokeWidth={1.5} className="h-3.5 w-3.5 mr-2" /> Simpan Perubahan
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={handleSave} className="gradient-primary text-white shadow-glow hover:opacity-90 rounded-xl h-9 px-5 text-sm">
+                <Save strokeWidth={1.5} className="h-3.5 w-3.5 mr-2" /> Simpan Perubahan
+              </Button>
+              {tab === "appearance" && <CloudSyncBadge featureKey="appearance" />}
+              {tab === "rates" && <CloudSyncBadge featureKey="rates_config" />}
+            </div>
           </div>
         )}
         </motion.div>
