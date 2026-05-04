@@ -8,6 +8,7 @@
 
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { requireAgencyId, getCurrentAgencyId } from "@/store/authStore";
+import { beginFeatureSync, resolveFeatureSync } from "@/store/featureSyncStore";
 
 export const POINT_TO_IDR_RATE = 1_000;
 
@@ -29,6 +30,9 @@ export interface WalletTransaction {
 }
 
 const walletKey = (agentId: string) => `igh.agent_wallet.v2.${agentId}`;
+
+/** Feature key used for CloudSyncBadge — per-agent. */
+export const walletSyncKey = (agentId: string) => `wallet_${agentId}`;
 
 export function listWalletTxs(agentId: string): WalletTransaction[] {
   try {
@@ -71,8 +75,10 @@ export function addWalletTx(
   };
   saveTxsCache(agentId, [full, ...listWalletTxs(agentId)]);
 
-  // Fire-and-forget cloud insert
-  if (isSupabaseConfigured()) {
+  const syncKey = walletSyncKey(agentId);
+  const canSync = beginFeatureSync(syncKey);
+
+  if (canSync) {
     void (async () => {
       try {
         const agencyId = requireAgencyId();
@@ -87,9 +93,16 @@ export function addWalletTx(
           created_by:   full.createdBy,
           created_at:   full.createdAt,
         });
-        if (error) console.warn("[agentWallet] insert cloud gagal:", error.message);
+        if (error) {
+          console.warn("[agentWallet] insert cloud gagal:", error.message);
+          resolveFeatureSync(syncKey, error.message);
+        } else {
+          resolveFeatureSync(syncKey);
+        }
       } catch (e) {
+        const msg = (e as Error).message ?? String(e);
         console.warn("[agentWallet] cloud insert exception:", e);
+        resolveFeatureSync(syncKey, msg);
       }
     })();
   }

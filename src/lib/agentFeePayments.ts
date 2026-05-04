@@ -10,6 +10,7 @@
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { requireAgencyId, getCurrentAgencyId } from "@/store/authStore";
 import { pullAgencySetting, pushAgencySetting } from "./settingsSync";
+import { beginFeatureSync, resolveFeatureSync } from "@/store/featureSyncStore";
 
 export interface FeePaymentRecord {
   id: string;
@@ -22,6 +23,9 @@ export interface FeePaymentRecord {
 const PHONES_KEY   = "igh:agent-phones";
 const PAYMENTS_KEY = "igh:fee-payments";
 const PHONES_CLOUD_KEY = "agent_phones";
+
+/** Feature key used for CloudSyncBadge. */
+export const FEE_PAYMENT_SYNC_KEY = "fee_payments";
 
 // ── Nomor WA agen ──────────────────────────────────────────────────────────
 
@@ -80,8 +84,9 @@ export function recordFeePayment(agentId: string, amount: number, note = ""): Fe
   all.unshift(record);
   saveFeePaymentsCache(all);
 
-  // Fire-and-forget cloud insert
-  if (isSupabaseConfigured()) {
+  const canSync = beginFeatureSync(FEE_PAYMENT_SYNC_KEY);
+
+  if (canSync) {
     void (async () => {
       try {
         const agencyId = requireAgencyId();
@@ -93,9 +98,16 @@ export function recordFeePayment(agentId: string, amount: number, note = ""): Fe
           paid_at:   record.paidAt,
           note:      record.note,
         });
-        if (error) console.warn("[agentFeePayments] insert cloud gagal:", error.message);
+        if (error) {
+          console.warn("[agentFeePayments] insert cloud gagal:", error.message);
+          resolveFeatureSync(FEE_PAYMENT_SYNC_KEY, error.message);
+        } else {
+          resolveFeatureSync(FEE_PAYMENT_SYNC_KEY);
+        }
       } catch (e) {
+        const msg = (e as Error).message ?? String(e);
         console.warn("[agentFeePayments] cloud insert exception:", e);
+        resolveFeatureSync(FEE_PAYMENT_SYNC_KEY, msg);
       }
     })();
   }

@@ -13,9 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { CloudSyncBadge } from "@/components/CloudSyncBadge";
 import {
   listWalletTxs, walletBalance, convertMissionPoints, recordPayout,
-  pullWalletTxs,
+  pullWalletTxs, walletSyncKey,
   POINT_TO_IDR_RATE, type WalletTransaction,
 } from "@/lib/agentWallet";
 
@@ -58,6 +59,8 @@ export function AgentWalletCard({ agentId, agentName, missionPoints, reviewedBy 
   const [payoutAmount, setPayoutAmount] = useState("");
   const [payoutNote, setPayoutNote]     = useState("");
   const [loading, setLoading]           = useState(false);
+
+  const syncKey = walletSyncKey(agentId);
 
   // Pull latest wallet txs from Supabase on mount
   useEffect(() => {
@@ -120,16 +123,20 @@ export function AgentWalletCard({ agentId, agentName, missionPoints, reviewedBy 
   return (
     <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/60 to-white p-4 space-y-3 mt-3">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <div className="h-8 w-8 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-          <Wallet className="h-4 w-4 text-amber-600" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-8 w-8 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+            <Wallet className="h-4 w-4 text-amber-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[12px] font-bold text-[hsl(var(--foreground))]">Wallet Agen — {agentName}</p>
+            <p className="text-[10.5px] text-[hsl(var(--muted-foreground))]">
+              Poin Misi → Komisi IDR · 1 poin = {fmtIDR(POINT_TO_IDR_RATE)}
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-[12px] font-bold text-[hsl(var(--foreground))]">Wallet Agen — {agentName}</p>
-          <p className="text-[10.5px] text-[hsl(var(--muted-foreground))]">
-            Poin Misi → Komisi IDR · 1 poin = {fmtIDR(POINT_TO_IDR_RATE)}
-          </p>
-        </div>
+        {/* Cloud sync status for this agent's wallet */}
+        <CloudSyncBadge featureKey={syncKey} className="shrink-0" />
       </div>
 
       {/* Balance row */}
@@ -206,7 +213,7 @@ export function AgentWalletCard({ agentId, agentName, missionPoints, reviewedBy 
                 className="h-8 text-[12px] flex-1"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <Button size="sm" onClick={handlePayout} disabled={loading}
                 className="flex-1 h-8 text-[11.5px] bg-orange-600 hover:bg-orange-700 text-white border-0 rounded-xl">
                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Simpan Pencairan"}

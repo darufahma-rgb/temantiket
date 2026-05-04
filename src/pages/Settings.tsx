@@ -3,7 +3,7 @@ import { CloudSyncBadge } from "@/components/CloudSyncBadge";
 import { loadProductCommissions as loadProdComm, saveProductCommissions as saveProdComm, pullProductCommissions, type ProductCommissions } from "@/lib/productCommissions";
 import {
   loadAgentPhones, saveAgentPhone, recordFeePayment, loadFeePayments, openWaMessage,
-  pullFeePayments, pullAgentPhones,
+  pullFeePayments, pullAgentPhones, FEE_PAYMENT_SYNC_KEY,
   type FeePaymentRecord,
 } from "@/lib/agentFeePayments";
 import { AnimatePresence, motion } from "framer-motion";
@@ -1491,27 +1491,32 @@ export default function Settings() {
                           {preview}
                         </div>
                       </div>
-                      <div className="flex gap-2 pt-1">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => setWaDialogAgent(null)}>
-                          Batal
-                        </Button>
-                        <Button
-                          size="sm"
-                          disabled={!waPhone || !amount}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-1.5"
-                          onClick={() => {
-                            const rec = recordFeePayment(waDialogAgent.userId, amount, waNote);
-                            setFeePayments((p) => [rec, ...p]);
-                            saveAgentPhone(waDialogAgent.userId, waPhone);
-                            setAgentPhones((prev) => ({ ...prev, [waDialogAgent.userId]: waPhone }));
-                            openWaMessage(waPhone, preview);
-                            setWaDialogAgent(null);
-                            toast.success(`Notif WA dikirim ke ${agentName}`, { description: `Fee ${fmtRp(amount)} dicatat.` });
-                          }}
-                        >
-                          <Send className="h-3.5 w-3.5" />
-                          Buka WhatsApp
-                        </Button>
+                      <div className="space-y-2 pt-1">
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => setWaDialogAgent(null)}>
+                            Batal
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={!waPhone || !amount}
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-1.5"
+                            onClick={() => {
+                              const rec = recordFeePayment(waDialogAgent.userId, amount, waNote);
+                              setFeePayments((p) => [rec, ...p]);
+                              saveAgentPhone(waDialogAgent.userId, waPhone);
+                              setAgentPhones((prev) => ({ ...prev, [waDialogAgent.userId]: waPhone }));
+                              openWaMessage(waPhone, preview);
+                              setWaDialogAgent(null);
+                              toast.success(`Notif WA dikirim ke ${agentName}`, { description: `Fee ${fmtRp(amount)} dicatat.` });
+                            }}
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                            Buka WhatsApp
+                          </Button>
+                        </div>
+                        <div className="flex justify-end">
+                          <CloudSyncBadge featureKey={FEE_PAYMENT_SYNC_KEY} />
+                        </div>
                       </div>
                     </div>
                   );
