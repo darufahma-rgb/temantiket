@@ -1161,10 +1161,10 @@ export default function Dashboard() {
           animate="visible"
         >
           {[
-            { icon: Plane,       label: t.dash_total_trip,   value: trips.length, iconBg: "bg-blue-500",    onClick: () => {} },
-            { icon: TrendingUp,  label: t.dash_active_trip,  value: activeTrips,  iconBg: "bg-emerald-500", onClick: () => setTab("upcoming") },
-            { icon: CheckCircle, label: t.dash_done_trip,    value: doneTrips,    iconBg: "bg-purple-500",  onClick: () => setTab("done") },
-            { icon: Users,       label: t.dash_total_jamaah, value: totalJamaah,  iconBg: "bg-sky-500",     onClick: () => navigate("/progress") },
+            { icon: Plane,       label: t.dash_total_trip,   value: trips.length, onClick: () => {} },
+            { icon: TrendingUp,  label: t.dash_active_trip,  value: activeTrips,  onClick: () => setTab("upcoming") },
+            { icon: CheckCircle, label: t.dash_done_trip,    value: doneTrips,    onClick: () => setTab("done") },
+            { icon: Users,       label: t.dash_total_jamaah, value: totalJamaah,  onClick: () => navigate("/progress") },
           ].map((stat) => (
             <motion.button
               key={stat.label}
@@ -1172,12 +1172,13 @@ export default function Dashboard() {
               className="relative overflow-hidden flex items-center gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 hover:shadow-lg hover:border-[hsl(var(--primary))]/30 transition-all duration-200 text-left active:scale-[0.98] group"
               variants={fadeUp}
             >
-              <div className="absolute -bottom-4 -right-4 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity duration-300">
-                <stat.icon strokeWidth={0.8} className="h-24 w-24" />
+              <div className="absolute -bottom-4 -right-4 opacity-[0.04] group-hover:opacity-[0.07] transition-opacity duration-300">
+                <stat.icon strokeWidth={0.8} className="h-24 w-24 text-[hsl(var(--primary))]" />
               </div>
-              <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm", stat.iconBg)}>
-                <stat.icon strokeWidth={1.8} className="h-6 w-6 text-white" />
-              </div>
+              <stat.icon
+                strokeWidth={1.5}
+                className="h-7 w-7 shrink-0 text-[hsl(var(--primary))] transition-all duration-200 group-hover:text-sky-400 group-hover:stroke-[1.8]"
+              />
               <div className="min-w-0 flex-1">
                 <p className="text-[32px] font-black text-[hsl(var(--foreground))] leading-none tracking-tight tabular-nums">{stat.value}</p>
                 <p className="text-[12px] text-[hsl(var(--muted-foreground))] mt-1.5 font-medium leading-tight">{stat.label}</p>
@@ -1194,20 +1195,21 @@ export default function Dashboard() {
           transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
         >
           {[
-            { icon: Star,        label: t.dash_total_packages,     value: packages.length,                                       iconBg: "bg-amber-100",   iconFg: "text-amber-600",   borderColor: "#F59E0B", onClick: () => navigate("/packages") },
-            { icon: AlertCircle, label: t.dash_need_action,        value: pendingPackages.length,                                iconBg: pendingPackages.length > 0 ? "bg-red-100" : "bg-gray-100", iconFg: pendingPackages.length > 0 ? "text-red-600" : "text-gray-400", borderColor: pendingPackages.length > 0 ? "#EF4444" : "#9CA3AF", onClick: () => navigate("/packages") },
-            { icon: Clock,       label: t.dash_paid_packages,      value: packages.filter(p => p.status === "Paid").length,      iconBg: "bg-emerald-100", iconFg: "text-emerald-600", borderColor: "#10B981", onClick: () => navigate("/packages") },
-            { icon: CheckCircle, label: t.dash_completed_packages, value: packages.filter(p => p.status === "Completed").length, iconBg: "bg-violet-100",  iconFg: "text-violet-600",  borderColor: "#8B5CF6", onClick: () => navigate("/packages") },
+            { icon: Star,        label: t.dash_total_packages,     value: packages.length,                                       borderColor: "#F59E0B", onClick: () => navigate("/packages") },
+            { icon: AlertCircle, label: t.dash_need_action,        value: pendingPackages.length,                                borderColor: pendingPackages.length > 0 ? "#EF4444" : "#9CA3AF", onClick: () => navigate("/packages") },
+            { icon: Clock,       label: t.dash_paid_packages,      value: packages.filter(p => p.status === "Paid").length,      borderColor: "#10B981", onClick: () => navigate("/packages") },
+            { icon: CheckCircle, label: t.dash_completed_packages, value: packages.filter(p => p.status === "Completed").length, borderColor: "#8B5CF6", onClick: () => navigate("/packages") },
           ].map((item) => (
             <button
               key={item.label}
               onClick={item.onClick}
-              className="flex items-center gap-3 rounded-2xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] border-l-[3px] p-3.5 hover:shadow-md hover:bg-[hsl(var(--secondary))] transition-all text-left active:scale-[0.98]"
+              className="group flex items-center gap-3 rounded-2xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] border-l-[3px] p-3.5 hover:shadow-md hover:bg-[hsl(var(--secondary))] transition-all text-left active:scale-[0.98]"
               style={{ borderLeftColor: item.borderColor }}
             >
-              <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center shrink-0", item.iconBg)}>
-                <item.icon strokeWidth={1.6} className={cn("h-4 w-4", item.iconFg)} />
-              </div>
+              <item.icon
+                strokeWidth={1.5}
+                className="h-5 w-5 shrink-0 text-[hsl(var(--primary))] transition-all duration-200 group-hover:text-sky-400 group-hover:stroke-[1.8]"
+              />
               <div className="min-w-0">
                 <p className="text-[20px] font-bold text-[hsl(var(--foreground))] leading-none tabular-nums">{item.value}</p>
                 <p className="text-[10.5px] text-[hsl(var(--muted-foreground))] mt-0.5 leading-tight truncate">{item.label}</p>
@@ -1319,18 +1321,19 @@ export default function Dashboard() {
           transition={{ duration: 0.3, delay: 0.22, ease: "easeOut" }}
         >
           {[
-            { icon: Calculator,   label: t.dash_open_calculator, path: "/calculator", gradient: "linear-gradient(135deg,#0ea5e9,#0284c7)" },
-            { icon: ShoppingBag,  label: "Order Hub",             path: "/orders",     gradient: "linear-gradient(135deg,#8b5cf6,#6d28d9)" },
-            { icon: FileBarChart, label: t.dash_progress_report,  path: "/progress",   gradient: "linear-gradient(135deg,#f59e0b,#d97706)" },
+            { icon: Calculator,   label: t.dash_open_calculator, path: "/calculator" },
+            { icon: ShoppingBag,  label: "Order Hub",             path: "/orders"     },
+            { icon: FileBarChart, label: t.dash_progress_report,  path: "/progress"   },
           ].map((btn) => (
             <button
               key={btn.path}
               onClick={() => navigate(btn.path)}
               className="flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3.5 hover:border-[hsl(var(--primary))]/40 hover:shadow-md transition-all duration-200 group text-left active:scale-[0.98]"
             >
-              <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm" style={{ background: btn.gradient }}>
-                <btn.icon strokeWidth={1.8} className="h-5 w-5 text-white" />
-              </div>
+              <btn.icon
+                strokeWidth={1.5}
+                className="h-6 w-6 shrink-0 text-[hsl(var(--primary))] transition-all duration-200 group-hover:text-sky-400 group-hover:stroke-[1.8]"
+              />
               <span className="text-[13px] font-semibold text-[hsl(var(--foreground))] flex-1 truncate">{btn.label}</span>
               <ArrowRight strokeWidth={1.5} className="h-4 w-4 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] transition-colors shrink-0" />
             </button>
