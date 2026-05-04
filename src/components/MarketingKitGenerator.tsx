@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import {
   Wand2, Copy, CheckCheck, Loader2, RefreshCw, FileText,
   Plane, BookOpen, Megaphone, Moon, Sparkles, AlignLeft,
-  ImagePlus, X, ScanText, PenLine,
+  ImagePlus, X, ScanText, PenLine, MessageCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -234,6 +234,7 @@ export function CaptionGenerator() {
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].key);
   const [activeTone, setActiveTone]         = useState(TONES[0].key);
   const [packageDetail, setPackageDetail]   = useState("");
+  const [waNumber, setWaNumber]             = useState("");
   const [posterFile, setPosterFile]         = useState<File | null>(null);
   const [posterPreview, setPosterPreview]   = useState<string | null>(null);
   const [isDragging, setIsDragging]         = useState(false);
@@ -283,18 +284,22 @@ export function CaptionGenerator() {
     setLoading(true);
     setResults([]);
     try {
+      const waSuffix = waNumber.trim()
+        ? `\n\n📲 Hubungi kami via WA: wa.me/${waNumber.trim().replace(/\D/g, "")}`
+        : "";
+
       if (mode === "poster") {
         if (!posterFile) { toast.error("Upload poster dulu ya!"); return; }
         const dataUrl = await fileToDataUrl(posterFile);
         const captions = await generateFromPoster({ imageDataUrl: dataUrl, tone: activeTone });
-        setResults(captions);
+        setResults(captions.map((c) => c + waSuffix));
       } else {
         const captions = await generateFromDetail({
           categoryPrompt: cat.prompt,
           tone: activeTone,
           packageDetail,
         });
-        setResults(captions);
+        setResults(captions.map((c) => c + waSuffix));
       }
     } catch (err) {
       toast.error(`Gagal generate: ${err instanceof Error ? err.message : String(err)}`);
@@ -500,6 +505,31 @@ export function CaptionGenerator() {
             );
           })}
         </div>
+      </Section>
+
+      {/* ── Nomor WhatsApp ── */}
+      <Section label="Nomor WhatsApp TemanTiket" icon={MessageCircle}>
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 rounded-lg border border-border/70 bg-gray-50 px-3 py-2.5 text-[13px] text-muted-foreground font-medium select-none">
+            wa.me/
+          </span>
+          <input
+            type="tel"
+            value={waNumber}
+            onChange={(e) => setWaNumber(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder="628xxxxxxxxxx"
+            className="flex-1 rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-2.5 text-[13px] text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 focus:border-[#1a44d4]/50 transition-all"
+          />
+        </div>
+        {waNumber.trim() ? (
+          <p className="text-[10.5px] text-[#1a44d4] mt-1.5">
+            Akan ditambahkan: 📲 Hubungi kami via WA: wa.me/{waNumber.trim()}
+          </p>
+        ) : (
+          <p className="text-[10.5px] text-muted-foreground mt-1.5">
+            Opsional — jika diisi, link WA otomatis ditambahkan di akhir setiap caption.
+          </p>
+        )}
       </Section>
 
       {/* ── Generate Button ── */}
