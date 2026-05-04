@@ -1,0 +1,42 @@
+You are a senior full-stack developer working on a Vite + React + TypeScript + Supabase project.
+
+### Current Problem:
+Di halaman **Harga Tiket**, user melakukan parsing data penerbangan dari teks Galileo. Setelah parsing berhasil dan muncul card seperti di screenshot, saat klik tombol simpan sering muncul error **"Koneksi timeout"**. Akibatnya data yang sudah diparsing jadi hilang dan harus diulang dari awal.
+
+### Tugas:
+Perbaiki alur **parsing + penyimpanan** data tiket pesawat agar lebih stabil dan tidak mudah timeout.
+
+### Requirements:
+
+**1. Perbaikan Proses Penyimpanan**
+- Saat ini proses simpan terlalu berat dalam satu kali request → menyebabkan timeout.
+- Ubah strategi penyimpanan menjadi lebih ringan:
+  - Simpan data secara bertahap (misalnya simpan dulu data ringkasan opsi, lalu simpan detail segment-nya).
+  - Atau gunakan `Promise.all` dengan batas concurrent yang aman.
+  - Tambahkan retry mechanism (minimal 2-3 kali) jika terjadi timeout atau network error.
+
+**2. Data Structure**
+Pastikan data round trip tersimpan dengan benar, terdiri dari:
+- Informasi ringkasan opsi (airline, total price, is_round_trip, dll)
+- Segment Keberangkatan (Outbound)
+- Segment Kepulangan (Return)
+- Transit information
+
+**3. UX Improvement (Penting)**
+- Jangan langsung hilang data jika proses simpan gagal.
+- Tambahkan fitur **"Simpan Draft"** atau simpan data ke local state / temporary storage sementara proses saving berjalan.
+- Tampilkan loading yang jelas dengan progress (misalnya "Menyimpan data opsi 1 dari 3...").
+- Jika gagal simpan, tetap pertahankan data yang sudah diparsing di UI dan berikan tombol "Coba Simpan Lagi".
+
+**4. Error Handling**
+- Tangani error timeout dengan baik.
+- Berikan pesan error yang jelas ke user (bukan hanya "Koneksi timeout").
+- Log error ke console untuk debugging.
+
+**5. UI**
+- Pastikan tampilan card seperti di screenshot (dengan section BERANGKAT dan PULANG yang terpisah) tetap rapi.
+- Tombol "Pesan via WA", "+ Order", View, dan Edit sudah ada, pastikan tetap berfungsi setelah data berhasil disimpan.
+
+Mulai perbaiki dari sisi **backend logic penyimpanan** (Supabase query) terlebih dahulu, lalu perbaiki sisi frontend (UX & error handling).
+
+Berikan code yang rapi dan terstruktur.
