@@ -704,8 +704,45 @@ function itineraryLegsToRawTickets(data: ItineraryData): ParsedTicketPrice[] {
  * Supports:
  *   • Galileo availability/pricing display:  1 GF 70 N 03JUN CAI BAH 1715 2015
  *   • Galileo PNR/booking confirmation:      1 GF 70N 03JUN 3 CAIBAH HK1 1715 2015+1
+ *   • Multi-option Galileo output with MORE 1 / MORE 2 / MORE 3 blocks —
+ *     each block is parsed independently and returned as a separate ticket entry.
  */
 export function parseGalileoTextToTickets(text: string): ScanResult {
+  // ── Multi-option: split on "MORE N" block markers ──────────────────────────
+  // Galileo outputs multiple pricing options prefixed with "MORE 1", "MORE 2", etc.
+  // Each block has its own segment rows and its own TOTAL AMOUNT line.
+  // We split on those markers and parse every block independently.
+  const MORE_MARKER_RE = /^[ \t]*MORE\s+\d+[ \t]*$/im;
+  if (MORE_MARKER_RE.test(text)) {
+    const blocks = text.split(/^[ \t]*MORE\s+\d+[ \t]*$/im);
+
+    const allTickets: ParsedTicketPrice[] = [];
+    let totalGrouped = 0;
+
+    for (const block of blocks) {
+      if (!block.trim()) continue;
+      const data = parseGalileoDisplay(block) ?? parseGalileoPNR(block);
+      if (!data || data.legs.length === 0) continue;
+
+      const rawTickets = itineraryLegsToRawTickets(data);
+      const tickets    = groupRoundTrips(rawTickets);
+      totalGrouped    += tickets.filter((t) => t.tripType === "return" || !!t.multiLeg).length;
+      allTickets.push(...tickets);
+    }
+
+    if (allTickets.length === 0) {
+      return {
+        tickets: [],
+        usedAI: false,
+        grouped: 0,
+        error: "Blok MORE ditemukan tetapi tidak ada segmen penerbangan valid. Pastikan setiap blok berisi baris segmen Galileo (contoh: 1 GF 70 N 03JUN CAI BAH 1715 2015) dan TOTAL AMOUNT.",
+      };
+    }
+
+    return { tickets: allTickets, usedAI: false, grouped: totalGrouped };
+  }
+
+  // ── Single-block fallback (original logic) ─────────────────────────────────
   const data = parseGalileoDisplay(text) ?? parseGalileoPNR(text);
 
   if (!data || data.legs.length === 0) {
