@@ -352,7 +352,7 @@ export default function Reports() {
       {/* ══════════════════════════════════════════════════════
            MOBILE LAYOUT
       ══════════════════════════════════════════════════════ */}
-      <div className="md:hidden px-4 space-y-4">
+      <div className="md:hidden px-3 space-y-4">
 
         {/* ── Header row ── */}
         <div className="flex items-center gap-2.5">
@@ -537,7 +537,7 @@ export default function Reports() {
       {/* ══════════════════════════════════════════════════════
            SHARED CONTENT (both mobile + desktop)
       ══════════════════════════════════════════════════════ */}
-      <div className="px-4 md:px-0 space-y-4 md:space-y-5">
+      <div className="px-3 md:px-0 space-y-4 md:space-y-5">
 
       {/* ── Summary tab ──────────────────────────────────────────────────── */}
       {activeTab === "summary" && <>
