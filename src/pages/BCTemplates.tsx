@@ -130,21 +130,51 @@ export default function BCTemplates() {
   const handleSave = async () => {
     if (!draft.title.trim()) { toast.error("Judul template wajib diisi."); return; }
     if (!draft.body.trim()) { toast.error("Isi template wajib diisi."); return; }
-    setSaving(true);
-    try {
-      if (editTarget) {
-        await updateTemplate(editTarget.id, draft);
-        toast.success("Template diperbarui!");
-      } else {
-        await createTemplate(draft);
-        toast.success("Template baru disimpan!");
-      }
+
+    const now = new Date().toISOString();
+
+    if (editTarget) {
+      // Optimistic update: patch state instantly, close form, sync in background
+      const optimistic: BCTemplate = { ...editTarget, ...draft, updatedAt: now };
+      setTemplates((prev) => prev.map((t) => t.id === editTarget.id ? optimistic : t));
       setFormOpen(false);
-      await refresh();
-    } catch (err) {
-      toast.error(`Gagal simpan: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setSaving(false);
+      setSaving(true);
+      try {
+        const real = await updateTemplate(editTarget.id, draft);
+        setTemplates((prev) => prev.map((t) => t.id === editTarget.id ? real : t));
+        toast.success("Template diperbarui!");
+      } catch (err) {
+        // Revert on failure
+        setTemplates((prev) => prev.map((t) => t.id === editTarget.id ? editTarget : t));
+        toast.error(`Gagal simpan: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        setSaving(false);
+      }
+    } else {
+      // Optimistic insert: add temp item instantly, close form, sync in background
+      const tempId = `bct-opt-${Date.now()}`;
+      const optimistic: BCTemplate = {
+        ...draft,
+        id: tempId,
+        agencyId: user?.agencyId ?? "local",
+        sortOrder: draft.sortOrder ?? 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+      setTemplates((prev) => [optimistic, ...prev]);
+      setFormOpen(false);
+      setSaving(true);
+      try {
+        const real = await createTemplate(draft);
+        setTemplates((prev) => prev.map((t) => t.id === tempId ? real : t));
+        toast.success("Template baru disimpan!");
+      } catch (err) {
+        // Revert on failure
+        setTemplates((prev) => prev.filter((t) => t.id !== tempId));
+        toast.error(`Gagal simpan: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
@@ -177,13 +207,17 @@ export default function BCTemplates() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    const target = deleteTarget;
+    // Optimistic remove: dismiss dialog & remove instantly
+    setTemplates((prev) => prev.filter((t) => t.id !== target.id));
+    setDeleteTarget(null);
     setDeleting(true);
     try {
-      await deleteTemplate(deleteTarget.id);
-      toast.success(`Template "${deleteTarget.title}" dihapus.`);
-      setDeleteTarget(null);
-      await refresh();
+      await deleteTemplate(target.id);
+      toast.success(`Template "${target.title}" dihapus.`);
     } catch (err) {
+      // Revert on failure
+      setTemplates((prev) => [target, ...prev]);
       toast.error(`Gagal hapus: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setDeleting(false);
