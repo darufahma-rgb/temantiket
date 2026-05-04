@@ -95,13 +95,20 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
-          {/* ── Mobile slim header (48px) ── */}
+          {/* ── Mobile floating header ── */}
           <header
-            className="md:hidden flex items-center gap-2 px-4 shrink-0 z-40"
+            className="md:hidden fixed z-50 flex items-center gap-2 px-4"
             style={{
-              height: "48px",
-              background: "hsl(var(--card))",
-              borderBottom: "1px solid hsl(var(--border))",
+              top: "12px",
+              left: "12px",
+              right: "12px",
+              height: "50px",
+              borderRadius: "18px",
+              background: "color-mix(in srgb, hsl(var(--card)) 92%, transparent)",
+              backdropFilter: "blur(24px) saturate(2)",
+              WebkitBackdropFilter: "blur(24px) saturate(2)",
+              border: "1px solid hsl(var(--border))",
+              boxShadow: "0 8px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07), inset 0 0.5px 0 rgba(255,255,255,0.18)",
             }}
           >
             <div className="flex-1 flex items-center gap-2 min-w-0">
@@ -215,7 +222,9 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               <motion.main
                 key={location.pathname}
                 className={`absolute inset-0 overflow-auto ${
-                  noPadding ? "pb-[88px] md:pb-0" : "p-5 pb-[88px] md:p-7 md:pb-7 lg:p-8"
+                  noPadding
+                    ? "pt-[74px] pb-[88px] md:pt-0 md:pb-0"
+                    : "px-5 pt-[74px] pb-[88px] md:p-7 md:pb-7 lg:p-8"
                 }`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
