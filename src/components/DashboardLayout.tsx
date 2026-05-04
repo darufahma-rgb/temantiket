@@ -62,7 +62,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
 
           {/* ── Unified Header ── */}
           <motion.header
-            className="flex items-center gap-2 md:gap-3 px-3 md:px-5 lg:px-6 shrink-0"
+            className="flex items-center gap-2 md:gap-3 px-5 md:px-7 lg:px-8 shrink-0"
             style={{
               height: "56px",
               background: "hsl(var(--card))",
