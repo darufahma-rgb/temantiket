@@ -10,8 +10,9 @@
  */
 
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { requireAgencyId, useAuthStore } from "@/store/authStore";
+import { requireAgencyId, getCurrentAgencyId, useAuthStore } from "@/store/authStore";
 import { withTimeout } from "@/lib/supabaseTimeout";
+import { makePersistedCache } from "@/lib/persistedCache";
 
 export type BCCategory =
   | "visa_on_arrival"
@@ -62,13 +63,21 @@ export function applyVariables(body: string, values: Record<string, string>): st
   return body.replace(/\{\{([A-Z0-9_]+)\}\}/g, (_, key) => values[key] ?? `{{${key}}}`);
 }
 
-// ── localStorage fallback ──────────────────────────────────────────────────
-const LS_KEY = "bc_templates_cache";
+// ── Cache per-agency (scoped seperti packages/trips/clients) ───────────────
+// Sebelumnya pakai flat key "bc_templates_cache" yang tidak di-scope per
+// agency — menyebabkan data bocor antar akun di browser yang sama.
+const _persistedCache = makePersistedCache<BCTemplate>("bc_templates");
+const _mem: { items?: BCTemplate[] } = {};
+
 function loadCache(): BCTemplate[] {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) ?? "[]"); } catch { return []; }
+  if (_mem.items === undefined) {
+    _mem.items = _persistedCache.read(getCurrentAgencyId());
+  }
+  return _mem.items!.slice();
 }
 function saveCache(list: BCTemplate[]) {
-  localStorage.setItem(LS_KEY, JSON.stringify(list));
+  _mem.items = list.slice();
+  _persistedCache.write(getCurrentAgencyId(), list);
 }
 
 function fromRow(r: Record<string, unknown>): BCTemplate {
@@ -101,10 +110,15 @@ function toRow(d: Partial<BCTemplateDraft> & { agency_id?: string; created_by?: 
 export async function listTemplates(): Promise<BCTemplate[]> {
   if (isSupabaseConfigured()) {
     try {
+      const agencyId = requireAgencyId();
       const { data, error } = await withTimeout(
         supabase!
           .from("bc_templates")
           .select("*")
+          // Filter eksplisit per-agency — tidak hanya mengandalkan RLS.
+          // Ini mencegah bug "template hilang" saat RLS dikonfigurasi longgar
+          // atau saat query lintas-tenant.
+          .eq("agency_id", agencyId)
           .order("category")
           .order("sort_order")
           .order("created_at"),
@@ -112,8 +126,24 @@ export async function listTemplates(): Promise<BCTemplate[]> {
       );
       if (error) throw error;
       const list = (data ?? []).map(fromRow);
-      saveCache(list);
-      return list;
+      // BUG FIX: Sebelumnya saveCache(list) selalu dipanggil meski list=[].
+      // Kalau Supabase return [] karena RLS block (bukan karena memang kosong),
+      // cache lokal ikut terhapus → data hilang setelah pindah halaman.
+      //
+      // Sekarang: hanya overwrite cache kalau ada data yang kembali.
+      // Kalau result kosong, tampilkan cache lokal sebagai fallback.
+      if (list.length > 0) {
+        saveCache(list);
+        return list;
+      }
+      const cached = loadCache();
+      if (cached.length > 0) {
+        console.warn("[bcTemplates] Supabase return kosong tapi ada cache lokal — pakai cache. Cek RLS policy tabel bc_templates.");
+        return cached;
+      }
+      // Genuinely empty (user belum buat template apapun).
+      saveCache([]);
+      return [];
     } catch (err) {
       console.warn("[bcTemplates] fetch gagal, pakai cache:", err);
       return loadCache();
@@ -182,10 +212,17 @@ export async function updateTemplate(id: string, patch: Partial<BCTemplateDraft>
 
 export async function deleteTemplate(id: string): Promise<void> {
   if (isSupabaseConfigured()) {
-    const { error } = await withTimeout(
-      supabase!.from("bc_templates").delete().eq("id", id),
+    const { data, error } = await withTimeout(
+      supabase!
+        .from("bc_templates")
+        .delete()
+        .eq("id", id)
+        .select("id"),
     );
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error("Hapus template gagal — kemungkinan RLS block DELETE. Cek policy bc_templates_delete di Supabase.");
+    }
   }
   saveCache(loadCache().filter((x) => x.id !== id));
 }
