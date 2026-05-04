@@ -163,8 +163,8 @@ export default function Orders() {
                 <p className="text-[8px] font-semibold uppercase tracking-widest text-sky-400/70 mb-0.5">Total Order</p>
                 <p className="text-[28px] font-black text-white leading-none tabular-nums">{orders.length}</p>
               </div>
-              <div className="h-9 w-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 mt-0.5">
-                <ShoppingBag className="h-4.5 w-4.5 text-white/80" />
+              <div className="h-9 w-9 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 mt-0.5 backdrop-blur-sm">
+                <ShoppingBag className="h-5 w-5 text-white" />
               </div>
             </div>
 
@@ -184,7 +184,7 @@ export default function Orders() {
           </div>
 
           {/* ── Type filter chips ── */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5 -mx-5 px-5">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5 -mx-4 px-4">
             <button
               onClick={() => navigate(clientIdParam ? `/orders?clientId=${clientIdParam}` : "/orders")}
               className={cn(
