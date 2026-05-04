@@ -97,54 +97,86 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
 
           {/* ── Mobile floating header ── */}
           <header
-            className="md:hidden fixed z-50 flex items-center gap-2 px-4"
+            className="md:hidden fixed z-50 flex items-center gap-2 px-3.5"
             style={{
               top: "12px",
               left: "12px",
               right: "12px",
-              height: "50px",
+              height: "52px",
               borderRadius: "18px",
-              background: "color-mix(in srgb, hsl(var(--card)) 92%, transparent)",
+              background: "color-mix(in srgb, hsl(var(--card)) 94%, transparent)",
               backdropFilter: "blur(24px) saturate(2)",
               WebkitBackdropFilter: "blur(24px) saturate(2)",
               border: "1px solid hsl(var(--border))",
               boxShadow: "0 8px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07), inset 0 0.5px 0 rgba(255,255,255,0.18)",
             }}
           >
-            <div className="flex-1 flex items-center gap-2 min-w-0">
+            {/* Left — avatar + greeting */}
+            <button
+              onClick={() => navigate("/settings")}
+              className="flex items-center gap-2 min-w-0 active:opacity-70 transition-opacity"
+            >
               <div
-                className="h-[26px] w-[26px] rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0"
+                className="h-[30px] w-[30px] rounded-xl flex items-center justify-center text-white text-[11px] font-black shrink-0"
                 style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
               >
                 {displayName.charAt(0).toUpperCase()}
               </div>
-              <span className="text-[12.5px] font-bold text-[hsl(var(--foreground))] truncate leading-none">
-                {displayName}
-              </span>
-            </div>
+              <div className="flex flex-col min-w-0 leading-none">
+                <span className="text-[11px] text-[hsl(var(--muted-foreground))] font-medium">
+                  {new Date().getHours() < 12 ? "Selamat pagi" : new Date().getHours() < 17 ? "Selamat siang" : "Selamat sore"}
+                </span>
+                <span className="text-[13px] font-extrabold text-[hsl(var(--foreground))] truncate max-w-[90px]">
+                  {displayName.split(" ")[0]}
+                </span>
+              </div>
+            </button>
 
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                onClick={() => refreshRates()}
-                title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")}` : "Tap untuk perbarui"}
-                className="flex items-center gap-1 h-7 px-2 rounded-lg active:opacity-70 transition-opacity"
-                style={{ border: "1px solid hsl(var(--border))", background: "hsl(var(--secondary))" }}
-              >
-                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: rateMode === "manual" ? "#1a44d4" : "#10b981" }} />
-                <span className="text-[10px] font-bold text-sky-600 tabular-nums">
+            <div className="flex-1" />
+
+            {/* Center — rates flat, no box */}
+            <button
+              onClick={() => refreshRates()}
+              title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")}` : "Tap untuk perbarui"}
+              className="flex items-center gap-1.5 active:opacity-60 transition-opacity shrink-0"
+            >
+              <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: rateMode === "manual" ? "#1a44d4" : "#10b981" }} />
+              <div className="flex items-baseline gap-1 tabular-nums">
+                <span className="text-[9.5px] font-semibold text-[hsl(var(--muted-foreground))]">USD</span>
+                <span className="text-[12px] font-extrabold text-sky-500">
                   {rates.USD ? `${(rates.USD / 1000).toFixed(1)}k` : "—"}
                 </span>
-                <RefreshCw className={cn("h-2.5 w-2.5 shrink-0 text-[hsl(var(--muted-foreground))]", ratesLoading && "animate-spin")} strokeWidth={2} />
-              </button>
+                {rates.SAR && (
+                  <>
+                    <span className="text-[10px] text-[hsl(var(--muted-foreground))] opacity-40 mx-0.5">·</span>
+                    <span className="text-[9.5px] font-semibold text-[hsl(var(--muted-foreground))]">SAR</span>
+                    <span className="text-[12px] font-extrabold text-sky-500">
+                      {rates.SAR.toLocaleString("id-ID")}
+                    </span>
+                  </>
+                )}
+              </div>
+              <RefreshCw
+                className={cn("h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]", ratesLoading && "animate-spin")}
+                strokeWidth={2}
+              />
+            </button>
 
+            {/* Right — search + sync */}
+            <div className="flex items-center gap-1 shrink-0 ml-1">
               <button
                 onClick={() => setSearchOpen(true)}
-                className="flex items-center justify-center h-8 w-8 rounded-lg transition-opacity active:opacity-60 shrink-0"
+                className="flex items-center justify-center h-8 w-8 rounded-xl transition-opacity active:opacity-60 shrink-0"
+                style={{ background: "hsl(var(--secondary))" }}
               >
-                <Search strokeWidth={2} className="h-[16px] w-[16px] text-[hsl(var(--muted-foreground))]" />
+                <Search strokeWidth={2} className="h-[15px] w-[15px] text-[hsl(var(--muted-foreground))]" />
               </button>
 
-              <span className="h-2 w-2 rounded-full shrink-0" title={syncTitle} style={{ background: syncInfo.color, boxShadow: syncInfo.glow }} />
+              <span
+                className="h-2 w-2 rounded-full shrink-0 ml-0.5"
+                title={syncTitle}
+                style={{ background: syncInfo.color, boxShadow: syncInfo.glow }}
+              />
             </div>
           </header>
 
