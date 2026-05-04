@@ -20,6 +20,10 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/frankfurter/, ""),
       },
+      "/api/ocr-passport": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
       "/api/invite-member": {
         target: "http://localhost:3001",
         changeOrigin: true,

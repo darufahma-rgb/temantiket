@@ -464,6 +464,118 @@ app.post('/api/export/igh', async (req, res) => {
 });
 
 /* ──────────────────────────────────────────────
+   POST /api/ocr-passport
+   Dedicated passport OCR via OpenAI vision.
+   Requires valid Supabase JWT + agency membership.
+────────────────────────────────────────────── */
+app.post('/api/ocr-passport', async (req, res) => {
+  try {
+    if (!OPENAI_API_KEY) {
+      return err(res, 503, 'OPENAI_API_KEY belum di-set. Tambahkan di Replit Secrets.');
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return err(res, 401, 'Missing Authorization header');
+
+    const caller = await getCallerUser(authHeader);
+    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
+
+    const admin = makeAdminClient();
+    const { data: membership, error: memErr } = await admin
+      .from('agency_members').select('agency_id').eq('user_id', caller.id).maybeSingle();
+    if (memErr || !membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
+
+    const { imageDataUrl } = req.body || {};
+    if (!imageDataUrl || typeof imageDataUrl !== 'string') {
+      return err(res, 400, 'imageDataUrl required');
+    }
+    if (!imageDataUrl.startsWith('data:image/')) {
+      return err(res, 400, 'imageDataUrl must be a data URL (data:image/...;base64,...)');
+    }
+    if (imageDataUrl.length > 6 * 1024 * 1024) {
+      return err(res, 400, 'Image terlalu besar (>6 MB), tolong di-compress dulu');
+    }
+
+    const SYSTEM_PROMPT = `You are an OCR engine specialized in reading the Machine Readable Zone (MRZ) of international passports (ICAO 9303 TD3 format, two lines of 44 characters each).
+
+Look at the bottom of the passport photo for the MRZ strip. Extract EXACTLY these 5 fields and return ONLY a JSON object (no prose, no markdown fences) with this exact shape:
+
+{
+  "name": "FULL NAME AS PRINTED (given names then surname, single space separated)",
+  "passportNumber": "DOCUMENT NUMBER (alphanumeric, no '<' fillers)",
+  "birthDate": "YYYY-MM-DD",
+  "gender": "L for male, P for female",
+  "expiryDate": "YYYY-MM-DD",
+  "mrzValid": true
+}
+
+Rules:
+- Only return the 5 fields above plus mrzValid. Do not return nationality or any other field.
+- If a field is unreadable, set it to null (do NOT guess).
+- For 2-digit years in MRZ: if year > 30 it means 19xx, otherwise 20xx for birth date. Expiry is always 20xx.
+- Set mrzValid to true only if you successfully read all check digits and they all match.
+- gender must be exactly "L" (laki-laki) or "P" (perempuan), null if unreadable.
+- Return ONLY the JSON object, nothing else.`;
+
+    const openaiRes = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        temperature: 0,
+        max_tokens: 400,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Read the MRZ from this passport and return the JSON.' },
+              { type: 'image_url', image_url: { url: imageDataUrl, detail: 'high' } },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!openaiRes.ok) {
+      const errTxt = await openaiRes.text();
+      return err(res, 502, `OpenAI error: ${errTxt.slice(0, 300)}`);
+    }
+
+    const completion = await openaiRes.json();
+    const raw = completion?.choices?.[0]?.message?.content;
+    if (!raw || typeof raw !== 'string') {
+      return err(res, 502, 'OpenAI returned empty response');
+    }
+
+    let parsed;
+    try { parsed = JSON.parse(raw); }
+    catch { return err(res, 502, 'OpenAI returned invalid JSON'); }
+
+    const out = { source: 'openai', mrzValid: parsed.mrzValid === true };
+    if (typeof parsed.name === 'string' && parsed.name.trim()) out.name = parsed.name.trim();
+    if (typeof parsed.passportNumber === 'string' && parsed.passportNumber.trim()) {
+      out.passportNumber = parsed.passportNumber.replace(/[<\s]/g, '').toUpperCase();
+    }
+    if (typeof parsed.birthDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.birthDate)) {
+      out.birthDate = parsed.birthDate;
+    }
+    if (typeof parsed.expiryDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.expiryDate)) {
+      out.expiryDate = parsed.expiryDate;
+    }
+    if (parsed.gender === 'L' || parsed.gender === 'P') out.gender = parsed.gender;
+
+    return ok(res, out);
+  } catch (e) {
+    return err(res, 500, e.message);
+  }
+});
+
+/* ──────────────────────────────────────────────
    POST /api/ai/chat
    Server-side OpenAI proxy — keeps OPENAI_API_KEY off the browser bundle.
    Accepts a full OpenAI chat-completions request body and proxies it.
