@@ -1,26 +1,27 @@
 /**
  * Agent Wallet — Fase 29
  * Converts approved mission points → commission IDR credit.
- * Persisted in localStorage per agentId (no server table needed for MVP).
+ * localStorage = instant cache; setiap mutasi juga di-push ke Supabase.
  *
- * Conversion: 1 approved mission point = Rp 1.000 komisi kredit.
+ * Tabel Supabase: public.agent_wallet_transactions
  */
 
-export const POINT_TO_IDR_RATE = 1_000; // Rp 1.000 per poin misi
+import { supabase, isSupabaseConfigured } from "./supabase";
+import { requireAgencyId, getCurrentAgencyId } from "@/store/authStore";
+
+export const POINT_TO_IDR_RATE = 1_000;
 
 export type WalletTxType =
-  | "mission_conversion"  // poin misi → IDR kredit
-  | "order_bonus"         // bonus manual dari owner
-  | "payout"              // pencairan (mengurangi saldo)
-  | "adjustment";         // koreksi manual
+  | "mission_conversion"
+  | "order_bonus"
+  | "payout"
+  | "adjustment";
 
 export interface WalletTransaction {
   id:          string;
   agentId:     string;
   type:        WalletTxType;
-  /** Points consumed (negative means debit). 0 for non-point txns. */
   pointsDelta: number;
-  /** IDR credited/debited. Negative = debit (payout). */
   amountIDR:   number;
   description: string;
   createdAt:   string;
@@ -38,7 +39,7 @@ export function listWalletTxs(agentId: string): WalletTransaction[] {
   }
 }
 
-function saveTxs(agentId: string, txs: WalletTransaction[]): void {
+function saveTxsCache(agentId: string, txs: WalletTransaction[]): void {
   try { localStorage.setItem(walletKey(agentId), JSON.stringify(txs)); } catch { /* quota */ }
 }
 
@@ -68,8 +69,66 @@ export function addWalletTx(
     id:        `wtx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     createdAt: new Date().toISOString(),
   };
-  saveTxs(agentId, [full, ...listWalletTxs(agentId)]);
+  saveTxsCache(agentId, [full, ...listWalletTxs(agentId)]);
+
+  // Fire-and-forget cloud insert
+  if (isSupabaseConfigured()) {
+    void (async () => {
+      try {
+        const agencyId = requireAgencyId();
+        const { error } = await supabase!.from("agent_wallet_transactions").insert({
+          id:           full.id,
+          agency_id:    agencyId,
+          agent_id:     full.agentId,
+          type:         full.type,
+          points_delta: full.pointsDelta,
+          amount_idr:   full.amountIDR,
+          description:  full.description,
+          created_by:   full.createdBy,
+          created_at:   full.createdAt,
+        });
+        if (error) console.warn("[agentWallet] insert cloud gagal:", error.message);
+      } catch (e) {
+        console.warn("[agentWallet] cloud insert exception:", e);
+      }
+    })();
+  }
+
   return full;
+}
+
+/** Pull wallet txs dari Supabase → update localStorage cache → return list. */
+export async function pullWalletTxs(agentId: string): Promise<WalletTransaction[]> {
+  if (!isSupabaseConfigured()) return listWalletTxs(agentId);
+  try {
+    const agencyId = getCurrentAgencyId();
+    if (!agencyId) return listWalletTxs(agentId);
+    const { data, error } = await supabase!
+      .from("agent_wallet_transactions")
+      .select("*")
+      .eq("agency_id", agencyId)
+      .eq("agent_id", agentId)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.warn("[agentWallet] pull gagal:", error.message);
+      return listWalletTxs(agentId);
+    }
+    const txs: WalletTransaction[] = (data ?? []).map((r) => ({
+      id:          String(r.id),
+      agentId:     String(r.agent_id),
+      type:        r.type as WalletTxType,
+      pointsDelta: Number(r.points_delta),
+      amountIDR:   Number(r.amount_idr),
+      description: String(r.description ?? ""),
+      createdAt:   String(r.created_at),
+      createdBy:   String(r.created_by ?? ""),
+    }));
+    saveTxsCache(agentId, txs);
+    return txs;
+  } catch (e) {
+    console.warn("[agentWallet] pull exception:", e);
+    return listWalletTxs(agentId);
+  }
 }
 
 export function convertMissionPoints(
@@ -91,10 +150,10 @@ export function convertMissionPoints(
 }
 
 export function recordPayout(
-  agentId:  string,
+  agentId:   string,
   amountIDR: number,
-  paidBy:   string,
-  notes?:   string,
+  paidBy:    string,
+  notes?:    string,
 ): WalletTransaction {
   if (amountIDR <= 0) throw new Error("Jumlah harus > 0");
   const fmt = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amountIDR);

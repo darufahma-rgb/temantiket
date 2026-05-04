@@ -1,7 +1,15 @@
 /**
- * Menyimpan nomor WA agen dan riwayat pembayaran fee komisi per-agency
- * ke localStorage. Tidak disinkronkan ke cloud — data operasional owner.
+ * Menyimpan nomor WA agen dan riwayat pembayaran fee komisi per-agency.
+ * localStorage = instant cache; setiap mutasi juga di-push ke Supabase.
+ *
+ * Tabel Supabase:
+ *   public.agent_fee_payments  → fee payment records
+ *   public.agency_settings     → agent phones (key: 'agent_phones')
  */
+
+import { supabase, isSupabaseConfigured } from "./supabase";
+import { requireAgencyId, getCurrentAgencyId } from "@/store/authStore";
+import { pullAgencySetting, pushAgencySetting } from "./settingsSync";
 
 export interface FeePaymentRecord {
   id: string;
@@ -11,8 +19,9 @@ export interface FeePaymentRecord {
   note: string;
 }
 
-const PHONES_KEY = "igh:agent-phones";
+const PHONES_KEY   = "igh:agent-phones";
 const PAYMENTS_KEY = "igh:fee-payments";
+const PHONES_CLOUD_KEY = "agent_phones";
 
 // ── Nomor WA agen ──────────────────────────────────────────────────────────
 
@@ -28,13 +37,20 @@ export function loadAgentPhones(): Record<string, string> {
 export function saveAgentPhone(agentId: string, phone: string): void {
   const all = loadAgentPhones();
   all[agentId] = phone.trim();
-  try {
-    localStorage.setItem(PHONES_KEY, JSON.stringify(all));
-  } catch { /* noop */ }
+  try { localStorage.setItem(PHONES_KEY, JSON.stringify(all)); } catch { /* noop */ }
+  void pushAgencySetting(PHONES_CLOUD_KEY, all);
 }
 
 export function getAgentPhone(agentId: string): string {
   return loadAgentPhones()[agentId] ?? "";
+}
+
+/** Pull phones dari Supabase → tulis ke localStorage → return map. */
+export async function pullAgentPhones(): Promise<Record<string, string>> {
+  const remote = await pullAgencySetting<Record<string, string>>(PHONES_CLOUD_KEY);
+  if (!remote) return loadAgentPhones();
+  try { localStorage.setItem(PHONES_KEY, JSON.stringify(remote)); } catch { /* noop */ }
+  return remote;
 }
 
 // ── Riwayat Pembayaran Fee ─────────────────────────────────────────────────
@@ -48,6 +64,10 @@ export function loadFeePayments(): FeePaymentRecord[] {
   }
 }
 
+function saveFeePaymentsCache(records: FeePaymentRecord[]): void {
+  try { localStorage.setItem(PAYMENTS_KEY, JSON.stringify(records.slice(0, 500))); } catch { /* noop */ }
+}
+
 export function recordFeePayment(agentId: string, amount: number, note = ""): FeePaymentRecord {
   const record: FeePaymentRecord = {
     id: `fp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -58,10 +78,60 @@ export function recordFeePayment(agentId: string, amount: number, note = ""): Fe
   };
   const all = loadFeePayments();
   all.unshift(record);
-  try {
-    localStorage.setItem(PAYMENTS_KEY, JSON.stringify(all.slice(0, 500)));
-  } catch { /* noop */ }
+  saveFeePaymentsCache(all);
+
+  // Fire-and-forget cloud insert
+  if (isSupabaseConfigured()) {
+    void (async () => {
+      try {
+        const agencyId = requireAgencyId();
+        const { error } = await supabase!.from("agent_fee_payments").insert({
+          id:        record.id,
+          agency_id: agencyId,
+          agent_id:  record.agentId,
+          amount:    record.amount,
+          paid_at:   record.paidAt,
+          note:      record.note,
+        });
+        if (error) console.warn("[agentFeePayments] insert cloud gagal:", error.message);
+      } catch (e) {
+        console.warn("[agentFeePayments] cloud insert exception:", e);
+      }
+    })();
+  }
+
   return record;
+}
+
+/** Pull fee payments dari Supabase → merge ke localStorage. */
+export async function pullFeePayments(): Promise<FeePaymentRecord[]> {
+  if (!isSupabaseConfigured()) return loadFeePayments();
+  try {
+    const agencyId = getCurrentAgencyId();
+    if (!agencyId) return loadFeePayments();
+    const { data, error } = await supabase!
+      .from("agent_fee_payments")
+      .select("*")
+      .eq("agency_id", agencyId)
+      .order("paid_at", { ascending: false })
+      .limit(500);
+    if (error) {
+      console.warn("[agentFeePayments] pull gagal:", error.message);
+      return loadFeePayments();
+    }
+    const records: FeePaymentRecord[] = (data ?? []).map((r) => ({
+      id:      String(r.id),
+      agentId: String(r.agent_id),
+      amount:  Number(r.amount),
+      paidAt:  String(r.paid_at),
+      note:    String(r.note ?? ""),
+    }));
+    saveFeePaymentsCache(records);
+    return records;
+  } catch (e) {
+    console.warn("[agentFeePayments] pull exception:", e);
+    return loadFeePayments();
+  }
 }
 
 export function getFeePaymentsForAgent(agentId: string): FeePaymentRecord[] {

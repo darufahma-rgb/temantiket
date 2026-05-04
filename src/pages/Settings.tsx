@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { loadProductCommissions as loadProdComm, saveProductCommissions as saveProdComm, type ProductCommissions } from "@/lib/productCommissions";
+import { loadProductCommissions as loadProdComm, saveProductCommissions as saveProdComm, pullProductCommissions, type ProductCommissions } from "@/lib/productCommissions";
 import {
   loadAgentPhones, saveAgentPhone, recordFeePayment, loadFeePayments, openWaMessage,
+  pullFeePayments, pullAgentPhones,
   type FeePaymentRecord,
 } from "@/lib/agentFeePayments";
 import { AnimatePresence, motion } from "framer-motion";
@@ -251,6 +252,10 @@ export default function Settings() {
     if (tab === "agents") {
       listMembers().then(setMembers).catch((e) => toast.error(`Gagal load member: ${e.message}`));
       if (orders.length === 0) void fetchOrders();
+      // Pull from cloud to ensure latest data
+      void pullFeePayments().then(setFeePayments);
+      void pullAgentPhones().then(setAgentPhones);
+      void pullProductCommissions().then((remote) => { if (remote) setProductCommissions(remote); });
     }
   }, [tab, listMembers]);
 
@@ -362,12 +367,12 @@ export default function Settings() {
 
   useEffect(() => {
     applyAppearanceSettings(appearance);
-    saveAppearanceSettings(appearance);
+    saveAppearanceSettings(appearance, user?.id);
   }, [appearance]);
 
   const handleSave = () => {
     applyAppearanceSettings(appearance);
-    saveAppearanceSettings(appearance);
+    saveAppearanceSettings(appearance, user?.id);
     toast.success("Pengaturan berhasil disimpan!");
   };
 

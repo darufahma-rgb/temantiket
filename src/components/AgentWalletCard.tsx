@@ -7,7 +7,7 @@
  * — Payout recording → admin marks wallet as paid out
  * — Transaction history
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Wallet, ArrowDownToLine, History, ChevronDown, ChevronUp, Coins, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   listWalletTxs, walletBalance, convertMissionPoints, recordPayout,
+  pullWalletTxs,
   POINT_TO_IDR_RATE, type WalletTransaction,
 } from "@/lib/agentWallet";
 
@@ -57,6 +58,11 @@ export function AgentWalletCard({ agentId, agentName, missionPoints, reviewedBy 
   const [payoutAmount, setPayoutAmount] = useState("");
   const [payoutNote, setPayoutNote]     = useState("");
   const [loading, setLoading]           = useState(false);
+
+  // Pull latest wallet txs from Supabase on mount
+  useEffect(() => {
+    void pullWalletTxs(agentId).then(setTxs);
+  }, [agentId]);
 
   const refresh = () => setTxs(listWalletTxs(agentId));
 

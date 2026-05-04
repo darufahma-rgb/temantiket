@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAgencyId, getCurrentAgencyId, useAuthStore } from "@/store/authStore";
 import { makePersistedCache } from "@/lib/persistedCache";
 import { withTimeout } from "@/lib/supabaseTimeout";
+import { pullAgencySetting, pushAgencySetting } from "@/lib/settingsSync";
 
 export type TicketCurrency = "IDR" | "EGP" | "USD" | "SAR";
 
@@ -197,14 +198,27 @@ export async function deleteTicketPrice(id: string): Promise<void> {
   saveCache(loadCache().filter((x) => x.id !== id));
 }
 
-// ── Markup (localStorage) ────────────────────────────────────────────────────
-const MARKUP_KEY = "ticket_prices.markup.v1";
+// ── Markup (localStorage + cloud sync) ───────────────────────────────────────
+const MARKUP_KEY  = "ticket_prices.markup.v1";
+const MARKUP_CLOUD_KEY = "ticket_markup";
 
 export function loadMarkup(): number {
   try { return Number(localStorage.getItem(MARKUP_KEY) ?? "0") || 0; } catch { return 0; }
 }
+
 export function saveMarkup(val: number) {
-  localStorage.setItem(MARKUP_KEY, String(Math.max(0, Math.round(val))));
+  const safe = Math.max(0, Math.round(val));
+  localStorage.setItem(MARKUP_KEY, String(safe));
+  void pushAgencySetting(MARKUP_CLOUD_KEY, safe);
+}
+
+/** Pull markup dari Supabase → tulis ke localStorage. */
+export async function pullMarkup(): Promise<number | null> {
+  const remote = await pullAgencySetting<number>(MARKUP_CLOUD_KEY);
+  if (remote === null || remote === undefined) return null;
+  const safe = Math.max(0, Math.round(Number(remote) || 0));
+  localStorage.setItem(MARKUP_KEY, String(safe));
+  return safe;
 }
 
 // ── Price helpers ────────────────────────────────────────────────────────────

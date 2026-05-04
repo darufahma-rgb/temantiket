@@ -1,20 +1,21 @@
 /**
  * Temantiket-wide admin settings (kontak admin yang muncul di footer PDF & UI).
- * Disimpan ke localStorage; tidak disinkronkan ke cloud — ini setting per-device
- * untuk operasional admin (mis. WhatsApp Syamil Temantiket yang muncul di penawaran).
+ * localStorage = instant cache; setiap save juga di-push ke Supabase agency_settings.
  */
 
+import { pullAgencySetting, pushAgencySetting } from "./settingsSync";
+import { useAuthStore } from "@/store/authStore";
+
 export interface IghAdminSettings {
-  /** Nomor WhatsApp admin (international format dengan/atau tanpa +). */
   adminWhatsapp: string;
-  /** Handle Instagram tanpa @, mis. "temantiket". */
   adminInstagram: string;
 }
 
 const STORAGE_KEY = "igh:admin-settings";
+const CLOUD_KEY   = "admin_settings";
 
 export const DEFAULT_IGH_ADMIN_SETTINGS: IghAdminSettings = {
-  adminWhatsapp: "+6281311506025", // Admin Temantiket
+  adminWhatsapp: "+6281311506025",
   adminInstagram: "temantiket",
 };
 
@@ -37,10 +38,27 @@ export function saveIghAdminSettings(patch: Partial<IghAdminSettings>): IghAdmin
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     window.dispatchEvent(new CustomEvent("igh:admin-settings-changed", { detail: next }));
-  } catch {
-    /* noop */
-  }
+  } catch { /* noop */ }
+  void pushAgencySetting(CLOUD_KEY, next);
   return next;
+}
+
+/** Pull dari Supabase → tulis ke localStorage. Dipanggil saat app init. */
+export async function pullIghAdminSettings(): Promise<IghAdminSettings | null> {
+  const remote = await pullAgencySetting<IghAdminSettings>(CLOUD_KEY);
+  if (!remote) return null;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+    window.dispatchEvent(new CustomEvent("igh:admin-settings-changed", { detail: remote }));
+  } catch { /* noop */ }
+  return remote;
+}
+
+/** Sync on login: pull dari cloud, hydrate localStorage. */
+export async function initIghAdminSettings(): Promise<void> {
+  const user = useAuthStore.getState().user;
+  if (!user) return;
+  await pullIghAdminSettings();
 }
 
 /** Strip non-digits — siap dipakai untuk URL `https://wa.me/{digits}`. */
@@ -52,7 +70,6 @@ export function whatsappDigits(raw: string): string {
 export function formatWhatsappDisplay(raw: string): string {
   const d = whatsappDigits(raw);
   if (!d) return "";
-  // Indonesian-style chunking: +CC AAAA-BBBB-CCCC (best effort).
   if (d.startsWith("62")) {
     const rest = d.slice(2);
     const a = rest.slice(0, 3);

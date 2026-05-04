@@ -14,11 +14,14 @@ import { useClientsStore } from "@/store/clientsStore";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useAuthStore } from "@/store/authStore";
 import { useRegionalStore } from "@/store/regionalStore";
-import { applyAppearanceSettings, loadAppearanceSettings } from "@/lib/appearance";
+import { applyAppearanceSettings, loadAppearanceSettings, pullAppearanceSettings } from "@/lib/appearance";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { startRealtimeSync } from "@/lib/supabaseRealtime";
 import { initSyncStatusListeners } from "@/store/syncStatusStore";
 import { toast } from "sonner";
+import { pullIghAdminSettings } from "@/lib/ighSettings";
+import { pullProductCommissions } from "@/lib/productCommissions";
+import { pullMarkup } from "@/features/ticketPrices/ticketPricesRepo";
 
 import Index from "./pages/Index";
 import Calculator from "./pages/Calculator";
@@ -64,17 +67,30 @@ const queryClient = new QueryClient({
 
 
 function StoreBootstrap() {
-  const refreshRates = useRatesStore((s) => s.refresh);
+  const refreshRates   = useRatesStore((s) => s.refresh);
+  const pullRates      = useRatesStore((s) => s.pullFromCloud);
   const refreshPackages = usePackagesStore((s) => s.refresh);
-  const fetchTrips = useTripsStore((s) => s.fetchTrips);
-  const fetchClients = useClientsStore((s) => s.fetchClients);
-  const fetchOrders = useOrdersStore((s) => s.fetchOrders);
+  const fetchTrips     = useTripsStore((s) => s.fetchTrips);
+  const fetchClients   = useClientsStore((s) => s.fetchClients);
+  const fetchOrders    = useOrdersStore((s) => s.fetchOrders);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user           = useAuthStore((s) => s.user);
+
   useEffect(() => {
     refreshRates();
     if (!isAuthenticated) return;
     void Promise.all([refreshPackages(), fetchTrips(), fetchClients(), fetchOrders()]);
   }, [refreshRates, refreshPackages, fetchTrips, fetchClients, fetchOrders, isAuthenticated]);
+
+  // Pull all cloud-synced settings after auth
+  useEffect(() => {
+    if (!isAuthenticated || !isSupabaseConfigured()) return;
+    void pullIghAdminSettings();
+    void pullProductCommissions();
+    void pullMarkup();
+    void pullRates();
+    if (user?.id) void pullAppearanceSettings(user.id);
+  }, [isAuthenticated, user?.id, pullRates]);
 
   useEffect(() => {
     if (!isAuthenticated || !isSupabaseConfigured()) return;
