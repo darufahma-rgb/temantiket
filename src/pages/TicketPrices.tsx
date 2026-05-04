@@ -1310,23 +1310,269 @@ export default function TicketPrices() {
 
   const visiblePrices = isAdmin ? prices : prices.filter((p) => p.isPublished);
 
+  const publishedCount = prices.filter(p => p.isPublished).length;
+  const hiddenCount    = prices.filter(p => !p.isPublished).length;
+
   return (
-    <div className="max-w-5xl mx-auto py-6 px-4 space-y-6">
+    <div className="max-w-5xl mx-auto pb-8 md:py-6 md:px-4 md:space-y-6">
+
+      {/* ══════════════════════════════════════════════════════════
+           MOBILE LAYOUT  (md:hidden)
+      ══════════════════════════════════════════════════════════ */}
+      <div className="md:hidden px-4 space-y-4">
+
+        {/* ── Header row ── */}
+        <div className="flex items-center gap-2.5">
+          <div
+            className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+            style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
+          >
+            <Plane className="h-4 w-4 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[8px] font-semibold uppercase tracking-widest text-[hsl(var(--muted-foreground))] leading-none">Tiket & Harga</p>
+            <h1 className="text-[14px] font-extrabold text-[hsl(var(--foreground))] leading-tight truncate mt-0.5">Daftar Harga Tiket</h1>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={() => void load()} disabled={loading}
+              className="h-9 w-9 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center justify-center active:scale-95 transition-transform shrink-0"
+            >
+              <RefreshCw className={cn("h-4 w-4 text-[hsl(var(--muted-foreground))]", loading && "animate-spin")} />
+            </button>
+          )}
+        </div>
+
+        {/* ── Hero stats banner ── */}
+        <div
+          className="rounded-2xl px-4 py-3.5 text-white relative overflow-hidden"
+          style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 55%,#1a44d4 100%)" }}
+        >
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <div className="absolute -top-10 -right-10 h-44 w-44 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,255,255,0.07) 0%, transparent 65%)" }} />
+            <div className="absolute -bottom-8 left-0 right-0 h-24" style={{ background: "radial-gradient(ellipse at 50% 100%, rgba(26,68,212,0.3) 0%, transparent 70%)" }} />
+            <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "20px 20px" }} />
+          </div>
+          <div className="relative flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p className="text-[8px] font-semibold uppercase tracking-widest text-sky-400/70 mb-0.5">Total Tiket</p>
+              <p className="text-[28px] font-black text-white leading-none tabular-nums">{visiblePrices.length}</p>
+            </div>
+            <div className="h-9 w-9 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 mt-0.5 backdrop-blur-sm">
+              <Plane className="h-5 w-5 text-white" />
+            </div>
+          </div>
+          <div className="relative flex items-center pt-3 border-t border-white/10">
+            {[
+              { label: "Publik",      value: String(publishedCount) },
+              { label: "Tersembunyi", value: String(hiddenCount)    },
+              { label: "Markup",      value: markup > 0 ? `+${fmtIDR(markup)}` : "—" },
+            ].map((s, i) => (
+              <div key={s.label} className={cn("flex-1 text-center", i > 0 && "border-l border-white/10")}>
+                <p className="text-[12px] font-black text-white tabular-nums leading-none">{s.value}</p>
+                <p className="text-[7.5px] text-sky-300/60 uppercase tracking-wide mt-1 font-semibold">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Action buttons ── */}
+        <div className="flex gap-2">
+          <button
+            onClick={handleSharePublic}
+            className="flex-1 h-11 rounded-2xl flex items-center justify-center gap-2 text-[12px] font-bold text-white shadow-sm active:scale-95 transition-transform"
+            style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
+          >
+            <Share2 className="h-4 w-4" />
+            Share
+          </button>
+          <button
+            onClick={() => setMarkupOpen((v) => !v)}
+            className={cn(
+              "flex-1 h-11 rounded-2xl flex items-center justify-center gap-1.5 text-[12px] font-bold border transition-all active:scale-95",
+              markup > 0
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
+            )}
+          >
+            <Tag className="h-4 w-4" />
+            {markup > 0 ? "Edit Markup" : "Markup"}
+          </button>
+          {isAdmin && (
+            <button
+              onClick={openAdd}
+              className="flex-1 h-11 rounded-2xl flex items-center justify-center gap-1.5 text-[12px] font-bold bg-white border border-[hsl(var(--border))] text-[hsl(var(--foreground))] active:scale-95 transition-transform shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              Tambah
+            </button>
+          )}
+        </div>
+
+        {/* ── Markup inline (mobile) ── */}
+        {markupOpen && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="h-7 w-7 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0">
+                <Settings2 className="w-3.5 h-3.5 text-white" />
+              </div>
+              <div>
+                <p className="text-[12px] font-bold text-emerald-900">Global Mark-up</p>
+                <p className="text-[10px] text-emerald-600">Keuntungan per pax (IDR)</p>
+              </div>
+              <button onClick={() => setMarkupOpen(false)} className="ml-auto h-7 w-7 rounded-lg bg-emerald-100 flex items-center justify-center active:scale-95">
+                <X className="w-3.5 h-3.5 text-emerald-600" />
+              </button>
+            </div>
+            <Input
+              type="number" min="0" step="50000" placeholder="0"
+              className="bg-white h-11 rounded-xl text-[13px]"
+              value={markupInput}
+              onChange={(e) => setMarkupInput(e.target.value)}
+            />
+            <p className="text-[10.5px] text-emerald-600 leading-snug">
+              Ditambahkan ke semua harga modal sebelum ditampilkan ke klien. Kurs konversi otomatis.
+            </p>
+            <button
+              onClick={applyMarkup}
+              className="w-full h-11 rounded-xl text-[13px] font-bold text-white flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              style={{ background: "linear-gradient(135deg,#059669,#047857)" }}
+            >
+              <Check className="w-4 h-4" /> Terapkan Markup
+            </button>
+          </div>
+        )}
+
+        {/* ── Share panel (mobile compact) ── */}
+        <SharePanel publicUrl={publicUrl} />
+
+        {/* ── AI Scanner (mobile, collapsible) ── */}
+        {isAdmin && (
+          <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
+            <div className="px-4 py-3.5 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 text-sky-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12.5px] font-bold text-[hsl(var(--foreground))]">Import via AI</p>
+                <p className="text-[10px] text-[hsl(var(--muted-foreground))] truncate">Screenshot → ekstrak otomatis</p>
+              </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={scanning}
+                className="h-9 px-3.5 rounded-xl text-[11.5px] font-bold text-white flex items-center gap-1.5 active:scale-95 transition-transform shrink-0"
+                style={{ background: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}
+              >
+                {scanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                {scanning ? "Scan…" : "Upload"}
+              </button>
+            </div>
+
+            {scanError && (
+              <div className="mx-4 mb-3 flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-100">
+                <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-red-700">{scanError}</p>
+              </div>
+            )}
+
+            {pendingForms.length > 0 && (
+              <div className="border-t border-[hsl(var(--border))] px-4 py-3 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[12px] font-bold text-[hsl(var(--foreground))]">
+                    ✅ {pendingForms.length} tiket ditemukan
+                  </p>
+                  <button
+                    onClick={savePending} disabled={saving}
+                    className="h-8 px-3.5 rounded-xl text-[11px] font-bold text-white flex items-center gap-1.5 active:scale-95"
+                    style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
+                  >
+                    {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    Simpan Semua
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Ticket list (mobile) ── */}
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="rounded-2xl border animate-pulse overflow-hidden">
+                <div className="h-16 bg-slate-200" />
+                <div className="p-4 space-y-2">
+                  <div className="h-3 bg-slate-100 rounded-full w-3/4" />
+                  <div className="h-3 bg-slate-100 rounded-full w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : visiblePrices.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[hsl(var(--border))] px-4 py-10 text-center flex flex-col items-center">
+            <div
+              className="h-14 w-14 rounded-2xl flex items-center justify-center mb-3 shadow-sm"
+              style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
+            >
+              <Plane className="h-6 w-6 text-white" />
+            </div>
+            <p className="text-[13px] font-bold text-[hsl(var(--foreground))]">Belum ada harga tiket</p>
+            <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-1 leading-snug max-w-[220px]">
+              Upload screenshot atau tambah manual untuk mulai.
+            </p>
+            {isAdmin && (
+              <button
+                onClick={openAdd}
+                className="mt-4 inline-flex items-center gap-1.5 h-9 px-5 rounded-xl text-[12px] font-bold text-white shadow-sm active:scale-95 transition-transform"
+                style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
+              >
+                <Plus className="h-3.5 w-3.5" /> Tambah Manual
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold text-[hsl(var(--muted-foreground))]">
+                {visiblePrices.length} rute tersedia
+              </p>
+              {markup > 0 && (
+                <span className="text-[10px] font-bold text-emerald-600">
+                  +{fmtIDR(markup)} markup/pax
+                </span>
+              )}
+            </div>
+            {visiblePrices.map((item) => (
+              <BoardingPassCard
+                key={item.id} item={item} markup={markup} rates={rates}
+                isAdmin={isAdmin} onEdit={openEdit} onDelete={handleDelete}
+                onTogglePublish={handleTogglePublish} waNumber={waNumber} showBasePrice={isAdmin}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════
+           DESKTOP LAYOUT  (hidden md:block)
+      ══════════════════════════════════════════════════════════ */}
+      <div className="hidden md:block space-y-6">
+
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-sky-100">
-              <Plane className="w-5 h-5 text-sky-600" />
+          <div className="flex items-center gap-2.5">
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+              style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}>
+              <Plane className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Daftar Harga Tiket</h1>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Daftar Harga Tiket</h1>
+              <p className="text-sm text-slate-500 mt-0.5">AI ekstrak nomor penerbangan, jam, transit otomatis dari screenshot</p>
+            </div>
           </div>
-          <p className="text-sm text-slate-500 mt-0.5">
-            AI ekstrak nomor penerbangan, jam, transit otomatis dari screenshot
-          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Share public link */}
           <Button
             size="sm" variant="outline"
             className="text-sky-600 border-sky-200 hover:bg-sky-50 hover:border-sky-300"
@@ -1335,8 +1581,6 @@ export default function TicketPrices() {
             <Share2 className="w-3.5 h-3.5 mr-1.5" />
             Share Link Publik
           </Button>
-
-          {/* Markup badge */}
           <button
             onClick={() => setMarkupOpen((v) => !v)}
             className={cn(
@@ -1350,19 +1594,13 @@ export default function TicketPrices() {
             Markup: {markup > 0 ? fmtIDR(markup) : "Belum diset"}
             {markupOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
-
           {isAdmin && (
             <>
               <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
                 <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
               </Button>
-              <Button
-                size="sm"
-                className="bg-sky-600 hover:bg-sky-700 text-white"
-                onClick={openAdd}
-              >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Tambah Manual
+              <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white" onClick={openAdd}>
+                <Plus className="w-3.5 h-3.5 mr-1" />Tambah Manual
               </Button>
             </>
           )}
@@ -1743,6 +1981,8 @@ export default function TicketPrices() {
         onSave={handleSaveEdit}
         loading={savingEdit}
       />
+      </div>{/* end hidden md:block */}
+
     </div>
   );
 }
