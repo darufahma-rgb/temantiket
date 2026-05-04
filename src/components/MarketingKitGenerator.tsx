@@ -128,7 +128,7 @@ function fileToDataUrl(file: File): Promise<string> {
 }
 
 /* ─── Image compression (resize + JPEG encode) ──────────── */
-function compressImage(file: File, maxWidth = 1400, quality = 0.85): Promise<string> {
+function compressImage(file: File, maxWidth = 900, quality = 0.80): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
@@ -207,19 +207,19 @@ async function generateFromPoster(params: {
     method: "POST",
     headers: await getAIHeaders(),
     body: JSON.stringify({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: VISION_SYSTEM_PROMPT },
         {
           role: "user",
           content: [
             { type: "text", text: userPrompt },
-            { type: "image_url", image_url: { url: imageDataUrl, detail: "high" } },
+            { type: "image_url", image_url: { url: imageDataUrl, detail: "auto" } },
           ],
         },
       ],
       temperature: 0.8,
-      max_tokens: 1200,
+      max_tokens: 900,
     }),
   });
 
