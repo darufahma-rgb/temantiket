@@ -31,14 +31,19 @@ function makeAdminClient() {
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 }
 
-async function getCallerUser(authHeader) {
+async function getCallerUser(authHeader, timeoutMs = 8000) {
   if (!authHeader) return null;
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
     auth: { persistSession: false },
   });
-  const { data, error } = await userClient.auth.getUser();
+  // Race the Supabase auth call against a timeout so it never hangs forever
+  const authCall = userClient.auth.getUser();
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Auth check timed out')), timeoutMs)
+  );
+  const { data, error } = await Promise.race([authCall, timeout]);
   if (error || !data.user) return null;
   return data.user;
 }
@@ -109,10 +114,19 @@ app.post('/api/bootstrap', async (req, res) => {
 ────────────────────────────────────────────── */
 app.post('/api/invite-member', async (req, res) => {
   try {
+    // Check prerequisites FIRST — before any network calls — so we fail fast
+    // with a clear error instead of hanging forever waiting for getCallerUser.
+    if (!SERVICE_ROLE_KEY) {
+      return err(res, 503,
+        'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. ' +
+        'Tambahkan key ini di Secrets / Environment Variables Replit, lalu restart server.'
+      );
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader) return err(res, 401, 'Missing Authorization header');
 
-    const caller = await getCallerUser(authHeader);
+    const caller = await getCallerUser(authHeader).catch(() => null);
     if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
 
     const admin = makeAdminClient();
@@ -191,10 +205,17 @@ app.post('/api/invite-member', async (req, res) => {
 ────────────────────────────────────────────── */
 app.post('/api/remove-member', async (req, res) => {
   try {
+    if (!SERVICE_ROLE_KEY) {
+      return err(res, 503,
+        'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. ' +
+        'Tambahkan key ini di Secrets / Environment Variables Replit, lalu restart server.'
+      );
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader) return err(res, 401, 'Missing Authorization header');
 
-    const caller = await getCallerUser(authHeader);
+    const caller = await getCallerUser(authHeader).catch(() => null);
     if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
 
     const admin = makeAdminClient();

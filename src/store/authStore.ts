@@ -167,25 +167,45 @@ async function loadCurrentUser(): Promise<AuthUser | null> {
   };
 }
 
-async function callEdgeFunction(name: string, body: unknown, accessToken?: string): Promise<unknown> {
+async function callEdgeFunction(name: string, body: unknown, accessToken?: string, timeoutMs = 20000): Promise<unknown> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-  const res = await fetch(`/api/${name}`, {
-    method: "POST", headers, body: JSON.stringify(body),
-  });
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res: Response;
+  try {
+    res = await fetch(`/api/${name}`, {
+      method: "POST", headers, body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (fetchErr) {
+    clearTimeout(timer);
+    if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
+      throw new Error(`Request timeout (>${timeoutMs / 1000}s). Server tidak merespons — coba lagi.`);
+    }
+    throw new Error(`Tidak bisa menghubungi server: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`);
+  } finally {
+    clearTimeout(timer);
+  }
+
   const text = await res.text();
   let json: { error?: string; message?: string; msg?: string } = {};
   try { json = text ? JSON.parse(text) : {}; } catch { /* keep empty */ }
   if (!res.ok) {
-    const serverMsg = json.error ?? json.message ?? json.msg ?? text.slice(0, 200);
+    const serverMsg = json.error ?? json.message ?? json.msg ?? text.slice(0, 300);
     if (res.status === 401) {
       throw new Error(
         serverMsg
           ? `Sesi expired / token invalid (401): ${serverMsg}. Coba logout lalu login ulang.`
           : `Sesi expired / token invalid (401). Coba logout lalu login ulang.`,
       );
+    }
+    if (res.status === 503) {
+      throw new Error(serverMsg || "Server belum dikonfigurasi — hubungi administrator.");
     }
     throw new Error(serverMsg || `Gagal menghubungi server (${res.status})`);
   }
