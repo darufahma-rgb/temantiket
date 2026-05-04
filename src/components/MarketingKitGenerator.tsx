@@ -167,13 +167,13 @@ async function generateFromDetail(params: {
     method: "POST",
     headers: await getAIHeaders(),
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-nano",
       messages: [
         { role: "system", content: BRAND_SYSTEM_PROMPT },
         { role: "user",   content: userPrompt },
       ],
       temperature: 0.85,
-      max_tokens: 1200,
+      max_tokens: 2000,
     }),
   });
 
@@ -207,7 +207,7 @@ async function generateFromPoster(params: {
     method: "POST",
     headers: await getAIHeaders(),
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-nano",
       messages: [
         { role: "system", content: VISION_SYSTEM_PROMPT },
         {
