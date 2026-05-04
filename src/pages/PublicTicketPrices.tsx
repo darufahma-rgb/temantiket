@@ -13,7 +13,7 @@ import { useState, useEffect, useMemo } from "react";
 import {
   Plane, MessageCircle, Clock, MapPin, RefreshCw, Loader2,
   Search, SlidersHorizontal, X, ArrowUpDown, ChevronDown,
-  TrendingUp, CalendarDays, Filter,
+  TrendingUp, CalendarDays, Filter, Globe, ShieldCheck, Zap, HeadphonesIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAirlineGradient, getAirlineLogoUrl } from "@/lib/ticketPriceAI";
@@ -653,25 +653,61 @@ export default function PublicTicketPrices() {
 
       {/* ── Hero ── */}
       <div
-        className="relative py-8 px-4 text-center overflow-hidden"
-        style={{ background: "linear-gradient(135deg,#0c1e3e 0%,#0f3460 50%,#0c2d6e 100%)" }}
+        className="relative py-12 md:py-16 px-4 text-center overflow-hidden"
+        style={{ background: "linear-gradient(135deg,#060f2e 0%,#0a2156 40%,#0c3272 70%,#0a1f5c 100%)" }}
       >
-        <div className="absolute inset-0 opacity-10 pointer-events-none"
-          style={{ backgroundImage: "radial-gradient(circle at 20% 50%,#6694ff 0%,transparent 60%),radial-gradient(circle at 80% 20%,#818cf8 0%,transparent 50%)" }} />
-        <div className="relative">
-          <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-1.5 mb-3">
-            <Plane className="w-3.5 h-3.5 text-sky-300" />
-            <span className="text-[11px] text-sky-200 font-semibold uppercase tracking-wider">Harga Terbaru</span>
+        {/* Background decorations */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full opacity-10"
+            style={{ background: "radial-gradient(circle,#38bdf8,transparent 70%)" }} />
+          <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full opacity-10"
+            style={{ background: "radial-gradient(circle,#818cf8,transparent 70%)" }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-5"
+            style={{ background: "radial-gradient(circle,#60a5fa,transparent 70%)" }} />
+          {/* Subtle grid overlay */}
+          <div className="absolute inset-0 opacity-5"
+            style={{ backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)", backgroundSize: "48px 48px" }} />
+        </div>
+
+        <div className="relative max-w-2xl mx-auto">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-5 backdrop-blur-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+            <span className="text-[11px] text-sky-200 font-semibold uppercase tracking-widest">Update Harga Terbaru</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-white mb-1.5">
-            Tiket Umroh & Haji
+
+          {/* Title */}
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4 leading-tight">
+            Harga Tiket Pesawat
+            <span className="block text-transparent bg-clip-text"
+              style={{ backgroundImage: "linear-gradient(90deg,#7dd3fc,#a5b4fc)" }}>
+              by Temantiket
+            </span>
           </h1>
-          <p className="text-sm text-blue-200 max-w-md mx-auto">
-            Harga kompetitif untuk semua rute pilihan. Pesan langsung via WhatsApp.
+
+          {/* Subtitle */}
+          <p className="text-sm md:text-base text-blue-200 max-w-lg mx-auto leading-relaxed mb-6">
+            Harga kompetitif untuk rute Umroh & Haji pilihan — CGK, SUB, MES dan rute lainnya.
+            Proses cepat, transparan, dan amanah.
           </p>
+
+          {/* CTA Button */}
+          {waNumber && (
+            <a
+              href={whatsappUrl(waNumber)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-400 text-white text-sm font-bold px-6 py-3 rounded-2xl transition-all shadow-lg shadow-green-900/30 hover:shadow-green-900/50 hover:-translate-y-0.5"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Tanya via WhatsApp
+            </a>
+          )}
+
+          {/* Route count badge */}
           {published.length > 0 && (
-            <p className="mt-2 text-xs text-blue-300">
-              {published.length} rute tersedia — gunakan filter untuk menemukan rute Anda
+            <p className="mt-5 text-xs text-blue-300/70">
+              ✈️ {published.length} rute tersedia — gunakan filter untuk menemukan rute Anda
             </p>
           )}
         </div>
@@ -697,26 +733,103 @@ export default function PublicTicketPrices() {
             <p className="text-sm">Memuat daftar harga…</p>
           </div>
         ) : published.length === 0 ? (
-          /* No published tickets at all */
-          <div className="flex flex-col items-center justify-center py-20 gap-4 text-slate-400">
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
-              <Plane className="w-10 h-10 text-slate-300" />
+          /* No published tickets — premium empty state */
+          <div className="space-y-10 py-8">
+
+            {/* Info band */}
+            <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-blue-50 px-6 py-8 text-center shadow-sm">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white border border-sky-200 shadow-sm mb-4">
+                <Plane className="w-8 h-8 text-sky-500" />
+              </div>
+              <h2 className="text-xl font-black text-slate-800 mb-2">Harga Sedang Diperbarui</h2>
+              <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+                Harga tiket pesawat kami selalu update dan kompetitif. Hubungi tim kami untuk
+                mendapatkan penawaran terbaik sesuai rute yang kamu inginkan.
+              </p>
+              {waNumber && (
+                <a
+                  href={whatsappUrl(waNumber)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 mt-5 bg-green-600 hover:bg-green-700 text-white text-sm font-bold px-6 py-3 rounded-2xl transition-all shadow-md hover:-translate-y-0.5"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Tanya via WhatsApp
+                </a>
+              )}
             </div>
-            <div className="text-center">
-              <p className="text-base font-semibold text-slate-600">Belum ada harga yang dipublikasikan</p>
-              <p className="text-sm mt-1">Hubungi kami langsung untuk informasi harga terbaru.</p>
+
+            {/* Why Us section */}
+            <div>
+              <p className="text-center text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-5">Kenapa Pesan Lewat Temantiket?</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  {
+                    icon: <TrendingUp className="w-5 h-5 text-sky-600" />,
+                    bg: "bg-sky-50 border-sky-100",
+                    iconBg: "bg-sky-100",
+                    title: "Harga Terbaik",
+                    desc: "Kami bekerja langsung dengan maskapai untuk memberikan tarif paling kompetitif.",
+                  },
+                  {
+                    icon: <Zap className="w-5 h-5 text-amber-600" />,
+                    bg: "bg-amber-50 border-amber-100",
+                    iconBg: "bg-amber-100",
+                    title: "Proses Cepat",
+                    desc: "Konfirmasi & penerbitan tiket dilakukan dalam hitungan jam, bukan hari.",
+                  },
+                  {
+                    icon: <ShieldCheck className="w-5 h-5 text-emerald-600" />,
+                    bg: "bg-emerald-50 border-emerald-100",
+                    iconBg: "bg-emerald-100",
+                    title: "Terpercaya & Amanah",
+                    desc: "Ribuan jamaah telah mempercayakan perjalanan Umroh & Haji mereka kepada kami.",
+                  },
+                  {
+                    icon: <HeadphonesIcon className="w-5 h-5 text-violet-600" />,
+                    bg: "bg-violet-50 border-violet-100",
+                    iconBg: "bg-violet-100",
+                    title: "Support 24 Jam",
+                    desc: "Tim kami siap membantu kapan saja — dari pemesanan hingga keberangkatan.",
+                  },
+                ].map((item, i) => (
+                  <div key={i} className={cn("rounded-2xl border p-5 space-y-3", item.bg)}>
+                    <div className={cn("inline-flex items-center justify-center w-10 h-10 rounded-xl", item.iconBg)}>
+                      {item.icon}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{item.title}</p>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            {waNumber && (
-              <a
-                href={whatsappUrl(waNumber)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Tanya via WhatsApp
-              </a>
-            )}
+
+            {/* Rute populer hint */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+              <Globe className="w-7 h-7 text-slate-300 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-slate-600 mb-1">Rute Populer Kami</p>
+              <p className="text-xs text-slate-400 mb-4">Jakarta · Surabaya · Medan → Jeddah · Madinah · Kairo · Doha</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {["CGK → JED", "SUB → JED", "MES → JED", "CGK → MED", "CGK → CAI"].map((r) => (
+                  <span key={r} className="px-3 py-1.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                    ✈️ {r}
+                  </span>
+                ))}
+              </div>
+              {waNumber && (
+                <a
+                  href={whatsappUrl(waNumber)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 mt-5 text-sm font-semibold text-green-600 hover:text-green-700 transition-colors"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Hubungi Kami untuk Rute Lainnya →
+                </a>
+              )}
+            </div>
           </div>
         ) : filtered.length === 0 ? (
           /* Has tickets but filter matched nothing */
