@@ -1147,24 +1147,12 @@ export default function Settings() {
                       </SelectContent>
                     </Select>
                   </div>
-                  {newMemberRole === "agent" ? (
-                    <div className="space-y-1">
-                      <Label className="text-xs">Komisi (%)</Label>
-                      <Input
-                        type="number" min={0} max={100} step={0.5}
-                        value={newMemberCommission}
-                        onChange={(e) => setNewMemberCommission(Number(e.target.value) || 0)}
-                        className="h-8 md:h-9 text-[13px] md:text-sm font-mono"
-                      />
+                  <div className="space-y-1">
+                    <Label className="text-xs opacity-50">Fee Agen</Label>
+                    <div className="h-8 md:h-9 rounded-md border bg-amber-50 border-amber-100 px-3 flex items-center text-[11px] text-amber-700">
+                      {newMemberRole === "agent" ? "Fee tetap — atur di Pengaturan Fee Agen" : "Tidak berlaku utk staff"}
                     </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <Label className="text-xs opacity-50">Komisi (%)</Label>
-                      <div className="h-8 md:h-9 rounded-md border bg-muted/30 px-3 flex items-center text-[12px] text-muted-foreground">
-                        Tidak berlaku utk staff
-                      </div>
-                    </div>
-                  )}
+                  </div>
                   <div className="space-y-1 col-span-2">
                     <Label className="text-xs">Password Awal (min 8)</Label>
                     <div className="flex gap-2">

@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronUp, BarChart3, Crown, Zap, RefreshCw, Target,
   FileBarChart, UserPlus, Mail, Lock, Percent, Loader2, Search, Eye,
   ShoppingBag, UserCheck, ChevronRight, ClipboardList, Phone, MessageCircle,
-  ToggleLeft, StickyNote, CheckCircle2, Star, Globe, LayoutGrid,
+  ToggleLeft, StickyNote, CheckCircle2, Star, Globe, LayoutGrid, Info,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
@@ -98,7 +98,6 @@ function AddAgentDialog({ open, onClose, onSuccess }: {
   const [email,      setEmail]      = useState("");
   const [pass,       setPass]       = useState("");
   const [wa,         setWa]         = useState("");
-  const [commission, setCommission] = useState<number>(10);
   const [status,     setStatus]     = useState<"active" | "inactive">("active");
   const [notes,      setNotes]      = useState("");
   const [loading,    setLoading]    = useState(false);
@@ -108,7 +107,7 @@ function AddAgentDialog({ open, onClose, onSuccess }: {
 
   function reset() {
     setName(""); setEmail(""); setPass(""); setWa("");
-    setCommission(10); setStatus("active"); setNotes(""); setErrs({});
+    setStatus("active"); setNotes(""); setErrs({});
   }
 
   function validate(): boolean {
@@ -127,13 +126,13 @@ function AddAgentDialog({ open, onClose, onSuccess }: {
     setLoading(true);
     try {
       await inviteMember(email.trim(), pass, name.trim(), "agent", {
-        commissionPct:   commission,
+        commissionPct:   0,
         whatsappNumber:  normalizeWa(wa),
         agentStatus:     status,
         agentNotes:      notes.trim() || undefined,
       });
       toast.success(`Agen "${name.trim()}" berhasil ditambahkan!`, {
-        description: `Komisi ${commission}% · WA ${normalizeWa(wa)} · Status: ${status === "active" ? "Aktif" : "Nonaktif"}`,
+        description: `WA ${normalizeWa(wa)} · Status: ${status === "active" ? "Aktif" : "Nonaktif"} · Fee sesuai pengaturan global`,
       });
       reset(); onSuccess(); onClose();
     } catch (e) {
@@ -144,11 +143,11 @@ function AddAgentDialog({ open, onClose, onSuccess }: {
   }
 
   const AUTO_ITEMS: { icon: React.ComponentType<{ className?: string }>; label: string; color: string }[] = [
-    { icon: Users,         label: "Profil agen otomatis dibuat",              color: "text-sky-600"    },
-    { icon: Wallet,        label: "Wallet komisi otomatis dibuat",             color: "text-emerald-600" },
-    { icon: Target,        label: "Bisa langsung dapat misi global",           color: "text-violet-600" },
-    { icon: ShoppingBag,   label: "Bisa login dan buat order",                 color: "text-amber-600"  },
-    { icon: LayoutGrid,    label: "Muncul di Leaderboard & Direktori",         color: "text-rose-500"   },
+    { icon: Users,         label: "Profil agen otomatis dibuat",                       color: "text-sky-600"    },
+    { icon: Wallet,        label: "Wallet agen otomatis dibuat & siap terima fee",      color: "text-emerald-600" },
+    { icon: Target,        label: "Bisa langsung dapat misi global",                   color: "text-violet-600" },
+    { icon: ShoppingBag,   label: "Bisa login dan buat order",                         color: "text-amber-600"  },
+    { icon: LayoutGrid,    label: "Muncul di Leaderboard & Direktori",                 color: "text-rose-500"   },
   ];
 
   return (
@@ -261,50 +260,43 @@ function AddAgentDialog({ open, onClose, onSuccess }: {
           <div className="space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Pengaturan</p>
 
-            {/* Komisi + Status side by side */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <Percent className="h-3 w-3 text-amber-500" /> Komisi per Order
-                </Label>
-                <div className="relative">
-                  <Input
-                    type="number" min={0} max={100} step={0.5}
-                    value={commission}
-                    onChange={(e) => setCommission(Number(e.target.value) || 0)}
-                    className="h-9 text-sm font-mono pr-7"
-                    disabled={loading}
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground">Dari profit order selesai.</p>
+            {/* Fee info note */}
+            <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 border border-amber-100 px-3.5 py-3">
+              <Info className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[11px] font-semibold text-amber-800">Sistem Fee Tetap</p>
+                <p className="text-[10.5px] text-amber-700 mt-0.5 leading-relaxed">
+                  Fee agen menggunakan nominal tetap sesuai pengaturan global, bukan persentase per agen.
+                  Bisa diatur di halaman <strong>Pengaturan Fee Agen</strong>.
+                </p>
               </div>
+            </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <ToggleLeft className="h-3 w-3 text-violet-500" /> Status Agen
-                </Label>
-                <div className="flex gap-1.5 mt-0.5">
-                  {(["active", "inactive"] as const).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => setStatus(s)}
-                      className={`flex-1 h-9 rounded-lg border text-xs font-semibold transition-colors ${
-                        status === s
-                          ? s === "active"
-                            ? "bg-emerald-500 border-emerald-500 text-white"
-                            : "bg-slate-400 border-slate-400 text-white"
-                          : "border-border text-muted-foreground hover:border-slate-300"
-                      }`}
-                    >
-                      {s === "active" ? "Aktif" : "Nonaktif"}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[10px] text-muted-foreground">Default: Aktif.</p>
+            {/* Status */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <ToggleLeft className="h-3 w-3 text-violet-500" /> Status Agen
+              </Label>
+              <div className="flex gap-1.5 mt-0.5">
+                {(["active", "inactive"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => setStatus(s)}
+                    className={`flex-1 h-9 rounded-lg border text-xs font-semibold transition-colors ${
+                      status === s
+                        ? s === "active"
+                          ? "bg-emerald-500 border-emerald-500 text-white"
+                          : "bg-slate-400 border-slate-400 text-white"
+                        : "border-border text-muted-foreground hover:border-slate-300"
+                    }`}
+                  >
+                    {s === "active" ? "Aktif" : "Nonaktif"}
+                  </button>
+                ))}
               </div>
+              <p className="text-[10px] text-muted-foreground">Default: Aktif.</p>
             </div>
 
             {/* Catatan */}
