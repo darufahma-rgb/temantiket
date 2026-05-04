@@ -1766,23 +1766,29 @@ export default function TicketPrices() {
                       isPPForm ? "border-violet-200 bg-violet-50/40" : "border-sky-200 bg-sky-50/50"
                     )}>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <AirlineLogo code={form.airlineCode} airline={form.airline} size={28} />
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-xs font-bold text-slate-800">{form.airline || "—"}</p>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {/* Option number badge — visible when multiple entries exist */}
+                              {pendingForms.length > 1 && (
+                                <span className="inline-flex items-center text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full shrink-0">
+                                  Opsi {idx + 1}
+                                </span>
+                              )}
+                              <p className="text-xs font-bold text-slate-800 truncate">{form.airline || "—"}</p>
                               {isMLForm && (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full shrink-0">
                                   <ArrowLeftRight className="w-2.5 h-2.5" />Multi-Leg PP
                                 </span>
                               )}
                               {!isMLForm && isRTForm && (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full shrink-0">
                                   <ArrowLeftRight className="w-2.5 h-2.5" />PP
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] text-slate-500 font-mono">
+                            <p className="text-[10px] text-slate-500 font-mono truncate">
                               {isMLForm
                                 ? `${buildRouteLabel(pendingML!)} · ${mlFlightDisplay} · Total: ${form.currency} ${form.basePrice?.toLocaleString("id-ID") ?? "—"}`
                                 : isRTForm
@@ -1794,30 +1800,43 @@ export default function TicketPrices() {
                         </div>
                         <Button
                           size="icon" variant="ghost"
-                          className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
+                          className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0"
                           onClick={() => removePending(idx)}
                         >
                           <X className="w-3.5 h-3.5" />
                         </Button>
                       </div>
 
-                      {/* Multi-leg leg chain preview */}
+                      {/* Multi-leg leg chain preview — outbound + return clearly separated */}
                       {isMLForm && pendingML && (
-                        <div className="rounded-lg bg-violet-100/60 border border-violet-200 px-2.5 py-1.5 space-y-0.5">
-                          <p className="text-[10px] font-bold text-violet-700">↗ Berangkat:</p>
-                          {pendingML.outboundLegs.map((leg, li) => (
-                            <p key={li} className="text-[10px] text-violet-700 font-medium pl-2">
-                              {leg.fromCode}→{leg.toCode}{leg.flightNumber ? ` (${leg.flightNumber})` : ""}{leg.etd ? ` jam ${leg.etd}` : ""}{leg.date ? ` · ${fmtDate(leg.date)}` : ""}
-                            </p>
-                          ))}
+                        <div className="rounded-lg bg-violet-100/60 border border-violet-200 px-2.5 py-2 space-y-1.5">
+                          <div className="space-y-0.5">
+                            <p className="text-[9.5px] font-bold text-violet-700 uppercase tracking-wide">↗ Berangkat</p>
+                            {pendingML.outboundLegs.map((leg, li) => (
+                              <div key={li} className="flex items-center gap-1.5 pl-2">
+                                <span className="text-[10px] font-bold text-violet-900 font-mono">{leg.fromCode}→{leg.toCode}</span>
+                                {leg.flightNumber && <span className="text-[9.5px] text-violet-600 font-mono">{leg.flightNumber}</span>}
+                                {leg.etd && <span className="text-[9.5px] text-violet-500">{leg.etd}</span>}
+                                {leg.eta && <span className="text-[9.5px] text-violet-400">→{leg.eta}</span>}
+                                {leg.date && <span className="text-[9px] text-violet-400 ml-auto">{fmtDate(leg.date)}</span>}
+                              </div>
+                            ))}
+                          </div>
                           {(pendingML.returnLegs?.length ?? 0) > 0 && (
                             <>
-                              <p className="text-[10px] font-bold text-violet-700 pt-0.5">↩ Pulang:</p>
-                              {pendingML.returnLegs!.map((leg, li) => (
-                                <p key={li} className="text-[10px] text-violet-700 font-medium pl-2">
-                                  {leg.fromCode}→{leg.toCode}{leg.flightNumber ? ` (${leg.flightNumber})` : ""}{leg.etd ? ` jam ${leg.etd}` : ""}{leg.date ? ` · ${fmtDate(leg.date)}` : ""}
-                                </p>
-                              ))}
+                              <div className="border-t border-violet-200/70" />
+                              <div className="space-y-0.5">
+                                <p className="text-[9.5px] font-bold text-violet-700 uppercase tracking-wide">↩ Pulang</p>
+                                {pendingML.returnLegs!.map((leg, li) => (
+                                  <div key={li} className="flex items-center gap-1.5 pl-2">
+                                    <span className="text-[10px] font-bold text-violet-900 font-mono">{leg.fromCode}→{leg.toCode}</span>
+                                    {leg.flightNumber && <span className="text-[9.5px] text-violet-600 font-mono">{leg.flightNumber}</span>}
+                                    {leg.etd && <span className="text-[9.5px] text-violet-500">{leg.etd}</span>}
+                                    {leg.eta && <span className="text-[9.5px] text-violet-400">→{leg.eta}</span>}
+                                    {leg.date && <span className="text-[9px] text-violet-400 ml-auto">{fmtDate(leg.date)}</span>}
+                                  </div>
+                                ))}
+                              </div>
                             </>
                           )}
                         </div>
@@ -1825,11 +1844,19 @@ export default function TicketPrices() {
 
                       {/* Simple RT leg info */}
                       {!isMLForm && isRTForm && (
-                        <div className="rounded-lg bg-violet-100/60 border border-violet-200 px-2.5 py-1.5 text-[10.5px] text-violet-700 font-medium">
-                          ↗ Berangkat: {form.fromCode}→{form.toCode}{form.etd ? ` jam ${form.etd}` : ""}
-                          {form.departDate ? ` · ${fmtDate(form.departDate)}` : ""}
-                          {" · "}↩ Pulang: {rtLeg?.returnFromCode}→{rtLeg?.returnToCode}{rtLeg?.returnEtd ? ` jam ${rtLeg.returnEtd}` : ""}
-                          {rtLeg?.returnDate ? ` · ${fmtDate(rtLeg.returnDate)}` : ""}
+                        <div className="rounded-lg bg-violet-100/60 border border-violet-200 px-2.5 py-1.5 space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9.5px] font-bold text-violet-700 uppercase tracking-wide shrink-0">↗ Berangkat</span>
+                            <span className="text-[10px] text-violet-800 font-mono font-bold">{form.fromCode}→{form.toCode}</span>
+                            {form.etd && <span className="text-[9.5px] text-violet-500">{form.etd}</span>}
+                            {form.departDate && <span className="text-[9px] text-violet-400 ml-auto">{fmtDate(form.departDate)}</span>}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9.5px] font-bold text-violet-700 uppercase tracking-wide shrink-0">↩ Pulang</span>
+                            <span className="text-[10px] text-violet-800 font-mono font-bold">{rtLeg?.returnFromCode}→{rtLeg?.returnToCode}</span>
+                            {rtLeg?.returnEtd && <span className="text-[9.5px] text-violet-500">{rtLeg.returnEtd}</span>}
+                            {rtLeg?.returnDate && <span className="text-[9px] text-violet-400 ml-auto">{fmtDate(rtLeg.returnDate)}</span>}
+                          </div>
                         </div>
                       )}
 

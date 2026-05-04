@@ -143,7 +143,28 @@ async function compressImage(dataUrl: string, maxEdge = 1800): Promise<string> {
 const SYSTEM_PROMPT = `You are a flight ticket data extractor for an Indonesian travel agency (Temantiket).
 Given a screenshot of airline tickets or price lists (Galileo GDS, booking systems, WhatsApp screenshots, Traveloka, Trip.com, airline websites, etc.), extract ALL visible flights and INTELLIGENTLY GROUP them.
 
-## CRITICAL RULE 1: TRANSIT CHAIN DETECTION (highest priority)
+## CRITICAL RULE 0: MULTI-OPTION DETECTION (highest priority of all)
+
+In Galileo GDS output, multiple pricing options are shown with markers like "MORE 1", "MORE 2", "MORE 3", etc.
+Each "MORE N" block is a COMPLETELY SEPARATE booking option with its own set of segments.
+Even if they share the same price and airline, they represent DIFFERENT flight schedules and MUST be extracted as SEPARATE ticket entries.
+
+EXAMPLE: Galileo multi-option output:
+  MORE 1    TOTAL AMOUNT 29283.80 EGP
+  1 GF  70  N  03JUN  CAI  BAH  1715  2015
+  2 GF 284  N  03JUN  BAH  GOI  2115  0340#
+  3 GF 285  O  03SEP  GOI  BAH  0440  0610
+  4 GF  79  O  04SEP  BAH  CAI  0110  0430
+  MORE 2    TOTAL AMOUNT 29283.80 EGP
+  1 GF  80  N  03JUN  CAI  BAH  0530  0830
+  2 GF 286  N  03JUN  BAH  GOI  1540  2205
+  3 GF 285  O  03SEP  GOI  BAH  0440  0610
+  4 GF  71  O  03SEP  BAH  CAI  1215  1535
+
+→ Extract as TWO separate ticket entries: MORE 1 (flights GF70/GF284, return GF285/GF79) and MORE 2 (flights GF80/GF286, return GF285/GF71).
+NEVER merge MORE blocks together. Each MORE block = 1 ticket entry.
+
+## CRITICAL RULE 1: TRANSIT CHAIN DETECTION (within each MORE block)
 
 In GDS/booking systems, a SINGLE booking often shows multiple "segment rows". These MUST be merged into one ticket:
 
@@ -698,6 +719,32 @@ function itineraryLegsToRawTickets(data: ItineraryData): ParsedTicketPrice[] {
 }
 
 /**
+ * Split Galileo multi-option text into individual MORE N blocks.
+ *
+ * In real Galileo output the TOTAL AMOUNT appears on the SAME LINE as MORE N:
+ *   "MORE 1                    TOTAL AMOUNT 29283.80 EGP"
+ * so a simple regex dollar-anchor split won't work.
+ * We iterate lines and start a new block whenever we hit a "MORE N" line.
+ * Each block retains its MORE line (which carries the TOTAL AMOUNT).
+ */
+function splitMoreBlocks(text: string): string[] {
+  const lines = text.split("\n");
+  const MORE_LINE_RE = /^[ \t]*MORE\s+\d+\b/i;
+  const blocks: string[] = [];
+  let current: string[] = [];
+
+  for (const line of lines) {
+    if (MORE_LINE_RE.test(line) && current.length > 0) {
+      blocks.push(current.join("\n"));
+      current = [];
+    }
+    current.push(line);
+  }
+  if (current.length > 0) blocks.push(current.join("\n"));
+  return blocks.filter((b) => b.trim());
+}
+
+/**
  * Parse pasted Galileo GDS text (display or PNR format) → ParsedTicketPrice[].
  * Does NOT call OpenAI — pure regex, instant result.
  *
@@ -706,15 +753,16 @@ function itineraryLegsToRawTickets(data: ItineraryData): ParsedTicketPrice[] {
  *   • Galileo PNR/booking confirmation:      1 GF 70N 03JUN 3 CAIBAH HK1 1715 2015+1
  *   • Multi-option Galileo output with MORE 1 / MORE 2 / MORE 3 blocks —
  *     each block is parsed independently and returned as a separate ticket entry.
+ *     Handles "MORE N    TOTAL AMOUNT X.XX CUR" on a single line.
  */
 export function parseGalileoTextToTickets(text: string): ScanResult {
   // ── Multi-option: split on "MORE N" block markers ──────────────────────────
   // Galileo outputs multiple pricing options prefixed with "MORE 1", "MORE 2", etc.
-  // Each block has its own segment rows and its own TOTAL AMOUNT line.
-  // We split on those markers and parse every block independently.
-  const MORE_MARKER_RE = /^[ \t]*MORE\s+\d+[ \t]*$/im;
-  if (MORE_MARKER_RE.test(text)) {
-    const blocks = text.split(/^[ \t]*MORE\s+\d+[ \t]*$/im);
+  // The TOTAL AMOUNT may appear on the SAME LINE: "MORE 1    TOTAL AMOUNT 29283.80 EGP"
+  // We split by iterating lines so each block retains its MORE + TOTAL AMOUNT line.
+  const MORE_DETECT_RE = /^[ \t]*MORE\s+\d+\b/im;
+  if (MORE_DETECT_RE.test(text)) {
+    const blocks = splitMoreBlocks(text);
 
     const allTickets: ParsedTicketPrice[] = [];
     let totalGrouped = 0;
