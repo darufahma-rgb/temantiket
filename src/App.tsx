@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from "react";
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, useLocation, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -20,35 +20,35 @@ import { startRealtimeSync } from "@/lib/supabaseRealtime";
 import { initSyncStatusListeners } from "@/store/syncStatusStore";
 import { toast } from "sonner";
 
-const Index = lazy(() => import("./pages/Index"));
-const Calculator = lazy(() => import("./pages/Calculator"));
-const Packages = lazy(() => import("./pages/Packages"));
-const PackageDetail = lazy(() => import("./pages/PackageDetail"));
-const TripDetail = lazy(() => import("./pages/TripDetail"));
-const JamaahProfile = lazy(() => import("./pages/JamaahProfile"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Login = lazy(() => import("./pages/Login"));
-const PublicCheck = lazy(() => import("./pages/PublicCheck"));
-const PublicLeaderboard = lazy(() => import("./pages/PublicLeaderboard"));
-const PublicMemberCard = lazy(() => import("./pages/PublicMemberCard"));
-const Auth = lazy(() => import("./pages/Auth"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const Notes = lazy(() => import("./pages/Notes"));
-const ExportCenter = lazy(() => import("./pages/ExportCenter"));
-const Clients = lazy(() => import("./pages/Clients"));
-const Orders = lazy(() => import("./pages/Orders"));
-const OrderDetail = lazy(() => import("./pages/OrderDetail"));
-const Reports = lazy(() => import("./pages/Reports"));
-const AgentCommandCenter = lazy(() => import("./pages/AgentCommandCenter"));
-const AgentDashboard = lazy(() => import("./pages/AgentDashboard"));
-const AgentProfile = lazy(() => import("./pages/AgentProfile"));
-const AgentLeaderboard = lazy(() => import("./pages/AgentLeaderboard"));
-const AgentMarketingKit = lazy(() => import("./pages/AgentMarketingKit"));
-const BCTemplates = lazy(() => import("./pages/BCTemplates"));
-const ItineraryGenerator = lazy(() => import("./pages/ItineraryGenerator"));
-const DemoSeed = lazy(() => import("./pages/DemoSeed"));
-const TicketPrices = lazy(() => import("./pages/TicketPrices"));
-const PublicTicketPrices = lazy(() => import("./pages/PublicTicketPrices"));
+import Index from "./pages/Index";
+import Calculator from "./pages/Calculator";
+import Packages from "./pages/Packages";
+import PackageDetail from "./pages/PackageDetail";
+import TripDetail from "./pages/TripDetail";
+import JamaahProfile from "./pages/JamaahProfile";
+import Settings from "./pages/Settings";
+import Login from "./pages/Login";
+import PublicCheck from "./pages/PublicCheck";
+import PublicLeaderboard from "./pages/PublicLeaderboard";
+import PublicMemberCard from "./pages/PublicMemberCard";
+import Auth from "./pages/Auth";
+import NotFound from "./pages/NotFound";
+import Notes from "./pages/Notes";
+import ExportCenter from "./pages/ExportCenter";
+import Clients from "./pages/Clients";
+import Orders from "./pages/Orders";
+import OrderDetail from "./pages/OrderDetail";
+import Reports from "./pages/Reports";
+import AgentCommandCenter from "./pages/AgentCommandCenter";
+import AgentDashboard from "./pages/AgentDashboard";
+import AgentProfile from "./pages/AgentProfile";
+import AgentLeaderboard from "./pages/AgentLeaderboard";
+import AgentMarketingKit from "./pages/AgentMarketingKit";
+import BCTemplates from "./pages/BCTemplates";
+import ItineraryGenerator from "./pages/ItineraryGenerator";
+import DemoSeed from "./pages/DemoSeed";
+import TicketPrices from "./pages/TicketPrices";
+import PublicTicketPrices from "./pages/PublicTicketPrices";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,11 +61,6 @@ const queryClient = new QueryClient({
   },
 });
 
-const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground text-sm">
-    Memuat…
-  </div>
-);
 
 function StoreBootstrap() {
   const refreshRates = useRatesStore((s) => s.refresh);
@@ -198,8 +193,7 @@ function SyncStatusBootstrap() {
 function AnimatedRoutes() {
   const location = useLocation();
   return (
-    <Suspense fallback={<PageLoader />}>
-      <Routes location={location}>
+    <Routes location={location}>
         <Route path="/login" element={<Login />} />
         <Route path="/bootstrap" element={<Auth />} />
         <Route path="/cek" element={<PublicCheck />} />
@@ -291,7 +285,6 @@ function AnimatedRoutes() {
         <Route path="/auth" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </Suspense>
   );
 }
 
