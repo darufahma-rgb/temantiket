@@ -217,7 +217,7 @@ export default function FlyerDialog({ open, onClose, trip, jamaahCount = 0 }: Fl
                   background: "#fff", color: tpl.from, padding: "10px 18px",
                   borderRadius: 12, fontWeight: 800, fontSize: 13,
                 }}>
-                  TEMANTIKET
+                  Temantiket
                 </div>
               </div>
             </div>

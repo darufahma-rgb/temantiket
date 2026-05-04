@@ -1,5 +1,5 @@
   -- ============================================================================
-  -- TEMANTIKET — Complete Database Setup (All Features, Single File)
+  -- Temantiket — Complete Database Setup (All Features, Single File)
   -- ============================================================================
   -- File ini mencakup SEMUA tabel, RLS, trigger, fungsi, dan storage bucket
   -- yang dibutuhkan Temantiket. Sepenuhnya idempotent — aman dijalankan

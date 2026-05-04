@@ -1,5 +1,5 @@
 -- ============================================================================
--- TEMANTIKET — DELTA Migration
+-- Temantiket — DELTA Migration
 -- ============================================================================
 -- File ini ngebenerin 3 hal yang ke-skip di TEMANTIKET_SETUP.sql awal:
 --   1. Kolom `payment_status` di tabel jamaah (badge status di kartu jamaah)

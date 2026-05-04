@@ -1,5 +1,5 @@
 -- ============================================================================
--- TEMANTIKET — FULL Supabase Setup (single-file, copy-paste sekali jalan)
+-- Temantiket — FULL Supabase Setup (single-file, copy-paste sekali jalan)
 -- ============================================================================
 -- Idempotent: aman dijalankan ulang berkali-kali.
 -- Cakup: schema multi-tenant, RLS, helper functions, profiles mirror,

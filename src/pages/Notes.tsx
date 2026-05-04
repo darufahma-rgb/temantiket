@@ -263,7 +263,7 @@ export default function Notes() {
             messages: [
               {
                 role: "system",
-                content: `Kamu adalah Senior Technical Writer & Project Assistant di TemanTiket.
+                content: `Kamu adalah Senior Technical Writer & Project Assistant di Temantiket.
 
 Tugas kamu: Menerima catatan revisi yang masih mentah/kasar, lalu menulis ulang menjadi versi yang jauh lebih rapi, profesional, dan enak dibaca, dengan diksi yang tepat dan sesuai konteks project management.
 

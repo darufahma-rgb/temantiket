@@ -251,7 +251,7 @@ function Watermark({ text }: { text: string }) {
                 fontFamily: "Inter, system-ui, sans-serif",
               }}
             >
-              {text} · TEMANTIKET
+              {text} · Temantiket
             </span>
           ))}
         </div>
