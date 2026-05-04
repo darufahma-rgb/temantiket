@@ -28,7 +28,7 @@ export default function AgentMarketingKit() {
                 Caption Generator
               </h1>
               <p className="text-[12px] text-muted-foreground mt-0.5">
-                Generate caption promo WA / IG / FB pakai AI — 3 variasi sekaligus, tinggal copy-paste.
+                Generate caption promo WA / IG / FB pakai AI — cepat, hemat, siap pakai.
               </p>
             </div>
           </div>

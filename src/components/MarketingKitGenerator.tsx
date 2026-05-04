@@ -36,44 +36,31 @@ const BRAND_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter & Brand Guardian resm
 Temantiket adalah brand travel Umrah & Haji yang ramah, hangat, kekeluargaan, santai tapi terpercaya.
 Brand name yang benar: "Temantiket" (bukan TemanTiket, bukan Teman Tiket).
 
-ALUR WAJIB SETIAP CAPTION (ikuti urutan ini persis — semua dalam satu blok teks mengalir, BUKAN poin terpisah):
-1. HOOK (kalimat pembuka): Emoji + pertanyaan atau pernyataan yang langsung bikin penasaran atau relate.
+ALUR WAJIB CAPTION (ikuti urutan ini persis — satu blok teks mengalir, BUKAN poin terpisah):
+1. HOOK: Emoji + kalimat pembuka yang langsung bikin penasaran atau relate.
 2. BENEFIT UTAMA: 1 kalimat yang menjelaskan nilai utama yang ditawarkan.
 3. DETAIL KEUNTUNGAN: Gunakan ✅ untuk 2–3 keuntungan spesifik (masing-masing singkat, di baris baru).
 4. CTA: "📲 Hubungi sekarang:" + nomor WA (jika ada), atau ajakan action yang jelas.
 5. CLOSING BRAND: "Temantiket — mudah, cepat, amanah" + 1 emoji relevan.
 
 ATURAN KETAT:
-1. Buat tepat 3 variasi caption yang berbeda karakter dan sudut pandang.
-2. Target panjang 600–1000 karakter per caption (termasuk emoji & spasi) — hitung dengan cermat.
+1. Buat tepat 1 caption saja — pilih sudut pandang terbaik yang paling menarik.
+2. Target panjang 600–1000 karakter (termasuk emoji & spasi).
 3. Gaya: mengalir natural, santai, meyakinkan — bukan daftar poin kaku atau terlalu salesy.
-4. Setiap variasi WAJIB berbeda fokusnya:
-   - Variasi 1 (Keuntungan Tersembunyi): ungkap benefit yang jarang orang sadari.
-   - Variasi 2 (Kesempatan Langka): tone FOMO yang ramah — ajak sebelum kehabisan/lewat.
-   - Variasi 3 (Cerita & Pengalaman): bangun imajinasi — bayangkan rasanya, ceritakan perjalanannya.
-5. Nama "Temantiket" WAJIB ada di setiap variasi.
-6. Emoji: 3–4 per caption saja, pilih yang memperkuat emosi teks.
-7. Hindari klaim berlebihan: "paling murah", "gratis", "terbatas!" secara hard-sell.
-8. Setiap caption harus terasa lengkap dan enak dibaca sekali baca.
+4. Nama "Temantiket" WAJIB ada di caption.
+5. Emoji: 3–4 saja, pilih yang memperkuat emosi teks.
+6. Hindari klaim berlebihan: "paling murah", "gratis", "terbatas!" secara hard-sell.
 
-OUTPUT FORMAT (WAJIB IKUTI PERSIS — tidak ada teks lain di luar format ini):
-VARIASI 1
-[caption]
-
-VARIASI 2
-[caption]
-
-VARIASI 3
-[caption]`;
+OUTPUT: Langsung tulis caption-nya saja — tanpa label, tanpa penjelasan tambahan.`;
 
 /* ─── Vision System Prompt (Scan Poster) ───────────────── */
 const VISION_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter & Brand Guardian resmi Temantiket.
 
-Brand name yang benar: "Temantiket" (bukan TemanTiket, bukan Teman Tiket). Wajib ada di setiap caption.
+Brand name yang benar: "Temantiket" (bukan TemanTiket, bukan Teman Tiket). Wajib ada di caption.
 
-Tugas: Baca isi poster yang dikirim, ekstrak informasi utama (nama paket, harga, keunggulan, dsb), lalu buat 3 variasi caption WhatsApp/Instagram sesuai aturan berikut.
+Tugas: Baca isi poster yang dikirim, ekstrak informasi utama (nama paket, harga, keunggulan, dsb), lalu buat 1 caption WhatsApp/Instagram.
 
-ALUR WAJIB SETIAP CAPTION (dalam satu blok teks mengalir, BUKAN poin terpisah):
+ALUR WAJIB CAPTION (satu blok teks mengalir, BUKAN poin terpisah):
 1. HOOK: Emoji + kalimat pembuka yang menarik atau pertanyaan yang bikin penasaran.
 2. BENEFIT UTAMA: 1 kalimat yang merangkum nilai utama dari poster.
 3. DETAIL: Gunakan ✅ untuk 2–3 keunggulan spesifik dari poster (masing-masing singkat, di baris baru).
@@ -81,26 +68,13 @@ ALUR WAJIB SETIAP CAPTION (dalam satu blok teks mengalir, BUKAN poin terpisah):
 5. CLOSING: "Temantiket — mudah, cepat, amanah" + 1 emoji relevan.
 
 ATURAN KETAT:
-1. Buat tepat 3 variasi caption, masing-masing berbeda karakter dan sudut pandang.
-2. Target panjang 600–1000 karakter per caption (termasuk emoji & spasi) — hitung dengan cermat.
+1. Buat tepat 1 caption saja — pilih sudut pandang terbaik berdasarkan isi poster.
+2. Target panjang 600–1000 karakter (termasuk emoji & spasi).
 3. Gaya: mengalir natural, santai, meyakinkan — bukan daftar kaku atau terlalu salesy.
-4. Setiap variasi WAJIB berbeda fokusnya:
-   - Variasi 1 (Keuntungan Tersembunyi): ungkap benefit yang jarang orang sadari dari poster ini.
-   - Variasi 2 (Kesempatan Langka): tone FOMO ramah — ajak bertindak sebelum kehabisan/lewat.
-   - Variasi 3 (Cerita & Pengalaman): bangun imajinasi — bayangkan rasanya ikut paket ini.
-5. Nama "Temantiket" WAJIB muncul di setiap variasi.
-6. Emoji: 3–4 per caption saja.
-7. Jangan tulis penjelasan lain — hanya output 3 variasi persis sesuai format.
+4. Nama "Temantiket" WAJIB muncul di caption.
+5. Emoji: 3–4 saja.
 
-OUTPUT FORMAT (WAJIB IKUTI PERSIS):
-VARIASI 1
-[caption]
-
-VARIASI 2
-[caption]
-
-VARIASI 3
-[caption]`;
+OUTPUT: Langsung tulis caption-nya saja — tanpa label, tanpa penjelasan tambahan.`;
 
 /* ─── Tone instructions ─────────────────────────────────── */
 const TONE_LABEL: Record<string, string> = {
@@ -111,13 +85,6 @@ const TONE_LABEL: Record<string, string> = {
 };
 
 /* ─── Helpers ───────────────────────────────────────────── */
-function parseVariasiFormat(raw: string): string[] {
-  const blocks = raw.split(/VARIASI\s+\d+/i).map((s) => s.trim()).filter(Boolean);
-  const results = blocks.map((b) => b.replace(/^[\n\r:]+/, "").trim()).filter(Boolean);
-  if (results.length >= 1) return results.slice(0, 3);
-  return raw.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean).slice(0, 3);
-}
-
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -156,58 +123,50 @@ async function generateFromDetail(params: {
   tone: string;
   packageDetail?: string;
   waNumber?: string;
-}): Promise<string[]> {
+}): Promise<string> {
   const { categoryPrompt, tone, packageDetail, waNumber } = params;
   const toneInstruction = TONE_LABEL[tone] ?? tone;
   const detailSection = packageDetail?.trim() ? `\n\nDetail paket:\n${packageDetail.trim()}` : "";
   const waSection = waNumber?.trim() ? `\n\nNomor WA untuk CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}` : "";
-  const userPrompt = `Buat 3 caption marketing untuk ${categoryPrompt}.\nTone yang diminta: ${toneInstruction}.${detailSection}${waSection}`;
+  const userPrompt = `Buat 1 caption marketing untuk ${categoryPrompt}.\nTone yang diminta: ${toneInstruction}.${detailSection}${waSection}`;
 
   const res = await fetch("/api/ai/chat", {
     method: "POST",
     headers: await getAIHeaders(),
     body: JSON.stringify({
-      model: "gpt-4.1-nano",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: BRAND_SYSTEM_PROMPT },
         { role: "user",   content: userPrompt },
       ],
       temperature: 0.85,
-      max_tokens: 2000,
+      max_tokens: 700,
     }),
   });
 
   if (!res.ok) throw new Error(`AI error ${res.status}`);
   const data = await res.json();
-  const raw: string = data.choices?.[0]?.message?.content ?? "";
-  const captions = parseVariasiFormat(raw);
-  if (captions.length < 1) throw new Error("Format respons AI tidak valid");
-  return captions;
+  const caption: string = (data.choices?.[0]?.message?.content ?? "").trim();
+  if (!caption) throw new Error("Format respons AI tidak valid");
+  return caption;
 }
-
-/* ─── Variant labels ────────────────────────────────────── */
-const POSTER_VARIANT_LABELS = [
-  "Keuntungan Tersembunyi",
-  "Kesempatan Langka",
-  "Cerita & Pengalaman",
-];
 
 /* ─── API: Poster scan mode ─────────────────────────────── */
 async function generateFromPoster(params: {
   imageDataUrl: string;
   tone: string;
   waNumber?: string;
-}): Promise<string[]> {
+}): Promise<string> {
   const { imageDataUrl, tone, waNumber } = params;
   const toneInstruction = TONE_LABEL[tone] ?? tone;
   const waSection = waNumber?.trim() ? `\nNomor WA untuk baris CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}` : "";
-  const userPrompt = `Scan poster ini dan buat 3 variasi caption sesuai struktur dan aturan di instruksi sistem.\nTone: ${toneInstruction}.${waSection}\nPanjang setiap caption: 600–1000 karakter. Masing-masing variasi harus berbeda fokus sesuai petunjuk (Keuntungan Tersembunyi / Kesempatan Langka / Cerita & Pengalaman).`;
+  const userPrompt = `Scan poster ini dan buat 1 caption sesuai struktur dan aturan di instruksi sistem.\nTone: ${toneInstruction}.${waSection}`;
 
   const res = await fetch("/api/ai/chat", {
     method: "POST",
     headers: await getAIHeaders(),
     body: JSON.stringify({
-      model: "gpt-4.1-nano",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: VISION_SYSTEM_PROMPT },
         {
@@ -219,7 +178,7 @@ async function generateFromPoster(params: {
         },
       ],
       temperature: 0.8,
-      max_tokens: 900,
+      max_tokens: 700,
     }),
   });
 
@@ -228,10 +187,9 @@ async function generateFromPoster(params: {
     throw new Error(`AI error ${res.status}`);
   }
   const data = await res.json();
-  const raw: string = data.choices?.[0]?.message?.content ?? "";
-  const captions = parseVariasiFormat(raw);
-  if (captions.length < 1) throw new Error("Format respons AI tidak valid");
-  return captions;
+  const caption: string = (data.choices?.[0]?.message?.content ?? "").trim();
+  if (!caption) throw new Error("Format respons AI tidak valid");
+  return caption;
 }
 
 /* ─── Section wrapper ───────────────────────────────────── */
@@ -261,9 +219,9 @@ export function CaptionGenerator() {
   const [posterFile, setPosterFile]         = useState<File | null>(null);
   const [posterPreview, setPosterPreview]   = useState<string | null>(null);
   const [isDragging, setIsDragging]         = useState(false);
-  const [results, setResults]               = useState<string[]>([]);
+  const [result, setResult]                 = useState<string>("");
   const [loading, setLoading]               = useState(false);
-  const [copiedIdx, setCopiedIdx]           = useState<number | null>(null);
+  const [copied, setCopied]                 = useState(false);
   const fileInputRef                        = useRef<HTMLInputElement>(null);
 
   const cat = CATEGORIES.find((c) => c.key === activeCategory) ?? CATEGORIES[0];
@@ -280,7 +238,7 @@ export function CaptionGenerator() {
     setPosterFile(file);
     const url = URL.createObjectURL(file);
     setPosterPreview(url);
-    setResults([]);
+    setResult("");
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -294,32 +252,32 @@ export function CaptionGenerator() {
     setPosterFile(null);
     if (posterPreview) URL.revokeObjectURL(posterPreview);
     setPosterPreview(null);
-    setResults([]);
+    setResult("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const switchMode = (m: Mode) => {
     setMode(m);
-    setResults([]);
+    setResult("");
   };
 
   const handleGenerate = async () => {
     setLoading(true);
-    setResults([]);
+    setResult("");
     try {
       if (mode === "poster") {
         if (!posterFile) { toast.error("Upload poster dulu ya!"); return; }
         const dataUrl = await compressImage(posterFile);
-        const captions = await generateFromPoster({ imageDataUrl: dataUrl, tone: activeTone, waNumber });
-        setResults(captions);
+        const caption = await generateFromPoster({ imageDataUrl: dataUrl, tone: activeTone, waNumber });
+        setResult(caption);
       } else {
-        const captions = await generateFromDetail({
+        const caption = await generateFromDetail({
           categoryPrompt: cat.prompt,
           tone: activeTone,
           packageDetail,
           waNumber,
         });
-        setResults(captions);
+        setResult(caption);
       }
     } catch (err) {
       toast.error(`Gagal generate: ${err instanceof Error ? err.message : String(err)}`);
@@ -328,14 +286,25 @@ export function CaptionGenerator() {
     }
   };
 
-  const handleCopy = async (text: string, idx: number) => {
-    await navigator.clipboard.writeText(text);
-    setCopiedIdx(idx);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(result);
+    setCopied(true);
     toast.success("Caption disalin!");
-    setTimeout(() => setCopiedIdx(null), 2000);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const canGenerate = mode === "poster" ? !!posterFile && !loading : !loading;
+
+  const charLen = result.length;
+  const charInRange = charLen >= 600 && charLen <= 1000;
+  const charTooShort = charLen > 0 && charLen < 600;
+  const charColor = charInRange
+    ? "text-emerald-600"
+    : charTooShort
+    ? "text-amber-500"
+    : charLen > 1000
+    ? "text-rose-500"
+    : "text-muted-foreground";
 
   return (
     <div className="space-y-3 pb-10">
@@ -491,7 +460,7 @@ export function CaptionGenerator() {
               )}
 
               <p className="text-[10.5px] text-muted-foreground mt-2">
-                AI akan membaca teks & info dari poster lalu langsung bikin 3 variasi caption.
+                AI akan membaca teks & info dari poster lalu langsung bikin caption siap pakai.
               </p>
             </Section>
           </motion.div>
@@ -547,7 +516,7 @@ export function CaptionGenerator() {
           </p>
         ) : (
           <p className="text-[10.5px] text-muted-foreground mt-1.5">
-            Opsional — jika diisi, link WA otomatis ditambahkan di akhir setiap caption.
+            Opsional — jika diisi, link WA otomatis ditambahkan di akhir caption.
           </p>
         )}
       </Section>
@@ -565,7 +534,7 @@ export function CaptionGenerator() {
               <Loader2 className="h-4 w-4 animate-spin" />
               {mode === "poster" ? "AI sedang baca poster…" : "AI sedang nulis caption…"}
             </motion.span>
-          ) : results.length > 0 ? (
+          ) : result ? (
             <motion.span key="regen" className="flex items-center gap-2"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
@@ -576,104 +545,69 @@ export function CaptionGenerator() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               {mode === "poster"
                 ? <><ScanText className="h-4 w-4" strokeWidth={1.5} /> Scan & Generate Caption</>
-                : <><Wand2 className="h-4 w-4" strokeWidth={1.5} /> Generate 3 Caption</>
+                : <><Wand2 className="h-4 w-4" strokeWidth={1.5} /> Generate Caption</>
               }
             </motion.span>
           )}
         </AnimatePresence>
       </Button>
 
-      {/* ── Results ── */}
+      {/* ── Result ── */}
       <AnimatePresence>
         {loading && (
           <motion.div key="skeleton"
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="space-y-3"
+            className="rounded-xl border border-border/70 bg-white p-4 animate-pulse space-y-2.5"
           >
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="rounded-xl border border-border/70 bg-white p-4 animate-pulse space-y-2.5">
-                <div className="h-2.5 bg-muted rounded w-1/5" />
-                <div className="h-2.5 bg-muted rounded w-full" />
-                <div className="h-2.5 bg-muted rounded w-5/6" />
-                <div className="h-2.5 bg-muted rounded w-4/6" />
-              </div>
-            ))}
+            <div className="h-2.5 bg-muted rounded w-1/4" />
+            <div className="h-2.5 bg-muted rounded w-full" />
+            <div className="h-2.5 bg-muted rounded w-5/6" />
+            <div className="h-2.5 bg-muted rounded w-full" />
+            <div className="h-2.5 bg-muted rounded w-4/6" />
+            <div className="h-2.5 bg-muted rounded w-full" />
+            <div className="h-2.5 bg-muted rounded w-3/5" />
           </motion.div>
         )}
 
-        {!loading && results.length > 0 && (
-          <motion.div key="results"
+        {!loading && result && (
+          <motion.div key="result"
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="space-y-3"
           >
-            <div className="flex items-center gap-2 py-1">
+            <div className="flex items-center gap-2 py-1 mb-2">
               <div className="h-px flex-1 bg-border/60" />
               <span className="text-[11px] text-muted-foreground tracking-wide">
-                3 variasi • Temantiket Brand Voice
+                Temantiket Brand Voice
               </span>
               <div className="h-px flex-1 bg-border/60" />
             </div>
 
-            {results.map((caption, idx) => {
-              const len = caption.length;
-              const inRange = len >= 600 && len <= 1000;
-              const tooShort = len < 600;
-              const charColor = inRange
-                ? "text-emerald-600"
-                : tooShort
-                ? "text-amber-500"
-                : "text-rose-500";
-              const variantLabel = POSTER_VARIANT_LABELS[idx] ?? null;
-              return (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.07 }}
-                  className="rounded-xl border border-border/70 bg-white p-4 md:p-5 hover:border-foreground/25 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest shrink-0">
-                        Variasi {idx + 1}
-                      </span>
-                      {variantLabel && (
-                        <span className="text-[10px] font-medium text-[#1a44d4]/70 bg-[#1a44d4]/8 px-1.5 py-0.5 rounded-md truncate">
-                          {variantLabel}
-                        </span>
-                      )}
-                      <span className={cn("text-[10px] font-medium shrink-0", charColor)}>
-                        {len} kar
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => void handleCopy(caption, idx)}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium transition-all border shrink-0",
-                        copiedIdx === idx
-                          ? "border-[#1a44d4]/30 bg-[#1a44d4] text-white"
-                          : "border-border/70 text-muted-foreground hover:border-[#1a44d4]/40 hover:text-[#1a44d4]",
-                      )}
-                    >
-                      {copiedIdx === idx
-                        ? <><CheckCheck className="h-3.5 w-3.5" strokeWidth={1.5} /> Disalin</>
-                        : <><Copy className="h-3.5 w-3.5" strokeWidth={1.5} /> Salin</>
-                      }
-                    </button>
-                  </div>
-                  <p className="text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
-                    {caption}
-                  </p>
-                  {!inRange && (
-                    <p className={cn("text-[10px] mt-2", charColor)}>
-                      {tooShort
-                        ? `Caption terlalu pendek (ideal 600–1000 karakter)`
-                        : `Caption terlalu panjang (ideal 600–1000 karakter)`}
-                    </p>
+            <div className="rounded-xl border border-border/70 bg-white p-4 md:p-5 hover:border-foreground/25 transition-colors">
+              <div className="flex items-center justify-between mb-3">
+                <span className={cn("text-[10.5px] font-medium", charColor)}>
+                  {charLen} karakter
+                  {charInRange && " · panjang ideal ✓"}
+                  {charTooShort && " · idealnya 600+ kar"}
+                  {charLen > 1000 && " · idealnya ≤1000 kar"}
+                </span>
+                <button
+                  onClick={() => void handleCopy()}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium transition-all border shrink-0",
+                    copied
+                      ? "border-[#1a44d4]/30 bg-[#1a44d4] text-white"
+                      : "border-border/70 text-muted-foreground hover:border-[#1a44d4]/40 hover:text-[#1a44d4]",
                   )}
-                </motion.div>
-              );
-            })}
+                >
+                  {copied
+                    ? <><CheckCheck className="h-3.5 w-3.5" strokeWidth={1.5} /> Disalin</>
+                    : <><Copy className="h-3.5 w-3.5" strokeWidth={1.5} /> Salin Caption</>
+                  }
+                </button>
+              </div>
+              <p className="text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
+                {result}
+              </p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
