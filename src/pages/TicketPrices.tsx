@@ -1102,7 +1102,38 @@ export default function TicketPrices() {
   const [parsedTickets, setParsedTickets] = useState<ParsedTicketPrice[]>([]);
   const [pendingForms, setPendingForms] = useState<FormState[]>([]);
   const [saving, setSaving] = useState(false);
+  const [saveProgress, setSaveProgress] = useState<{ current: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Draft persistence (survive page refresh) ────────────────────────────
+  const DRAFT_KEY = "ticket_prices.pending_draft.v1";
+  function saveDraft(forms: FormState[]) {
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(forms)); } catch { /* ignore */ }
+  }
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  }
+  function loadDraft(): FormState[] | null {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as FormState[];
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+    } catch { return null; }
+  }
+
+  // Restore draft on mount
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft && draft.length > 0) {
+      setPendingForms(draft);
+      toast.info(`Draft dipulihkan — ${draft.length} tiket belum disimpan.`, {
+        description: "Periksa ulang dan klik Simpan Semua.",
+        duration: 5000,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Galileo text paste state (Fase 20)
   const [pasteText, setPasteText] = useState("");
@@ -1177,8 +1208,10 @@ export default function TicketPrices() {
       setScanError("AI tidak menemukan data tiket di screenshot ini. Coba screenshot yang lebih jelas.");
       return;
     }
+    const forms = result.tickets.map(formFromParsed);
     setParsedTickets(result.tickets);
-    setPendingForms(result.tickets.map(formFromParsed));
+    setPendingForms(forms);
+    saveDraft(forms);
     const rtCount = result.grouped ?? 0;
     toast.success(
       `AI menemukan ${result.tickets.length} entri tiket!`,
@@ -1207,8 +1240,10 @@ export default function TicketPrices() {
       return;
     }
 
+    const forms = result.tickets.map(formFromParsed);
     setParsedTickets(result.tickets);
-    setPendingForms(result.tickets.map(formFromParsed));
+    setPendingForms(forms);
+    saveDraft(forms);
     setPasteText("");
     const rtCount = result.grouped ?? 0;
     toast.success(
@@ -1222,75 +1257,97 @@ export default function TicketPrices() {
   }
 
   function updatePending(idx: number, patch: Partial<FormState>) {
-    setPendingForms((prev) => prev.map((f, i) => i === idx ? { ...f, ...patch } : f));
+    setPendingForms((prev) => {
+      const updated = prev.map((f, i) => i === idx ? { ...f, ...patch } : f);
+      saveDraft(updated);
+      return updated;
+    });
   }
 
   function updatePendingRT(idx: number, patch: Partial<ReturnLegData>) {
-    setPendingForms((prev) => prev.map((f, i) => {
-      if (i !== idx) return f;
-      const { leg, userNotes: un } = decodeReturnLeg(f.notes);
-      if (!leg) return f;
-      const updated = { ...leg, ...patch };
-      const rtStr = `__RT__:${JSON.stringify(updated)}`;
-      const newNotes = un ? `${rtStr}\n${un}` : rtStr;
-      return { ...f, notes: newNotes };
-    }));
+    setPendingForms((prev) => {
+      const updated = prev.map((f, i) => {
+        if (i !== idx) return f;
+        const { leg, userNotes: un } = decodeReturnLeg(f.notes);
+        if (!leg) return f;
+        const newLeg = { ...leg, ...patch };
+        const rtStr = `__RT__:${JSON.stringify(newLeg)}`;
+        const newNotes = un ? `${rtStr}\n${un}` : rtStr;
+        return { ...f, notes: newNotes };
+      });
+      saveDraft(updated);
+      return updated;
+    });
   }
 
   async function savePending() {
     if (saving) return;
     const forms = pendingForms;
-    const now = new Date().toISOString();
-    const agencyId = user?.agencyId ?? "local";
+    if (forms.length === 0) return;
 
-    // 1. Optimistic: add temp items instantly so UI feels immediate
-    const optimisticItems: TicketPrice[] = forms.map((form, i) => ({
-      ...form,
-      id: `opt-${Date.now()}-${i}`,
-      agencyId,
-      sortOrder: 0,
-      isPublished: form.isPublished ?? true,
-      createdAt: now,
-      updatedAt: now,
-    }));
-    setPrices((prev) => [...optimisticItems, ...prev]);
-    setParsedTickets([]);
-    setPendingForms([]);
     setSaving(true);
+    setSaveProgress({ current: 0, total: forms.length });
 
-    // 2. Persist to Supabase in background
-    const results = await Promise.allSettled(
-      forms.map((form) => createTicketPrice({ ...form, sortOrder: 0 }))
-    );
+    const savedItems: TicketPrice[] = [];
+    const failedForms: FormState[] = [];
+    const failedParsed: ParsedTicketPrice[] = [];
 
-    let saved = 0;
-    const realItems: TicketPrice[] = [];
-    const failedOptIds: string[] = [];
+    for (let i = 0; i < forms.length; i++) {
+      setSaveProgress({ current: i + 1, total: forms.length });
+      const form = forms[i];
+      let success = false;
+      let lastError: unknown = null;
 
-    results.forEach((r, i) => {
-      if (r.status === "fulfilled") {
-        realItems.push(r.value);
-        saved++;
-      } else {
-        failedOptIds.push(optimisticItems[i].id);
-        toast.error(`Gagal simpan ${forms[i].airline}: ${String(r.reason)}`);
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          await new Promise<void>((r) => setTimeout(r, 1200 * attempt));
+        }
+        try {
+          const item = await createTicketPrice({ ...form, sortOrder: 0 });
+          savedItems.push(item);
+          success = true;
+          break;
+        } catch (e) {
+          lastError = e;
+        }
       }
-    });
 
-    // 3. Replace optimistic items with real server items; remove failed ones
-    setPrices((prev) => {
-      const optIds = new Set(optimisticItems.map((o) => o.id));
-      const withoutOpt = prev.filter((p) => !optIds.has(p.id));
-      return [...realItems, ...withoutOpt];
-    });
+      if (!success) {
+        failedForms.push(form);
+        failedParsed.push(parsedTickets[i] ?? ({} as ParsedTicketPrice));
+        toast.error(`Gagal simpan ${form.airline || `Opsi ${i + 1}`}: ${String(lastError)}`);
+      }
+    }
 
-    if (saved > 0) toast.success(`${saved} harga tiket berhasil disimpan!`);
+    if (savedItems.length > 0) {
+      setPrices((prev) => [...savedItems, ...prev]);
+      toast.success(`${savedItems.length} harga tiket berhasil disimpan!`);
+    }
+
+    if (failedForms.length > 0) {
+      setPendingForms(failedForms);
+      setParsedTickets(failedParsed);
+      saveDraft(failedForms);
+      toast.error(`${failedForms.length} tiket gagal disimpan — klik "Coba Simpan Lagi".`, {
+        duration: 8000,
+      });
+    } else {
+      setPendingForms([]);
+      setParsedTickets([]);
+      clearDraft();
+    }
+
     setSaving(false);
+    setSaveProgress(null);
   }
 
   function removePending(idx: number) {
     setParsedTickets((prev) => prev.filter((_, i) => i !== idx));
-    setPendingForms((prev) => prev.filter((_, i) => i !== idx));
+    setPendingForms((prev) => {
+      const updated = prev.filter((_, i) => i !== idx);
+      if (updated.length === 0) clearDraft(); else saveDraft(updated);
+      return updated;
+    });
   }
 
   // ── CRUD ───────────────────────────────────────────────────────────────
@@ -1517,9 +1574,15 @@ export default function TicketPrices() {
 
             {pendingForms.length > 0 && (
               <div className="border-t border-[hsl(var(--border))] px-4 py-3 space-y-3">
+                {saveProgress && (
+                  <div className="mx-4 mb-1 flex items-center gap-2 text-[11px] text-sky-700 font-medium">
+                    <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                    Menyimpan tiket {saveProgress.current} dari {saveProgress.total}…
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[12px] font-bold text-[hsl(var(--foreground))]">
-                    ✅ {pendingForms.length} tiket ditemukan
+                    {saving ? `Menyimpan ${saveProgress?.current ?? "…"}/${pendingForms.length}…` : `✅ ${pendingForms.length} tiket ditemukan`}
                   </p>
                   <button
                     onClick={savePending} disabled={saving}
@@ -1527,7 +1590,10 @@ export default function TicketPrices() {
                     style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
                   >
                     {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                    Simpan Semua
+                    {saving
+                      ? `${saveProgress?.current ?? "…"}/${pendingForms.length}`
+                      : "Simpan Semua"
+                    }
                   </button>
                 </div>
               </div>
@@ -1768,15 +1834,24 @@ export default function TicketPrices() {
             {/* Pending tickets from AI */}
             {pendingForms.length > 0 && (
               <div className="space-y-3">
+                {saveProgress && (
+                  <div className="flex items-center gap-2 px-1 text-[12px] text-sky-700 font-medium">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                    Menyimpan tiket {saveProgress.current} dari {saveProgress.total}…
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-slate-700">
-                    ✅ {pendingForms.length} entri ditemukan — periksa dan simpan:
+                    {saving
+                      ? `Menyimpan… (${saveProgress?.current ?? 0}/${pendingForms.length})`
+                      : `✅ ${pendingForms.length} entri ditemukan — periksa dan simpan:`
+                    }
                   </p>
                   <Button
                     size="sm"
-                    className="bg-sky-600 hover:bg-sky-700 text-white"
+                    className="bg-sky-600 hover:bg-sky-700 text-white shrink-0"
                     disabled={saving}
-                    onClick={savePending}
+                    onClick={() => void savePending()}
                   >
                     {saving
                       ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Menyimpan…</>
