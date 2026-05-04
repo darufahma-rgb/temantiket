@@ -1323,12 +1323,7 @@ export default function TicketPrices() {
 
         {/* ── Header row ── */}
         <div className="flex items-center gap-2.5">
-          <div
-            className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
-            style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
-          >
-            <Plane className="h-4 w-4 text-white" />
-          </div>
+          <Plane className="h-5 w-5 shrink-0 text-blue-600" />
           <div className="min-w-0 flex-1">
             <p className="text-[8px] font-semibold uppercase tracking-widest text-[hsl(var(--muted-foreground))] leading-none">Tiket & Harga</p>
             <h1 className="text-[14px] font-extrabold text-[hsl(var(--foreground))] leading-tight truncate mt-0.5">Daftar Harga Tiket</h1>
@@ -1562,10 +1557,7 @@ export default function TicketPrices() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
-              style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}>
-              <Plane className="w-5 h-5 text-white" />
-            </div>
+            <Plane className="w-6 h-6 shrink-0 text-blue-600" />
             <div>
               <h1 className="text-xl font-bold text-slate-900 dark:text-white">Daftar Harga Tiket</h1>
               <p className="text-sm text-slate-500 mt-0.5">AI ekstrak nomor penerbangan, jam, transit otomatis dari screenshot</p>
