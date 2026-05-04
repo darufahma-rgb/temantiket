@@ -10,7 +10,9 @@ const PORT = process.env.PORT || 3001;
 const SUPABASE_URL = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
 const SUPABASE_ANON_KEY = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
 const SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
-const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
+// Prefer Replit AI Integration key, fall back to user-supplied OPENAI_API_KEY
+const OPENAI_API_KEY = (process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '').trim();
+const OPENAI_BASE_URL = (process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || 'https://api.openai.com/v1').trim();
 
 const app = express();
 app.use(cors());
@@ -221,7 +223,7 @@ app.post('/api/ai/chat', async (req, res) => {
     if (!OPENAI_API_KEY) {
       return err(res, 503, 'OPENAI_API_KEY belum di-set. Tambahkan di Replit Secrets.');
     }
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
