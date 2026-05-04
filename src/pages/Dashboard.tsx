@@ -385,7 +385,7 @@ function RightPanel({ trips, totalJamaah }: { trips: Trip[]; totalJamaah: number
   const done = trips.length - active;
 
   return (
-    <div className="w-72 xl:w-80 shrink-0 flex flex-col overflow-auto rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+    <div className="w-64 xl:w-72 shrink-0 flex flex-col overflow-auto rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
       <div className="p-5 space-y-5">
         {/* Mini calendar */}
         <div>
@@ -794,7 +794,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="xl:flex xl:min-h-0 xl:gap-6 pt-4 md:pt-6">
+    <div className="xl:flex xl:min-h-0 xl:gap-5 pt-4 md:pt-5">
       {/* ══════════════════════════════════════════════════════════════
            MOBILE LAYOUT  (hidden on md+)
       ══════════════════════════════════════════════════════════════ */}

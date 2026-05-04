@@ -174,7 +174,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
 
           {/* ── Desktop full header ── */}
           <motion.header
-            className="hidden md:flex items-center gap-2 md:gap-3 px-5 md:px-7 lg:px-8 xl:pl-16 shrink-0"
+            className="hidden md:flex items-center gap-2 md:gap-3 px-5 md:px-6 shrink-0"
             style={{ height: "56px", background: "hsl(var(--card))", borderBottom: "1px solid hsl(var(--border))" }}
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
@@ -248,7 +248,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 className={`absolute inset-0 overflow-auto ${
                   noPadding
                     ? "pt-[74px] pb-[88px] md:pt-0 md:pb-0"
-                    : "px-5 pt-[74px] pb-[88px] md:p-7 md:pb-7 lg:p-8"
+                    : "px-5 pt-[74px] pb-[88px] md:p-6"
                 }`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

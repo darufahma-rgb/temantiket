@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
 
 const ACCENT = "#1a44d4";
-const SIDEBAR_W = 264;
+const SIDEBAR_W = 224;
 
 interface NavItemDef {
   title: string;
