@@ -425,10 +425,10 @@ function MessageBubble({ msg, toolResults }: { msg: ChatMessage; toolResults?: T
     <div className={cn("flex flex-col gap-1.5", isUser ? "items-end" : "items-start")}>
       {!isUser && (
         <div className="flex items-center gap-1.5 px-1">
-          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center">
-            <Bot className="w-3 h-3 text-white" />
+          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center overflow-hidden">
+            <img src="/chatgpt-icon.png" alt="AITEM" className="w-3.5 h-3.5 object-contain" />
           </div>
-          <span className="text-[10px] text-muted-foreground font-medium">Temantiket AI</span>
+          <span className="text-[10px] text-muted-foreground font-medium">AITEM</span>
         </div>
       )}
 
@@ -648,11 +648,14 @@ export function AIChatWidget() {
             style={{ maxHeight: "min(600px, calc(100svh - 8rem))" }}
           >
             {/* Header */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-sky-500 to-blue-600 text-white shrink-0">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+            <div
+              className="flex items-center gap-3 px-4 py-3 shrink-0"
+              style={{ background: "linear-gradient(135deg, #1a44d4 0%, #0a2472 100%)" }}
+            >
+              <div className="w-9 h-9 rounded-2xl bg-white/15 flex items-center justify-center shrink-0 border border-white/20">
                 <motion.img
                   src="/chatgpt-icon.png"
-                  alt="AI"
+                  alt="AITEM"
                   className="w-5 h-5 object-contain"
                   animate={loading ? { rotate: 360 } : { rotate: 0 }}
                   transition={loading
@@ -662,17 +665,17 @@ export function AIChatWidget() {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm leading-tight">AI Command Center</div>
-                <div className="text-[10px] text-white/70 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                <div className="font-bold text-[15px] text-white leading-tight tracking-tight">AITEM</div>
+                <div className="text-[10.5px] text-white/65 flex items-center gap-1.5 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block shrink-0" />
                   Siap membantu • gpt-4o-mini
                 </div>
               </div>
               <button
                 onClick={close}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 active:bg-white/30 flex items-center justify-center transition-colors shrink-0"
               >
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-4 h-4 text-white" />
               </button>
             </div>
 
@@ -680,12 +683,15 @@ export function AIChatWidget() {
             <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50/50">
               {isEmpty && (
                 <div className="space-y-4">
-                  <div className="text-center pt-4">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-sky-500/25">
-                      <Bot className="w-6 h-6 text-white" />
+                  <div className="text-center pt-5 pb-1">
+                    <div
+                      className="w-[60px] h-[60px] rounded-[20px] flex items-center justify-center mx-auto mb-3 shadow-lg"
+                      style={{ background: "linear-gradient(135deg, #1a44d4 0%, #0a2472 100%)" }}
+                    >
+                      <img src="/chatgpt-icon.png" alt="AITEM" className="w-8 h-8 object-contain" />
                     </div>
-                    <p className="font-semibold text-sm text-foreground">Halo! Saya AI Command Center</p>
-                    <p className="text-xs text-muted-foreground mt-1 px-4">
+                    <p className="font-bold text-[15px] text-foreground tracking-tight">Halo! Saya AITEM</p>
+                    <p className="text-[12px] text-muted-foreground mt-1.5 px-5 leading-relaxed">
                       Kontrol seluruh bisnis Temantiket hanya lewat chat.
                       Coba salah satu perintah di bawah 👇
                     </p>
@@ -695,7 +701,7 @@ export function AIChatWidget() {
                       <button
                         key={s}
                         onClick={() => void sendMessage(s)}
-                        className="text-left text-xs px-2.5 py-2 rounded-xl bg-white border border-border/60 hover:border-sky-200 hover:bg-sky-50 text-foreground/80 hover:text-sky-700 transition-all leading-tight"
+                        className="text-left text-[11.5px] px-3 py-2.5 rounded-xl bg-white border border-border/60 hover:border-blue-200 hover:bg-blue-50/60 text-foreground/80 hover:text-blue-700 transition-all leading-snug shadow-sm"
                       >
                         {s}
                       </button>
@@ -710,13 +716,13 @@ export function AIChatWidget() {
 
               {loading && (
                 <div className="flex items-start gap-1.5">
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shrink-0 mt-0.5">
-                    <Bot className="w-3 h-3 text-white" />
+                  <div className="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center shrink-0 mt-0.5" style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}>
+                    <img src="/chatgpt-icon.png" alt="AITEM" className="w-3.5 h-3.5 object-contain" />
                   </div>
                   <div className="bg-white border border-border/60 rounded-2xl rounded-bl-sm px-3 py-2.5 shadow-sm">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-500" />
-                      <span>Memproses…</span>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "#1a44d4" }} />
+                      <span>AITEM sedang memproses…</span>
                     </div>
                   </div>
                 </div>
@@ -738,8 +744,8 @@ export function AIChatWidget() {
             )}
 
             {/* Input */}
-            <div className="p-3 border-t border-border/60 bg-white shrink-0">
-              <div className="flex items-end gap-2 bg-gray-50 rounded-xl border border-border/60 focus-within:border-sky-300 focus-within:ring-2 focus-within:ring-sky-100 transition-all px-3 py-2">
+            <div className="p-3 border-t border-border/40 bg-white shrink-0">
+              <div className="flex items-end gap-2 bg-slate-50 rounded-2xl border border-slate-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all px-3.5 py-2.5">
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -748,7 +754,7 @@ export function AIChatWidget() {
                   placeholder="Ketik perintah… (Enter untuk kirim)"
                   rows={1}
                   disabled={loading}
-                  className="flex-1 resize-none bg-transparent text-sm placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50 max-h-24"
+                  className="flex-1 resize-none bg-transparent text-[13px] placeholder:text-slate-400 focus:outline-none disabled:opacity-50 max-h-24 leading-relaxed"
                   style={{ minHeight: "20px" }}
                   onInput={(e) => {
                     const el = e.currentTarget;
@@ -759,13 +765,14 @@ export function AIChatWidget() {
                 <button
                   onClick={() => void sendMessage(input)}
                   disabled={!input.trim() || loading}
-                  className="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-md hover:shadow-sky-500/30 transition-all shrink-0 mb-0.5"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all shrink-0 mb-0.5"
+                  style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
                 >
                   <Send className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="text-[10px] text-muted-foreground/50 mt-1.5 text-center">
-                Shift+Enter untuk baris baru • Didukung OpenAI
+              <div className="text-[10px] text-slate-400 mt-1.5 text-center">
+                Shift+Enter untuk baris baru · Didukung OpenAI
               </div>
             </div>
           </motion.div>
