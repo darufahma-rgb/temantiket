@@ -111,7 +111,7 @@ export default function Orders() {
            MOBILE LAYOUT  (md:hidden)
       ══════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
-        <div className="pb-6 px-5 space-y-4">
+        <div className="pb-6 px-4 space-y-4">
 
           {/* ── Header row ── */}
           <div className="flex items-center gap-2.5">
