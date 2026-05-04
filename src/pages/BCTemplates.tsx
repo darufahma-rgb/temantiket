@@ -199,13 +199,13 @@ export default function BCTemplates() {
       <div className="bg-white px-4 pt-5 pb-4 border-b border-slate-100">
         {/* Icon + title */}
         <div className="flex items-start gap-3 mb-3">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <MessageSquare className="h-5 w-5 text-emerald-600" />
+          <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <MessageSquare className="h-5 w-5 text-blue-600" />
           </div>
           <div className="min-w-0">
             <h1 className="text-[18px] font-extrabold text-slate-900 leading-tight">
               Template Broadcast
-              <span className="text-emerald-600"> Temantiket</span>
+              <span className="text-blue-600"> Temantiket</span>
             </h1>
             <p className="text-[12px] text-slate-500 mt-0.5 leading-relaxed">
               Pesan siap kirim untuk follow-up, closing & broadcast klien Umrah, Haji & tiket. 🚀
@@ -217,7 +217,7 @@ export default function BCTemplates() {
         {canEdit && (
           <button
             onClick={openAdd}
-            className="w-full flex items-center justify-center gap-2 h-11 rounded-2xl bg-emerald-600 active:bg-emerald-700 text-white text-[14px] font-bold shadow-sm transition-colors"
+            className="w-full flex items-center justify-center gap-2 h-11 rounded-2xl bg-blue-600 active:bg-blue-700 text-white text-[14px] font-bold shadow-sm transition-colors"
           >
             <Plus className="h-4 w-4" />
             Tambah Template
@@ -236,7 +236,7 @@ export default function BCTemplates() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari judul atau isi template..."
-              className="w-full h-11 pl-10 pr-10 rounded-2xl border border-slate-200 bg-white text-[14px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent shadow-sm transition-all"
+              className="w-full h-11 pl-10 pr-10 rounded-2xl border border-slate-200 bg-white text-[14px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent shadow-sm transition-all"
             />
             {search && (
               <button
@@ -279,7 +279,7 @@ export default function BCTemplates() {
       <div className="flex-1 px-4 py-3 pb-24">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-[13px] text-slate-500">Memuat template…</p>
           </div>
         ) : filtered.length === 0 ? (
@@ -329,8 +329,8 @@ export default function BCTemplates() {
         <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl mx-4 sm:mx-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-[15px]">
-              <div className="w-7 h-7 rounded-xl bg-emerald-50 flex items-center justify-center">
-                <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
+              <div className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center">
+                <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
               </div>
               {editTarget ? "Edit Template" : "Tambah Template Baru"}
             </DialogTitle>
@@ -435,7 +435,7 @@ export default function BCTemplates() {
             <Button
               onClick={() => void handleSave()}
               disabled={saving}
-              className="bg-emerald-600 hover:bg-emerald-700 rounded-xl h-11 flex-1"
+              className="bg-blue-600 hover:bg-blue-700 rounded-xl h-11 flex-1"
             >
               {saving ? "Menyimpan…" : editTarget ? "Simpan Perubahan" : "Simpan Template"}
             </Button>
@@ -448,8 +448,8 @@ export default function BCTemplates() {
         <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl mx-4 sm:mx-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-[15px]">
-              <div className="w-7 h-7 rounded-xl bg-emerald-50 flex items-center justify-center">
-                <Copy className="h-3.5 w-3.5 text-emerald-600" />
+              <div className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center">
+                <Copy className="h-3.5 w-3.5 text-blue-600" />
               </div>
               {copyTarget?.title}
             </DialogTitle>
@@ -478,8 +478,8 @@ export default function BCTemplates() {
                 ))}
               </div>
 
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 mb-2">
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700 mb-2">
                   Preview Pesan
                 </p>
                 <pre className="text-[12px] whitespace-pre-wrap leading-relaxed text-slate-800 break-words">
@@ -495,7 +495,7 @@ export default function BCTemplates() {
             </Button>
             <Button
               onClick={handleCopyWithVars}
-              className="bg-emerald-600 hover:bg-emerald-700 rounded-xl h-11 flex-1"
+              className="bg-blue-600 hover:bg-blue-700 rounded-xl h-11 flex-1"
             >
               <Copy className="h-4 w-4 mr-1.5" />
               Copy Pesan
@@ -540,8 +540,8 @@ function TabChip({
       className={cn(
         "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-[12.5px] font-semibold border whitespace-nowrap transition-all flex-shrink-0",
         active
-          ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-          : "bg-white text-slate-600 border-slate-200 active:border-emerald-400",
+          ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+          : "bg-white text-slate-600 border-slate-200 active:border-blue-400",
       )}
     >
       <span className="text-[13px]">{emoji}</span>
@@ -581,7 +581,7 @@ function EmptyState({
       {canEdit && !hasSearch && (
         <button
           onClick={onAdd}
-          className="mt-5 inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-emerald-600 text-white text-[13px] font-bold active:bg-emerald-700 transition-colors"
+          className="mt-5 inline-flex items-center gap-2 h-11 px-5 rounded-2xl bg-blue-600 text-white text-[13px] font-bold active:bg-blue-700 transition-colors"
         >
           <Plus className="h-4 w-4" />
           Tambah Template
@@ -705,7 +705,7 @@ function TemplateCard({
         {isLong && (
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="text-[11px] text-emerald-600 font-semibold mt-1.5"
+            className="text-[11px] text-blue-600 font-semibold mt-1.5"
           >
             {expanded ? "Sembunyikan ↑" : "Lihat selengkapnya ↓"}
           </button>
@@ -720,8 +720,8 @@ function TemplateCard({
           className={cn(
             "flex-1 h-10 rounded-xl flex items-center justify-center gap-1.5 text-[13px] font-bold text-white transition-colors",
             isCopied
-              ? "bg-emerald-600"
-              : "bg-gradient-to-r from-emerald-500 to-green-600 active:from-emerald-600 active:to-green-700",
+              ? "bg-blue-600"
+              : "bg-gradient-to-r from-blue-500 to-blue-600 active:from-blue-600 active:to-blue-700",
           )}
         >
           {isCopied ? (
