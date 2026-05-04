@@ -789,7 +789,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="xl:flex xl:min-h-0 xl:gap-8">
+    <div className="xl:flex xl:min-h-0 xl:gap-8 pt-4 md:pt-6">
       {/* ══════════════════════════════════════════════════════════════
            MOBILE LAYOUT  (hidden on md+)
       ══════════════════════════════════════════════════════════════ */}
