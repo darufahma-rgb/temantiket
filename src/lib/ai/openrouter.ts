@@ -109,6 +109,8 @@ export async function callAIOpenRouter(opts: CallAIOpenRouterOptions): Promise<s
     messages.push({ role: "user", content: prompt });
   }
 
+  console.log(`[callAIOpenRouter] model="${model}" imageBase64=${!!imageBase64}`);
+
   const body: Record<string, unknown> = {
     model,
     messages,

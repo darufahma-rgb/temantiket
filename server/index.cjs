@@ -684,10 +684,19 @@ app.post('/api/ai/chat', async (req, res) => {
       return err(res, 503, 'OPENROUTER_API_KEY belum di-set. Tambahkan di Replit Secrets.');
     }
 
-    // Inject model default jika caller tidak set
+    // Inject model default jika caller tidak set.
+    // Jika tidak pakai OpenRouter (fallback ke OpenAI), model OpenRouter seperti
+    // "google/gemini-2.0-flash" tidak valid — remap ke MODEL_CHAT yang valid untuk OpenAI.
+    const requestedModel = req.body.model || MODEL_CHAT;
+    const resolvedModel = (!USE_OR && typeof requestedModel === 'string' && requestedModel.includes('/'))
+      ? MODEL_CHAT
+      : requestedModel;
+
+    console.log(`[ai/chat] provider=${USE_OR ? 'openrouter' : 'openai'} requested="${requestedModel}" resolved="${resolvedModel}"`);
+
     const bodyWithModel = {
       ...req.body,
-      model: req.body.model || MODEL_CHAT,
+      model: resolvedModel,
     };
 
     // 90-second hard timeout
