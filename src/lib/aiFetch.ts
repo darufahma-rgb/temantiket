@@ -139,7 +139,20 @@ function isRetryable(e: unknown): boolean {
 function parseErrBody(text: string, status: number): string {
   try {
     const json = JSON.parse(text);
-    if (json?.error) return String(json.error);
+    const e = json?.error;
+    if (e !== undefined && e !== null) {
+      if (typeof e === "string") return e;
+      if (typeof e === "object") {
+        return (
+          e.message ||
+          e.msg ||
+          e.detail ||
+          (e.metadata?.raw) ||
+          JSON.stringify(e).slice(0, 300)
+        );
+      }
+    }
+    if (json?.message && typeof json.message === "string") return json.message;
   } catch { /* ignore */ }
   return `AI error ${status}: ${text.slice(0, 200)}`;
 }

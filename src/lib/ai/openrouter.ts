@@ -48,12 +48,34 @@ export interface CallAIOpenRouterOptions {
 }
 
 /**
+ * extractErrorMessage — ambil pesan error yang bersih dari value apapun.
+ * Handles: Error instance, plain string, object dengan .message, nested objects.
+ */
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const e = error as Record<string, unknown>;
+    if (typeof e.message === "string" && e.message) return e.message;
+    if (typeof e.msg === "string" && e.msg) return e.msg;
+    const nested = e.response as Record<string, unknown> | undefined;
+    const nestedData = nested?.data as Record<string, unknown> | undefined;
+    const nestedErr = nestedData?.error as Record<string, unknown> | undefined;
+    if (typeof nestedErr?.message === "string" && nestedErr.message) return nestedErr.message;
+    const jsonStr = (() => { try { return JSON.stringify(error).slice(0, 300); } catch { return ""; } })();
+    if (jsonStr && jsonStr !== "{}") return jsonStr;
+  }
+  return "Terjadi kesalahan saat menghubungi AI. Silakan coba lagi.";
+}
+
+/**
  * callAIOpenRouter — wrapper utama.
  *
  * Mengembalikan teks langsung (bukan Response), sehingga caller tidak perlu
  * `.json()` dan mengekstrak `choices[0].message.content` sendiri.
  *
  * Throws jika server error, timeout, atau AI tidak mengembalikan konten.
+ * Selalu melempar Error dengan pesan yang bersih dan bisa dibaca user.
  */
 export async function callAIOpenRouter(opts: CallAIOpenRouterOptions): Promise<string> {
   const {
@@ -98,11 +120,25 @@ export async function callAIOpenRouter(opts: CallAIOpenRouterOptions): Promise<s
     body.response_format = { type: "json_object" };
   }
 
-  const res = await callAI(body, fetchOptions);
-  const data = await res.json() as { choices?: { message?: { content?: string } }[] };
-  const content = data.choices?.[0]?.message?.content?.trim() ?? "";
-  if (!content) throw new Error("AI tidak mengembalikan konten — coba lagi");
-  return content;
+  try {
+    const res = await callAI(body, fetchOptions);
+    const data = await res.json() as {
+      choices?: { message?: { content?: string } }[];
+      error?: unknown;
+    };
+
+    // Guard: API-level error dalam body (misal OpenRouter proxying error dari upstream)
+    if (data.error) {
+      throw new Error(extractErrorMessage(data.error));
+    }
+
+    const content = data.choices?.[0]?.message?.content?.trim() ?? "";
+    if (!content) throw new Error("AI tidak mengembalikan konten — coba lagi");
+    return content;
+  } catch (error: unknown) {
+    // Selalu rethrow sebagai Error dengan pesan yang bersih
+    throw new Error(extractErrorMessage(error));
+  }
 }
 
 // ── Helper: Caption Generation ──────────────────────────────────────────────
