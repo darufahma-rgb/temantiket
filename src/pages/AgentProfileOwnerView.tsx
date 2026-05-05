@@ -21,9 +21,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Trophy, ShoppingBag, TrendingUp, Users,
   Target, CheckCircle2, XCircle, Clock, Send, Eye,
-  Mail, Percent, Calendar, ExternalLink, AlertCircle,
+  Mail, Calendar, AlertCircle,
   Crown, BarChart3, MessageCircle, ChevronRight, Loader2,
-  Star, RefreshCw,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -39,7 +39,7 @@ import {
 import type { DailyMission, MissionSubmission, MissionStatus } from "@/features/missions/types";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
-import { revenueIDR, profitIDR, fmtIDR } from "@/lib/profit";
+import { revenueIDR, fmtIDR } from "@/lib/profit";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
@@ -372,17 +372,6 @@ export default function AgentProfileOwnerView() {
     () => agentOrders.reduce((s, o) => s + revenueIDR(o), 0),
     [agentOrders],
   );
-  const totalProfit = useMemo(
-    () => agentOrders
-      .filter((o) => o.status === "Completed")
-      .reduce((s, o) => s + Math.max(0, profitIDR(o)), 0),
-    [agentOrders],
-  );
-  const commissionOwed = useMemo(
-    () => totalProfit * ((agent?.commissionPct ?? 0) / 100),
-    [totalProfit, agent],
-  );
-
   const subMap = useMemo(
     () => new Map(submissions.map((s) => [s.missionId, s])),
     [submissions],
@@ -596,21 +585,10 @@ export default function AgentProfileOwnerView() {
                 />
               </div>
 
-              {/* Commission summary */}
-              <div className="rounded-2xl border border-orange-100 bg-white overflow-hidden">
-                <div className="px-4 py-3 border-b border-orange-100 bg-orange-50 flex items-center gap-2">
-                  <Percent className="h-4 w-4 text-orange-500" />
-                  <div>
-                    <p className="text-sm font-semibold">Komisi Agen</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {agent.commissionPct}% dari profit order Completed
-                    </p>
-                  </div>
-                </div>
+              {/* Summary stats */}
+              <div className="rounded-2xl border bg-white overflow-hidden">
                 <div className="p-4 grid grid-cols-2 gap-3">
                   {[
-                    { label: "Total Profit", value: fmtIDR(totalProfit), color: "text-emerald-700" },
-                    { label: "Komisi Terhutang", value: fmtIDR(commissionOwed), color: "text-orange-700" },
                     { label: "Total Klien", value: String(agentClients.length), color: "text-sky-700" },
                     { label: "Misi Selesai", value: String(submissions.filter((s) => s.status === "approved").length), color: "text-purple-700" },
                   ].map(({ label, value, color }) => (
@@ -809,7 +787,6 @@ export default function AgentProfileOwnerView() {
                     { label: "Nama Lengkap", value: agent.displayName, icon: Users },
                     { label: "Email", value: agent.email, icon: Mail },
                     { label: "Role", value: agent.role === "agent" ? "Mitra Agen" : agent.role, icon: Crown },
-                    { label: "Komisi per Order", value: `${agent.commissionPct}%`, icon: Percent },
                     { label: "Bergabung", value: fmtDate(agent.createdAt), icon: Calendar },
                     { label: "Total Poin", value: `${totalPoints.toLocaleString("id-ID")} poin`, icon: Star },
                     { label: "Level / Tier", value: `${tier.emoji} ${tier.label}`, icon: Trophy },
