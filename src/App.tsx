@@ -93,10 +93,10 @@ function StoreBootstrap() {
   }, [refreshRates, refreshPackages, fetchTrips, fetchClients, fetchOrders, isAuthenticated, user?.id, pullRates]);
 
   useEffect(() => {
-    if (!isAuthenticated || !isSupabaseConfigured()) return;
-    const unsubscribe = startRealtimeSync();
+    if (!isAuthenticated || !isSupabaseConfigured() || !user?.agencyId) return;
+    const unsubscribe = startRealtimeSync(user.agencyId);
     return unsubscribe;
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.agencyId]);
 
   return null;
 }

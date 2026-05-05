@@ -1,14 +1,21 @@
 /**
  * Realtime sync — subscribe ke perubahan tabel dari device lain.
  *
- * Pola: surgical update per-event (INSERT / UPDATE / DELETE) langsung ke
- * Zustand store, tanpa full refetch. Setiap event hanya menyentuh satu baris:
- *   INSERT → prepend ke array
- *   UPDATE → replace in-place by id
- *   DELETE → filter out by id
+ * OPTIMISASI (vs versi lama):
+ *   1. Setiap subscription sekarang pakai filter `agency_id=eq.<id>` sehingga
+ *      Supabase hanya memproses baris milik agency ini — bukan semua agency.
+ *      Ini yang menyebabkan realtime.list_changes() mendominasi query cost.
+ *   2. event: '*' dipecah ke event spesifik (INSERT/UPDATE/DELETE) di semua
+ *      tabel yang memungkinkan — mengurangi payload WAL yang dikirim server.
+ *   3. agent_points hanya pakai event: 'INSERT' karena poin di-award via
+ *      trigger dan tidak pernah di-UPDATE/DELETE secara langsung.
+ *   4. mission_submissions pakai INSERT + UPDATE (bukan '*') — DELETE tidak
+ *      relevan karena submissions tidak pernah dihapus.
+ *   5. Pola surgical update dipertahankan — tidak ada full refetch di listener.
+ *   6. Single channel + removeChannel cleanup di return function.
  *
- * Ini menggantikan pola lama: event: "*" → fetchAll() yang download seluruh
- * tabel setiap ada perubahan apapun dari siapapun.
+ * startRealtimeSync(agencyId) sekarang menerima agencyId sebagai parameter.
+ * Dipanggil dari App.tsx setelah user authenticated dengan user.agencyId.
  */
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { useTripsStore, useJamaahStore } from "@/store/tripsStore";
@@ -61,33 +68,55 @@ function oldId(payload: { old: Record<string, unknown> }): string {
   return String(payload.old.id);
 }
 
-export function startRealtimeSync(): () => void {
-  if (!isSupabaseConfigured() || channel) return () => undefined;
+/**
+ * startRealtimeSync — buka satu channel dengan semua subscription yang difilter
+ * by agency_id. Harus dipanggil setelah user authenticated.
+ *
+ * @param agencyId  — UUID agency dari user yang login (user.agencyId)
+ * @returns cleanup function — panggil saat komponen/app unmount
+ */
+export function startRealtimeSync(agencyId: string): () => void {
+  if (!isSupabaseConfigured() || !agencyId || channel) return () => undefined;
+
+  // Filter string yang sama dipakai di semua tabel — satu tempat untuk ganti.
+  const agencyFilter = `agency_id=eq.${agencyId}`;
 
   channel = supabase!
     .channel("igh-tour-sync")
 
     // ── TRIPS ─────────────────────────────────────────────────────────────────
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "trips" }, (payload) => {
+    // Filter: hanya trips milik agency ini.
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "trips",
+      filter: agencyFilter,
+    }, (payload) => {
       const trip = mapTripRow(payload.new as Record<string, unknown>);
       useTripsStore.setState((s) => ({ trips: [trip, ...s.trips] }));
     })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "trips" }, (payload) => {
+    .on("postgres_changes", {
+      event: "UPDATE", schema: "public", table: "trips",
+      filter: agencyFilter,
+    }, (payload) => {
       const trip = mapTripRow(payload.new as Record<string, unknown>);
       useTripsStore.setState((s) => ({
         trips: s.trips.map((t) => (t.id === trip.id ? trip : t)),
       }));
     })
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "trips" }, (payload) => {
+    .on("postgres_changes", {
+      event: "DELETE", schema: "public", table: "trips",
+      filter: agencyFilter,
+    }, (payload) => {
       const id = oldId(payload as { old: Record<string, unknown> });
       useTripsStore.setState((s) => ({ trips: s.trips.filter((t) => t.id !== id) }));
     })
 
     // ── JAMAAH ────────────────────────────────────────────────────────────────
-    // Jamaah store hanya menyimpan jamaah dari trip yang sedang dibuka.
     // INSERT: tambahkan hanya kalau trip-nya sudah ada di store (user sedang lihat trip itu).
     // UPDATE/DELETE: cukup cocokkan by id — kalau tidak ada, setState adalah no-op.
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "jamaah" }, (payload) => {
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "jamaah",
+      filter: agencyFilter,
+    }, (payload) => {
       const row = payload.new as Record<string, unknown>;
       const tripId = String(row.trip_id ?? "");
       const current = useJamaahStore.getState().jamaah;
@@ -97,29 +126,44 @@ export function startRealtimeSync(): () => void {
         }));
       }
     })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "jamaah" }, (payload) => {
+    .on("postgres_changes", {
+      event: "UPDATE", schema: "public", table: "jamaah",
+      filter: agencyFilter,
+    }, (payload) => {
       const updated = mapJamaahListRow(payload.new as Record<string, unknown>);
       useJamaahStore.setState((s) => ({
         jamaah: s.jamaah.map((j) => (j.id === updated.id ? updated : j)),
       }));
     })
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "jamaah" }, (payload) => {
+    .on("postgres_changes", {
+      event: "DELETE", schema: "public", table: "jamaah",
+      filter: agencyFilter,
+    }, (payload) => {
       const id = oldId(payload as { old: Record<string, unknown> });
       useJamaahStore.setState((s) => ({ jamaah: s.jamaah.filter((j) => j.id !== id) }));
     })
 
     // ── PACKAGES ──────────────────────────────────────────────────────────────
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "packages" }, (payload) => {
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "packages",
+      filter: agencyFilter,
+    }, (payload) => {
       const pkg = mapPackageRow(payload.new as Record<string, unknown>);
       usePackagesStore.setState((s) => ({ items: [pkg, ...s.items] }));
     })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "packages" }, (payload) => {
+    .on("postgres_changes", {
+      event: "UPDATE", schema: "public", table: "packages",
+      filter: agencyFilter,
+    }, (payload) => {
       const pkg = mapPackageRow(payload.new as Record<string, unknown>);
       usePackagesStore.setState((s) => ({
         items: s.items.map((p) => (p.id === pkg.id ? pkg : p)),
       }));
     })
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "packages" }, (payload) => {
+    .on("postgres_changes", {
+      event: "DELETE", schema: "public", table: "packages",
+      filter: agencyFilter,
+    }, (payload) => {
       const id = oldId(payload as { old: Record<string, unknown> });
       usePackagesStore.setState((s) => ({
         items: s.items.filter((p) => p.id !== id),
@@ -128,49 +172,126 @@ export function startRealtimeSync(): () => void {
     })
 
     // ── CLIENTS ───────────────────────────────────────────────────────────────
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "clients" }, (payload) => {
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "clients",
+      filter: agencyFilter,
+    }, (payload) => {
       const client = mapClientListRow(payload.new as Record<string, unknown>);
       useClientsStore.setState((s) => ({ clients: [client, ...s.clients] }));
     })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "clients" }, (payload) => {
+    .on("postgres_changes", {
+      event: "UPDATE", schema: "public", table: "clients",
+      filter: agencyFilter,
+    }, (payload) => {
       const client = mapClientListRow(payload.new as Record<string, unknown>);
       useClientsStore.setState((s) => ({
         clients: s.clients.map((c) => (c.id === client.id ? client : c)),
       }));
     })
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "clients" }, (payload) => {
+    .on("postgres_changes", {
+      event: "DELETE", schema: "public", table: "clients",
+      filter: agencyFilter,
+    }, (payload) => {
       const id = oldId(payload as { old: Record<string, unknown> });
       useClientsStore.setState((s) => ({ clients: s.clients.filter((c) => c.id !== id) }));
     })
 
     // ── ORDERS ────────────────────────────────────────────────────────────────
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "orders",
+      filter: agencyFilter,
+    }, (payload) => {
       const order = mapOrderRow(payload.new as Record<string, unknown>);
       useOrdersStore.setState((s) => ({ orders: [order, ...s.orders] }));
     })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, (payload) => {
+    .on("postgres_changes", {
+      event: "UPDATE", schema: "public", table: "orders",
+      filter: agencyFilter,
+    }, (payload) => {
       const order = mapOrderRow(payload.new as Record<string, unknown>);
       useOrdersStore.setState((s) => ({
         orders: s.orders.map((o) => (o.id === order.id ? order : o)),
       }));
     })
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "orders" }, (payload) => {
+    .on("postgres_changes", {
+      event: "DELETE", schema: "public", table: "orders",
+      filter: agencyFilter,
+    }, (payload) => {
       const id = oldId(payload as { old: Record<string, unknown> });
       useOrdersStore.setState((s) => ({ orders: s.orders.filter((o) => o.id !== id) }));
     })
 
-    // ── AGENT POINTS, MISSIONS, PDF PRESETS ───────────────────────────────────
-    // Tabel-tabel ini tidak punya store global — pakai listener pattern instead.
-    .on("postgres_changes", { event: "*", schema: "public", table: "agent_points" }, () => {
+    // ── AGENT POINTS ──────────────────────────────────────────────────────────
+    // Hanya INSERT — poin di-award via database trigger, tidak pernah di-UPDATE
+    // atau di-DELETE secara langsung dari aplikasi.
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "agent_points",
+      filter: agencyFilter,
+    }, () => {
       for (const fn of agentPointsListeners) fn();
     })
-    .on("postgres_changes", { event: "*", schema: "public", table: "mission_submissions" }, () => {
+
+    // ── MISSION SUBMISSIONS ───────────────────────────────────────────────────
+    // INSERT: agent submit bukti baru.
+    // UPDATE: owner approve/reject (status berubah).
+    // DELETE tidak dipakai — submissions tidak pernah dihapus.
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "mission_submissions",
+      filter: agencyFilter,
+    }, () => {
       for (const fn of missionListeners) fn();
     })
-    .on("postgres_changes", { event: "*", schema: "public", table: "daily_missions" }, () => {
+    .on("postgres_changes", {
+      event: "UPDATE", schema: "public", table: "mission_submissions",
+      filter: agencyFilter,
+    }, () => {
       for (const fn of missionListeners) fn();
     })
-    .on("postgres_changes", { event: "*", schema: "public", table: "pdf_layout_presets" }, () => {
+
+    // ── DAILY MISSIONS ────────────────────────────────────────────────────────
+    // INSERT (misi baru), UPDATE (edit misi), DELETE (hapus misi) semua relevan
+    // bagi agent yang sedang lihat daftar misi.
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "daily_missions",
+      filter: agencyFilter,
+    }, () => {
+      for (const fn of missionListeners) fn();
+    })
+    .on("postgres_changes", {
+      event: "UPDATE", schema: "public", table: "daily_missions",
+      filter: agencyFilter,
+    }, () => {
+      for (const fn of missionListeners) fn();
+    })
+    .on("postgres_changes", {
+      event: "DELETE", schema: "public", table: "daily_missions",
+      filter: agencyFilter,
+    }, () => {
+      for (const fn of missionListeners) fn();
+    })
+
+    // ── PDF LAYOUT PRESETS ────────────────────────────────────────────────────
+    // INSERT/UPDATE/DELETE semua relevan — preset bisa dibuat, diedit, dihapus.
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "pdf_layout_presets",
+      filter: agencyFilter,
+    }, () => {
+      void pullPdfLayoutPresets().then(() => {
+        for (const fn of presetListeners) fn();
+      });
+    })
+    .on("postgres_changes", {
+      event: "UPDATE", schema: "public", table: "pdf_layout_presets",
+      filter: agencyFilter,
+    }, () => {
+      void pullPdfLayoutPresets().then(() => {
+        for (const fn of presetListeners) fn();
+      });
+    })
+    .on("postgres_changes", {
+      event: "DELETE", schema: "public", table: "pdf_layout_presets",
+      filter: agencyFilter,
+    }, () => {
       void pullPdfLayoutPresets().then(() => {
         for (const fn of presetListeners) fn();
       });
