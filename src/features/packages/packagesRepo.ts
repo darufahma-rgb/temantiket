@@ -167,6 +167,9 @@ export async function deletePackage(id: string): Promise<void> {
   saveStore(loadStore().filter((p) => p.id !== id));
 }
 
+/** Row mapper untuk realtime payload — dipakai oleh supabaseRealtime.ts. */
+export { fromRow as mapPackageRow };
+
 export async function bulkUpsertPackages(items: Package[]) {
   if (!isSupabaseConfigured() || items.length === 0) return;
   const agencyId = requireAgencyId();

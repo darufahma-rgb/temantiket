@@ -240,6 +240,9 @@ export function resetOrdersCache() {
   _mem.orders = undefined;
 }
 
+/** Row mapper untuk realtime payload — dipakai oleh supabaseRealtime.ts. */
+export { fromRow as mapOrderRow };
+
 export const ORDER_TYPE_LABEL: Record<OrderType, string> = {
   umrah: "Umrah & Haji",
   flight: "Tiket Pesawat",

@@ -514,6 +514,9 @@ export async function deleteDoc(id: string): Promise<void> {
   save(DOCS_KEY, load<JamaahDoc>(DOCS_KEY, []).filter((d) => d.id !== id));
 }
 
+/** Row mappers untuk realtime payload — dipakai oleh supabaseRealtime.ts. */
+export { tripFromRow as mapTripRow, jamaahFromRowList as mapJamaahListRow };
+
 // ── Bulk push helpers (used by migration) ───────────────────────────────────
 
 export async function bulkUpsertTrips(trips: Trip[]) {

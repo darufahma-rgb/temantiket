@@ -265,3 +265,6 @@ export async function deleteClient(id: string): Promise<void> {
 export function resetClientsCache() {
   _mem.clients = undefined;
 }
+
+/** Row mapper untuk realtime payload — dipakai oleh supabaseRealtime.ts. */
+export { fromRowList as mapClientListRow };
