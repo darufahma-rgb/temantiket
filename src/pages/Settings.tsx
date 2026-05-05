@@ -346,14 +346,20 @@ export default function Settings() {
     setMigrateProgress({ phase: "photos", total: 0, done: 0, failed: 0 });
     try {
       const res = await migrateBase64ToStorage((p) => setMigrateProgress(p));
-      const total = res.photosMigrated + res.docsMigrated;
-      const failed = res.photosFailed + res.docsFailed;
+      const total = res.photosMigrated + res.docsMigrated + res.clientsMigrated;
+      const failed = res.photosFailed + res.docsFailed + res.clientsFailed;
       if (failed > 0) {
         toast.warning(`Migrasi selesai: ${total} berhasil, ${failed} gagal.`, {
           description: res.errors.slice(0, 3).join("\n"),
         });
       } else {
-        toast.success(`Migrasi selesai: ${total} item dipindahkan ke Storage.`);
+        toast.success(`Migrasi selesai: ${total} item dipindahkan ke Storage.`, {
+          description: [
+            res.photosMigrated ? `Foto jamaah: ${res.photosMigrated}` : "",
+            res.docsMigrated ? `Dokumen jamaah: ${res.docsMigrated}` : "",
+            res.clientsMigrated ? `Foto klien: ${res.clientsMigrated}` : "",
+          ].filter(Boolean).join(" • ") || "Semua sudah di Storage.",
+        });
       }
     } catch (e: any) {
       toast.error(`Migrasi gagal: ${e.message}`);

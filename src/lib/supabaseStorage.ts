@@ -111,6 +111,37 @@ export function isDataUrl(s: string | undefined | null): boolean {
   return typeof s === "string" && s.startsWith("data:");
 }
 
+/**
+ * Upload foto klien ke bucket `jamaah-photos` dengan subfolder `clients/`.
+ * Reuse bucket yang sama + RLS policy yang sudah ada.
+ * Return public URL. Kalau upload gagal, return dataUrl asli (fallback aman).
+ */
+export async function uploadClientPhoto(
+  clientRef: string,
+  passportNumber: string | undefined,
+  dataUrl: string,
+): Promise<string> {
+  if (!isSupabaseConfigured()) return dataUrl;
+  if (!dataUrl.startsWith("data:")) return dataUrl;
+  const parsed = dataUrlToBlob(dataUrl);
+  if (!parsed) return dataUrl;
+  const agencyId = requireAgencyId();
+  const compressed = await compressIfImage(parsed.blob, parsed.contentType);
+  const finalContentType = compressed.type || parsed.contentType;
+  const ext = extFromContentType(finalContentType);
+  const base = passportNumber ? safeName(passportNumber) : safeName(clientRef);
+  const path = `${agencyId}/clients/${base}_${Date.now()}.${ext}`;
+  const { error } = await supabase!.storage.from(PHOTO_BUCKET).upload(path, compressed, {
+    upsert: true, contentType: finalContentType,
+  });
+  if (error) {
+    console.error("[storage] upload client photo failed", error);
+    return dataUrl;
+  }
+  const { data } = supabase!.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
 /** Upload file template PDF (background) ke bucket `pdf-templates`, agency-scoped.
  *  Return public URL + storage path. Path format: `{agency_id}/{mode}_{timestamp}.{ext}`.
  *  Mode dipake biar private vs group ga overwrite satu sama lain. */

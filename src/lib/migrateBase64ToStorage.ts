@@ -1,14 +1,15 @@
 /**
- * One-shot migration: scan tabel jamaah & jamaah_docs, upload semua kolom
- * yang masih `data:` (base64) ke Storage, terus update DB pake URL public.
+ * One-shot migration: scan tabel jamaah, jamaah_docs, dan clients — upload
+ * semua kolom yang masih `data:` (base64) ke Storage, terus update DB pakai
+ * URL public.
  *
- * Idempotent — yang udah berupa URL di-skip.
+ * Idempotent — yang sudah berupa URL di-skip.
  */
 import { supabase, isSupabaseConfigured } from "./supabase";
-import { uploadJamaahPhoto, uploadJamaahDoc, isDataUrl } from "./supabaseStorage";
+import { uploadJamaahPhoto, uploadJamaahDoc, uploadClientPhoto, isDataUrl } from "./supabaseStorage";
 
 export interface MigrateProgress {
-  phase: "photos" | "docs" | "done";
+  phase: "photos" | "docs" | "clients" | "done";
   total: number;
   done: number;
   current?: string;
@@ -20,6 +21,8 @@ export interface MigrateResult {
   photosFailed: number;
   docsMigrated: number;
   docsFailed: number;
+  clientsMigrated: number;
+  clientsFailed: number;
   errors: string[];
 }
 
@@ -31,7 +34,9 @@ export async function migrateBase64ToStorage(
   }
   const result: MigrateResult = {
     photosMigrated: 0, photosFailed: 0,
-    docsMigrated: 0, docsFailed: 0, errors: [],
+    docsMigrated: 0, docsFailed: 0,
+    clientsMigrated: 0, clientsFailed: 0,
+    errors: [],
   };
 
   // ── Phase 1: photos di tabel jamaah ─────────────────────────────────────
@@ -51,7 +56,6 @@ export async function migrateBase64ToStorage(
         String(j.id), String(j.passport_number ?? ""), String(j.photo_data_url),
       );
       if (url === j.photo_data_url) {
-        // upload gagal, helper return data URL apa adanya
         result.photosFailed++;
         result.errors.push(`Photo ${j.id}: upload returned same URL`);
       } else {
@@ -108,6 +112,42 @@ export async function migrateBase64ToStorage(
     k++;
   }
 
-  onProgress?.({ phase: "done", total: 0, done: 0, failed: result.photosFailed + result.docsFailed });
+  // ── Phase 3: foto di tabel clients ──────────────────────────────────────
+  const { data: clientRows, error: cErr } = await supabase!
+    .from("clients")
+    .select("id, passport_number, photo_data_url")
+    .like("photo_data_url", "data:%");
+  if (cErr) throw cErr;
+
+  const clientPhotos = clientRows ?? [];
+  let m = 0;
+  for (const c of clientPhotos) {
+    onProgress?.({ phase: "clients", total: clientPhotos.length, done: m, current: c.id, failed: result.clientsFailed });
+    try {
+      if (!isDataUrl(c.photo_data_url as string)) { m++; continue; }
+      const url = await uploadClientPhoto(
+        String(c.id), String(c.passport_number ?? ""), String(c.photo_data_url),
+      );
+      if (url === c.photo_data_url) {
+        result.clientsFailed++;
+        result.errors.push(`Client photo ${c.id}: upload returned same URL`);
+      } else {
+        const { error: upErr } = await supabase!
+          .from("clients").update({ photo_data_url: url }).eq("id", c.id);
+        if (upErr) {
+          result.clientsFailed++;
+          result.errors.push(`Client photo ${c.id} DB update: ${upErr.message}`);
+        } else {
+          result.clientsMigrated++;
+        }
+      }
+    } catch (e) {
+      result.clientsFailed++;
+      result.errors.push(`Client photo ${c.id}: ${(e as Error).message}`);
+    }
+    m++;
+  }
+
+  onProgress?.({ phase: "done", total: 0, done: 0, failed: result.photosFailed + result.docsFailed + result.clientsFailed });
   return result;
 }

@@ -45,6 +45,12 @@ The application is a React Single Page Application (SPA) utilizing Vite for the 
 *   **Database Management:** Schema is managed via Supabase SQL Editor, with migrations applied chronologically. New tables added in `2026_05_04_cloud_sync_tables.sql`: `agency_settings` (key-value per agency), `user_settings` (key-value per user), `agent_fee_payments`, `agent_wallet_transactions`.
 *   **Passport Schema Migration (run in Supabase SQL Editor):** The `clients` table needs 3 new columns for the overhauled Klien Baru form. Run: `ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS birth_place text; ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS passport_issue_date text; ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS passport_issuing_office text;`
 *   **Cloud Sync (localStorage → Supabase):** 8 features now use dual-write (localStorage cache + Supabase). Sync layer in `src/lib/settingsSync.ts`. Keys: `admin_settings`, `product_commissions`, `ticket_markup`, `rates_config`, `agent_phones` → `agency_settings`; `appearance` → `user_settings`; fee payments → `agent_fee_payments`; wallet txs → `agent_wallet_transactions`. On login, App.tsx pulls all settings from cloud into localStorage.
+*   **Supabase Performance Optimization (2026-05-05):**
+    - `clientsRepo.ts`: `fromRowList()` strips base64 `photo_data_url` from list queries — only Storage URLs are kept in cache. `getClient()` (detail) still fetches full photo. `createClient()`/`updateClient()` auto-upload base64 photos to Supabase Storage before DB insert/update.
+    - `tripsRepo.ts`: `jamaahFromRowList()` same pattern — list queries strip base64 jamaah photos, Storage URLs pass through unchanged.
+    - `supabaseStorage.ts`: Added `uploadClientPhoto()` — reuses `jamaah-photos` bucket with `clients/` subfolder prefix, leveraging existing RLS policies. No new bucket needed.
+    - `migrateBase64ToStorage.ts`: Extended to Phase 3 — migrates `clients.photo_data_url` base64 → Storage URL. Run via Settings → "Migrasi Storage" button to batch-convert all existing records.
+    - `Settings.tsx`: Migration result now shows breakdown: foto jamaah / dokumen jamaah / foto klien migrated.
 
 ## External Dependencies
 

@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAgencyId, getCurrentAgencyId, useAuthStore } from "@/store/authStore";
 import { makePersistedCache } from "@/lib/persistedCache";
 import { withTimeout } from "@/lib/supabaseTimeout";
+import { isDataUrl, uploadClientPhoto } from "@/lib/supabaseStorage";
 
 /**
  * Client = kontak independen per-agency. Tidak terikat ke trip atau package
@@ -48,6 +49,7 @@ function saveCache(items: Client[]) {
   cache.write(getCurrentAgencyId(), items);
 }
 
+/** Full mapper — dipakai untuk detail view (getClient), insert, dan update. */
 const fromRow = (r: Record<string, unknown>): Client => ({
   id: String(r.id),
   name: String(r.name ?? ""),
@@ -68,6 +70,24 @@ const fromRow = (r: Record<string, unknown>): Client => ({
   updatedAt: String(r.updated_at ?? r.created_at ?? new Date().toISOString()),
 });
 
+/**
+ * Lean mapper untuk list query — sama seperti fromRow tapi strip base64 photos.
+ *
+ * Kenapa: photo_data_url bisa ratusan KB per klien. Kalau 50 klien × 500KB =
+ * 25MB hanya untuk list yang bahkan tidak menampilkan foto! Storage URL (~100
+ * chars) tetap disimpan — hanya base64 yang dibuang.
+ *
+ * After migration (migrateClientsToStorage), semua foto sudah jadi URL,
+ * sehingga tidak ada data yang dibuang. Fungsi ini menjadi no-op.
+ */
+const fromRowList = (r: Record<string, unknown>): Client => {
+  const c = fromRow(r);
+  if (isDataUrl(c.photoDataUrl)) {
+    return { ...c, photoDataUrl: undefined };
+  }
+  return c;
+};
+
 const toRow = (c: Partial<Client>, agencyId?: string) => ({
   ...(c.id ? { id: c.id } : {}),
   ...(c.name !== undefined ? { name: c.name } : {}),
@@ -87,6 +107,27 @@ const toRow = (c: Partial<Client>, agencyId?: string) => ({
   ...(agencyId ? { agency_id: agencyId } : {}),
 });
 
+/**
+ * Auto-upload foto base64 ke Supabase Storage sebelum disimpan ke DB.
+ * Idempotent — kalau input sudah berupa URL, langsung return.
+ */
+async function resolvePhoto(
+  photoDataUrl: string | undefined,
+  ref: string,
+  passportNumber?: string,
+): Promise<string | undefined> {
+  if (!photoDataUrl) return undefined;
+  if (!isDataUrl(photoDataUrl)) return photoDataUrl;
+  if (!isSupabaseConfigured()) return photoDataUrl;
+  try {
+    const url = await uploadClientPhoto(ref, passportNumber, photoDataUrl);
+    return url;
+  } catch (e) {
+    console.warn("[clients] photo upload failed, keeping base64:", e);
+    return photoDataUrl;
+  }
+}
+
 export async function listClients(): Promise<Client[]> {
   if (isSupabaseConfigured()) {
     try {
@@ -98,7 +139,9 @@ export async function listClients(): Promise<Client[]> {
         10000,
       );
       if (error) throw error;
-      const items = (data ?? []).map(fromRow);
+      // fromRowList: strip base64 photos dari cache list — hemat localStorage
+      // dan memory. Storage URL (http...) tetap disimpan.
+      const items = (data ?? []).map(fromRowList);
       saveCache(items);
       return items;
     } catch (err) {
@@ -114,6 +157,7 @@ export async function getClient(id: string): Promise<Client | null> {
   if (isSupabaseConfigured()) {
     const { data, error } = await supabase!.from("clients").select("*").eq("id", id).maybeSingle();
     if (error) throw error;
+    // fromRow penuh — detail view butuh foto
     return data ? fromRow(data) : null;
   }
   return loadCache().find((c) => c.id === id) ?? null;
@@ -121,19 +165,28 @@ export async function getClient(id: string): Promise<Client | null> {
 
 export async function createClient(draft: ClientDraft): Promise<Client> {
   const now = new Date().toISOString();
-  // Auto-attribute klien ke agent (kalau current user agent & belum di-set).
   const me = useAuthStore.getState().user;
   const enriched: ClientDraft =
     me?.role === "agent" && draft.createdByAgent == null
       ? { ...draft, createdByAgent: me.id }
       : draft;
 
+  // Auto-upload foto base64 → Storage sebelum simpan ke DB
+  const resolvedPhoto = await resolvePhoto(
+    enriched.photoDataUrl,
+    `new-${Date.now()}`,
+    enriched.passportNumber,
+  );
+  const finalDraft = resolvedPhoto !== enriched.photoDataUrl
+    ? { ...enriched, photoDataUrl: resolvedPhoto }
+    : enriched;
+
   if (isSupabaseConfigured()) {
     const agencyId = requireAgencyId();
     const { data, error } = await withTimeout(
       supabase!
         .from("clients")
-        .insert(toRow(enriched, agencyId))
+        .insert(toRow(finalDraft, agencyId))
         .select("*")
         .single(),
     );
@@ -143,7 +196,7 @@ export async function createClient(draft: ClientDraft): Promise<Client> {
     return c;
   }
   const c: Client = {
-    ...enriched,
+    ...finalDraft,
     id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     createdAt: now,
     updatedAt: now,
@@ -153,11 +206,21 @@ export async function createClient(draft: ClientDraft): Promise<Client> {
 }
 
 export async function updateClient(id: string, patch: Partial<Client>): Promise<Client> {
+  // Auto-upload foto base64 → Storage sebelum update ke DB
+  const resolvedPhoto = await resolvePhoto(
+    patch.photoDataUrl,
+    id,
+    patch.passportNumber,
+  );
+  const finalPatch = resolvedPhoto !== patch.photoDataUrl
+    ? { ...patch, photoDataUrl: resolvedPhoto }
+    : patch;
+
   if (isSupabaseConfigured()) {
     const { data, error } = await withTimeout(
       supabase!
         .from("clients")
-        .update(toRow(patch))
+        .update(toRow(finalPatch))
         .eq("id", id)
         .select("*")
         .single(),
@@ -170,7 +233,7 @@ export async function updateClient(id: string, patch: Partial<Client>): Promise<
   const all = loadCache();
   const idx = all.findIndex((c) => c.id === id);
   if (idx === -1) throw new Error("Client not found");
-  const updated = { ...all[idx], ...patch, updatedAt: new Date().toISOString() };
+  const updated = { ...all[idx], ...finalPatch, updatedAt: new Date().toISOString() };
   all[idx] = updated;
   saveCache(all);
   return updated;

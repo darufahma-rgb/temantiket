@@ -154,6 +154,19 @@ const jamaahFromRow = (r: Record<string, unknown>): Jamaah => ({
   paymentStatus: coercePaymentStatus(r.payment_status),
   createdAt: String(r.created_at ?? new Date().toISOString()),
 });
+
+/**
+ * Lean mapper untuk list/bulk queries — strip base64 photos, hanya simpan
+ * Storage URL. Ini mencegah ratusan KB per jamaah masuk ke localStorage cache.
+ * Setelah migration selesai (semua foto sudah di Storage), ini jadi no-op.
+ */
+const jamaahFromRowList = (r: Record<string, unknown>): Jamaah => {
+  const j = jamaahFromRow(r);
+  if (isDataUrl(j.photoDataUrl)) {
+    return { ...j, photoDataUrl: undefined };
+  }
+  return j;
+};
 const jamaahToRow = (j: Jamaah, agencyId?: string) => ({
   id: j.id, trip_id: j.tripId, name: j.name, phone: j.phone,
   birth_date: j.birthDate, passport_number: j.passportNumber, gender: j.gender,
@@ -263,7 +276,8 @@ export async function listAllAgencyJamaah(): Promise<Jamaah[]> {
   if (isSupabaseConfigured()) {
     const { data, error } = await supabase!.from("jamaah").select("*");
     if (error) throw error;
-    return (data ?? []).map(jamaahFromRow);
+    // jamaahFromRowList: strip base64 photos — hanya simpan Storage URL di cache
+    return (data ?? []).map(jamaahFromRowList);
   }
   return load<Jamaah>(JAMAAH_KEY, []);
 }
@@ -272,8 +286,9 @@ export async function listJamaah(tripId: string): Promise<Jamaah[]> {
   if (isSupabaseConfigured()) {
     const { data, error } = await supabase!.from("jamaah").select("*").eq("trip_id", tripId);
     if (error) throw error;
-    const list = (data ?? []).map(jamaahFromRow);
-    // Merge into local cache (keep other trips' jamaah)
+    // jamaahFromRowList: strip base64 photos di list — foto full tersedia di
+    // getJamaah() untuk detail view. Setelah migration, ini no-op.
+    const list = (data ?? []).map(jamaahFromRowList);
     const others = load<Jamaah>(JAMAAH_KEY, []).filter((j) => j.tripId !== tripId);
     save(JAMAAH_KEY, [...others, ...list]);
     return list;
