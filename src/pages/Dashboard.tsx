@@ -15,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Calendar } from "@/components/ui/calendar";
 import { Plus, MapPin, Calendar as CalendarIcon, Trash2, Plane, Camera, Calculator, Users, CheckCircle, TrendingUp, ArrowRight, FileBarChart, Bus, Train, AlertCircle, Clock, Star, ChevronRight, Wallet, RefreshCw, ShoppingBag, Search, Package, Sparkles, SlidersHorizontal } from "lucide-react";
 import { useTripsStore, type Trip } from "@/store/tripsStore";
-import { listAllAgencyJamaah } from "@/features/trips/tripsRepo";
+import { listAllAgencyJamaah, countAllAgencyJamaah } from "@/features/trips/tripsRepo";
 import { listAllAgencyPayments, sumPaid, type Payment } from "@/features/payments/paymentsRepo";
 import type { Jamaah } from "@/features/trips/tripsRepo";
 import { useRatesStore } from "@/store/ratesStore";
@@ -737,8 +737,8 @@ export default function Dashboard() {
   useEffect(() => { void fetchClients(); }, [fetchClients]);
   useEffect(() => {
     let alive = true;
-    listAllAgencyJamaah()
-      .then((rows) => { if (alive) setTotalJamaah(rows.length); })
+    countAllAgencyJamaah()
+      .then((n) => { if (alive) setTotalJamaah(n); })
       .catch(() => { if (alive) setTotalJamaah(0); });
     return () => { alive = false; };
   }, [trips.length]);
@@ -747,12 +747,12 @@ export default function Dashboard() {
     if (refreshing) return;
     setRefreshing(true);
     try {
-      const [, , jamaah] = await Promise.all([
+      const [, , count] = await Promise.all([
         fetchTrips(),
         refreshPackages(),
-        listAllAgencyJamaah().catch(() => [] as Jamaah[]),
+        countAllAgencyJamaah().catch(() => 0),
       ]);
-      setTotalJamaah(jamaah.length);
+      setTotalJamaah(count);
       toast.success("Data dashboard diperbarui dari Supabase.");
     } catch (err) {
       toast.error(`Gagal memuat ulang: ${err instanceof Error ? err.message : String(err)}`);

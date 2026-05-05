@@ -275,15 +275,40 @@ export async function deleteTrip(id: string): Promise<void> {
 
 // ── JAMAAH ──────────────────────────────────────────────────────────────────
 
+/**
+ * Fetch semua jamaah di agency (lintas trip). Projection dibatasi ke kolom
+ * minimum yang dibutuhkan call site — jangan expand ke select("*") karena
+ * ini bisa menarik ratusan baris dengan payload besar (foto base64, dokumen).
+ *
+ * ⚠️  Jangan panggil di setiap mount komponen. Panggil sekali saat init atau
+ * saat user trigger refresh manual. Untuk kebutuhan count saja, gunakan
+ * `countAllAgencyJamaah()` yang jauh lebih ringan (tidak transfer baris).
+ */
 export async function listAllAgencyJamaah(): Promise<Jamaah[]> {
   if (isSupabaseConfigured()) {
     const { data, error } = await supabase!
       .from("jamaah")
-      .select("id,trip_id,name,phone,birth_date,passport_number,passport_expiry,gender,needs_review,booking_code,payment_status,created_at");
+      .select("id,trip_id,name,payment_status,created_at");
     if (error) throw error;
     return (data ?? []).map(jamaahFromRowList);
   }
   return load<Jamaah>(JAMAAH_KEY, []);
+}
+
+/**
+ * Hitung jumlah total jamaah di agency tanpa menarik semua baris.
+ * Gunakan sebagai pengganti `listAllAgencyJamaah().length` supaya tidak
+ * mengunduh payload penuh hanya untuk mendapatkan angka.
+ */
+export async function countAllAgencyJamaah(): Promise<number> {
+  if (isSupabaseConfigured()) {
+    const { count, error } = await supabase!
+      .from("jamaah")
+      .select("*", { count: "exact", head: true });
+    if (error) throw error;
+    return count ?? 0;
+  }
+  return load<Jamaah>(JAMAAH_KEY, []).length;
 }
 
 export async function listJamaah(tripId: string): Promise<Jamaah[]> {
