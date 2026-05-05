@@ -91,6 +91,7 @@ export function MitraLeaderboardCard() {
         return {
           agentId,
           name: member?.displayName ?? `Agent ${agentId.slice(0, 6)}…`,
+          photoUrl: member?.photoUrl,
           profit: v.profit,
           orders: v.orders,
           commission,
@@ -185,7 +186,15 @@ export function MitraLeaderboardCard() {
             )}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[14px] leading-none">{medals[i]}</span>
+              <div className="flex items-center gap-1">
+                {row.photoUrl ? (
+                  <div className="h-5 w-5 rounded-full overflow-hidden shrink-0">
+                    <img src={row.photoUrl} alt={row.name} className="h-full w-full object-cover" />
+                  </div>
+                ) : (
+                  <span className="text-[14px] leading-none">{medals[i]}</span>
+                )}
+              </div>
               <span className="text-[9.5px] font-mono font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full">
                 ⭐ {row.lifetimePoints}
               </span>

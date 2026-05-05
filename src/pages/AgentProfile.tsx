@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Trophy, Users, ShoppingBag, TrendingUp,
   Wallet, CheckCircle, Clock, UserCircle, ExternalLink,
+  Camera, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
@@ -16,12 +17,16 @@ import type { MissionSubmission } from "@/features/missions/types";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, type OrderType } from "@/features/orders/ordersRepo";
 import { revenueIDR, fmtIDR } from "@/lib/profit";
+import { uploadAvatar, savePhotoUrl, loadPhotoUrl } from "@/lib/avatarStorage";
 
 export default function AgentProfile() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const { orders, fetchOrders } = useOrdersStore();
   const { clients, fetchClients } = useClientsStore();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   const [points, setPoints] = useState<AgentPoint[]>([]);
   const [missionSubs, setMissionSubs] = useState<MissionSubmission[]>([]);
@@ -50,6 +55,40 @@ export default function AgentProfile() {
     const unsub = onMissionsChanged(() => { void refreshMissions(); });
     return unsub;
   }, [refreshMissions]);
+
+  // Load photo from Supabase (with localStorage fallback)
+  useEffect(() => {
+    if (!user?.id) return;
+    const localKey = `igh.profile.photo.${user.id}`;
+    // Show localStorage immediately while Supabase loads
+    try {
+      const local = localStorage.getItem(localKey);
+      if (local) setPhotoUrl(local);
+    } catch { /* ignore */ }
+    void loadPhotoUrl(user.id).then((url) => {
+      if (url) setPhotoUrl(url);
+    });
+  }, [user?.id]);
+
+  const handlePhotoFile = async (file: File) => {
+    if (!user?.id) return;
+    if (!file.type.startsWith("image/")) { return; }
+    setPhotoUploading(true);
+    try {
+      const url = await uploadAvatar(user.id, file);
+      await savePhotoUrl(user.id, url);
+      setPhotoUrl(url);
+      // Update localStorage cache too
+      try { localStorage.setItem(`igh.profile.photo.${user.id}`, url); } catch { /* ignore */ }
+      const { toast } = await import("sonner");
+      toast.success("Foto profil diperbarui!");
+    } catch (e: unknown) {
+      const { toast } = await import("sonner");
+      toast.error(`Gagal upload foto: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
 
   const myOrders = useMemo(
     () => orders.filter((o) => o.createdByAgent === user?.id),
@@ -113,11 +152,6 @@ export default function AgentProfile() {
     return months.map((m) => ({ ...m, pct: m.count / max }));
   }, [myOrders]);
 
-  const profilePhoto = (() => {
-    if (!user?.id) return null;
-    try { return localStorage.getItem(`igh.profile.photo.${user.id}`); } catch { return null; }
-  })();
-
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
       <button
@@ -135,15 +169,44 @@ export default function AgentProfile() {
         className={`rounded-3xl bg-gradient-to-br ${tier.gradient} p-5 md:p-6 text-white shadow-lg`}
       >
         <div className="flex items-start gap-4">
-          <div className="h-16 w-16 rounded-2xl bg-white/20 border-2 border-white/40 overflow-hidden shrink-0 flex items-center justify-center backdrop-blur">
-            {profilePhoto ? (
-              <img src={profilePhoto} alt="foto" className="h-full w-full object-cover" />
+          {/* Avatar with upload overlay */}
+          <button
+            type="button"
+            onClick={() => photoInputRef.current?.click()}
+            disabled={photoUploading}
+            className="relative group shrink-0 cursor-pointer disabled:cursor-default"
+            title="Klik untuk ganti foto"
+          >
+            <div className="h-16 w-16 rounded-2xl bg-white/20 border-2 border-white/40 overflow-hidden flex items-center justify-center backdrop-blur">
+              {photoUrl ? (
+                <img src={photoUrl} alt="foto" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-2xl font-extrabold">
+                  {(user?.displayName ?? "?").charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+            {photoUploading ? (
+              <div className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center">
+                <RefreshCw className="h-5 w-5 text-white animate-spin" />
+              </div>
             ) : (
-              <span className="text-2xl font-extrabold">
-                {(user?.displayName ?? "?").charAt(0).toUpperCase()}
-              </span>
+              <div className="absolute inset-0 rounded-2xl bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="h-5 w-5 text-white" />
+              </div>
             )}
-          </div>
+          </button>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void handlePhotoFile(f);
+              e.target.value = "";
+            }}
+          />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20 backdrop-blur">

@@ -816,9 +816,13 @@ export default function AgentCommandCenter() {
                             <td className="px-3 py-3 text-center text-base">{rankOf(rank)}</td>
                             <td className="px-3 py-3">
                               <div className="flex items-center gap-2.5">
-                                <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-                                  style={{ background: agent.color }}>
-                                  {agent.displayName.charAt(0).toUpperCase()}
+                                <div className="h-8 w-8 rounded-full overflow-hidden flex items-center justify-center text-white text-sm font-bold shrink-0"
+                                  style={{ background: agent.photoUrl ? "transparent" : agent.color }}>
+                                  {agent.photoUrl ? (
+                                    <img src={agent.photoUrl} alt={agent.displayName} className="h-full w-full object-cover" />
+                                  ) : (
+                                    agent.displayName.charAt(0).toUpperCase()
+                                  )}
                                 </div>
                                 <div className="min-w-0">
                                   <div className="font-semibold text-[13px] truncate max-w-[140px]">{agent.displayName}</div>

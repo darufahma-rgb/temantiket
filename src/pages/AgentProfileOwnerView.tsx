@@ -15,7 +15,7 @@
  *   - orders (via ordersStore) filtered by createdByAgent
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -23,7 +23,7 @@ import {
   Target, CheckCircle2, XCircle, Clock, Send, Eye,
   Mail, Calendar, AlertCircle,
   Crown, BarChart3, MessageCircle, ChevronRight, Loader2,
-  Star,
+  Star, Camera, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -42,6 +42,7 @@ import { sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
 import { revenueIDR, fmtIDR } from "@/lib/profit";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { uploadAvatar, savePhotoUrl } from "@/lib/avatarStorage";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -295,6 +296,10 @@ export default function AgentProfileOwnerView() {
   const [loading, setLoading] = useState(true);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [missionFilter, setMissionFilter] = useState<"all" | "pending" | "approved" | "none">("all");
+  const [agentPhotoUrl, setAgentPhotoUrl] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const isOwner = user?.role === "owner";
 
   const agencyId = user?.agencyId ?? "";
   const ownerId = user?.id ?? "";
@@ -315,6 +320,7 @@ export default function AgentProfileOwnerView() {
 
         const found = members.find((m) => m.userId === agentId) ?? null;
         setAgent(found);
+        if (found?.photoUrl) setAgentPhotoUrl(found.photoUrl);
         setAllPoints(pts);
         setMissions(ms);
         setSubmissions(subs);
@@ -391,6 +397,22 @@ export default function AgentProfileOwnerView() {
     [submissions],
   );
 
+  const handlePhotoFile = async (file: File) => {
+    if (!agentId) return;
+    if (!file.type.startsWith("image/")) return;
+    setPhotoUploading(true);
+    try {
+      const url = await uploadAvatar(agentId, file);
+      await savePhotoUrl(agentId, url);
+      setAgentPhotoUrl(url);
+      toast.success("Foto agen diperbarui!");
+    } catch (e: unknown) {
+      toast.error(`Gagal upload foto: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
   async function handleReview(submissionId: string, action: "approved" | "rejected") {
     setReviewing(submissionId);
     const ok = await reviewSubmission(submissionId, action, ownerId);
@@ -452,11 +474,57 @@ export default function AgentProfileOwnerView() {
         className={`rounded-3xl bg-gradient-to-br ${tier.gradient} p-5 md:p-6 text-white shadow-lg`}
       >
         <div className="flex items-start gap-4">
-          {/* Avatar */}
-          <div className="h-16 w-16 rounded-2xl bg-white/20 border-2 border-white/40 flex items-center justify-center backdrop-blur shrink-0">
-            <span className="text-2xl font-extrabold">
-              {agent.displayName.charAt(0).toUpperCase()}
-            </span>
+          {/* Avatar with optional owner upload */}
+          <div className="relative shrink-0">
+            {isOwner ? (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={photoUploading}
+                className="relative group cursor-pointer disabled:cursor-default"
+                title="Klik untuk ganti foto agen"
+              >
+                <div className="h-16 w-16 rounded-2xl bg-white/20 border-2 border-white/40 overflow-hidden flex items-center justify-center backdrop-blur">
+                  {agentPhotoUrl ? (
+                    <img src={agentPhotoUrl} alt="foto" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-extrabold">
+                      {agent.displayName.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                {photoUploading ? (
+                  <div className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center">
+                    <RefreshCw className="h-5 w-5 text-white animate-spin" />
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 rounded-2xl bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="h-5 w-5 text-white" />
+                  </div>
+                )}
+              </button>
+            ) : (
+              <div className="h-16 w-16 rounded-2xl bg-white/20 border-2 border-white/40 overflow-hidden flex items-center justify-center backdrop-blur">
+                {agentPhotoUrl ? (
+                  <img src={agentPhotoUrl} alt="foto" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-2xl font-extrabold">
+                    {agent.displayName.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+            )}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void handlePhotoFile(f);
+                e.target.value = "";
+              }}
+            />
           </div>
 
           {/* Info */}

@@ -1,0 +1,42 @@
+You are adding a profile photo upload feature for agents in a Vite + React + TypeScript + Supabase project.
+
+### Requirements:
+
+1. **Fitur Upload Foto Profil**
+   - Agen bisa mengganti fotonya sendiri dari halaman Profile Agen.
+   - Owner juga bisa mengganti foto agen dari halaman Agent Center.
+   - Gunakan Supabase Storage untuk menyimpan foto.
+
+2. **Database**
+   - Cek apakah tabel `profiles` atau `agency_members` sudah memiliki kolom untuk foto (contoh: `photo_url`, `avatar_url`, atau `image_url`).
+   - Jika belum ada, tambahkan kolom tersebut (bisa pakai migration atau langsung di Supabase Dashboard).
+   - Update data foto ke kolom tersebut setelah upload berhasil.
+
+3. **UI/UX**
+   - Tambahkan tombol **"Ganti Foto"** atau ikon edit di avatar agen di halaman Profile Agen.
+   - Tampilkan preview foto setelah dipilih sebelum di-upload.
+   - Tampilkan foto profil (bukan hanya inisial) setelah berhasil diupload.
+   - Berikan loading state saat proses upload.
+
+4. **Tampilan Foto di Tempat Lain**
+   - Foto profil agen harus muncul di:
+     - Halaman Daftar Agen
+     - Leaderboard Mitra
+     - Komponen lain yang menampilkan data agen (jika ada)
+
+5. **Keamanan**
+   - Pastikan hanya user yang berhak yang bisa upload (agen itu sendiri atau owner).
+   - Gunakan RLS policy yang sesuai di Supabase Storage dan tabel database.
+
+6. **Teknis**
+   - Gunakan Supabase Storage bucket (bisa pakai bucket yang sudah ada atau buat baru, misalnya `avatars`).
+   - Buat helper function untuk upload file ke Supabase Storage.
+   - Setelah upload berhasil, update kolom foto di database.
+   - Hapus foto lama di storage jika agen mengganti foto (opsional, tapi lebih baik).
+
+### Hasil yang Diharapkan:
+- Agen dan Owner bisa mengganti foto profil.
+- Foto muncul di Profile Agen, Daftar Agen, dan Leaderboard.
+- Proses upload berjalan dengan baik dan memberikan feedback ke user.
+
+Mulai dengan mengecek struktur database terlebih dahulu (apakah sudah ada kolom foto atau belum), lalu lanjut ke implementasi upload dan tampilan.

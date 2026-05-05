@@ -61,6 +61,7 @@ export interface MemberInfo {
   /** Komisi % — dipake utk hitung profit bersih agent di Reports. */
   commissionPct: number;
   createdAt: string;
+  photoUrl?: string;
 }
 
 interface AuthState {
@@ -383,14 +384,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // 2. Bulk-fetch profile rows (full_name + email) untuk semua user_id di
     //    agency ini. RLS udah ngebolehin baca profile sesama agency.
     const userIds = rows.map((r) => r.user_id);
-    const profilesById = new Map<string, { full_name: string; email: string }>();
+    const profilesById = new Map<string, { full_name: string; email: string; photo_url: string | null }>();
     try {
       const { data: profiles } = await supabase
-        .from("profiles").select("id, full_name, email").in("id", userIds);
-      for (const p of (profiles ?? []) as Array<{ id: string; full_name: string | null; email: string | null }>) {
+        .from("profiles").select("id, full_name, email, photo_url").in("id", userIds);
+      for (const p of (profiles ?? []) as Array<{ id: string; full_name: string | null; email: string | null; photo_url?: string | null }>) {
         profilesById.set(p.id, {
           full_name: (p.full_name ?? "").trim(),
           email: (p.email ?? "").trim(),
+          photo_url: p.photo_url ?? null,
         });
       }
     } catch {
@@ -415,6 +417,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         role: m.role as UserRole,
         commissionPct: Number((m as { commission_pct?: number }).commission_pct ?? 0) || 0,
         createdAt: m.created_at,
+        photoUrl: prof?.photo_url ?? undefined,
       };
     });
   },
