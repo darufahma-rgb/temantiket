@@ -248,7 +248,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 className={`absolute inset-0 overflow-auto ${
                   noPadding
                     ? "pt-[74px] pb-[88px] md:pt-0 md:pb-0"
-                    : "px-4 pt-[74px] pb-[88px] md:px-8 md:py-7"
+                    : "px-4 pt-[74px] pb-[88px] md:pl-10 md:pr-8 md:py-7"
                 }`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
