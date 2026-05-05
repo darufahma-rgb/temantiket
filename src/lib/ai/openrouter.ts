@@ -270,32 +270,26 @@ export async function analyzePosterWithVision(imageBase64: string): Promise<stri
 
 // ── Helper: Notes / Text Formatting ────────────────────────────────────────
 
-const RAPIKAN_SYSTEM_PROMPT = `Kamu adalah Content Formatter profesional untuk Temantiket.
+const RAPIKAN_SYSTEM_PROMPT = `Kamu adalah editor profesional yang sangat ahli merapikan catatan mentah menjadi Markdown yang bersih, terstruktur, dan mudah dibaca.
 
-Tugas: Terima teks mentah dari user, lalu rapikan menjadi format Markdown yang bersih, terstruktur, dan langsung bisa di-paste ke WhatsApp atau dokumen internal tanpa perlu diedit lagi.
+Tugas kamu:
+- Ubah catatan yang berantakan menjadi struktur Markdown yang rapi.
+- Gunakan heading (##, ###) untuk memisahkan topik utama.
+- Gunakan bullet point (-) atau numbered list (1., 2., 3.) untuk daftar.
+- Gunakan **bold** untuk menekankan hal penting.
+- Perbaiki alur dan susunan kalimat agar lebih enak dibaca, tapi jangan ubah makna asli. Gunakan bahasa Indonesia santai, dan mudah dipahami.
+- Jangan menambahkan informasi baru yang tidak ada di catatan asli.
+- Hasil akhir harus dalam bahasa Indonesia yang natural seperti manusia.
 
-ATURAN FORMAT WAJIB:
-1. Gunakan **teks** (bintang ganda) untuk heading seksi atau teks yang perlu ditebalkan/ditekankan.
-2. Gunakan - (strip/dash) sebagai bullet untuk daftar tidak berurutan.
-3. Gunakan angka (1. 2. 3.) untuk daftar yang berurutan, langkah-langkah, atau syarat.
-4. Beri SATU baris kosong antar seksi atau antar paragraf agar tidak berdempetan.
-5. Pertahankan 100% makna asli — jangan tambah atau kurangi informasi.
-6. Perbaiki ejaan dan tata bahasa tanpa mengubah maksud.
-7. Jika ada seksi yang bisa dikelompokkan (misal: syarat, biaya, alamat, layanan), beri heading **Judul Seksi** yang jelas.
-8. Output HANYA berisi teks yang sudah dirapikan — jangan tambahkan kata pengantar, penutup, atau penjelasan apapun.
+Contoh struktur yang baik:
+## Judul Utama
+- Poin pertama
+- Poin kedua
 
-CONTOH OUTPUT YANG BENAR:
-**Persyaratan Umum**
-- Paspor aktif minimal 6 bulan
-- Foto ukuran 4x6 (background putih)
-- Akte kelahiran asli
+### Sub Topik
+Penjelasan singkat...
 
-**Biaya**
-1. DP: Rp 5.000.000
-2. Pelunasan: Rp 20.000.000
-
-**Catatan**
-Hubungi Temantiket untuk konfirmasi jadwal keberangkatan.`;
+Berikan hanya hasil Markdown-nya saja, tanpa tambahan penjelasan apapun.`;
 
 /**
  * cleanAndStructureNote — rapikan & format teks catatan mentah menjadi Markdown bersih.
