@@ -142,20 +142,17 @@ async function loadCurrentUser(): Promise<AuthUser | null> {
 
   if (!agencyId) return null;
 
-  // Resolve displayName dgn priority:
-  //   1. public.profiles.full_name (otoritatif, di-update via Settings)
-  //   2. auth.users.user_metadata.display_name (di-set saat invite/bootstrap)
-  //   3. email prefix sbg fallback terakhir
-  const meta = (session.user.user_metadata ?? {}) as { display_name?: string };
-  let displayName = meta.display_name?.trim() || session.user.email?.split("@")[0] || "User";
-  try {
-    const { data: profile } = await supabase
-      .from("profiles").select("full_name").eq("id", session.user.id).maybeSingle();
-    const fn = (profile as { full_name?: string } | null)?.full_name?.trim();
-    if (fn) displayName = fn;
-  } catch {
-    // Profile table mungkin belum di-migrate — fallback ke metadata aja.
-  }
+  // Resolve displayName dari JWT user_metadata — zero extra round-trip.
+  // Priority:
+  //   1. user_metadata.full_name    (di-update via Settings → auth.updateUser)
+  //   2. user_metadata.display_name (di-set saat invite / bootstrap)
+  //   3. email prefix sebagai fallback terakhir
+  const meta = (session.user.user_metadata ?? {}) as { full_name?: string; display_name?: string };
+  const displayName =
+    meta.full_name?.trim() ||
+    meta.display_name?.trim() ||
+    session.user.email?.split("@")[0] ||
+    "User";
   return {
     id: session.user.id,
     email: session.user.email ?? "",

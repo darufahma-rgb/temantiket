@@ -248,6 +248,19 @@ export default function Settings() {
   const [pinConfirm, setPinConfirm] = useState("");
   const [pinLoading, setPinLoading] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [savingName, setSavingName] = useState(false);
+
+  // Inisialisasi form profil dari store — dijalankan sekali saat user tersedia.
+  useEffect(() => {
+    if (user) {
+      setProfile((p) => ({
+        ...p,
+        name: p.name || user.displayName || "",
+        email: p.email || user.email || "",
+        agency: p.agency || user.agencyName || "",
+      }));
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (tab === "agents") {
@@ -267,6 +280,40 @@ export default function Settings() {
       setLoginHistory(getLoginHistory());
     }
   }, [tab]);
+
+  const handleSaveProfileName = async () => {
+    const newName = profile.name.trim();
+    if (!newName) { toast.error("Nama tidak boleh kosong."); return; }
+    if (!supabase || !user) { toast.error("Belum login."); return; }
+    setSavingName(true);
+    try {
+      // 1. Update JWT user_metadata — sumber utama yang dibaca loadCurrentUser()
+      const { error: authErr } = await supabase.auth.updateUser({
+        data: { full_name: newName },
+      });
+      if (authErr) throw authErr;
+
+      // 2. Update profiles table (background, non-blocking) — dipakai listMembers()
+      //    untuk menampilkan nama anggota sesama agency.
+      void supabase
+        .from("profiles")
+        .upsert({ id: user.id, full_name: newName }, { onConflict: "id" })
+        .then(({ error }) => {
+          if (error) console.warn("[Settings] profiles upsert:", error.message);
+        });
+
+      // 3. Update in-memory store langsung — tidak perlu reload sesi.
+      useAuthStore.setState((s) =>
+        s.user ? { user: { ...s.user, displayName: newName } } : {},
+      );
+
+      toast.success("Nama profil berhasil disimpan.");
+    } catch (e: any) {
+      toast.error(`Gagal menyimpan nama: ${e?.message ?? e}`);
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const handleInviteMember = async () => {
     if (!newMemberEmail || !newMemberName || !newMemberPass) {
@@ -592,6 +639,17 @@ export default function Settings() {
                   className="w-full rounded-xl border border-[hsl(var(--border))] bg-white px-3 py-2 text-[13px] md:text-sm resize-none focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))]"
                 />
               </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSaveProfileName}
+                disabled={savingName || !profile.name.trim()}
+                className="h-8 px-4 rounded-xl text-xs gradient-primary text-white"
+              >
+                <Save strokeWidth={1.5} className="h-3 w-3 mr-1.5" />
+                {savingName ? "Menyimpan…" : "Simpan Nama"}
+              </Button>
             </div>
 
             {/* ── Temantiket Settings: Kontak Admin (muncul di footer PDF penawaran) ── */}
