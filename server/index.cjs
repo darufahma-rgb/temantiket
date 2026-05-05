@@ -10,9 +10,39 @@ const PORT = process.env.PORT || 3001;
 const SUPABASE_URL = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
 const SUPABASE_ANON_KEY = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
 const SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
-// Prefer Replit AI Integration key, fall back to user-supplied OPENAI_API_KEY
+
+// ── OpenRouter (primary) ─────────────────────────────────────────────────────
+// OCR Paspor  → google/gemini-2.0-flash-001  (vision, murah, cepat)
+// AI Chat     → openai/gpt-4.1               (terbaru, stabil)
+// Teks umum   → bytedance/seed-2.0-mini      (sangat murah, cepat)
+const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+
+// ── OpenAI (fallback jika OPENROUTER_API_KEY tidak di-set) ──────────────────
 const OPENAI_API_KEY = (process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '').trim();
 const OPENAI_BASE_URL = (process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || 'https://api.openai.com/v1').trim();
+
+// Helper: pilih provider yang aktif
+const AI_KEY     = OPENROUTER_API_KEY || OPENAI_API_KEY;
+const AI_BASE    = OPENROUTER_API_KEY ? OPENROUTER_BASE_URL : OPENAI_BASE_URL;
+const USE_OR     = !!OPENROUTER_API_KEY; // true = pakai OpenRouter
+
+// Model mapping
+const MODEL_OCR  = USE_OR ? 'google/gemini-2.0-flash-001'  : 'gpt-4.1-nano';    // vision
+const MODEL_CHAT = USE_OR ? 'openai/gpt-4.1'               : 'gpt-4.1';          // AI chat
+const MODEL_TEXT = USE_OR ? 'bytedance/seed-2.0-mini'      : 'gpt-4.1-nano';     // teks ringan
+
+// Header tambahan yang direkomendasikan OpenRouter
+function openrouterHeaders(apiKey) {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`,
+    ...(USE_OR ? {
+      'HTTP-Referer': 'https://temantiket.replit.app',
+      'X-Title': 'Temantiket',
+    } : {}),
+  };
+}
 
 const app = express();
 app.use(cors());
@@ -491,8 +521,8 @@ app.post('/api/export/igh', async (req, res) => {
 ────────────────────────────────────────────── */
 app.post('/api/ocr-passport', async (req, res) => {
   try {
-    if (!OPENAI_API_KEY) {
-      return err(res, 503, 'OPENAI_API_KEY belum di-set. Tambahkan di Replit Secrets.');
+    if (!AI_KEY) {
+      return err(res, 503, 'OPENROUTER_API_KEY belum di-set. Tambahkan di Replit Secrets → OPENROUTER_API_KEY.');
     }
 
     const authHeader = req.headers.authorization;
@@ -517,6 +547,12 @@ app.post('/api/ocr-passport', async (req, res) => {
       return err(res, 400, 'Image terlalu besar (>6 MB), tolong di-compress dulu');
     }
 
+    // Model: google/gemini-2.0-flash-001 via OpenRouter
+    // ✓ Vision-capable (bisa lihat gambar paspor)
+    // ✓ Sangat murah (~$0.10/1M token)
+    // ✓ Respons cepat (<2 detik)
+    // Note: bytedance/seed-2.0-mini adalah model TEKS saja (tidak mendukung vision/gambar),
+    //       sehingga tidak bisa dipakai untuk OCR paspor. Seed-2.0-mini dipakai di tugas teks ringan.
     const SYSTEM_PROMPT = `You are an OCR engine specialized in reading the Machine Readable Zone (MRZ) of international passports (ICAO 9303 TD3 format, two lines of 44 characters each).
 
 Look at the bottom of the passport photo for the MRZ strip. Extract EXACTLY these 5 fields and return ONLY a JSON object (no prose, no markdown fences) with this exact shape:
@@ -538,14 +574,11 @@ Rules:
 - gender must be exactly "L" (laki-laki) or "P" (perempuan), null if unreadable.
 - Return ONLY the JSON object, nothing else.`;
 
-    const openaiRes = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+    const ocrRes = await fetch(`${AI_BASE}/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
+      headers: openrouterHeaders(AI_KEY),
       body: JSON.stringify({
-        model: 'gpt-4.1-nano',
+        model: MODEL_OCR,
         temperature: 0,
         max_tokens: 400,
         response_format: { type: 'json_object' },
@@ -562,22 +595,22 @@ Rules:
       }),
     });
 
-    if (!openaiRes.ok) {
-      const errTxt = await openaiRes.text();
-      return err(res, 502, `OpenAI error: ${errTxt.slice(0, 300)}`);
+    if (!ocrRes.ok) {
+      const errTxt = await ocrRes.text();
+      return err(res, 502, `OCR API error (${MODEL_OCR}): ${errTxt.slice(0, 300)}`);
     }
 
-    const completion = await openaiRes.json();
+    const completion = await ocrRes.json();
     const raw = completion?.choices?.[0]?.message?.content;
     if (!raw || typeof raw !== 'string') {
-      return err(res, 502, 'OpenAI returned empty response');
+      return err(res, 502, 'OCR model returned empty response');
     }
 
     let parsed;
     try { parsed = JSON.parse(raw); }
-    catch { return err(res, 502, 'OpenAI returned invalid JSON'); }
+    catch { return err(res, 502, 'OCR model returned invalid JSON'); }
 
-    const out = { source: 'openai', mrzValid: parsed.mrzValid === true };
+    const out = { source: USE_OR ? 'openrouter' : 'openai', model: MODEL_OCR, mrzValid: parsed.mrzValid === true };
     if (typeof parsed.name === 'string' && parsed.name.trim()) out.name = parsed.name.trim();
     if (typeof parsed.passportNumber === 'string' && parsed.passportNumber.trim()) {
       out.passportNumber = parsed.passportNumber.replace(/[<\s]/g, '').toUpperCase();
@@ -598,35 +631,38 @@ Rules:
 
 /* ──────────────────────────────────────────────
    POST /api/ai/chat
-   Server-side OpenAI proxy — keeps OPENAI_API_KEY off the browser bundle.
-   Accepts a full OpenAI chat-completions request body and proxies it.
+   AI proxy via OpenRouter → openai/gpt-4.1 (default).
+   Menerima body OpenAI chat-completions standar dan meneruskannya.
+   Jika caller tidak set model di body, server inject MODEL_CHAT.
 ────────────────────────────────────────────── */
 app.post('/api/ai/chat', async (req, res) => {
   try {
-    if (!OPENAI_API_KEY) {
-      return err(res, 503, 'OPENAI_API_KEY belum di-set. Tambahkan di Replit Secrets.');
+    if (!AI_KEY) {
+      return err(res, 503, 'OPENROUTER_API_KEY belum di-set. Tambahkan di Replit Secrets.');
     }
 
-    // 90-second hard timeout so the Node.js server never hangs indefinitely
-    // waiting on a slow/unresponsive OpenAI response.
+    // Inject model default jika caller tidak set
+    const bodyWithModel = {
+      ...req.body,
+      model: req.body.model || MODEL_CHAT,
+    };
+
+    // 90-second hard timeout
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 90_000);
 
     try {
-      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+      const response = await fetch(`${AI_BASE}/chat/completions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify(req.body),
+        headers: openrouterHeaders(AI_KEY),
+        body: JSON.stringify(bodyWithModel),
         signal: controller.signal,
       });
       const text = await response.text();
       res.status(response.status).set('Content-Type', 'application/json').send(text);
     } catch (fetchErr) {
       if (fetchErr.name === 'AbortError') {
-        return err(res, 504, 'OpenAI request timeout (90 s) — coba lagi.');
+        return err(res, 504, 'AI request timeout (90 s) — coba lagi.');
       }
       throw fetchErr;
     } finally {
@@ -657,6 +693,16 @@ if (isProd) {
 app.listen(PORT, '0.0.0.0', () => {
   const mode = isProd ? 'production' : 'development';
   console.log(`[server] API running on port ${PORT} (${mode})`);
+  if (USE_OR) {
+    console.log(`[server] AI provider  : OpenRouter`);
+    console.log(`[server]   OCR model  : ${MODEL_OCR}`);
+    console.log(`[server]   Chat model : ${MODEL_CHAT}`);
+    console.log(`[server]   Text model : ${MODEL_TEXT}`);
+  } else if (OPENAI_API_KEY) {
+    console.log(`[server] AI provider  : OpenAI (fallback — set OPENROUTER_API_KEY untuk lebih murah)`);
+  } else {
+    console.warn('[server] ⚠️  Tidak ada AI key — fitur OCR dan AI chat tidak akan berfungsi');
+  }
   if (!SERVICE_ROLE_KEY) {
     console.warn('[server] ⚠️  SUPABASE_SERVICE_ROLE_KEY tidak di-set — fitur invite/remove member tidak akan berfungsi');
   }
