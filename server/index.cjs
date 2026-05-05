@@ -242,6 +242,27 @@ app.post('/api/invite-member', async (req, res) => {
     const warnings = [];
     if (profileErr) warnings.push(`profile: ${profileErr.message}`);
 
+    // Auto-create wallet seed record for new agents so their wallet exists
+    // in the database immediately. Non-critical: failure only adds a warning.
+    if (role === 'agent') {
+      const walletSeedId = `wtx-reg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const { error: walletErr } = await withTimeout(
+        admin.from('agent_wallet_transactions').insert({
+          id:           walletSeedId,
+          agency_id:    callerMembership.agency_id,
+          agent_id:     newUserId,
+          type:         'adjustment',
+          points_delta: 0,
+          amount_idr:   0,
+          description:  'Wallet dibuat otomatis saat registrasi agen',
+          created_by:   caller.id,
+          created_at:   new Date().toISOString(),
+        }),
+        10000, 'Timeout saat membuat wallet agen'
+      );
+      if (walletErr) warnings.push(`wallet_seed: ${walletErr.message}`);
+    }
+
     return ok(res, {
       ok: true, userId: newUserId, email, role, fullName,
       ...(warnings.length ? { warnings } : {}),
