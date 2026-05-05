@@ -11,6 +11,7 @@
  */
 
 import { callAI, type CallAIOptions } from "@/lib/aiFetch";
+import { useAIOverrideStore } from "@/store/aiOverrideStore";
 
 // ── Model registry ──────────────────────────────────────────────────────────
 // Satu tempat untuk semua model — ubah di sini kalau mau ganti model.
@@ -178,8 +179,9 @@ export async function generateCaptionFromDetail(params: {
     ? `\n\nNomor WA untuk CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}`
     : "";
 
+  const model = useAIOverrideStore.getState().getModel("caption", OR_MODELS.CAPTION);
   return callAIOpenRouter({
-    model: OR_MODELS.CAPTION,
+    model,
     systemPrompt: CAPTION_SYSTEM_PROMPT,
     prompt: `Buat 1 caption marketing untuk ${categoryPrompt}.\nTone yang diminta: ${toneInstruction}.${detailSection}${waSection}`,
     temperature: 0.85,
@@ -202,8 +204,9 @@ export async function generateCaptionFromPoster(params: {
     ? `\nNomor WA untuk baris CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}`
     : "";
 
+  const model = useAIOverrideStore.getState().getModel("caption", OR_MODELS.VISION);
   return callAIOpenRouter({
-    model: OR_MODELS.VISION,
+    model,
     systemPrompt: POSTER_SYSTEM_PROMPT,
     prompt: `Scan poster ini dan buat 1 caption sesuai struktur dan aturan di instruksi sistem.\nTone: ${toneInstruction}.${waSection}`,
     imageBase64,
@@ -263,8 +266,9 @@ Hubungi Temantiket untuk konfirmasi jadwal keberangkatan.`;
  * Dipakai di fitur "Rapikan" di halaman Catatan.
  */
 export async function cleanAndStructureNote(text: string): Promise<string> {
+  const model = useAIOverrideStore.getState().getModel("notes", OR_MODELS.TEXT_FAST);
   return callAIOpenRouter({
-    model: OR_MODELS.TEXT_FAST,
+    model,
     systemPrompt: RAPIKAN_SYSTEM_PROMPT,
     prompt: `Rapikan catatan berikut:\n\n${text.trim()}`,
     temperature: 0.35,

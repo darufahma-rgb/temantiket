@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { generateCaptionFromDetail, generateCaptionFromPoster } from "@/lib/ai/openrouter";
+import { AIModelToggle } from "@/components/AIModelToggle";
 
 /* ─── Mode ──────────────────────────────────────────────── */
 type Mode = "manual" | "poster";
@@ -422,6 +423,12 @@ export function CaptionGenerator() {
           </p>
         )}
       </Section>
+
+      {/* ── AI Model Toggle ── */}
+      <div className="flex items-center justify-between px-0.5">
+        <span className="text-[11px] text-muted-foreground">Model AI untuk generate caption</span>
+        <AIModelToggle feature="caption" />
+      </div>
 
       {/* ── Generate Button ── */}
       <Button

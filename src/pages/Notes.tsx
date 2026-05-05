@@ -13,6 +13,7 @@ import { useT } from "@/lib/regional";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { pullNotes, upsertNote, deleteNoteCloud, syncNotesFull, type NoteCloud } from "@/lib/cloudSync";
 import { cleanAndStructureNote } from "@/lib/ai/openrouter";
+import { AIModelToggle } from "@/components/AIModelToggle";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -441,18 +442,21 @@ export default function Notes() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => setShowAddForm(!showAddForm)}
-          size="sm"
-          className="gap-1.5 rounded-xl gradient-primary text-white"
-        >
+        <div className="flex items-center gap-2">
+          <AIModelToggle feature="notes" />
+          <Button
+            onClick={() => setShowAddForm(!showAddForm)}
+            size="sm"
+            className="gap-1.5 rounded-xl gradient-primary text-white"
+          >
           {showAddForm ? (
             <X className="h-3.5 w-3.5" />
           ) : (
             <Plus className="h-3.5 w-3.5" />
           )}
           {showAddForm ? t.notes_close_btn : t.notes_new_btn}
-        </Button>
+          </Button>
+        </div>
       </div>
 
       {/* ── Add new note form ── */}
