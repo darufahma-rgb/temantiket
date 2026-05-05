@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   Users, Plus, Search, Phone, Mail, Pencil, Trash2,
   ArrowLeft, ShoppingBag, X, MessageCircle, FileText,
-  ChevronRight, BookOpen,
+  ChevronRight, BookOpen, User, CreditCard, Calendar,
+  MapPin, CalendarClock, CalendarCheck, Building2 as BuildingOffice,
+  UserCheck, AlertTriangle, ScanLine, Loader2, ShieldCheck,
 } from "lucide-react";
-import { PassportScanButton } from "@/components/PassportScanButton";
+import { scanPassport } from "@/lib/ocrPassport";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,13 +34,71 @@ const fmtIDR = (v: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);
 
 interface ClientFormData {
-  name: string; phone: string; email: string;
-  passportNumber: string; birthDate: string; notes: string;
+  name: string;
+  phone: string;
+  email: string;
+  passportNumber: string;
+  birthDate: string;
+  birthPlace: string;
+  passportExpiry: string;
+  passportIssueDate: string;
+  passportIssuingOffice: string;
+  gender: "L" | "P" | "";
+  notes: string;
 }
-const emptyForm: ClientFormData = { name: "", phone: "", email: "", passportNumber: "", birthDate: "", notes: "" };
+
+const emptyForm: ClientFormData = {
+  name: "", phone: "", email: "",
+  passportNumber: "", birthDate: "", birthPlace: "",
+  passportExpiry: "", passportIssueDate: "", passportIssuingOffice: "",
+  gender: "", notes: "",
+};
 
 function clientToForm(c: Client): ClientFormData {
-  return { name: c.name, phone: c.phone ?? "", email: c.email ?? "", passportNumber: c.passportNumber ?? "", birthDate: c.birthDate ?? "", notes: c.notes ?? "" };
+  return {
+    name: c.name,
+    phone: c.phone ?? "",
+    email: c.email ?? "",
+    passportNumber: c.passportNumber ?? "",
+    birthDate: c.birthDate ?? "",
+    birthPlace: c.birthPlace ?? "",
+    passportExpiry: c.passportExpiry ?? "",
+    passportIssueDate: c.passportIssueDate ?? "",
+    passportIssuingOffice: c.passportIssuingOffice ?? "",
+    gender: c.gender ?? "",
+    notes: c.notes ?? "",
+  };
+}
+
+// ── Expiry validation ────────────────────────────────────────────────────────
+function getExpiryStatus(expiry: string): "ok" | "warning" | "expired" | null {
+  if (!expiry) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const exp = new Date(expiry);
+  if (isNaN(exp.getTime())) return null;
+  if (exp < today) return "expired";
+  const sixMonths = new Date(today);
+  sixMonths.setMonth(sixMonths.getMonth() + 6);
+  if (exp < sixMonths) return "warning";
+  return "ok";
+}
+
+// ── Date mask helper: converts YYYY-MM-DD ↔ DD/MM/YYYY ──────────────────────
+function isoToDisplay(iso: string): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  if (y && m && d) return `${d}/${m}/${y}`;
+  return iso;
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result as string);
+    r.onerror = () => rej(r.error);
+    r.readAsDataURL(file);
+  });
 }
 
 // ── Avatar helpers ──────────────────────────────────────────────────────────
@@ -208,7 +268,24 @@ function ClientDetailInner({ id }: { id: string }) {
       </section>
 
       <ClientFormDialog open={editOpen} onOpenChange={setEditOpen} initial={clientToForm(client)} title="Edit Klien"
-        onSubmit={async (form) => { await patchClient(client.id, form); toast.success("Klien diperbarui"); setEditOpen(false); setClient({ ...client, ...form }); }} />
+        onSubmit={async (form) => {
+          await patchClient(client.id, {
+            name: form.name.trim(),
+            phone: form.phone.trim(),
+            email: form.email.trim() || undefined,
+            passportNumber: form.passportNumber.trim() || undefined,
+            birthDate: form.birthDate || undefined,
+            birthPlace: form.birthPlace.trim() || undefined,
+            passportExpiry: form.passportExpiry || undefined,
+            passportIssueDate: form.passportIssueDate || undefined,
+            passportIssuingOffice: form.passportIssuingOffice.trim() || undefined,
+            gender: (form.gender as "L" | "P" | "") || undefined,
+            notes: form.notes.trim() || undefined,
+          });
+          toast.success("Klien diperbarui");
+          setEditOpen(false);
+          setClient({ ...client, ...form });
+        }} />
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
@@ -239,68 +316,258 @@ function InfoRow({ icon, label, value }: { icon?: React.ReactNode; label: string
   );
 }
 
-// ── Form dialog ─────────────────────────────────────────────────────────────
+// ── Date-mask input (DD/MM/YYYY ↔ YYYY-MM-DD) ───────────────────────────────
+function DateMaskInput({
+  value, onChange, placeholder = "DD/MM/YYYY", disabled,
+}: {
+  value: string; onChange: (iso: string) => void; placeholder?: string; disabled?: boolean;
+}) {
+  const [display, setDisplay] = useState(isoToDisplay(value));
+  useEffect(() => { setDisplay(isoToDisplay(value)); }, [value]);
+
+  const handleChange = (raw: string) => {
+    const digits = raw.replace(/\D/g, "").slice(0, 8);
+    let masked = digits;
+    if (digits.length > 2) masked = digits.slice(0, 2) + "/" + digits.slice(2);
+    if (digits.length > 4) masked = digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
+    setDisplay(masked);
+    if (digits.length === 8) {
+      const dd = digits.slice(0, 2), mm = digits.slice(2, 4), yyyy = digits.slice(4, 8);
+      onChange(`${yyyy}-${mm}-${dd}`);
+    } else {
+      onChange("");
+    }
+  };
+
+  return (
+    <Input
+      value={display}
+      onChange={(e) => handleChange(e.target.value)}
+      placeholder={placeholder}
+      maxLength={10}
+      disabled={disabled}
+      className={disabled ? "animate-pulse bg-slate-100" : ""}
+    />
+  );
+}
+
+// ── Skeleton field shimmer ───────────────────────────────────────────────────
+function SkeletonInput() {
+  return <div className="h-9 rounded-md bg-slate-200 animate-pulse w-full" />;
+}
+
+// ── Form dialog ──────────────────────────────────────────────────────────────
 function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit }: {
   open: boolean; onOpenChange: (v: boolean) => void; initial: ClientFormData; title: string;
   onSubmit: (form: ClientFormData) => Promise<void>;
 }) {
   const [form, setForm] = useState<ClientFormData>(initial);
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => { if (open) setForm(initial); }, [open, initial]);
-  const update = <K extends keyof ClientFormData>(k: K, v: ClientFormData[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const update = <K extends keyof ClientFormData>(k: K, v: ClientFormData[K]) =>
+    setForm((f) => ({ ...f, [k]: v }));
+
+  const expiryStatus = getExpiryStatus(form.passportExpiry);
+  const canSave = form.name.trim() && !saving && !scanning && expiryStatus !== "expired";
+
+  const handleScanFile = async (file: File) => {
+    setScanning(true);
+    setScanProgress(0);
+    try {
+      const result = await scanPassport(file, setScanProgress, { aiOnly: true });
+      if (result.name) update("name", result.name);
+      if (result.passportNumber) update("passportNumber", result.passportNumber);
+      if (result.birthDate) update("birthDate", result.birthDate);
+      if (result.expiryDate) update("passportExpiry", result.expiryDate);
+      if (result.gender) update("gender", result.gender);
+      toast.success("Scan selesai!", { description: "Data paspor berhasil dibaca." });
+    } catch (e) {
+      toast.error("Scan gagal", { description: e instanceof Error ? e.message : "Coba foto ulang lebih jelas." });
+    } finally {
+      setScanning(false);
+      setScanProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+    <Dialog open={open} onOpenChange={(v) => { if (!scanning && !saving) onOpenChange(v); }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-1">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <DialogTitle>{title}</DialogTitle>
-              <DialogDescription>Data dasar klien — bisa dipakai ulang utk berbagai jenis order.</DialogDescription>
+              <DialogTitle className="text-base font-bold">{title}</DialogTitle>
+              <DialogDescription className="text-xs">Data dasar klien — bisa dipakai ulang untuk berbagai jenis order.</DialogDescription>
             </div>
-            <PassportScanButton aiOnly label="Scan Paspor" size="sm" className="shrink-0 mt-0.5"
-              onScanned={(data) => {
-                if (data.name) update("name", data.name);
-                if (data.passportNumber) update("passportNumber", data.passportNumber);
-                if (data.birthDate) update("birthDate", data.birthDate);
-              }} />
+            {/* Scan button */}
+            <div className="shrink-0 mt-0.5">
+              <input ref={fileInputRef} type="file" accept="image/*" capture="environment"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleScanFile(f); }} />
+              <Button type="button" variant="outline" size="sm"
+                className="border-sky-300 text-sky-700 hover:bg-sky-50 h-8 px-3 text-xs font-medium"
+                disabled={scanning || saving}
+                onClick={() => fileInputRef.current?.click()}>
+                {scanning ? (
+                  <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Scanning… {scanProgress > 0 ? `${scanProgress}%` : ""}</>
+                ) : (
+                  <><ScanLine className="h-3.5 w-3.5 mr-1.5" />Scan Paspor</>
+                )}
+              </Button>
+            </div>
           </div>
         </DialogHeader>
-        <div className="space-y-3">
-          <Field label="Nama *"><Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Nama lengkap" /></Field>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Telp"><Input value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="08xxx" /></Field>
-            <Field label="Email"><Input value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="email@..." /></Field>
+
+        {/* Scan progress bar */}
+        {scanning && (
+          <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden -mt-1 mb-1">
+            <div className="h-full bg-sky-400 transition-all duration-300 rounded-full"
+              style={{ width: `${Math.max(5, scanProgress)}%` }} />
           </div>
+        )}
+
+        <div className="space-y-3 pt-1">
+          {/* Nama */}
+          <Field label="Nama" required icon={<User className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+            {scanning ? <SkeletonInput /> : (
+              <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Nama lengkap sesuai paspor" />
+            )}
+          </Field>
+
+          {/* Telp + Email */}
           <div className="grid grid-cols-2 gap-2">
-            <Field label="No. Paspor"><Input value={form.passportNumber} onChange={(e) => update("passportNumber", e.target.value)} placeholder="A1234567" /></Field>
-            <Field label="Tgl Lahir"><Input type="date" value={form.birthDate} onChange={(e) => update("birthDate", e.target.value)} /></Field>
+            <Field label="Telp" icon={<Phone className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+              <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="08xxx" disabled={scanning} />
+            </Field>
+            <Field label="Email" icon={<Mail className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+              <Input value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="email@..." disabled={scanning} />
+            </Field>
           </div>
-          <Field label="Catatan">
+
+          {/* Divider: Passport section */}
+          <div className="flex items-center gap-2 pt-1">
+            <div className="h-px flex-1 bg-slate-100" />
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Data Paspor</span>
+            <div className="h-px flex-1 bg-slate-100" />
+          </div>
+
+          {/* No. Paspor + Jenis Kelamin */}
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="No. Paspor" icon={<CreditCard className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+              {scanning ? <SkeletonInput /> : (
+                <Input value={form.passportNumber} onChange={(e) => update("passportNumber", e.target.value.toUpperCase())} placeholder="A1234567" className="font-mono" />
+              )}
+            </Field>
+            <Field label="Jenis Kelamin" icon={<UserCheck className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+              {scanning ? <SkeletonInput /> : (
+                <select value={form.gender}
+                  onChange={(e) => update("gender", e.target.value as "L" | "P" | "")}
+                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                  <option value="">— Pilih —</option>
+                  <option value="L">Laki-laki</option>
+                  <option value="P">Perempuan</option>
+                </select>
+              )}
+            </Field>
+          </div>
+
+          {/* Tgl Lahir + Tempat Lahir */}
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Tgl Lahir" icon={<Calendar className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+              {scanning ? <SkeletonInput /> : (
+                <DateMaskInput value={form.birthDate} onChange={(v) => update("birthDate", v)} />
+              )}
+            </Field>
+            <Field label="Tempat Lahir" icon={<MapPin className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+              <Input value={form.birthPlace} onChange={(e) => update("birthPlace", e.target.value)} placeholder="Kota lahir" disabled={scanning} />
+            </Field>
+          </div>
+
+          {/* Tgl Pengeluaran + Tgl Expiry */}
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Tgl Pengeluaran" icon={<CalendarCheck className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+              <DateMaskInput value={form.passportIssueDate} onChange={(v) => update("passportIssueDate", v)} disabled={scanning} />
+            </Field>
+            <Field label="Tgl Habis Berlaku" icon={<CalendarClock className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+              {scanning ? <SkeletonInput /> : (
+                <DateMaskInput value={form.passportExpiry} onChange={(v) => update("passportExpiry", v)} />
+              )}
+            </Field>
+          </div>
+
+          {/* Expiry alert */}
+          {expiryStatus === "expired" && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
+              <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" strokeWidth={1.75} />
+              <p className="text-xs text-red-700 font-medium leading-snug">
+                Paspor sudah <span className="font-bold">EXPIRED</span>. Klien tidak dapat melakukan perjalanan. Wajib perpanjang sebelum booking.
+              </p>
+            </div>
+          )}
+          {expiryStatus === "warning" && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" strokeWidth={1.75} />
+              <p className="text-xs text-amber-700 font-medium leading-snug">
+                ⚠️ Peringatan: Masa berlaku paspor kurang dari 6 bulan. Segera lakukan perpanjangan!
+              </p>
+            </div>
+          )}
+          {expiryStatus === "ok" && form.passportExpiry && (
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" strokeWidth={1.75} />
+              <p className="text-xs text-emerald-700 font-medium">Paspor masih berlaku dan aman untuk perjalanan.</p>
+            </div>
+          )}
+
+          {/* Kantor Pengeluaran */}
+          <Field label="Kantor Pengeluaran" icon={<BuildingOffice className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+            <Input value={form.passportIssuingOffice} onChange={(e) => update("passportIssuingOffice", e.target.value)} placeholder="Contoh: Kantor Imigrasi Jakarta Selatan" disabled={scanning} />
+          </Field>
+
+          {/* Catatan */}
+          <Field label="Catatan" icon={<FileText className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
             <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)}
-              className="w-full min-h-[64px] rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-              placeholder="Catatan internal…" />
+              className="w-full min-h-[56px] rounded-md border border-input bg-transparent px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+              placeholder="Catatan internal…" disabled={scanning} />
           </Field>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Batal</Button>
-          <Button disabled={!form.name.trim() || saving}
+
+        <DialogFooter className="pt-2 gap-2">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={scanning || saving}>Batal</Button>
+          <Button size="sm" disabled={!canSave}
+            title={expiryStatus === "expired" ? "Paspor expired — tidak bisa disimpan" : undefined}
             onClick={async () => {
+              if (expiryStatus === "warning") {
+                const ok = window.confirm(
+                  "⚠️ Paspor kurang dari 6 bulan. Jamaah mungkin ditolak imigrasi.\n\nLanjutkan menyimpan?"
+                );
+                if (!ok) return;
+              }
               setSaving(true);
               try { await onSubmit(form); }
               catch (e) { toast.error("Gagal simpan", { description: e instanceof Error ? e.message : "Coba lagi." }); }
               finally { setSaving(false); }
-            }}>{saving ? "Menyimpan…" : "Simpan"}</Button>
+            }}>
+            {saving ? "Menyimpan…" : "Simpan"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, required, icon, children }: {
+  label: string; required?: boolean; icon?: React.ReactNode; children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1">
-      <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</Label>
+      <Label className="text-[10.5px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+        {icon}{label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </Label>
       {children}
     </div>
   );
@@ -638,10 +905,16 @@ export default function Clients() {
         onSubmit={async (form) => {
           if (!form.name.trim()) return;
           const c = await addClient({
-            name: form.name.trim(), phone: form.phone.trim(),
+            name: form.name.trim(),
+            phone: form.phone.trim(),
             email: form.email.trim() || undefined,
             passportNumber: form.passportNumber.trim() || undefined,
             birthDate: form.birthDate || undefined,
+            birthPlace: form.birthPlace.trim() || undefined,
+            passportExpiry: form.passportExpiry || undefined,
+            passportIssueDate: form.passportIssueDate || undefined,
+            passportIssuingOffice: form.passportIssuingOffice.trim() || undefined,
+            gender: form.gender || undefined,
             notes: form.notes.trim() || undefined,
           });
           toast.success("Klien dibuat", { description: c.name });

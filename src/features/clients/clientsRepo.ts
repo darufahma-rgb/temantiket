@@ -17,8 +17,11 @@ export interface Client {
   phone: string;
   email?: string;
   birthDate?: string;
+  birthPlace?: string;
   passportNumber?: string;
   passportExpiry?: string;
+  passportIssueDate?: string;
+  passportIssuingOffice?: string;
   gender?: "L" | "P" | "";
   photoDataUrl?: string;
   notes?: string;
@@ -51,8 +54,11 @@ const fromRow = (r: Record<string, unknown>): Client => ({
   phone: String(r.phone ?? ""),
   email: (r.email as string) ?? undefined,
   birthDate: (r.birth_date as string) ?? undefined,
+  birthPlace: (r.birth_place as string) ?? undefined,
   passportNumber: (r.passport_number as string) ?? undefined,
   passportExpiry: (r.passport_expiry as string) ?? undefined,
+  passportIssueDate: (r.passport_issue_date as string) ?? undefined,
+  passportIssuingOffice: (r.passport_issuing_office as string) ?? undefined,
   gender: ((r.gender as string) ?? "") as Client["gender"],
   photoDataUrl: (r.photo_data_url as string) ?? undefined,
   notes: (r.notes as string) ?? undefined,
@@ -68,8 +74,11 @@ const toRow = (c: Partial<Client>, agencyId?: string) => ({
   ...(c.phone !== undefined ? { phone: c.phone } : {}),
   ...(c.email !== undefined ? { email: c.email || null } : {}),
   ...(c.birthDate !== undefined ? { birth_date: c.birthDate || null } : {}),
+  ...(c.birthPlace !== undefined ? { birth_place: c.birthPlace || null } : {}),
   ...(c.passportNumber !== undefined ? { passport_number: c.passportNumber || null } : {}),
   ...(c.passportExpiry !== undefined ? { passport_expiry: c.passportExpiry || null } : {}),
+  ...(c.passportIssueDate !== undefined ? { passport_issue_date: c.passportIssueDate || null } : {}),
+  ...(c.passportIssuingOffice !== undefined ? { passport_issuing_office: c.passportIssuingOffice || null } : {}),
   ...(c.gender !== undefined ? { gender: c.gender || null } : {}),
   ...(c.photoDataUrl !== undefined ? { photo_data_url: c.photoDataUrl || null } : {}),
   ...(c.notes !== undefined ? { notes: c.notes || null } : {}),
