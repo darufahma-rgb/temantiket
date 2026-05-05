@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { callAI } from "@/lib/aiFetch";
+import { generateCaptionFromDetail, generateCaptionFromPoster } from "@/lib/ai/openrouter";
 
 /* ─── Mode ──────────────────────────────────────────────── */
 type Mode = "manual" | "poster";
@@ -30,53 +30,7 @@ const TONES = [
   { key: "story",    label: "Storytelling", desc: "Emosional, cerita perjalanan" },
 ];
 
-/* ─── Temantiket Brand System Prompt (Manual) ──────────── */
-const BRAND_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter & Brand Guardian resmi Temantiket.
-
-Temantiket adalah brand travel Umrah & Haji yang ramah, hangat, kekeluargaan, santai tapi terpercaya.
-Brand name yang benar: "Temantiket" (bukan TemanTiket, bukan Teman Tiket).
-
-ALUR WAJIB CAPTION (ikuti urutan ini persis — satu blok teks mengalir, BUKAN poin terpisah):
-1. HOOK: Emoji + kalimat pembuka yang langsung bikin penasaran atau relate.
-2. BENEFIT UTAMA: 1 kalimat yang menjelaskan nilai utama yang ditawarkan.
-3. DETAIL KEUNTUNGAN: Gunakan ✅ untuk 2–3 keuntungan spesifik (masing-masing singkat, di baris baru).
-4. CTA: "📲 Hubungi sekarang:" + nomor WA (jika ada), atau ajakan action yang jelas.
-5. CLOSING BRAND: "Temantiket — mudah, cepat, amanah" + 1 emoji relevan.
-
-ATURAN KETAT:
-1. Buat tepat 1 caption saja — pilih sudut pandang terbaik yang paling menarik.
-2. Target panjang 600–1000 karakter (termasuk emoji & spasi).
-3. Gaya: mengalir natural, santai, meyakinkan — bukan daftar poin kaku atau terlalu salesy.
-4. Nama "Temantiket" WAJIB ada di caption.
-5. Emoji: 3–4 saja, pilih yang memperkuat emosi teks.
-6. Hindari klaim berlebihan: "paling murah", "gratis", "terbatas!" secara hard-sell.
-
-OUTPUT: Langsung tulis caption-nya saja — tanpa label, tanpa penjelasan tambahan.`;
-
-/* ─── Vision System Prompt (Scan Poster) ───────────────── */
-const VISION_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter & Brand Guardian resmi Temantiket.
-
-Brand name yang benar: "Temantiket" (bukan TemanTiket, bukan Teman Tiket). Wajib ada di caption.
-
-Tugas: Baca isi poster yang dikirim, ekstrak informasi utama (nama paket, harga, keunggulan, dsb), lalu buat 1 caption WhatsApp/Instagram.
-
-ALUR WAJIB CAPTION (satu blok teks mengalir, BUKAN poin terpisah):
-1. HOOK: Emoji + kalimat pembuka yang menarik atau pertanyaan yang bikin penasaran.
-2. BENEFIT UTAMA: 1 kalimat yang merangkum nilai utama dari poster.
-3. DETAIL: Gunakan ✅ untuk 2–3 keunggulan spesifik dari poster (masing-masing singkat, di baris baru).
-4. CTA: "📲 Hubungi sekarang:" + nomor WA (jika diberikan), atau ajakan action yang jelas.
-5. CLOSING: "Temantiket — mudah, cepat, amanah" + 1 emoji relevan.
-
-ATURAN KETAT:
-1. Buat tepat 1 caption saja — pilih sudut pandang terbaik berdasarkan isi poster.
-2. Target panjang 600–1000 karakter (termasuk emoji & spasi).
-3. Gaya: mengalir natural, santai, meyakinkan — bukan daftar kaku atau terlalu salesy.
-4. Nama "Temantiket" WAJIB muncul di caption.
-5. Emoji: 3–4 saja.
-
-OUTPUT: Langsung tulis caption-nya saja — tanpa label, tanpa penjelasan tambahan.`;
-
-/* ─── Tone instructions ─────────────────────────────────── */
+/* ─── Tone labels (untuk display di UI) ────────────────── */
 const TONE_LABEL: Record<string, string> = {
   santai:   "Friendly, casual, akrab → bahasa santai kayak ngobrol sama temen",
   formal:   "Profesional & terpercaya → lebih meyakinkan, tenang, penuh jaminan",
@@ -124,26 +78,7 @@ async function generateFromDetail(params: {
   packageDetail?: string;
   waNumber?: string;
 }): Promise<string> {
-  const { categoryPrompt, tone, packageDetail, waNumber } = params;
-  const toneInstruction = TONE_LABEL[tone] ?? tone;
-  const detailSection = packageDetail?.trim() ? `\n\nDetail paket:\n${packageDetail.trim()}` : "";
-  const waSection = waNumber?.trim() ? `\n\nNomor WA untuk CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}` : "";
-  const userPrompt = `Buat 1 caption marketing untuk ${categoryPrompt}.\nTone yang diminta: ${toneInstruction}.${detailSection}${waSection}`;
-
-  const res = await callAI({
-    model: "gpt-4o-mini",
-    messages: [
-      { role: "system", content: BRAND_SYSTEM_PROMPT },
-      { role: "user",   content: userPrompt },
-    ],
-    temperature: 0.85,
-    max_tokens: 700,
-  });
-
-  const data = await res.json();
-  const caption: string = (data.choices?.[0]?.message?.content ?? "").trim();
-  if (!caption) throw new Error("Format respons AI tidak valid");
-  return caption;
+  return generateCaptionFromDetail(params);
 }
 
 /* ─── API: Poster scan mode ─────────────────────────────── */
@@ -152,31 +87,11 @@ async function generateFromPoster(params: {
   tone: string;
   waNumber?: string;
 }): Promise<string> {
-  const { imageDataUrl, tone, waNumber } = params;
-  const toneInstruction = TONE_LABEL[tone] ?? tone;
-  const waSection = waNumber?.trim() ? `\nNomor WA untuk baris CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}` : "";
-  const userPrompt = `Scan poster ini dan buat 1 caption sesuai struktur dan aturan di instruksi sistem.\nTone: ${toneInstruction}.${waSection}`;
-
-  const res = await callAI({
-    model: "gpt-4o-mini",
-    messages: [
-      { role: "system", content: VISION_SYSTEM_PROMPT },
-      {
-        role: "user",
-        content: [
-          { type: "text", text: userPrompt },
-          { type: "image_url", image_url: { url: imageDataUrl, detail: "auto" } },
-        ],
-      },
-    ],
-    temperature: 0.8,
-    max_tokens: 700,
-  }, { timeoutMs: 90_000 });
-
-  const data = await res.json();
-  const caption: string = (data.choices?.[0]?.message?.content ?? "").trim();
-  if (!caption) throw new Error("Format respons AI tidak valid");
-  return caption;
+  return generateCaptionFromPoster({
+    imageBase64: params.imageDataUrl,
+    tone: params.tone,
+    waNumber: params.waNumber,
+  });
 }
 
 /* ─── Section wrapper ───────────────────────────────────── */

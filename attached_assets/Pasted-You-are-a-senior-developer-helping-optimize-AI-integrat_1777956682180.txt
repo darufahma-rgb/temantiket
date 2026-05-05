@@ -1,0 +1,53 @@
+You are a senior developer helping optimize AI integration in a Vite + React + TypeScript project that uses OpenRouter.
+
+### Tugas:
+Buatkan sistem AI yang fleksibel dan efisien menggunakan **OpenRouter**, dengan strategi menggunakan **model yang berbeda** sesuai kebutuhan fitur di aplikasi Temantiket.
+
+### Use Case Utama di Aplikasi:
+1. **Vision / OCR** (Poster scan, Passport OCR, Ticket price parsing dari gambar)
+2. **Caption Generation** (Generate marketing caption dari poster)
+3. **Rapikan Catatan** (Membersihkan dan merapikan teks catatan)
+4. **Itinerary / Structured Output** (Parsing data perjalanan menjadi JSON)
+5. **General AI tasks** (jika ada)
+
+### Rekomendasi Model via OpenRouter:
+
+| Use Case              | Model yang Direkomendasikan          | Alasan |
+|-----------------------|--------------------------------------|--------|
+| Vision / OCR          | `google/gemini-2.0-flash`            | Vision bagus, cepat, dan murah |
+| Caption Generation    | `google/gemini-2.0-flash`            | Murah, cepat, cukup kreatif |
+| Rapikan Catatan       | `google/gemini-2.0-flash`            | Hemat biaya karena sering dipakai |
+| Structured Output     | `google/gemini-2.0-flash`            | Cukup baik untuk JSON |
+| Complex Reasoning     | `anthropic/claude-3-5-sonnet`        | Hanya jika benar-benar dibutuhkan |
+
+### Yang Harus Dibuat:
+
+1. **Buat file baru** `src/lib/ai/openrouter.ts` atau `src/lib/ai/aiClient.ts`
+   - Buat fungsi utama `callAI()` yang menerima parameter:
+     - `prompt`
+     - `systemPrompt` (opsional)
+     - `model` (default ke `google/gemini-2.0-flash`)
+     - `temperature`
+     - `maxTokens`
+     - `jsonMode` (boolean)
+     - `imageBase64` (untuk vision)
+
+2. **Buat helper functions** terpisah untuk kemudahan:
+   - `generateCaptionFromImage(imageBase64, tone)`
+   - `cleanNoteText(text)`
+   - `parseItineraryFromText(text)` (jika relevan)
+   - `analyzePoster(imageBase64)`
+
+3. **Buat konfigurasi model** di satu tempat (bisa pakai object atau enum), supaya mudah diubah nanti.
+
+4. **Tambahkan error handling** dan fallback sederhana (misalnya kalau model gagal, bisa coba model lain).
+
+5. **Update file-file yang sudah pakai AI** (seperti Caption Generator dan Notes) agar menggunakan fungsi baru ini.
+
+### Requirements Tambahan:
+- Gunakan `fetch` langsung ke OpenRouter API.
+- Simpan API Key di environment variable (`VITE_OPENROUTER_API_KEY`).
+- Buat sistem ini mudah di-maintain dan bisa menambah model baru di kemudian hari.
+- Berikan komentar yang jelas di code.
+
+Mulai dengan membuat struktur dasar AI client terlebih dahulu, lalu buat helper functions sesuai use case utama.

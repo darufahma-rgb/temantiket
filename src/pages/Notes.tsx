@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useT } from "@/lib/regional";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { pullNotes, upsertNote, deleteNoteCloud, syncNotesFull, type NoteCloud } from "@/lib/cloudSync";
-import { callAI } from "@/lib/aiFetch";
+import { cleanAndStructureNote } from "@/lib/ai/openrouter";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -359,50 +359,8 @@ export default function Notes() {
     try {
       let formatted = content;
       try {
-        const res = await callAI({
-          model: "gpt-4.1-nano",
-          messages: [
-            {
-              role: "system",
-              content: `Kamu adalah Content Formatter profesional untuk Temantiket.
-
-Tugas: Terima teks mentah dari user, lalu rapikan menjadi format Markdown yang bersih, terstruktur, dan langsung bisa di-paste ke WhatsApp atau dokumen internal tanpa perlu diedit lagi.
-
-ATURAN FORMAT WAJIB:
-1. Gunakan **teks** (bintang ganda) untuk heading seksi atau teks yang perlu ditebalkan/ditekankan.
-2. Gunakan - (strip/dash) sebagai bullet untuk daftar tidak berurutan.
-3. Gunakan angka (1. 2. 3.) untuk daftar yang berurutan, langkah-langkah, atau syarat.
-4. Beri SATU baris kosong antar seksi atau antar paragraf agar tidak berdempetan.
-5. Pertahankan 100% makna asli — jangan tambah atau kurangi informasi.
-6. Perbaiki ejaan dan tata bahasa tanpa mengubah maksud.
-7. Jika ada seksi yang bisa dikelompokkan (misal: syarat, biaya, alamat, layanan), beri heading **Judul Seksi** yang jelas.
-8. Output HANYA berisi teks yang sudah dirapikan — jangan tambahkan kata pengantar, penutup, atau penjelasan apapun.
-
-CONTOH OUTPUT YANG BENAR:
-**Persyaratan Umum**
-- Paspor aktif minimal 6 bulan
-- Foto ukuran 4x6 (background putih)
-- Akte kelahiran asli
-
-**Biaya**
-1. DP: Rp 5.000.000
-2. Pelunasan: Rp 20.000.000
-
-**Catatan**
-Hubungi Temantiket untuk konfirmasi jadwal keberangkatan.`,
-            },
-            {
-              role: "user",
-              content: `Rapikan catatan berikut:\n\n${content.trim()}`,
-            },
-          ],
-          temperature: 0.35,
-          max_tokens: 1500,
-        });
-        const data = await res.json();
-        const aiResult: string = data.choices?.[0]?.message?.content?.trim() ?? "";
-        if (aiResult) formatted = aiResult;
-        else formatted = smartFormat(content);
+        const aiResult = await cleanAndStructureNote(content);
+        formatted = aiResult || smartFormat(content);
       } catch {
         formatted = smartFormat(content);
       }

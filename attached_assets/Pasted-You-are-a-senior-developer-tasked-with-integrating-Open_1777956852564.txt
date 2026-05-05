@@ -1,0 +1,57 @@
+You are a senior developer tasked with integrating OpenRouter into a Vite + React + TypeScript project for Temantiket.
+
+### Tugas Utama:
+Buatkan sistem pemanggilan AI yang fleksibel menggunakan **OpenRouter**, dengan strategi menggunakan **model yang berbeda** sesuai kebutuhan fitur aplikasi.
+
+### Rekomendasi Model (Gunakan ini):
+
+| Use Case                    | Model via OpenRouter              | Keterangan |
+|----------------------------|-----------------------------------|----------|
+| Vision / OCR (Poster, Passport, Ticket) | `google/gemini-2.0-flash`        | Vision + cepat + murah |
+| Caption Generation         | `google/gemini-2.0-flash`        | Murah dan cukup bagus untuk marketing text |
+| Rapikan Catatan            | `google/gemini-2.0-flash`        | Paling sering dipakai, jadi pakai yang hemat |
+| Structured Output / JSON   | `google/gemini-2.0-flash`        | Cukup reliable |
+| Complex Reasoning (jika ada) | `anthropic/claude-3-5-sonnet`   | Hanya kalau butuh kualitas tinggi |
+
+### Yang Harus Dibuat:
+
+1. **Buat file baru**: `src/lib/ai/openrouter.ts`
+   - Buat fungsi utama `callAI()` yang menerima parameter:
+     - `prompt: string`
+     - `systemPrompt?: string`
+     - `model?: string` (default: `google/gemini-2.0-flash`)
+     - `temperature?: number`
+     - `maxTokens?: number`
+     - `jsonMode?: boolean`
+     - `imageBase64?: string` (untuk vision)
+
+2. **Buat helper functions** yang mudah dipakai:
+   - `generateCaptionFromPoster(imageBase64: string, tone?: string)`
+   - `cleanAndStructureNote(text: string)`
+   - `analyzePosterWithVision(imageBase64: string)`
+   - `parseStructuredData(text: string)` (untuk itinerary atau data terstruktur)
+
+3. **Buat konfigurasi model** di satu tempat (bisa pakai object atau constants), supaya mudah diubah nanti.
+
+4. **Integrasikan dengan OpenRouter API**:
+   - Gunakan endpoint: `https://openrouter.ai/api/v1/chat/completions`
+   - Header: `Authorization: Bearer ${OPENROUTER_API_KEY}`
+   - Gunakan environment variable `import.meta.env.OPENROUTER_API_KEY`
+
+5. **Error Handling & Fallback**:
+   - Tambahkan try-catch
+   - Jika memungkinkan, buat fallback sederhana (misal: kalau Gemini gagal, bisa coba model lain)
+
+6. **Update file yang sudah pakai AI** (opsional dulu):
+   - Caption Generator
+   - Notes / Rapikan
+   - File lain yang relevan
+
+### Requirements:
+- Buat sistem ini **reusable** dan mudah di-maintain.
+- Berikan komentar yang jelas.
+- Buat model default menggunakan `google/gemini-2.0-flash` sesuai rekomendasi.
+- Pastikan support untuk **Vision** (image input).
+- Jangan hardcode API Key.
+
+Mulai dengan membuat file `src/lib/ai/openrouter.ts` beserta fungsi `callAI()` terlebih dahulu.
