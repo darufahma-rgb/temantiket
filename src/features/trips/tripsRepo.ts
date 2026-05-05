@@ -201,7 +201,10 @@ const docToRow = (d: JamaahDoc, agencyId?: string) => ({
 export async function listTrips(): Promise<Trip[]> {
   if (isSupabaseConfigured()) {
     try {
-      const { data, error } = await supabase!.from("trips").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase!
+        .from("trips")
+        .select("id,name,destination,start_date,end_date,emoji,cover_image,quota_pax,price_per_pax,created_at")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       const trips = (data ?? []).map(tripFromRow);
       save(TRIPS_KEY, trips);
@@ -274,9 +277,10 @@ export async function deleteTrip(id: string): Promise<void> {
 
 export async function listAllAgencyJamaah(): Promise<Jamaah[]> {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabase!.from("jamaah").select("*");
+    const { data, error } = await supabase!
+      .from("jamaah")
+      .select("id,trip_id,name,phone,birth_date,passport_number,passport_expiry,gender,needs_review,booking_code,payment_status,created_at");
     if (error) throw error;
-    // jamaahFromRowList: strip base64 photos — hanya simpan Storage URL di cache
     return (data ?? []).map(jamaahFromRowList);
   }
   return load<Jamaah>(JAMAAH_KEY, []);
@@ -284,10 +288,11 @@ export async function listAllAgencyJamaah(): Promise<Jamaah[]> {
 
 export async function listJamaah(tripId: string): Promise<Jamaah[]> {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabase!.from("jamaah").select("*").eq("trip_id", tripId);
+    const { data, error } = await supabase!
+      .from("jamaah")
+      .select("id,trip_id,name,phone,birth_date,passport_number,passport_expiry,gender,needs_review,booking_code,payment_status,created_at")
+      .eq("trip_id", tripId);
     if (error) throw error;
-    // jamaahFromRowList: strip base64 photos di list — foto full tersedia di
-    // getJamaah() untuk detail view. Setelah migration, ini no-op.
     const list = (data ?? []).map(jamaahFromRowList);
     const others = load<Jamaah>(JAMAAH_KEY, []).filter((j) => j.tripId !== tripId);
     save(JAMAAH_KEY, [...others, ...list]);

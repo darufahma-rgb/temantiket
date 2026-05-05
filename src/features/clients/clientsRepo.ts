@@ -134,7 +134,7 @@ export async function listClients(): Promise<Client[]> {
       const { data, error } = await withTimeout(
         supabase!
           .from("clients")
-          .select("*")
+          .select("id,name,phone,email,birth_date,birth_place,passport_number,passport_expiry,passport_issue_date,passport_issuing_office,gender,notes,legacy_jamaah_id,created_by_agent,created_at,updated_at")
           .order("created_at", { ascending: false }),
         10000,
       );

@@ -83,7 +83,10 @@ const toRow = (p: Package, agencyId?: string) => ({
 export async function listPackages(): Promise<Package[]> {
   if (isSupabaseConfigured()) {
     try {
-      const { data, error } = await supabase!.from("packages").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase!
+        .from("packages")
+        .select("id,name,destination,people,days,hpp,total_idr,status,emoji,cover_image,departure_date,return_date,airline,hotel_level,notes,facilities,created_at,updated_at")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       const items = (data ?? []).map(fromRow);
       saveStore(items);

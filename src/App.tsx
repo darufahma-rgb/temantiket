@@ -78,19 +78,19 @@ function StoreBootstrap() {
 
   useEffect(() => {
     refreshRates();
-    if (!isAuthenticated) return;
-    void Promise.all([refreshPackages(), fetchTrips(), fetchClients(), fetchOrders()]);
-  }, [refreshRates, refreshPackages, fetchTrips, fetchClients, fetchOrders, isAuthenticated]);
-
-  // Pull all cloud-synced settings after auth
-  useEffect(() => {
     if (!isAuthenticated || !isSupabaseConfigured()) return;
-    void pullIghAdminSettings();
-    void pullProductCommissions();
-    void pullMarkup();
-    void pullRates();
-    if (user?.id) void pullAppearanceSettings(user.id);
-  }, [isAuthenticated, user?.id, pullRates]);
+    void Promise.all([
+      refreshPackages(),
+      fetchTrips(),
+      fetchClients(),
+      fetchOrders(),
+      pullIghAdminSettings(),
+      pullProductCommissions(),
+      pullMarkup(),
+      pullRates(),
+      user?.id ? pullAppearanceSettings(user.id) : Promise.resolve(),
+    ]);
+  }, [refreshRates, refreshPackages, fetchTrips, fetchClients, fetchOrders, isAuthenticated, user?.id, pullRates]);
 
   useEffect(() => {
     if (!isAuthenticated || !isSupabaseConfigured()) return;

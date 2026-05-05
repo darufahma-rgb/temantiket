@@ -108,7 +108,10 @@ const toRow = (o: Partial<Order>, agencyId?: string) => ({
 export async function listOrders(filter?: { type?: OrderType; clientId?: string }): Promise<Order[]> {
   if (isSupabaseConfigured()) {
     try {
-      let q = supabase!.from("orders").select("*").order("created_at", { ascending: false });
+      let q = supabase!
+        .from("orders")
+        .select("id,client_id,type,status,title,total_price,cost_price,currency,metadata,trip_id,package_id,jamaah_id,created_by_agent,notes,created_at,updated_at")
+        .order("created_at", { ascending: false });
       if (filter?.type) q = q.eq("type", filter.type);
       if (filter?.clientId) q = q.eq("client_id", filter.clientId);
       const { data, error } = await q;
@@ -157,8 +160,8 @@ export async function createOrder(draft: OrderDraft): Promise<Order> {
   // (lihat 2026_05_01_agent_marketing.sql) — ini cuma defense-in-depth.
   if (enriched.clientId && enriched.createdByAgent == null) {
     try {
-      const { listClients } = await import("@/features/clients/clientsRepo");
-      const clients = await listClients();
+      const { useClientsStore } = await import("@/store/clientsStore");
+      const clients = useClientsStore.getState().clients;
       const owner = clients.find((c) => c.id === enriched.clientId)?.createdByAgent;
       if (owner) {
         enriched = { ...enriched, createdByAgent: owner };

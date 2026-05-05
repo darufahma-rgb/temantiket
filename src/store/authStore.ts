@@ -260,6 +260,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user: null, isAuthenticated: false, needsBootstrap: false });
         return;
       }
+      const current = get().user;
+      if (current && session.user.id === current.id) return;
       const u = await loadCurrentUser();
       if (u) set({ user: u, isAuthenticated: true, needsBootstrap: false });
       else set({ user: null, isAuthenticated: false, needsBootstrap: true });
