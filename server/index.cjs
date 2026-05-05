@@ -61,6 +61,17 @@ function makeAdminClient() {
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 }
 
+// Race a Supabase (or any) promise against a hard timeout so requests
+// never hang indefinitely when the Supabase network is slow.
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(message || `Operasi timeout setelah ${ms / 1000}s — coba lagi`)), ms)
+    ),
+  ]);
+}
+
 async function getCallerUser(authHeader, timeoutMs = 8000) {
   if (!authHeader) return null;
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
@@ -161,8 +172,10 @@ app.post('/api/invite-member', async (req, res) => {
 
     const admin = makeAdminClient();
 
-    const { data: callerMembership, error: memberErr } = await admin
-      .from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle();
+    const { data: callerMembership, error: memberErr } = await withTimeout(
+      admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle(),
+      10000, 'DB timeout — cek koneksi Supabase dan coba lagi'
+    );
     if (memberErr) return err(res, 500, `DB error: ${memberErr.message}`);
     if (!callerMembership) return err(res, 403, 'Caller belum ter-link ke agency manapun');
     if (callerMembership.role !== 'owner') return err(res, 403, 'Hanya owner yang bisa invite');
@@ -184,10 +197,13 @@ app.post('/api/invite-member', async (req, res) => {
     }
 
     const fullName = (displayName ?? '').trim() || email.split('@')[0];
-    const { data: created, error: createErr } = await admin.auth.admin.createUser({
-      email, password, email_confirm: true,
-      user_metadata: { display_name: fullName },
-    });
+    const { data: created, error: createErr } = await withTimeout(
+      admin.auth.admin.createUser({
+        email, password, email_confirm: true,
+        user_metadata: { display_name: fullName },
+      }),
+      15000, 'Timeout saat membuat user — coba lagi'
+    );
     if (createErr || !created.user) {
       // Supabase returns "User already registered" when email is taken
       const isDuplicate = createErr?.message?.toLowerCase().includes('already registered')
@@ -204,7 +220,10 @@ app.post('/api/invite-member', async (req, res) => {
       agency_id: callerMembership.agency_id, user_id: newUserId, role,
       ...(commissionPct !== null ? { commission_pct: commissionPct } : {}),
     };
-    const { error: addErr } = await admin.from('agency_members').insert(membershipRow);
+    const { error: addErr } = await withTimeout(
+      admin.from('agency_members').insert(membershipRow),
+      10000, 'Timeout saat menyimpan membership'
+    );
     if (addErr) {
       await admin.auth.admin.deleteUser(newUserId).catch(() => {});
       return err(res, 500, `Gagal tambah membership (auth user di-rollback): ${addErr.message}`);
@@ -216,7 +235,10 @@ app.post('/api/invite-member', async (req, res) => {
     if (agentNotes)     profileRow.notes    = agentNotes;
     if (role === 'agent') profileRow.is_active = (agentStatus !== 'inactive');
 
-    const { error: profileErr } = await admin.from('profiles').upsert(profileRow, { onConflict: 'id' });
+    const { error: profileErr } = await withTimeout(
+      admin.from('profiles').upsert(profileRow, { onConflict: 'id' }),
+      10000, 'Timeout saat menyimpan profil'
+    );
     const warnings = [];
     if (profileErr) warnings.push(`profile: ${profileErr.message}`);
 
@@ -225,7 +247,7 @@ app.post('/api/invite-member', async (req, res) => {
       ...(warnings.length ? { warnings } : {}),
     });
   } catch (e) {
-    return err(res, 500, e.message);
+    return err(res, 500, e?.message || 'Terjadi kesalahan internal');
   }
 });
 

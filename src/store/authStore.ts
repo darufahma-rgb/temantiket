@@ -171,61 +171,86 @@ async function callEdgeFunction(name: string, body: unknown, accessToken?: strin
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
   const controller = new AbortController();
+  // Timer covers the ENTIRE operation (fetch + body read), not just fetch headers.
+  // Cleared once in finally so it can't fire after we're done.
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  let res: Response;
   try {
-    res = await fetch(`/api/${name}`, {
+    const res = await fetch(`/api/${name}`, {
       method: "POST", headers, body: JSON.stringify(body),
       signal: controller.signal,
     });
-  } catch (fetchErr) {
-    clearTimeout(timer);
-    if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
+
+    // res.text() is inside the try so the AbortController still covers it.
+    const text = await res.text();
+    let json: { error?: string; message?: string; msg?: string } = {};
+    try { json = text ? JSON.parse(text) : {}; } catch { /* keep empty */ }
+
+    if (!res.ok) {
+      const serverMsg = json.error ?? json.message ?? json.msg ?? text.slice(0, 300);
+      if (res.status === 401) {
+        throw new Error(
+          serverMsg
+            ? `Sesi expired / token invalid (401): ${serverMsg}. Coba logout lalu login ulang.`
+            : `Sesi expired / token invalid (401). Coba logout lalu login ulang.`,
+        );
+      }
+      if (res.status === 503) {
+        throw new Error(serverMsg || "Server belum dikonfigurasi — hubungi administrator.");
+      }
+      throw new Error(serverMsg || `Gagal menghubungi server (${res.status})`);
+    }
+    return json;
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
       throw new Error(`Request timeout (>${timeoutMs / 1000}s). Server tidak merespons — coba lagi.`);
     }
-    throw new Error(`Tidak bisa menghubungi server: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`);
+    if (e instanceof TypeError) {
+      throw new Error(`Tidak bisa menghubungi server: ${e.message}`);
+    }
+    throw e;
   } finally {
     clearTimeout(timer);
   }
-
-  const text = await res.text();
-  let json: { error?: string; message?: string; msg?: string } = {};
-  try { json = text ? JSON.parse(text) : {}; } catch { /* keep empty */ }
-  if (!res.ok) {
-    const serverMsg = json.error ?? json.message ?? json.msg ?? text.slice(0, 300);
-    if (res.status === 401) {
-      throw new Error(
-        serverMsg
-          ? `Sesi expired / token invalid (401): ${serverMsg}. Coba logout lalu login ulang.`
-          : `Sesi expired / token invalid (401). Coba logout lalu login ulang.`,
-      );
-    }
-    if (res.status === 503) {
-      throw new Error(serverMsg || "Server belum dikonfigurasi — hubungi administrator.");
-    }
-    throw new Error(serverMsg || `Gagal menghubungi server (${res.status})`);
-  }
-  return json;
 }
 
 // Ambil access_token yg fresh — refresh dulu kalo session-nya udah deket
 // expiry, supaya Supabase gateway gak nolak 401 di Edge Function call.
-async function getFreshAccessToken(): Promise<string | null> {
+// Semua network call di-race dgn timeout 8 detik supaya tidak bisa hang selamanya.
+async function getFreshAccessToken(timeoutMs = 8_000): Promise<string | null> {
   if (!supabase) return null;
-  const { data: sess } = await supabase.auth.getSession();
-  const session = sess.session;
-  if (!session) return null;
 
-  // expires_at = unix seconds. Kalau < 60 detik lagi expire, refresh dulu.
-  const nowSec = Math.floor(Date.now() / 1000);
-  const expiresAt = session.expires_at ?? 0;
-  if (expiresAt && expiresAt - nowSec < 60) {
-    const { data: refreshed, error } = await supabase.auth.refreshSession();
-    if (error) return session.access_token; // fallback ke token lama
-    return refreshed.session?.access_token ?? session.access_token;
+  // Helper: race any promise against a hard timeout
+  function withTimeout<T>(p: Promise<T>): Promise<T> {
+    return Promise.race([
+      p,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Session timeout")), timeoutMs),
+      ),
+    ]);
   }
-  return session.access_token;
+
+  try {
+    const { data: sess } = await withTimeout(supabase.auth.getSession());
+    const session = sess.session;
+    if (!session) return null;
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    const expiresAt = session.expires_at ?? 0;
+    if (expiresAt && expiresAt - nowSec < 60) {
+      try {
+        const { data: refreshed } = await withTimeout(supabase.auth.refreshSession());
+        return refreshed.session?.access_token ?? session.access_token;
+      } catch {
+        // refreshSession hung or failed — fall back to the existing token
+        return session.access_token;
+      }
+    }
+    return session.access_token;
+  } catch {
+    // getSession hung or threw — can't get a token
+    return null;
+  }
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
