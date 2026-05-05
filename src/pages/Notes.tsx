@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
-  Plus, Trash2, Edit3, Check, X, Sparkles, StickyNote, Copy,
+  Plus, Trash2, Edit3, Check, X, Sparkles, StickyNote, Copy, ClipboardCheck,
   Pin, PinOff, Search, Maximize2, Hash, AlignLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -89,6 +89,35 @@ function MarkdownContent({ content, className }: { content: string; className?: 
       {content}
     </ReactMarkdown>
   );
+}
+
+function markdownToPlainText(md: string): string {
+  return md
+    .split("\n")
+    .map((line) => {
+      // Strip heading markers (## Heading → Heading)
+      line = line.replace(/^#{1,6}\s+/, "");
+      // Blockquote
+      line = line.replace(/^>\s?/, "");
+      // Horizontal rule
+      if (/^[-*_]{3,}\s*$/.test(line)) return "";
+      // Convert markdown bullets to WhatsApp bullet
+      line = line.replace(/^(\s*)[-*+]\s+/, "$1• ");
+      // Inline: bold+italic, bold, italic, strikethrough, inline code
+      line = line.replace(/\*{3}(.+?)\*{3}/g, "$1");
+      line = line.replace(/\*{2}(.+?)\*{2}/g, "$1");
+      line = line.replace(/\*(.+?)\*/g, "$1");
+      line = line.replace(/_{2}(.+?)_{2}/g, "$1");
+      line = line.replace(/_(.+?)_/g, "$1");
+      line = line.replace(/~~(.+?)~~/g, "$1");
+      line = line.replace(/`(.+?)`/g, "$1");
+      // Links: [text](url) → text
+      line = line.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+      return line;
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function smartFormat(text: string): string {
@@ -396,6 +425,12 @@ export default function Notes() {
   const copyNote = (note: Note) => {
     navigator.clipboard.writeText(`${note.title}\n\n${note.content}`);
     toast.success("Catatan disalin.");
+  };
+
+  const copyNotePlain = (note: Note) => {
+    const plain = markdownToPlainText(`${note.title}\n\n${note.content}`);
+    navigator.clipboard.writeText(plain);
+    toast.success("Disalin sebagai teks biasa.");
   };
 
   const addTag = (tag: string, isNew: boolean) => {
@@ -867,6 +902,14 @@ export default function Notes() {
                       </button>
                       <button
                         type="button"
+                        onClick={() => copyNotePlain(note)}
+                        className="p-1 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 transition-colors"
+                        title="Salin teks biasa (untuk WhatsApp)"
+                      >
+                        <ClipboardCheck className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => startEdit(note)}
                         className="p-1 rounded-lg hover:bg-sky-100 text-slate-400 hover:text-sky-600 transition-colors"
                         title={t.btn_edit}
@@ -1008,6 +1051,13 @@ export default function Notes() {
                     title={t.notes_copy}
                   >
                     <Copy className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => copyNotePlain(expandedNote)}
+                    className="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 transition-colors"
+                    title="Salin teks biasa (untuk WhatsApp)"
+                  >
+                    <ClipboardCheck className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setExpandedNote(null)}
