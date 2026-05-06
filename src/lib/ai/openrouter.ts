@@ -223,7 +223,7 @@ export async function generateCaptionFromDetail(params: {
     systemPrompt: CAPTION_SYSTEM_PROMPT,
     prompt: `Buat 1 caption marketing untuk ${categoryPrompt}.\nTone yang diminta: ${toneInstruction}.${detailSection}${waSection}`,
     temperature: 0.85,
-    maxTokens: 700,
+    maxTokens: 1500,
   });
 }
 
@@ -250,7 +250,7 @@ export async function generateCaptionFromPoster(params: {
     prompt: `Scan poster ini dan buat 1 caption sesuai struktur dan aturan di instruksi sistem.\nTone: ${toneInstruction}.${waSection}`,
     imageBase64,
     temperature: 0.8,
-    maxTokens: 700,
+    maxTokens: 1500,
     fetchOptions: { timeoutMs: 90_000 },
   });
 }
