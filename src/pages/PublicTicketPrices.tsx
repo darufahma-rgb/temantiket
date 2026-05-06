@@ -745,36 +745,64 @@ export default function PublicTicketPrices() {
       {/* ── Hero ── */}
       <div
         className="relative overflow-hidden"
-        style={{ background: "linear-gradient(160deg,#040d26 0%,#071840 35%,#0b2660 65%,#071535 100%)" }}
+        style={{ background: "#03061a" }}
       >
-        {/* Decorative blobs */}
+        {/* ── Layer 1: rich base gradient ── */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: "linear-gradient(170deg, #06102e 0%, #080d22 40%, #050919 100%)" }} />
+
+        {/* ── Layer 2: vivid aurora blobs ── */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.07]"
-            style={{ background: "radial-gradient(circle,#38bdf8,transparent 65%)" }} />
-          <div className="absolute -bottom-24 -right-24 w-[420px] h-[420px] rounded-full opacity-[0.07]"
-            style={{ background: "radial-gradient(circle,#818cf8,transparent 65%)" }} />
-          <div className="absolute top-[30%] right-[15%] w-64 h-64 rounded-full opacity-[0.04]"
-            style={{ background: "radial-gradient(circle,#34d399,transparent 65%)" }} />
-          {/* Fine grid */}
-          <div className="absolute inset-0 opacity-[0.04]"
-            style={{ backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
-          {/* Diagonal shimmer lines */}
-          <div className="absolute inset-0 opacity-[0.03]"
-            style={{ backgroundImage: "repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%)", backgroundSize: "20px 20px" }} />
+          {/* strong cyan — top-left */}
+          <div className="absolute -top-48 -left-48 w-[700px] h-[700px] rounded-full"
+            style={{ background: "radial-gradient(circle, rgba(34,211,238,0.28) 0%, rgba(14,165,233,0.12) 40%, transparent 65%)", filter: "blur(55px)" }} />
+          {/* vivid violet — top-right */}
+          <div className="absolute -top-32 right-[-8%] w-[620px] h-[620px] rounded-full"
+            style={{ background: "radial-gradient(circle, rgba(167,139,250,0.30) 0%, rgba(139,92,246,0.14) 40%, transparent 65%)", filter: "blur(60px)" }} />
+          {/* indigo bridge — center */}
+          <div className="absolute top-[20%] left-[20%] w-[600px] h-[320px] rounded-full"
+            style={{ background: "radial-gradient(ellipse, rgba(99,102,241,0.22) 0%, rgba(79,70,229,0.08) 50%, transparent 70%)", filter: "blur(44px)" }} />
+          {/* rose accent — bottom-center */}
+          <div className="absolute bottom-[-40px] left-[35%] w-[420px] h-[280px] rounded-full"
+            style={{ background: "radial-gradient(ellipse, rgba(244,114,182,0.14) 0%, transparent 60%)", filter: "blur(48px)" }} />
+          {/* emerald — bottom-right */}
+          <div className="absolute bottom-[-30px] right-[8%] w-[380px] h-[260px] rounded-full"
+            style={{ background: "radial-gradient(circle, rgba(52,211,153,0.16) 0%, transparent 60%)", filter: "blur(40px)" }} />
+          {/* sky sweep — bottom-left */}
+          <div className="absolute bottom-[5%] left-[-5%] w-[340px] h-[220px] rounded-full"
+            style={{ background: "radial-gradient(ellipse, rgba(56,189,248,0.14) 0%, transparent 65%)", filter: "blur(36px)" }} />
         </div>
 
-        {/* Floating airport codes — decorative */}
+        {/* ── Layer 3: dot-grid texture ── */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ backgroundImage: "radial-gradient(circle, rgba(148,163,184,0.07) 1px, transparent 1px)", backgroundSize: "26px 26px", opacity: 1 }} />
+
+        {/* ── Layer 4: horizontal light band across top ── */}
+        <div className="absolute top-0 left-0 right-0 h-[2px]"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(167,139,250,0.4) 30%, rgba(34,211,238,0.5) 50%, rgba(167,139,250,0.4) 70%, transparent)" }} />
+
+        {/* ── Layer 5: bottom fade into page ── */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
+          style={{ background: "linear-gradient(to bottom, transparent, #03061a)" }} />
+
+        {/* ── Layer 6: edge vignette ── */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse 110% 110% at 50% 50%, transparent 35%, rgba(3,6,26,0.55) 100%)" }} />
+
+        {/* ── Floating airport codes — decorative ── */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden select-none" aria-hidden>
           {[
-            { code: "JED", top: "12%", left: "4%",  opacity: 0.06, size: "text-5xl" },
-            { code: "MED", top: "55%", left: "2%",  opacity: 0.05, size: "text-4xl" },
-            { code: "CGK", top: "8%",  right: "5%", opacity: 0.06, size: "text-5xl" },
-            { code: "SUB", top: "60%", right: "3%", opacity: 0.05, size: "text-4xl" },
-            { code: "DOH", top: "30%", left: "1%",  opacity: 0.04, size: "text-3xl" },
-            { code: "DXB", top: "25%", right: "1%", opacity: 0.04, size: "text-3xl" },
+            { code: "JED", top: "10%",  left: "3%",   opacity: 0.055, size: "text-6xl" },
+            { code: "MED", top: "58%",  left: "1.5%", opacity: 0.045, size: "text-5xl" },
+            { code: "CGK", top: "6%",   right: "4%",  opacity: 0.055, size: "text-6xl" },
+            { code: "SUB", top: "62%",  right: "2%",  opacity: 0.045, size: "text-5xl" },
+            { code: "DOH", top: "32%",  left: "0.5%", opacity: 0.035, size: "text-4xl" },
+            { code: "DXB", top: "28%",  right: "0.5%",opacity: 0.035, size: "text-4xl" },
+            { code: "IST", top: "80%",  left: "6%",   opacity: 0.03,  size: "text-3xl" },
+            { code: "SIN", top: "75%",  right: "6%",  opacity: 0.03,  size: "text-3xl" },
           ].map(({ code, top, left, right, opacity, size }) => (
-            <span key={code} className={`absolute font-black tracking-tight text-white ${size}`}
-              style={{ top, left, right, opacity }}>
+            <span key={code} className={`absolute font-black tracking-tighter text-white ${size}`}
+              style={{ top, left, right, opacity, letterSpacing: "-0.04em" }}>
               {code}
             </span>
           ))}
