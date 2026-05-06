@@ -10,6 +10,9 @@ import {
 import frontBg from "@assets/Polosan_Member_Card_Temantiket_1777540855821.png";
 import backBg from "@assets/Polosan_Member_Card_Temantiket_Back_1777540855822.png";
 
+const toTitleCase = (str: string) =>
+  str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
 /**
  * MemberCard — Two-sided "Temantiket Member Card" untuk klien:
  *   • Sisi depan : identitas (nama, member ID, tanggal join).
@@ -185,7 +188,7 @@ const CardFront = ({
         textShadow: "0 1px 2px rgba(0,0,0,0.18)",
       }}
     >
-      {name.split(" ").map((part, i) => (
+      {toTitleCase(name).split(" ").map((part, i) => (
         <div key={i}>{part}</div>
       ))}
     </div>
