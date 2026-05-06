@@ -113,7 +113,7 @@ function AirlineLogo({ code, airline, size = 40 }: { code: string; airline: stri
 }
 
 
-// ── Boarding-pass style Price Card ───────────────────────────────────────────
+// ── Boarding-pass style Price Card (Compact) ─────────────────────────────────
 export function BoardingPassCard({
   item, markup, rates, isAdmin, onEdit, onDelete, onTogglePublish, onView, waNumber, showBasePrice = false,
 }: {
@@ -142,8 +142,34 @@ export function BoardingPassCard({
     : decodeReturnLeg(item.notes);
   const isRT = !!returnLeg;
   const userNotes = mlUserNotes ?? rtUserNotes;
+  const isRTorML = isRT || isML;
 
-  // Route label for WhatsApp message
+  // ── Compact route label ──────────────────────────────────────────────────────
+  // e.g. "Surabaya → Madinah via Dubai" or "Cairo ↔ Goa (via Bahrain)"
+  const fromLabel = item.fromCity || item.fromCode;
+  const toLabel   = item.toCity   || item.toCode;
+  const viaLabel  = item.transitCity || item.transitCode;
+
+  const compactRoute = isML
+    ? buildRouteLabel(mlData!)
+    : isRT
+      ? `${fromLabel} ⇄ ${toLabel}${viaLabel ? ` via ${viaLabel}` : ""}`
+      : `${fromLabel} → ${toLabel}${viaLabel ? ` via ${viaLabel}` : ""}`;
+
+  // ── Date/time display ────────────────────────────────────────────────────────
+  const returnDate = isML
+    ? (mlData?.returnLegs?.[0]?.date ?? null)
+    : isRT
+      ? (returnLeg?.returnDate ?? null)
+      : null;
+
+  const returnEtd = isML
+    ? (mlData?.returnLegs?.[0]?.etd ?? null)
+    : isRT
+      ? (returnLeg?.returnEtd ?? null)
+      : null;
+
+  // ── WhatsApp message ─────────────────────────────────────────────────────────
   const routeLabel = isML
     ? buildRouteLabel(mlData!)
     : isRT
@@ -170,7 +196,7 @@ export function BoardingPassCard({
           `${item.etd || item.eta ? `🕐 ${item.etd ?? "—"} → ${item.eta ?? "—"}\n` : ""}` +
           `${item.transitCode ? `🔄 Transit: ${item.transitCity ?? item.transitCode}${item.transitDuration ? ` (${item.transitDuration})` : ""}\n` : ""}` +
           `📅 Tanggal: ${item.departDate ? fmtDate(item.departDate) : "Fleksibel"}\n`) +
-    `💰 Harga: *${fmtIDR(sell)}${isML || isRT ? "/paket PP" : "/pax"}*\n\n` +
+    `💰 Harga: *${fmtIDR(sell)}${isRTorML ? "/paket PP" : "/pax"}*\n\n` +
     `Mohon infokan ketersediaan dan detailnya. Terima kasih!`
   );
 
@@ -178,16 +204,12 @@ export function BoardingPassCard({
     ? `${whatsappUrl(waNumber)}?text=${waText}`
     : `https://wa.me/?text=${waText}`;
 
-  const isRTorML = isRT || isML;
-
-  // Date display — departure + return date if applicable
-  const returnDate = isML
-    ? (mlData?.returnLegs?.[0]?.date ?? null)
-    : isRT
-      ? (returnLeg?.returnDate ?? null)
-      : null;
-
   const SK = "'Sk-Modernist', 'Inter', sans-serif";
+
+  // Handle card body click → open detail modal
+  const handleCardClick = () => {
+    if (onView) onView(item);
+  };
 
   return (
     <div
@@ -197,22 +219,24 @@ export function BoardingPassCard({
         "hover:shadow-[0_6px_28px_-6px_rgba(0,0,0,0.14),0_2px_8px_-2px_rgba(0,0,0,0.08)]",
         expired ? "opacity-60 border-slate-200" : "border-slate-150",
         !item.isPublished && "border-dashed border-slate-300",
+        onView && "cursor-pointer",
       )}
       style={{ fontFamily: SK }}
+      onClick={handleCardClick}
     >
-      {/* ── HEADER: Maskapai + Kode Penerbangan + Tipe Perjalanan ── */}
-      <div className="flex items-start justify-between px-4 pt-4 pb-3 gap-2">
+      {/* ── HEADER: Maskapai + Kode Penerbangan + Badge Tipe ── */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 gap-2">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <AirlineLogo code={item.airlineCode} airline={item.airline} size={38} />
+          <AirlineLogo code={item.airlineCode} airline={item.airline} size={36} />
           <div className="min-w-0 flex-1">
             <p
-              className="text-[14px] text-slate-900 leading-tight truncate"
+              className="text-[13.5px] text-slate-900 leading-tight truncate"
               style={{ fontFamily: SK, fontWeight: 700 }}
             >
               {item.airline}
             </p>
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <span className="text-[9.5px] text-slate-400 font-mono tracking-wide">{item.airlineCode}</span>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className="text-[9px] text-slate-400 font-mono tracking-wide">{item.airlineCode}</span>
               {!isRT && !isML && item.flightNumber && (
                 <span
                   className="text-[9px] bg-slate-100 text-slate-600 rounded-md px-1.5 py-0.5 font-mono"
@@ -221,18 +245,18 @@ export function BoardingPassCard({
                   {item.flightNumber}
                 </span>
               )}
-              <span className={cn(
-                "text-[8.5px] px-2 py-0.5 rounded-full",
-                isML || isRT ? "bg-violet-50 text-violet-600 border border-violet-100"
-                : isDirect ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                : "bg-amber-50 text-amber-600 border border-amber-100",
-              )} style={{ fontWeight: 700 }}>
-                {isML ? "Multi-Leg PP" : isRT ? "Pulang-Pergi" : isDirect ? "Direct" : "Transit"}
-              </span>
             </div>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className={cn(
+            "text-[8.5px] px-2 py-0.5 rounded-full",
+            isML || isRT ? "bg-violet-50 text-violet-600 border border-violet-100"
+            : isDirect ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+            : "bg-amber-50 text-amber-600 border border-amber-100",
+          )} style={{ fontWeight: 700 }}>
+            {isML ? "Multi-Leg PP" : isRT ? "Pulang-Pergi" : isDirect ? "One Way" : "Transit"}
+          </span>
           {isAdmin && !item.isPublished && (
             <Badge variant="outline" className="text-[9px] bg-slate-50 text-slate-400 border-slate-200 py-0">
               Tersembunyi
@@ -244,116 +268,96 @@ export function BoardingPassCard({
         </div>
       </div>
 
-      {/* ── TIMELINE: Vertical route ── */}
-      <div className="px-4 pb-2">
-        <div className="border-t border-dashed border-slate-100 mb-3" />
-        {isML && mlData ? (
-          <div className="space-y-3">
-            <MultiLegTimeline legs={mlData.outboundLegs} label="Berangkat" />
-            {(mlData.returnLegs?.length ?? 0) > 0 && (
-              <>
-                <div className="border-t border-dashed border-slate-100" />
-                <MultiLegTimeline legs={mlData.returnLegs!} label="Pulang" />
-              </>
+      {/* ── ROUTE SUMMARY ── */}
+      <div className="px-4 pb-3">
+        <div className="border-t border-dashed border-slate-100 mb-2.5" />
+        <div className="flex items-start gap-1.5">
+          <Plane className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+          <p
+            className="text-[13px] text-slate-800 leading-snug flex-1 min-w-0"
+            style={{ fontFamily: SK, fontWeight: 600 }}
+          >
+            {compactRoute}
+          </p>
+          {onView && (
+            <ArrowRight className="w-3.5 h-3.5 text-slate-300 shrink-0 mt-0.5" />
+          )}
+        </div>
+
+        {/* Date + Time row */}
+        <div className="flex items-center gap-3 mt-2 flex-wrap">
+          {/* Departure */}
+          <div className="flex items-center gap-1.5">
+            <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+            <span className="text-[11.5px] text-slate-700 font-semibold">
+              {item.departDate ? fmtDate(item.departDate) : "Fleksibel"}
+            </span>
+            {item.etd && (
+              <span className="text-[11px] text-slate-500 font-mono">
+                · {item.etd}
+              </span>
             )}
           </div>
-        ) : isRT && returnLeg ? (
-          <RouteTimeline
-            outbound={{
-              origin: { code: item.fromCode, city: item.fromCity, time: item.etd },
-              destination: { code: item.toCode, city: item.toCity, time: item.eta },
-              transit: item.transitCode
-                ? { code: item.transitCode, city: item.transitCity, duration: item.transitDuration ?? undefined }
-                : null,
-              date: item.departDate ? fmtDate(item.departDate) : null,
-              flightNumber: item.flightNumber,
-            }}
-            returnTrip={{
-              origin: { code: returnLeg.returnFromCode ?? "—", city: returnLeg.returnFromCity, time: returnLeg.returnEtd },
-              destination: { code: returnLeg.returnToCode ?? "—", city: returnLeg.returnToCity, time: returnLeg.returnEta },
-              transit: returnLeg.returnTransitCode
-                ? { code: returnLeg.returnTransitCode, city: returnLeg.returnTransitCity, duration: returnLeg.returnTransitDuration ?? undefined }
-                : null,
-              date: returnLeg.returnDate ? fmtDate(returnLeg.returnDate) : null,
-              flightNumber: returnLeg.returnFlightNumber,
-            }}
-          />
-        ) : (
-          <RouteTimeline
-            outbound={{
-              origin: { code: item.fromCode, city: item.fromCity, time: item.etd },
-              destination: { code: item.toCode, city: item.toCity, time: item.eta },
-              transit: item.transitCode
-                ? { code: item.transitCode, city: item.transitCity, duration: item.transitDuration ?? undefined }
-                : null,
-              date: item.departDate ? fmtDate(item.departDate) : null,
-              flightNumber: item.flightNumber,
-            }}
-          />
-        )}
-      </div>
-
-      {/* ── TANGGAL: Keberangkatan + Pulang (if RT) ── */}
-      <div className="px-4 pt-2 pb-1">
-        <div className="border-t border-dashed border-slate-100 mb-3" />
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span
-              className="text-[13px] text-slate-800"
-              style={{ fontFamily: SK, fontWeight: 700 }}
-            >
-              {item.departDate ? fmtDate(item.departDate) : "Tanggal Fleksibel"}
-            </span>
-          </div>
-          {returnDate && (
+          {/* Return date (if RT/ML) */}
+          {isRTorML && returnDate && (
             <>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-              <div className="flex items-center gap-2">
-                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span
-                  className="text-[13px] text-slate-800"
-                  style={{ fontFamily: SK, fontWeight: 700 }}
-                >
+              <span className="text-slate-300 text-[10px]">↩</span>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3 h-3 text-violet-400 shrink-0" />
+                <span className="text-[11.5px] text-violet-700 font-semibold">
                   {fmtDate(returnDate)}
                 </span>
+                {returnEtd && (
+                  <span className="text-[11px] text-violet-400 font-mono">
+                    · {returnEtd}
+                  </span>
+                )}
               </div>
             </>
           )}
           {item.validUntil && (
-            <span className={cn("ml-auto text-[10px]", expired ? "text-red-500 font-semibold" : "text-slate-400")}>
+            <span className={cn("ml-auto text-[9.5px]", expired ? "text-red-500 font-semibold" : "text-slate-400")}>
               {expired ? "⛔ Expired" : `s/d ${fmtDate(item.validUntil)}`}
             </span>
           )}
         </div>
       </div>
 
-      {/* ── HARGA: dengan role visibility ── */}
-      <div className="px-4 pt-2 pb-3 mt-auto">
+      {/* ── HARGA ── */}
+      <div className="px-4 pb-3 mt-auto">
         <div className="border-t border-dashed border-slate-100 mb-2.5" />
         {!expired ? (
-          <div>
-            <p
-              className="text-[9px] uppercase tracking-widest text-slate-400 mb-0.5"
-              style={{ fontWeight: 700 }}
-            >
-              Harga
-            </p>
-            <p
-              className="text-[21px] text-slate-900 leading-tight tabular-nums"
-              style={{ fontFamily: SK, fontWeight: 700 }}
-            >
-              {fmtIDR(sell)}
-            </p>
-            {showBasePrice && markup > 0 ? (
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                Modal: {item.currency} {item.basePrice.toLocaleString("id-ID")} · markup {fmtIDR(markup)}
+          <div className="flex items-end justify-between gap-2">
+            <div>
+              <p
+                className="text-[9px] uppercase tracking-widest text-slate-400 mb-0.5"
+                style={{ fontWeight: 700 }}
+              >
+                Harga
               </p>
-            ) : !showBasePrice ? (
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                {isRTorML ? "harga paket pulang-pergi · sudah termasuk margin" : "sudah termasuk margin keuntungan"}
+              <p
+                className="text-[20px] text-slate-900 leading-tight tabular-nums"
+                style={{ fontFamily: SK, fontWeight: 700 }}
+              >
+                {fmtIDR(sell)}
               </p>
-            ) : null}
+              {showBasePrice && markup > 0 && (
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Modal: {item.currency} {item.basePrice.toLocaleString("id-ID")} · markup {fmtIDR(markup)}
+                </p>
+              )}
+              {!showBasePrice && (
+                <p className="text-[9.5px] text-slate-400 mt-0.5">
+                  {isRTorML ? "paket PP · sudah termasuk margin" : "sudah termasuk margin"}
+                </p>
+              )}
+            </div>
+            {/* Notes — owner only */}
+            {showBasePrice && (userNotes || (!isRTorML && item.notes && !item.notes.startsWith("__"))) && (
+              <p className="text-[10px] text-slate-400 italic leading-snug text-right max-w-[120px] truncate">
+                {userNotes ?? item.notes}
+              </p>
+            )}
           </div>
         ) : (
           <div>
@@ -361,23 +365,14 @@ export function BoardingPassCard({
             <p className="text-[11px] text-slate-400">Hubungi admin untuk harga terbaru</p>
           </div>
         )}
-
-        {/* Notes — owner only (never show raw __RT__/__ML__ encoded strings) */}
-        {showBasePrice && userNotes && !userNotes.startsWith("__") && (
-          <p className="text-[10.5px] text-slate-500 italic leading-snug mt-1">{userNotes}</p>
-        )}
-        {showBasePrice && !isRTorML && item.notes && !item.notes.startsWith("__") && (
-          <p className="text-[10.5px] text-slate-500 italic leading-snug mt-1">{item.notes}</p>
-        )}
       </div>
 
       {/* ── FOOTER: Tombol aksi ── */}
-      <div className="px-4 pb-4 space-y-2">
+      <div className="px-4 pb-4 space-y-2" onClick={(e) => e.stopPropagation()}>
         <div className="border-t border-slate-100 mb-3" />
 
         {/* Row 1: WA + Order */}
         {confirmDelete ? (
-          /* Inline delete confirmation — full width row */
           <div className="flex items-center gap-2 w-full">
             <p className="flex-1 text-[11.5px] text-slate-600 truncate" style={{ fontFamily: SK, fontWeight: 600 }}>
               Hapus tiket ini?
@@ -425,7 +420,7 @@ export function BoardingPassCard({
           </div>
         )}
 
-        {/* Row 2 (admin only): icon actions — right-aligned, never overflows */}
+        {/* Row 2 (admin only): icon actions — right-aligned */}
         {isAdmin && !confirmDelete && (
           <div className="flex items-center justify-end gap-0.5">
             {onView && (
