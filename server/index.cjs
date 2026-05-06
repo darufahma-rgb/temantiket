@@ -687,12 +687,17 @@ app.post('/api/ai/chat', async (req, res) => {
     }
 
     // Inject model default jika caller tidak set.
-    // Jika tidak pakai OpenRouter (fallback ke OpenAI), model OpenRouter seperti
-    // "google/gemini-2.0-flash" tidak valid — remap ke MODEL_CHAT yang valid untuk OpenAI.
     const requestedModel = req.body.model || MODEL_CHAT;
-    const resolvedModel = (!USE_OR && typeof requestedModel === 'string' && requestedModel.includes('/'))
-      ? MODEL_CHAT
-      : requestedModel;
+
+    let resolvedModel = requestedModel;
+    if (!USE_OR && typeof requestedModel === 'string' && requestedModel.includes('/')) {
+      // Fallback ke OpenAI: model OpenRouter (pakai "/") tidak valid di OpenAI — remap ke MODEL_CHAT.
+      resolvedModel = MODEL_CHAT;
+    } else if (USE_OR && typeof requestedModel === 'string' && !requestedModel.includes('/')) {
+      // OpenRouter mengharuskan format "provider/model". Bare model name (misal "gpt-4.1-nano")
+      // tidak valid — prepend "openai/" sebagai safety net.
+      resolvedModel = `openai/${requestedModel}`;
+    }
 
     console.log(`[ai/chat] provider=${USE_OR ? 'openrouter' : 'openai'} requested="${requestedModel}" resolved="${resolvedModel}"`);
 

@@ -450,7 +450,7 @@ CRITICAL RULES:
 
 async function callOpenAIText(text: string): Promise<ItineraryData> {
   const resp = await callAI({
-    model: "gpt-4.1-nano",
+    model: "openai/gpt-4.1-nano",
     temperature: 0,
     max_tokens: 2500,
     response_format: { type: "json_object" },
@@ -467,7 +467,7 @@ async function callOpenAIText(text: string): Promise<ItineraryData> {
 
 async function callOpenAIVision(imageDataUrl: string): Promise<ItineraryData> {
   const resp = await callAI({
-    model: "gpt-4.1-nano",
+    model: "openai/gpt-4.1-nano",
     temperature: 0,
     max_tokens: 2500,
     response_format: { type: "json_object" },

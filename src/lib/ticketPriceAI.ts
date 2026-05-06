@@ -253,7 +253,7 @@ REMEMBER: One booking = ONE ticket entry. Transit rows with same Total Amount = 
 
 async function callOpenAIVision(dataUrl: string): Promise<ParsedTicketPrice[]> {
   const resp = await callAI({
-    model: "gpt-4.1-nano",
+    model: "openai/gpt-4.1-nano",
     temperature: 0.05,
     max_tokens: 4000,
     response_format: { type: "json_object" },

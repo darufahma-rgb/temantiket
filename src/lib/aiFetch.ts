@@ -56,7 +56,7 @@ export interface CallAIOptions {
  *  - Always throws a clear Error on failure — never returns a non-ok Response
  *
  * Usage:
- *   const res  = await callAI({ model: "gpt-4.1-nano", messages: [...] });
+ *   const res  = await callAI({ model: "openai/gpt-4.1-nano", messages: [...] });
  *   const data = await res.json();
  */
 export async function callAI(

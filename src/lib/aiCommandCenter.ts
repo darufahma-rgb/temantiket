@@ -704,7 +704,7 @@ export async function sendAIMessage(
   while (iterations < MAX_ITERATIONS) {
     iterations++;
     const response = await callAI({
-      model: "gpt-4.1-nano",
+      model: "openai/gpt-4.1-nano",
       messages: fullMessages,
       tools: TOOLS,
       tool_choice: "auto",
