@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore, type Client } from "@/store/clientsStore";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import {
   ORDER_TYPES, ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI,
   type OrderType,
@@ -21,7 +21,6 @@ import {
 import { PassportScanButton } from "@/components/PassportScanButton";
 import { decidePassportSync } from "@/features/clients/passportSync";
 import { toast } from "sonner";
-import { getCommissionForOrderType, loadProductCommissions } from "@/lib/productCommissions";
 import { cn } from "@/lib/utils";
 
 function fmtIDRShort(n: number): string {
@@ -488,23 +487,29 @@ function NewOrderDialog({
   }) => Promise<void>;
 }) {
   const { clients, addClient, patchClient } = useClientsStore();
+  const listMembers = useAuthStore((s) => s.listMembers);
 
   const [type, setType] = useState<OrderType>(defaultType);
   const [title, setTitle] = useState("");
-  // Track apakah user udah ngedit judul manual — kalau iya, jangan auto-overwrite
-  // pas type/client berubah. Reset ke false setiap dialog dibuka.
   const [titleEdited, setTitleEdited] = useState(false);
   const [totalPrice, setTotalPrice] = useState<string>("");
   const [costPrice, setCostPrice] = useState<string>("");
   const [clientId, setClientId] = useState<string>(defaultClientId ?? "");
   const [currency, setCurrency] = useState<"IDR" | "EGP">(CURRENCY_BY_TYPE[defaultType]);
-  // Track apakah user udah pilih currency manual — kalau iya, jangan ikut
-  // berubah saat tipe order diganti.
   const [currencyEdited, setCurrencyEdited] = useState(false);
   const [agentFee, setAgentFee] = useState<string>("");
+  // Track apakah user override fee manual — kalau iya, jangan auto-overwrite.
+  const [feeEdited, setFeeEdited] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [members, setMembers] = useState<MemberInfo[]>([]);
 
   const currencySymbol = CURRENCY_SYMBOL[currency];
+
+  // Load agent members saat dialog pertama kali dibuka.
+  useEffect(() => {
+    if (!open) return;
+    void listMembers().then(setMembers).catch(() => {/* silent */});
+  }, [open, listMembers]);
 
   useEffect(() => {
     if (open) {
@@ -516,9 +521,8 @@ function NewOrderDialog({
       setClientId(defaultClientId ?? "");
       setCurrency(CURRENCY_BY_TYPE[defaultType]);
       setCurrencyEdited(false);
-      // Auto-fill fee komisi dari settings saat dialog dibuka
-      const fee = getCommissionForOrderType(defaultType, loadProductCommissions());
-      setAgentFee(fee > 0 ? String(fee) : "");
+      setAgentFee("");
+      setFeeEdited(false);
     }
   }, [open, defaultType, defaultClientId]);
 
@@ -528,12 +532,33 @@ function NewOrderDialog({
     setCurrency(CURRENCY_BY_TYPE[type]);
   }, [open, type, currencyEdited]);
 
-  // Auto-update agent fee saat tipe order berubah.
+  // Detect agen yang terhubung ke klien yang dipilih.
+  // Hanya dihitung "via agen" kalau member-nya benar-benar berole "agent".
+  const linkedAgent = useMemo<MemberInfo | null>(() => {
+    if (!clientId) return null;
+    const client = clients.find((c) => c.id === clientId);
+    if (!client?.createdByAgent) return null;
+    const member = members.find((m) => m.userId === client.createdByAgent);
+    return member?.role === "agent" ? member : null;
+  }, [clientId, clients, members]);
+
+  // Auto-hitung fee komisi dari profit × commissionPct agent.
+  // Jalan ulang setiap kali harga atau klien/agen berubah,
+  // KECUALI user sudah override manual.
   useEffect(() => {
-    if (!open) return;
-    const fee = getCommissionForOrderType(type, loadProductCommissions());
-    setAgentFee(fee > 0 ? String(fee) : "");
-  }, [open, type]);
+    if (!open || feeEdited) return;
+    if (!linkedAgent || linkedAgent.commissionPct <= 0) {
+      setAgentFee("");
+      return;
+    }
+    const profit = (Number(totalPrice) || 0) - (Number(costPrice) || 0);
+    if (profit <= 0) {
+      setAgentFee("");
+      return;
+    }
+    const auto = Math.round(profit * linkedAgent.commissionPct / 100);
+    setAgentFee(auto > 0 ? String(auto) : "");
+  }, [open, feeEdited, linkedAgent, totalPrice, costPrice]);
 
   // Auto-fill judul: "[Tipe Order] - [Nama Klien]" (atau cuma tipe kalau gak
   // ada klien). Cuma jalan kalau user belum ngetik manual.
@@ -696,33 +721,61 @@ function NewOrderDialog({
             </div>
           </div>
 
-          {/* Fee Komisi Agen */}
-          <div className="space-y-1">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              Fee Komisi Agen
-            </Label>
-            <div className="flex items-center gap-1.5">
-              <span className="px-2 h-9 rounded-md border bg-muted/40 text-[11px] font-semibold inline-flex items-center shrink-0">
-                Rp
-              </span>
-              <Input
-                type="number"
-                inputMode="numeric"
-                value={agentFee}
-                onChange={(e) => setAgentFee(e.target.value)}
-                placeholder="0 (auto dari settings)"
-                className="flex-1 min-w-0"
-              />
+          {/* Fee Komisi Agen — hanya tampil jika klien terhubung ke agen */}
+          {linkedAgent ? (
+            <div className="space-y-1">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Fee Komisi Agen
+              </Label>
+              {/* Info banner agen */}
+              <div className="rounded-lg bg-orange-50 border border-orange-200 px-2.5 py-1.5 flex items-center gap-2 text-[11px] text-orange-700">
+                <span className="text-base">🤝</span>
+                <span>
+                  Order via <strong>{linkedAgent.displayName}</strong> · komisi{" "}
+                  <strong>{linkedAgent.commissionPct}%</strong> dari profit
+                  {feeEdited && (
+                    <span className="ml-1 text-orange-500">(diubah manual)</span>
+                  )}
+                </span>
+                {feeEdited && (
+                  <button
+                    type="button"
+                    className="ml-auto text-[10px] underline text-orange-600 shrink-0"
+                    onClick={() => setFeeEdited(false)}
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="px-2 h-9 rounded-md border bg-muted/40 text-[11px] font-semibold inline-flex items-center shrink-0">
+                  Rp
+                </span>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={agentFee}
+                  onChange={(e) => { setAgentFee(e.target.value); setFeeEdited(true); }}
+                  placeholder="0"
+                  className="flex-1 min-w-0"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground pt-0.5">
+                Auto-hitung dari profit × {linkedAgent.commissionPct}% · bisa diubah manual
+              </p>
             </div>
-            <p className="text-[10px] text-muted-foreground pt-0.5">
-              Auto-isi dari pengaturan fee per produk · bisa diubah manual
-            </p>
-          </div>
+          ) : clientId ? (
+            /* Klien dipilih tapi bukan via agen → order langsung */
+            <div className="rounded-lg bg-sky-50 border border-sky-200 px-2.5 py-1.5 flex items-center gap-2 text-[11px] text-sky-700">
+              <span className="text-base">👤</span>
+              <span>Order langsung — tidak ada komisi agen</span>
+            </div>
+          ) : null}
 
           {/* Profit preview */}
           {(Number(totalPrice) > 0 || Number(costPrice) > 0) && (() => {
             const profit = (Number(totalPrice) || 0) - (Number(costPrice) || 0);
-            const fee = Number(agentFee) || 0;
+            const fee = linkedAgent ? (Number(agentFee) || 0) : 0;
             const net = profit - fee;
             const positive = profit >= 0;
             const netPositive = net >= 0;
@@ -732,23 +785,33 @@ function NewOrderDialog({
                   positive ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
                 }`}>
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Profit Kotor
+                    {linkedAgent ? "Profit Kotor" : "Profit Owner"}
                   </span>
                   <span className={`text-[14px] font-extrabold font-mono ${positive ? "text-emerald-700" : "text-red-600"}`}>
                     {positive ? "+" : ""}{currencySymbol} {Math.abs(profit).toLocaleString("id-ID")}
                   </span>
                 </div>
-                {fee > 0 && (
-                  <div className={`rounded-xl border px-3 py-2 flex items-center justify-between gap-2 ${
-                    netPositive ? "bg-sky-50 border-sky-200" : "bg-red-50 border-red-200"
-                  }`}>
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Net (- fee agen)
-                    </span>
-                    <span className={`text-[14px] font-extrabold font-mono ${netPositive ? "text-sky-700" : "text-red-600"}`}>
-                      {netPositive ? "+" : ""}{currencySymbol} {Math.abs(net).toLocaleString("id-ID")}
-                    </span>
-                  </div>
+                {linkedAgent && fee > 0 && (
+                  <>
+                    <div className="rounded-xl border px-3 py-2 flex items-center justify-between gap-2 bg-orange-50 border-orange-200">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Fee → {linkedAgent.displayName}
+                      </span>
+                      <span className="text-[14px] font-extrabold font-mono text-orange-700">
+                        −{currencySymbol} {fee.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                    <div className={`rounded-xl border px-3 py-2 flex items-center justify-between gap-2 ${
+                      netPositive ? "bg-sky-50 border-sky-200" : "bg-red-50 border-red-200"
+                    }`}>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Net → Owner
+                      </span>
+                      <span className={`text-[14px] font-extrabold font-mono ${netPositive ? "text-sky-700" : "text-red-600"}`}>
+                        {netPositive ? "+" : ""}{currencySymbol} {Math.abs(net).toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
             );
