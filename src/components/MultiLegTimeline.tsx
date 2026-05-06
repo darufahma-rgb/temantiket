@@ -20,6 +20,14 @@ interface MultiLegTimelineProps {
 
 const SPINE_COLOR = "#64748b";
 
+function FlightChip({ code }: { code: string }) {
+  return (
+    <span className="inline-block text-[9px] font-mono font-semibold bg-slate-100 text-slate-500 rounded-md px-1.5 py-0.5 mt-1 leading-none">
+      {code}
+    </span>
+  );
+}
+
 export function MultiLegTimeline({
   legs,
   label,
@@ -67,7 +75,7 @@ export function MultiLegTimeline({
 
         {/* Text column */}
         <div className="flex-1 min-w-0 py-0.5 space-y-3">
-          {/* Origin */}
+          {/* Origin — show first leg's flight number at departure */}
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
               <p className="font-bold text-[17px] text-slate-900 leading-none">
@@ -82,9 +90,10 @@ export function MultiLegTimeline({
             {legs[0]?.fromCity && (
               <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">{legs[0].fromCode}</p>
             )}
+            {legs[0]?.flightNumber && <FlightChip code={legs[0].flightNumber} />}
           </div>
 
-          {/* Transit stops */}
+          {/* Transit stops — show the NEXT leg's flight number (connecting flight departing from here) */}
           {legs.slice(0, -1).map((leg, i) => (
             <div key={i}>
               <div className="flex items-baseline gap-1.5 flex-wrap">
@@ -92,13 +101,12 @@ export function MultiLegTimeline({
                   {leg.toCity || leg.toCode}
                 </p>
                 <span className="text-[8.5px] text-amber-500 font-semibold">transit</span>
-                {leg.flightNumber && (
-                  <span className="text-[8.5px] font-mono text-slate-400">{leg.flightNumber}</span>
-                )}
               </div>
               {leg.toCity && (
                 <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{leg.toCode}</p>
               )}
+              {/* Flight number of the connecting flight departing this transit city */}
+              {legs[i + 1]?.flightNumber && <FlightChip code={legs[i + 1].flightNumber!} />}
             </div>
           ))}
 

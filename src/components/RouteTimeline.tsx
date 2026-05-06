@@ -25,6 +25,14 @@ export interface RouteTimelineLegProps {
 
 const SPINE_COLOR = "#64748b";
 
+function FlightChip({ code }: { code: string }) {
+  return (
+    <span className="inline-block text-[9px] font-mono font-semibold bg-slate-100 text-slate-500 rounded-md px-1.5 py-0.5 mt-1 leading-none">
+      {code}
+    </span>
+  );
+}
+
 function SingleLeg({ origin, destination, transit, label, date, flightNumber }: RouteTimelineLegProps) {
   const isDirect = !transit?.code;
   const labelColor = label === "Pulang" ? "text-violet-600" : "text-slate-500";
@@ -37,9 +45,6 @@ function SingleLeg({ origin, destination, transit, label, date, flightNumber }: 
             {label === "Pulang" ? "↩ " : "↗ "}{label}
           </p>
           {date && <span className="text-[9px] text-slate-400 ml-auto">{date}</span>}
-          {flightNumber && (
-            <span className="text-[9px] font-mono text-slate-400 bg-slate-100 rounded px-1">{flightNumber}</span>
-          )}
         </div>
       )}
 
@@ -81,6 +86,8 @@ function SingleLeg({ origin, destination, transit, label, date, flightNumber }: 
                 {origin.airport ?? origin.code}
               </p>
             )}
+            {/* Flight number at departure point */}
+            {flightNumber && <FlightChip code={flightNumber} />}
             {!isDirect && transit?.code && (
               <p className="text-[9.5px] text-amber-600 font-semibold mt-1">
                 via {transit.city ? `${transit.city} (${transit.code})` : transit.code}
