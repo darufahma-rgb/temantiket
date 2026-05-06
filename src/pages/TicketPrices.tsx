@@ -468,57 +468,46 @@ function TicketDetailModal({
           <div className="rounded-xl border border-slate-100 bg-white px-4 py-4">
             {isML && mlData ? (
               <div className="space-y-4">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[#1a56a8] mb-1">↗ Berangkat</p>
-                <MultiLegTimeline legs={mlData.outboundLegs} />
+                <MultiLegTimeline legs={mlData.outboundLegs} label="Berangkat" />
                 {(mlData.returnLegs?.length ?? 0) > 0 && (
                   <>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 border-t border-dashed border-slate-200" />
-                      <RotateCcw className="w-3 h-3 text-violet-400 shrink-0" />
-                      <div className="flex-1 border-t border-dashed border-slate-200" />
-                    </div>
-                    <MultiLegTimeline legs={mlData.returnLegs!} accentColor="#7c3aed" />
+                    <div className="border-t border-dashed border-slate-200" />
+                    <MultiLegTimeline legs={mlData.returnLegs!} label="Pulang" />
                   </>
                 )}
               </div>
             ) : isRT && returnLeg ? (
-              <div className="space-y-4">
-                <RouteTimeline
-                  fromCode={item.fromCode} fromCity={item.fromCity} etd={item.etd}
-                  toCode={item.toCode} toCity={item.toCity} eta={item.eta}
-                  isDirect={!item.transitCode} transitCode={item.transitCode}
-                  transitCity={item.transitCity} transitDuration={item.transitDuration}
-                  label="Berangkat"
-                  date={item.departDate ? fmtDate(item.departDate) : null}
-                  flightNumber={item.flightNumber}
-                />
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 border-t border-dashed border-slate-200" />
-                  <RotateCcw className="w-3 h-3 text-violet-400 shrink-0" />
-                  <div className="flex-1 border-t border-dashed border-slate-200" />
-                </div>
-                <RouteTimeline
-                  fromCode={returnLeg.returnFromCode ?? "—"} fromCity={returnLeg.returnFromCity}
-                  etd={returnLeg.returnEtd}
-                  toCode={returnLeg.returnToCode ?? "—"} toCity={returnLeg.returnToCity}
-                  eta={returnLeg.returnEta}
-                  isDirect={!returnLeg.returnTransitCode}
-                  transitCode={returnLeg.returnTransitCode}
-                  transitCity={returnLeg.returnTransitCity}
-                  transitDuration={returnLeg.returnTransitDuration}
-                  label="Pulang"
-                  date={returnLeg.returnDate ? fmtDate(returnLeg.returnDate) : null}
-                  flightNumber={returnLeg.returnFlightNumber}
-                />
-              </div>
+              <RouteTimeline
+                outbound={{
+                  origin: { code: item.fromCode, city: item.fromCity, time: item.etd },
+                  destination: { code: item.toCode, city: item.toCity, time: item.eta },
+                  transit: item.transitCode
+                    ? { code: item.transitCode, city: item.transitCity, duration: item.transitDuration ?? undefined }
+                    : null,
+                  date: item.departDate ? fmtDate(item.departDate) : null,
+                  flightNumber: item.flightNumber,
+                }}
+                returnTrip={{
+                  origin: { code: returnLeg.returnFromCode ?? "—", city: returnLeg.returnFromCity, time: returnLeg.returnEtd },
+                  destination: { code: returnLeg.returnToCode ?? "—", city: returnLeg.returnToCity, time: returnLeg.returnEta },
+                  transit: returnLeg.returnTransitCode
+                    ? { code: returnLeg.returnTransitCode, city: returnLeg.returnTransitCity, duration: returnLeg.returnTransitDuration ?? undefined }
+                    : null,
+                  date: returnLeg.returnDate ? fmtDate(returnLeg.returnDate) : null,
+                  flightNumber: returnLeg.returnFlightNumber,
+                }}
+              />
             ) : (
               <RouteTimeline
-                fromCode={item.fromCode} fromCity={item.fromCity} etd={item.etd}
-                toCode={item.toCode} toCity={item.toCity} eta={item.eta}
-                isDirect={isDirect} transitCode={item.transitCode}
-                transitCity={item.transitCity} transitDuration={item.transitDuration}
-                date={item.departDate ? fmtDate(item.departDate) : null}
-                flightNumber={item.flightNumber}
+                outbound={{
+                  origin: { code: item.fromCode, city: item.fromCity, time: item.etd },
+                  destination: { code: item.toCode, city: item.toCity, time: item.eta },
+                  transit: item.transitCode
+                    ? { code: item.transitCode, city: item.transitCity, duration: item.transitDuration ?? undefined }
+                    : null,
+                  date: item.departDate ? fmtDate(item.departDate) : null,
+                  flightNumber: item.flightNumber,
+                }}
               />
             )}
           </div>
