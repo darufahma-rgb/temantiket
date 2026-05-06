@@ -45,13 +45,15 @@ interface ClientFormData {
   passportIssuingOffice: string;
   gender: "L" | "P" | "";
   notes: string;
+  /** user_id dari agen/owner yang closing/mereferensikan klien ini. "" = belum dipilih. */
+  referredBy: string;
 }
 
 const emptyForm: ClientFormData = {
   name: "", phone: "", email: "",
   passportNumber: "", birthDate: "", birthPlace: "",
   passportExpiry: "", passportIssueDate: "", passportIssuingOffice: "",
-  gender: "", notes: "",
+  gender: "", notes: "", referredBy: "",
 };
 
 function clientToForm(c: Client): ClientFormData {
@@ -67,6 +69,7 @@ function clientToForm(c: Client): ClientFormData {
     passportIssuingOffice: c.passportIssuingOffice ?? "",
     gender: c.gender ?? "",
     notes: c.notes ?? "",
+    referredBy: c.createdByAgent ?? "",
   };
 }
 
@@ -281,6 +284,7 @@ function ClientDetailInner({ id }: { id: string }) {
             passportIssuingOffice: form.passportIssuingOffice.trim() || undefined,
             gender: (form.gender as "L" | "P" | "") || undefined,
             notes: form.notes.trim() || undefined,
+            createdByAgent: form.referredBy || null,
           });
           toast.success("Klien diperbarui");
           setEditOpen(false);
@@ -357,6 +361,8 @@ function SkeletonInput() {
 }
 
 // ── Form dialog ──────────────────────────────────────────────────────────────
+type MemberOption = { userId: string; displayName: string; role: string };
+
 function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit }: {
   open: boolean; onOpenChange: (v: boolean) => void; initial: ClientFormData; title: string;
   onSubmit: (form: ClientFormData) => Promise<void>;
@@ -365,9 +371,22 @@ function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit }: {
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+  const [members, setMembers] = useState<MemberOption[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (open) setForm(initial); }, [open, initial]);
+
+  useEffect(() => {
+    if (!open) return;
+    setMembersLoading(true);
+    useAuthStore.getState().listMembers()
+      .then((list) => setMembers(
+        list.filter((m) => m.role === "owner" || m.role === "agent")
+      ))
+      .catch(() => {})
+      .finally(() => setMembersLoading(false));
+  }, [open]);
   const update = <K extends keyof ClientFormData>(k: K, v: ClientFormData[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
@@ -526,6 +545,38 @@ function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit }: {
           {/* Kantor Pengeluaran */}
           <Field label="Kantor Pengeluaran" icon={<BuildingOffice className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
             <Input value={form.passportIssuingOffice} onChange={(e) => update("passportIssuingOffice", e.target.value)} placeholder="Contoh: Kantor Imigrasi Jakarta Selatan" disabled={scanning} />
+          </Field>
+
+          {/* Divider: Sumber Klien */}
+          <div className="flex items-center gap-2 pt-1">
+            <div className="h-px flex-1 bg-slate-100" />
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Sumber Klien</span>
+            <div className="h-px flex-1 bg-slate-100" />
+          </div>
+
+          {/* Closing / Referensi dari */}
+          <Field label="Closing / Referensi dari" icon={<UserCheck className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+            <select
+              value={form.referredBy}
+              onChange={(e) => update("referredBy", e.target.value)}
+              disabled={scanning || membersLoading}
+              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+            >
+              <option value="">— Belum dipilih —</option>
+              {members.map((m) => (
+                <option key={m.userId} value={m.userId}>
+                  {m.displayName} {m.role === "owner" ? "(Owner)" : "(Agen)"}
+                </option>
+              ))}
+            </select>
+            {membersLoading && (
+              <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                <Loader2 className="h-2.5 w-2.5 animate-spin" /> Memuat daftar anggota…
+              </p>
+            )}
+            {!membersLoading && members.length === 0 && (
+              <p className="text-[10px] text-muted-foreground mt-1">Belum ada agen/owner terdaftar.</p>
+            )}
           </Field>
 
           {/* Catatan */}
@@ -916,6 +967,7 @@ export default function Clients() {
             passportIssuingOffice: form.passportIssuingOffice.trim() || undefined,
             gender: form.gender || undefined,
             notes: form.notes.trim() || undefined,
+            createdByAgent: form.referredBy || undefined,
           });
           toast.success("Klien dibuat", { description: c.name });
           setAddOpen(false);
