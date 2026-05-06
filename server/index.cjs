@@ -5,6 +5,7 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 const fs = require('fs');
+const ws = require('ws');
 
 const PORT = process.env.PORT || 3001;
 const SUPABASE_URL = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
@@ -58,7 +59,7 @@ function err(res, status, message) {
 function makeAdminClient() {
   if (!SUPABASE_URL) throw new Error('VITE_SUPABASE_URL tidak dikonfigurasi di server');
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY belum di-set. Tambahkan di Secrets panel Replit.');
-  return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+  return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false }, realtime: { transport: ws } });
 }
 
 // Race a Supabase (or any) promise against a hard timeout so requests
@@ -78,6 +79,7 @@ async function getCallerUser(authHeader, timeoutMs = 8000) {
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
     auth: { persistSession: false },
+    realtime: { transport: ws },
   });
   // Race the Supabase auth call against a timeout so it never hangs forever
   const authCall = userClient.auth.getUser();
@@ -741,6 +743,11 @@ if (isProd) {
     }
   });
 }
+
+// Keep the event loop alive — @supabase/auth-js calls .unref() on its internal
+// timers, which would otherwise allow Node to exit when there are no active
+// HTTP connections.
+setInterval(() => {}, 1 << 30);
 
 app.listen(PORT, '0.0.0.0', () => {
   const mode = isProd ? 'production' : 'development';
