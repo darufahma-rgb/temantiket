@@ -405,9 +405,9 @@ export function CaptionGenerator() {
           <span className="text-[11px] text-muted-foreground">Model AI untuk scan poster</span>
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700">
             <Sparkles className="h-3 w-3" strokeWidth={2} />
-            Gemini 2.5 Flash
+            Flash OCR → Claude
             <span className="rounded bg-emerald-200 px-1 py-px text-[9px] font-bold uppercase tracking-wide leading-none text-emerald-700">
-              OCR Hemat
+              2-STEP AI
             </span>
           </span>
         </div>

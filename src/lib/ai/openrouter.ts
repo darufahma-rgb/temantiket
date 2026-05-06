@@ -51,15 +51,17 @@ function estimateCost(model: string, promptTokens: number, completionTokens: num
 
 export const OR_MODELS = {
   /** Vision + OCR: poster, paspor, tiket screenshot. Gemini 2.5 Flash — murah, cepat, akurat. */
-  VISION:     "google/gemini-2.5-flash-preview",
+  VISION:          "google/gemini-2.5-flash-preview",
   /** Caption marketing — manual maupun dari poster. */
-  CAPTION:    "google/gemini-2.0-flash-001",
+  CAPTION:         "google/gemini-2.0-flash-001",
+  /** Caption writer setelah OCR poster — Claude untuk kualitas copywriting terbaik. */
+  CAPTION_WRITER:  "anthropic/claude-3-5-sonnet-20241022",
   /** Rapikan catatan, formatting teks ringan. */
-  TEXT_FAST:  "google/gemini-2.0-flash-001",
+  TEXT_FAST:       "google/gemini-2.0-flash-001",
   /** Structured JSON output: itinerary, data terstruktur. */
-  STRUCTURED: "google/gemini-2.0-flash-001",
+  STRUCTURED:      "google/gemini-2.0-flash-001",
   /** Reasoning kompleks — hanya pakai kalau butuh kualitas tinggi. */
-  REASONING:  "anthropic/claude-3-5-sonnet-20241022",
+  REASONING:       "anthropic/claude-3-5-sonnet-20241022",
 } as const;
 
 export type ORModel = (typeof OR_MODELS)[keyof typeof OR_MODELS];
@@ -225,12 +227,34 @@ ATURAN KETAT:
 
 OUTPUT: Langsung tulis caption-nya saja — tanpa label, tanpa penjelasan tambahan.`;
 
-/** System prompt untuk scan poster */
-const POSTER_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter & Brand Guardian resmi Temantiket.
+/** System prompt untuk OCR poster — hanya ekstrak fakta, TIDAK menulis caption */
+const POSTER_OCR_SYSTEM_PROMPT = `Kamu adalah asisten ekstraksi konten visual yang presisi.
+
+Tugas: Baca poster ini dan ekstrak SEMUA informasi yang terlihat secara faktual dan terstruktur.
+
+Ekstrak:
+- Nama paket / produk
+- Harga (lengkap: angka, diskon, cicilan jika ada)
+- Fasilitas / keunggulan / apa saja yang termasuk (inklusif)
+- Tanggal keberangkatan atau periode promo
+- Nama agen / brand yang ada di poster
+- Nomor kontak (telepon / WA) yang tercetak di poster
+- Slogan, kata kunci, atau tagline yang ada di poster
+- Informasi lain yang relevan
+
+ATURAN:
+- Sajikan sebagai teks terstruktur menggunakan bullet point.
+- Hanya fakta dari poster — jangan ditambah opini, jangan ditulis ulang jadi marketing copy.
+- Kalau ada informasi yang tidak terlihat jelas, tandai dengan "(tidak terbaca)".
+
+OUTPUT: Langsung tulis hasil ekstraksinya saja — tanpa kata pengantar, tanpa penjelasan.`;
+
+/** System prompt untuk Claude menulis caption dari hasil OCR poster */
+const POSTER_CAPTION_SYSTEM_PROMPT = `Kamu adalah Senior Copywriter & Brand Guardian resmi Temantiket.
 
 Brand name yang benar: "Temantiket" (bukan TemanTiket, bukan Teman Tiket). Wajib ada di caption.
 
-Tugas: Baca isi poster yang dikirim, ekstrak informasi utama (nama paket, harga, keunggulan, dsb), lalu buat 1 caption WhatsApp/Instagram.
+Kamu akan menerima informasi yang sudah diekstrak dari sebuah poster travel. Gunakan informasi itu untuk membuat 1 caption WhatsApp/Instagram yang menarik.
 
 ALUR WAJIB CAPTION (satu blok teks mengalir, BUKAN poin terpisah):
 1. HOOK: Emoji + kalimat pembuka yang menarik atau pertanyaan yang bikin penasaran.
@@ -240,7 +264,7 @@ ALUR WAJIB CAPTION (satu blok teks mengalir, BUKAN poin terpisah):
 5. CLOSING: "Temantiket — mudah, cepat, amanah" + 1 emoji relevan.
 
 ATURAN KETAT:
-1. Buat tepat 1 caption saja — pilih sudut pandang terbaik berdasarkan isi poster.
+1. Buat tepat 1 caption saja — pilih sudut pandang terbaik berdasarkan informasi yang diberikan.
 2. Target panjang 600–1000 karakter (termasuk emoji & spasi).
 3. Gaya: mengalir natural, santai, meyakinkan — bukan daftar kaku atau terlalu salesy.
 4. Nama "Temantiket" WAJIB muncul di caption.
@@ -285,33 +309,61 @@ export async function generateCaptionFromDetail(params: {
   return { caption: content, usage };
 }
 
+/** Gabungkan TokenUsage dari 2 panggilan AI menjadi satu entri total. */
+function combineUsage(a: TokenUsage | null, b: TokenUsage | null): TokenUsage | null {
+  if (!a && !b) return null;
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    promptTokens:     a.promptTokens     + b.promptTokens,
+    completionTokens: a.completionTokens + b.completionTokens,
+    totalTokens:      a.totalTokens      + b.totalTokens,
+    estimatedCostUsd: a.estimatedCostUsd + b.estimatedCostUsd,
+    resolvedModel:    `${a.resolvedModel} → ${b.resolvedModel}`,
+  };
+}
+
 /**
  * generateCaptionFromPoster — scan gambar poster lalu buat caption marketing.
  * Dipakai di MarketingKitGenerator mode "poster".
+ *
+ * 2-step pipeline:
+ *   Step 1 → Gemini 2.5 Flash (vision) membaca & mengekstrak fakta dari poster
+ *   Step 2 → Claude menyusun caption marketing dari hasil ekstraksi
  */
 export async function generateCaptionFromPoster(params: {
   imageBase64: string;
   tone: string;
   waNumber?: string;
-}): Promise<string> {
+}): Promise<CaptionResult> {
   const { imageBase64, tone, waNumber } = params;
   const toneInstruction = TONE_INSTRUCTIONS[tone] ?? tone;
   const waSection = waNumber?.trim()
     ? `\nNomor WA untuk baris CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}`
     : "";
 
-  // Poster OCR selalu pakai VISION model langsung — tidak melalui override store
-  // karena override store bisa menyimpan model text-only yang tidak support vision.
-  const { content, usage } = await callAIOpenRouterFull({
+  // Step 1: Flash Vision membaca poster → ekstrak fakta (text-only output)
+  const { content: extractedInfo, usage: usageOcr } = await callAIOpenRouterFull({
     model: OR_MODELS.VISION,
-    systemPrompt: POSTER_SYSTEM_PROMPT,
-    prompt: `Scan poster ini dan buat 1 caption sesuai struktur dan aturan di instruksi sistem.\nTone: ${toneInstruction}.${waSection}`,
+    systemPrompt: POSTER_OCR_SYSTEM_PROMPT,
+    prompt: "Baca poster ini dan ekstrak semua informasi yang terlihat sesuai instruksi sistem.",
     imageBase64,
-    temperature: 0.8,
-    maxTokens: 1500,
-    fetchOptions: { timeoutMs: 90_000 },
+    temperature: 0.1,
+    maxTokens: 800,
+    fetchOptions: { timeoutMs: 60_000 },
   });
-  return { caption: content, usage };
+
+  // Step 2: Claude menulis caption dari informasi yang sudah diekstrak
+  const { content: caption, usage: usageCaption } = await callAIOpenRouterFull({
+    model: OR_MODELS.CAPTION_WRITER,
+    systemPrompt: POSTER_CAPTION_SYSTEM_PROMPT,
+    prompt: `Buat 1 caption berdasarkan informasi poster berikut.\nTone: ${toneInstruction}.${waSection}\n\n--- INFORMASI DARI POSTER ---\n${extractedInfo}`,
+    temperature: 0.85,
+    maxTokens: 1200,
+    fetchOptions: { timeoutMs: 60_000 },
+  });
+
+  return { caption, usage: combineUsage(usageOcr, usageCaption) };
 }
 
 /**
