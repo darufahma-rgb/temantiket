@@ -22,6 +22,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { RouteTimeline } from "@/components/RouteTimeline";
+import { MultiLegTimeline } from "@/components/MultiLegTimeline";
 import { useAuthStore } from "@/store/authStore";
 import { useRatesStore } from "@/store/ratesStore";
 import {
@@ -109,295 +111,6 @@ function AirlineLogo({ code, airline, size = 40 }: { code: string; airline: stri
   );
 }
 
-// ── Flight leg mini display (used inside round-trip card) ────────────────────
-function LegRow({
-  label, fromCode, toCode, fromCity, toCity, flightNumber, etd, eta,
-  transitCode, transitCity, transitDuration, date,
-}: {
-  label: string;
-  fromCode: string; toCode: string;
-  fromCity?: string | null; toCity?: string | null;
-  flightNumber?: string | null;
-  etd?: string | null; eta?: string | null;
-  transitCode?: string | null; transitCity?: string | null;
-  transitDuration?: string | null;
-  date?: string | null;
-}) {
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-1.5">
-        <span className={cn(
-          "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full",
-          label === "Berangkat" ? "bg-sky-100 text-sky-700" : "bg-violet-100 text-violet-700"
-        )}>{label}</span>
-        {flightNumber && <span className="text-[9.5px] font-mono text-slate-500">{flightNumber}</span>}
-        {date && <span className="text-[9px] text-slate-400 ml-auto">{fmtDate(date)}</span>}
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="flex-1 text-left">
-          <p className="text-[18px] font-black text-slate-900 leading-none tracking-tight">{fromCode}</p>
-          {fromCity && <p className="text-[9px] text-slate-400 leading-tight truncate max-w-[70px]">{fromCity}</p>}
-          {etd && <p className="text-[13px] font-extrabold text-sky-700 mt-1 tabular-nums leading-none">{etd}</p>}
-        </div>
-        <div className="flex flex-col items-center shrink-0 px-1">
-          {transitCode ? (
-            <>
-              <div className="flex items-center gap-0.5">
-                <div className="h-px w-3 bg-slate-200" />
-                <div className="h-1.5 w-1.5 rounded-full bg-amber-400 border border-amber-300" />
-                <div className="h-px w-3 bg-slate-200" />
-              </div>
-              <p className="text-[8px] text-amber-600 font-bold">{transitCode}</p>
-              {transitDuration && <p className="text-[7px] text-slate-400">{transitDuration}</p>}
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-0.5">
-                <div className="h-px w-4 bg-slate-200" />
-                <Plane className="w-3 h-3 text-slate-400" />
-                <div className="h-px w-4 bg-slate-200" />
-              </div>
-              <span className="text-[7.5px] text-slate-300 font-medium">Direct</span>
-            </>
-          )}
-        </div>
-        <div className="flex-1 text-right">
-          <p className="text-[18px] font-black text-slate-900 leading-none tracking-tight">{toCode}</p>
-          {toCity && <p className="text-[9px] text-slate-400 leading-tight truncate max-w-[70px] ml-auto">{toCity}</p>}
-          {eta && <p className="text-[13px] font-extrabold text-sky-700 mt-1 tabular-nums leading-none">{eta}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Multi-leg chain display ───────────────────────────────────────────────────
-// Renders a chain of legs with transit connectors between them.
-function MultiLegChain({
-  legs, label,
-}: {
-  legs: LegInfo[];
-  label: "Berangkat" | "Pulang";
-}) {
-  const labelCls = label === "Berangkat"
-    ? "bg-sky-100 text-sky-700"
-    : "bg-violet-100 text-violet-700";
-
-  return (
-    <div className="space-y-1">
-      {/* Section label + flight numbers */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className={cn("text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full", labelCls)}>
-          {label}
-        </span>
-        {legs.map((l, i) => l.flightNumber && (
-          <span key={i} className="text-[9.5px] font-mono text-slate-500">{l.flightNumber}</span>
-        ))}
-        {legs[0]?.date && (
-          <span className="text-[9px] text-slate-400 ml-auto">{fmtDate(legs[0].date)}</span>
-        )}
-      </div>
-
-      {/* Origin */}
-      <div className="flex items-start gap-1">
-        <div className="flex-none w-8">
-          <p className="text-[17px] font-black text-slate-900 leading-none tracking-tight">{legs[0]?.fromCode}</p>
-          {legs[0]?.etd && <p className="text-[12px] font-extrabold text-sky-700 tabular-nums leading-none mt-0.5">{legs[0].etd}</p>}
-        </div>
-
-        {/* Middle: transit chain */}
-        <div className="flex-1 flex flex-col gap-0.5 pt-1.5">
-          {legs.map((leg, i) => (
-            <div key={i} className="flex items-center gap-0.5">
-              <div className="h-px flex-1 bg-slate-200" />
-              {i < legs.length - 1 ? (
-                <>
-                  <div className="h-2 w-2 rounded-full bg-amber-400 border border-amber-300" />
-                  <div className="h-px flex-1 bg-slate-200" />
-                </>
-              ) : (
-                <>
-                  <Plane className="w-2.5 h-2.5 text-slate-400" />
-                  <div className="h-px flex-1 bg-slate-200" />
-                </>
-              )}
-            </div>
-          ))}
-          {/* Transit labels */}
-          <div className="flex justify-around">
-            {legs.slice(0, -1).map((leg, i) => (
-              <div key={i} className="text-center">
-                <p className="text-[8px] text-amber-600 font-bold leading-none">{leg.toCode}</p>
-                <p className="text-[7px] text-slate-400 leading-none">via</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Destination */}
-        <div className="flex-none w-8 text-right">
-          <p className="text-[17px] font-black text-slate-900 leading-none tracking-tight">
-            {legs[legs.length - 1]?.toCode}
-          </p>
-          {legs[legs.length - 1]?.eta && (
-            <p className="text-[12px] font-extrabold text-sky-700 tabular-nums leading-none mt-0.5">
-              {legs[legs.length - 1].eta}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Transit stop detail pills */}
-      {legs.length > 1 && (
-        <div className="flex flex-wrap gap-1">
-          {legs.slice(0, -1).map((leg, i) => (
-            <span key={i} className="inline-flex items-center gap-0.5 text-[8.5px] text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-1.5 py-0.5 font-medium">
-              <MapPin className="w-2 h-2" />
-              {leg.toCity ? `${leg.toCity} (${leg.toCode})` : leg.toCode}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Vertical Route Timeline (single leg) ─────────────────────────────────────
-function RouteTimeline({
-  fromCode, fromCity, etd, toCode, toCity, eta,
-  isDirect, transitCode, transitCity, transitDuration, label,
-  date, flightNumber,
-}: {
-  fromCode: string; fromCity?: string | null; etd?: string | null;
-  toCode: string; toCity?: string | null; eta?: string | null;
-  isDirect: boolean;
-  transitCode?: string | null; transitCity?: string | null; transitDuration?: string | null;
-  label?: string;
-  date?: string | null;
-  flightNumber?: string | null;
-}) {
-  const accentColor = label === "Pulang" ? "#7c3aed" : "#1a56a8";
-  return (
-    <div>
-      {label && (
-        <div className="flex items-center gap-2 mb-1.5">
-          <p className={cn(
-            "text-[9px] font-bold uppercase tracking-widest",
-            label === "Pulang" ? "text-violet-600" : "text-[#1a56a8]",
-          )}>{label === "Pulang" ? "↩ " : "↗ "}{label}</p>
-          {date && <span className="text-[9px] text-slate-400 ml-auto">{date}</span>}
-          {flightNumber && (
-            <span className="text-[9px] font-mono text-slate-400 bg-slate-100 rounded px-1">{flightNumber}</span>
-          )}
-        </div>
-      )}
-      <div className="flex gap-3">
-        {/* Spine */}
-        <div className="flex flex-col items-center w-4 shrink-0 pt-0.5 pb-0.5">
-          <div className="h-3 w-3 rounded-full border-2 bg-white shrink-0"
-            style={{ borderColor: accentColor, borderStyle: "dashed" }} />
-          <div className="w-px flex-1 bg-slate-200 my-0.5" />
-          {!isDirect && transitCode && (
-            <>
-              <div className="h-2 w-2 rounded-full bg-amber-400 border border-amber-300 shrink-0" />
-              <div className="w-px flex-1 bg-slate-200 my-0.5" />
-            </>
-          )}
-          <Plane className="w-3 h-3 shrink-0" style={{ color: accentColor, transform: "rotate(90deg)" }} />
-          <div className="w-px flex-1 bg-slate-200 my-0.5" />
-          <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
-        </div>
-        {/* Text */}
-        <div className="flex flex-col gap-3 flex-1 min-w-0 py-0.5">
-          <div>
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <p className="font-bold text-[14px] text-slate-900 leading-none">
-                {fromCity || fromCode}
-              </p>
-              {etd && <span className="text-[12px] font-extrabold tabular-nums" style={{ color: accentColor }}>{etd}</span>}
-            </div>
-            {fromCity && <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{fromCode}</p>}
-            {!isDirect && transitCode && (
-              <p className="text-[9.5px] text-amber-600 font-semibold mt-1">
-                via {transitCity ? `${transitCity} (${transitCode})` : transitCode}
-                {transitDuration && <span className="text-amber-400"> · {transitDuration}</span>}
-              </p>
-            )}
-          </div>
-          <div>
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <p className="font-bold text-[14px] text-slate-900 leading-none">
-                {toCity || toCode}
-              </p>
-              {eta && <span className="text-[12px] font-extrabold tabular-nums" style={{ color: accentColor }}>{eta}</span>}
-            </div>
-            {toCity && <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{toCode}</p>}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Multi-leg vertical timeline ───────────────────────────────────────────────
-function MultiLegTimeline({ legs, accentColor = "#1a56a8" }: { legs: LegInfo[]; accentColor?: string }) {
-  const last = legs[legs.length - 1];
-  return (
-    <div className="flex gap-3">
-      {/* Spine */}
-      <div className="flex flex-col items-center w-4 shrink-0 pt-0.5">
-        <div className="h-3 w-3 rounded-full border-2 bg-white shrink-0"
-          style={{ borderColor: accentColor, borderStyle: "dashed" }} />
-        {legs.map((_, i) => (
-          <div key={i} className="flex flex-col items-center">
-            <div className="w-px h-4 bg-slate-200" />
-            {i < legs.length - 1
-              ? <div className="h-2 w-2 rounded-full bg-amber-400 border border-amber-300 shrink-0" />
-              : <Plane className="w-3 h-3 shrink-0" style={{ color: accentColor, transform: "rotate(90deg)" }} />
-            }
-          </div>
-        ))}
-        <div className="w-px h-4 bg-slate-200" />
-        <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
-      </div>
-      {/* Text */}
-      <div className="flex-1 min-w-0 py-0.5 space-y-2">
-        {/* Origin */}
-        <div>
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <p className="font-bold text-[14px] text-slate-900 leading-none">
-              {legs[0]?.fromCity || legs[0]?.fromCode}
-            </p>
-            {legs[0]?.etd && <span className="text-[11px] font-bold tabular-nums" style={{ color: accentColor }}>{legs[0].etd}</span>}
-            {legs[0]?.date && <span className="text-[9px] text-slate-400 ml-auto">{fmtDate(legs[0].date)}</span>}
-          </div>
-          {legs[0]?.fromCity && <p className="text-[9.5px] text-slate-400 leading-tight">{legs[0].fromCode}</p>}
-        </div>
-        {/* Transit stops */}
-        {legs.slice(0, -1).map((leg, i) => (
-          <div key={i}>
-            <div className="flex items-baseline gap-1.5 flex-wrap">
-              <p className="font-semibold text-[12px] text-amber-700 leading-none">{leg.toCity || leg.toCode}</p>
-              <span className="text-[8.5px] text-amber-500 font-semibold">transit</span>
-              {leg.flightNumber && <span className="text-[8.5px] font-mono text-slate-400">{leg.flightNumber}</span>}
-            </div>
-            {leg.toCity && <p className="text-[9px] text-slate-400 leading-tight">{leg.toCode}</p>}
-          </div>
-        ))}
-        {/* Destination */}
-        <div>
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <p className="font-bold text-[14px] text-slate-900 leading-none">
-              {last?.toCity || last?.toCode}
-            </p>
-            {last?.eta && <span className="text-[11px] font-bold tabular-nums" style={{ color: accentColor }}>{last.eta}</span>}
-          </div>
-          {last?.toCity && <p className="text-[9.5px] text-slate-400 leading-tight">{last.toCode}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Boarding-pass style Price Card ───────────────────────────────────────────
 export function BoardingPassCard({
@@ -517,52 +230,46 @@ export function BoardingPassCard({
         <div className="border-t border-dashed border-slate-200 mb-3" />
         {isML && mlData ? (
           <div className="space-y-3">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-[#1a56a8] mb-1">↗ Berangkat</p>
-            <MultiLegTimeline legs={mlData.outboundLegs} />
+            <MultiLegTimeline legs={mlData.outboundLegs} label="Berangkat" />
             {(mlData.returnLegs?.length ?? 0) > 0 && (
               <>
-                <div className="flex items-center gap-2 -mx-4 px-4 my-1">
-                  <div className="flex-1 border-t border-dashed border-slate-200" />
-                  <RotateCcw className="w-3 h-3 text-violet-400 shrink-0" />
-                  <div className="flex-1 border-t border-dashed border-slate-200" />
-                </div>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-violet-600 mb-1">↩ Pulang</p>
-                <MultiLegTimeline legs={mlData.returnLegs!} />
+                <div className="border-t border-dashed border-slate-200" />
+                <MultiLegTimeline legs={mlData.returnLegs!} label="Pulang" />
               </>
             )}
           </div>
         ) : isRT && returnLeg ? (
-          <div className="space-y-3">
-            <RouteTimeline
-              fromCode={item.fromCode} fromCity={item.fromCity} etd={item.etd}
-              toCode={item.toCode} toCity={item.toCity} eta={item.eta}
-              isDirect={!item.transitCode} transitCode={item.transitCode}
-              transitCity={item.transitCity} transitDuration={item.transitDuration}
-              label="Berangkat"
-            />
-            <div className="flex items-center gap-2 -mx-4 px-4">
-              <div className="flex-1 border-t border-dashed border-slate-200" />
-              <RotateCcw className="w-3 h-3 text-violet-400 shrink-0" />
-              <div className="flex-1 border-t border-dashed border-slate-200" />
-            </div>
-            <RouteTimeline
-              fromCode={returnLeg.returnFromCode ?? "—"} fromCity={returnLeg.returnFromCity}
-              etd={returnLeg.returnEtd}
-              toCode={returnLeg.returnToCode ?? "—"} toCity={returnLeg.returnToCity}
-              eta={returnLeg.returnEta}
-              isDirect={!returnLeg.returnTransitCode}
-              transitCode={returnLeg.returnTransitCode}
-              transitCity={returnLeg.returnTransitCity}
-              transitDuration={returnLeg.returnTransitDuration}
-              label="Pulang"
-            />
-          </div>
+          <RouteTimeline
+            outbound={{
+              origin: { code: item.fromCode, city: item.fromCity, time: item.etd },
+              destination: { code: item.toCode, city: item.toCity, time: item.eta },
+              transit: item.transitCode
+                ? { code: item.transitCode, city: item.transitCity, duration: item.transitDuration ?? undefined }
+                : null,
+              date: item.departDate ? fmtDate(item.departDate) : null,
+              flightNumber: item.flightNumber,
+            }}
+            returnTrip={{
+              origin: { code: returnLeg.returnFromCode ?? "—", city: returnLeg.returnFromCity, time: returnLeg.returnEtd },
+              destination: { code: returnLeg.returnToCode ?? "—", city: returnLeg.returnToCity, time: returnLeg.returnEta },
+              transit: returnLeg.returnTransitCode
+                ? { code: returnLeg.returnTransitCode, city: returnLeg.returnTransitCity, duration: returnLeg.returnTransitDuration ?? undefined }
+                : null,
+              date: returnLeg.returnDate ? fmtDate(returnLeg.returnDate) : null,
+              flightNumber: returnLeg.returnFlightNumber,
+            }}
+          />
         ) : (
           <RouteTimeline
-            fromCode={item.fromCode} fromCity={item.fromCity} etd={item.etd}
-            toCode={item.toCode} toCity={item.toCity} eta={item.eta}
-            isDirect={isDirect} transitCode={item.transitCode}
-            transitCity={item.transitCity} transitDuration={item.transitDuration}
+            outbound={{
+              origin: { code: item.fromCode, city: item.fromCity, time: item.etd },
+              destination: { code: item.toCode, city: item.toCity, time: item.eta },
+              transit: item.transitCode
+                ? { code: item.transitCode, city: item.transitCity, duration: item.transitDuration ?? undefined }
+                : null,
+              date: item.departDate ? fmtDate(item.departDate) : null,
+              flightNumber: item.flightNumber,
+            }}
           />
         )}
       </div>
@@ -586,7 +293,7 @@ export function BoardingPassCard({
         {!expired ? (
           <div>
             <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
-              {isRTorML ? "Harga Paket PP" : "Harga"}
+              Harga
             </p>
             <p className="text-[22px] font-black leading-tight tabular-nums" style={{ color: "#1a56a8" }}>
               {fmtIDR(sell)}
