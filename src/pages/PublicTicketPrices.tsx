@@ -744,61 +744,125 @@ export default function PublicTicketPrices() {
 
       {/* ── Hero ── */}
       <div
-        className="relative py-12 md:py-16 px-4 text-center overflow-hidden"
-        style={{ background: "linear-gradient(135deg,#060f2e 0%,#0a2156 40%,#0c3272 70%,#0a1f5c 100%)" }}
+        className="relative overflow-hidden"
+        style={{ background: "linear-gradient(160deg,#040d26 0%,#071840 35%,#0b2660 65%,#071535 100%)" }}
       >
-        {/* Background decorations */}
+        {/* Decorative blobs */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full opacity-10"
-            style={{ background: "radial-gradient(circle,#38bdf8,transparent 70%)" }} />
-          <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full opacity-10"
-            style={{ background: "radial-gradient(circle,#818cf8,transparent 70%)" }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-5"
-            style={{ background: "radial-gradient(circle,#60a5fa,transparent 70%)" }} />
-          {/* Subtle grid overlay */}
-          <div className="absolute inset-0 opacity-5"
-            style={{ backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)", backgroundSize: "48px 48px" }} />
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.07]"
+            style={{ background: "radial-gradient(circle,#38bdf8,transparent 65%)" }} />
+          <div className="absolute -bottom-24 -right-24 w-[420px] h-[420px] rounded-full opacity-[0.07]"
+            style={{ background: "radial-gradient(circle,#818cf8,transparent 65%)" }} />
+          <div className="absolute top-[30%] right-[15%] w-64 h-64 rounded-full opacity-[0.04]"
+            style={{ background: "radial-gradient(circle,#34d399,transparent 65%)" }} />
+          {/* Fine grid */}
+          <div className="absolute inset-0 opacity-[0.04]"
+            style={{ backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
+          {/* Diagonal shimmer lines */}
+          <div className="absolute inset-0 opacity-[0.03]"
+            style={{ backgroundImage: "repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%)", backgroundSize: "20px 20px" }} />
         </div>
 
-        <div className="relative max-w-2xl mx-auto">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-5 backdrop-blur-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
-            <span className="text-[11px] text-sky-200 font-semibold uppercase tracking-widest">Update Harga Terbaru</span>
+        {/* Floating airport codes — decorative */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden select-none" aria-hidden>
+          {[
+            { code: "JED", top: "12%", left: "4%",  opacity: 0.06, size: "text-5xl" },
+            { code: "MED", top: "55%", left: "2%",  opacity: 0.05, size: "text-4xl" },
+            { code: "CGK", top: "8%",  right: "5%", opacity: 0.06, size: "text-5xl" },
+            { code: "SUB", top: "60%", right: "3%", opacity: 0.05, size: "text-4xl" },
+            { code: "DOH", top: "30%", left: "1%",  opacity: 0.04, size: "text-3xl" },
+            { code: "DXB", top: "25%", right: "1%", opacity: 0.04, size: "text-3xl" },
+          ].map(({ code, top, left, right, opacity, size }) => (
+            <span key={code} className={`absolute font-black tracking-tight text-white ${size}`}
+              style={{ top, left, right, opacity }}>
+              {code}
+            </span>
+          ))}
+        </div>
+
+        <div className="relative max-w-3xl mx-auto px-4 pt-14 pb-12 md:pt-20 md:pb-16 text-center">
+
+          {/* Live badge */}
+          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 rounded-full px-4 py-1.5 mb-7 backdrop-blur-md">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+            </span>
+            <span className="text-[11px] text-white/80 font-semibold uppercase tracking-[0.12em]">
+              Harga Update Rutin · Terpercaya
+            </span>
           </div>
 
-          {/* Title */}
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4 leading-tight">
-            Harga Tiket Pesawat
-            <span className="block text-transparent bg-clip-text"
-              style={{ backgroundImage: "linear-gradient(90deg,#7dd3fc,#a5b4fc)" }}>
-              by Temantiket
+          {/* Main headline */}
+          <h1 className="font-black leading-[1.1] mb-5">
+            <span className="block text-white text-4xl md:text-5xl lg:text-[3.5rem]">
+              Tiket Umroh & Haji
+            </span>
+            <span
+              className="block text-4xl md:text-5xl lg:text-[3.5rem] text-transparent bg-clip-text mt-1"
+              style={{ backgroundImage: "linear-gradient(90deg, #60c8f5 0%, #a78bfa 50%, #60c8f5 100%)", backgroundSize: "200% auto" }}
+            >
+              Harga Terbaik
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-sm md:text-base text-blue-200 max-w-lg mx-auto leading-relaxed mb-6">
-            Harga kompetitif untuk rute Umroh & Haji pilihan — CGK, SUB, MES dan rute lainnya.
-            Proses cepat, transparan, dan amanah.
+          <p className="text-[15px] md:text-base text-blue-200/80 max-w-xl mx-auto leading-relaxed mb-8">
+            Tiket penerbangan ke Jeddah, Madinah, dan kota suci lainnya —
+            langsung dari agen terpercaya. Proses cepat, harga transparan,
+            amanah sejak hari pertama.
           </p>
 
-          {/* CTA Button */}
-          {waNumber && (
-            <a
-              href={whatsappUrl(waNumber)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-400 text-white text-sm font-bold px-6 py-3 rounded-2xl transition-all shadow-lg shadow-green-900/30 hover:shadow-green-900/50 hover:-translate-y-0.5"
-            >
-              <MessageCircle className="w-4 h-4" />
-              Tanya via WhatsApp
-            </a>
-          )}
+          {/* Route pills */}
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
+            {["✈ CGK → JED", "✈ SUB → JED", "✈ MES → JED", "✈ CGK → MED", "✈ SUB → MED"].map((r) => (
+              <span key={r}
+                className="px-3 py-1 rounded-full text-[11px] font-semibold text-white/70 border border-white/10 bg-white/5 backdrop-blur-sm">
+                {r}
+              </span>
+            ))}
+          </div>
 
-          {/* Route count badge */}
+          {/* CTA */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            {waNumber && (
+              <a
+                href={whatsappUrl(waNumber)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-400 active:scale-95 text-white text-sm font-bold px-7 py-3.5 rounded-2xl transition-all shadow-lg shadow-green-900/40 hover:shadow-green-900/60 hover:-translate-y-0.5"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Konsultasi Gratis via WA
+              </a>
+            )}
+            <a
+              href="#tickets"
+              className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/15 text-white text-sm font-semibold px-6 py-3.5 rounded-2xl transition-all backdrop-blur-sm"
+            >
+              <Plane className="w-4 h-4" />
+              Lihat Semua Rute
+            </a>
+          </div>
+
+          {/* Trust stats */}
+          <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3">
+            {[
+              { icon: "🛡️", label: "Agen Resmi & Terpercaya" },
+              { icon: "⚡", label: "Konfirmasi dalam 1×24 jam" },
+              { icon: "💬", label: "Layanan WhatsApp 24 Jam" },
+            ].map(({ icon, label }) => (
+              <div key={label} className="flex items-center gap-1.5 text-[12px] text-white/50">
+                <span>{icon}</span>
+                <span>{label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Route count */}
           {published.length > 0 && (
-            <p className="mt-5 text-xs text-blue-300/70">
-              ✈️ {published.length} rute tersedia — gunakan filter untuk menemukan rute Anda
+            <p className="mt-5 text-[11px] text-white/30">
+              {published.length} rute aktif tersedia saat ini
             </p>
           )}
         </div>
