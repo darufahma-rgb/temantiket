@@ -2,9 +2,11 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const OPENAI_API_KEY    = (process.env.OPENAI_API_KEY    || '').trim();
-const SUPABASE_URL      = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL      || '').trim();
-const SUPABASE_ANON_KEY = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
+const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
+const SUPABASE_URL       = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
+const SUPABASE_ANON_KEY  = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
+
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 async function getCallerUser(authHeader) {
   if (!authHeader || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
@@ -25,8 +27,8 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (!OPENAI_API_KEY) {
-    return res.status(503).json({ error: 'OPENAI_API_KEY belum di-set di Vercel Environment Variables.' });
+  if (!OPENROUTER_API_KEY) {
+    return res.status(503).json({ error: 'OPENROUTER_API_KEY belum di-set di Vercel Environment Variables.' });
   }
 
   const authHeader = req.headers.authorization;
@@ -39,11 +41,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'HTTP-Referer': 'https://temantiket.vercel.app',
+        'X-Title': 'Temantiket',
       },
       body: JSON.stringify(req.body),
     });
