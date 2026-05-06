@@ -26,6 +26,9 @@ import {
 } from "@/features/orders/ordersRepo";
 import { FlightOrderEditor, type FlightMeta } from "@/features/orders/FlightOrderEditor";
 import { toast } from "sonner";
+import { getCommissionForOrderType } from "@/lib/productCommissions";
+import { addWalletTx } from "@/lib/agentWallet";
+import { useAuthStore } from "@/store/authStore";
 
 const fmtIDR = (v: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);
@@ -38,6 +41,7 @@ export default function OrderDetail() {
   const rates = useRatesStore((s) => s.rates);
   const packages = usePackagesStore((s) => s.packages);
   const trips = useTripsStore((s) => s.trips);
+  const currentUser = useAuthStore((s) => s.user);
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +65,23 @@ export default function OrderDetail() {
       const fresh = await getOneOrder(id);
       if (!cancelled) {
         setOrder(fresh);
-        if (fresh) setDraft(fresh);
+        if (fresh) {
+          // Auto-populate agentFee from productCommissions if order belongs to
+          // an agent and fee hasn't been set yet (0 or missing).
+          if (fresh.createdByAgent && !Number((fresh.metadata as Record<string, unknown>)?.agentFee)) {
+            const autoFee = getCommissionForOrderType(fresh.type);
+            if (autoFee > 0) {
+              setDraft({
+                ...fresh,
+                metadata: { ...(fresh.metadata ?? {}), agentFee: autoFee },
+              });
+            } else {
+              setDraft(fresh);
+            }
+          } else {
+            setDraft(fresh);
+          }
+        }
         setLoading(false);
       }
     })();
@@ -104,6 +124,8 @@ export default function OrderDetail() {
       const isPaidTransition =
         (newStatus === "Paid" || newStatus === "Completed") &&
         order.status !== newStatus;
+      const isCompletedTransition =
+        newStatus === "Completed" && order.status !== "Completed";
 
       // Snapshot EGP/SAR rate when order first becomes Paid/Completed
       let metaPatch = (draft.metadata as Record<string, unknown>) ?? order.metadata ?? {};
@@ -123,6 +145,36 @@ export default function OrderDetail() {
 
       const fresh = await getOneOrder(order.id);
       if (fresh) { setOrder(fresh); setDraft(fresh); }
+
+      // ── Agent commission recording ──────────────────────────────────────────
+      // When status → Completed and this order was brought in by an agent,
+      // automatically credit the agent's wallet with the commission fee.
+      if (isCompletedTransition && order.createdByAgent) {
+        const agentId = order.createdByAgent;
+        // Use the manually set agentFee from metadata, or fall back to the
+        // global product commission config for this order type.
+        const feeAmount =
+          Number(metaPatch.agentFee) ||
+          getCommissionForOrderType(order.type);
+
+        if (feeAmount > 0) {
+          const orderLabel = ORDER_TYPE_LABEL[order.type];
+          const orderId8 = order.id.slice(0, 8);
+          addWalletTx(agentId, {
+            agentId,
+            type: "order_bonus",
+            pointsDelta: 0,
+            amountIDR: feeAmount,
+            description: `Komisi order ${orderLabel} #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            createdBy: currentUser?.id ?? "system",
+          });
+
+          toast.success(`Komisi agen dicatat: ${fmtIDR(feeAmount)}`, {
+            description: `Order "${order.title || orderLabel}" selesai — wallet agen diperbarui.`,
+            duration: 5000,
+          });
+        }
+      }
 
       // Trigger side-effect notifications after status change
       if (isPaidTransition) {
