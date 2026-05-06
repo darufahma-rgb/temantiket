@@ -171,14 +171,17 @@ const CardFront = ({
       #TMNTKT{memberId}
     </div>
 
-    {/* Nama klien — bottom-left, bold putih */}
+    {/* Nama klien — bottom-left */}
     <div
-      className="absolute font-extrabold leading-[0.95] text-white"
+      className="absolute leading-[1.05] text-white"
       style={{
         left: "8.5%",
         bottom: "8%",
         right: "45%",
-        fontSize: "9.5cqw",
+        fontSize: "6.5cqw",
+        fontFamily: "'Sk-Modernist', sans-serif",
+        fontWeight: 700,
+        textTransform: "none",
         textShadow: "0 1px 2px rgba(0,0,0,0.18)",
       }}
     >
@@ -190,15 +193,15 @@ const CardFront = ({
     {/* Member ID + Since — bottom-right */}
     <div
       className="absolute text-right text-white"
-      style={{ right: "8.5%", bottom: "8.5%" }}
+      style={{ right: "8.5%", bottom: "8.5%", fontFamily: "'Sk-Modernist', sans-serif" }}
     >
-      <div className="font-extrabold leading-tight" style={{ fontSize: "7.2cqw" }}>
+      <div className="leading-tight" style={{ fontSize: "7.2cqw", fontWeight: 400 }}>
         Member
       </div>
-      <div className="font-extrabold leading-tight" style={{ fontSize: "7.2cqw" }}>
+      <div className="leading-tight" style={{ fontSize: "7.2cqw", fontWeight: 700 }}>
         ID. {memberId}
       </div>
-      <div className="font-medium opacity-95 mt-1" style={{ fontSize: "3.6cqw" }}>
+      <div className="opacity-95 mt-1" style={{ fontSize: "3.6cqw", fontWeight: 400 }}>
         Since {since}
       </div>
     </div>
@@ -255,15 +258,15 @@ const CardBack = ({
       {/* Member ID di kanan-bawah (sesuai TMNTKT-010 B) */}
       <div
         className="absolute text-right text-white"
-        style={{ right: "8.5%", bottom: "5.5%" }}
+        style={{ right: "8.5%", bottom: "5.5%", fontFamily: "'Sk-Modernist', sans-serif" }}
       >
-        <div className="font-extrabold leading-tight" style={{ fontSize: "7.2cqw" }}>
+        <div className="leading-tight" style={{ fontSize: "7.2cqw", fontWeight: 400 }}>
           Member
         </div>
-        <div className="font-extrabold leading-tight" style={{ fontSize: "7.2cqw" }}>
+        <div className="leading-tight" style={{ fontSize: "7.2cqw", fontWeight: 700 }}>
           ID. {memberId}
         </div>
-        <div className="font-medium opacity-95 mt-1" style={{ fontSize: "3.4cqw" }}>
+        <div className="opacity-95 mt-1" style={{ fontSize: "3.4cqw", fontWeight: 400 }}>
           Since {since}
         </div>
       </div>
