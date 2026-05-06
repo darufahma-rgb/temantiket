@@ -17,8 +17,8 @@ import { useAIOverrideStore } from "@/store/aiOverrideStore";
 // Satu tempat untuk semua model — ubah di sini kalau mau ganti model.
 
 export const OR_MODELS = {
-  /** Vision + OCR: poster, paspor, tiket screenshot. Murah & cepat. */
-  VISION:     "google/gemini-2.0-flash-001",
+  /** Vision + OCR: poster, paspor, tiket screenshot. Model terbaik untuk baca gambar. */
+  VISION:     "google/gemini-2.5-pro-preview-05-06",
   /** Caption marketing — manual maupun dari poster. */
   CAPTION:    "google/gemini-2.0-flash-001",
   /** Rapikan catatan, formatting teks ringan. */
@@ -242,9 +242,10 @@ export async function generateCaptionFromPoster(params: {
     ? `\nNomor WA untuk baris CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}`
     : "";
 
-  const model = useAIOverrideStore.getState().getModel("caption", OR_MODELS.VISION);
+  // Poster OCR selalu pakai VISION model langsung — tidak melalui override store
+  // karena override store bisa menyimpan model text-only yang tidak support vision.
   return callAIOpenRouter({
-    model,
+    model: OR_MODELS.VISION,
     systemPrompt: POSTER_SYSTEM_PROMPT,
     prompt: `Scan poster ini dan buat 1 caption sesuai struktur dan aturan di instruksi sistem.\nTone: ${toneInstruction}.${waSection}`,
     imageBase64,

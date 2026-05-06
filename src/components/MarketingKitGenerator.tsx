@@ -1,13 +1,18 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
-  Wand2, Copy, CheckCheck, FileText,
+  Wand2, Copy, CheckCheck, Loader2, RefreshCw, FileText,
   Plane, BookOpen, Megaphone, Moon, Sparkles, AlignLeft,
-  RefreshCw, MessageCircle,
+  ImagePlus, X, ScanText, PenLine, MessageCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { generateCaptionFromDetail, generateCaptionFromPoster } from "@/lib/ai/openrouter";
+import { AIModelToggle } from "@/components/AIModelToggle";
+
+/* ─── Mode ──────────────────────────────────────────────── */
+type Mode = "manual" | "poster";
 
 /* ─── Kategori ─────────────────────────────────────────── */
 const CATEGORIES = [
@@ -26,323 +31,27 @@ const TONES = [
   { key: "story",    label: "Storytelling", desc: "Emosional, cerita perjalanan" },
 ];
 
-/* ─── Template captions ─────────────────────────────────── */
-const TEMPLATES: Record<string, Record<string, string>> = {
-  umrah: {
-    santai: `✈️ Halo Sahabat Temantiket! 🌙
-
-Lagi mikirin berangkat Umrah tapi bingung mulai dari mana? Tenang aja, kita siap bantu kamu dari A sampai Z!
-
-Paket Umrah kami udah lengkap banget — dari dokumen, visa, tiket, hotel, sampai bimbingan ibadah. Semua udah beres, kamu tinggal fokus niat dan persiapan spiritual aja 🤲
-
-Kenapa pilih kami?
-✅ Harga transparan, no hidden cost
-✅ Hotel nyaman, dekat Masjidil Haram
-✅ Pembimbing ibadah berpengalaman
-✅ Berangkat bareng jamaah solid & suportif
-✅ Proses dokumen cepat & mudah
-
-Yuk, wujudkan impian ke Baitullah! Slot terbatas, jangan sampai ketinggalan ya 😊`,
-
-    formal: `🕌 Assalamu'alaikum Warahmatullahi Wabarakatuh
-
-Temantiket dengan bangga menghadirkan layanan perjalanan Umrah yang terpercaya dan berpengalaman.
-
-Kami memahami bahwa perjalanan ibadah adalah momen paling berharga dalam hidup Anda. Oleh karena itu, kami berkomitmen untuk memberikan pelayanan terbaik — mulai dari pengurusan dokumen, akomodasi berkualitas, hingga bimbingan ibadah yang komprehensif.
-
-Keunggulan layanan kami:
-✔️ Legalitas resmi & terdaftar Kemenag
-✔️ Hotel berbintang, lokasi strategis
-✔️ Pembimbing ibadah bersertifikat
-✔️ Laporan perjalanan real-time kepada keluarga
-✔️ Layanan purna jual yang responsif
-
-Percayakan perjalanan ibadah Anda kepada kami. Bersama Temantiket, setiap langkah menuju Baitullah terasa lebih tenang dan bermakna.
-
-Informasi & pendaftaran, silakan hubungi kami.`,
-
-    hardsell: `🚨 PERHATIAN! Slot Umrah Hampir Habis! 🚨
-
-Jangan tunda lagi — ini saatnya kamu berangkat! ✈️🕌
-
-⏰ KUOTA TERBATAS — tidak akan kami tambah!
-💸 Harga SPESIAL berlaku sampai akhir bulan ini saja
-🔥 Sudah ratusan jamaah berangkat bersama kami
-
-Daftar sekarang dan HEMAT lebih banyak! Setiap hari yang kamu tunda = kesempatan yang hilang.
-
-❌ Jangan sampai menyesal karena telat daftar
-❌ Jangan biarkan impian ke Baitullah tertunda lagi
-✅ AMBIL KEPUTUSAN SEKARANG!
-
-📲 Hubungi kami SEGERA — tim kami siap membantu 24 jam!
-👇 Klik sekarang sebelum slot habis!`,
-
-    story: `✨ Ada yang bilang, hidup baru terasa lengkap setelah menginjakkan kaki di Tanah Suci...
-
-Saya pernah mendengar seorang jamaah bercerita — saat pertama kali melihat Ka'bah, air mata langsung mengalir tanpa bisa ditahan. Bukan karena lelah perjalanan, tapi karena hati yang selama ini penuh kerinduan akhirnya bertemu dengan tujuannya 🤲
-
-Setiap doa yang dipanjatkan di sana terasa lebih dekat. Setiap langkah terasa lebih ringan. Dan setiap momen, menjadi kenangan yang tak akan pernah terlupakan seumur hidup.
-
-Kamu juga bisa merasakan itu semua. 🕌
-
-Bersama Temantiket, kami akan menemani perjalananmu — dari persiapan pertama hingga kamu pulang membawa cerita dan keberkahan.
-
-Karena setiap jiwa berhak merasakan indahnya berdiri di depan Ka'bah. ✈️🌙`,
-  },
-
-  haji: {
-    santai: `🕋 Niat haji udah lama? Yuk kita wujudkan bareng! 😊
-
-Temantiket hadir dengan paket Haji Plus & Furoda yang bisa bikin perjalanan ibadah terpenting dalam hidupmu jadi lebih nyaman dan berkesan.
-
-Kenapa haji bareng kami?
-✅ Proses pendaftaran mudah & cepat
-✅ Akomodasi premium, dekat Masjidil Haram
-✅ Tim pembimbing ibadah siap mendampingi
-✅ Kuota resmi, tidak ada kekhawatiran
-✅ Transparansi biaya dari awal
-
-Info lengkap? Langsung kontak kami ya! Jangan sampe nyesel karena kelamaan nunggu 🤲`,
-
-    formal: `🕋 Assalamu'alaikum Warahmatullahi Wabarakatuh
-
-Temantiket membuka pendaftaran Haji Plus dan Haji Furoda dengan layanan premium yang telah dipercaya oleh ribuan jamaah.
-
-Haji adalah rukun Islam kelima — panggilan suci yang selayaknya disambut dengan persiapan terbaik. Kami hadir untuk memastikan setiap aspek perjalanan ibadah Anda tertangani dengan profesional.
-
-Layanan unggulan kami:
-✔️ Kuota resmi & terjamin
-✔️ Akomodasi bintang 5, ring 1 Masjidil Haram
-✔️ Muthawwif & pembimbing ibadah berpengalaman
-✔️ Manasik haji komprehensif sebelum keberangkatan
-✔️ Pendampingan penuh selama di Tanah Suci
-
-Daftarkan diri Anda sekarang untuk informasi ketersediaan kuota dan biaya perjalanan.`,
-
-    hardsell: `🚨 KUOTA HAJI PLUS TERSISA SANGAT TERBATAS! 🚨
-
-Ini bukan sekadar perjalanan biasa — ini adalah panggilan Allah SWT! 🕋
-
-⚡ Antrian haji reguler puluhan tahun — kami punya SOLUSINYA
-💺 Seat Haji Plus & Furoda sangat terbatas!
-⏰ Jangan tunggu tahun depan — daftar SEKARANG!
-
-Yang sudah daftar lebih dulu:
-✅ Dapat harga terbaik
-✅ Pilihan kamar hotel lebih leluasa
-✅ Proses dokumen lebih awal & tenang
-
-📲 HUBUNGI KAMI SEKARANG — tim kami siap membantu!
-Slot habis = harus tunggu tahun depan. Jangan sampai itu terjadi padamu!`,
-
-    story: `🕋 Labbaik Allahumma Labbaik...
-
-Kalimat talbiyah itu sederhana, namun siapa yang pernah mengucapkannya di Tanah Suci tahu betapa beratnya haru yang mengiringi setiap kata.
-
-Haji bukan hanya tentang perjalanan fisik. Ia adalah perjalanan jiwa — melepaskan semua kesibukan dunia, berdiri di Arafah, melempar jumrah, dan merasakan betapa kecilnya kita di hadapan Allah SWT 🤲
-
-Ribuan jamaah yang telah berangkat bersama Temantiket membawa pulang bukan hanya gelar "Haji" — mereka membawa pulang ketenangan hati yang tak ternilai.
-
-Mungkin tahun ini, giliran kamu? 🌙
-
-Kami siap mendampingi setiap langkah perjalanan ibadah terbesarmu. ✈️`,
-  },
-
-  flight: {
-    santai: `✈️ Nyari tiket pesawat murah? Kita ada solusinya! 😊
-
-Temantiket nggak cuma ngurusin Umrah & Haji — kami juga bantu kamu dapetin tiket penerbangan dengan harga terbaik ke mana aja!
-
-Keuntungan pesan tiket lewat kami:
-✅ Harga bersaing, transparan
-✅ Pilihan maskapai lengkap
-✅ Proses cepat, konfirmasi instan
-✅ Bantuan pengurusan bagasi & seat
-✅ Customer service responsif
-
-Mau berangkat ke mana? Tinggal chat kami, kami bantu cariin harga terbaik buat kamu! 🎯`,
-
-    formal: `✈️ Layanan Pemesanan Tiket Penerbangan Terpercaya
-
-Temantiket menyediakan layanan pemesanan tiket penerbangan untuk berbagai rute domestik dan internasional dengan harga kompetitif dan proses yang transparan.
-
-Kami bermitra dengan berbagai maskapai terkemuka untuk memastikan Anda mendapatkan pilihan penerbangan terbaik sesuai kebutuhan dan anggaran perjalanan.
-
-Keunggulan layanan tiket kami:
-✔️ Harga kompetitif & tanpa biaya tersembunyi
-✔️ Pilihan maskapai internasional & domestik
-✔️ Konfirmasi tiket cepat & terpercaya
-✔️ Bantuan dalam pengurusan dokumen perjalanan
-✔️ Dukungan pelanggan yang profesional
-
-Untuk informasi harga dan ketersediaan, silakan hubungi tim kami.`,
-
-    hardsell: `🔥 TIKET PROMO TERBATAS — JANGAN SAMPAI KEHABISAN! ✈️
-
-Harga tiket lagi MURAH banget sekarang, tapi tidak akan bertahan lama!
-
-⚡ Penerbangan ke berbagai tujuan — HARGA TERBAIK!
-⏰ Promo berlaku TERBATAS — stok seat sangat terbatas!
-💸 Hemat ratusan ribu vs beli sendiri!
-
-Mau ke mana?
-🛫 Rute Internasional — tersedia!
-🛫 Rute Domestik — tersedia!
-🛫 Penerbangan Charter — tersedia!
-
-📲 Chat kami SEKARANG sebelum seat habis!
-Jangan tunda — tiket murah tidak menunggu siapa pun! 🏃‍♂️`,
-
-    story: `✈️ Ada sesuatu yang ajaib terjadi setiap kali pesawat mulai mengudara...
-
-Di ketinggian 30.000 kaki, semua masalah di bawah sana terasa begitu kecil. Awan-awan berarak tenang, dan entah kenapa, hati pun ikut terasa lebih lega.
-
-Perjalanan selalu mengajarkan kita sesuatu. Tentang dunia yang begitu luas. Tentang orang-orang baru yang menginspirasi. Tentang perspektif baru yang memperkaya hidup.
-
-Dan setiap perjalanan besar selalu dimulai dari satu langkah pertama — memesan tiket. 🎫
-
-Bersama Temantiket, urusan tiket beres dengan mudah. Kamu tinggal fokus pada pengalaman yang menanti di ujung penerbangan. 🌍`,
-  },
-
-  visa: {
-    santai: `📋 Urusan visa bikin pusing? Tenang, kami yang handle! 😊
-
-Temantiket punya layanan pengurusan visa yang cepat, mudah, dan terpercaya. Kamu nggak perlu repot-repot ngurus sendiri!
-
-Visa apa aja yang kami urus:
-✅ Visa Umrah & Ziarah
-✅ Visa Schengen (Eropa)
-✅ Visa berbagai negara lainnya
-
-Proses sama kami:
-🔹 Konsultasi gratis
-🔹 Checklist dokumen lengkap dari kami
-🔹 Submit & tracking proses
-🔹 Visa jadi, langsung dikirim!
-
-Yuk, konsultasi dulu — gratis! 📲`,
-
-    formal: `📋 Layanan Pengurusan Visa Profesional & Terpercaya
-
-Temantiket menyediakan layanan pengurusan visa dengan standar profesional untuk berbagai jenis dan tujuan perjalanan internasional.
-
-Dengan pengalaman dan jaringan yang luas, kami memastikan proses pengajuan visa Anda berjalan lancar, tepat waktu, dan sesuai dengan persyaratan yang berlaku.
-
-Layanan visa kami meliputi:
-✔️ Visa Umrah & Haji
-✔️ Visa Ziarah & Wisata Religi
-✔️ Konsultasi persyaratan dokumen
-✔️ Submit aplikasi & pemantauan proses
-✔️ Notifikasi status visa secara berkala
-
-Percayakan kebutuhan visa Anda kepada tim berpengalaman kami. Hubungi kami untuk konsultasi tanpa biaya.`,
-
-    hardsell: `⚠️ VISA CEPAT & ANTI RIBET — URUSIN SEKARANG! 📋
-
-Jangan sampai rencana perjalananmu GAGAL gara-gara visa bermasalah!
-
-❌ Ngurus visa sendiri = ribet, buang waktu, bisa ditolak
-✅ Pakai Temantiket = cepat, profesional, berhasil!
-
-Kami handle SEMUA:
-🔹 Checklist dokumen lengkap
-🔹 Submit tepat waktu
-🔹 Tracking status real-time
-🔹 Garansi proses sesuai SLA
-
-⏰ Jangan tunggu mepet tanggal berangkat!
-📲 Hubungi kami SEKARANG — konsultasi GRATIS!
-Slot pengurusan terbatas, prioritaskan yang daftar lebih awal! 🏃`,
-
-    story: `📋 Pernah nggak, kamu terhenti di depan antrian imigrasi karena dokumen bermasalah?
-
-Rasanya seperti semua rencana yang sudah disusun berbulan-bulan tiba-tiba runtuh dalam satu momen.
-
-Kami pernah menyaksikan hal itu terjadi. Dan itulah kenapa kami berkomitmen untuk memastikan setiap jamaah dan traveler yang berangkat bersama Temantiket memiliki dokumen yang sempurna — jauh sebelum hari keberangkatan.
-
-Karena perjalanan terbaik adalah perjalanan yang dimulai dengan ketenangan hati. Tanpa kekhawatiran soal dokumen. Tanpa drama di bandara. 🤲
-
-Percayakan urusan visa kamu kepada kami. Biar kamu fokus pada hal yang lebih penting — menikmati setiap momen perjalananmu. ✈️`,
-  },
-
-  general: {
-    santai: `🌟 Halo Sahabat Temantiket! 👋
-
-Temantiket hadir untuk membantu semua kebutuhan perjalanan ibadah dan wisata kamu — dari A sampai Z, semua ada di sini!
-
-Apa yang bisa kami bantu?
-✈️ Paket Umrah lengkap
-🕋 Haji Plus & Furoda
-🎫 Tiket pesawat berbagai rute
-📋 Pengurusan visa cepat
-🌍 Paket wisata religi & umum
-
-Tim kami siap bantu kamu pilih paket terbaik sesuai budget dan kebutuhan. Nggak perlu bingung, cukup chat kami!
-
-Yuk, rencanakan perjalananmu sekarang — bareng Temantiket! 😊`,
-
-    formal: `🌟 Temantiket — Mitra Terpercaya Perjalanan Ibadah & Wisata Anda
-
-Dengan pengalaman melayani ribuan jamaah dan wisatawan, Temantiket berkomitmen untuk memberikan layanan perjalanan terbaik yang memenuhi standar kualitas dan keamanan tertinggi.
-
-Kami hadir sebagai solusi lengkap untuk semua kebutuhan perjalanan Anda:
-
-🕌 Paket Umrah — beragam pilihan sesuai kebutuhan
-🕋 Haji Plus & Furoda — dengan layanan premium
-✈️ Tiket penerbangan — domestik & internasional
-📋 Pengurusan visa — cepat & profesional
-🌍 Paket wisata religi — pengalaman bermakna
-
-Kepercayaan Anda adalah prioritas utama kami. Hubungi tim profesional kami untuk konsultasi perjalanan tanpa biaya.`,
-
-    hardsell: `🔥 TEMANTIKET — SEMUA KEBUTUHAN PERJALANANMU ADA DI SINI! 🔥
-
-Mau Umrah? ✅ ADA!
-Mau Haji Plus? ✅ ADA!
-Butuh tiket pesawat murah? ✅ ADA!
-Perlu urus visa cepat? ✅ ADA!
-
-Ratusan jamaah sudah berangkat dan PUAS bareng kami!
-
-⚡ PROMO TERBATAS — harga spesial tidak bertahan lama!
-⏰ Slot kosong makin sedikit setiap harinya
-💯 Terpercaya, berpengalaman, profesional
-
-📲 Hubungi kami SEKARANG dan dapatkan penawaran TERBAIK!
-Jangan tunda — setiap hari yang kamu tunggu adalah kesempatan yang hilang! 🏃‍♂️`,
-
-    story: `🌙 Ada momen-momen dalam hidup yang benar-benar mengubah segalanya...
-
-Seorang ayah yang akhirnya bisa membawa ibu tuanya ke Tanah Suci setelah bertahun-tahun menabung. Seorang pemuda yang untuk pertama kalinya melihat Ka'bah dan menyadari betapa besarnya rasa syukur itu. Sepasang suami istri yang menunaikan haji bersama setelah puluhan tahun menikah.
-
-Kisah-kisah seperti ini adalah alasan kami ada. 🤲
-
-Temantiket bukan sekadar travel agent. Kami adalah teman perjalananmu — yang memahami bahwa setiap perjalanan ibadah menyimpan doa, harapan, dan cerita yang sangat berharga.
-
-Karena yang terpenting bagi kami bukan hanya mengantarkanmu ke sana — tapi memastikan perjalananmu menjadi kenangan indah seumur hidup. ✈️🕌`,
-  },
-};
-
-/* ─── Template builder ──────────────────────────────────── */
-function buildCaption(params: {
-  categoryKey: string;
-  tone: string;
-  packageDetail?: string;
-  waNumber?: string;
-}): string {
-  const { categoryKey, tone, packageDetail, waNumber } = params;
-  let base = TEMPLATES[categoryKey]?.[tone] ?? TEMPLATES.general.santai;
-
-  if (packageDetail?.trim()) {
-    base += `\n\n📌 Info Paket:\n${packageDetail.trim()}`;
-  }
-
-  if (waNumber?.trim()) {
-    base += `\n\n📲 Hubungi kami via WA: wa.me/${waNumber.trim().replace(/\D/g, "")}`;
-  }
-
-  return base;
+/* ─── Helpers ───────────────────────────────────────────── */
+function compressImage(file: File, maxWidth = 900, quality = 0.80): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("Gagal memuat gambar")); };
+    img.src = objectUrl;
+  });
 }
 
 /* ─── Section wrapper ───────────────────────────────────── */
@@ -364,21 +73,83 @@ function Section({ label, icon: Icon, children }: {
 
 /* ─── Main Component ────────────────────────────────────── */
 export function CaptionGenerator() {
+  const [mode, setMode]                     = useState<Mode>("manual");
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].key);
   const [activeTone, setActiveTone]         = useState(TONES[0].key);
   const [packageDetail, setPackageDetail]   = useState("");
   const [waNumber, setWaNumber]             = useState("");
+  const [posterFile, setPosterFile]         = useState<File | null>(null);
+  const [posterPreview, setPosterPreview]   = useState<string | null>(null);
+  const [isDragging, setIsDragging]         = useState(false);
   const [result, setResult]                 = useState<string>("");
+  const [loading, setLoading]               = useState(false);
   const [copied, setCopied]                 = useState(false);
+  const fileInputRef                        = useRef<HTMLInputElement>(null);
 
-  const handleGenerate = () => {
-    const caption = buildCaption({
-      categoryKey: activeCategory,
-      tone: activeTone,
-      packageDetail,
-      waNumber,
-    });
-    setResult(caption);
+  const cat = CATEGORIES.find((c) => c.key === activeCategory) ?? CATEGORIES[0];
+
+  const handleFile = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("File harus berupa gambar (JPG, PNG, WebP, dll)");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ukuran gambar maksimal 5 MB sebelum dikompresi");
+      return;
+    }
+    setPosterFile(file);
+    const url = URL.createObjectURL(file);
+    setPosterPreview(url);
+    setResult("");
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }, [handleFile]);
+
+  const clearPoster = () => {
+    setPosterFile(null);
+    if (posterPreview) URL.revokeObjectURL(posterPreview);
+    setPosterPreview(null);
+    setResult("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setResult("");
+  };
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    setResult("");
+    try {
+      if (mode === "poster") {
+        if (!posterFile) { toast.error("Upload poster dulu ya!"); return; }
+        const dataUrl = await compressImage(posterFile);
+        const caption = await generateCaptionFromPoster({
+          imageBase64: dataUrl,
+          tone: activeTone,
+          waNumber,
+        });
+        setResult(caption);
+      } else {
+        const caption = await generateCaptionFromDetail({
+          categoryPrompt: cat.prompt,
+          tone: activeTone,
+          packageDetail,
+          waNumber,
+        });
+        setResult(caption);
+      }
+    } catch (err) {
+      toast.error(`Gagal generate: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCopy = async () => {
@@ -387,6 +158,8 @@ export function CaptionGenerator() {
     toast.success("Caption disalin!");
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const canGenerate = mode === "poster" ? !!posterFile && !loading : !loading;
 
   const charLen = result.length;
   const charInRange = charLen >= 600 && charLen <= 1000;
@@ -402,51 +175,166 @@ export function CaptionGenerator() {
   return (
     <div className="space-y-3 pb-10">
 
-      {/* Kategori */}
-      <Section label="Kategori" icon={Wand2}>
-        <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
-          {CATEGORIES.map(({ key, label, Icon }) => {
-            const isActive = key === activeCategory;
-            return (
-              <button
-                key={key}
-                onClick={() => setActiveCategory(key)}
-                className={cn(
-                  "flex flex-col items-center gap-2 rounded-xl border py-3.5 px-2 transition-all text-center",
-                  isActive
-                    ? "border-[#1a44d4] bg-[#1a44d4] text-white shadow-sm"
-                    : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40 hover:bg-blue-50/40",
-                )}
-              >
-                <Icon className={cn("h-5 w-5", isActive ? "text-white" : "text-muted-foreground")} strokeWidth={1.5} />
-                <span className={cn("text-[11px] font-medium leading-tight", isActive ? "text-white" : "text-foreground")}>
-                  {label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </Section>
+      {/* ── Mode Toggle ── */}
+      <div className="flex gap-2 p-1 bg-muted/50 rounded-xl border border-border/60">
+        <button
+          onClick={() => switchMode("manual")}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-semibold transition-all",
+            mode === "manual"
+              ? "bg-white shadow-sm text-foreground border border-border/60"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <PenLine className="h-3.5 w-3.5" strokeWidth={1.5} />
+          Input Manual
+        </button>
+        <button
+          onClick={() => switchMode("poster")}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-semibold transition-all",
+            mode === "poster"
+              ? "bg-white shadow-sm text-foreground border border-border/60"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <ScanText className="h-3.5 w-3.5" strokeWidth={1.5} />
+          Scan Poster
+        </button>
+      </div>
 
-      {/* Detail Paket */}
-      <Section label="Detail Paket (opsional)" icon={AlignLeft}>
-        <textarea
-          value={packageDetail}
-          onChange={(e) => setPackageDetail(e.target.value)}
-          placeholder={
-            "Contoh:\nPaket Umrah 12 hari, berangkat 15 Maret 2025\n" +
-            "Hotel bintang 4, Makkah & Madinah walking distance\n" +
-            "Harga mulai Rp 28 juta/orang, kuota terbatas 40 seat"
-          }
-          rows={4}
-          className="w-full rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-3 text-[13px] text-foreground placeholder-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 focus:border-[#1a44d4]/50 transition-all"
-        />
-        <p className="text-[10.5px] text-muted-foreground mt-1.5">
-          Jika diisi, detail paket akan ditambahkan di akhir caption secara otomatis.
-        </p>
-      </Section>
+      <AnimatePresence mode="wait">
 
-      {/* Tone */}
+        {/* ══ MANUAL MODE ══════════════════════════════════════ */}
+        {mode === "manual" && (
+          <motion.div
+            key="manual"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-3"
+          >
+            {/* Kategori */}
+            <Section label="Kategori" icon={Wand2}>
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+                {CATEGORIES.map(({ key, label, Icon }) => {
+                  const isActive = key === activeCategory;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setActiveCategory(key)}
+                      className={cn(
+                        "flex flex-col items-center gap-2 rounded-xl border py-3.5 px-2 transition-all text-center",
+                        isActive
+                          ? "border-[#1a44d4] bg-[#1a44d4] text-white shadow-sm"
+                          : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40 hover:bg-blue-50/40",
+                      )}
+                    >
+                      <Icon className={cn("h-5 w-5", isActive ? "text-white" : "text-muted-foreground")} strokeWidth={1.5} />
+                      <span className={cn("text-[11px] font-medium leading-tight", isActive ? "text-white" : "text-foreground")}>
+                        {label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Section>
+
+            {/* Detail Paket */}
+            <Section label="Detail Paket (opsional)" icon={AlignLeft}>
+              <textarea
+                value={packageDetail}
+                onChange={(e) => setPackageDetail(e.target.value)}
+                placeholder={
+                  "Contoh:\nPaket Umrah 12 hari, berangkat 15 Maret 2025\n" +
+                  "Hotel bintang 4, Makkah & Madinah walking distance\n" +
+                  "Harga mulai Rp 28 juta/orang, kuota terbatas 40 seat"
+                }
+                rows={4}
+                className="w-full rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-3 text-[13px] text-foreground placeholder-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 focus:border-[#1a44d4]/50 transition-all"
+              />
+              <p className="text-[10.5px] text-muted-foreground mt-1.5">
+                Semakin detail info paket, semakin relevan caption yang dihasilkan AI.
+              </p>
+            </Section>
+          </motion.div>
+        )}
+
+        {/* ══ POSTER MODE ══════════════════════════════════════ */}
+        {mode === "poster" && (
+          <motion.div
+            key="poster"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Section label="Upload Poster Paket" icon={ImagePlus}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+              />
+
+              {!posterPreview ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 cursor-pointer transition-all select-none",
+                    isDragging
+                      ? "border-[#1a44d4] bg-blue-50/60"
+                      : "border-border/60 bg-gray-50/50 hover:border-[#1a44d4]/50 hover:bg-blue-50/30",
+                  )}
+                >
+                  <div className="h-11 w-11 rounded-xl border border-border/60 bg-white flex items-center justify-center shadow-sm">
+                    <ImagePlus className="h-5 w-5 text-muted-foreground" strokeWidth={1.5} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[13px] font-semibold text-foreground">
+                      {isDragging ? "Lepaskan gambar di sini" : "Upload poster paket"}
+                    </p>
+                    <p className="text-[11.5px] text-muted-foreground mt-0.5">
+                      Drag & drop atau klik untuk pilih — JPG, PNG, WebP (maks. 5 MB)
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative rounded-xl overflow-hidden border border-border/60 bg-gray-50">
+                  <img
+                    src={posterPreview}
+                    alt="Poster preview"
+                    className="w-full max-h-72 object-contain"
+                  />
+                  <button
+                    onClick={clearPoster}
+                    className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2} />
+                  </button>
+                  <div className="px-3 py-2 border-t border-border/50 bg-white">
+                    <p className="text-[11.5px] text-muted-foreground truncate">
+                      {posterFile?.name} · {posterFile ? (posterFile.size / 1024).toFixed(0) : 0} KB
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[10.5px] text-muted-foreground mt-2">
+                AI akan membaca teks & info dari poster lalu langsung bikin caption siap pakai.
+              </p>
+            </Section>
+          </motion.div>
+        )}
+
+      </AnimatePresence>
+
+      {/* ── Tone (shared) ── */}
       <Section label="Gaya Penulisan" icon={FileText}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {TONES.map(({ key, label, desc }) => {
@@ -474,7 +362,7 @@ export function CaptionGenerator() {
         </div>
       </Section>
 
-      {/* Nomor WhatsApp */}
+      {/* ── Nomor WhatsApp ── */}
       <Section label="Nomor WhatsApp Temantiket" icon={MessageCircle}>
         <div className="flex items-center gap-2">
           <span className="shrink-0 rounded-lg border border-border/70 bg-gray-50 px-3 py-2.5 text-[13px] text-muted-foreground font-medium select-none">
@@ -499,13 +387,42 @@ export function CaptionGenerator() {
         )}
       </Section>
 
-      {/* Generate Button */}
+      {/* ── AI Model Toggle (manual mode only) ── */}
+      {mode === "manual" && (
+        <div className="flex items-center justify-between px-0.5">
+          <span className="text-[11px] text-muted-foreground">Model AI untuk generate caption</span>
+          <AIModelToggle feature="caption" />
+        </div>
+      )}
+
+      {/* ── Poster scan model info ── */}
+      {mode === "poster" && (
+        <div className="flex items-center justify-between px-0.5">
+          <span className="text-[11px] text-muted-foreground">Model AI untuk scan poster</span>
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700">
+            <Sparkles className="h-3 w-3" strokeWidth={2} />
+            Gemini 2.5 Pro
+            <span className="rounded bg-emerald-200 px-1 py-px text-[9px] font-bold uppercase tracking-wide leading-none text-emerald-700">
+              OCR Terbaik
+            </span>
+          </span>
+        </div>
+      )}
+
+      {/* ── Generate Button ── */}
       <Button
-        onClick={handleGenerate}
-        className="w-full h-11 text-[13.5px] font-semibold bg-[#1a44d4] text-white hover:bg-[#1535b0] transition-all rounded-xl"
+        onClick={() => void handleGenerate()}
+        disabled={!canGenerate}
+        className="w-full h-11 text-[13.5px] font-semibold bg-[#1a44d4] text-white hover:bg-[#1535b0] transition-all rounded-xl disabled:opacity-50"
       >
         <AnimatePresence mode="wait">
-          {result ? (
+          {loading ? (
+            <motion.span key="loading" className="flex items-center gap-2"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {mode === "poster" ? "AI sedang baca poster…" : "AI sedang nulis caption…"}
+            </motion.span>
+          ) : result ? (
             <motion.span key="regen" className="flex items-center gap-2"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
@@ -514,16 +431,33 @@ export function CaptionGenerator() {
           ) : (
             <motion.span key="idle" className="flex items-center gap-2"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <Wand2 className="h-4 w-4" strokeWidth={1.5} />
-              Generate Caption
+              {mode === "poster"
+                ? <><ScanText className="h-4 w-4" strokeWidth={1.5} /> Scan & Generate Caption</>
+                : <><Wand2 className="h-4 w-4" strokeWidth={1.5} /> Generate Caption</>
+              }
             </motion.span>
           )}
         </AnimatePresence>
       </Button>
 
-      {/* Result */}
+      {/* ── Result ── */}
       <AnimatePresence>
-        {result && (
+        {loading && (
+          <motion.div key="skeleton"
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="rounded-xl border border-border/70 bg-white p-4 animate-pulse space-y-2.5"
+          >
+            <div className="h-2.5 bg-muted rounded w-1/4" />
+            <div className="h-2.5 bg-muted rounded w-full" />
+            <div className="h-2.5 bg-muted rounded w-5/6" />
+            <div className="h-2.5 bg-muted rounded w-full" />
+            <div className="h-2.5 bg-muted rounded w-4/6" />
+            <div className="h-2.5 bg-muted rounded w-full" />
+            <div className="h-2.5 bg-muted rounded w-3/5" />
+          </motion.div>
+        )}
+
+        {!loading && result && (
           <motion.div key="result"
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           >
