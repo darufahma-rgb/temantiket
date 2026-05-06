@@ -506,69 +506,94 @@ app.post('/api/export/invoice', async (req, res) => {
         } catch { /* fall through to built-in */ }
       }
 
-      // built-in template
-      drawRect(page, 0, H - 105, W, 105, DARK);
-      drawRect(page, 0, H - 108, W, 3, SKY);
-      txt(page, 'temantiket', 40, H - 45, 22, bold, WHITE);
-      txt(page, 'mudah, cepat, amanah', 40, H - 63, 8, regular, rgb(0.6, 0.75, 0.85));
-      drawRect(page, 38, H - 90, 3, 20, SKY);
-      txt(page, 'INVOICE', 48, H - 90, 9, bold, SKY);
-      txtRight(page, invoiceNumber, W - 40, H - 42, 13, bold, WHITE);
-      txtRight(page, `Tanggal: ${invoiceDate}`, W - 40, H - 58, 9, regular, rgb(0.7, 0.8, 0.9));
-      const statusLabel = (order.status || '').toUpperCase();
-      const statusColor = order.status === 'Confirmed' ? rgb(0.2, 0.75, 0.45) : order.status === 'Cancelled' ? RED : rgb(0.95, 0.7, 0.1);
-      const sBadgeW = bold.widthOfTextAtSize(statusLabel, 8) + 16;
-      drawRect(page, W - 40 - sBadgeW, H - 82, sBadgeW, 16, statusColor, 0.2);
-      txtRight(page, statusLabel, W - 40 - (sBadgeW / 2) + (bold.widthOfTextAtSize(statusLabel, 8) / 2) + (sBadgeW / 2), H - 78, 8, bold, statusColor);
+      // ── Built-in template — modern clean design (blue accent) ──────────────
+      const BLUE      = rgb(0.118, 0.435, 0.796);
+      const BLUE_DARK = rgb(0.071, 0.290, 0.549);
+      const BLUE_LITE = rgb(0.878, 0.925, 0.976);
 
-      const clientY = H - 155;
-      txt(page, 'INVOICE UNTUK:', 40, clientY, 7.5, regular, MUTED);
-      txt(page, client?.name ?? 'Klien tidak diketahui', 40, clientY - 17, 15, bold, DARK);
-      if (client?.phone) txt(page, `Tel: ${client.phone}`, 40, clientY - 33, 9, regular, MUTED);
-      const rightCol = W - 40;
-      txtRight(page, 'No. Order:', rightCol, clientY, 8, regular, MUTED);
-      txtRight(page, (order.id || '').slice(0, 12) + '…', rightCol, clientY - 14, 8, bold, DARK);
-      txtRight(page, 'Tipe:', rightCol, clientY - 28, 8, regular, MUTED);
-      txtRight(page, orderTypeLabel(order.type), rightCol, clientY - 42, 8, bold, DARK);
-      line(page, 40, clientY - 55, W - 40, clientY - 55);
+      // White background
+      drawRect(page, 0, 0, W, H, WHITE);
 
-      let rowY = clientY - 75;
-      drawRect(page, 40, rowY - 2, W - 80, 22, DARK);
-      txt(page, 'DETAIL PEMESANAN', 52, rowY + 4, 8, bold, WHITE);
-      txtRight(page, 'INFORMASI', W - 52, rowY + 4, 8, bold, WHITE);
-      rowY -= 2;
+      // ── Decorative corner shapes ──────────────────────────────────────────
+      // Top-right: large square + step
+      drawRect(page, W - 88, H - 88, 88, 88, BLUE);
+      drawRect(page, W - 130, H - 88, 44, 44, BLUE);
+      // Bottom-left: large square + step
+      drawRect(page, 0, 0, 82, 82, BLUE);
+      drawRect(page, 82, 0, 40, 40, BLUE);
+      // Left thin stripe (connecting corners)
+      drawRect(page, 0, 82, 4, H - 82 - 88, BLUE_DARK);
+
+      // ── Header ───────────────────────────────────────────────────────────
+      // Brand — top-left (inside white area, clear of corner)
+      txt(page, 'temantiket', 30, H - 50, 20, bold, DARK);
+      txt(page, 'mudah, cepat, amanah', 30, H - 66, 7.5, regular, MUTED);
+
+      // "INVOICE" — large, top-right (clear of corner decoration)
+      txt(page, 'INVOICE', W - 270, H - 52, 36, bold, BLUE);
+      txtRight(page, invoiceDate, W - 95, H - 75, 9, regular, DARK);
+
+      // ── Client / TO block ─────────────────────────────────────────────────
+      const toY = H - 135;
+      // Right side: TO
+      txt(page, 'TO.', W - 220, toY + 2, 7.5, regular, MUTED);
+      txt(page, client?.name ?? 'Klien tidak diketahui', W - 220, toY - 17, 14, bold, DARK);
+      if (client?.phone) txt(page, client.phone, W - 220, toY - 34, 8.5, regular, MUTED);
+      // Left side: NO/ISN + type
+      txt(page, `NO/ISN  ${invoiceNumber}`, 30, toY - 5, 9, bold, DARK);
+      txt(page, orderTypeLabel(order.type), 30, toY - 20, 8, regular, MUTED);
+
+      // ── Divider ───────────────────────────────────────────────────────────
+      const divY = toY - 55;
+      line(page, 30, divY, W - 30, divY, MUTED);
+
+      // ── Table header ─────────────────────────────────────────────────────
+      const tblHdrY = divY - 20;
+      txt(page, 'KETERANGAN', 30, tblHdrY, 8, bold, DARK);
+      txtRight(page, 'DETAIL', W - 30, tblHdrY, 8, bold, DARK);
+      line(page, 30, tblHdrY - 9, W - 30, tblHdrY - 9, MUTED);
+
+      // ── Table rows ───────────────────────────────────────────────────────
       const rows = buildDetailRows(order, meta);
+      const ROW_H = 24;
+      let rowY = tblHdrY - 9 - ROW_H + 6;
       rows.forEach(([label, value], i) => {
-        const ry = rowY - (i * 22);
-        if (i % 2 === 1) drawRect(page, 40, ry - 16, W - 80, 22, LIGHT);
-        txt(page, label, 52, ry, 8.5, regular, MUTED);
-        txt(page, value, W / 2, ry, 8.5, bold, DARK, W / 2 - 60);
+        if (i % 2 === 0) drawRect(page, 30, rowY - ROW_H + 16, W - 60, ROW_H, BLUE_LITE);
+        txt(page, label, 34, rowY, 8.5, regular, MUTED);
+        txtRight(page, value, W - 34, rowY, 8.5, bold, DARK);
+        rowY -= ROW_H;
       });
-      rowY -= rows.length * 22 + 8;
-      line(page, 40, rowY, W - 40, rowY);
-      rowY -= 30;
+      rowY -= 6;
+      line(page, 30, rowY, W - 30, rowY, MUTED);
 
+      // ── Payment method + total ────────────────────────────────────────────
+      rowY -= 22;
+      txt(page, 'Metode Pembayaran', 30, rowY, 9, bold, DARK);
+      txt(page, 'Transfer Bank / Tunai', 30, rowY - 15, 8.5, regular, MUTED);
+
+      // Grand total box (right-aligned, matches reference)
       const totalFormatted = order.currency === 'EGP' ? fmtEGP(Number(order.totalPrice)) : fmtIDR(Number(order.totalPrice));
-      const boxH = 56;
-      drawRect(page, 40, rowY - boxH, W - 80, boxH, DARK);
-      drawRect(page, 40, rowY - boxH, 5, boxH, SKY);
-      txt(page, 'TOTAL PEMBAYARAN', 56, rowY - 18, 8, regular, rgb(0.6, 0.72, 0.82));
-      txt(page, totalFormatted, 56, rowY - 38, 18, bold, WHITE);
-      txtRight(page, `Mata Uang: ${order.currency}`, W - 52, rowY - 22, 8, regular, rgb(0.5, 0.65, 0.75));
-      txtRight(page, 'Metode: Transfer Bank / Tunai', W - 52, rowY - 36, 8, regular, rgb(0.5, 0.65, 0.75));
-      rowY -= boxH + 20;
+      const gtBoxW = 250, gtBoxH = 38;
+      const gtX = W - 30 - gtBoxW;
+      const gtY = rowY - gtBoxH + 8;
+      drawRect(page, gtX, gtY, gtBoxW, gtBoxH, BLUE);
+      txt(page, 'TOTAL PEMBAYARAN', gtX + 14, gtY + 13, 8.5, bold, WHITE);
+      txtRight(page, totalFormatted, W - 34, gtY + 11, 13, bold, WHITE);
+      rowY -= gtBoxH + 16;
 
+      // ── Notes / Catatan ──────────────────────────────────────────────────
       if (order.notes) {
-        txt(page, 'Catatan:', 40, rowY, 8, regular, MUTED);
-        txt(page, order.notes, 40, rowY - 14, 8, oblique, DARK, W - 80);
-        rowY -= 38;
+        txt(page, 'Catatan', 30, rowY, 9, bold, DARK);
+        txt(page, order.notes, 30, rowY - 15, 8, regular, MUTED, 260);
+        rowY -= 40;
       }
 
-      const footerY = 70;
-      line(page, 40, footerY + 30, W - 40, footerY + 30);
-      txtCenter(page, invoiceData.agencyName ?? 'Temantiket', W / 2, footerY + 16, 9, bold, MUTED);
-      txtCenter(page, invoiceData.agencyPhone ?? '+62 813-1150-6025  ·  @temantiket', W / 2, footerY + 3, 8, regular, MUTED);
-      txtCenter(page, 'Terima kasih atas kepercayaan Anda!', W / 2, footerY - 12, 8, oblique, MUTED);
+      // ── Footer ───────────────────────────────────────────────────────────
+      const footerY = 92;
+      line(page, 30, footerY + 22, W - 30, footerY + 22, MUTED);
+      txtCenter(page, invoiceData.agencyName ?? 'Temantiket', W / 2, footerY + 8, 9, bold, MUTED);
+      txtCenter(page, invoiceData.agencyPhone ?? '+62 813-1150-6025  ·  @temantiket', W / 2, footerY - 5, 8, regular, MUTED);
+      txtCenter(page, 'Terima kasih atas kepercayaan Anda!', W / 2, footerY - 18, 8, oblique, MUTED);
       drawWatermark(page, oblique);
       return await pdfDoc.save();
     }
