@@ -144,10 +144,13 @@ function ClientDetailInner({ id }: { id: string }) {
   const navigate = useNavigate();
   const { clients, fetchClients, getOneClient, patchClient, removeClient } = useClientsStore();
   const { orders, fetchOrders } = useOrdersStore();
+  const userRole = useAuthStore((s) => s.user?.role);
+  const isOwner = userRole === "owner";
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [referredByName, setReferredByName] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -165,6 +168,16 @@ function ClientDetailInner({ id }: { id: string }) {
   }, [id]);
 
   useEffect(() => { if (clients.length === 0) void fetchClients(); }, [clients.length, fetchClients]);
+
+  useEffect(() => {
+    if (!isOwner || !client?.createdByAgent) { setReferredByName(null); return; }
+    useAuthStore.getState().listMembers()
+      .then((list) => {
+        const found = list.find((m) => m.userId === client.createdByAgent);
+        setReferredByName(found?.displayName ?? null);
+      })
+      .catch(() => {});
+  }, [isOwner, client?.createdByAgent]);
 
   const clientOrders = useMemo(() => orders.filter((o) => o.clientId === id), [orders, id]);
 
@@ -210,6 +223,13 @@ function ClientDetailInner({ id }: { id: string }) {
         <InfoRow label="No. Paspor" value={client.passportNumber || "—"} />
         <InfoRow label="Tgl Lahir" value={client.birthDate || "—"} />
         {client.legacyJamaahId && <InfoRow label="Jamaah ID (legacy)" value={client.legacyJamaahId} />}
+        {isOwner && referredByName && (
+          <InfoRow
+            icon={<UserCheck className="h-3.5 w-3.5 text-violet-400" />}
+            label="Closing / Referensi"
+            value={referredByName}
+          />
+        )}
       </div>
 
       {client.notes && (
@@ -693,6 +713,7 @@ function ClientCard({
   latestLabel,
   totalPrice,
   onNavigate,
+  referredByName,
 }: {
   client: Client;
   orderCount: number;
@@ -700,6 +721,7 @@ function ClientCard({
   latestLabel: string | null;
   totalPrice: number;
   onNavigate: () => void;
+  referredByName?: string;
 }) {
   const badge = deriveStatusBadge(bestStatus);
   const initials = getInitials(client.name);
@@ -755,6 +777,12 @@ function ClientCard({
               </>
             )}
           </div>
+          {referredByName && (
+            <div className="flex items-center gap-1 mt-1">
+              <UserCheck className="h-2.5 w-2.5 text-violet-400 shrink-0" strokeWidth={2} />
+              <span className="text-[10.5px] text-violet-500 font-medium truncate">{referredByName}</span>
+            </div>
+          )}
         </div>
 
         {/* Chevron */}
@@ -824,15 +852,29 @@ export default function Clients() {
   const { clients, loadingClients, fetchClients, addClient } = useClientsStore();
   const { orders, fetchOrders } = useOrdersStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const userRole = useAuthStore((s) => s.user?.role);
+  const isOwner = userRole === "owner";
   const [q, setQ] = useState("");
   const debouncedQ = useDebounce(q, 300);
   const [addOpen, setAddOpen] = useState(false);
+  const [memberNameMap, setMemberNameMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     if (!isAuthenticated) return;
     void fetchClients();
     void fetchOrders();
   }, [isAuthenticated, fetchClients, fetchOrders]);
+
+  useEffect(() => {
+    if (!isOwner) return;
+    useAuthStore.getState().listMembers()
+      .then((list) => {
+        const m = new Map<string, string>();
+        for (const mem of list) m.set(mem.userId, mem.displayName);
+        setMemberNameMap(m);
+      })
+      .catch(() => {});
+  }, [isOwner]);
 
   // Per-client order summary
   const clientOrderSummary = useMemo(() => {
@@ -937,6 +979,7 @@ export default function Clients() {
                     latestLabel={summary?.latestType ?? null}
                     totalPrice={summary?.totalPrice ?? 0}
                     onNavigate={() => navigate(`/clients/${c.id}`)}
+                    referredByName={isOwner && c.createdByAgent ? memberNameMap.get(c.createdByAgent) : undefined}
                   />
                 );
               })}
