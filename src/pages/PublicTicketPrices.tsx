@@ -14,8 +14,13 @@ import {
   Plane, MessageCircle, Clock, RefreshCw, Loader2,
   Search, SlidersHorizontal, X, ArrowUpDown, ChevronDown,
   TrendingUp, CalendarDays, Filter, Globe, ShieldCheck, Zap, HeadphonesIcon,
-  Calendar,
+  Calendar, Info, Luggage, MapPin,
 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogTitle,
+} from "@/components/ui/dialog";
+import { RouteTimeline } from "@/components/RouteTimeline";
+import { MultiLegTimeline } from "@/components/MultiLegTimeline";
 import { cn } from "@/lib/utils";
 import {
   getAirlineGradient, getAirlineLogoUrl,
@@ -363,13 +368,223 @@ function FilterBar({
 // ── Public Boarding Pass Card ─────────────────────────────────────────────────
 const SK = "'Sk-Modernist', 'Inter', sans-serif";
 
+// ── Public Detail Modal ───────────────────────────────────────────────────────
+function PublicDetailModal({
+  open, item, markup, rates, waNumber, onClose,
+}: {
+  open: boolean;
+  item: TicketPrice | null;
+  markup: number;
+  rates: Record<string, number>;
+  waNumber: string;
+  onClose: () => void;
+}) {
+  if (!item) return null;
+
+  const expired = isExpired(item.validUntil);
+  const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
+  const isDirect = !item.transitCode;
+
+  const { ml: mlData, userNotes: mlUserNotes } = decodeMultiLeg(item.notes);
+  const isML = !!mlData;
+  const { leg: returnLeg, userNotes: rtUserNotes } = isML
+    ? { leg: null, userNotes: null }
+    : decodeReturnLeg(item.notes);
+  const isRT = !!returnLeg;
+  const userNotes = mlUserNotes ?? rtUserNotes;
+  const isRTorML = isRT || isML;
+
+  const tripType = isML ? "Multi-Leg PP" : isRT ? "Pulang-Pergi" : isDirect ? "Langsung" : "Transit";
+  const grad = getAirlineGradient(item.airlineCode);
+
+  const routeLabel = isML
+    ? buildRouteLabel(mlData!)
+    : isRT ? `${item.fromCode} ⇄ ${item.toCode}` : `${item.fromCode} → ${item.toCode}`;
+
+  const waText = encodeURIComponent(
+    `Halo! Saya tertarik dengan tiket:\n\n✈️ *${item.airline}*\n🗺️ Rute: *${routeLabel}*\n💰 Harga: *${fmtIDR(sell)}${isRTorML ? "/paket PP" : "/pax"}*\n\nMohon infokan ketersediaan. Terima kasih!`
+  );
+  const waLink = waNumber ? `${whatsappUrl(waNumber)}?text=${waText}` : `https://wa.me/?text=${waText}`;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0 gap-0">
+        <DialogTitle className="sr-only">Detail Tiket {item.airline}</DialogTitle>
+
+        {/* Gradient airline header */}
+        <div className={cn("flex items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r text-white rounded-t-xl", grad)}>
+          <div className="flex items-center gap-3 min-w-0">
+            <AirlineLogo code={item.airlineCode} airline={item.airline} size={40} />
+            <div className="min-w-0">
+              <p className="font-bold text-[15px] leading-tight truncate">{item.airline}</p>
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <span className="text-[10px] text-white/70 font-mono">{item.airlineCode}</span>
+                {item.flightNumber && !isRT && !isML && (
+                  <span className="text-[10px] bg-white/20 rounded px-1.5 py-0.5 font-mono font-semibold">
+                    {item.flightNumber}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <span className={cn(
+            "text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0",
+            isML || isRT ? "bg-violet-100 text-violet-700" : isDirect ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700",
+          )}>
+            {tripType}
+          </span>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          {/* Route timeline */}
+          <div className="rounded-xl border border-slate-100 bg-white px-4 py-4">
+            {isML && mlData ? (
+              <div className="space-y-4">
+                <MultiLegTimeline legs={mlData.outboundLegs} label="Berangkat" />
+                {(mlData.returnLegs?.length ?? 0) > 0 && (
+                  <>
+                    <div className="border-t border-dashed border-slate-200" />
+                    <MultiLegTimeline legs={mlData.returnLegs!} label="Pulang" />
+                  </>
+                )}
+              </div>
+            ) : isRT && returnLeg ? (
+              <RouteTimeline
+                outbound={{
+                  origin: { code: item.fromCode, city: item.fromCity, time: item.etd },
+                  destination: { code: item.toCode, city: item.toCity, time: item.eta },
+                  transit: item.transitCode
+                    ? { code: item.transitCode, city: item.transitCity, duration: item.transitDuration ?? undefined }
+                    : null,
+                  date: item.departDate ? fmtDate(item.departDate) : null,
+                  flightNumber: item.flightNumber,
+                }}
+                returnTrip={{
+                  origin: { code: returnLeg.returnFromCode ?? "—", city: returnLeg.returnFromCity, time: returnLeg.returnEtd },
+                  destination: { code: returnLeg.returnToCode ?? "—", city: returnLeg.returnToCity, time: returnLeg.returnEta },
+                  transit: returnLeg.returnTransitCode
+                    ? { code: returnLeg.returnTransitCode, city: returnLeg.returnTransitCity, duration: returnLeg.returnTransitDuration ?? undefined }
+                    : null,
+                  date: returnLeg.returnDate ? fmtDate(returnLeg.returnDate) : null,
+                  flightNumber: returnLeg.returnFlightNumber,
+                }}
+              />
+            ) : (
+              <RouteTimeline
+                outbound={{
+                  origin: { code: item.fromCode, city: item.fromCity, time: item.etd },
+                  destination: { code: item.toCode, city: item.toCity, time: item.eta },
+                  transit: item.transitCode
+                    ? { code: item.transitCode, city: item.transitCity, duration: item.transitDuration ?? undefined }
+                    : null,
+                  date: item.departDate ? fmtDate(item.departDate) : null,
+                  flightNumber: item.flightNumber,
+                }}
+              />
+            )}
+          </div>
+
+          {/* Detail rows */}
+          {(item.terminal || item.baggageInfo || item.validUntil) && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Detail</p>
+              <div className="divide-y divide-slate-100 rounded-xl border border-slate-100 overflow-hidden">
+                {item.terminal && (
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      Terminal
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-700 font-mono">{item.terminal}</span>
+                  </div>
+                )}
+                {item.baggageInfo && (
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <Luggage className="w-3.5 h-3.5 text-slate-400" />
+                      Bagasi
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-700">{item.baggageInfo}</span>
+                  </div>
+                )}
+                {item.validUntil && (
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      Harga berlaku hingga
+                    </div>
+                    <span className={cn("text-[11px] font-semibold", expired ? "text-red-600" : "text-slate-700")}>
+                      {expired ? "⛔ " : ""}{fmtDate(item.validUntil)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Notes for public (non-encoded) */}
+          {userNotes && !String(userNotes).startsWith("__") && (
+            <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-1">Info Tambahan</p>
+              <p className="text-[12px] text-amber-800 leading-snug">{userNotes}</p>
+            </div>
+          )}
+          {!isRTorML && item.notes && !item.notes.startsWith("__") && (
+            <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-1">Info Tambahan</p>
+              <p className="text-[12px] text-amber-800 leading-snug">{item.notes}</p>
+            </div>
+          )}
+
+          {/* Price */}
+          <div className={cn(
+            "rounded-xl px-4 py-4",
+            expired ? "bg-slate-50 border border-slate-200" : "bg-sky-50 border border-sky-100",
+          )}>
+            {expired ? (
+              <>
+                <p className="text-sm font-bold text-red-500 mb-0.5">Harga Expired</p>
+                <p className="text-[11px] text-slate-400">Hubungi admin untuk harga terbaru</p>
+              </>
+            ) : (
+              <>
+                <p className="text-[10px] font-semibold text-sky-500 uppercase tracking-widest mb-0.5">
+                  Harga {isRTorML ? "/ paket PP" : "/ pax"}
+                </p>
+                <p className="text-[28px] font-black text-sky-700 leading-none tabular-nums">{fmtIDR(sell)}</p>
+                <p className="text-[10px] text-slate-400 mt-1">sudah termasuk semua biaya layanan</p>
+              </>
+            )}
+          </div>
+
+          {/* WhatsApp CTA */}
+          <a
+            href={waLink}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(
+              "flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-white transition-colors",
+              expired ? "bg-slate-500 hover:bg-slate-600" : "bg-green-600 hover:bg-green-700",
+            )}
+          >
+            <MessageCircle className="w-4 h-4" />
+            {expired ? "Hubungi Admin" : "Pesan via WhatsApp"}
+          </a>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Public Card ───────────────────────────────────────────────────────────────
 function PublicCard({
-  item, markup, rates, waNumber,
+  item, markup, rates, waNumber, onDetail,
 }: {
   item: TicketPrice;
   markup: number;
   rates: Record<string, number>;
   waNumber: string;
+  onDetail: () => void;
 }) {
   const expired = isExpired(item.validUntil);
   const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
@@ -599,19 +814,30 @@ function PublicCard({
       {/* ── CTA ── */}
       <div className="px-4 pb-4">
         <div className="border-t border-slate-200 mb-3" />
-        <a
-          href={waLink}
-          target="_blank"
-          rel="noreferrer"
-          className={cn(
-            "flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-colors",
-            expired ? "bg-slate-500 hover:bg-slate-600" : "bg-green-600 hover:bg-green-700",
-          )}
-          style={{ fontFamily: SK, fontWeight: 700 }}
-        >
-          <MessageCircle className="w-4 h-4" />
-          {expired ? "Hubungi Admin" : "Pesan via WhatsApp"}
-        </a>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={onDetail}
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors"
+            style={{ fontFamily: SK, fontWeight: 600 }}
+          >
+            <Info className="w-4 h-4 text-sky-500" />
+            Lihat Detail Penerbangan
+          </button>
+          <a
+            href={waLink}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(
+              "flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-colors",
+              expired ? "bg-slate-500 hover:bg-slate-600" : "bg-green-600 hover:bg-green-700",
+            )}
+            style={{ fontFamily: SK, fontWeight: 700 }}
+          >
+            <MessageCircle className="w-4 h-4" />
+            {expired ? "Hubungi Admin" : "Pesan via WhatsApp"}
+          </a>
+        </div>
       </div>
     </div>
   );
@@ -624,6 +850,7 @@ export default function PublicTicketPrices() {
   const [loading, setLoading] = useState(true);
   const [markup] = useState(() => loadMarkup());
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [detailItem, setDetailItem] = useState<TicketPrice | null>(null);
   const waNumber = loadIghAdminSettings().adminWhatsapp ?? "";
 
   // ── Banner theme (customisable by owner) ─────────────────────────────────
@@ -1070,9 +1297,19 @@ export default function PublicTicketPrices() {
                   markup={markup}
                   rates={rates}
                   waNumber={waNumber}
+                  onDetail={() => setDetailItem(item)}
                 />
               ))}
             </div>
+
+            <PublicDetailModal
+              open={!!detailItem}
+              item={detailItem}
+              markup={markup}
+              rates={rates}
+              waNumber={waNumber}
+              onClose={() => setDetailItem(null)}
+            />
 
             {/* ── Travel Tips ── */}
             <div className="mt-16">
