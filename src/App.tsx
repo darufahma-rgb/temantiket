@@ -20,6 +20,7 @@ import { startRealtimeSync } from "@/lib/supabaseRealtime";
 import { initSyncStatusListeners } from "@/store/syncStatusStore";
 import { toast } from "sonner";
 import { pullIghAdminSettings } from "@/lib/ighSettings";
+import { pullBannerTheme } from "@/lib/bannerTheme";
 import { pullProductCommissions } from "@/lib/productCommissions";
 import { pullMarkup } from "@/features/ticketPrices/ticketPricesRepo";
 
@@ -85,6 +86,7 @@ function StoreBootstrap() {
       fetchClients(),
       fetchOrders(),
       pullIghAdminSettings(),
+      pullBannerTheme(),
       pullProductCommissions(),
       pullMarkup(),
       pullRates(),

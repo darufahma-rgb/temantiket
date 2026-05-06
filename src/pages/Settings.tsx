@@ -28,6 +28,13 @@ import {
   type AppearanceSettings,
   type AppearanceTheme,
 } from "@/lib/appearance";
+import {
+  loadBannerTheme,
+  saveBannerTheme,
+  PRESET_SWATCHES,
+  type BannerTheme,
+  type BannerPreset,
+} from "@/lib/bannerTheme";
 import { useRatesStore } from "@/store/ratesStore";
 import { listRecentAuditLogs, describeChange, type AuditLog } from "@/features/audit/auditRepo";
 import { useAuthStore, type LoginEvent, type MemberInfo } from "@/store/authStore";
@@ -124,6 +131,7 @@ export default function Settings() {
   });
 
   const [appearance, setAppearance] = useState<AppearanceSettings>(() => loadAppearanceSettings());
+  const [bannerTheme, setBannerTheme] = useState<BannerTheme>(() => loadBannerTheme());
 
   // Temantiket Settings — kontak admin yang muncul di footer PDF penawaran & Dashboard.
   const [ighAdmin, setIghAdmin] = useState<IghAdminSettings>(() => loadIghAdminSettings());
@@ -427,6 +435,7 @@ export default function Settings() {
   const handleSave = () => {
     applyAppearanceSettings(appearance);
     saveAppearanceSettings(appearance, user?.id);
+    saveBannerTheme(bannerTheme);
     toast.success("Pengaturan berhasil disimpan!");
   };
 
@@ -944,6 +953,89 @@ export default function Settings() {
               checked={appearance.compactMode}
               onChange={(v) => setAppearance((a) => ({ ...a, compactMode: v }))}
             />
+
+            {/* ── Banner Theme Picker ── */}
+            <div className="space-y-2 pt-2 border-t border-[hsl(var(--border))]">
+              <div>
+                <Label className="text-[10px] md:text-[11px] text-[hsl(var(--muted-foreground))]">Tema Banner Halaman Publik</Label>
+                <p className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5">Warna latar banner di halaman /harga-tiket yang dilihat pelanggan.</p>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {(Object.entries(PRESET_SWATCHES) as [Exclude<BannerPreset,"custom">, typeof PRESET_SWATCHES[keyof typeof PRESET_SWATCHES]][]).map(([key, meta]) => (
+                  <button
+                    key={key}
+                    onClick={() => setBannerTheme({ preset: key })}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all",
+                      bannerTheme.preset === key
+                        ? "border-[hsl(var(--primary))] bg-[hsl(var(--accent))]"
+                        : "border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.4)]"
+                    )}
+                  >
+                    <div
+                      className="h-8 w-full rounded-lg"
+                      style={{ background: meta.gradient }}
+                    />
+                    <span className="text-[10px] font-medium text-[hsl(var(--foreground))]">{meta.label}</span>
+                  </button>
+                ))}
+                {/* Custom swatch */}
+                <button
+                  onClick={() => setBannerTheme((t) => ({ ...t, preset: "custom" }))}
+                  className={cn(
+                    "flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all",
+                    bannerTheme.preset === "custom"
+                      ? "border-[hsl(var(--primary))] bg-[hsl(var(--accent))]"
+                      : "border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.4)]"
+                  )}
+                >
+                  <div
+                    className="h-8 w-full rounded-lg flex items-center justify-center text-[10px] font-bold text-white"
+                    style={{
+                      background: bannerTheme.customBase
+                        ? `linear-gradient(135deg,${bannerTheme.customBase},${bannerTheme.customBlob1 ?? "#a78bfa"})`
+                        : "linear-gradient(135deg,#1a1a2e,#4040aa)",
+                    }}
+                  >
+                    Custom
+                  </div>
+                  <span className="text-[10px] font-medium text-[hsl(var(--foreground))]">Custom</span>
+                </button>
+              </div>
+
+              {/* Custom color pickers */}
+              {bannerTheme.preset === "custom" && (
+                <div className="mt-2 grid grid-cols-3 gap-2 p-3 rounded-xl bg-[hsl(var(--accent)/0.5)] border border-[hsl(var(--border))]">
+                  {[
+                    { key: "customBase",  label: "Warna Dasar" },
+                    { key: "customBlob1", label: "Warna Aksen 1" },
+                    { key: "customBlob2", label: "Warna Aksen 2" },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="flex flex-col items-center gap-1">
+                      <input
+                        type="color"
+                        value={(bannerTheme as Record<string, string>)[key] ?? "#1a1a2e"}
+                        onChange={(e) => setBannerTheme((t) => ({ ...t, [key]: e.target.value }))}
+                        className="w-10 h-10 rounded-lg border border-[hsl(var(--border))] cursor-pointer bg-transparent"
+                      />
+                      <span className="text-[9px] text-[hsl(var(--muted-foreground))] text-center leading-tight">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Live preview strip */}
+              <div className="rounded-xl overflow-hidden h-10 relative mt-1" style={{
+                background: (() => {
+                  if (bannerTheme.preset !== "custom") return PRESET_SWATCHES[bannerTheme.preset as Exclude<BannerPreset,"custom">]?.gradient;
+                  return `linear-gradient(135deg,${bannerTheme.customBase ?? "#1a1a2e"},${bannerTheme.customBlob1 ?? "#4060cc"},${bannerTheme.customBlob2 ?? "#9050cc"})`;
+                })()
+              }}>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-[10px] text-white/60 font-semibold tracking-wide">Preview Banner</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
