@@ -5,7 +5,7 @@ import {
   MessageCircle, AlertTriangle, Check, X, ChevronDown, ChevronUp,
   Tag, RefreshCw, Settings2, ImagePlus, Plane, Share2, Copy,
   Clock, MapPin, ArrowRight, ExternalLink, Instagram, Link2,
-  ArrowLeftRight, RotateCcw, Search, Calendar, SlidersHorizontal,
+  ArrowLeftRight, RotateCcw, Search, Calendar, SlidersHorizontal, ArrowUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1402,6 +1402,8 @@ function SharePanel({ publicUrl }: { publicUrl: string }) {
 type TripTypeFilter = "all" | "direct" | "transit" | "pp";
 type DateFilter = "all" | "today" | "week" | "month";
 type PublishFilter = "all" | "published" | "draft";
+type SortBy = "default" | "date" | "price" | "airline";
+type SortDir = "asc" | "desc";
 
 function SearchFilterBar({
   searchQuery, onSearchChange,
@@ -1409,14 +1411,17 @@ function SearchFilterBar({
   filterDateRange, onDateRangeChange,
   filterPublish, onPublishChange,
   isOwner, totalCount, filteredCount, onReset,
+  sortBy, onSortByChange, sortDir, onSortDirChange,
 }: {
   searchQuery: string; onSearchChange: (v: string) => void;
   filterTripType: TripTypeFilter; onTripTypeChange: (v: TripTypeFilter) => void;
   filterDateRange: DateFilter; onDateRangeChange: (v: DateFilter) => void;
   filterPublish: PublishFilter; onPublishChange: (v: PublishFilter) => void;
   isOwner: boolean; totalCount: number; filteredCount: number; onReset: () => void;
+  sortBy: SortBy; onSortByChange: (v: SortBy) => void;
+  sortDir: SortDir; onSortDirChange: (v: SortDir) => void;
 }) {
-  const isFiltered = searchQuery.trim() !== "" || filterTripType !== "all" || filterDateRange !== "all" || filterPublish !== "all";
+  const isFiltered = searchQuery.trim() !== "" || filterTripType !== "all" || filterDateRange !== "all" || filterPublish !== "all" || sortBy !== "default";
 
   return (
     <div className="space-y-2">
@@ -1526,6 +1531,47 @@ function SearchFilterBar({
         )}
       </div>
 
+      {/* Sort chips */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Urutkan:</span>
+        {(["date", "price", "airline"] as const).map((s) => {
+          const labels = { date: "Tanggal", price: "Harga", airline: "Maskapai" } as const;
+          const active = sortBy === s;
+          return (
+            <button
+              key={s}
+              onClick={() => {
+                if (active) {
+                  onSortDirChange(sortDir === "asc" ? "desc" : "asc");
+                } else {
+                  onSortByChange(s);
+                  onSortDirChange("asc");
+                }
+              }}
+              className={cn(
+                "inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[11px] font-semibold border transition-all",
+                active
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-700 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300",
+              )}
+            >
+              {labels[s]}
+              {active && <span className="opacity-80 ml-0.5">{sortDir === "asc" ? "↑" : "↓"}</span>}
+            </button>
+          );
+        })}
+        {sortBy !== "default" && (
+          <button
+            onClick={() => { onSortByChange("default"); onSortDirChange("asc"); }}
+            className="h-6 w-6 flex items-center justify-center rounded-full text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+            title="Hapus urutan"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+
       {/* Result count */}
       {isFiltered && (
         <p className="text-[11px] text-slate-500">
@@ -1621,12 +1667,16 @@ export default function TicketPrices() {
   const [filterTripType, setFilterTripType] = useState<TripTypeFilter>("all");
   const [filterDateRange, setFilterDateRange] = useState<DateFilter>("all");
   const [filterPublish, setFilterPublish] = useState<PublishFilter>("all");
+  const [sortBy, setSortBy] = useState<SortBy>("default");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   function resetFilters() {
     setSearchQuery("");
     setFilterTripType("all");
     setFilterDateRange("all");
     setFilterPublish("all");
+    setSortBy("default");
+    setSortDir("asc");
   }
 
   // Public link for sharing
@@ -1949,8 +1999,25 @@ export default function TicketPrices() {
       );
     }
 
+    if (sortBy !== "default") {
+      list = [...list].sort((a, b) => {
+        let cmp = 0;
+        if (sortBy === "date") {
+          const da = a.departDate ? new Date(a.departDate).getTime() : Infinity;
+          const db = b.departDate ? new Date(b.departDate).getTime() : Infinity;
+          cmp = da - db;
+        } else if (sortBy === "price") {
+          cmp = sellingPrice(a.basePrice, a.currency, rates, markup) -
+                sellingPrice(b.basePrice, b.currency, rates, markup);
+        } else if (sortBy === "airline") {
+          cmp = a.airline.localeCompare(b.airline, "id");
+        }
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }
+
     return list;
-  }, [visiblePrices, searchQuery, filterTripType, filterDateRange, filterPublish, isOwner]);
+  }, [visiblePrices, searchQuery, filterTripType, filterDateRange, filterPublish, isOwner, sortBy, sortDir, rates, markup]);
 
   const publishedCount = prices.filter(p => p.isPublished).length;
   const hiddenCount    = prices.filter(p => !p.isPublished).length;
@@ -2150,6 +2217,8 @@ export default function TicketPrices() {
             filterPublish={filterPublish} onPublishChange={setFilterPublish}
             isOwner={isOwner} totalCount={visiblePrices.length}
             filteredCount={filteredPrices.length} onReset={resetFilters}
+            sortBy={sortBy} onSortByChange={setSortBy}
+            sortDir={sortDir} onSortDirChange={setSortDir}
           />
         )}
 
@@ -2702,6 +2771,8 @@ export default function TicketPrices() {
           filterPublish={filterPublish} onPublishChange={setFilterPublish}
           isOwner={isOwner} totalCount={visiblePrices.length}
           filteredCount={filteredPrices.length} onReset={resetFilters}
+          sortBy={sortBy} onSortByChange={setSortBy}
+          sortDir={sortDir} onSortDirChange={setSortDir}
         />
       )}
 
