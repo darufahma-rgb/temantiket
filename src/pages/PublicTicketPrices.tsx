@@ -11,12 +11,16 @@
  */
 import { useState, useEffect, useMemo } from "react";
 import {
-  Plane, MessageCircle, Clock, MapPin, RefreshCw, Loader2,
+  Plane, MessageCircle, Clock, RefreshCw, Loader2,
   Search, SlidersHorizontal, X, ArrowUpDown, ChevronDown,
   TrendingUp, CalendarDays, Filter, Globe, ShieldCheck, Zap, HeadphonesIcon,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getAirlineGradient, getAirlineLogoUrl } from "@/lib/ticketPriceAI";
+import {
+  getAirlineGradient, getAirlineLogoUrl,
+  decodeMultiLeg, decodeReturnLeg, buildRouteLabel,
+} from "@/lib/ticketPriceAI";
 import {
   listTicketPrices, loadMarkup, sellingPrice, isExpired, fmtIDR, fmtDate,
   type TicketPrice,
@@ -356,6 +360,8 @@ function FilterBar({
 }
 
 // ── Public Boarding Pass Card ─────────────────────────────────────────────────
+const SK = "'Sk-Modernist', 'Inter', sans-serif";
+
 function PublicCard({
   item, markup, rates, waNumber,
 }: {
@@ -368,15 +374,57 @@ function PublicCard({
   const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
   const isDirect = !item.transitCode;
 
+  // Decode RT / ML encoded notes — same logic as internal BoardingPassCard
+  const { ml: mlData, userNotes: mlUserNotes } = decodeMultiLeg(item.notes);
+  const isML = !!mlData;
+  const { leg: returnLeg, userNotes: rtUserNotes } = isML
+    ? { leg: null, userNotes: null }
+    : decodeReturnLeg(item.notes);
+  const isRT = !!returnLeg;
+  const userNotes = mlUserNotes ?? rtUserNotes;
+  const isRTorML = isRT || isML;
+
+  // Compact route label
+  const fromLabel = item.fromCity || item.fromCode;
+  const toLabel   = item.toCity   || item.toCode;
+  const viaLabel  = item.transitCity || item.transitCode;
+  const compactRoute = isML
+    ? buildRouteLabel(mlData!)
+    : isRT
+      ? `${fromLabel} ⇄ ${toLabel}${viaLabel ? ` via ${viaLabel}` : ""}`
+      : `${fromLabel} → ${toLabel}${viaLabel ? ` via ${viaLabel}` : ""}`;
+
+  // Return date/time
+  const returnDate = isML
+    ? (mlData?.returnLegs?.[0]?.date ?? null)
+    : isRT ? (returnLeg?.returnDate ?? null) : null;
+  const returnEtd = isML
+    ? (mlData?.returnLegs?.[0]?.etd ?? null)
+    : isRT ? (returnLeg?.returnEtd ?? null) : null;
+  const returnFromCode = isML
+    ? (mlData?.returnLegs?.[0]?.fromCode ?? null)
+    : isRT ? (returnLeg?.returnFromCode ?? null) : null;
+
+  // WhatsApp message
+  const routeLabel = isML
+    ? buildRouteLabel(mlData!)
+    : isRT ? `${item.fromCode} ⇄ ${item.toCode}` : `${item.fromCode} → ${item.toCode}`;
+
   const waText = encodeURIComponent(
     `Halo Temantiket! Saya tertarik dengan tiket berikut:\n\n` +
-    `✈️ *${item.airline}*${item.flightNumber ? ` (${item.flightNumber})` : ""}\n` +
-    `🗺️ Rute: *${item.fromCode} → ${item.toCode}*\n` +
-    `${item.fromCity ? `   ${item.fromCity} → ${item.toCity}\n` : ""}` +
-    `${item.etd || item.eta ? `🕐 ${item.etd ?? "—"} → ${item.eta ?? "—"}\n` : ""}` +
-    `${item.transitCode ? `🔄 Transit: ${item.transitCity ?? item.transitCode}${item.transitDuration ? ` (${item.transitDuration})` : ""}\n` : ""}` +
-    `📅 Tanggal: ${item.departDate ? fmtDate(item.departDate) : "Fleksibel"}\n` +
-    `💰 Harga: *${fmtIDR(sell)}/pax*\n\n` +
+    `✈️ *${item.airline}*\n` +
+    `🗺️ Rute: *${routeLabel}*\n` +
+    (isML
+      ? mlData!.outboundLegs.map((l, i) =>
+          `   Seg ${i+1}: ${l.fromCode}→${l.toCode}${l.flightNumber ? ` (${l.flightNumber})` : ""}${l.etd ? ` jam ${l.etd}` : ""}${l.date ? ` · ${fmtDate(l.date)}` : ""}`
+        ).join("\n") + "\n"
+      : isRT
+        ? `   Berangkat: ${item.fromCode}→${item.toCode}${item.etd ? ` jam ${item.etd}` : ""}${item.departDate ? ` · ${fmtDate(item.departDate)}` : ""}\n` +
+          `   Pulang: ${returnLeg?.returnFromCode ?? ""}→${returnLeg?.returnToCode ?? ""}${returnLeg?.returnEtd ? ` jam ${returnLeg.returnEtd}` : ""}${returnLeg?.returnDate ? ` · ${fmtDate(returnLeg.returnDate)}` : ""}\n`
+        : `${item.etd || item.eta ? `🕐 ${item.etd ?? "—"} → ${item.eta ?? "—"}\n` : ""}` +
+          `${item.transitCode ? `🔄 Transit: ${item.transitCity ?? item.transitCode}${item.transitDuration ? ` (${item.transitDuration})` : ""}\n` : ""}` +
+          `📅 Tanggal: ${item.departDate ? fmtDate(item.departDate) : "Fleksibel"}\n`) +
+    `💰 Harga: *${fmtIDR(sell)}${isRTorML ? "/paket PP" : "/pax"}*\n\n` +
     `Mohon infokan ketersediaan dan detailnya. Terima kasih!`
   );
   const waLink = waNumber
@@ -384,142 +432,166 @@ function PublicCard({
     : `https://wa.me/?text=${waText}`;
 
   return (
-    <div className={cn(
-      "rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-lg transition-all overflow-hidden flex flex-col",
-      expired && "opacity-60",
-    )}>
-      {/* Airline header */}
-      <div className={cn(
-        "flex items-center justify-between gap-3 px-4 py-3 bg-gradient-to-r text-white",
-        getAirlineGradient(item.airlineCode),
-      )}>
-        <div className="flex items-center gap-2.5 min-w-0">
+    <div
+      className={cn(
+        "relative rounded-3xl border bg-white flex flex-col transition-all duration-200",
+        "shadow-[0_2px_16px_-4px_rgba(0,0,0,0.10),0_1px_4px_-2px_rgba(0,0,0,0.06)]",
+        "hover:shadow-[0_6px_28px_-6px_rgba(0,0,0,0.14),0_2px_8px_-2px_rgba(0,0,0,0.08)]",
+        expired ? "opacity-60 border-slate-200" : "border-slate-150",
+      )}
+      style={{ fontFamily: SK }}
+    >
+      {/* ── HEADER: Airline + flight number + type badge ── */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 gap-2">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <AirlineLogo code={item.airlineCode} airline={item.airline} size={52} />
-          <div className="min-w-0">
-            <p className="font-bold text-[13px] leading-tight truncate">{item.airline}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-[10px] text-white/70 font-mono">{item.airlineCode}</span>
-              {item.flightNumber && (
-                <span className="text-[10px] bg-white/20 rounded px-1.5 py-0.5 font-mono font-semibold">
+          <div className="min-w-0 flex-1">
+            <p className="text-[13.5px] text-slate-900 leading-tight truncate" style={{ fontFamily: SK, fontWeight: 700 }}>
+              {item.airline}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className="text-[9px] text-slate-400 font-mono tracking-wide">{item.airlineCode}</span>
+              {!isRT && !isML && item.flightNumber && (
+                <span className="text-[9px] bg-slate-100 text-slate-600 rounded-md px-1.5 py-0.5 font-mono" style={{ fontWeight: 600 }}>
                   {item.flightNumber}
                 </span>
               )}
             </div>
           </div>
         </div>
-        <span className={cn(
-          "text-[9px] rounded-full px-2 py-0.5 font-semibold uppercase tracking-wider shrink-0",
-          isDirect ? "bg-white/20 text-white/90" : "bg-amber-400/30 text-amber-100",
-        )}>
-          {isDirect ? "Direct" : "Transit"}
-        </span>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className={cn(
+            "text-[8.5px] px-2 py-0.5 rounded-full",
+            isML || isRT ? "bg-violet-50 text-violet-600 border border-violet-100"
+            : isDirect ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+            : "bg-amber-50 text-amber-600 border border-amber-100",
+          )} style={{ fontWeight: 700 }}>
+            {isML ? "Multi-Leg PP" : isRT ? "Pulang-Pergi" : isDirect ? "One Way" : "Transit"}
+          </span>
+          {expired && (
+            <span className="text-[8.5px] px-2 py-0.5 rounded-full bg-red-50 text-red-500 border border-red-100" style={{ fontWeight: 700 }}>
+              Expired
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 px-4 py-4 space-y-3">
-        {/* Route + Times */}
-        <div className="flex items-center gap-2">
-          <div className="flex-1 text-left">
-            <p className="text-2xl font-black text-slate-900 leading-none tracking-tight">{item.fromCode}</p>
-            {item.fromCity && (
-              <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[80px]">{item.fromCity}</p>
-            )}
-            {item.etd && (
-              <p className="text-[15px] font-extrabold text-sky-700 mt-1.5 tabular-nums leading-none">{item.etd}</p>
-            )}
-            {item.terminal && (
-              <p className="text-[9px] text-slate-400 mt-0.5">{item.terminal}</p>
-            )}
-          </div>
+      {/* ── ROUTE SUMMARY ── */}
+      <div className="px-4 pb-3">
+        <div className="border-t border-dashed border-slate-100 mb-2.5" />
+        <div className="flex items-start gap-1.5">
+          <Plane className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+          <p className="text-[13px] text-slate-800 leading-snug flex-1 min-w-0" style={{ fontFamily: SK, fontWeight: 600 }}>
+            {compactRoute}
+          </p>
+        </div>
 
-          <div className="flex flex-col items-center shrink-0 px-1 gap-1">
-            {isDirect ? (
-              <>
+        {/* Date + time — two-column for RT/ML, single for OW */}
+        <div className="mt-2">
+          {isRTorML && returnDate ? (
+            <div className="flex items-stretch gap-0">
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">Berangkat</p>
                 <div className="flex items-center gap-1">
-                  <div className="h-px w-5 bg-slate-200" />
-                  <Plane className="w-3.5 h-3.5 text-slate-400" />
-                  <div className="h-px w-5 bg-slate-200" />
+                  <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span className="text-[11.5px] text-slate-700 font-semibold leading-none">
+                    {item.departDate ? fmtDate(item.departDate) : "Fleksibel"}
+                  </span>
                 </div>
-                <span className="text-[9px] text-slate-300">Direct</span>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-0.5">
-                  <div className="h-px w-4 bg-slate-200" />
-                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  <div className="h-px w-4 bg-slate-200" />
-                </div>
-                <p className="text-[9px] text-amber-600 font-bold">{item.transitCode}</p>
-                {item.transitDuration && (
-                  <p className="text-[8px] text-slate-400">{item.transitDuration}</p>
+                {item.etd && (
+                  <div className="flex items-center gap-1 ml-4 mt-0.5">
+                    <span className="text-[11px] text-slate-700 font-mono font-semibold">{item.etd}</span>
+                    {item.fromCode && (
+                      <span className="text-[9px] bg-slate-100 text-slate-500 rounded px-1 py-0.5 font-mono font-semibold tracking-wide">
+                        {item.fromCode}
+                      </span>
+                    )}
+                  </div>
                 )}
-              </>
-            )}
-          </div>
-
-          <div className="flex-1 text-right">
-            <p className="text-2xl font-black text-slate-900 leading-none tracking-tight">{item.toCode}</p>
-            {item.toCity && (
-              <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[80px] ml-auto">{item.toCity}</p>
-            )}
-            {item.eta && (
-              <p className="text-[15px] font-extrabold text-sky-700 mt-1.5 tabular-nums leading-none">{item.eta}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Transit detail */}
-        {item.transitCode && item.transitCity && (
-          <div className="flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-amber-50 border border-amber-100">
-            <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
-            <span className="text-[10.5px] text-amber-700 font-medium">
-              Transit: {item.transitCity} ({item.transitCode})
-              {item.transitDuration && <span className="text-amber-500"> · {item.transitDuration}</span>}
-            </span>
-          </div>
-        )}
-
-        {/* Tear-off divider */}
-        <div className="relative flex items-center -mx-4 px-4">
-          <div className="h-px flex-1 border-t border-dashed border-slate-200" />
-          <div className="absolute -left-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
-          <div className="absolute -right-2 h-4 w-4 rounded-full bg-slate-100 border border-slate-200" />
-        </div>
-
-        {/* Date */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-            <Clock className="w-3 h-3 text-slate-400" />
-            <span>{item.departDate ? fmtDate(item.departDate) : "Tanggal Fleksibel"}</span>
-          </div>
-          {item.validUntil && (
-            <span className={cn("text-[10px]", expired ? "text-red-500" : "text-slate-400")}>
-              {expired ? "⛔ Expired" : `⏰ s/d ${fmtDate(item.validUntil)}`}
-            </span>
-          )}
-        </div>
-
-        {/* Price */}
-        <div className={cn("rounded-xl px-3 py-2.5", expired ? "bg-red-50" : "bg-sky-50")}>
-          {expired ? (
-            <div className="text-center">
-              <p className="text-sm font-bold text-red-600">Hubungi Admin</p>
-              <p className="text-[11px] text-slate-500">Harga mungkin sudah diperbarui</p>
+              </div>
+              <div className="w-px bg-slate-100 mx-3 self-stretch" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] text-violet-400 uppercase tracking-wide font-semibold mb-0.5">Pulang</p>
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-violet-400 shrink-0" />
+                  <span className="text-[11.5px] text-violet-700 font-semibold leading-none">{fmtDate(returnDate)}</span>
+                </div>
+                {returnEtd && (
+                  <div className="flex items-center gap-1 ml-4 mt-0.5">
+                    <span className="text-[11px] text-violet-600 font-mono font-semibold">{returnEtd}</span>
+                    {returnFromCode && (
+                      <span className="text-[9px] bg-violet-50 text-violet-400 rounded px-1 py-0.5 font-mono font-semibold tracking-wide">
+                        {returnFromCode}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
-            <>
-              <p className="text-[10px] text-sky-600 font-medium uppercase tracking-wide">Harga / pax</p>
-              <p className="text-[22px] font-black text-sky-700 leading-tight tabular-nums">{fmtIDR(sell)}</p>
-              <p className="text-[10px] text-slate-400">sudah termasuk semua biaya layanan</p>
-            </>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                <span className="text-[11.5px] text-slate-700 font-semibold">
+                  {item.departDate ? fmtDate(item.departDate) : "Fleksibel"}
+                </span>
+                {item.etd && (
+                  <>
+                    <span className="text-[11px] text-slate-700 font-mono font-semibold">· {item.etd}</span>
+                    {item.fromCode && (
+                      <span className="text-[9px] bg-slate-100 text-slate-500 rounded px-1 py-0.5 font-mono font-semibold tracking-wide">
+                        {item.fromCode}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+              {item.validUntil && (
+                <span className={cn("ml-auto text-[9.5px] shrink-0", expired ? "text-red-500 font-semibold" : "text-slate-400")}>
+                  {expired ? "⛔ Expired" : `s/d ${fmtDate(item.validUntil)}`}
+                </span>
+              )}
+            </div>
+          )}
+          {isRTorML && item.validUntil && (
+            <span className={cn("text-[9.5px] mt-1 block", expired ? "text-red-500 font-semibold" : "text-slate-400")}>
+              {expired ? "⛔ Expired" : `s/d ${fmtDate(item.validUntil)}`}
+            </span>
           )}
         </div>
+      </div>
 
-        {item.notes && (
-          <p className="text-[11px] text-slate-500 italic leading-snug">{item.notes}</p>
+      {/* ── PRICE ── */}
+      <div className="px-4 pb-3 mt-auto">
+        <div className="border-t border-dashed border-slate-100 mb-2.5" />
+        {!expired ? (
+          <div>
+            <p className="text-[9px] uppercase tracking-widest text-slate-400 mb-0.5" style={{ fontWeight: 700 }}>
+              Harga {isRTorML ? "/ paket PP" : "/ pax"}
+            </p>
+            <p className="text-[20px] text-slate-900 leading-tight tabular-nums" style={{ fontFamily: SK, fontWeight: 700 }}>
+              {fmtIDR(sell)}
+            </p>
+            <p className="text-[9.5px] text-slate-400 mt-0.5">sudah termasuk semua biaya layanan</p>
+          </div>
+        ) : (
+          <div>
+            <p className="text-sm text-red-500" style={{ fontWeight: 700 }}>Harga Expired</p>
+            <p className="text-[11px] text-slate-400">Hubungi admin untuk harga terbaru</p>
+          </div>
         )}
+        {/* User-readable notes only — strip any __RT__/__ML__ encoded strings */}
+        {userNotes && !String(userNotes).startsWith("__") && (
+          <p className="text-[10px] text-slate-400 italic mt-1 leading-snug">{userNotes}</p>
+        )}
+        {!isRTorML && item.notes && !item.notes.startsWith("__") && (
+          <p className="text-[10px] text-slate-400 italic mt-1 leading-snug">{item.notes}</p>
+        )}
+      </div>
 
-        {/* CTA */}
+      {/* ── CTA ── */}
+      <div className="px-4 pb-4">
+        <div className="border-t border-slate-100 mb-3" />
         <a
           href={waLink}
           target="_blank"
@@ -528,6 +600,7 @@ function PublicCard({
             "flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-colors",
             expired ? "bg-slate-500 hover:bg-slate-600" : "bg-green-600 hover:bg-green-700",
           )}
+          style={{ fontFamily: SK, fontWeight: 700 }}
         >
           <MessageCircle className="w-4 h-4" />
           {expired ? "Hubungi Admin" : "Pesan via WhatsApp"}
