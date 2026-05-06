@@ -128,6 +128,7 @@ export function BoardingPassCard({
   showBasePrice?: boolean;
 }) {
   const navigate = useNavigate();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const expired = isExpired(item.validUntil);
   const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
   const isDirect = !item.transitCode;
@@ -372,60 +373,86 @@ export function BoardingPassCard({
       {/* ── FOOTER: Tombol aksi ── */}
       <div className="px-4 pb-4">
         <div className="border-t border-slate-100 mb-3" />
-        <div className="flex gap-2 items-center">
-          {/* Pesan via WA */}
-          {expired ? (
-            <Button asChild size="sm" variant="outline" className="flex-1 rounded-xl text-xs border-slate-200 text-slate-600 h-9">
-              <a href={waLink} target="_blank" rel="noreferrer">
-                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Hubungi Admin
-              </a>
-            </Button>
-          ) : (
-            <Button asChild size="sm" className="flex-1 rounded-xl text-xs bg-green-500 hover:bg-green-600 text-white h-9 shadow-none" style={{ fontFamily: SK, fontWeight: 700 }}>
-              <a href={waLink} target="_blank" rel="noreferrer">
-                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Pesan via WA
-              </a>
-            </Button>
-          )}
 
-          {/* + Order */}
-          {isAdmin && !expired && (
+        {/* Inline delete confirmation */}
+        {confirmDelete ? (
+          <div className="flex items-center gap-2">
+            <p className="flex-1 text-[11.5px] text-slate-600" style={{ fontFamily: SK, fontWeight: 600 }}>
+              Hapus tiket ini?
+            </p>
             <Button
               size="sm"
               variant="outline"
-              className="rounded-xl text-xs border-slate-200 text-slate-600 hover:bg-slate-50 shrink-0 h-9 px-3"
-              title="Buat order flight dari tiket ini"
-              onClick={() => navigate("/orders/flight")}
-              style={{ fontFamily: SK, fontWeight: 600 }}
+              className="rounded-xl text-xs border-slate-200 text-slate-500 h-9 px-3"
+              onClick={() => setConfirmDelete(false)}
             >
-              <Plus className="w-3.5 h-3.5 mr-1" />Order
+              Batal
             </Button>
-          )}
+            <Button
+              size="sm"
+              className="rounded-xl text-xs bg-red-500 hover:bg-red-600 text-white h-9 px-3 shadow-none"
+              style={{ fontFamily: SK, fontWeight: 700 }}
+              onClick={() => { setConfirmDelete(false); onDelete!(item.id); }}
+            >
+              <Trash2 className="w-3 h-3 mr-1" />Hapus
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-2 items-center">
+            {/* Pesan via WA */}
+            {expired ? (
+              <Button asChild size="sm" variant="outline" className="flex-1 rounded-xl text-xs border-slate-200 text-slate-600 h-9">
+                <a href={waLink} target="_blank" rel="noreferrer">
+                  <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Hubungi Admin
+                </a>
+              </Button>
+            ) : (
+              <Button asChild size="sm" className="flex-1 rounded-xl text-xs bg-green-500 hover:bg-green-600 text-white h-9 shadow-none" style={{ fontFamily: SK, fontWeight: 700 }}>
+                <a href={waLink} target="_blank" rel="noreferrer">
+                  <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Pesan via WA
+                </a>
+              </Button>
+            )}
 
-          {/* Admin icon actions */}
-          {isAdmin && (
-            <div className="flex gap-0.5 shrink-0">
-              {onView && (
-                <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                  title="Lihat Detail" onClick={() => onView(item)}>
-                  <Eye className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {onEdit && (
-                <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                  title="Edit" onClick={() => onEdit(item)}>
-                  <Edit3 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {onDelete && (
-                <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50"
-                  title="Hapus" onClick={() => onDelete(item.id)}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
+            {/* + Order */}
+            {isAdmin && !expired && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl text-xs border-slate-200 text-slate-600 hover:bg-slate-50 shrink-0 h-9 px-3"
+                title="Buat order flight dari tiket ini"
+                onClick={() => navigate("/orders/flight")}
+                style={{ fontFamily: SK, fontWeight: 600 }}
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />Order
+              </Button>
+            )}
+
+            {/* Admin icon actions */}
+            {isAdmin && (
+              <div className="flex gap-0.5 shrink-0">
+                {onView && (
+                  <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                    title="Lihat Detail" onClick={() => onView(item)}>
+                    <Eye className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {onEdit && (
+                  <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                    title="Edit" onClick={() => onEdit(item)}>
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {onDelete && (
+                  <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50"
+                    title="Hapus" onClick={() => setConfirmDelete(true)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1674,11 +1701,10 @@ export default function TicketPrices() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Hapus harga tiket ini?")) return;
     try {
       await deleteTicketPrice(id);
       setPrices((prev) => prev.filter((p) => p.id !== id));
-      toast.success("Dihapus.");
+      toast.success("Tiket dihapus.");
     } catch (e) { toast.error("Gagal hapus: " + String(e)); }
   }
 
