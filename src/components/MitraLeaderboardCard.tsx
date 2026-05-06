@@ -10,7 +10,11 @@ import {
   sumPointsByAgent,
   type AgentPoint,
 } from "@/features/agentPoints/agentPointsRepo";
-import { profitIDR, fmtIDR } from "@/lib/profit";
+import { revenueIDR, fmtIDR } from "@/lib/profit";
+import {
+  getCommissionForOrderType,
+  loadProductCommissions,
+} from "@/lib/productCommissions";
 
 /**
  * MitraLeaderboardCard — Top-3 mitra preview untuk Admin Dashboard.
@@ -64,42 +68,44 @@ export function MitraLeaderboardCard() {
   const top3 = useMemo(() => {
     const lifetimePoints = sumPointsByAgent(points);
     const memberById = new Map(members.map((m) => [m.userId, m]));
+    const productCommissions = loadProductCommissions();
     const stats = new Map<
       string,
-      { profit: number; orders: number }
+      { revenue: number; commission: number; orders: number }
     >();
 
     for (const o of orders) {
       if (!o.createdByAgent) continue;
       const t = new Date(o.createdAt).getTime();
       if (t < monthBounds.from || t >= monthBounds.to) continue;
-      const cur = stats.get(o.createdByAgent) ?? { profit: 0, orders: 0 };
-      cur.profit += profitIDR(o);
+      const cur = stats.get(o.createdByAgent) ?? { revenue: 0, commission: 0, orders: 0 };
+      // Gunakan revenueIDR (total penjualan) — tidak bergantung pada HPP/costPrice
+      cur.revenue += revenueIDR(o);
+      // Komisi = flat fee per tipe order (konsisten dgn AgentProfileOwnerView & OrderDetail)
+      cur.commission += getCommissionForOrderType(o.type, productCommissions);
       cur.orders += 1;
       stats.set(o.createdByAgent, cur);
     }
     // Pastikan semua agent muncul (walau gak ada order bulan ini)
     for (const a of agentMembers) {
-      if (!stats.has(a.userId)) stats.set(a.userId, { profit: 0, orders: 0 });
+      if (!stats.has(a.userId)) stats.set(a.userId, { revenue: 0, commission: 0, orders: 0 });
     }
 
     return Array.from(stats.entries())
       .map(([agentId, v]) => {
         const member = memberById.get(agentId);
-        const pct = (member?.commissionPct ?? 0) / 100;
-        const commission = v.profit > 0 ? v.profit * pct : 0;
         return {
           agentId,
           name: member?.displayName ?? `Agent ${agentId.slice(0, 6)}…`,
           photoUrl: member?.photoUrl,
-          profit: v.profit,
+          revenue: v.revenue,
           orders: v.orders,
-          commission,
+          commission: v.commission,
           lifetimePoints: lifetimePoints.get(agentId) ?? 0,
         };
       })
       .sort((a, b) => {
-        if (b.profit !== a.profit) return b.profit - a.profit;
+        if (b.revenue !== a.revenue) return b.revenue - a.revenue;
         return b.lifetimePoints - a.lifetimePoints;
       })
       .slice(0, 3);
@@ -202,13 +208,8 @@ export function MitraLeaderboardCard() {
             <p className="text-[11px] font-bold text-foreground mt-1 truncate">
               {row.name}
             </p>
-            <p
-              className={cn(
-                "text-[11px] font-mono font-extrabold mt-0.5 truncate",
-                row.profit >= 0 ? "text-emerald-700" : "text-red-600",
-              )}
-            >
-              {fmtIDR(row.profit)}
+            <p className="text-[11px] font-mono font-extrabold mt-0.5 truncate text-emerald-700">
+              {fmtIDR(row.revenue)}
             </p>
             <p className="text-[9.5px] text-muted-foreground mt-0.5">
               {row.orders} order · komisi {fmtIDR(row.commission)}

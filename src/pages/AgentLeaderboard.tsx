@@ -15,7 +15,7 @@ import {
 import { onAgentPointsChanged } from "@/lib/supabaseRealtime";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { AgentTierBadge } from "@/components/AgentTierProgress";
-import { profitIDR } from "@/lib/profit";
+import { revenueIDR } from "@/lib/profit";
 import { cn } from "@/lib/utils";
 
 type RangeKey = "this_month" | "last_month" | "this_year" | "all";
@@ -129,17 +129,19 @@ export default function AgentLeaderboard() {
   const rows = useMemo(() => {
     const lifetime = sumPointsByAgent(points);
     const periodic = sumPointsByAgent(periodPoints);
-    const stats = new Map<string, { profit: number; orders: number }>();
+    const stats = new Map<string, { revenue: number; orders: number }>();
     for (const o of periodOrders) {
       if (!o.createdByAgent) continue;
-      const cur = stats.get(o.createdByAgent) ?? { profit: 0, orders: 0 };
-      cur.profit += profitIDR(o);
+      const cur = stats.get(o.createdByAgent) ?? { revenue: 0, orders: 0 };
+      // Gunakan revenueIDR (total penjualan), bukan profitIDR, agar tidak
+      // bergantung pada HPP/costPrice yang mungkin belum diisi
+      cur.revenue += revenueIDR(o);
       cur.orders += 1;
       stats.set(o.createdByAgent, cur);
     }
     // Pastiin semua agent muncul, walau tidak ada order/poin di periode
     for (const a of agentMembers) {
-      if (!stats.has(a.userId)) stats.set(a.userId, { profit: 0, orders: 0 });
+      if (!stats.has(a.userId)) stats.set(a.userId, { revenue: 0, orders: 0 });
     }
 
     return Array.from(stats.entries())
@@ -150,8 +152,8 @@ export default function AgentLeaderboard() {
           name: member?.displayName ?? `Agent ${agentId.slice(0, 6)}…`,
           isMe: agentId === me?.id,
           orders: v.orders,
-          // profit ditampilin hanya utk row sendiri
-          profit: v.profit,
+          // revenue ditampilin hanya utk row sendiri (privacy)
+          revenue: v.revenue,
           periodPoints: periodic.get(agentId) ?? 0,
           lifetimePoints: lifetime.get(agentId) ?? 0,
           tier: getTierInfo(lifetime.get(agentId) ?? 0).current.key,
