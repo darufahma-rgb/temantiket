@@ -1312,25 +1312,23 @@ export default function PublicTicketPrices() {
             />
 
             {/* ── Travel Tips ── */}
-            <div className="mt-16">
+            <div className="mt-16 -mx-4 px-4 py-12 rounded-3xl" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e8edf8 50%, #eff6ff 100%)" }}>
               {/* Section header */}
               <div className="text-center mb-10">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-sky-600 mb-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 border border-slate-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">
                   ✈️ Tips Perjalanan
                 </span>
                 <h2 className="text-2xl font-black text-slate-900 leading-tight">
-                  Siap Terbang?<br />
+                  Siap Terbang?{" "}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-blue-600">Jangan Sampai Lupa Ini!</span>
                 </h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                   {
                     emoji: "🛂",
-                    gradient: "from-sky-500 to-blue-600",
-                    accent: "text-sky-600",
-                    numBg: "bg-sky-50 text-sky-500",
+                    iconBg: "bg-blue-100",
                     title: "Cek Paspor & Visa",
                     tips: [
                       "Paspor masih berlaku minimal 6 bulan",
@@ -1340,9 +1338,7 @@ export default function PublicTicketPrices() {
                   },
                   {
                     emoji: "🧳",
-                    gradient: "from-amber-400 to-orange-500",
-                    accent: "text-amber-600",
-                    numBg: "bg-amber-50 text-amber-500",
+                    iconBg: "bg-amber-100",
                     title: "Atur Bagasi dengan Bijak",
                     tips: [
                       "Batas kabin 7–10 kg, cek ketentuan maskapai",
@@ -1352,9 +1348,7 @@ export default function PublicTicketPrices() {
                   },
                   {
                     emoji: "✈️",
-                    gradient: "from-emerald-500 to-teal-600",
-                    accent: "text-emerald-600",
-                    numBg: "bg-emerald-50 text-emerald-500",
+                    iconBg: "bg-emerald-100",
                     title: "Tiba di Bandara Lebih Awal",
                     tips: [
                       "Datang minimal 3 jam sebelum penerbangan internasional",
@@ -1364,9 +1358,7 @@ export default function PublicTicketPrices() {
                   },
                   {
                     emoji: "💊",
-                    gradient: "from-rose-500 to-pink-600",
-                    accent: "text-rose-600",
-                    numBg: "bg-rose-50 text-rose-500",
+                    iconBg: "bg-rose-100",
                     title: "Jaga Kesehatan Selama Perjalanan",
                     tips: [
                       "Bawa obat pribadi dalam tas kabin",
@@ -1376,9 +1368,7 @@ export default function PublicTicketPrices() {
                   },
                   {
                     emoji: "📱",
-                    gradient: "from-violet-500 to-purple-600",
-                    accent: "text-violet-600",
-                    numBg: "bg-violet-50 text-violet-500",
+                    iconBg: "bg-violet-100",
                     title: "Persiapan Komunikasi",
                     tips: [
                       "Aktifkan roaming atau beli SIM card lokal di tujuan",
@@ -1388,9 +1378,7 @@ export default function PublicTicketPrices() {
                   },
                   {
                     emoji: "💰",
-                    gradient: "from-teal-500 to-cyan-600",
-                    accent: "text-teal-600",
-                    numBg: "bg-teal-50 text-teal-500",
+                    iconBg: "bg-teal-100",
                     title: "Kelola Keuangan Perjalanan",
                     tips: [
                       "Bawa kartu Visa/Mastercard untuk kemudahan transaksi",
@@ -1401,30 +1389,33 @@ export default function PublicTicketPrices() {
                 ].map((item, i) => (
                   <div
                     key={i}
-                    className="group relative bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+                    className="group bg-white rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col gap-4"
                   >
-                    {/* Gradient header bar */}
-                    <div className={`bg-gradient-to-r ${item.gradient} px-5 pt-5 pb-8`}>
-                      <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl shadow-inner">
-                          {item.emoji}
-                        </div>
-                        <p className="text-[14px] font-black text-white leading-tight">{item.title}</p>
+                    {/* Icon row */}
+                    <div className="flex items-start justify-between">
+                      <div className={`w-11 h-11 rounded-xl ${item.iconBg} flex items-center justify-center text-2xl`}>
+                        {item.emoji}
                       </div>
                     </div>
 
-                    {/* Curved overlap trick */}
-                    <div className="relative -mt-4 bg-white rounded-t-2xl px-5 pt-5 pb-5">
-                      <ol className="space-y-3">
+                    {/* Title */}
+                    <div>
+                      <h3 className="text-[16px] font-black text-slate-900 leading-snug mb-2">{item.title}</h3>
+                      <ul className="space-y-1.5">
                         {item.tips.map((tip, j) => (
-                          <li key={j} className="flex items-start gap-3">
-                            <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center ${item.numBg}`}>
-                              {j + 1}
-                            </span>
-                            <span className="text-[12px] text-slate-600 leading-relaxed">{tip}</span>
+                          <li key={j} className="flex items-start gap-2">
+                            <span className="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full bg-slate-300" />
+                            <span className="text-[12px] text-slate-500 leading-relaxed">{tip}</span>
                           </li>
                         ))}
-                      </ol>
+                      </ul>
+                    </div>
+
+                    {/* Pill button */}
+                    <div className="mt-auto pt-1">
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-4 py-1.5 text-[11px] font-semibold text-slate-500">
+                        Catat sebelum berangkat ✓
+                      </span>
                     </div>
                   </div>
                 ))}
