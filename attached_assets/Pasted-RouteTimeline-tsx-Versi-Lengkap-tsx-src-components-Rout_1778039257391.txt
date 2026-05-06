@@ -1,0 +1,108 @@
+RouteTimeline.tsx (Versi Lengkap)
+tsx// src/components/RouteTimeline.tsx
+import React from 'react';
+
+interface RouteStop {
+  city: string;
+  airport: string;
+  time?: string;
+  flightNumber?: string;
+}
+
+interface RouteTimelineProps {
+  type: 'oneWay' | 'roundTrip';
+  outbound: {
+    origin: RouteStop;
+    destination: RouteStop;
+  };
+  returnTrip?: {
+    origin: RouteStop;
+    destination: RouteStop;
+  };
+  showFlightNumber?: boolean;
+}
+
+export const RouteTimeline: React.FC<RouteTimelineProps> = ({
+  type,
+  outbound,
+  returnTrip,
+  showFlightNumber = true,
+}) => {
+  const renderTimeline = (leg: { origin: RouteStop; destination: RouteStop }, label?: string) => (
+    <div className="flex gap-4">
+      {/* Vertical Timeline */}
+      <div className="flex flex-col items-center pt-1">
+        {/* Origin Circle (Dashed) */}
+        <div className="w-[14px] h-[14px] rounded-full border-2 border-dashed border-[#1a56a8] bg-white" />
+        
+        {/* Vertical Dashed Line */}
+        <div className="w-px flex-1 border-l-2 border-dashed border-gray-300 my-1" />
+        
+        {/* Plane Icon */}
+        <div className="text-[#1a56a8] text-lg rotate-90 my-1">✈︎</div>
+        
+        {/* Vertical Dashed Line */}
+        <div className="w-px flex-1 border-l-2 border-dashed border-gray-300 my-1" />
+        
+        {/* Destination Circle (Solid) */}
+        <div className="w-[14px] h-[14px] rounded-full bg-[#1a56a8]" />
+      </div>
+
+      {/* City & Info */}
+      <div className="flex flex-col justify-between flex-1 py-1 text-sm">
+        {/* Origin */}
+        <div>
+          <div className="font-semibold text-gray-900">{leg.origin.city}</div>
+          <div className="text-xs text-gray-500">{leg.origin.airport}</div>
+          {leg.origin.time && (
+            <div className="text-xs text-gray-600 mt-0.5">{leg.origin.time}</div>
+          )}
+          {showFlightNumber && leg.origin.flightNumber && (
+            <div className="text-[10px] text-gray-400 mt-0.5">{leg.origin.flightNumber}</div>
+          )}
+        </div>
+
+        {/* Destination */}
+        <div className="mt-6">
+          <div className="font-semibold text-gray-900">{leg.destination.city}</div>
+          <div className="text-xs text-gray-500">{leg.destination.airport}</div>
+          {leg.destination.time && (
+            <div className="text-xs text-gray-600 mt-0.5">{leg.destination.time}</div>
+          )}
+          {showFlightNumber && leg.destination.flightNumber && (
+            <div className="text-[10px] text-gray-400 mt-0.5">{leg.destination.flightNumber}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Outbound */}
+      <div>
+        {type === 'roundTrip' && (
+          <div className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-2">
+            <span>↗</span> BERANGKAT
+          </div>
+        )}
+        {renderTimeline(outbound)}
+      </div>
+
+      {/* Return Trip */}
+      {type === 'roundTrip' && returnTrip && (
+        <>
+          {/* Dashed Separator */}
+          <div className="border-t border-dashed border-gray-300 my-1" />
+          
+          <div>
+            <div className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-2">
+              <span>↩</span> PULANG
+            </div>
+            {renderTimeline(returnTrip)}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
