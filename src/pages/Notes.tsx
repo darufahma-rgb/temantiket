@@ -43,9 +43,9 @@ const NOTE_COLORS = [
 
 function MarkdownContent({ content, className }: { content: string; className?: string }) {
   return (
+    <div className={className}>
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      className={className}
       components={{
         h1: ({ children }) => (
           <h1 className="text-[15px] font-extrabold text-slate-900 leading-snug mt-3 mb-1 first:mt-0">{children}</h1>
@@ -88,6 +88,7 @@ function MarkdownContent({ content, className }: { content: string; className?: 
     >
       {content}
     </ReactMarkdown>
+    </div>
   );
 }
 

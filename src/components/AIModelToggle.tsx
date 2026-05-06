@@ -25,8 +25,17 @@ export function AIModelToggle({
   defaultTier = AI_TIERS.FAST,
   className,
 }: AIModelToggleProps) {
-  const { overrides, toggleOverride } = useAIOverrideStore();
-  const active = overrides[feature] ?? defaultTier;
+  const { overrides, toggleOverride, setOverride } = useAIOverrideStore();
+  const rawActive = overrides[feature] ?? defaultTier;
+  // Self-heal: stale cached model ID that no longer exists in AI_TIER_LABELS
+  const active: (typeof AI_TIERS)[keyof typeof AI_TIERS] =
+    rawActive in AI_TIER_LABELS
+      ? (rawActive as (typeof AI_TIERS)[keyof typeof AI_TIERS])
+      : defaultTier;
+  if (rawActive !== active) {
+    // Silently reset the stale override to the default tier
+    setOverride(feature, defaultTier);
+  }
   const isPro = active === AI_TIERS.PRO;
   const label = AI_TIER_LABELS[active];
 
