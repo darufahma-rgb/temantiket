@@ -46,8 +46,10 @@ import { id as idLocale } from "date-fns/locale";
 import { uploadAvatar, savePhotoUrl } from "@/lib/avatarStorage";
 import { supabase } from "@/lib/supabase";
 import {
-  pullWalletTxs, walletBalance, type WalletTransaction,
+  pullWalletTxs, walletBalance, addWalletTx, type WalletTransaction,
 } from "@/lib/agentWallet";
+import { getCommissionForOrderType } from "@/lib/productCommissions";
+import { ORDER_TYPE_LABEL } from "@/features/orders/ordersRepo";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -290,7 +292,7 @@ export default function AgentProfileOwnerView() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const listMembers = useAuthStore((s) => s.listMembers);
-  const { orders, fetchOrders } = useOrdersStore();
+  const { orders, fetchOrders, patchOrder } = useOrdersStore();
   const { clients, fetchClients } = useClientsStore();
 
   const [tab, setTab] = useState<Tab>("overview");
@@ -311,6 +313,7 @@ export default function AgentProfileOwnerView() {
   const [editEmail, setEditEmail] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [walletTxs, setWalletTxs] = useState<WalletTransaction[]>([]);
+  const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
   const isOwner = user?.role === "owner";
   const canEdit = isOwner || user?.id === agentId;
 
@@ -380,6 +383,11 @@ export default function AgentProfileOwnerView() {
   const agentClients = useMemo(
     () => clients.filter((c) => c.createdByAgent === agentId),
     [clients, agentId],
+  );
+
+  const clientMap = useMemo(
+    () => new Map(clients.map((c) => [c.id, c])),
+    [clients],
   );
 
   const orderPts = useMemo(
@@ -513,6 +521,46 @@ export default function AgentProfileOwnerView() {
       toast.error("Gagal memperbarui status misi. Coba lagi.");
     }
     setReviewing(null);
+  }
+
+  async function handleMarkComplete(orderId: string) {
+    if (!agentId) return;
+    setCompletingOrderId(orderId);
+    try {
+      const order = agentOrders.find((o) => o.id === orderId);
+      if (!order) return;
+      await patchOrder(orderId, { status: "Completed" });
+
+      const feeAmount =
+        Number((order.metadata as Record<string, unknown>).agentFee ?? 0) ||
+        getCommissionForOrderType(order.type);
+
+      if (feeAmount > 0) {
+        const orderLabel = ORDER_TYPE_LABEL[order.type];
+        const orderId8 = order.id.slice(0, 8);
+        const clientName = clientMap.get(order.clientId ?? "")?.name;
+        addWalletTx(agentId, {
+          agentId,
+          type: "order_bonus",
+          pointsDelta: 0,
+          amountIDR: feeAmount,
+          description: `Komisi order ${orderLabel} #${orderId8}${clientName ? ` — ${clientName}` : order.title ? ` — ${order.title}` : ""}`,
+          createdBy: ownerId,
+        });
+        toast.success(`Order selesai! Komisi dicatat: ${fmtIDR(feeAmount)}`, {
+          description: `Wallet agen diperbarui.`,
+          duration: 4500,
+        });
+      } else {
+        toast.success("Order ditandai Selesai.");
+      }
+
+      void pullWalletTxs(agentId).then(setWalletTxs);
+    } catch (e) {
+      toast.error("Gagal memperbarui order.", { description: e instanceof Error ? e.message : "Coba lagi." });
+    } finally {
+      setCompletingOrderId(null);
+    }
   }
 
   if (loading) {
@@ -954,44 +1002,38 @@ export default function AgentProfileOwnerView() {
                   desc="Agen ini belum membuat order apapun."
                 />
               ) : (
-                <div className="rounded-2xl border bg-white overflow-hidden">
-                  <div className="px-4 py-3 border-b flex items-center justify-between">
-                    <p className="text-sm font-semibold">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <p className="text-sm font-semibold text-foreground">
                       Daftar Order ({agentOrders.length})
                     </p>
+                    <span className="text-[11px] text-muted-foreground">
+                      {agentOrders.filter((o) => o.status === "Completed").length} selesai
+                    </span>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-[12px]">
-                      <thead>
-                        <tr className="border-b bg-muted/30">
-                          {["Klien / Tipe", "Tanggal", "Status", "Revenue"].map((h) => (
-                            <th
-                              key={h}
-                              className="text-left font-semibold py-2 px-4 text-[11px] text-muted-foreground uppercase tracking-wide whitespace-nowrap"
-                            >
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {[...agentOrders]
-                          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-                          .map((o) => (
-                            <tr
-                              key={o.id}
+                  {[...agentOrders]
+                    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+                    .map((o) => {
+                      const clientName = clientMap.get(o.clientId ?? "")?.name;
+                      const isCompleting = completingOrderId === o.id;
+                      const canComplete = isOwner && o.status !== "Completed" && o.status !== "Cancelled";
+                      return (
+                        <div
+                          key={o.id}
+                          className={`rounded-2xl border bg-white p-4 space-y-3 transition-colors ${
+                            o.status === "Completed" ? "border-emerald-100" : "border-border"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div
+                              className="flex-1 min-w-0 cursor-pointer"
                               onClick={() => navigate(`/orders/detail/${o.id}`)}
-                              className="hover:bg-muted/20 cursor-pointer transition-colors"
                             >
-                              <td className="py-2.5 px-4">
-                                <p className="font-medium">{o.clientName ?? "—"}</p>
-                                <p className="text-[10px] text-muted-foreground capitalize">{o.type}</p>
-                              </td>
-                              <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap">
-                                {fmtDate(o.createdAt)}
-                              </td>
-                              <td className="py-2.5 px-4">
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-[13px] font-semibold leading-tight">
+                                  {clientName ?? o.title ?? "—"}
+                                </p>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
                                   o.status === "Completed"
                                     ? "bg-emerald-100 text-emerald-700"
                                     : o.status === "Cancelled"
@@ -1000,15 +1042,43 @@ export default function AgentProfileOwnerView() {
                                 }`}>
                                   {o.status}
                                 </span>
-                              </td>
-                              <td className="py-2.5 px-4 font-mono font-semibold whitespace-nowrap">
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <span className="text-[11px] text-muted-foreground capitalize bg-muted/50 px-1.5 py-0.5 rounded">
+                                  {ORDER_TYPE_LABEL[o.type]}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground">
+                                  {fmtDate(o.createdAt)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-[13px] font-extrabold font-mono">
                                 {fmtIDR(revenueIDR(o))}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
+                              </p>
+                            </div>
+                          </div>
+
+                          {canComplete && (
+                            <div className="pt-1 border-t">
+                              <Button
+                                size="sm"
+                                className="w-full h-8 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white"
+                                disabled={isCompleting}
+                                onClick={() => void handleMarkComplete(o.id)}
+                              >
+                                {isCompleting ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                                ) : (
+                                  <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                                )}
+                                Sudah Selesai
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
               )}
             </div>
@@ -1077,23 +1147,33 @@ export default function AgentProfileOwnerView() {
                     <div>
                       <p className="text-sm font-semibold">Belum ada komisi tercatat</p>
                       <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
-                        Komisi akan otomatis muncul saat owner menandai order agen ini sebagai <strong>Completed</strong>.
+                        Komisi akan otomatis muncul saat owner menandai order agen ini sebagai <strong>Selesai</strong>.
                       </p>
                     </div>
                   </div>
                 ) : (
                   <div className="divide-y">
                     {orderBonusTxs.map((tx) => {
-                      // Extract order ID hint from description if present (format: "… #abcd1234 …")
                       const idMatch = tx.description.match(/#([a-f0-9]{8})/i);
                       const shortId = idMatch?.[1] ?? null;
+                      const linkedOrder = shortId
+                        ? agentOrders.find((o) => o.id.startsWith(shortId))
+                        : null;
+                      const linkedClientName = linkedOrder
+                        ? clientMap.get(linkedOrder.clientId ?? "")?.name
+                        : null;
                       return (
                         <div key={tx.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
                           <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-semibold truncate">{tx.description}</p>
+                            {linkedClientName && (
+                              <p className="text-[12px] font-bold text-foreground truncate">
+                                {linkedClientName}
+                              </p>
+                            )}
+                            <p className="text-[11px] text-muted-foreground truncate">{tx.description}</p>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                               <span className="text-[10px] text-muted-foreground">
                                 {fmtDateTime(tx.createdAt)}
