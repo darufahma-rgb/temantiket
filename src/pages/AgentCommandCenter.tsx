@@ -844,7 +844,6 @@ export default function AgentCommandCenter() {
                             <td className="px-3 py-3 text-right font-semibold text-[13px]">{agent.clientCount}</td>
                             <td className="px-3 py-3 text-right">
                               <div className="font-mono text-[11.5px] font-semibold text-amber-700">{fmtIDR(agent.commissionOwed)}</div>
-                              <div className="text-[10px] text-muted-foreground">{agent.commissionPct ?? 0}%</div>
                             </td>
                             <td className="px-3 py-3">
                               <div className="flex items-center justify-center gap-1.5">
