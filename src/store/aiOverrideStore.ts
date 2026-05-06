@@ -14,9 +14,9 @@ export type AIFeatureKey = "caption" | "notes";
 /** Dua tier model yang tersedia untuk di-toggle user. */
 export const AI_TIERS = {
   /** Default: cepat & hemat — Gemini Flash via OpenRouter. */
-  FAST: "google/gemini-2.0-flash",
+  FAST: "google/gemini-2.0-flash-001",
   /** Pro: kualitas tinggi — Claude 3.5 Sonnet via OpenRouter. */
-  PRO:  "anthropic/claude-3-5-sonnet",
+  PRO:  "anthropic/claude-3-5-sonnet-20241022",
 } as const;
 
 export type AITier = (typeof AI_TIERS)[keyof typeof AI_TIERS];
@@ -24,7 +24,7 @@ export type AITier = (typeof AI_TIERS)[keyof typeof AI_TIERS];
 export const AI_TIER_LABELS: Record<AITier, { short: string; long: string; badge: string }> = {
   [AI_TIERS.FAST]: {
     short: "Gemini Flash",
-    long:  "Google Gemini 2.0 Flash — cepat & hemat",
+    long:  "Google Gemini 2.0 Flash 001 — cepat & hemat",
     badge: "Cepat",
   },
   [AI_TIERS.PRO]: {
@@ -49,6 +49,9 @@ interface AIOverrideState {
   isPro: (feature: AIFeatureKey) => boolean;
 }
 
+/** Set of currently valid tier values — used to purge stale cached model IDs. */
+const VALID_TIERS = new Set<string>(Object.values(AI_TIERS));
+
 export const useAIOverrideStore = create<AIOverrideState>()(
   persist(
     (set, get) => ({
@@ -71,8 +74,15 @@ export const useAIOverrideStore = create<AIOverrideState>()(
         set((s) => ({ overrides: { ...s.overrides, [feature]: next } }));
       },
 
-      getModel: (feature, defaultModel) =>
-        get().overrides[feature] ?? defaultModel,
+      getModel: (feature, defaultModel) => {
+        const stored = get().overrides[feature];
+        if (stored && !VALID_TIERS.has(stored)) {
+          // Stale/invalid cached model — silently drop it
+          set((s) => { const next = { ...s.overrides }; delete next[feature]; return { overrides: next }; });
+          return defaultModel;
+        }
+        return stored ?? defaultModel;
+      },
 
       isPro: (feature) =>
         get().overrides[feature] === AI_TIERS.PRO,

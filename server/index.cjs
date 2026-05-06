@@ -15,7 +15,7 @@ const SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 // ── OpenRouter (primary) ─────────────────────────────────────────────────────
 // OCR Paspor  → google/gemini-2.0-flash-001  (vision, murah, cepat)
 // AI Chat     → openai/gpt-4.1               (terbaru, stabil)
-// Teks umum   → bytedance/seed-2.0-mini      (sangat murah, cepat)
+// Teks umum   → google/gemini-2.0-flash-001  (murah, mendukung teks & vision)
 const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
@@ -31,7 +31,7 @@ const USE_OR     = !!OPENROUTER_API_KEY; // true = pakai OpenRouter
 // Model mapping
 const MODEL_OCR  = USE_OR ? 'google/gemini-2.0-flash-001'  : 'gpt-4.1-nano';    // vision (gpt-4.1-nano supports images)
 const MODEL_CHAT = USE_OR ? 'openai/gpt-4.1'               : 'gpt-5-mini';       // AI chat / caption
-const MODEL_TEXT = USE_OR ? 'bytedance/seed-2.0-mini'      : 'gpt-5-nano';       // teks ringan / rapikan
+const MODEL_TEXT = USE_OR ? 'google/gemini-2.0-flash-001'  : 'gpt-4o-mini';      // teks ringan / rapikan
 
 // Header tambahan yang direkomendasikan OpenRouter
 function openrouterHeaders(apiKey) {

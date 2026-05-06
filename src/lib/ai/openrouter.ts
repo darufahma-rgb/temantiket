@@ -18,15 +18,15 @@ import { useAIOverrideStore } from "@/store/aiOverrideStore";
 
 export const OR_MODELS = {
   /** Vision + OCR: poster, paspor, tiket screenshot. Murah & cepat. */
-  VISION:     "google/gemini-2.0-flash",
+  VISION:     "google/gemini-2.0-flash-001",
   /** Caption marketing — manual maupun dari poster. */
-  CAPTION:    "google/gemini-2.0-flash",
+  CAPTION:    "google/gemini-2.0-flash-001",
   /** Rapikan catatan, formatting teks ringan. */
-  TEXT_FAST:  "google/gemini-2.0-flash",
+  TEXT_FAST:  "google/gemini-2.0-flash-001",
   /** Structured JSON output: itinerary, data terstruktur. */
-  STRUCTURED: "google/gemini-2.0-flash",
+  STRUCTURED: "google/gemini-2.0-flash-001",
   /** Reasoning kompleks — hanya pakai kalau butuh kualitas tinggi. */
-  REASONING:  "anthropic/claude-3-5-sonnet",
+  REASONING:  "anthropic/claude-3-5-sonnet-20241022",
 } as const;
 
 export type ORModel = (typeof OR_MODELS)[keyof typeof OR_MODELS];
