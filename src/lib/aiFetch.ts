@@ -46,26 +46,38 @@ export interface CallAIOptions {
 }
 
 /**
- * callAI — central helper for all /api/ai/chat calls.
- *
- * Features vs. raw fetch():
- *  - Automatic 60 s client-side timeout (AbortController) — no more frozen UI
- *  - Up to 2 automatic retries with exponential backoff on network/5xx errors
- *  - Shared JWT token cache — Supabase looked up at most once per 50 s
- *  - Caller AbortSignal support (e.g. component unmount)
- *  - Always throws a clear Error on failure — never returns a non-ok Response
- *
- * Usage:
- *   const res  = await callAI({ model: "openai/gpt-4.1-nano", messages: [...] });
- *   const data = await res.json();
+ * callAI — helper untuk /api/ai/chat (Caption Generator, OpenRouter).
+ * Gunakan callAIAssistant() untuk AITEM yang menggunakan OpenAI.
  */
 export async function callAI(
   body: Record<string, unknown>,
   options: CallAIOptions = {},
 ): Promise<Response> {
+  return _callEndpoint("/api/ai/chat", body, options);
+}
+
+/**
+ * callAIAssistant — helper untuk /api/ai/assistant (AITEM, OpenAI).
+ * Endpoint ini hanya menggunakan OpenAI — tidak pernah ke OpenRouter.
+ */
+export async function callAIAssistant(
+  body: Record<string, unknown>,
+  options: CallAIOptions = {},
+): Promise<Response> {
+  return _callEndpoint("/api/ai/assistant", body, options);
+}
+
+/**
+ * _callEndpoint — implementasi generik dengan retry, timeout, dan token cache.
+ * Dipakai oleh callAI() dan callAIAssistant().
+ */
+async function _callEndpoint(
+  endpoint: string,
+  body: Record<string, unknown>,
+  options: CallAIOptions = {},
+): Promise<Response> {
   const { signal: callerSignal, timeoutMs = 60_000, retries = 2 } = options;
 
-  // Fetch auth headers once (token is cached, so this is nearly free).
   const headers = await getAIHeaders();
 
   let attempt = 0;
@@ -77,12 +89,11 @@ export async function callAI(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    // Forward caller abort to internal controller.
     const onCallerAbort = () => controller.abort();
     callerSignal?.addEventListener("abort", onCallerAbort, { once: true });
 
     try {
-      const res = await fetch("/api/ai/chat", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers,
         body: JSON.stringify(body),
@@ -91,7 +102,7 @@ export async function callAI(
 
       if (res.ok) return res;
 
-      // 4xx — do NOT retry (bad request, auth error, etc.)
+      // 4xx — do NOT retry
       if (res.status >= 400 && res.status < 500) {
         const text = await res.text().catch(() => "");
         const msg = parseErrBody(text, res.status);
@@ -104,14 +115,11 @@ export async function callAI(
         const msg = parseErrBody(text, res.status);
         throw new Error(msg);
       }
-      // Fall through to backoff + retry
     } catch (e: unknown) {
       if (isAbortError(e)) {
         throw new Error("AI request timeout — coba lagi beberapa saat");
       }
-      // Re-throw non-retryable or exhausted errors
       if (attempt > retries || !isRetryable(e)) throw e;
-      // Network error — fall through to backoff + retry
     } finally {
       clearTimeout(timer);
       callerSignal?.removeEventListener("abort", onCallerAbort);

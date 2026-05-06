@@ -25,7 +25,7 @@ import { nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
 import { generateInvoicePdfRemote } from "@/lib/exportPdfApi";
 import { useInvoiceStore } from "@/store/invoiceStore";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
-import { callAI } from "@/lib/aiFetch";
+import { callAIAssistant } from "@/lib/aiFetch";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -703,8 +703,8 @@ export async function sendAIMessage(
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
-    const response = await callAI({
-      model: "openai/gpt-4.1-nano",
+    const response = await callAIAssistant({
+      model: "gpt-4o-mini",
       messages: fullMessages,
       tools: TOOLS,
       tool_choice: "auto",

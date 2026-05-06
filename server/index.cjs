@@ -12,17 +12,17 @@ const SUPABASE_URL = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL 
 const SUPABASE_ANON_KEY = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
 const SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
-// ── OpenRouter ───────────────────────────────────────────────────────────────
-// Satu-satunya provider AI yang digunakan. Tidak ada fallback ke OpenAI.
+// ── OpenRouter — Caption Generator & OCR ────────────────────────────────────
+// Digunakan untuk: Caption Generator (marketing), OCR Paspor, teks ringan.
 // OCR Paspor  → google/gemini-2.0-flash-001  (vision, murah, cepat)
-// AI Chat     → openai/gpt-4.1               (terbaru, stabil)
+// Caption     → openai/gpt-4.1               (terbaru, stabil)
 // Teks umum   → google/gemini-2.0-flash-001  (murah, mendukung teks & vision)
 const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 // Model constants (OpenRouter format: "provider/model")
 const MODEL_OCR  = 'google/gemini-2.0-flash-001';   // vision — baca gambar paspor & poster
-const MODEL_CHAT = 'openai/gpt-4.1';                 // AI chat / caption
+const MODEL_CHAT = 'openai/gpt-4.1';                 // Caption Generator
 const MODEL_TEXT = 'google/gemini-2.0-flash-001';    // teks ringan / rapikan
 
 // Header standar OpenRouter
@@ -32,6 +32,21 @@ function openrouterHeaders() {
     'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
     'HTTP-Referer': 'https://temantiket.replit.app',
     'X-Title': 'Temantiket',
+  };
+}
+
+// ── OpenAI — AITEM (Asisten AI) ──────────────────────────────────────────────
+// Digunakan HANYA untuk AITEM (AI Command Center / chat assistant).
+// Tidak ada fallback ke OpenRouter di sini.
+const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
+const OPENAI_BASE_URL = 'https://api.openai.com/v1';
+const MODEL_ASSISTANT = 'gpt-4o-mini';  // AITEM
+
+// Header standar OpenAI
+function openaiHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${OPENAI_API_KEY}`,
   };
 }
 
@@ -668,13 +683,13 @@ Rules:
 
 /* ──────────────────────────────────────────────
    POST /api/ai/chat
-   AI proxy via OpenRouter (satu-satunya provider).
-   Menerima body OpenAI chat-completions standar dan meneruskannya.
+   Caption Generator & fitur OpenRouter lainnya.
+   Hanya menggunakan OpenRouter — TIDAK ada OpenAI di sini.
    Jika caller tidak set model di body, server inject MODEL_CHAT.
 ────────────────────────────────────────────── */
 app.post('/api/ai/chat', async (req, res) => {
   try {
-    console.log(`[ai/chat] OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
+    console.log(`[Caption Generator] OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
     if (!OPENROUTER_API_KEY) {
       return err(res, 503, 'OPENROUTER_API_KEY tidak ditemukan. Pastikan sudah diset di environment variables.');
     }
@@ -688,17 +703,12 @@ app.post('/api/ai/chat', async (req, res) => {
       ? `openai/${requestedModel}`
       : requestedModel;
 
-    console.log(`[ai/chat] Using OpenRouter with model: ${resolvedModel}`);
+    console.log(`[Caption Generator] Using OpenRouter with model: ${resolvedModel}`);
 
-    const bodyWithModel = {
-      ...req.body,
-      model: resolvedModel,
-    };
+    const bodyWithModel = { ...req.body, model: resolvedModel };
 
-    // 90-second hard timeout
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 90_000);
-
     try {
       const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
         method: 'POST',
@@ -709,9 +719,55 @@ app.post('/api/ai/chat', async (req, res) => {
       const text = await response.text();
       res.status(response.status).set('Content-Type', 'application/json').send(text);
     } catch (fetchErr) {
-      if (fetchErr.name === 'AbortError') {
-        return err(res, 504, 'AI request timeout (90 s) — coba lagi.');
-      }
+      if (fetchErr.name === 'AbortError') return err(res, 504, 'AI request timeout (90 s) — coba lagi.');
+      throw fetchErr;
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (e) {
+    return err(res, 500, e.message);
+  }
+});
+
+/* ──────────────────────────────────────────────
+   POST /api/ai/assistant
+   AITEM (Asisten AI / AI Command Center).
+   Hanya menggunakan OpenAI — TIDAK ada OpenRouter di sini.
+   Mendukung function calling (tools) untuk kontrol penuh Temantiket.
+────────────────────────────────────────────── */
+app.post('/api/ai/assistant', async (req, res) => {
+  try {
+    console.log(`[AITEM] OPENAI_API_KEY detected: ${!!OPENAI_API_KEY}`);
+    if (!OPENAI_API_KEY) {
+      return err(res, 503, 'OPENAI_API_KEY tidak ditemukan. Pastikan sudah diset di environment variables.');
+    }
+
+    // Inject model default jika caller tidak set.
+    // Model harus format OpenAI (bukan "provider/model" — itu format OpenRouter).
+    const requestedModel = req.body.model || MODEL_ASSISTANT;
+
+    // Jika model mengandung slash (format OpenRouter), strip prefix dan ambil nama model saja.
+    const resolvedModel = (typeof requestedModel === 'string' && requestedModel.includes('/'))
+      ? requestedModel.split('/').slice(1).join('/')
+      : requestedModel;
+
+    console.log(`[AITEM] Using OpenAI with model: ${resolvedModel}`);
+
+    const bodyWithModel = { ...req.body, model: resolvedModel };
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90_000);
+    try {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: openaiHeaders(),
+        body: JSON.stringify(bodyWithModel),
+        signal: controller.signal,
+      });
+      const text = await response.text();
+      res.status(response.status).set('Content-Type', 'application/json').send(text);
+    } catch (fetchErr) {
+      if (fetchErr.name === 'AbortError') return err(res, 504, 'AITEM request timeout (90 s) — coba lagi.');
       throw fetchErr;
     } finally {
       clearTimeout(timer);
@@ -746,14 +802,21 @@ setInterval(() => {}, 1 << 30);
 app.listen(PORT, '0.0.0.0', () => {
   const mode = isProd ? 'production' : 'development';
   console.log(`[server] API running on port ${PORT} (${mode})`);
-  console.log(`[server] AI provider       : OpenRouter (only)`);
-  console.log(`[server] OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
+  console.log(`[server] ── Caption Generator & OCR (OpenRouter) ──`);
+  console.log(`[server]   OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
   if (OPENROUTER_API_KEY) {
-    console.log(`[server]   OCR model  : ${MODEL_OCR}`);
-    console.log(`[server]   Chat model : ${MODEL_CHAT}`);
-    console.log(`[server]   Text model : ${MODEL_TEXT}`);
+    console.log(`[server]   OCR model     : ${MODEL_OCR}`);
+    console.log(`[server]   Caption model : ${MODEL_CHAT}`);
+    console.log(`[server]   Text model    : ${MODEL_TEXT}`);
   } else {
-    console.warn('[server] ⚠️  OPENROUTER_API_KEY tidak ditemukan — fitur OCR dan AI chat tidak akan berfungsi');
+    console.warn('[server] ⚠️  OPENROUTER_API_KEY tidak ditemukan — fitur OCR dan Caption Generator tidak akan berfungsi');
+  }
+  console.log(`[server] ── AITEM / Asisten AI (OpenAI) ──`);
+  console.log(`[server]   OPENAI_API_KEY detected: ${!!OPENAI_API_KEY}`);
+  if (OPENAI_API_KEY) {
+    console.log(`[server]   Assistant model : ${MODEL_ASSISTANT}`);
+  } else {
+    console.warn('[server] ⚠️  OPENAI_API_KEY tidak ditemukan — fitur AITEM tidak akan berfungsi');
   }
   if (!SERVICE_ROLE_KEY) {
     console.warn('[server] ⚠️  SUPABASE_SERVICE_ROLE_KEY tidak di-set — fitur invite/remove member tidak akan berfungsi');
