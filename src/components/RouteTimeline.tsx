@@ -23,15 +23,16 @@ export interface RouteTimelineLegProps {
   flightNumber?: string | null;
 }
 
+const SPINE_COLOR = "#64748b";
+
 function SingleLeg({ origin, destination, transit, label, date, flightNumber }: RouteTimelineLegProps) {
   const isDirect = !transit?.code;
   const labelColor = label === "Pulang" ? "text-violet-600" : "text-[#1a56a8]";
-  const accentColor = label === "Pulang" ? "#7c3aed" : "#1a56a8";
 
   return (
     <div>
       {label && (
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-3">
           <p className={cn("text-[9px] font-bold uppercase tracking-widest", labelColor)}>
             {label === "Pulang" ? "↩ " : "↗ "}{label}
           </p>
@@ -44,39 +45,39 @@ function SingleLeg({ origin, destination, transit, label, date, flightNumber }: 
 
       <div className="flex gap-3">
         {/* Spine */}
-        <div className="flex flex-col items-center w-4 shrink-0 pt-0.5 pb-0.5">
+        <div className="flex flex-col items-center w-5 shrink-0 pt-1 pb-1">
           <div
-            className="h-3 w-3 rounded-full border-2 bg-white shrink-0"
-            style={{ borderColor: accentColor, borderStyle: "dashed" }}
+            className="h-3.5 w-3.5 rounded-full border-2 bg-white shrink-0"
+            style={{ borderColor: SPINE_COLOR, borderStyle: "dotted" }}
           />
-          <div className="w-px flex-1 bg-slate-200 my-0.5" />
+          <div className="w-px flex-1 bg-slate-200 my-1" />
           {!isDirect && (
             <>
               <div className="h-2 w-2 rounded-full bg-amber-400 border border-amber-300 shrink-0" />
-              <div className="w-px flex-1 bg-slate-200 my-0.5" />
+              <div className="w-px flex-1 bg-slate-200 my-1" />
             </>
           )}
-          <Plane className="w-3 h-3 shrink-0" style={{ color: accentColor, transform: "rotate(90deg)" }} />
-          <div className="w-px flex-1 bg-slate-200 my-0.5" />
-          <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
+          <Plane className="w-3.5 h-3.5 shrink-0 text-slate-400" style={{ transform: "rotate(90deg)" }} />
+          <div className="w-px flex-1 bg-slate-200 my-1" />
+          <div className="h-3.5 w-3.5 rounded-full shrink-0 bg-slate-700" />
         </div>
 
         {/* City info */}
-        <div className="flex flex-col gap-3 flex-1 min-w-0 py-0.5">
+        <div className="flex flex-col justify-between flex-1 min-w-0 py-0.5" style={{ gap: "18px" }}>
           {/* Origin */}
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
-              <p className="font-bold text-[14px] text-slate-900 leading-none">
+              <p className="font-bold text-[17px] text-slate-900 leading-none">
                 {origin.city || origin.code}
               </p>
               {origin.time && (
-                <span className="text-[12px] font-extrabold tabular-nums" style={{ color: accentColor }}>
+                <span className="text-[12px] font-bold tabular-nums text-slate-500">
                   {origin.time}
                 </span>
               )}
             </div>
             {origin.city && (
-              <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">
                 {origin.airport ?? origin.code}
               </p>
             )}
@@ -91,17 +92,17 @@ function SingleLeg({ origin, destination, transit, label, date, flightNumber }: 
           {/* Destination */}
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
-              <p className="font-bold text-[14px] text-slate-900 leading-none">
+              <p className="font-bold text-[17px] text-slate-900 leading-none">
                 {destination.city || destination.code}
               </p>
               {destination.time && (
-                <span className="text-[12px] font-extrabold tabular-nums" style={{ color: accentColor }}>
+                <span className="text-[12px] font-bold tabular-nums text-slate-500">
                   {destination.time}
                 </span>
               )}
             </div>
             {destination.city && (
-              <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">
                 {destination.airport ?? destination.code}
               </p>
             )}
