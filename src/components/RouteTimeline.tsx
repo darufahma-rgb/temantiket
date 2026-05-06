@@ -42,6 +42,13 @@ function SingleLeg({ origin, destination, transit, label, date, flightNumber }: 
   const isDirect = !transit?.code;
   const labelColor = label === "Pulang" ? "text-violet-600" : "text-slate-500";
 
+  // Split "EK359/EK8501" → ["EK359", "EK8501"] when there is a transit stop
+  const flightParts = !isDirect && flightNumber
+    ? flightNumber.split("/").map((s) => s.trim()).filter(Boolean)
+    : flightNumber ? [flightNumber] : [];
+  const leg1Flight = flightParts[0] ?? null;    // origin → transit
+  const leg2Flight = flightParts[1] ?? null;    // transit → destination (falls back to leg1 if only one code)
+
   return (
     <div>
       {label && (
@@ -93,8 +100,8 @@ function SingleLeg({ origin, destination, transit, label, date, flightNumber }: 
             )}
           </div>
 
-          {/* Flight chip: origin → (transit or destination) */}
-          {flightNumber && !isDirect && <SegmentChip code={flightNumber} />}
+          {/* Flight chip: origin → transit (first leg code) */}
+          {leg1Flight && !isDirect && <SegmentChip code={leg1Flight} />}
 
           {/* Transit stop */}
           {!isDirect && transit?.code && (
@@ -114,8 +121,9 @@ function SingleLeg({ origin, destination, transit, label, date, flightNumber }: 
             </div>
           )}
 
-          {/* Flight chip: direct or transit → destination */}
-          {flightNumber && isDirect && <SegmentChip code={flightNumber} />}
+          {/* Flight chip: transit → destination (second leg code) OR direct flight */}
+          {isDirect && leg1Flight && <SegmentChip code={leg1Flight} />}
+          {!isDirect && (leg2Flight ?? leg1Flight) && <SegmentChip code={(leg2Flight ?? leg1Flight)!} />}
 
           {/* Destination */}
           <div className={!isDirect && transit?.code ? "mt-0" : ""}>

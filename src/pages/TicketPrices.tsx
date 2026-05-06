@@ -362,8 +362,8 @@ export function BoardingPassCard({
           </div>
         )}
 
-        {/* Notes — owner only */}
-        {showBasePrice && userNotes && (
+        {/* Notes — owner only (never show raw __RT__/__ML__ encoded strings) */}
+        {showBasePrice && userNotes && !userNotes.startsWith("__") && (
           <p className="text-[10.5px] text-slate-500 italic leading-snug mt-1">{userNotes}</p>
         )}
         {showBasePrice && !isRTorML && item.notes && !item.notes.startsWith("__") && (
