@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Upload, Sparkles, Plus, Trash2, Edit3, Eye, EyeOff, Loader2,
@@ -264,7 +264,7 @@ function MultiLegChain({
 
 // ── Boarding-pass style Price Card ───────────────────────────────────────────
 export function BoardingPassCard({
-  item, markup, rates, isAdmin, onEdit, onDelete, onTogglePublish, waNumber, showBasePrice = false,
+  item, markup, rates, isAdmin, onEdit, onDelete, onTogglePublish, onView, waNumber, showBasePrice = false,
 }: {
   item: TicketPrice;
   markup: number;
@@ -273,6 +273,7 @@ export function BoardingPassCard({
   onEdit?: (item: TicketPrice) => void;
   onDelete?: (id: string) => void;
   onTogglePublish?: (id: string, val: boolean) => void;
+  onView?: (item: TicketPrice) => void;
   waNumber: string;
   showBasePrice?: boolean;
 }) {
@@ -596,26 +597,360 @@ export function BoardingPassCard({
               <Plus className="w-3.5 h-3.5 mr-1" />Order
             </Button>
           )}
-          {isAdmin && onTogglePublish && onEdit && onDelete && (
+          {isAdmin && (
             <div className="flex gap-1">
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500"
-                title={item.isPublished ? "Sembunyikan" : "Tampilkan"}
-                onClick={() => onTogglePublish(item.id, !item.isPublished)}>
-                {item.isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              </Button>
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500"
-                title="Edit" onClick={() => onEdit(item)}>
-                <Edit3 className="w-3.5 h-3.5" />
-              </Button>
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
-                title="Hapus" onClick={() => onDelete(item.id)}>
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              {onView && (
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-sky-500 hover:text-sky-700 hover:bg-sky-50"
+                  title="Lihat Detail" onClick={() => onView(item)}>
+                  <Eye className="w-3.5 h-3.5" />
+                </Button>
+              )}
+              {onEdit && (
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500"
+                  title="Edit" onClick={() => onEdit(item)}>
+                  <Edit3 className="w-3.5 h-3.5" />
+                </Button>
+              )}
+              {onDelete && (
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
+                  title="Hapus" onClick={() => onDelete(item.id)}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              )}
             </div>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Ticket Detail Modal ───────────────────────────────────────────────────────
+function DetailRow({ label, value, mono }: { label: string; value: ReactNode; mono?: boolean }) {
+  if (!value && value !== 0) return null;
+  return (
+    <div className="flex items-start justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
+      <span className="text-[11px] font-semibold text-slate-500 shrink-0 w-28">{label}</span>
+      <span className={cn("text-[12px] font-semibold text-slate-800 text-right", mono && "font-mono")}>{value}</span>
+    </div>
+  );
+}
+
+function TicketDetailModal({
+  open, item, markup, rates, onClose, onEdit, onTogglePublish,
+}: {
+  open: boolean;
+  item: TicketPrice | null;
+  markup: number;
+  rates: Record<string, number>;
+  onClose: () => void;
+  onEdit?: (item: TicketPrice) => void;
+  onTogglePublish?: (id: string, val: boolean) => void;
+}) {
+  const [toggling, setToggling] = useState(false);
+
+  if (!item) return null;
+
+  const expired = isExpired(item.validUntil);
+  const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
+  const isDirect = !item.transitCode;
+
+  const { ml: mlData } = decodeMultiLeg(item.notes);
+  const isML = !!mlData;
+  const { leg: returnLeg, userNotes } = isML
+    ? { leg: null, userNotes: null }
+    : decodeReturnLeg(item.notes);
+  const isRT = !!returnLeg;
+
+  const tripType = isML ? "Multi-Leg PP" : isRT ? "Pulang-Pergi" : isDirect ? "Direct" : "Transit";
+  const tripBadgeColor = isML || isRT
+    ? "bg-violet-100 text-violet-700"
+    : isDirect
+    ? "bg-sky-100 text-sky-700"
+    : "bg-amber-100 text-amber-700";
+
+  async function doToggle() {
+    if (!onTogglePublish) return;
+    setToggling(true);
+    try { await onTogglePublish(item.id, !item.isPublished); }
+    finally { setToggling(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
+        {/* ── Airline header strip ── */}
+        <div className={cn(
+          "flex items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r text-white rounded-t-lg",
+          getAirlineGradient(item.airlineCode),
+        )}>
+          <div className="flex items-center gap-3 min-w-0">
+            <AirlineLogo code={item.airlineCode} airline={item.airline} size={40} />
+            <div className="min-w-0">
+              <p className="font-bold text-[15px] leading-tight truncate">{item.airline}</p>
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <span className="text-[10px] text-white/70 font-mono">{item.airlineCode}</span>
+                {item.flightNumber && !isRT && !isML && (
+                  <span className="text-[10px] bg-white/20 rounded px-1.5 py-0.5 font-mono font-semibold">
+                    {item.flightNumber}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", tripBadgeColor)}>
+              {tripType}
+            </span>
+            {expired && (
+              <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full">
+                Expired
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="px-5 py-4 space-y-1">
+
+          {/* ── Route section ── */}
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Rute Penerbangan</p>
+
+          {isML && mlData ? (
+            <div className="space-y-3">
+              {/* Outbound legs */}
+              <div className="rounded-xl bg-sky-50 border border-sky-100 px-3 py-2.5 space-y-1">
+                <p className="text-[9.5px] font-bold text-sky-600 uppercase tracking-wide">↗ Berangkat</p>
+                {mlData.outboundLegs.map((leg, i) => (
+                  <div key={i} className="flex items-center gap-2 text-[12px] font-semibold text-slate-700">
+                    <span className="font-mono font-black">{leg.fromCode}</span>
+                    <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
+                    <span className="font-mono font-black">{leg.toCode}</span>
+                    {leg.flightNumber && <span className="font-mono text-[11px] text-slate-500">({leg.flightNumber})</span>}
+                    {leg.etd && <span className="text-sky-700 ml-auto">{leg.etd}{leg.eta ? `→${leg.eta}` : ""}</span>}
+                    {leg.date && <span className="text-slate-400 text-[10px]">{fmtDate(leg.date)}</span>}
+                  </div>
+                ))}
+              </div>
+              {(mlData.returnLegs?.length ?? 0) > 0 && (
+                <div className="rounded-xl bg-violet-50 border border-violet-100 px-3 py-2.5 space-y-1">
+                  <p className="text-[9.5px] font-bold text-violet-600 uppercase tracking-wide">↩ Pulang</p>
+                  {mlData.returnLegs!.map((leg, i) => (
+                    <div key={i} className="flex items-center gap-2 text-[12px] font-semibold text-slate-700">
+                      <span className="font-mono font-black">{leg.fromCode}</span>
+                      <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span className="font-mono font-black">{leg.toCode}</span>
+                      {leg.flightNumber && <span className="font-mono text-[11px] text-slate-500">({leg.flightNumber})</span>}
+                      {leg.etd && <span className="text-violet-700 ml-auto">{leg.etd}{leg.eta ? `→${leg.eta}` : ""}</span>}
+                      {leg.date && <span className="text-slate-400 text-[10px]">{fmtDate(leg.date)}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : isRT && returnLeg ? (
+            <div className="space-y-2">
+              <div className="rounded-xl bg-sky-50 border border-sky-100 px-3 py-2.5">
+                <p className="text-[9.5px] font-bold text-sky-600 uppercase tracking-wide mb-1">↗ Berangkat</p>
+                <div className="flex items-center gap-3">
+                  <div className="text-center">
+                    <p className="text-[22px] font-black text-slate-900 leading-none">{item.fromCode}</p>
+                    {item.fromCity && <p className="text-[9px] text-slate-400">{item.fromCity}</p>}
+                    {item.etd && <p className="text-[13px] font-extrabold text-sky-700 mt-0.5">{item.etd}</p>}
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-300 shrink-0 mx-1" />
+                  <div className="text-center">
+                    <p className="text-[22px] font-black text-slate-900 leading-none">{item.toCode}</p>
+                    {item.toCity && <p className="text-[9px] text-slate-400">{item.toCity}</p>}
+                    {item.eta && <p className="text-[13px] font-extrabold text-sky-700 mt-0.5">{item.eta}</p>}
+                  </div>
+                  {item.flightNumber && (
+                    <span className="ml-auto text-[10px] font-mono text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">{item.flightNumber}</span>
+                  )}
+                </div>
+                {item.departDate && (
+                  <p className="text-[10px] text-slate-500 mt-1.5 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />{fmtDate(item.departDate)}
+                  </p>
+                )}
+              </div>
+              <div className="rounded-xl bg-violet-50 border border-violet-100 px-3 py-2.5">
+                <p className="text-[9.5px] font-bold text-violet-600 uppercase tracking-wide mb-1">↩ Pulang</p>
+                <div className="flex items-center gap-3">
+                  <div className="text-center">
+                    <p className="text-[22px] font-black text-slate-900 leading-none">{returnLeg.returnFromCode ?? "—"}</p>
+                    {returnLeg.returnFromCity && <p className="text-[9px] text-slate-400">{returnLeg.returnFromCity}</p>}
+                    {returnLeg.returnEtd && <p className="text-[13px] font-extrabold text-violet-700 mt-0.5">{returnLeg.returnEtd}</p>}
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-300 shrink-0 mx-1" />
+                  <div className="text-center">
+                    <p className="text-[22px] font-black text-slate-900 leading-none">{returnLeg.returnToCode ?? "—"}</p>
+                    {returnLeg.returnToCity && <p className="text-[9px] text-slate-400">{returnLeg.returnToCity}</p>}
+                    {returnLeg.returnEta && <p className="text-[13px] font-extrabold text-violet-700 mt-0.5">{returnLeg.returnEta}</p>}
+                  </div>
+                  {returnLeg.returnFlightNumber && (
+                    <span className="ml-auto text-[10px] font-mono text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">{returnLeg.returnFlightNumber}</span>
+                  )}
+                </div>
+                {returnLeg.returnDate && (
+                  <p className="text-[10px] text-slate-500 mt-1.5 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />{fmtDate(returnLeg.returnDate)}
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* ── One-way route ── */
+            <div className="rounded-xl bg-sky-50 border border-sky-100 px-3 py-3">
+              <div className="flex items-center gap-3">
+                <div className="text-center flex-1">
+                  <p className="text-[26px] font-black text-slate-900 leading-none tracking-tight">{item.fromCode}</p>
+                  {item.fromCity && <p className="text-[10px] text-slate-400 mt-0.5">{item.fromCity}</p>}
+                  {item.etd && <p className="text-[15px] font-extrabold text-sky-700 mt-1 tabular-nums">{item.etd}</p>}
+                </div>
+                <div className="flex flex-col items-center shrink-0 px-2">
+                  {isDirect ? (
+                    <>
+                      <div className="flex items-center gap-1">
+                        <div className="h-px w-5 bg-slate-200" />
+                        <Plane className="w-3.5 h-3.5 text-slate-400" />
+                        <div className="h-px w-5 bg-slate-200" />
+                      </div>
+                      <span className="text-[9px] text-slate-400 font-medium mt-0.5">Direct</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-0.5">
+                        <div className="h-px w-3 bg-slate-200" />
+                        <div className="h-2 w-2 rounded-full bg-amber-400 border border-amber-300" />
+                        <div className="h-px w-3 bg-slate-200" />
+                      </div>
+                      <p className="text-[9px] text-amber-600 font-bold text-center leading-tight mt-0.5">{item.transitCode}</p>
+                    </>
+                  )}
+                </div>
+                <div className="text-center flex-1">
+                  <p className="text-[26px] font-black text-slate-900 leading-none tracking-tight">{item.toCode}</p>
+                  {item.toCity && <p className="text-[10px] text-slate-400 mt-0.5">{item.toCity}</p>}
+                  {item.eta && <p className="text-[15px] font-extrabold text-sky-700 mt-1 tabular-nums">{item.eta}</p>}
+                </div>
+              </div>
+              {item.flightNumber && (
+                <p className="text-center text-[10px] font-mono text-slate-500 mt-2 bg-white rounded-full px-3 py-0.5 border border-slate-100 inline-block w-full text-center">
+                  {item.flightNumber}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ── Transit detail (one-way) ── */}
+          {!isRT && !isML && item.transitCode && (
+            <div className="flex items-center gap-2 py-1.5 px-3 rounded-xl bg-amber-50 border border-amber-100">
+              <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span className="text-[11px] text-amber-700 font-semibold">
+                Transit: {item.transitCity ? `${item.transitCity} (${item.transitCode})` : item.transitCode}
+                {item.transitDuration && <span className="text-amber-500"> · {item.transitDuration}</span>}
+              </span>
+            </div>
+          )}
+
+          {/* ── Detail rows ── */}
+          <div className="mt-3 pt-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Detail</p>
+            <div className="divide-y divide-slate-100">
+              {!isRT && !isML && item.departDate && (
+                <DetailRow label="Tgl Berangkat" value={fmtDate(item.departDate)} />
+              )}
+              {item.terminal && <DetailRow label="Terminal" value={item.terminal} mono />}
+              {item.validUntil && (
+                <DetailRow
+                  label="Berlaku Hingga"
+                  value={
+                    <span className={expired ? "text-red-600" : "text-slate-800"}>
+                      {expired ? "⛔ " : ""}{fmtDate(item.validUntil)}
+                    </span>
+                  }
+                />
+              )}
+            </div>
+          </div>
+
+          {/* ── Pricing ── */}
+          <div className="mt-3 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Harga</p>
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-[10px] font-semibold text-sky-600 uppercase tracking-wide">
+                  {isML || isRT ? "Harga Paket PP / pax" : "Harga Jual / pax"}
+                </p>
+                <p className="text-[28px] font-black text-sky-700 leading-none tabular-nums mt-0.5">
+                  {fmtIDR(sell)}
+                </p>
+              </div>
+              <div className="text-right space-y-0.5">
+                <p className="text-[10.5px] text-slate-500">
+                  Modal: <span className="font-semibold text-slate-700">{item.currency} {item.basePrice.toLocaleString("id-ID")}</span>
+                </p>
+                {markup > 0 && (
+                  <p className="text-[10.5px] text-slate-500">
+                    Markup: <span className="font-semibold text-emerald-600">+{fmtIDR(markup)}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Notes ── */}
+          {userNotes && (
+            <div className="rounded-xl bg-yellow-50 border border-yellow-100 px-3 py-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-600 mb-1">Catatan</p>
+              <p className="text-[12px] text-yellow-800 leading-snug">{userNotes}</p>
+            </div>
+          )}
+          {!isRT && !isML && item.notes && !item.notes.startsWith("__") && (
+            <div className="rounded-xl bg-yellow-50 border border-yellow-100 px-3 py-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-600 mb-1">Catatan</p>
+              <p className="text-[12px] text-yellow-800 leading-snug">{item.notes}</p>
+            </div>
+          )}
+
+          {/* ── Status (publish toggle) ── */}
+          {onTogglePublish && (
+            <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-100 px-4 py-2.5">
+              <div>
+                <p className="text-[12px] font-semibold text-slate-700">Tampil di Daftar Publik</p>
+                <p className="text-[10px] text-slate-400">{item.isPublished ? "Dipublikasikan" : "Disembunyikan (draft)"}</p>
+              </div>
+              <button
+                onClick={() => void doToggle()}
+                disabled={toggling}
+                className={cn(
+                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-60",
+                  item.isPublished ? "bg-emerald-500" : "bg-slate-300",
+                )}
+              >
+                <span className={cn(
+                  "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
+                  item.isPublished ? "translate-x-6" : "translate-x-1",
+                )} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Footer ── */}
+        <DialogFooter className="px-5 pb-5 pt-0 gap-2">
+          <Button variant="outline" onClick={onClose} className="flex-1">Tutup</Button>
+          {onEdit && (
+            <Button
+              className="flex-1 bg-sky-600 hover:bg-sky-700 text-white"
+              onClick={() => { onClose(); onEdit(item); }}
+            >
+              <Edit3 className="w-3.5 h-3.5 mr-1.5" />Edit
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1147,6 +1482,15 @@ export default function TicketPrices() {
   // Manual add dialog
   const [addOpen, setAddOpen] = useState(false);
 
+  // View detail dialog
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewItem, setViewItem] = useState<TicketPrice | null>(null);
+
+  function openView(item: TicketPrice) {
+    setViewItem(item);
+    setViewOpen(true);
+  }
+
   const waNumber = loadIghAdminSettings().adminWhatsapp ?? "";
 
   // Public link for sharing
@@ -1652,7 +1996,8 @@ export default function TicketPrices() {
               <BoardingPassCard
                 key={item.id} item={item} markup={markup} rates={rates}
                 isAdmin={isAdmin} onEdit={openEdit} onDelete={handleDelete}
-                onTogglePublish={handleTogglePublish} waNumber={waNumber} showBasePrice={isAdmin}
+                onTogglePublish={handleTogglePublish} onView={openView}
+                waNumber={waNumber} showBasePrice={isAdmin}
               />
             ))}
           </div>
@@ -2166,6 +2511,7 @@ export default function TicketPrices() {
                 onEdit={openEdit}
                 onDelete={handleDelete}
                 onTogglePublish={handleTogglePublish}
+                onView={openView}
                 waNumber={waNumber}
                 showBasePrice={isAdmin}
               />
@@ -2183,6 +2529,20 @@ export default function TicketPrices() {
         initial={editForm}
         onSave={handleSaveEdit}
         loading={savingEdit}
+      />
+
+      {/* ── Detail Modal — rendered at root level ── */}
+      <TicketDetailModal
+        open={viewOpen}
+        item={viewItem}
+        markup={markup}
+        rates={rates}
+        onClose={() => { setViewOpen(false); }}
+        onEdit={(item) => { setViewOpen(false); openEdit(item); }}
+        onTogglePublish={async (id, val) => {
+          await handleTogglePublish(id, val);
+          setViewItem((prev) => prev?.id === id ? { ...prev, isPublished: val } : prev);
+        }}
       />
     </div>
   );
