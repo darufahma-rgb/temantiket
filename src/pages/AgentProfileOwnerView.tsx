@@ -23,7 +23,7 @@ import {
   Target, CheckCircle2, XCircle, Clock, Send, Eye,
   Mail, Calendar, AlertCircle,
   Crown, BarChart3, MessageCircle, ChevronRight, Loader2,
-  Star, Camera, RefreshCw,
+  Star, Camera, RefreshCw, Pencil, X, Save, Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -43,6 +43,7 @@ import { revenueIDR, fmtIDR } from "@/lib/profit";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { uploadAvatar, savePhotoUrl } from "@/lib/avatarStorage";
+import { supabase } from "@/lib/supabase";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -299,7 +300,13 @@ export default function AgentProfileOwnerView() {
   const [agentPhotoUrl, setAgentPhotoUrl] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [agentPhoneWa, setAgentPhoneWa] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const isOwner = user?.role === "owner";
+  const canEdit = isOwner || user?.id === agentId;
 
   const agencyId = user?.agencyId ?? "";
   const ownerId = user?.id ?? "";
@@ -328,6 +335,26 @@ export default function AgentProfileOwnerView() {
         const { listSubmissions } = await import("@/features/missions/missionsRepo");
         const all = await listSubmissions(agencyId);
         setAllSubs(all);
+
+        // Fetch phone_wa from profiles for the Hubungi button
+        if (supabase && agentId) {
+          try {
+            const { data: prof } = await supabase
+              .from("profiles")
+              .select("phone_wa")
+              .eq("id", agentId)
+              .maybeSingle();
+            if (prof && (prof as { phone_wa?: string | null }).phone_wa) {
+              setAgentPhoneWa((prof as { phone_wa: string }).phone_wa);
+            }
+          } catch { /* phone_wa column may not exist — ignore gracefully */ }
+        }
+
+        // Pre-fill edit form fields
+        if (found) {
+          setEditName(found.displayName);
+          setEditEmail(found.email);
+        }
       } catch (err) {
         console.warn("[AgentProfileOwnerView] load error:", err);
       } finally {
@@ -413,6 +440,38 @@ export default function AgentProfileOwnerView() {
     }
   };
 
+  async function handleSaveProfile() {
+    if (!agentId || !supabase) return;
+    const trimName = editName.trim();
+    const trimEmail = editEmail.trim();
+    if (!trimName) { toast.error("Nama tidak boleh kosong."); return; }
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .upsert({ id: agentId, full_name: trimName, email: trimEmail }, { onConflict: "id" });
+      if (error) throw error;
+
+      // If editing self, update Supabase auth metadata too so displayName refreshes
+      if (user?.id === agentId) {
+        await supabase.auth.updateUser({
+          data: { full_name: trimName, display_name: trimName },
+        });
+      }
+
+      // Update local agent state so banner reflects immediately
+      setAgent((prev) =>
+        prev ? { ...prev, displayName: trimName, email: trimEmail } : prev,
+      );
+      setIsEditMode(false);
+      toast.success("Profil berhasil diperbarui!");
+    } catch (e: unknown) {
+      toast.error(`Gagal menyimpan: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   async function handleReview(submissionId: string, action: "approved" | "rejected") {
     setReviewing(submissionId);
     const ok = await reviewSubmission(submissionId, action, ownerId);
@@ -474,15 +533,15 @@ export default function AgentProfileOwnerView() {
         className={`rounded-3xl bg-gradient-to-br ${tier.gradient} p-5 md:p-6 text-white shadow-lg`}
       >
         <div className="flex items-start gap-4">
-          {/* Avatar with optional owner upload */}
+          {/* Avatar — clickable to upload if canEdit */}
           <div className="relative shrink-0">
-            {isOwner ? (
+            {canEdit ? (
               <button
                 type="button"
                 onClick={() => photoInputRef.current?.click()}
                 disabled={photoUploading}
                 className="relative group cursor-pointer disabled:cursor-default"
-                title="Klik untuk ganti foto agen"
+                title="Klik untuk ganti foto"
               >
                 <div className="h-16 w-16 rounded-2xl bg-white/20 border-2 border-white/40 overflow-hidden flex items-center justify-center backdrop-blur">
                   {agentPhotoUrl ? (
@@ -527,32 +586,114 @@ export default function AgentProfileOwnerView() {
             />
           </div>
 
-          {/* Info */}
+          {/* Info — view mode or edit mode */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20 backdrop-blur">
-                {tier.emoji} {tier.label}
-              </span>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-400/30 text-white font-semibold">
-                ● Aktif
-              </span>
-            </div>
-            <h1 className="text-xl font-extrabold mt-1 leading-tight">{agent.displayName}</h1>
-            <p className="text-[12px] opacity-90 truncate">{agent.email}</p>
-            <p className="text-[11px] opacity-75 mt-0.5">
-              Bergabung: {fmtDate(agent.createdAt)}
-            </p>
+            {isEditMode ? (
+              /* ── EDIT FORM ── */
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">Nama Lengkap</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Nama lengkap"
+                    className="mt-0.5 w-full rounded-lg bg-white/20 border border-white/30 text-white placeholder:text-white/50 text-sm font-semibold px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-white/50 backdrop-blur"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">Email</label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className="mt-0.5 w-full rounded-lg bg-white/20 border border-white/30 text-white placeholder:text-white/50 text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-white/50 backdrop-blur"
+                  />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => void handleSaveProfile()}
+                    disabled={isSaving}
+                    className="flex items-center gap-1.5 bg-white text-gray-800 text-[11px] font-bold px-3 py-1.5 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-60"
+                  >
+                    {isSaving ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                    Simpan
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditMode(false);
+                      setEditName(agent.displayName);
+                      setEditEmail(agent.email);
+                    }}
+                    disabled={isSaving}
+                    className="flex items-center gap-1.5 bg-white/20 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg hover:bg-white/30 transition-colors border border-white/30"
+                  >
+                    <X className="h-3 w-3" /> Batal
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* ── VIEW MODE ── */
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20 backdrop-blur">
+                    {tier.emoji} {tier.label}
+                  </span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-400/30 text-white font-semibold">
+                    ● Aktif
+                  </span>
+                </div>
+                <h1 className="text-xl font-extrabold mt-1 leading-tight">{agent.displayName}</h1>
+                <p className="text-[12px] opacity-90 truncate">{agent.email}</p>
+                <p className="text-[11px] opacity-75 mt-0.5">
+                  Bergabung: {fmtDate(agent.createdAt)}
+                </p>
+              </>
+            )}
           </div>
 
-          {/* WA button — phone not stored, link to email as fallback */}
-          <a
-            href={`mailto:${agent.email}`}
-            className="shrink-0 flex items-center gap-1.5 bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-colors"
-            title="Hubungi via Email"
-          >
-            <Mail className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Hubungi</span>
-          </a>
+          {/* Right-side action buttons */}
+          <div className="shrink-0 flex flex-col items-end gap-2">
+            {/* Hubungi button — WhatsApp if phone available, email fallback */}
+            {agentPhoneWa ? (
+              <a
+                href={`https://wa.me/${agentPhoneWa.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-colors"
+                title={`Hubungi via WhatsApp: ${agentPhoneWa}`}
+              >
+                <Phone className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Hubungi</span>
+              </a>
+            ) : (
+              <a
+                href={`mailto:${agent.email}`}
+                className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-colors"
+                title="Hubungi via Email"
+              >
+                <Mail className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Hubungi</span>
+              </a>
+            )}
+
+            {/* Edit button — only for owner or the agent themselves */}
+            {canEdit && !isEditMode && (
+              <button
+                onClick={() => {
+                  setEditName(agent.displayName);
+                  setEditEmail(agent.email);
+                  setIsEditMode(true);
+                }}
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-colors"
+                title="Edit profil"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Edit</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Tier Progress */}
