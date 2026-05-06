@@ -110,10 +110,11 @@ export default function Reports() {
     return m;
   }, [clients]);
 
-  // Ledger: build from ALL orders (not date-filtered — ledger is full history)
+  // Ledger: build from ALL orders (not date-filtered — ledger is full history).
+  // Sertakan memberById agar entri komisi agen otomatis ditambahkan.
   const ledgerEntries = useMemo(
-    () => buildLedgerEntries(orders, ledgerClientNameById, egpRate),
-    [orders, ledgerClientNameById, egpRate],
+    () => buildLedgerEntries(orders, ledgerClientNameById, egpRate, undefined, memberById),
+    [orders, ledgerClientNameById, egpRate, memberById],
   );
   const ledgerStats = useMemo(() => ledgerSummary(ledgerEntries), [ledgerEntries]);
 
@@ -148,6 +149,9 @@ export default function Reports() {
 
   // Direct vs Agent split (always computed from filtered set,
   // even when agentFilter aktif — supaya angka konsisten dgn yg dilihat).
+  // Penting: createdByAgent bisa berisi userId owner/staff (dari field
+  // "Closing/Referensi Dari" di form klien) — hanya hitung sebagai "Via Agent"
+  // jika member tersebut benar-benar berperan agent (role === "agent").
   const split = useMemo(() => {
     let directProfit = 0;
     let directRevenue = 0;
@@ -160,12 +164,15 @@ export default function Reports() {
     for (const o of filtered) {
       const p = profitIDR(o, egpRate);
       const r = revenueIDR(o, egpRate);
-      if (o.createdByAgent) {
+      // Cek apakah createdByAgent mengarah ke member berole "agent".
+      // Owner/staff yang di-set sebagai "Closing Ref" TIDAK dihitung Via Agent.
+      const member = o.createdByAgent ? memberById.get(o.createdByAgent) : undefined;
+      const isAgentOrder = o.createdByAgent != null && member?.role === "agent";
+      if (isAgentOrder) {
         agentProfit += p;
         agentRevenue += r;
         agentCount += 1;
-        const member = memberById.get(o.createdByAgent);
-        const pct = (member?.commissionPct ?? 0) / 100;
+        const pct = (member!.commissionPct ?? 0) / 100;
         // Komisi dihitung dari profit (bukan revenue) — sesuai konvensi
         // travel agency lokal. Kalau profit negatif, komisi 0 (agent gak
         // dapet komisi atas kerugian).
@@ -992,21 +999,22 @@ export default function Reports() {
           {/* Ledger summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: "Total Revenue",  value: fmtIDR(ledgerStats.totalRevenue),  tone: "sky"     },
-              { label: "Total Modal",    value: fmtIDR(ledgerStats.totalCost),     tone: "amber"   },
-              { label: "Total Profit",   value: fmtIDR(ledgerStats.totalProfit),   tone: ledgerStats.totalProfit >= 0 ? "emerald" : "red" },
-              { label: "Avg Margin",     value: `${ledgerStats.avgMargin.toFixed(1)}%`, tone: "violet" },
+              { label: "Total Revenue",    value: fmtIDR(ledgerStats.totalRevenue),    tone: "sky",     sub: null },
+              { label: "Total Modal",      value: fmtIDR(ledgerStats.totalCost),       tone: "amber",   sub: null },
+              { label: "Gross Profit",     value: fmtIDR(ledgerStats.totalProfit),     tone: ledgerStats.totalProfit >= 0 ? "emerald" : "red", sub: `${ledgerStats.count} transaksi lunas` },
+              { label: "Fee Komisi Agen",  value: `−${fmtIDR(ledgerStats.totalCommission)}`, tone: "orange",  sub: `Net: ${fmtIDR(ledgerStats.netProfit)}` },
             ].map((r) => (
               <div key={r.label} className={`rounded-2xl border bg-gradient-to-br p-3 md:p-4 ${
                 r.tone === "sky"     ? "from-sky-50 to-white border-sky-100 text-sky-700" :
                 r.tone === "amber"  ? "from-amber-50 to-white border-amber-100 text-amber-700" :
                 r.tone === "emerald"? "from-emerald-50 to-white border-emerald-100 text-emerald-700" :
                 r.tone === "red"    ? "from-red-50 to-white border-red-100 text-red-600" :
+                r.tone === "orange" ? "from-orange-50 to-white border-orange-100 text-orange-700" :
                 "from-violet-50 to-white border-violet-100 text-violet-700"
               }`}>
                 <p className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">{r.label}</p>
                 <p className="text-base md:text-lg font-extrabold font-mono mt-1">{r.value}</p>
-                {r.label === "Total Profit" && <p className="text-[10px] text-muted-foreground">{ledgerStats.count} transaksi lunas</p>}
+                {r.sub && <p className="text-[10px] text-muted-foreground">{r.sub}</p>}
               </div>
             ))}
           </div>
@@ -1029,11 +1037,11 @@ export default function Reports() {
                   <thead>
                     <tr className="text-muted-foreground border-b">
                       <th className="text-left font-semibold py-2 px-2">#</th>
-                      <th className="text-left font-semibold py-2 px-2">Tanggal Lunas</th>
+                      <th className="text-left font-semibold py-2 px-2">Tanggal</th>
                       <th className="text-left font-semibold py-2 px-2">Klien</th>
-                      <th className="text-left font-semibold py-2 px-2">Order</th>
+                      <th className="text-left font-semibold py-2 px-2">Keterangan</th>
                       <th className="text-right font-semibold py-2 px-2">Revenue</th>
-                      <th className="text-right font-semibold py-2 px-2">Modal</th>
+                      <th className="text-right font-semibold py-2 px-2">Modal/Fee</th>
                       <th className="text-right font-semibold py-2 px-2">Profit</th>
                       <th className="text-right font-semibold py-2 px-2">Margin</th>
                       <th className="text-right font-semibold py-2 px-2">Saldo Kumulatif</th>
@@ -1041,12 +1049,38 @@ export default function Reports() {
                   </thead>
                   <tbody>
                     {ledgerEntries.map((e, i) => {
+                      if (e.isCommission) {
+                        // Baris debit komisi agen — styling orange/amber
+                        const balColor = e.runningBalance >= 0 ? "text-emerald-700 font-bold" : "text-red-600 font-bold";
+                        return (
+                          <tr key={e.orderId} className="border-b last:border-b-0 bg-orange-50/60 hover:bg-orange-50">
+                            <td className="py-1.5 px-2 text-muted-foreground">—</td>
+                            <td className="py-1.5 px-2 whitespace-nowrap text-muted-foreground">{fmtDate(e.paidAt)}</td>
+                            <td className="py-1.5 px-2 max-w-[120px] truncate text-orange-700/70" title={e.clientName}>{e.clientName}</td>
+                            <td className="py-1.5 px-2 max-w-[200px] truncate text-orange-700 font-semibold" title={e.orderTitle}>
+                              <span className="mr-1">💸</span>
+                              {e.orderTitle}
+                            </td>
+                            <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">—</td>
+                            <td className="py-1.5 px-2 text-right font-mono text-orange-700 font-semibold">−{fmtIDR(e.costIDR)}</td>
+                            <td className="py-1.5 px-2 text-right font-mono font-semibold text-orange-700">
+                              −{fmtIDR(Math.abs(e.profitIDR))}
+                            </td>
+                            <td className="py-1.5 px-2 text-right text-muted-foreground">—</td>
+                            <td className={`py-1.5 px-2 text-right font-mono ${balColor}`}>
+                              {fmtIDR(e.runningBalance)}
+                            </td>
+                          </tr>
+                        );
+                      }
                       const profitColor = e.profitIDR >= 0 ? "text-emerald-700" : "text-red-600";
                       const balColor    = e.runningBalance >= 0 ? "text-emerald-700 font-bold" : "text-red-600 font-bold";
                       const marginColor = e.marginPct >= 20 ? "text-emerald-700" : e.marginPct >= 10 ? "text-sky-700" : e.marginPct >= 0 ? "text-amber-700" : "text-red-600";
+                      // Count only non-commission entries for the # column
+                      const orderCount = ledgerEntries.slice(i).filter((x) => !x.isCommission).length;
                       return (
                         <tr key={e.orderId} className="border-b last:border-b-0 hover:bg-muted/30">
-                          <td className="py-2 px-2 text-muted-foreground">{ledgerEntries.length - i}</td>
+                          <td className="py-2 px-2 text-muted-foreground">{orderCount}</td>
                           <td className="py-2 px-2 whitespace-nowrap text-muted-foreground">{fmtDate(e.paidAt)}</td>
                           <td className="py-2 px-2 max-w-[120px] truncate" title={e.clientName}>{e.clientName}</td>
                           <td className="py-2 px-2 max-w-[160px] truncate font-medium" title={e.orderTitle}>
@@ -1070,7 +1104,7 @@ export default function Reports() {
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-emerald-200 bg-emerald-50/50 font-bold text-[12px]">
-                      <td colSpan={4} className="py-2.5 px-2 text-emerald-800">Total ({ledgerEntries.length} transaksi)</td>
+                      <td colSpan={4} className="py-2.5 px-2 text-emerald-800">Total ({ledgerStats.count} order · {ledgerEntries.filter(e => e.isCommission).length} komisi)</td>
                       <td className="py-2.5 px-2 text-right font-mono text-sky-700">{fmtIDR(ledgerStats.totalRevenue)}</td>
                       <td className="py-2.5 px-2 text-right font-mono text-rose-700">{fmtIDR(ledgerStats.totalCost)}</td>
                       <td className={`py-2.5 px-2 text-right font-mono ${ledgerStats.totalProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
@@ -1079,8 +1113,8 @@ export default function Reports() {
                       <td className="py-2.5 px-2 text-right text-emerald-700">
                         {ledgerStats.avgMargin.toFixed(1)}%
                       </td>
-                      <td className={`py-2.5 px-2 text-right font-mono ${ledgerStats.totalProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
-                        {fmtIDR(ledgerStats.totalProfit)}
+                      <td className={`py-2.5 px-2 text-right font-mono ${ledgerStats.netProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                        {fmtIDR(ledgerStats.netProfit)}
                       </td>
                     </tr>
                   </tfoot>
@@ -1089,6 +1123,7 @@ export default function Reports() {
               <p className="mt-3 text-[10.5px] text-muted-foreground">
                 * Revenue & profit di-konversi ke IDR menggunakan kurs yang di-snapshot saat order pertama kali berstatus Paid.
                 Order lama yang belum punya snapshot menggunakan kurs live saat ini (1 EGP ≈ Rp {egpRate}).
+                Baris 💸 = pengeluaran fee komisi agen, dihitung otomatis dari persentase yang kamu tetapkan di Pengaturan → Tim.
               </p>
             </Card>
           )}
