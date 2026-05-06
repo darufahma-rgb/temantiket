@@ -1138,14 +1138,14 @@ export default function PublicTicketPrices() {
                     ],
                   },
                   {
-                    emoji: "🕌",
+                    emoji: "💰",
                     color: "bg-teal-50 border-teal-100",
                     iconColor: "bg-teal-100",
-                    title: "Khusus Umroh & Haji",
+                    title: "Kelola Keuangan Perjalanan",
                     tips: [
-                      "Pakai pakaian ihram yang nyaman & sesuai syariat",
-                      "Bawa uang SAR secukupnya, tidak perlu berlebihan",
-                      "Catat jadwal sholat & lokasi hotel agar tidak tersesat",
+                      "Bawa kartu debit/kredit berlogo Visa/Mastercard untuk kemudahan transaksi",
+                      "Tukar uang di money changer resmi, hindari di bandara karena kurs kurang bagus",
+                      "Catat semua pengeluaran agar budget tidak jebol di tengah perjalanan",
                     ],
                   },
                 ].map((item, i) => (
