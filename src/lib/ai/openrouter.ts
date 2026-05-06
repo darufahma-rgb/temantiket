@@ -30,12 +30,14 @@ export interface TokenUsage {
  * Source: OpenRouter model cards (as of May 2025). Input / Output in USD/M.
  */
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
-  "google/gemini-2.0-flash-001":          { input: 0.10,  output: 0.40  },
-  "google/gemini-2.5-pro-preview-05-06":  { input: 1.25,  output: 10.00 },
-  "google/gemini-2.5-pro":                { input: 1.25,  output: 10.00 },
-  "anthropic/claude-sonnet-4":            { input: 3.00,  output: 15.00 },
-  "anthropic/claude-4-sonnet-20250522":   { input: 3.00,  output: 15.00 },
-  "anthropic/claude-3-5-sonnet-20241022": { input: 3.00,  output: 15.00 },
+  "google/gemini-2.0-flash-001":            { input: 0.10,  output: 0.40  },
+  "google/gemini-2.5-flash-preview":        { input: 0.15,  output: 0.60  },
+  "google/gemini-2.5-flash-preview-05-20":  { input: 0.15,  output: 0.60  },
+  "google/gemini-2.5-pro-preview-05-06":    { input: 1.25,  output: 10.00 },
+  "google/gemini-2.5-pro":                  { input: 1.25,  output: 10.00 },
+  "anthropic/claude-sonnet-4":              { input: 3.00,  output: 15.00 },
+  "anthropic/claude-4-sonnet-20250522":     { input: 3.00,  output: 15.00 },
+  "anthropic/claude-3-5-sonnet-20241022":   { input: 3.00,  output: 15.00 },
 };
 const DEFAULT_PRICING = { input: 0.50, output: 1.50 };
 
@@ -48,8 +50,8 @@ function estimateCost(model: string, promptTokens: number, completionTokens: num
 // Satu tempat untuk semua model — ubah di sini kalau mau ganti model.
 
 export const OR_MODELS = {
-  /** Vision + OCR: poster, paspor, tiket screenshot. Model terbaik untuk baca gambar. */
-  VISION:     "google/gemini-2.5-pro-preview-05-06",
+  /** Vision + OCR: poster, paspor, tiket screenshot. Gemini 2.5 Flash — murah, cepat, akurat. */
+  VISION:     "google/gemini-2.5-flash-preview",
   /** Caption marketing — manual maupun dari poster. */
   CAPTION:    "google/gemini-2.0-flash-001",
   /** Rapikan catatan, formatting teks ringan. */
