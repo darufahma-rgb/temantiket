@@ -29,6 +29,7 @@ import { listSubmissions, sumMissionPointsByAgent } from "@/features/missions/mi
 import type { MissionSubmission } from "@/features/missions/types";
 import { getTierInfo, TIERS } from "@/features/agentPoints/agentTiers";
 import { profitIDR, revenueIDR, fmtIDR } from "@/lib/profit";
+import { getCommissionForOrderType, loadProductCommissions } from "@/lib/productCommissions";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { MissionCreatorSection } from "@/features/missions/MissionCreatorSection";
@@ -570,7 +571,10 @@ export default function AgentCommandCenter() {
     const completedList    = agentOrders.filter((o) => o.status === "Completed");
     const totalRevenue     = agentOrders.reduce((s, o) => s + revenueIDR(o), 0);
     const totalProfit      = completedList.reduce((s, o) => s + Math.max(0, profitIDR(o)), 0);
-    const commissionOwed   = totalProfit * ((a.commissionPct ?? 0) / 100);
+    const pc               = loadProductCommissions();
+    const commissionOwed   = completedList.reduce((s, o) => s + getCommissionForOrderType(
+      o.type as "umrah" | "flight" | "visa_voa" | "visa_student", pc,
+    ), 0);
     return {
       ...a, totalPoints, tierInfo,
       totalOrders: agentOrders.length,
@@ -1057,7 +1061,7 @@ export default function AgentCommandCenter() {
                       {[
                         { label: "Total Revenue", value: fmtIDR(agent.totalRevenue),   color: "text-sky-700" },
                         { label: "Total Profit",  value: fmtIDR(agent.totalProfit),    color: "text-emerald-700" },
-                        { label: `Komisi (${agent.commissionPct}%)`, value: fmtIDR(agent.commissionOwed), color: "text-orange-700" },
+                        { label: "Fee Komisi", value: fmtIDR(agent.commissionOwed), color: "text-orange-700" },
                         { label: "Net Agency",    value: fmtIDR(agent.totalProfit - agent.commissionOwed), color: "text-blue-700" },
                       ].map((r) => (
                         <div key={r.label} className="rounded-xl bg-white border p-3">
@@ -1070,7 +1074,7 @@ export default function AgentCommandCenter() {
                       <table className="w-full text-[11.5px] min-w-[540px]">
                         <thead>
                           <tr className="text-muted-foreground border-b">
-                            {["Order", "Tanggal", "Revenue", "Profit", `Komisi (${agent.commissionPct}%)`].map((h) => (
+                            {["Order", "Tanggal", "Revenue", "Profit", "Fee Komisi"].map((h) => (
                               <th key={h} className={`font-semibold py-1.5 px-2 ${h === "Order" ? "text-left" : "text-right"}`}>{h}</th>
                             ))}
                           </tr>
@@ -1081,7 +1085,7 @@ export default function AgentCommandCenter() {
                           ) : completedList.map((o) => {
                             const rev  = revenueIDR(o);
                             const prof = Math.max(0, profitIDR(o));
-                            const com  = prof * ((agent.commissionPct ?? 0) / 100);
+                            const com  = getCommissionForOrderType(o.type as "umrah" | "flight" | "visa_voa" | "visa_student", loadProductCommissions());
                             return (
                               <tr key={o.id} className="border-b last:border-b-0 hover:bg-white/60">
                                 <td className="py-1.5 px-2 font-medium max-w-[200px] truncate">{o.title || "—"}</td>

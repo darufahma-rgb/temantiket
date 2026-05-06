@@ -58,6 +58,7 @@ export default function Orders() {
   const { orders, loadingOrders, fetchOrders, addOrder } = useOrdersStore();
   const { clients, fetchClients } = useClientsStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
 
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -312,7 +313,7 @@ export default function Orders() {
                       <span className={cn("text-[9.5px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap", STATUS_STYLE[o.status] ?? "bg-gray-100 text-gray-500")}>
                         {o.status}
                       </span>
-                      {(!o.costPrice || o.costPrice === 0) && (
+                      {user?.role !== "agent" && (!o.costPrice || o.costPrice === 0) && (
                         <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
                           <AlertTriangle className="h-2.5 w-2.5" />HPP belum diisi
                         </span>
@@ -427,7 +428,7 @@ export default function Orders() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    {(!o.costPrice || o.costPrice === 0) && (
+                    {user?.role !== "agent" && (!o.costPrice || o.costPrice === 0) && (
                       <span className="inline-flex items-center gap-0.5 text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
                         <AlertTriangle className="h-3 w-3" />HPP belum diisi
                       </span>

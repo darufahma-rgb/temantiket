@@ -40,7 +40,7 @@ import {
 import type { DailyMission, MissionSubmission, MissionStatus } from "@/features/missions/types";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
-import { revenueIDR, fmtIDR } from "@/lib/profit";
+import { fmtIDR } from "@/lib/profit";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { uploadAvatar, savePhotoUrl } from "@/lib/avatarStorage";
@@ -418,8 +418,10 @@ export default function AgentProfileOwnerView() {
     return idx >= 0 ? idx + 1 : null;
   }, [allAgentsPts, agentId]);
 
-  const totalRevenue = useMemo(
-    () => agentOrders.reduce((s, o) => s + revenueIDR(o), 0),
+  const totalKomisi = useMemo(
+    () => agentOrders.reduce((s, o) => s + getCommissionForOrderType(
+      o.type as "umrah" | "flight" | "visa_voa" | "visa_student",
+    ), 0),
     [agentOrders],
   );
   const subMap = useMemo(
@@ -883,9 +885,9 @@ export default function AgentProfileOwnerView() {
                 />
                 <StatCard
                   icon={TrendingUp}
-                  label="Total Revenue"
-                  value={fmtIDR(totalRevenue)}
-                  sub="dari semua order"
+                  label="Total Komisi"
+                  value={fmtIDR(totalKomisi)}
+                  sub="akumulasi fee agen"
                   colorCls="text-emerald-600"
                   bgCls="bg-emerald-50 border-emerald-100"
                 />
@@ -949,8 +951,8 @@ export default function AgentProfileOwnerView() {
                             </p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-[12px] font-mono font-semibold">
-                              {fmtIDR(revenueIDR(o))}
+                            <p className="text-[12px] font-mono font-semibold text-orange-700">
+                              +{fmtIDR(getCommissionForOrderType(o.type as "umrah" | "flight" | "visa_voa" | "visa_student"))}
                             </p>
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
                               o.status === "Completed"
@@ -1088,8 +1090,8 @@ export default function AgentProfileOwnerView() {
                               </div>
                             </div>
                             <div className="text-right shrink-0">
-                              <p className="text-[13px] font-extrabold font-mono">
-                                {fmtIDR(revenueIDR(o))}
+                              <p className="text-[13px] font-extrabold font-mono text-orange-700">
+                                +{fmtIDR(getCommissionForOrderType(o.type as "umrah" | "flight" | "visa_voa" | "visa_student"))}
                               </p>
                             </div>
                           </div>

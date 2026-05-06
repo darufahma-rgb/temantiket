@@ -16,7 +16,7 @@ import { onMissionsChanged } from "@/lib/supabaseRealtime";
 import type { MissionSubmission } from "@/features/missions/types";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, type OrderType } from "@/features/orders/ordersRepo";
-import { revenueIDR, fmtIDR } from "@/lib/profit";
+import { fmtIDR } from "@/lib/profit";
 import { uploadAvatar, savePhotoUrl, loadPhotoUrl } from "@/lib/avatarStorage";
 
 export default function AgentProfile() {
@@ -114,11 +114,6 @@ export default function AgentProfile() {
     () => myOrders.filter((o) => o.status === "Completed"),
     [myOrders],
   );
-  const totalRevenue = useMemo(
-    () => myOrders.reduce((s, o) => s + revenueIDR(o), 0),
-    [myOrders],
-  );
-
   const feeStats = useMemo(() => {
     const total = myOrders.reduce(
       (s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0,
@@ -272,7 +267,7 @@ export default function AgentProfile() {
         {[
           { icon: ShoppingBag, label: "Total Order",   value: String(myOrders.length),             sub: `${completedOrders.length} selesai`,  color: "text-violet-600", bg: "bg-violet-50 border-violet-100" },
           { icon: Users,       label: "Total Klien",   value: String(myClients.length),             sub: "klien aktif",                        color: "text-sky-600",    bg: "bg-sky-50 border-sky-100" },
-          { icon: TrendingUp,  label: "Total Revenue", value: fmtIDR(totalRevenue),                 sub: "dari semua order",                   color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
+          { icon: TrendingUp,  label: "Total Komisi",   value: fmtIDR(feeStats.total),               sub: "akumulasi fee komisi",               color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
           { icon: Trophy,      label: "Total Poin",    value: loading ? "…" : String(myPoints),     sub: `Tier ${tier.label}`,                 color: "text-amber-600",  bg: "bg-amber-50 border-amber-100" },
         ].map((s) => (
           <div key={s.label} className={`rounded-2xl border p-3 ${s.bg}`}>

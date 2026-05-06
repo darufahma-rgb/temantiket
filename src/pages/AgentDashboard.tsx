@@ -139,13 +139,8 @@ export default function AgentDashboard() {
             </h1>
             <p className="hidden md:block text-[12.5px] opacity-90 mt-1 leading-snug">
               Pantau perkembangan klien & poin reward lo di sini.
-              {stats.commissionPct > 0 && (
-                <> Komisi lo: <span className="font-bold">{stats.commissionPct}%</span> per order.</>
-              )}
+  
             </p>
-            {stats.commissionPct > 0 && (
-              <p className="md:hidden text-[9.5px] opacity-90">Komisi: <span className="font-bold">{stats.commissionPct}%</span></p>
-            )}
           </div>
           {/* Desktop buttons in flex-wrap */}
           <div className="hidden md:flex flex-wrap gap-2 shrink-0">
@@ -198,7 +193,7 @@ export default function AgentDashboard() {
           { icon: Trophy,     label: "Total Poin",   value: loadingPoints ? "…" : myPoints.toString(), accent: "from-amber-100 to-white text-amber-700 border-amber-200",   big: true,  sub: rank.position ? `Peringkat #${rank.position} dari ${rank.total} mitra` : undefined },
           { icon: Users,      label: "Total Klien",  value: stats.totalClients.toString(),              accent: "from-sky-100 to-white text-sky-700 border-sky-200" },
           { icon: ShoppingBag,label: "Total Order",  value: stats.totalOrders.toString(),               accent: "from-violet-100 to-white text-violet-700 border-violet-200", sub: `${stats.completedOrders} selesai` },
-          { icon: TrendingUp, label: "Komisi Lo",    value: fmtIDR(stats.myEarnings),                   accent: "from-emerald-100 to-white text-emerald-700 border-emerald-200", sub: stats.commissionPct > 0 ? `${stats.commissionPct}% dari profit` : "Belum diatur" },
+          { icon: TrendingUp, label: "Total Komisi",  value: fmtIDR(feeStats.total),                     accent: "from-emerald-100 to-white text-emerald-700 border-emerald-200", sub: "akumulasi fee komisi" },
         ] as const).map((card) => (
           <motion.div
             key={card.label}
