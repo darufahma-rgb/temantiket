@@ -90,7 +90,7 @@ function formFromParsed(p: ParsedTicketPrice): FormState {
 // Codes with locally uploaded logos in /airlines/
 const LOCAL_AIRLINE_LOGOS = new Set(["QR","EK","EY","GA","TK","WY","SV","MS"]);
 
-function AirlineLogo({ code, airline, size = 40 }: { code: string; airline: string; size?: number }) {
+function AirlineLogo({ code, airline, size = 40, white = false }: { code: string; airline: string; size?: number; white?: boolean }) {
   const c = (code || "").trim().toUpperCase();
   const grad = getAirlineGradient(c);
   const localSrc = LOCAL_AIRLINE_LOGOS.has(c) ? `/airlines/${c}.png` : null;
@@ -102,7 +102,10 @@ function AirlineLogo({ code, airline, size = 40 }: { code: string; airline: stri
   if (!src || !c || c === "??") {
     return (
       <div
-        className={cn("flex items-center justify-center rounded-xl bg-gradient-to-br text-white font-bold shrink-0", grad)}
+        className={cn(
+          "flex items-center justify-center rounded-xl font-bold shrink-0",
+          white ? "text-white/90" : cn("bg-gradient-to-br text-white", grad),
+        )}
         style={{ width: size, height: size, fontSize: size * 0.32 }}
       >
         {c.slice(0, 2) || <Plane className="w-4 h-4" />}
@@ -125,7 +128,7 @@ function AirlineLogo({ code, airline, size = 40 }: { code: string; airline: stri
       alt={airline}
       width={size} height={size}
       className="object-contain shrink-0"
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, filter: white ? "brightness(0) invert(1)" : undefined }}
       onError={handleError}
     />
   );
@@ -586,7 +589,7 @@ function TicketDetailModal({
           getAirlineGradient(item.airlineCode),
         )}>
           <div className="flex items-center gap-3 min-w-0">
-            <AirlineLogo code={item.airlineCode} airline={item.airline} size={40} />
+            <AirlineLogo code={item.airlineCode} airline={item.airline} size={40} white />
             <div className="min-w-0">
               <p className="font-bold text-[15px] leading-tight truncate">{item.airline}</p>
               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
