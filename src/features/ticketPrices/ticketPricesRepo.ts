@@ -32,6 +32,7 @@ export interface TicketPrice {
   transitCode: string | null;      // IATA transit airport
   transitCity: string | null;      // transit city name
   transitDuration: string | null;  // e.g. "2h 30m"
+  baggageInfo: string | null;      // e.g. "23kg + 7kg cabin"
 }
 
 export type TicketPriceDraft = Omit<TicketPrice, "id" | "agencyId" | "createdAt" | "updatedAt">;
@@ -79,6 +80,7 @@ const fromRow = (r: Record<string, unknown>): TicketPrice => ({
   transitCode:     (r.transit_code as string) ?? null,
   transitCity:     (r.transit_city as string) ?? null,
   transitDuration: (r.transit_duration as string) ?? null,
+  baggageInfo:     (r.baggage_info as string) ?? null,
 });
 
 const toRow = (d: Partial<TicketPriceDraft>, agencyId?: string): Record<string, unknown> => ({
@@ -103,6 +105,7 @@ const toRow = (d: Partial<TicketPriceDraft>, agencyId?: string): Record<string, 
   ...(d.transitCode      !== undefined ? { transit_code:     d.transitCode }      : {}),
   ...(d.transitCity      !== undefined ? { transit_city:     d.transitCity }      : {}),
   ...(d.transitDuration  !== undefined ? { transit_duration: d.transitDuration }  : {}),
+  ...(d.baggageInfo      !== undefined ? { baggage_info:     d.baggageInfo }      : {}),
 });
 
 // ── CRUD ─────────────────────────────────────────────────────────────────────

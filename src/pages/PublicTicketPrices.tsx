@@ -565,6 +565,12 @@ function PublicCard({
       {/* ── PRICE ── */}
       <div className="px-4 pb-3">
         <div className="border-t border-slate-200 mb-2.5" />
+        {item.baggageInfo && (
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="text-[10px] text-slate-400">🧳</span>
+            <span className="text-[10px] text-slate-500 font-medium">{item.baggageInfo}</span>
+          </div>
+        )}
         {!expired ? (
           <div>
             <p className="text-[9px] uppercase tracking-widest text-slate-400 mb-0.5" style={{ fontWeight: 700 }}>
@@ -1055,17 +1061,128 @@ export default function PublicTicketPrices() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((item) => (
-              <PublicCard
-                key={item.id}
-                item={item}
-                markup={markup}
-                rates={rates}
-                waNumber={waNumber}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map((item) => (
+                <PublicCard
+                  key={item.id}
+                  item={item}
+                  markup={markup}
+                  rates={rates}
+                  waNumber={waNumber}
+                />
+              ))}
+            </div>
+
+            {/* ── Travel Tips ── */}
+            <div className="mt-12">
+              <div className="text-center mb-6">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Tips Perjalanan</p>
+                <h2 className="text-lg font-black text-slate-800 mt-1">Siap Terbang? Jangan Sampai Lupa Ini!</h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  {
+                    emoji: "🛂",
+                    color: "bg-sky-50 border-sky-100",
+                    iconColor: "bg-sky-100",
+                    title: "Cek Paspor & Visa",
+                    tips: [
+                      "Pastikan paspor masih berlaku minimal 6 bulan",
+                      "Foto paspor pada halaman biodata harus jelas",
+                      "Simpan salinan dokumen di ponsel & email",
+                    ],
+                  },
+                  {
+                    emoji: "🧳",
+                    color: "bg-amber-50 border-amber-100",
+                    iconColor: "bg-amber-100",
+                    title: "Atur Bagasi dengan Bijak",
+                    tips: [
+                      "Batas kabin umumnya 7–10 kg, cek ketentuan maskapai",
+                      "Gunakan tas vacuum untuk hemat ruang",
+                      "Beri label nama & nomor HP di setiap koper",
+                    ],
+                  },
+                  {
+                    emoji: "✈️",
+                    color: "bg-emerald-50 border-emerald-100",
+                    iconColor: "bg-emerald-100",
+                    title: "Tiba di Bandara Lebih Awal",
+                    tips: [
+                      "Datang minimal 3 jam sebelum penerbangan internasional",
+                      "Check-in online 24 jam sebelum berangkat untuk memilih kursi",
+                      "Simpan boarding pass di aplikasi ponsel & cetak cadangan",
+                    ],
+                  },
+                  {
+                    emoji: "💊",
+                    color: "bg-rose-50 border-rose-100",
+                    iconColor: "bg-rose-100",
+                    title: "Jaga Kesehatan Selama Perjalanan",
+                    tips: [
+                      "Bawa obat-obatan pribadi dalam tas kabin",
+                      "Minum air putih cukup, hindari kafein berlebihan",
+                      "Gerakkan kaki setiap 1–2 jam untuk cegah DVT",
+                    ],
+                  },
+                  {
+                    emoji: "📱",
+                    color: "bg-violet-50 border-violet-100",
+                    iconColor: "bg-violet-100",
+                    title: "Persiapan Komunikasi",
+                    tips: [
+                      "Aktifkan roaming atau beli SIM card lokal di tujuan",
+                      "Unduh peta offline (Google Maps) sebelum berangkat",
+                      "Simpan nomor darurat KBRI & agensi di ponsel",
+                    ],
+                  },
+                  {
+                    emoji: "🕌",
+                    color: "bg-teal-50 border-teal-100",
+                    iconColor: "bg-teal-100",
+                    title: "Khusus Umroh & Haji",
+                    tips: [
+                      "Pakai pakaian ihram yang nyaman & sesuai syariat",
+                      "Bawa uang SAR secukupnya, tidak perlu berlebihan",
+                      "Catat jadwal sholat & lokasi hotel agar tidak tersesat",
+                    ],
+                  },
+                ].map((item, i) => (
+                  <div key={i} className={`rounded-2xl border p-5 ${item.color}`}>
+                    <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl text-xl mb-3 ${item.iconColor}`}>
+                      {item.emoji}
+                    </div>
+                    <p className="text-sm font-bold text-slate-800 mb-2">{item.title}</p>
+                    <ul className="space-y-1.5">
+                      {item.tips.map((tip, j) => (
+                        <li key={j} className="flex items-start gap-1.5">
+                          <span className="text-[10px] text-slate-400 mt-0.5 shrink-0">•</span>
+                          <span className="text-[11px] text-slate-500 leading-relaxed">{tip}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+
+              {waNumber && (
+                <div className="mt-6 rounded-2xl bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-center text-white">
+                  <p className="text-base font-black mb-1">Masih Bingung? Konsultasi Gratis!</p>
+                  <p className="text-sm text-green-100 mb-4">Tim kami siap bantu kamu dari pesan tiket sampai perjalanan selesai.</p>
+                  <a
+                    href={whatsappUrl(waNumber)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 bg-white text-green-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:bg-green-50 transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Chat via WhatsApp
+                  </a>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </main>
 

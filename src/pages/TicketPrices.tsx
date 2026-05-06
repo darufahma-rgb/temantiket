@@ -53,6 +53,7 @@ const EMPTY_FORM: FormState = {
   currency: "IDR", validUntil: null, notes: null, isPublished: true,
   flightNumber: null, etd: null, eta: null, terminal: null,
   transitCode: null, transitCity: null, transitDuration: null,
+  baggageInfo: null,
 };
 
 function formFromParsed(p: ParsedTicketPrice): FormState {
@@ -83,6 +84,7 @@ function formFromParsed(p: ParsedTicketPrice): FormState {
     transitCode: p.transitCode ?? null,
     transitCity: p.transitCity ?? null,
     transitDuration: p.transitDuration ?? null,
+    baggageInfo: null,
   };
 }
 
@@ -398,6 +400,12 @@ export function BoardingPassCard({
       {/* ── HARGA ── */}
       <div className="px-4 pb-3">
         <div className="border-t border-slate-200 mb-2.5" />
+        {item.baggageInfo && (
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="text-[10px] text-slate-400">🧳</span>
+            <span className="text-[10px] text-slate-500 font-medium">{item.baggageInfo}</span>
+          </div>
+        )}
         {!expired ? (
           <div className="flex items-end justify-between gap-2">
             <div>
@@ -669,6 +677,7 @@ function TicketDetailModal({
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Detail</p>
             <div className="divide-y divide-slate-100">
               {item.terminal && <DetailRow label="Terminal" value={item.terminal} mono />}
+              {item.baggageInfo && <DetailRow label="Bagasi" value={item.baggageInfo} />}
               {item.validUntil && (
                 <DetailRow
                   label="Berlaku Hingga"
@@ -1158,6 +1167,12 @@ function TicketFormDialog({
             <Label className="text-xs">Terminal Keberangkatan (opsional)</Label>
             <Input placeholder="T3 atau Terminal 2" value={form.terminal ?? ""}
               onChange={(e) => set({ terminal: e.target.value || null })} />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Detail Bagasi (opsional)</Label>
+            <Input placeholder="Contoh: 23kg + 7kg kabin" value={form.baggageInfo ?? ""}
+              onChange={(e) => set({ baggageInfo: e.target.value || null })} />
           </div>
 
           <div className="space-y-1">
@@ -1859,6 +1874,7 @@ export default function TicketPrices() {
       flightNumber: item.flightNumber, etd: item.etd, eta: item.eta,
       terminal: item.terminal, transitCode: item.transitCode,
       transitCity: item.transitCity, transitDuration: item.transitDuration,
+      baggageInfo: item.baggageInfo,
     });
     setEditOpen(true);
   }
