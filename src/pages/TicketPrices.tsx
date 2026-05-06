@@ -6,6 +6,7 @@ import {
   Tag, RefreshCw, Settings2, ImagePlus, Plane, Share2, Copy,
   Clock, MapPin, ArrowRight, ExternalLink, Instagram, Link2,
   ArrowLeftRight, RotateCcw, Search, Calendar, SlidersHorizontal, ArrowUpDown,
+  FlaskConical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1705,6 +1706,58 @@ export default function TicketPrices() {
     } catch (e) { toast.error("Gagal hapus: " + String(e)); }
   }
 
+  const [injecting, setInjecting] = useState(false);
+  async function handleInjectSample() {
+    setInjecting(true);
+    try {
+      // ── Sample 1: One-way + transit ──────────────────────────────────────
+      const oneway = await createTicketPrice({
+        airline: "Qatar Airways", airlineCode: "QR",
+        fromCode: "CGK", fromCity: "Jakarta",
+        toCode: "JED", toCity: "Jeddah",
+        flightNumber: "QR956/QR1167",
+        etd: "22:10", eta: "06:40",
+        terminal: "T3",
+        transitCode: "DOH", transitCity: "Doha", transitDuration: "2j 10m",
+        departDate: "2026-08-05",
+        basePrice: 8_500_000, currency: "IDR",
+        validUntil: null, notes: null,
+        isPublished: true, sortOrder: 0,
+      });
+
+      // ── Sample 2: Return trip (PP) ───────────────────────────────────────
+      const rtNotes = "__RT__:" + JSON.stringify({
+        returnFromCode: "MED", returnToCode: "SUB",
+        returnFromCity: "Madinah", returnToCity: "Surabaya",
+        returnDate: "2026-07-24",
+        returnFlightNumber: "EK8502/EK360",
+        returnEtd: "09:00", returnEta: "23:55",
+        returnTransitCode: "DXB", returnTransitCity: "Dubai",
+        returnTransitDuration: "2j 15m",
+      });
+      const returntrip = await createTicketPrice({
+        airline: "Emirates", airlineCode: "EK",
+        fromCode: "SUB", fromCity: "Surabaya",
+        toCode: "MED", toCity: "Madinah",
+        flightNumber: "EK359/EK8501",
+        etd: "08:30", eta: "17:20",
+        terminal: null,
+        transitCode: "DXB", transitCity: "Dubai", transitDuration: "1j 50m",
+        departDate: "2026-07-10",
+        basePrice: 14_200_000, currency: "IDR",
+        validUntil: null, notes: rtNotes,
+        isPublished: true, sortOrder: 0,
+      });
+
+      setPrices((prev) => [returntrip, oneway, ...prev]);
+      toast.success("2 contoh tiket berhasil ditambahkan!");
+    } catch (e) {
+      toast.error("Gagal inject: " + String(e));
+    } finally {
+      setInjecting(false);
+    }
+  }
+
   async function handleTogglePublish(id: string, val: boolean) {
     try {
       const updated = await updateTicketPrice(id, { isPublished: val });
@@ -1875,13 +1928,23 @@ export default function TicketPrices() {
             {markup > 0 ? "Edit Markup" : "Markup"}
           </button>
           {isAdmin && (
-            <button
-              onClick={openAdd}
-              className="flex-1 h-11 rounded-2xl flex items-center justify-center gap-1.5 text-[12px] font-bold bg-white border border-[hsl(var(--border))] text-[hsl(var(--foreground))] active:scale-95 transition-transform shadow-sm"
-            >
-              <Plus className="h-4 w-4" />
-              Tambah
-            </button>
+            <>
+              <button
+                onClick={openAdd}
+                className="flex-1 h-11 rounded-2xl flex items-center justify-center gap-1.5 text-[12px] font-bold bg-white border border-[hsl(var(--border))] text-[hsl(var(--foreground))] active:scale-95 transition-transform shadow-sm"
+              >
+                <Plus className="h-4 w-4" />
+                Tambah
+              </button>
+              <button
+                onClick={() => void handleInjectSample()}
+                disabled={injecting}
+                className="flex-1 h-11 rounded-2xl flex items-center justify-center gap-1.5 text-[12px] font-bold bg-amber-50 border border-amber-200 text-amber-700 active:scale-95 transition-transform shadow-sm disabled:opacity-50"
+              >
+                {injecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
+                Contoh
+              </button>
+            </>
           )}
         </div>
 
@@ -2112,6 +2175,15 @@ export default function TicketPrices() {
             <>
               <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
                 <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
+              </Button>
+              <Button
+                size="sm" variant="outline"
+                className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                onClick={() => void handleInjectSample()}
+                disabled={injecting}
+              >
+                {injecting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5 mr-1" />}
+                Contoh Data
               </Button>
               <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white" onClick={openAdd}>
                 <Plus className="w-3.5 h-3.5 mr-1" />Tambah Manual
