@@ -105,7 +105,7 @@ function AirlineLogo({ code, airline, size = 40 }: { code: string; airline: stri
       src={src}
       alt={airline}
       width={size} height={size}
-      className="rounded-xl object-contain shrink-0 bg-white border border-white/20"
+      className="object-contain shrink-0"
       style={{ width: size, height: size }}
       onError={handleError}
     />
@@ -394,7 +394,7 @@ function PublicCard({
         getAirlineGradient(item.airlineCode),
       )}>
         <div className="flex items-center gap-2.5 min-w-0">
-          <AirlineLogo code={item.airlineCode} airline={item.airline} size={36} />
+          <AirlineLogo code={item.airlineCode} airline={item.airline} size={52} />
           <div className="min-w-0">
             <p className="font-bold text-[13px] leading-tight truncate">{item.airline}</p>
             <div className="flex items-center gap-1.5 mt-0.5">

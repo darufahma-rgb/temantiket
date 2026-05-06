@@ -124,7 +124,7 @@ function AirlineLogo({ code, airline, size = 40 }: { code: string; airline: stri
       src={src}
       alt={airline}
       width={size} height={size}
-      className="rounded-xl object-contain shrink-0 bg-white border border-slate-100"
+      className="object-contain shrink-0"
       style={{ width: size, height: size }}
       onError={handleError}
     />
@@ -246,7 +246,7 @@ export function BoardingPassCard({
       {/* ── HEADER: Maskapai + Kode Penerbangan + Badge Tipe ── */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3 gap-2">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <AirlineLogo code={item.airlineCode} airline={item.airline} size={36} />
+          <AirlineLogo code={item.airlineCode} airline={item.airline} size={52} />
           <div className="min-w-0 flex-1">
             <p
               className="text-[13.5px] text-slate-900 leading-tight truncate"
