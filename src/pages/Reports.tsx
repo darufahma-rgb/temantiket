@@ -26,6 +26,7 @@ import {
 import { useRatesStore } from "@/store/ratesStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
 import { buildLedgerEntries, ledgerSummary } from "@/lib/ledgerSync";
+import { loadProductCommissions, pullProductCommissions, getCommissionForOrderType, type ProductCommissions } from "@/lib/productCommissions";
 
 type RangeKey = "this_month" | "last_month" | "this_year" | "all";
 type AgentFilter = "all" | "direct" | string; // string = agent userId
@@ -74,6 +75,7 @@ export default function Reports() {
   const [members, setMembers] = useState<MemberInfo[]>([]);
   const [points, setPoints] = useState<AgentPoint[]>([]);
   const [activeTab, setActiveTab] = useState<"summary" | "ledger">("summary");
+  const [productCommissions, setProductCommissions] = useState<ProductCommissions>(() => loadProductCommissions());
 
   useEffect(() => {
     void fetchOrders();
@@ -87,6 +89,7 @@ export default function Reports() {
         console.warn("[reports] fetch members/points gagal:", err);
       }
     })();
+    void pullProductCommissions().then((v) => { if (v) setProductCommissions(v); });
   }, [fetchOrders, fetchClients, clients.length, listMembers]);
 
   const { from, to } = rangeBounds(range);
@@ -113,8 +116,8 @@ export default function Reports() {
   // Ledger: build from ALL orders (not date-filtered — ledger is full history).
   // Sertakan memberById agar entri komisi agen otomatis ditambahkan.
   const ledgerEntries = useMemo(
-    () => buildLedgerEntries(orders, ledgerClientNameById, egpRate, undefined, memberById),
-    [orders, ledgerClientNameById, egpRate, memberById],
+    () => buildLedgerEntries(orders, ledgerClientNameById, egpRate, undefined, memberById, productCommissions),
+    [orders, ledgerClientNameById, egpRate, memberById, productCommissions],
   );
   const ledgerStats = useMemo(() => ledgerSummary(ledgerEntries), [ledgerEntries]);
 
@@ -172,11 +175,11 @@ export default function Reports() {
         agentProfit += p;
         agentRevenue += r;
         agentCount += 1;
-        const pct = (member!.commissionPct ?? 0) / 100;
-        // Komisi dihitung dari profit (bukan revenue) — sesuai konvensi
-        // travel agency lokal. Kalau profit negatif, komisi 0 (agent gak
-        // dapet komisi atas kerugian).
-        if (p > 0) totalCommission += p * pct;
+        // Komisi = nominal flat per jenis produk (bukan % dari profit).
+        totalCommission += getCommissionForOrderType(
+          o.type as "umrah" | "flight" | "visa_voa" | "visa_student",
+          productCommissions,
+        );
       } else {
         directProfit += p;
         directRevenue += r;
@@ -190,7 +193,7 @@ export default function Reports() {
       agentProfit, agentRevenue, agentCount,
       totalCommission, agentNetForAgency, netAgencyProfit,
     };
-  }, [filtered, memberById, egpRate]);
+  }, [filtered, memberById, egpRate, productCommissions]);
 
   // Profit per type (utk pie chart).
   const byType = useMemo(() => {
@@ -243,29 +246,33 @@ export default function Reports() {
   // (tabel terpisah, lifetime).
   const leaderboard = useMemo(() => {
     const lifetimePoints = sumPointsByAgent(points);
-    const m = new Map<string, { profit: number; orders: number; revenue: number }>();
+    const m = new Map<string, { profit: number; orders: number; revenue: number; commission: number }>();
     for (const o of filtered) {
       if (!o.createdByAgent) continue;
       const member = memberById.get(o.createdByAgent);
       if (!member || member.role !== "agent") continue;
-      const cur = m.get(o.createdByAgent) ?? { profit: 0, orders: 0, revenue: 0 };
+      const cur = m.get(o.createdByAgent) ?? { profit: 0, orders: 0, revenue: 0, commission: 0 };
       cur.profit += profitIDR(o, egpRate);
       cur.revenue += revenueIDR(o, egpRate);
       cur.orders += 1;
+      // Komisi = nominal flat per jenis produk (bukan % dari profit).
+      cur.commission += getCommissionForOrderType(
+        o.type as "umrah" | "flight" | "visa_voa" | "visa_student",
+        productCommissions,
+      );
       m.set(o.createdByAgent, cur);
     }
     // Pastikan semua agent muncul (walau gak ada order di periode).
     for (const a of agentMembers) {
-      if (!m.has(a.userId)) m.set(a.userId, { profit: 0, orders: 0, revenue: 0 });
+      if (!m.has(a.userId)) m.set(a.userId, { profit: 0, orders: 0, revenue: 0, commission: 0 });
     }
     return Array.from(m.entries()).map(([agentId, v]) => {
       const member = memberById.get(agentId);
-      const pct = (member?.commissionPct ?? 0) / 100;
-      const commission = v.profit > 0 ? v.profit * pct : 0;
+      const commission = v.commission;
       return {
         agentId,
         name: member?.displayName ?? `Agent ${agentId.slice(0, 6)}…`,
-        commissionPct: member?.commissionPct ?? 0,
+        commissionPct: 0,
         revenue: v.revenue,
         profit: v.profit,
         orders: v.orders,
@@ -277,7 +284,7 @@ export default function Reports() {
       if (b.profit !== a.profit) return b.profit - a.profit;
       return b.lifetimePoints - a.lifetimePoints;
     });
-  }, [filtered, agentMembers, memberById, points, egpRate]);
+  }, [filtered, agentMembers, memberById, points, egpRate, productCommissions]);
 
   const pieData = byType
     .filter((x) => x.profit > 0)
@@ -560,9 +567,9 @@ export default function Reports() {
       >
         <SummaryCard
           label="Total Profit"
-          value={fmtIDR(totals.profit)}
-          icon={totals.profit >= 0 ? TrendingUp : TrendingDown}
-          tone={totals.profit >= 0 ? "emerald" : "red"}
+          value={fmtIDR(split.netAgencyProfit)}
+          icon={split.netAgencyProfit >= 0 ? TrendingUp : TrendingDown}
+          tone={split.netAgencyProfit >= 0 ? "emerald" : "red"}
           big
         />
         <SummaryCard

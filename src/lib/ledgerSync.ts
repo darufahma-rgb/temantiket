@@ -8,6 +8,7 @@
  */
 
 import type { Order } from "@/features/orders/ordersRepo";
+import { getCommissionForOrderType, type ProductCommissions } from "./productCommissions";
 
 export interface LedgerEntry {
   orderId: string;
@@ -88,6 +89,7 @@ export function buildLedgerEntries(
   fallbackEgpRate = DEFAULT_EGP,
   fallbackSarRate = DEFAULT_SAR,
   memberById?: Map<string, AgentCommissionInfo>,
+  productCommissions?: ProductCommissions,
 ): LedgerEntry[] {
   const entries: LedgerEntry[] = [];
 
@@ -127,16 +129,18 @@ export function buildLedgerEntries(
 
     // ── Entri komisi agen ──────────────────────────────────────────────────
     // Kalau order dibawa oleh agen (role === "agent"), tambahkan baris debit
-    // komisi tepat setelah baris order ini (paidAt sama, sort stabil).
+    // fee nominal per-produk tepat setelah baris order ini (paidAt sama).
     if (memberById && o.createdByAgent) {
       const member = memberById.get(o.createdByAgent);
-      if (member && member.role === "agent" && profIDR > 0) {
-        const pct = (member.commissionPct ?? 0) / 100;
-        const commissionIDR = Math.round(profIDR * pct);
+      if (member && member.role === "agent") {
+        const commissionIDR = getCommissionForOrderType(
+          o.type as "umrah" | "flight" | "visa_voa" | "visa_student",
+          productCommissions,
+        );
         if (commissionIDR > 0) {
           entries.push({
             orderId:         `commission_${o.id}`,
-            orderTitle:      `Fee Komisi ${member.displayName} (${member.commissionPct}%)`,
+            orderTitle:      `Fee Agen ${member.displayName} · ${o.type}`,
             orderType:       o.type,
             clientName:      o.clientId ? (clientNameById.get(o.clientId) ?? "—") : "—",
             clientId:        o.clientId,
@@ -155,7 +159,7 @@ export function buildLedgerEntries(
             isCommission:    true,
             agentId:         o.createdByAgent,
             agentName:       member.displayName,
-            commissionPct:   member.commissionPct,
+            commissionPct:   0,
           });
         }
       }
