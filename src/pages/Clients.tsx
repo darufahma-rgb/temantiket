@@ -7,7 +7,9 @@ import {
   ChevronRight, BookOpen, User, CreditCard, Calendar,
   MapPin, CalendarClock, CalendarCheck, Building2 as BuildingOffice,
   UserCheck, AlertTriangle, ScanLine, Loader2, ShieldCheck,
+  ExternalLink,
 } from "lucide-react";
+import { OrderProgressTracker, ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
 import { scanPassport } from "@/lib/ocrPassport";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -143,7 +145,7 @@ function deriveStatusBadge(bestStatus: string): StatusBadge {
 function ClientDetailInner({ id }: { id: string }) {
   const navigate = useNavigate();
   const { clients, fetchClients, getOneClient, patchClient, removeClient } = useClientsStore();
-  const { orders, fetchOrders } = useOrdersStore();
+  const { orders, fetchOrders, patchOrder } = useOrdersStore();
   const userRole = useAuthStore((s) => s.user?.role);
   const isOwner = userRole === "owner";
   const [client, setClient] = useState<Client | null>(null);
@@ -151,6 +153,7 @@ function ClientDetailInner({ id }: { id: string }) {
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [referredByName, setReferredByName] = useState<string | null>(null);
+  const [advancingOrderId, setAdvancingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -180,6 +183,22 @@ function ClientDetailInner({ id }: { id: string }) {
   }, [isOwner, client?.createdByAgent]);
 
   const clientOrders = useMemo(() => orders.filter((o) => o.clientId === id), [orders, id]);
+
+  async function handleAdvanceStep(orderId: string, type: string, currentStep: number, metadata: Record<string, unknown>) {
+    const steps = ORDER_PROCESS_STEPS[type];
+    if (!steps) return;
+    const nextStep = currentStep + 1;
+    if (nextStep >= steps.length) return;
+    setAdvancingOrderId(orderId);
+    try {
+      await patchOrder(orderId, { metadata: { ...metadata, processStep: nextStep } });
+      toast.success(`✅ Proses diperbarui: ${steps[nextStep].label}`);
+    } catch (e) {
+      toast.error("Gagal memperbarui proses.", { description: e instanceof Error ? e.message : "Coba lagi." });
+    } finally {
+      setAdvancingOrderId(null);
+    }
+  }
 
   const memberIndex = useMemo(() => {
     if (!client) return 1;
@@ -272,20 +291,54 @@ function ClientDetailInner({ id }: { id: string }) {
         {clientOrders.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Belum ada order untuk klien ini.</div>
         ) : (
-          <div className="space-y-2">
-            {clientOrders.map((o) => (
-              <Link key={o.id} to={`/orders/detail/${o.id}`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3 hover:bg-secondary/50 transition">
-                <div className="min-w-0 flex items-center gap-3">
-                  <span className="text-xl">{ORDER_TYPE_EMOJI[o.type]}</span>
-                  <div className="min-w-0">
-                    <div className="font-semibold text-sm truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</div>
-                    <div className="text-[11px] text-muted-foreground">{ORDER_TYPE_LABEL[o.type]} · {o.status}</div>
-                  </div>
+          <div className="space-y-3">
+            {[...clientOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((o) => {
+              const meta = (o.metadata ?? {}) as Record<string, unknown>;
+              const currentStep = Number(meta.processStep ?? 0);
+              const steps = ORDER_PROCESS_STEPS[o.type];
+              const isComplete = steps ? currentStep >= steps.length - 1 : false;
+              const isAdvancing = advancingOrderId === o.id;
+              const canAdvance = !isComplete && (isOwner || userRole === "agent");
+              return (
+                <div key={o.id} className={`rounded-2xl border bg-white overflow-hidden ${isComplete ? "border-emerald-100" : "border-border"}`}>
+                  {/* Header row */}
+                  <Link
+                    to={`/orders/detail/${o.id}`}
+                    className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50 transition border-b border-border/60"
+                  >
+                    <div className="min-w-0 flex items-center gap-3">
+                      <span className="text-xl shrink-0">{ORDER_TYPE_EMOJI[o.type]}</span>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</div>
+                        <div className="text-[11px] text-muted-foreground">{ORDER_TYPE_LABEL[o.type]} · {o.status}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-sm font-mono font-semibold">{fmtIDR(o.totalPrice)}</div>
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/50" />
+                    </div>
+                  </Link>
+
+                  {/* Progress tracker */}
+                  {steps && (
+                    <div className="px-4 py-3">
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <div className="h-4 w-4 rounded bg-sky-100 flex items-center justify-center">
+                          <span className="text-[9px]">📍</span>
+                        </div>
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Progress Proses</span>
+                      </div>
+                      <OrderProgressTracker
+                        type={o.type}
+                        currentStep={currentStep}
+                        onAdvance={canAdvance ? () => void handleAdvanceStep(o.id, o.type, currentStep, meta) : undefined}
+                        isAdvancing={isAdvancing}
+                      />
+                    </div>
+                  )}
                 </div>
-                <div className="text-sm font-mono font-semibold">{fmtIDR(o.totalPrice)}</div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

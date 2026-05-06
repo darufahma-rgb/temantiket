@@ -6,6 +6,7 @@ import {
   Share2, Users, Trophy, Gift, Crown,
 } from "lucide-react";
 import MemberCard from "@/components/MemberCard";
+import { OrderProgressTracker, ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
 import { lookupMemberCard, type PublicMemberCard, type PublicMemberStamp } from "@/features/portal/memberCardRepo";
 import { buildPublicMemberUrl, normalizePhoneForWa } from "@/lib/memberSlug";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
@@ -332,7 +333,7 @@ export default function PublicMemberCardPage() {
             <section className="rounded-2xl bg-white border border-sky-100 overflow-hidden shadow-sm">
               <header className="px-4 py-3 border-b border-sky-100/80 flex items-center justify-between">
                 <h2 className="text-sm font-bold text-sky-900 inline-flex items-center gap-1.5">
-                  <History className="h-4 w-4" /> Stamp History
+                  <History className="h-4 w-4" /> Riwayat Transaksi
                 </h2>
                 <div className="flex items-center gap-1.5">
                   {(data.client.referralStamps ?? 0) > 0 && (
@@ -351,24 +352,53 @@ export default function PublicMemberCardPage() {
                 </div>
               ) : (
                 <ul className="divide-y divide-sky-50">
-                  {history.map((stamp, i) => (
-                    <li key={i} className="px-4 py-3 flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-base shrink-0">
-                        {stampEmoji(stamp)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">
-                          {stampLabel(stamp)}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {fmtDateLong(stamp.createdAt)}
-                        </p>
-                      </div>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        {stamp.status}
-                      </span>
-                    </li>
-                  ))}
+                  {history.map((stamp, i) => {
+                    const steps = ORDER_PROCESS_STEPS[stamp.type];
+                    const processStep = stamp.processStep ?? 0;
+                    const isComplete = steps ? processStep >= steps.length - 1 : false;
+                    const hasProgress = steps && (processStep > 0 || stamp.status === "Completed");
+                    return (
+                      <li key={i} className="px-4 py-3 space-y-2.5">
+                        {/* Stamp header row */}
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-base shrink-0">
+                            {stampEmoji(stamp)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-foreground truncate">
+                              {stampLabel(stamp)}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {fmtDateLong(stamp.createdAt)}
+                            </p>
+                          </div>
+                          <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
+                            stamp.status === "Completed"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : stamp.status === "Paid"
+                              ? "bg-sky-50 text-sky-700 border border-sky-200"
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}>
+                            {stamp.status}
+                          </span>
+                        </div>
+
+                        {/* Progress tracker — only if steps exist & progress has been set */}
+                        {hasProgress && steps && (
+                          <div className="rounded-xl bg-sky-50/60 border border-sky-100 px-3 py-2.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-600 mb-2">
+                              📍 Progress Proses
+                            </p>
+                            <OrderProgressTracker
+                              type={stamp.type}
+                              currentStep={stamp.status === "Completed" ? steps.length - 1 : processStep}
+                              readOnly
+                            />
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                   {/* Referral bonus stamps — shown as virtual entries */}
                   {(data.client.referralStamps ?? 0) > 0 &&
                     Array.from({ length: data.client.referralStamps }).map((_, i) => (
