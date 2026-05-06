@@ -565,7 +565,7 @@ export function BoardingPassCard({
         {!expired ? (
           <div>
             <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
-              {isRTorML ? "Harga Paket PP / pax" : "Harga Jual / pax"}
+              {isRTorML ? "Harga Paket PP" : "Harga"}
             </p>
             <p className="text-[22px] font-black leading-tight tabular-nums" style={{ color: "#1a56a8" }}>
               {fmtIDR(sell)}
@@ -736,146 +736,91 @@ function TicketDetailModal({
 
         <div className="px-5 py-4 space-y-1">
 
-          {/* ── Route section ── */}
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Rute Penerbangan</p>
-
-          {isML && mlData ? (
-            <div className="space-y-3">
-              {/* Outbound legs */}
-              <div className="rounded-xl bg-sky-50 border border-sky-100 px-3 py-2.5 space-y-1">
-                <p className="text-[9.5px] font-bold text-sky-600 uppercase tracking-wide">↗ Berangkat</p>
-                {mlData.outboundLegs.map((leg, i) => (
-                  <div key={i} className="flex items-center gap-2 text-[12px] font-semibold text-slate-700">
-                    <span className="font-mono font-black">{leg.fromCode}</span>
-                    <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
-                    <span className="font-mono font-black">{leg.toCode}</span>
-                    {leg.flightNumber && <span className="font-mono text-[11px] text-slate-500">({leg.flightNumber})</span>}
-                    {leg.etd && <span className="text-sky-700 ml-auto">{leg.etd}{leg.eta ? `→${leg.eta}` : ""}</span>}
-                    {leg.date && <span className="text-slate-400 text-[10px]">{fmtDate(leg.date)}</span>}
-                  </div>
-                ))}
+          {/* ── Route section — vertical timeline, consistent with card ── */}
+          <div className="rounded-xl border border-slate-100 bg-white px-4 py-4">
+            {item.departDate && !isRT && !isML && (
+              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100">
+                <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="text-[12px] font-semibold text-slate-600">{fmtDate(item.departDate)}</span>
+                {item.flightNumber && (
+                  <span className="ml-auto text-[10px] font-mono text-[#1a56a8] bg-[#1a56a8]/10 rounded px-1.5 py-0.5 font-bold">
+                    {item.flightNumber}
+                  </span>
+                )}
               </div>
-              {(mlData.returnLegs?.length ?? 0) > 0 && (
-                <div className="rounded-xl bg-violet-50 border border-violet-100 px-3 py-2.5 space-y-1">
-                  <p className="text-[9.5px] font-bold text-violet-600 uppercase tracking-wide">↩ Pulang</p>
-                  {mlData.returnLegs!.map((leg, i) => (
-                    <div key={i} className="flex items-center gap-2 text-[12px] font-semibold text-slate-700">
-                      <span className="font-mono font-black">{leg.fromCode}</span>
-                      <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
-                      <span className="font-mono font-black">{leg.toCode}</span>
-                      {leg.flightNumber && <span className="font-mono text-[11px] text-slate-500">({leg.flightNumber})</span>}
-                      {leg.etd && <span className="text-violet-700 ml-auto">{leg.etd}{leg.eta ? `→${leg.eta}` : ""}</span>}
-                      {leg.date && <span className="text-slate-400 text-[10px]">{fmtDate(leg.date)}</span>}
+            )}
+
+            {isML && mlData ? (
+              <div className="space-y-4">
+                <MultiLegTimeline legs={mlData.outboundLegs} />
+                {(mlData.returnLegs?.length ?? 0) > 0 && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 border-t border-dashed border-slate-200" />
+                      <RotateCcw className="w-3 h-3 text-violet-400 shrink-0" />
+                      <div className="flex-1 border-t border-dashed border-slate-200" />
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : isRT && returnLeg ? (
-            <div className="space-y-2">
-              <div className="rounded-xl bg-sky-50 border border-sky-100 px-3 py-2.5">
-                <p className="text-[9.5px] font-bold text-sky-600 uppercase tracking-wide mb-1">↗ Berangkat</p>
-                <div className="flex items-center gap-3">
-                  <div className="text-center">
-                    <p className="text-[22px] font-black text-slate-900 leading-none">{item.fromCode}</p>
-                    {item.fromCity && <p className="text-[9px] text-slate-400">{item.fromCity}</p>}
-                    {item.etd && <p className="text-[13px] font-extrabold text-sky-700 mt-0.5">{item.etd}</p>}
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-slate-300 shrink-0 mx-1" />
-                  <div className="text-center">
-                    <p className="text-[22px] font-black text-slate-900 leading-none">{item.toCode}</p>
-                    {item.toCity && <p className="text-[9px] text-slate-400">{item.toCity}</p>}
-                    {item.eta && <p className="text-[13px] font-extrabold text-sky-700 mt-0.5">{item.eta}</p>}
-                  </div>
-                  {item.flightNumber && (
-                    <span className="ml-auto text-[10px] font-mono text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">{item.flightNumber}</span>
-                  )}
-                </div>
-                {item.departDate && (
-                  <p className="text-[10px] text-slate-500 mt-1.5 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />{fmtDate(item.departDate)}
-                  </p>
+                    <MultiLegTimeline legs={mlData.returnLegs!} />
+                  </>
                 )}
               </div>
-              <div className="rounded-xl bg-violet-50 border border-violet-100 px-3 py-2.5">
-                <p className="text-[9.5px] font-bold text-violet-600 uppercase tracking-wide mb-1">↩ Pulang</p>
-                <div className="flex items-center gap-3">
-                  <div className="text-center">
-                    <p className="text-[22px] font-black text-slate-900 leading-none">{returnLeg.returnFromCode ?? "—"}</p>
-                    {returnLeg.returnFromCity && <p className="text-[9px] text-slate-400">{returnLeg.returnFromCity}</p>}
-                    {returnLeg.returnEtd && <p className="text-[13px] font-extrabold text-violet-700 mt-0.5">{returnLeg.returnEtd}</p>}
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-slate-300 shrink-0 mx-1" />
-                  <div className="text-center">
-                    <p className="text-[22px] font-black text-slate-900 leading-none">{returnLeg.returnToCode ?? "—"}</p>
-                    {returnLeg.returnToCity && <p className="text-[9px] text-slate-400">{returnLeg.returnToCity}</p>}
-                    {returnLeg.returnEta && <p className="text-[13px] font-extrabold text-violet-700 mt-0.5">{returnLeg.returnEta}</p>}
-                  </div>
-                  {returnLeg.returnFlightNumber && (
-                    <span className="ml-auto text-[10px] font-mono text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">{returnLeg.returnFlightNumber}</span>
+            ) : isRT && returnLeg ? (
+              <div className="space-y-4">
+                <div>
+                  {item.departDate && (
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Clock className="w-3 h-3 text-sky-400" />
+                      <span className="text-[10px] font-semibold text-sky-600">{fmtDate(item.departDate)}</span>
+                      {item.flightNumber && (
+                        <span className="ml-auto text-[9.5px] font-mono text-slate-400">{item.flightNumber}</span>
+                      )}
+                    </div>
                   )}
+                  <RouteTimeline
+                    fromCode={item.fromCode} fromCity={item.fromCity} etd={item.etd}
+                    toCode={item.toCode} toCity={item.toCity} eta={item.eta}
+                    isDirect={!item.transitCode} transitCode={item.transitCode}
+                    transitCity={item.transitCity} transitDuration={item.transitDuration}
+                    label="Berangkat"
+                  />
                 </div>
-                {returnLeg.returnDate && (
-                  <p className="text-[10px] text-slate-500 mt-1.5 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />{fmtDate(returnLeg.returnDate)}
-                  </p>
-                )}
-              </div>
-            </div>
-          ) : (
-            /* ── One-way route ── */
-            <div className="rounded-xl bg-sky-50 border border-sky-100 px-3 py-3">
-              <div className="flex items-center gap-3">
-                <div className="text-center flex-1">
-                  <p className="text-[26px] font-black text-slate-900 leading-none tracking-tight">{item.fromCode}</p>
-                  {item.fromCity && <p className="text-[10px] text-slate-400 mt-0.5">{item.fromCity}</p>}
-                  {item.etd && <p className="text-[15px] font-extrabold text-sky-700 mt-1 tabular-nums">{item.etd}</p>}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 border-t border-dashed border-slate-200" />
+                  <RotateCcw className="w-3 h-3 text-violet-400 shrink-0" />
+                  <div className="flex-1 border-t border-dashed border-slate-200" />
                 </div>
-                <div className="flex flex-col items-center shrink-0 px-2">
-                  {isDirect ? (
-                    <>
-                      <div className="flex items-center gap-1">
-                        <div className="h-px w-5 bg-slate-200" />
-                        <Plane className="w-3.5 h-3.5 text-slate-400" />
-                        <div className="h-px w-5 bg-slate-200" />
-                      </div>
-                      <span className="text-[9px] text-slate-400 font-medium mt-0.5">Direct</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-0.5">
-                        <div className="h-px w-3 bg-slate-200" />
-                        <div className="h-2 w-2 rounded-full bg-amber-400 border border-amber-300" />
-                        <div className="h-px w-3 bg-slate-200" />
-                      </div>
-                      <p className="text-[9px] text-amber-600 font-bold text-center leading-tight mt-0.5">{item.transitCode}</p>
-                    </>
+                <div>
+                  {returnLeg.returnDate && (
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Clock className="w-3 h-3 text-violet-400" />
+                      <span className="text-[10px] font-semibold text-violet-600">{fmtDate(returnLeg.returnDate)}</span>
+                      {returnLeg.returnFlightNumber && (
+                        <span className="ml-auto text-[9.5px] font-mono text-slate-400">{returnLeg.returnFlightNumber}</span>
+                      )}
+                    </div>
                   )}
-                </div>
-                <div className="text-center flex-1">
-                  <p className="text-[26px] font-black text-slate-900 leading-none tracking-tight">{item.toCode}</p>
-                  {item.toCity && <p className="text-[10px] text-slate-400 mt-0.5">{item.toCity}</p>}
-                  {item.eta && <p className="text-[15px] font-extrabold text-sky-700 mt-1 tabular-nums">{item.eta}</p>}
+                  <RouteTimeline
+                    fromCode={returnLeg.returnFromCode ?? "—"} fromCity={returnLeg.returnFromCity}
+                    etd={returnLeg.returnEtd}
+                    toCode={returnLeg.returnToCode ?? "—"} toCity={returnLeg.returnToCity}
+                    eta={returnLeg.returnEta}
+                    isDirect={!returnLeg.returnTransitCode}
+                    transitCode={returnLeg.returnTransitCode}
+                    transitCity={returnLeg.returnTransitCity}
+                    transitDuration={returnLeg.returnTransitDuration}
+                    label="Pulang"
+                  />
                 </div>
               </div>
-              {item.flightNumber && (
-                <p className="text-center text-[10px] font-mono text-slate-500 mt-2 bg-white rounded-full px-3 py-0.5 border border-slate-100 inline-block w-full text-center">
-                  {item.flightNumber}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* ── Transit detail (one-way) ── */}
-          {!isRT && !isML && item.transitCode && (
-            <div className="flex items-center gap-2 py-1.5 px-3 rounded-xl bg-amber-50 border border-amber-100">
-              <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span className="text-[11px] text-amber-700 font-semibold">
-                Transit: {item.transitCity ? `${item.transitCity} (${item.transitCode})` : item.transitCode}
-                {item.transitDuration && <span className="text-amber-500"> · {item.transitDuration}</span>}
-              </span>
-            </div>
-          )}
+            ) : (
+              <RouteTimeline
+                fromCode={item.fromCode} fromCity={item.fromCity} etd={item.etd}
+                toCode={item.toCode} toCity={item.toCity} eta={item.eta}
+                isDirect={isDirect} transitCode={item.transitCode}
+                transitCity={item.transitCity} transitDuration={item.transitDuration}
+              />
+            )}
+          </div>
 
           {/* ── Detail rows ── */}
           <div className="mt-3 pt-1">
@@ -904,7 +849,7 @@ function TicketDetailModal({
             <div className={isOwner ? "flex items-end justify-between" : ""}>
               <div>
                 <p className="text-[10px] font-semibold text-sky-600 uppercase tracking-wide">
-                  {isML || isRT ? "Harga Paket PP / pax" : "Harga Jual / pax"}
+                  {isML || isRT ? "Harga Paket PP" : "Harga"}
                 </p>
                 <p className="text-[28px] font-black text-sky-700 leading-none tabular-nums mt-0.5">
                   {fmtIDR(sell)}
