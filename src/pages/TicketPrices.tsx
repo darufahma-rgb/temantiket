@@ -299,8 +299,8 @@ export function BoardingPassCard({
       </div>
 
       {/* ── ROUTE SUMMARY ── */}
-      <div className="px-4 pb-3">
-        <div className="border-t border-dashed border-slate-100 mb-2.5" />
+      <div className="px-4 pb-3 flex-1">
+        <div className="border-t border-slate-200 mb-2.5" />
         <div className="flex items-start gap-1.5">
           <Plane className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
           <p
@@ -396,8 +396,8 @@ export function BoardingPassCard({
       </div>
 
       {/* ── HARGA ── */}
-      <div className="px-4 pb-3 mt-auto">
-        <div className="border-t border-dashed border-slate-100 mb-2.5" />
+      <div className="px-4 pb-3">
+        <div className="border-t border-slate-200 mb-2.5" />
         {!expired ? (
           <div className="flex items-end justify-between gap-2">
             <div>
@@ -446,7 +446,7 @@ export function BoardingPassCard({
 
       {/* ── FOOTER: Tombol aksi ── */}
       <div className="px-4 pb-4 space-y-2" onClick={(e) => e.stopPropagation()}>
-        <div className="border-t border-slate-100 mb-3" />
+        <div className="border-t border-slate-200 mb-3" />
 
         {/* Row 1: WA + Order */}
         {confirmDelete ? (

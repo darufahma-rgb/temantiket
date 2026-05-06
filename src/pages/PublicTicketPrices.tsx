@@ -478,8 +478,8 @@ function PublicCard({
       </div>
 
       {/* ── ROUTE SUMMARY ── */}
-      <div className="px-4 pb-3">
-        <div className="border-t border-dashed border-slate-100 mb-2.5" />
+      <div className="px-4 pb-3 flex-1">
+        <div className="border-t border-slate-200 mb-2.5" />
         <div className="flex items-start gap-1.5">
           <Plane className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
           <p className="text-[13px] text-slate-800 leading-snug flex-1 min-w-0" style={{ fontFamily: SK, fontWeight: 600 }}>
@@ -563,8 +563,8 @@ function PublicCard({
       </div>
 
       {/* ── PRICE ── */}
-      <div className="px-4 pb-3 mt-auto">
-        <div className="border-t border-dashed border-slate-100 mb-2.5" />
+      <div className="px-4 pb-3">
+        <div className="border-t border-slate-200 mb-2.5" />
         {!expired ? (
           <div>
             <p className="text-[9px] uppercase tracking-widest text-slate-400 mb-0.5" style={{ fontWeight: 700 }}>
@@ -592,7 +592,7 @@ function PublicCard({
 
       {/* ── CTA ── */}
       <div className="px-4 pb-4">
-        <div className="border-t border-slate-100 mb-3" />
+        <div className="border-t border-slate-200 mb-3" />
         <a
           href={waLink}
           target="_blank"
