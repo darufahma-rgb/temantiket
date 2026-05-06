@@ -637,12 +637,13 @@ function DetailRow({ label, value, mono }: { label: string; value: ReactNode; mo
 }
 
 function TicketDetailModal({
-  open, item, markup, rates, onClose, onEdit, onTogglePublish,
+  open, item, markup, rates, isOwner, onClose, onEdit, onTogglePublish,
 }: {
   open: boolean;
   item: TicketPrice | null;
   markup: number;
   rates: Record<string, number>;
+  isOwner?: boolean;
   onClose: () => void;
   onEdit?: (item: TicketPrice) => void;
   onTogglePublish?: (id: string, val: boolean) => void;
@@ -877,7 +878,7 @@ function TicketDetailModal({
           {/* ── Pricing ── */}
           <div className="mt-3 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Harga</p>
-            <div className="flex items-end justify-between">
+            <div className={isOwner ? "flex items-end justify-between" : ""}>
               <div>
                 <p className="text-[10px] font-semibold text-sky-600 uppercase tracking-wide">
                   {isML || isRT ? "Harga Paket PP / pax" : "Harga Jual / pax"}
@@ -885,28 +886,35 @@ function TicketDetailModal({
                 <p className="text-[28px] font-black text-sky-700 leading-none tabular-nums mt-0.5">
                   {fmtIDR(sell)}
                 </p>
-              </div>
-              <div className="text-right space-y-0.5">
-                <p className="text-[10.5px] text-slate-500">
-                  Modal: <span className="font-semibold text-slate-700">{item.currency} {item.basePrice.toLocaleString("id-ID")}</span>
-                </p>
-                {markup > 0 && (
-                  <p className="text-[10.5px] text-slate-500">
-                    Markup: <span className="font-semibold text-emerald-600">+{fmtIDR(markup)}</span>
+                {!isOwner && (
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {isML || isRT ? "harga paket pulang-pergi, sudah termasuk margin" : "sudah termasuk margin keuntungan"}
                   </p>
                 )}
               </div>
+              {isOwner && (
+                <div className="text-right space-y-0.5">
+                  <p className="text-[10.5px] text-slate-500">
+                    Modal: <span className="font-semibold text-slate-700">{item.currency} {item.basePrice.toLocaleString("id-ID")}</span>
+                  </p>
+                  {markup > 0 && (
+                    <p className="text-[10.5px] text-slate-500">
+                      Markup: <span className="font-semibold text-emerald-600">+{fmtIDR(markup)}</span>
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* ── Notes ── */}
-          {userNotes && (
+          {/* ── Notes (owner only) ── */}
+          {isOwner && userNotes && (
             <div className="rounded-xl bg-yellow-50 border border-yellow-100 px-3 py-2.5">
               <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-600 mb-1">Catatan</p>
               <p className="text-[12px] text-yellow-800 leading-snug">{userNotes}</p>
             </div>
           )}
-          {!isRT && !isML && item.notes && !item.notes.startsWith("__") && (
+          {isOwner && !isRT && !isML && item.notes && !item.notes.startsWith("__") && (
             <div className="rounded-xl bg-yellow-50 border border-yellow-100 px-3 py-2.5">
               <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-600 mb-1">Catatan</p>
               <p className="text-[12px] text-yellow-800 leading-snug">{item.notes}</p>
@@ -966,13 +974,14 @@ function LegDivider({ label }: { label: string }) {
 }
 
 function TicketFormDialog({
-  open, onClose, initial, onSave, loading,
+  open, onClose, initial, onSave, loading, isOwner,
 }: {
   open: boolean;
   onClose: () => void;
   initial: FormState;
   onSave: (form: FormState) => Promise<void>;
   loading: boolean;
+  isOwner?: boolean;
 }) {
   const [form, setForm] = useState<FormState>(initial);
   const [returnForm, setReturnForm] = useState<ReturnLegData | null>(null);
@@ -1245,12 +1254,14 @@ function TicketFormDialog({
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2 space-y-1">
-              <Label className="text-xs">Harga Modal (base)</Label>
-              <Input type="number" min="0" placeholder="0" value={form.basePrice || ""}
-                onChange={(e) => set({ basePrice: Number(e.target.value) })} />
-            </div>
-            <div className="space-y-1">
+            {isOwner && (
+              <div className="col-span-2 space-y-1">
+                <Label className="text-xs">Harga Modal (base)</Label>
+                <Input type="number" min="0" placeholder="0" value={form.basePrice || ""}
+                  onChange={(e) => set({ basePrice: Number(e.target.value) })} />
+              </div>
+            )}
+            <div className={isOwner ? "space-y-1" : "col-span-3 space-y-1"}>
               <Label className="text-xs">Mata Uang</Label>
               <Select value={form.currency} onValueChange={(v) => set({ currency: v as TicketCurrency })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -1424,6 +1435,7 @@ export default function TicketPrices() {
   const { user } = useAuthStore();
   const { rates } = useRatesStore();
   const isAdmin = user?.role === "owner" || user?.role === "staff";
+  const isOwner = user?.role === "owner";
 
   const [prices, setPrices] = useState<TicketPrice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1997,7 +2009,7 @@ export default function TicketPrices() {
                 key={item.id} item={item} markup={markup} rates={rates}
                 isAdmin={isAdmin} onEdit={openEdit} onDelete={handleDelete}
                 onTogglePublish={handleTogglePublish} onView={openView}
-                waNumber={waNumber} showBasePrice={isAdmin}
+                waNumber={waNumber} showBasePrice={isOwner}
               />
             ))}
           </div>
@@ -2513,7 +2525,7 @@ export default function TicketPrices() {
                 onTogglePublish={handleTogglePublish}
                 onView={openView}
                 waNumber={waNumber}
-                showBasePrice={isAdmin}
+                showBasePrice={isOwner}
               />
             ))}
           </div>
@@ -2529,6 +2541,7 @@ export default function TicketPrices() {
         initial={editForm}
         onSave={handleSaveEdit}
         loading={savingEdit}
+        isOwner={isOwner}
       />
 
       {/* ── Detail Modal — rendered at root level ── */}
@@ -2537,12 +2550,13 @@ export default function TicketPrices() {
         item={viewItem}
         markup={markup}
         rates={rates}
+        isOwner={isOwner}
         onClose={() => { setViewOpen(false); }}
-        onEdit={(item) => { setViewOpen(false); openEdit(item); }}
-        onTogglePublish={async (id, val) => {
+        onEdit={isOwner ? (item) => { setViewOpen(false); openEdit(item); } : undefined}
+        onTogglePublish={isOwner ? (async (id, val) => {
           await handleTogglePublish(id, val);
           setViewItem((prev) => prev?.id === id ? { ...prev, isPublished: val } : prev);
-        }}
+        }) : undefined}
       />
     </div>
   );
