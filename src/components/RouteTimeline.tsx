@@ -27,7 +27,7 @@ const SPINE_COLOR = "#64748b";
 
 function SingleLeg({ origin, destination, transit, label, date, flightNumber }: RouteTimelineLegProps) {
   const isDirect = !transit?.code;
-  const labelColor = label === "Pulang" ? "text-violet-600" : "text-[#1a56a8]";
+  const labelColor = label === "Pulang" ? "text-violet-600" : "text-slate-500";
 
   return (
     <div>

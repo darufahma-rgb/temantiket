@@ -178,62 +178,79 @@ export function BoardingPassCard({
 
   const isRTorML = isRT || isML;
 
-  return (
-    <div className={cn(
-      "relative rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md overflow-hidden flex flex-col",
-      expired && "opacity-60",
-      !item.isPublished && "border-dashed border-slate-300",
-    )}>
-      {/* ── Temantiket blue top accent bar ── */}
-      <div className="h-1 w-full" style={{ background: "linear-gradient(90deg,#1a56a8,#2d7dd2)" }} />
+  // Date display — departure + return date if applicable
+  const returnDate = isML
+    ? (mlData?.returnLegs?.[0]?.date ?? null)
+    : isRT
+      ? (returnLeg?.returnDate ?? null)
+      : null;
 
-      {/* ── Header: airline info + TM icon ── */}
-      <div className="flex items-start justify-between px-4 pt-3 pb-2.5 gap-2">
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <AirlineLogo code={item.airlineCode} airline={item.airline} size={34} />
-          <div className="min-w-0">
-            <p className="font-bold text-[13px] text-slate-800 leading-tight truncate">{item.airline}</p>
-            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-              <span className="text-[9.5px] text-slate-400 font-mono">{item.airlineCode}</span>
+  const SK = "'Sk-Modernist', 'Inter', sans-serif";
+
+  return (
+    <div
+      className={cn(
+        "relative rounded-3xl border bg-white flex flex-col transition-all duration-200",
+        "shadow-[0_2px_16px_-4px_rgba(0,0,0,0.10),0_1px_4px_-2px_rgba(0,0,0,0.06)]",
+        "hover:shadow-[0_6px_28px_-6px_rgba(0,0,0,0.14),0_2px_8px_-2px_rgba(0,0,0,0.08)]",
+        expired ? "opacity-60 border-slate-200" : "border-slate-150",
+        !item.isPublished && "border-dashed border-slate-300",
+      )}
+      style={{ fontFamily: SK }}
+    >
+      {/* ── HEADER: Maskapai + Kode Penerbangan + Tipe Perjalanan ── */}
+      <div className="flex items-start justify-between px-4 pt-4 pb-3 gap-2">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <AirlineLogo code={item.airlineCode} airline={item.airline} size={38} />
+          <div className="min-w-0 flex-1">
+            <p
+              className="text-[14px] text-slate-900 leading-tight truncate"
+              style={{ fontFamily: SK, fontWeight: 700 }}
+            >
+              {item.airline}
+            </p>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <span className="text-[9.5px] text-slate-400 font-mono tracking-wide">{item.airlineCode}</span>
               {!isRT && !isML && item.flightNumber && (
-                <span className="text-[9.5px] bg-[#1a56a8]/10 text-[#1a56a8] rounded px-1.5 py-0.5 font-mono font-bold">
+                <span
+                  className="text-[9px] bg-slate-100 text-slate-600 rounded-md px-1.5 py-0.5 font-mono"
+                  style={{ fontWeight: 600 }}
+                >
                   {item.flightNumber}
                 </span>
               )}
               <span className={cn(
-                "text-[8.5px] font-bold px-1.5 py-0.5 rounded-full",
-                isML || isRT ? "bg-violet-100 text-violet-700"
-                : isDirect ? "bg-emerald-100 text-emerald-700"
-                : "bg-amber-100 text-amber-700",
-              )}>
+                "text-[8.5px] px-2 py-0.5 rounded-full",
+                isML || isRT ? "bg-violet-50 text-violet-600 border border-violet-100"
+                : isDirect ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                : "bg-amber-50 text-amber-600 border border-amber-100",
+              )} style={{ fontWeight: 700 }}>
                 {isML ? "Multi-Leg PP" : isRT ? "Pulang-Pergi" : isDirect ? "Direct" : "Transit"}
               </span>
             </div>
           </div>
         </div>
-        {/* Temantiket icon + status badges */}
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <img src="/temantiket-icon-mark.png" alt="Temantiket" className="h-6 w-6 object-contain opacity-40" />
           {isAdmin && !item.isPublished && (
-            <Badge variant="outline" className="text-[9px] bg-slate-100 text-slate-500 border-slate-300 py-0">
+            <Badge variant="outline" className="text-[9px] bg-slate-50 text-slate-400 border-slate-200 py-0">
               Tersembunyi
             </Badge>
           )}
           {expired && (
-            <Badge className="text-[9px] bg-red-100 text-red-700 border-red-200 py-0">Expired</Badge>
+            <Badge className="text-[9px] bg-red-50 text-red-500 border border-red-100 py-0">Expired</Badge>
           )}
         </div>
       </div>
 
-      {/* ── Route section ── */}
-      <div className="px-4 pb-3">
-        <div className="border-t border-dashed border-slate-200 mb-3" />
+      {/* ── TIMELINE: Vertical route ── */}
+      <div className="px-4 pb-2">
+        <div className="border-t border-dashed border-slate-100 mb-3" />
         {isML && mlData ? (
           <div className="space-y-3">
             <MultiLegTimeline legs={mlData.outboundLegs} label="Berangkat" />
             {(mlData.returnLegs?.length ?? 0) > 0 && (
               <>
-                <div className="border-t border-dashed border-slate-200" />
+                <div className="border-t border-dashed border-slate-100" />
                 <MultiLegTimeline legs={mlData.returnLegs!} label="Pulang" />
               </>
             )}
@@ -274,96 +291,126 @@ export function BoardingPassCard({
         )}
       </div>
 
-      {/* ── Footer: date · price · actions ── */}
-      <div className="mt-auto border-t border-slate-100 bg-slate-50/60 px-4 py-3 space-y-2">
-        {/* Date + valid-until */}
-        <div className="flex items-center justify-between text-[10.5px]">
-          <div className="flex items-center gap-1.5 text-slate-500">
-            <Clock className="w-3 h-3 text-slate-400" />
-            <span>{item.departDate ? fmtDate(item.departDate) : "Tanggal Fleksibel"}</span>
+      {/* ── TANGGAL: Keberangkatan + Pulang (if RT) ── */}
+      <div className="px-4 pt-2 pb-1">
+        <div className="border-t border-dashed border-slate-100 mb-2.5" />
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 text-[10.5px] text-slate-500">
+            <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+            <span style={{ fontWeight: 500 }}>
+              {item.departDate ? fmtDate(item.departDate) : "Tanggal Fleksibel"}
+            </span>
           </div>
+          {returnDate && (
+            <>
+              <ArrowRight className="w-3 h-3 text-slate-300 shrink-0" />
+              <div className="flex items-center gap-1.5 text-[10.5px] text-slate-500">
+                <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                <span style={{ fontWeight: 500 }}>{fmtDate(returnDate)}</span>
+              </div>
+            </>
+          )}
           {item.validUntil && (
-            <span className={cn(expired ? "text-red-500 font-semibold" : "text-slate-400")}>
+            <span className={cn("ml-auto text-[10px]", expired ? "text-red-500 font-semibold" : "text-slate-400")}>
               {expired ? "⛔ Expired" : `s/d ${fmtDate(item.validUntil)}`}
             </span>
           )}
         </div>
+      </div>
 
-        {/* Price */}
+      {/* ── HARGA: dengan role visibility ── */}
+      <div className="px-4 pt-2 pb-3 mt-auto">
+        <div className="border-t border-dashed border-slate-100 mb-2.5" />
         {!expired ? (
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
+            <p
+              className="text-[9px] uppercase tracking-widest text-slate-400 mb-0.5"
+              style={{ fontWeight: 700 }}
+            >
               Harga
             </p>
-            <p className="text-[22px] font-black leading-tight tabular-nums" style={{ color: "#1a56a8" }}>
+            <p
+              className="text-[21px] text-slate-900 leading-tight tabular-nums"
+              style={{ fontFamily: SK, fontWeight: 700 }}
+            >
               {fmtIDR(sell)}
             </p>
             {showBasePrice && markup > 0 ? (
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-slate-400 mt-0.5">
                 Modal: {item.currency} {item.basePrice.toLocaleString("id-ID")} · markup {fmtIDR(markup)}
               </p>
             ) : !showBasePrice ? (
-              <p className="text-[10px] text-slate-400">
-                {isRTorML ? "harga paket pulang-pergi, sudah termasuk margin" : "sudah termasuk margin keuntungan"}
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {isRTorML ? "harga paket pulang-pergi · sudah termasuk margin" : "sudah termasuk margin keuntungan"}
               </p>
             ) : null}
           </div>
         ) : (
           <div>
-            <p className="text-sm font-bold text-red-600">Harga Expired</p>
+            <p className="text-sm text-red-500" style={{ fontWeight: 700 }}>Harga Expired</p>
             <p className="text-[11px] text-slate-400">Hubungi admin untuk harga terbaru</p>
           </div>
         )}
 
-        {/* Notes — owner only (showBasePrice == true for owner) */}
+        {/* Notes — owner only */}
         {showBasePrice && userNotes && (
-          <p className="text-[10.5px] text-slate-500 italic leading-snug">{userNotes}</p>
+          <p className="text-[10.5px] text-slate-500 italic leading-snug mt-1">{userNotes}</p>
         )}
         {showBasePrice && !isRTorML && item.notes && !item.notes.startsWith("__") && (
-          <p className="text-[10.5px] text-slate-500 italic leading-snug">{item.notes}</p>
+          <p className="text-[10.5px] text-slate-500 italic leading-snug mt-1">{item.notes}</p>
         )}
+      </div>
 
-        {/* CTAs */}
-        <div className="flex gap-2 pt-0.5">
+      {/* ── FOOTER: Tombol aksi ── */}
+      <div className="px-4 pb-4">
+        <div className="border-t border-slate-100 mb-3" />
+        <div className="flex gap-2 items-center">
+          {/* Pesan via WA */}
           {expired ? (
-            <Button asChild size="sm" variant="outline" className="flex-1 text-xs border-slate-300 text-slate-600">
+            <Button asChild size="sm" variant="outline" className="flex-1 rounded-xl text-xs border-slate-200 text-slate-600 h-9">
               <a href={waLink} target="_blank" rel="noreferrer">
                 <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Hubungi Admin
               </a>
             </Button>
           ) : (
-            <Button asChild size="sm" className="flex-1 text-xs bg-green-600 hover:bg-green-700 text-white">
+            <Button asChild size="sm" className="flex-1 rounded-xl text-xs bg-green-500 hover:bg-green-600 text-white h-9 shadow-none" style={{ fontFamily: SK, fontWeight: 700 }}>
               <a href={waLink} target="_blank" rel="noreferrer">
                 <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Pesan via WA
               </a>
             </Button>
           )}
+
+          {/* + Order */}
           {isAdmin && !expired && (
-            <Button size="sm" variant="outline"
-              className="text-xs border-[#1a56a8]/20 text-[#1a56a8] hover:bg-[#1a56a8]/5 shrink-0"
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-xl text-xs border-slate-200 text-slate-600 hover:bg-slate-50 shrink-0 h-9 px-3"
               title="Buat order flight dari tiket ini"
               onClick={() => navigate("/orders/flight")}
+              style={{ fontFamily: SK, fontWeight: 600 }}
             >
               <Plus className="w-3.5 h-3.5 mr-1" />Order
             </Button>
           )}
+
+          {/* Admin icon actions */}
           {isAdmin && (
-            <div className="flex gap-1">
+            <div className="flex gap-0.5 shrink-0">
               {onView && (
-                <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-[#1a56a8]/10"
-                  style={{ color: "#1a56a8" }}
+                <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
                   title="Lihat Detail" onClick={() => onView(item)}>
                   <Eye className="w-3.5 h-3.5" />
                 </Button>
               )}
               {onEdit && (
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500"
+                <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
                   title="Edit" onClick={() => onEdit(item)}>
                   <Edit3 className="w-3.5 h-3.5" />
                 </Button>
               )}
               {onDelete && (
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
+                <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50"
                   title="Hapus" onClick={() => onDelete(item.id)}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>

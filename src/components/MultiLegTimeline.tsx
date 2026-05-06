@@ -26,7 +26,7 @@ export function MultiLegTimeline({
 }: MultiLegTimelineProps) {
   if (!legs.length) return null;
   const last = legs[legs.length - 1];
-  const labelColor = label === "Pulang" ? "text-violet-600" : "text-[#1a56a8]";
+  const labelColor = label === "Pulang" ? "text-violet-600" : "text-slate-500";
 
   return (
     <div>
