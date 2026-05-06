@@ -13,6 +13,37 @@
 import { callAI, type CallAIOptions } from "@/lib/aiFetch";
 import { useAIOverrideStore } from "@/store/aiOverrideStore";
 
+// ── Token usage & cost ────────────────────────────────────────────────────────
+
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  /** Estimated cost in USD */
+  estimatedCostUsd: number;
+  /** Actual model used (may differ from requested — OpenRouter normalises IDs) */
+  resolvedModel: string;
+}
+
+/**
+ * Approximate per-million-token pricing for models used in this app.
+ * Source: OpenRouter model cards (as of May 2025). Input / Output in USD/M.
+ */
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  "google/gemini-2.0-flash-001":          { input: 0.10,  output: 0.40  },
+  "google/gemini-2.5-pro-preview-05-06":  { input: 1.25,  output: 10.00 },
+  "google/gemini-2.5-pro":                { input: 1.25,  output: 10.00 },
+  "anthropic/claude-sonnet-4":            { input: 3.00,  output: 15.00 },
+  "anthropic/claude-4-sonnet-20250522":   { input: 3.00,  output: 15.00 },
+  "anthropic/claude-3-5-sonnet-20241022": { input: 3.00,  output: 15.00 },
+};
+const DEFAULT_PRICING = { input: 0.50, output: 1.50 };
+
+function estimateCost(model: string, promptTokens: number, completionTokens: number): number {
+  const pricing = MODEL_PRICING[model] ?? DEFAULT_PRICING;
+  return (promptTokens * pricing.input + completionTokens * pricing.output) / 1_000_000;
+}
+
 // ── Model registry ──────────────────────────────────────────────────────────
 // Satu tempat untuk semua model — ubah di sini kalau mau ganti model.
 
@@ -77,7 +108,13 @@ function extractErrorMessage(error: unknown): string {
  * Throws jika server error, timeout, atau AI tidak mengembalikan konten.
  * Selalu melempar Error dengan pesan yang bersih dan bisa dibaca user.
  */
-export async function callAIOpenRouter(opts: CallAIOpenRouterOptions): Promise<string> {
+/** Internal full response type (includes usage for cost tracking). */
+interface OpenRouterFullResult {
+  content: string;
+  usage: TokenUsage | null;
+}
+
+async function callAIOpenRouterFull(opts: CallAIOpenRouterOptions): Promise<OpenRouterFullResult> {
   const {
     prompt,
     systemPrompt,
@@ -89,14 +126,9 @@ export async function callAIOpenRouter(opts: CallAIOpenRouterOptions): Promise<s
     fetchOptions,
   } = opts;
 
-  // Bangun messages array
   const messages: object[] = [];
+  if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
 
-  if (systemPrompt) {
-    messages.push({ role: "system", content: systemPrompt });
-  }
-
-  // User message: teks biasa atau multimodal (teks + gambar)
   if (imageBase64) {
     messages.push({
       role: "user",
@@ -117,30 +149,53 @@ export async function callAIOpenRouter(opts: CallAIOpenRouterOptions): Promise<s
     temperature,
     max_tokens: maxTokens,
   };
-
-  if (jsonMode) {
-    body.response_format = { type: "json_object" };
-  }
+  if (jsonMode) body.response_format = { type: "json_object" };
 
   try {
     const res = await callAI(body, fetchOptions);
     const data = await res.json() as {
+      model?: string;
       choices?: { message?: { content?: string } }[];
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
       error?: unknown;
     };
 
-    // Guard: API-level error dalam body (misal OpenRouter proxying error dari upstream)
-    if (data.error) {
-      throw new Error(extractErrorMessage(data.error));
-    }
+    if (data.error) throw new Error(extractErrorMessage(data.error));
 
     const content = data.choices?.[0]?.message?.content?.trim() ?? "";
     if (!content) throw new Error("AI tidak mengembalikan konten — coba lagi");
-    return content;
+
+    // Parse usage if available
+    let usage: TokenUsage | null = null;
+    if (data.usage) {
+      const promptTokens     = data.usage.prompt_tokens     ?? 0;
+      const completionTokens = data.usage.completion_tokens ?? 0;
+      const totalTokens      = data.usage.total_tokens      ?? promptTokens + completionTokens;
+      const resolvedModel    = data.model ?? model;
+      usage = {
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        estimatedCostUsd: estimateCost(resolvedModel, promptTokens, completionTokens),
+        resolvedModel,
+      };
+    }
+
+    return { content, usage };
   } catch (error: unknown) {
-    // Selalu rethrow sebagai Error dengan pesan yang bersih
     throw new Error(extractErrorMessage(error));
   }
+}
+
+export async function callAIOpenRouter(opts: CallAIOpenRouterOptions): Promise<string> {
+  const { content } = await callAIOpenRouterFull(opts);
+  return content;
+}
+
+/** Caption generation result — includes token usage for cost indicator. */
+export interface CaptionResult {
+  caption: string;
+  usage: TokenUsage | null;
 }
 
 // ── Helper: Caption Generation ──────────────────────────────────────────────
@@ -218,13 +273,14 @@ export async function generateCaptionFromDetail(params: {
     : "";
 
   const model = useAIOverrideStore.getState().getModel("caption", OR_MODELS.CAPTION);
-  return callAIOpenRouter({
+  const { content, usage } = await callAIOpenRouterFull({
     model,
     systemPrompt: CAPTION_SYSTEM_PROMPT,
     prompt: `Buat 1 caption marketing untuk ${categoryPrompt}.\nTone yang diminta: ${toneInstruction}.${detailSection}${waSection}`,
     temperature: 0.85,
     maxTokens: 1500,
   });
+  return { caption: content, usage };
 }
 
 /**
@@ -244,7 +300,7 @@ export async function generateCaptionFromPoster(params: {
 
   // Poster OCR selalu pakai VISION model langsung — tidak melalui override store
   // karena override store bisa menyimpan model text-only yang tidak support vision.
-  return callAIOpenRouter({
+  const { content, usage } = await callAIOpenRouterFull({
     model: OR_MODELS.VISION,
     systemPrompt: POSTER_SYSTEM_PROMPT,
     prompt: `Scan poster ini dan buat 1 caption sesuai struktur dan aturan di instruksi sistem.\nTone: ${toneInstruction}.${waSection}`,
@@ -253,6 +309,7 @@ export async function generateCaptionFromPoster(params: {
     maxTokens: 1500,
     fetchOptions: { timeoutMs: 90_000 },
   });
+  return { caption: content, usage };
 }
 
 /**

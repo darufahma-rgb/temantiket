@@ -2,13 +2,13 @@ import { useState, useRef, useCallback } from "react";
 import {
   Wand2, Copy, CheckCheck, Loader2, RefreshCw, FileText,
   Plane, BookOpen, Megaphone, Moon, Sparkles, AlignLeft,
-  ImagePlus, X, ScanText, PenLine, MessageCircle,
+  ImagePlus, X, ScanText, PenLine, MessageCircle, Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { generateCaptionFromDetail, generateCaptionFromPoster } from "@/lib/ai/openrouter";
+import { generateCaptionFromDetail, generateCaptionFromPoster, type TokenUsage } from "@/lib/ai/openrouter";
 import { AIModelToggle } from "@/components/AIModelToggle";
 
 /* ─── Mode ──────────────────────────────────────────────── */
@@ -82,6 +82,7 @@ export function CaptionGenerator() {
   const [posterPreview, setPosterPreview]   = useState<string | null>(null);
   const [isDragging, setIsDragging]         = useState(false);
   const [result, setResult]                 = useState<string>("");
+  const [lastUsage, setLastUsage]           = useState<TokenUsage | null>(null);
   const [loading, setLoading]               = useState(false);
   const [copied, setCopied]                 = useState(false);
   const fileInputRef                        = useRef<HTMLInputElement>(null);
@@ -126,24 +127,27 @@ export function CaptionGenerator() {
   const handleGenerate = async () => {
     setLoading(true);
     setResult("");
+    setLastUsage(null);
     try {
       if (mode === "poster") {
         if (!posterFile) { toast.error("Upload poster dulu ya!"); return; }
         const dataUrl = await compressImage(posterFile);
-        const caption = await generateCaptionFromPoster({
+        const { caption, usage } = await generateCaptionFromPoster({
           imageBase64: dataUrl,
           tone: activeTone,
           waNumber,
         });
         setResult(caption);
+        setLastUsage(usage);
       } else {
-        const caption = await generateCaptionFromDetail({
+        const { caption, usage } = await generateCaptionFromDetail({
           categoryPrompt: cat.prompt,
           tone: activeTone,
           packageDetail,
           waNumber,
         });
         setResult(caption);
+        setLastUsage(usage);
       }
     } catch (err) {
       toast.error(`Gagal generate: ${err instanceof Error ? err.message : String(err)}`);
@@ -496,6 +500,45 @@ export function CaptionGenerator() {
                 {result}
               </p>
             </div>
+
+            {/* ── Token usage indicator ── */}
+            {lastUsage && (
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-border/50 bg-slate-50/80 px-3.5 py-2.5"
+              >
+                <div className="flex items-center gap-1.5 text-[10.5px] text-slate-500 font-medium">
+                  <Zap className="h-3 w-3 text-amber-400 shrink-0" strokeWidth={2.5} />
+                  <span className="text-slate-700 font-semibold">
+                    {lastUsage.totalTokens.toLocaleString("id-ID")}
+                  </span>
+                  token
+                </div>
+                <div className="h-3 w-px bg-slate-200 shrink-0" />
+                <div className="flex items-center gap-1 text-[10.5px] text-slate-400">
+                  <span className="text-slate-500">{lastUsage.promptTokens.toLocaleString("id-ID")}</span>
+                  <span>in</span>
+                  <span className="text-slate-300">·</span>
+                  <span className="text-slate-500">{lastUsage.completionTokens.toLocaleString("id-ID")}</span>
+                  <span>out</span>
+                </div>
+                <div className="h-3 w-px bg-slate-200 shrink-0" />
+                <div className="flex items-center gap-1 text-[10.5px]">
+                  <span className="text-slate-400">est.</span>
+                  <span className="font-semibold text-emerald-600">
+                    ${lastUsage.estimatedCostUsd < 0.000001
+                      ? "<$0.000001"
+                      : lastUsage.estimatedCostUsd.toFixed(6)}
+                  </span>
+                </div>
+                <div className="h-3 w-px bg-slate-200 shrink-0 hidden sm:block" />
+                <div className="hidden sm:block text-[10px] text-slate-400 font-mono truncate max-w-[160px]" title={lastUsage.resolvedModel}>
+                  {lastUsage.resolvedModel.split("/").pop()}
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
