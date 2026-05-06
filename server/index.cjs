@@ -524,7 +524,7 @@ app.post('/api/export/invoice', async (req, res) => {
       const clientY = H - 155;
       txt(page, 'INVOICE UNTUK:', 40, clientY, 7.5, regular, MUTED);
       txt(page, client?.name ?? 'Klien tidak diketahui', 40, clientY - 17, 15, bold, DARK);
-      if (client?.phone) txt(page, `📞 ${client.phone}`, 40, clientY - 33, 9, regular, MUTED);
+      if (client?.phone) txt(page, `Tel: ${client.phone}`, 40, clientY - 33, 9, regular, MUTED);
       const rightCol = W - 40;
       txtRight(page, 'No. Order:', rightCol, clientY, 8, regular, MUTED);
       txtRight(page, (order.id || '').slice(0, 12) + '…', rightCol, clientY - 14, 8, bold, DARK);
