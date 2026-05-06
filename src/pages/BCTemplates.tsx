@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Copy, Plus, Pencil, Trash2, Check, Search, MessageSquare,
   ChevronDown, ChevronUp, Sparkles, X, Rocket,
+  LayoutGrid, Moon, Stamp, BookOpen, Plane, MessageCircle, type LucideProps,
 } from "lucide-react";
+import type { ComponentType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -26,6 +28,16 @@ import {
   BC_CATEGORIES, type BCTemplate, type BCTemplateDraft, type BCCategory,
 } from "@/features/bcTemplates/bcTemplatesRepo";
 import { useAuthStore } from "@/store/authStore";
+
+const CATEGORY_ICONS: Record<string, ComponentType<LucideProps>> = {
+  all:             LayoutGrid,
+  umrah:           Moon,
+  haji:            Moon,
+  visa_on_arrival: Stamp,
+  visa_pelajar:    BookOpen,
+  tiket_pesawat:   Plane,
+  general:         MessageCircle,
+};
 
 const EMPTY_DRAFT: BCTemplateDraft = {
   title: "",
@@ -299,7 +311,7 @@ export default function BCTemplates() {
             active={activeTab === "all"}
             onClick={() => setActiveTab("all")}
             label="Semua"
-            emoji="📋"
+            categoryKey="all"
             count={counts.get("all") ?? 0}
           />
           {BC_CATEGORIES.map((cat) => (
@@ -308,7 +320,7 @@ export default function BCTemplates() {
               active={activeTab === cat.key}
               onClick={() => setActiveTab(cat.key)}
               label={cat.label}
-              emoji={cat.emoji}
+              categoryKey={cat.key}
               count={counts.get(cat.key) ?? 0}
             />
           ))}
@@ -572,8 +584,9 @@ export default function BCTemplates() {
 // ── TabChip ──────────────────────────────────────────────────────────────────
 
 function TabChip({
-  active, onClick, label, emoji, count,
-}: { active: boolean; onClick: () => void; label: string; emoji: string; count: number }) {
+  active, onClick, label, categoryKey, count,
+}: { active: boolean; onClick: () => void; label: string; categoryKey: string; count: number }) {
+  const Icon = CATEGORY_ICONS[categoryKey] ?? MessageCircle;
   return (
     <button
       onClick={onClick}
@@ -584,7 +597,7 @@ function TabChip({
           : "bg-white text-slate-600 border-slate-200 active:border-blue-400",
       )}
     >
-      <span className="text-[13px]">{emoji}</span>
+      <Icon className={cn("h-3.5 w-3.5 shrink-0", active ? "text-white" : "text-blue-500")} />
       {label}
       <span
         className={cn(
@@ -652,7 +665,7 @@ function CategorySection({
         className="w-full flex items-center justify-between px-4 py-3.5 active:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-2.5">
-          <span className="text-[18px] leading-none">{cat.emoji}</span>
+          {(() => { const Icon = CATEGORY_ICONS[cat.key] ?? MessageCircle; return <Icon className="h-4 w-4 text-blue-500 shrink-0" />; })()}
           <span className="text-[13.5px] font-bold text-slate-800">{cat.label}</span>
           <span className={cn("text-[10.5px] font-bold px-2 py-0.5 rounded-full border", cat.color)}>
             {items.length}
@@ -722,8 +735,9 @@ function TemplateCard({
       {/* Card header */}
       <div className="px-3.5 pt-3 pb-2">
         <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-          <span className={cn("text-[10.5px] font-bold px-2 py-0.5 rounded-full border", cat.color)}>
-            {cat.emoji} {cat.label}
+          <span className={cn("inline-flex items-center gap-1 text-[10.5px] font-bold px-2 py-0.5 rounded-full border", cat.color)}>
+            {(() => { const Icon = CATEGORY_ICONS[cat.key] ?? MessageCircle; return <Icon className="h-3 w-3 text-blue-500 shrink-0" />; })()}
+            {cat.label}
           </span>
           {vars.length > 0 && (
             <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
