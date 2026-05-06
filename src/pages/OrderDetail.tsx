@@ -285,19 +285,21 @@ export default function OrderDetail() {
         <Field label={`Harga Jual (${order.currency})`}>
           <Input type="number" value={String(draft.totalPrice ?? 0)} onChange={(e) => setDraft({ ...draft, totalPrice: Number(e.target.value) || 0 })} />
         </Field>
-        <Field label="Fee Komisi Agen (IDR)">
-          <Input
-            type="number"
-            value={String(Number(((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>).agentFee ?? 0))}
-            onChange={(e) => setDraft({
-              ...draft,
-              metadata: {
-                ...((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>),
-                agentFee: Number(e.target.value) || 0,
-              },
-            })}
-          />
-        </Field>
+        {order.createdByAgent && (
+          <Field label="Fee Komisi Agen (IDR)">
+            <Input
+              type="number"
+              value={String(Number(((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>).agentFee ?? 0))}
+              onChange={(e) => setDraft({
+                ...draft,
+                metadata: {
+                  ...((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>),
+                  agentFee: Number(e.target.value) || 0,
+                },
+              })}
+            />
+          </Field>
+        )}
         <Field label="Klien">
           <Select value={(draft.clientId ?? order.clientId) || "__none"} onValueChange={(v) => setDraft({ ...draft, clientId: v === "__none" ? null : v })}>
             <SelectTrigger><SelectValue placeholder="Pilih klien" /></SelectTrigger>
@@ -356,7 +358,7 @@ export default function OrderDetail() {
         const total = Number(draft.totalPrice ?? order.totalPrice);
         const cost = Number(draft.costPrice ?? order.costPrice ?? 0);
         const meta = (draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>;
-        const agentFee = Number(meta.agentFee ?? 0);
+        const agentFee = order.createdByAgent ? Number(meta.agentFee ?? 0) : 0;
         const profit = total - cost;
         const net = profit - agentFee;
         const profitPositive = profit >= 0;
