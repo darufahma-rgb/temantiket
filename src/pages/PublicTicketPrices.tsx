@@ -789,33 +789,33 @@ export default function PublicTicketPrices() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
             </span>
             <span className="text-[11px] text-white/80 font-semibold uppercase tracking-[0.12em]">
-              Harga Update Rutin · Terpercaya
+              Agen Tiketing Mahasiswa · Mudah & Murah
             </span>
           </div>
 
           {/* Main headline */}
           <h1 className="font-black leading-[1.1] mb-5">
             <span className="block text-white text-4xl md:text-5xl lg:text-[3.5rem]">
-              Tiket Umroh & Haji
+              Beli Tiket Pesawat
             </span>
             <span
               className="block text-4xl md:text-5xl lg:text-[3.5rem] text-transparent bg-clip-text mt-1"
               style={{ backgroundImage: "linear-gradient(90deg, #60c8f5 0%, #a78bfa 50%, #60c8f5 100%)", backgroundSize: "200% auto" }}
             >
-              Harga Terbaik
+              Gak Ribet, Gak Mahal.
             </span>
           </h1>
 
           {/* Subtitle */}
           <p className="text-[15px] md:text-base text-blue-200/80 max-w-xl mx-auto leading-relaxed mb-8">
-            Tiket penerbangan ke Jeddah, Madinah, dan kota suci lainnya —
-            langsung dari agen terpercaya. Proses cepat, harga transparan,
-            amanah sejak hari pertama.
+            Temantiket hadir buat kamu yang mau pesan tiket tanpa drama —
+            harga bersaing, proses kilat, dan ada yang bisa dihubungi
+            kapan saja. Cocok banget buat mahasiswa!
           </p>
 
-          {/* Route pills */}
+          {/* Value pills */}
           <div className="flex flex-wrap justify-center gap-2 mb-8">
-            {["✈ CGK → JED", "✈ SUB → JED", "✈ MES → JED", "✈ CGK → MED", "✈ SUB → MED"].map((r) => (
+            {["🎓 Ramah Mahasiswa", "💸 Harga Transparan", "⚡ Proses Cepat", "🔒 Aman & Amanah", "🌏 Semua Rute"].map((r) => (
               <span key={r}
                 className="px-3 py-1 rounded-full text-[11px] font-semibold text-white/70 border border-white/10 bg-white/5 backdrop-blur-sm">
                 {r}
@@ -833,7 +833,7 @@ export default function PublicTicketPrices() {
                 className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-400 active:scale-95 text-white text-sm font-bold px-7 py-3.5 rounded-2xl transition-all shadow-lg shadow-green-900/40 hover:shadow-green-900/60 hover:-translate-y-0.5"
               >
                 <MessageCircle className="w-4 h-4" />
-                Konsultasi Gratis via WA
+                Chat Sekarang, Gratis!
               </a>
             )}
             <a
@@ -841,16 +841,16 @@ export default function PublicTicketPrices() {
               className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/15 text-white text-sm font-semibold px-6 py-3.5 rounded-2xl transition-all backdrop-blur-sm"
             >
               <Plane className="w-4 h-4" />
-              Lihat Semua Rute
+              Cek Harga Tiket
             </a>
           </div>
 
           {/* Trust stats */}
           <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3">
             {[
-              { icon: "🛡️", label: "Agen Resmi & Terpercaya" },
+              { icon: "🎓", label: "Favorit para mahasiswa" },
               { icon: "⚡", label: "Konfirmasi dalam 1×24 jam" },
-              { icon: "💬", label: "Layanan WhatsApp 24 Jam" },
+              { icon: "💬", label: "CS aktif via WhatsApp" },
             ].map(({ icon, label }) => (
               <div key={label} className="flex items-center gap-1.5 text-[12px] text-white/50">
                 <span>{icon}</span>
