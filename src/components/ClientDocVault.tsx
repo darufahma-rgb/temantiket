@@ -37,7 +37,7 @@ function buildDocWhatsAppText(opts: {
     `Berikut dokumen *${catLabel}* kamu yang sudah kami proses. ` +
     `Silakan simpan baik-baik ya!\n\n` +
     `📋 Cek semua dokumen & riwayat perjalanan kamu di Member Card Temantiket:\n` +
-    `🔗 ${memberCardUrl}\n\n` +
+    `🔗 ${opts.memberCardUrl}\n\n` +
     `Ada pertanyaan? Hubungi kami kapan saja. ✈️\n` +
     `— Temantiket`
   );
