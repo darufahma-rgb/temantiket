@@ -188,6 +188,14 @@ export function BoardingPassCard({
       ? (returnLeg?.returnEtd ?? null)
       : null;
 
+  // Airport codes shown next to times for context
+  const departFromCode = item.fromCode || null;
+  const returnFromCode = isML
+    ? (mlData?.returnLegs?.[0]?.fromCode ?? null)
+    : isRT
+      ? (returnLeg?.returnFromCode ?? null)
+      : null;
+
   // ── WhatsApp message ─────────────────────────────────────────────────────────
   const routeLabel = isML
     ? buildRouteLabel(mlData!)
@@ -317,7 +325,14 @@ export function BoardingPassCard({
                   </span>
                 </div>
                 {item.etd && (
-                  <span className="text-[10.5px] text-slate-400 font-mono ml-4">{item.etd}</span>
+                  <div className="flex items-center gap-1 ml-4 mt-0.5">
+                    <span className="text-[11px] text-slate-700 font-mono font-semibold">{item.etd}</span>
+                    {departFromCode && (
+                      <span className="text-[9px] bg-slate-100 text-slate-500 rounded px-1 py-0.5 font-mono font-semibold tracking-wide">
+                        {departFromCode}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
               {/* Divider */}
@@ -332,23 +347,37 @@ export function BoardingPassCard({
                   </span>
                 </div>
                 {returnEtd && (
-                  <span className="text-[10.5px] text-violet-400 font-mono ml-4">{returnEtd}</span>
+                  <div className="flex items-center gap-1 ml-4 mt-0.5">
+                    <span className="text-[11px] text-violet-600 font-mono font-semibold">{returnEtd}</span>
+                    {returnFromCode && (
+                      <span className="text-[9px] bg-violet-50 text-violet-400 rounded px-1 py-0.5 font-mono font-semibold tracking-wide">
+                        {returnFromCode}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
                 <span className="text-[11.5px] text-slate-700 font-semibold">
                   {item.departDate ? fmtDate(item.departDate) : "Fleksibel"}
                 </span>
                 {item.etd && (
-                  <span className="text-[11px] text-slate-500 font-mono">· {item.etd}</span>
+                  <>
+                    <span className="text-[11px] text-slate-700 font-mono font-semibold">· {item.etd}</span>
+                    {departFromCode && (
+                      <span className="text-[9px] bg-slate-100 text-slate-500 rounded px-1 py-0.5 font-mono font-semibold tracking-wide">
+                        {departFromCode}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
               {item.validUntil && (
-                <span className={cn("ml-auto text-[9.5px]", expired ? "text-red-500 font-semibold" : "text-slate-400")}>
+                <span className={cn("ml-auto text-[9.5px] shrink-0", expired ? "text-red-500 font-semibold" : "text-slate-400")}>
                   {expired ? "⛔ Expired" : `s/d ${fmtDate(item.validUntil)}`}
                 </span>
               )}
