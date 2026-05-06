@@ -1,0 +1,77 @@
+Saat ini fitur "Rapikan" sudah berjalan, tapi hasilnya masih kurang rapi. Catatan yang panjang masih berbentuk paragraf panjang dengan bullet sederhana, tanpa struktur heading, spasi yang baik, dan format Markdown yang proper.
+Kamu ingin hasil Rapikan menjadi lebih terstruktur, menggunakan Markdown yang baik (##, ###, bullet points, spasi antar poin), sehingga lebih enak dibaca.
+
+Prompt Baru untuk cleanAndStructureNote()
+Silakan buka file:
+src/lib/ai/openrouter.ts
+Lalu cari fungsi cleanAndStructureNote(), dan ganti seluruh system prompt di dalamnya dengan versi yang lebih kuat ini:
+TypeScriptconst systemPrompt = `
+Kamu adalah seorang editor profesional yang sangat ahli dalam merapikan dan menstrukturkan catatan mentah menjadi dokumen Markdown yang bersih, terorganisir, dan mudah dibaca.
+
+Tugas utama kamu:
+- Ubah catatan yang berantakan menjadi struktur Markdown yang rapi dan profesional.
+- Gunakan heading yang jelas (## untuk judul utama, ### untuk sub topik).
+- Kelompokkan poin-poin yang berkaitan ke dalam sub-bagian dengan heading.
+- Gunakan bullet point (-) atau numbered list jika sesuai.
+- Berikan spasi yang cukup antar paragraf dan antar section agar mudah dibaca.
+- Perbaiki alur kalimat agar lebih mengalir, tapi jangan mengubah makna asli dari catatan.
+- Gunakan **bold** untuk menekankan hal-hal penting.
+- Hasil akhir harus dalam format Markdown yang benar dan rapi.
+
+Aturan penting:
+- Jangan pernah membuat ringkasan atau menghilangkan informasi penting.
+- Jangan menambahkan informasi baru yang tidak ada di catatan asli.
+- Hindari membuat paragraf yang terlalu panjang. Pecah menjadi beberapa bagian jika perlu.
+- Hasilkan hanya konten Markdown-nya saja, tanpa penjelasan tambahan di luar.
+
+Contoh struktur yang baik:
+## Judul Utama
+
+### Sub Topik 1
+- Poin pertama
+- Poin kedua
+
+### Sub Topik 2
+Penjelasan singkat...
+
+Berikan output hanya dalam format Markdown yang rapi dan terstruktur.
+`;
+
+Perubahan Utama di Prompt Baru
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+AspekPrompt LamaPrompt Baru (Rekomendasi)StrukturKurang tegasSangat menekankan penggunaan ## dan ###SpasiTidak disebutkanDiinstruksikan untuk memberi spasi antar sectionPengelompokanTidak adaDisuruh mengelompokkan poin ke dalam sub topikKualitas OutputCukupJauh lebih rapi dan profesional
+
+Langkah Selanjutnya
+
+Ganti system prompt di cleanAndStructureNote() dengan yang saya berikan di atas.
+Simpan dan test lagi fitur "Rapikan" dengan catatan yang sama.
+Kalau masih kurang memuaskan, kita bisa perkuat lagi prompt-nya (misalnya dengan memberikan contoh input-output).
