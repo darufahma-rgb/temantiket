@@ -20,11 +20,16 @@ interface MultiLegTimelineProps {
 
 const SPINE_COLOR = "#64748b";
 
-function FlightChip({ code }: { code: string }) {
+/** Pill shown ON the connector between two cities */
+function SegmentChip({ code }: { code: string }) {
   return (
-    <span className="inline-block text-[9px] font-mono font-semibold bg-slate-100 text-slate-500 rounded-md px-1.5 py-0.5 mt-1 leading-none">
-      {code}
-    </span>
+    <div className="flex items-center gap-1.5 py-1">
+      <div className="flex-1 h-px bg-slate-200" />
+      <span className="text-[9px] font-mono font-semibold bg-slate-100 text-slate-500 rounded-md px-2 py-0.5 leading-none whitespace-nowrap">
+        ✈ {code}
+      </span>
+      <div className="flex-1 h-px bg-slate-200" />
+    </div>
   );
 }
 
@@ -73,9 +78,9 @@ export function MultiLegTimeline({
           <div className="h-3.5 w-3.5 rounded-full shrink-0 bg-slate-700" />
         </div>
 
-        {/* Text column */}
-        <div className="flex-1 min-w-0 py-0.5 space-y-3">
-          {/* Origin — show first leg's flight number at departure */}
+        {/* Text column: origin → [chip] → transit → [chip] → destination */}
+        <div className="flex-1 min-w-0 py-0.5">
+          {/* Origin */}
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
               <p className="font-bold text-[17px] text-slate-900 leading-none">
@@ -90,25 +95,31 @@ export function MultiLegTimeline({
             {legs[0]?.fromCity && (
               <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">{legs[0].fromCode}</p>
             )}
-            {legs[0]?.flightNumber && <FlightChip code={legs[0].flightNumber} />}
           </div>
 
-          {/* Transit stops — show the NEXT leg's flight number (connecting flight departing from here) */}
+          {/* Each leg: flight chip then arrival city (transit) */}
           {legs.slice(0, -1).map((leg, i) => (
             <div key={i}>
-              <div className="flex items-baseline gap-1.5 flex-wrap">
-                <p className="font-semibold text-[13px] text-amber-700 leading-none">
-                  {leg.toCity || leg.toCode}
-                </p>
-                <span className="text-[8.5px] text-amber-500 font-semibold">transit</span>
+              {/* Chip for THIS leg's flight (origin/transit → next transit) */}
+              {leg.flightNumber && <SegmentChip code={leg.flightNumber} />}
+
+              {/* Transit city (arrival of this leg) */}
+              <div>
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <p className="font-semibold text-[13px] text-amber-700 leading-none">
+                    {leg.toCity || leg.toCode}
+                  </p>
+                  <span className="text-[8.5px] text-amber-500 font-semibold">transit</span>
+                </div>
+                {leg.toCity && (
+                  <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{leg.toCode}</p>
+                )}
               </div>
-              {leg.toCity && (
-                <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{leg.toCode}</p>
-              )}
-              {/* Flight number of the connecting flight departing this transit city */}
-              {legs[i + 1]?.flightNumber && <FlightChip code={legs[i + 1].flightNumber!} />}
             </div>
           ))}
+
+          {/* Chip for the final leg (last transit → destination) */}
+          {last?.flightNumber && <SegmentChip code={last.flightNumber} />}
 
           {/* Destination */}
           <div>

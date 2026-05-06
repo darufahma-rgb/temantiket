@@ -25,11 +25,16 @@ export interface RouteTimelineLegProps {
 
 const SPINE_COLOR = "#64748b";
 
-function FlightChip({ code }: { code: string }) {
+/** Pill shown ON the connector between two cities */
+function SegmentChip({ code }: { code: string }) {
   return (
-    <span className="inline-block text-[9px] font-mono font-semibold bg-slate-100 text-slate-500 rounded-md px-1.5 py-0.5 mt-1 leading-none">
-      {code}
-    </span>
+    <div className="flex items-center gap-1.5 py-1">
+      <div className="flex-1 h-px bg-slate-200" />
+      <span className="text-[9px] font-mono font-semibold bg-slate-100 text-slate-500 rounded-md px-2 py-0.5 leading-none whitespace-nowrap">
+        ✈ {code}
+      </span>
+      <div className="flex-1 h-px bg-slate-200" />
+    </div>
   );
 }
 
@@ -68,7 +73,7 @@ function SingleLeg({ origin, destination, transit, label, date, flightNumber }: 
         </div>
 
         {/* City info */}
-        <div className="flex flex-col justify-between flex-1 min-w-0 py-0.5" style={{ gap: "18px" }}>
+        <div className="flex-1 min-w-0 py-0.5">
           {/* Origin */}
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
@@ -86,18 +91,34 @@ function SingleLeg({ origin, destination, transit, label, date, flightNumber }: 
                 {origin.airport ?? origin.code}
               </p>
             )}
-            {/* Flight number at departure point */}
-            {flightNumber && <FlightChip code={flightNumber} />}
-            {!isDirect && transit?.code && (
-              <p className="text-[9.5px] text-amber-600 font-semibold mt-1">
-                via {transit.city ? `${transit.city} (${transit.code})` : transit.code}
-                {transit.duration && <span className="text-amber-400"> · {transit.duration}</span>}
-              </p>
-            )}
           </div>
 
+          {/* Flight chip: origin → (transit or destination) */}
+          {flightNumber && !isDirect && <SegmentChip code={flightNumber} />}
+
+          {/* Transit stop */}
+          {!isDirect && transit?.code && (
+            <div className="mb-0">
+              <div className="flex items-baseline gap-1.5 flex-wrap">
+                <p className="font-semibold text-[13px] text-amber-700 leading-none">
+                  {transit.city || transit.code}
+                </p>
+                <span className="text-[8.5px] text-amber-500 font-semibold">transit</span>
+                {transit.duration && (
+                  <span className="text-[8.5px] text-amber-400">{transit.duration}</span>
+                )}
+              </div>
+              {transit.city && (
+                <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{transit.code}</p>
+              )}
+            </div>
+          )}
+
+          {/* Flight chip: direct or transit → destination */}
+          {flightNumber && isDirect && <SegmentChip code={flightNumber} />}
+
           {/* Destination */}
-          <div>
+          <div className={!isDirect && transit?.code ? "mt-0" : ""}>
             <div className="flex items-baseline gap-2 flex-wrap">
               <p className="font-bold text-[17px] text-slate-900 leading-none">
                 {destination.city || destination.code}

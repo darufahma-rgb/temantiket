@@ -293,20 +293,28 @@ export function BoardingPassCard({
 
       {/* ── TANGGAL: Keberangkatan + Pulang (if RT) ── */}
       <div className="px-4 pt-2 pb-1">
-        <div className="border-t border-dashed border-slate-100 mb-2.5" />
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5 text-[10.5px] text-slate-500">
-            <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-            <span style={{ fontWeight: 500 }}>
+        <div className="border-t border-dashed border-slate-100 mb-3" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span
+              className="text-[13px] text-slate-800"
+              style={{ fontFamily: SK, fontWeight: 700 }}
+            >
               {item.departDate ? fmtDate(item.departDate) : "Tanggal Fleksibel"}
             </span>
           </div>
           {returnDate && (
             <>
-              <ArrowRight className="w-3 h-3 text-slate-300 shrink-0" />
-              <div className="flex items-center gap-1.5 text-[10.5px] text-slate-500">
-                <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                <span style={{ fontWeight: 500 }}>{fmtDate(returnDate)}</span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+              <div className="flex items-center gap-2">
+                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span
+                  className="text-[13px] text-slate-800"
+                  style={{ fontFamily: SK, fontWeight: 700 }}
+                >
+                  {fmtDate(returnDate)}
+                </span>
               </div>
             </>
           )}
