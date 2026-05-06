@@ -2174,7 +2174,9 @@ export default function TicketPrices() {
         </>
       )}
 
-      {/* ── Edit / Add Dialog ── */}
+      </div>{/* end hidden md:block */}
+
+      {/* ── Edit / Add Dialog — rendered at root level for both mobile & desktop ── */}
       <TicketFormDialog
         open={editOpen || addOpen}
         onClose={() => { setEditOpen(false); setAddOpen(false); }}
@@ -2182,8 +2184,6 @@ export default function TicketPrices() {
         onSave={handleSaveEdit}
         loading={savingEdit}
       />
-      </div>{/* end hidden md:block */}
-
     </div>
   );
 }

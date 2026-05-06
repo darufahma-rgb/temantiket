@@ -1,0 +1,51 @@
+You are adding full CRUD functionality to the Harga Tiket (Ticket Prices) feature in a Vite + React + TypeScript + Supabase project.
+
+### Permintaan:
+User ingin bisa **mengedit**, **menghapus**, dan **menambah** data harga tiket/perjalanan.
+
+### Yang Harus Dilakukan:
+
+1. **Fitur Edit**
+   - Saat ikon pensil diklik, tampilkan form/modal untuk mengedit data tiket yang dipilih.
+   - Yang bisa diedit minimal:
+     - Harga jual
+     - Modal / base price
+     - Markup
+     - Tanggal keberangkatan / kembali (jika ada)
+     - Status (misalnya Transit / Direct)
+   - Setelah disimpan, data langsung ter-update di tampilan.
+
+2. **Fitur Hapus**
+   - Saat ikon hapus diklik, tampilkan konfirmasi sebelum menghapus.
+   - Setelah dihapus, data hilang dari tampilan dan database.
+
+3. **Fitur Tambah Perjalanan Baru**
+   - Tambahkan tombol **"Tambah Perjalanan"** atau **"+ Tambah Tiket"** di halaman Harga Tiket.
+   - Saat diklik, tampilkan form/modal untuk menambahkan data tiket baru.
+   - Field yang perlu diisi minimal:
+     - Maskapai
+     - Kode penerbangan (jika ada)
+     - Rute (dari - ke)
+     - Waktu keberangkatan & kedatangan
+     - Harga jual
+     - Modal
+     - Markup
+     - Tanggal perjalanan
+     - Keterangan (Transit / Direct)
+
+4. **Teknis**
+   - Gunakan Supabase untuk Create, Update, dan Delete data.
+   - Pastikan data tersimpan di tabel yang sesuai (kemungkinan `flight_options` atau `ticket_prices`).
+   - Setelah operasi berhasil, refresh data di halaman agar tampilan langsung update.
+   - Berikan loading state dan feedback (toast) saat proses edit/hapus/tambah.
+
+5. **UI/UX**
+   - Gunakan modal atau form yang clean dan sesuai dengan desain yang sudah ada.
+   - Pastikan tombol "Pesan via WA" dan "+ Order" tetap ada dan berfungsi.
+
+### Hasil yang Diharapkan:
+- User bisa menambah, mengedit, dan menghapus data harga tiket dengan mudah.
+- Data tersimpan dengan benar di database.
+- Tampilan langsung update setelah ada perubahan.
+
+Mulai dengan menambahkan fungsi Edit dan Delete terlebih dahulu, lalu lanjut ke fitur Tambah Perjalanan.
