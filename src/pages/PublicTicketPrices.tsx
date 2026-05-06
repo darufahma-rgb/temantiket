@@ -1075,61 +1075,73 @@ export default function PublicTicketPrices() {
             </div>
 
             {/* ── Travel Tips ── */}
-            <div className="mt-12">
-              <div className="text-center mb-6">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Tips Perjalanan</p>
-                <h2 className="text-lg font-black text-slate-800 mt-1">Siap Terbang? Jangan Sampai Lupa Ini!</h2>
+            <div className="mt-16">
+              {/* Section header */}
+              <div className="text-center mb-10">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-sky-600 mb-3">
+                  ✈️ Tips Perjalanan
+                </span>
+                <h2 className="text-2xl font-black text-slate-900 leading-tight">
+                  Siap Terbang?<br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-blue-600">Jangan Sampai Lupa Ini!</span>
+                </h2>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {[
                   {
                     emoji: "🛂",
-                    color: "bg-sky-50 border-sky-100",
-                    iconColor: "bg-sky-100",
+                    gradient: "from-sky-500 to-blue-600",
+                    accent: "text-sky-600",
+                    numBg: "bg-sky-50 text-sky-500",
                     title: "Cek Paspor & Visa",
                     tips: [
-                      "Pastikan paspor masih berlaku minimal 6 bulan",
-                      "Foto paspor pada halaman biodata harus jelas",
+                      "Paspor masih berlaku minimal 6 bulan",
+                      "Foto halaman biodata harus jelas & terbaca",
                       "Simpan salinan dokumen di ponsel & email",
                     ],
                   },
                   {
                     emoji: "🧳",
-                    color: "bg-amber-50 border-amber-100",
-                    iconColor: "bg-amber-100",
+                    gradient: "from-amber-400 to-orange-500",
+                    accent: "text-amber-600",
+                    numBg: "bg-amber-50 text-amber-500",
                     title: "Atur Bagasi dengan Bijak",
                     tips: [
-                      "Batas kabin umumnya 7–10 kg, cek ketentuan maskapai",
+                      "Batas kabin 7–10 kg, cek ketentuan maskapai",
                       "Gunakan tas vacuum untuk hemat ruang",
                       "Beri label nama & nomor HP di setiap koper",
                     ],
                   },
                   {
                     emoji: "✈️",
-                    color: "bg-emerald-50 border-emerald-100",
-                    iconColor: "bg-emerald-100",
+                    gradient: "from-emerald-500 to-teal-600",
+                    accent: "text-emerald-600",
+                    numBg: "bg-emerald-50 text-emerald-500",
                     title: "Tiba di Bandara Lebih Awal",
                     tips: [
                       "Datang minimal 3 jam sebelum penerbangan internasional",
-                      "Check-in online 24 jam sebelum berangkat untuk memilih kursi",
-                      "Simpan boarding pass di aplikasi ponsel & cetak cadangan",
+                      "Check-in online 24 jam sebelum berangkat",
+                      "Simpan boarding pass di ponsel & cetak cadangan",
                     ],
                   },
                   {
                     emoji: "💊",
-                    color: "bg-rose-50 border-rose-100",
-                    iconColor: "bg-rose-100",
+                    gradient: "from-rose-500 to-pink-600",
+                    accent: "text-rose-600",
+                    numBg: "bg-rose-50 text-rose-500",
                     title: "Jaga Kesehatan Selama Perjalanan",
                     tips: [
-                      "Bawa obat-obatan pribadi dalam tas kabin",
+                      "Bawa obat pribadi dalam tas kabin",
                       "Minum air putih cukup, hindari kafein berlebihan",
                       "Gerakkan kaki setiap 1–2 jam untuk cegah DVT",
                     ],
                   },
                   {
                     emoji: "📱",
-                    color: "bg-violet-50 border-violet-100",
-                    iconColor: "bg-violet-100",
+                    gradient: "from-violet-500 to-purple-600",
+                    accent: "text-violet-600",
+                    numBg: "bg-violet-50 text-violet-500",
                     title: "Persiapan Komunikasi",
                     tips: [
                       "Aktifkan roaming atau beli SIM card lokal di tujuan",
@@ -1139,46 +1151,68 @@ export default function PublicTicketPrices() {
                   },
                   {
                     emoji: "💰",
-                    color: "bg-teal-50 border-teal-100",
-                    iconColor: "bg-teal-100",
+                    gradient: "from-teal-500 to-cyan-600",
+                    accent: "text-teal-600",
+                    numBg: "bg-teal-50 text-teal-500",
                     title: "Kelola Keuangan Perjalanan",
                     tips: [
-                      "Bawa kartu debit/kredit berlogo Visa/Mastercard untuk kemudahan transaksi",
-                      "Tukar uang di money changer resmi, hindari di bandara karena kurs kurang bagus",
-                      "Catat semua pengeluaran agar budget tidak jebol di tengah perjalanan",
+                      "Bawa kartu Visa/Mastercard untuk kemudahan transaksi",
+                      "Tukar uang di money changer resmi, bukan di bandara",
+                      "Catat pengeluaran agar budget tetap aman",
                     ],
                   },
                 ].map((item, i) => (
-                  <div key={i} className={`rounded-2xl border p-5 ${item.color}`}>
-                    <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl text-xl mb-3 ${item.iconColor}`}>
-                      {item.emoji}
+                  <div
+                    key={i}
+                    className="group relative bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+                  >
+                    {/* Gradient header bar */}
+                    <div className={`bg-gradient-to-r ${item.gradient} px-5 pt-5 pb-8`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl shadow-inner">
+                          {item.emoji}
+                        </div>
+                        <p className="text-[14px] font-black text-white leading-tight">{item.title}</p>
+                      </div>
                     </div>
-                    <p className="text-sm font-bold text-slate-800 mb-2">{item.title}</p>
-                    <ul className="space-y-1.5">
-                      {item.tips.map((tip, j) => (
-                        <li key={j} className="flex items-start gap-1.5">
-                          <span className="text-[10px] text-slate-400 mt-0.5 shrink-0">•</span>
-                          <span className="text-[11px] text-slate-500 leading-relaxed">{tip}</span>
-                        </li>
-                      ))}
-                    </ul>
+
+                    {/* Curved overlap trick */}
+                    <div className="relative -mt-4 bg-white rounded-t-2xl px-5 pt-5 pb-5">
+                      <ol className="space-y-3">
+                        {item.tips.map((tip, j) => (
+                          <li key={j} className="flex items-start gap-3">
+                            <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center ${item.numBg}`}>
+                              {j + 1}
+                            </span>
+                            <span className="text-[12px] text-slate-600 leading-relaxed">{tip}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
                   </div>
                 ))}
               </div>
 
               {waNumber && (
-                <div className="mt-6 rounded-2xl bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-center text-white">
-                  <p className="text-base font-black mb-1">Masih Bingung? Konsultasi Gratis!</p>
-                  <p className="text-sm text-green-100 mb-4">Tim kami siap bantu kamu dari pesan tiket sampai perjalanan selesai.</p>
-                  <a
-                    href={whatsappUrl(waNumber)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 bg-white text-green-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:bg-green-50 transition-colors"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    Chat via WhatsApp
-                  </a>
+                <div className="mt-8 relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0a2472] via-[#123499] to-[#1a44d4] p-8 text-center text-white shadow-xl">
+                  <div className="absolute inset-0 opacity-10">
+                    <div className="absolute -top-6 -right-6 w-40 h-40 rounded-full bg-white/30" />
+                    <div className="absolute -bottom-8 -left-8 w-52 h-52 rounded-full bg-white/20" />
+                  </div>
+                  <div className="relative">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/10 text-2xl mb-3">💬</div>
+                    <p className="text-lg font-black mb-1">Masih Bingung? Konsultasi Gratis!</p>
+                    <p className="text-sm text-blue-200 mb-5">Tim kami siap bantu dari pesan tiket sampai perjalanan selesai.</p>
+                    <a
+                      href={whatsappUrl(waNumber)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 bg-white text-[#0a2472] font-black text-sm px-7 py-3 rounded-xl hover:bg-blue-50 transition-colors shadow-lg"
+                    >
+                      <MessageCircle className="w-4 h-4 text-green-600" />
+                      Chat via WhatsApp
+                    </a>
+                  </div>
                 </div>
               )}
             </div>
