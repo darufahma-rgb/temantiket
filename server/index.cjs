@@ -325,6 +325,54 @@ app.post('/api/remove-member', async (req, res) => {
 });
 
 /* ──────────────────────────────────────────────
+   POST /api/award-completion-points
+   Owner menandai order selesai → agen mendapat 20 poin di agent_points.
+   Menggunakan service role untuk upsert karena RLS hanya izinkan trigger.
+────────────────────────────────────────────── */
+app.post('/api/award-completion-points', async (req, res) => {
+  try {
+    if (!SERVICE_ROLE_KEY) {
+      return err(res, 503,
+        'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi. Tambahkan di Secrets Replit lalu restart server.'
+      );
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return err(res, 401, 'Missing Authorization header');
+
+    const caller = await getCallerUser(authHeader).catch(() => null);
+    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
+
+    const admin = makeAdminClient();
+
+    const { data: callerMembership, error: memberErr } = await withTimeout(
+      admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle(),
+      10000, 'DB timeout — cek koneksi Supabase'
+    );
+    if (memberErr || !callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
+    if (callerMembership.role !== 'owner') return err(res, 403, 'Hanya owner yang bisa award poin');
+
+    const { orderId, agentId } = req.body || {};
+    if (!orderId || !agentId) return err(res, 400, 'orderId dan agentId diperlukan');
+
+    const agencyId = callerMembership.agency_id;
+
+    const { error: upsertErr } = await withTimeout(
+      admin.from('agent_points').upsert(
+        { agency_id: agencyId, agent_id: agentId, order_id: orderId, points: 20, reason: 'order_completed' },
+        { onConflict: 'order_id' }
+      ),
+      10000, 'DB timeout saat upsert poin'
+    );
+    if (upsertErr) return err(res, 500, upsertErr.message);
+
+    return ok(res, { ok: true, points: 20 });
+  } catch (e) {
+    return err(res, 500, e.message);
+  }
+});
+
+/* ──────────────────────────────────────────────
    POST /api/export/invoice
    PDF invoice generation (ported from Vercel serverless function)
 ────────────────────────────────────────────── */

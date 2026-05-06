@@ -547,12 +547,47 @@ export default function AgentProfileOwnerView() {
           description: `Komisi order ${orderLabel} #${orderId8}${clientName ? ` — ${clientName}` : order.title ? ` — ${order.title}` : ""}`,
           createdBy: ownerId,
         });
-        toast.success(`Order selesai! Komisi dicatat: ${fmtIDR(feeAmount)}`, {
-          description: `Wallet agen diperbarui.`,
-          duration: 4500,
+      }
+
+      // Award 20 poin ke agen via server endpoint (perlu service role key)
+      try {
+        const { data: sess } = await supabase!.auth.getSession();
+        const token = sess?.session?.access_token;
+        const pointsRes = await fetch("/api/award-completion-points", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ orderId, agentId }),
         });
-      } else {
-        toast.success("Order ditandai Selesai.");
+        if (pointsRes.ok) {
+          // Refresh points display
+          const fresh = await listAgentPoints();
+          setAllPoints(fresh);
+          toast.success(feeAmount > 0 ? `Order selesai! Komisi dicatat: ${fmtIDR(feeAmount)}` : "Order ditandai Selesai.", {
+            description: `+20 poin diberikan ke agen 🎉`,
+            duration: 5000,
+          });
+        } else {
+          if (feeAmount > 0) {
+            toast.success(`Order selesai! Komisi dicatat: ${fmtIDR(feeAmount)}`, {
+              description: "Wallet agen diperbarui.",
+              duration: 4500,
+            });
+          } else {
+            toast.success("Order ditandai Selesai.");
+          }
+        }
+      } catch {
+        if (feeAmount > 0) {
+          toast.success(`Order selesai! Komisi dicatat: ${fmtIDR(feeAmount)}`, {
+            description: "Wallet agen diperbarui.",
+            duration: 4500,
+          });
+        } else {
+          toast.success("Order ditandai Selesai.");
+        }
       }
 
       void pullWalletTxs(agentId).then(setWalletTxs);
