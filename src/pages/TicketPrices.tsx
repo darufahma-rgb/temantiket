@@ -303,39 +303,60 @@ export function BoardingPassCard({
           )}
         </div>
 
-        {/* Date + Time row */}
-        <div className="flex items-center gap-3 mt-2 flex-wrap">
-          {/* Departure */}
-          <div className="flex items-center gap-1.5">
-            <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-            <span className="text-[11.5px] text-slate-700 font-semibold">
-              {item.departDate ? fmtDate(item.departDate) : "Fleksibel"}
-            </span>
-            {item.etd && (
-              <span className="text-[11px] text-slate-500 font-mono">
-                · {item.etd}
-              </span>
-            )}
-          </div>
-          {/* Return date (if RT/ML) */}
-          {isRTorML && returnDate && (
-            <>
-              <span className="text-slate-300 text-[10px]">↩</span>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-3 h-3 text-violet-400 shrink-0" />
-                <span className="text-[11.5px] text-violet-700 font-semibold">
-                  {fmtDate(returnDate)}
-                </span>
-                {returnEtd && (
-                  <span className="text-[11px] text-violet-400 font-mono">
-                    · {returnEtd}
+        {/* Date + Time — two-column layout for RT/ML, single col for OW */}
+        <div className="mt-2">
+          {isRTorML && returnDate ? (
+            <div className="flex items-stretch gap-0">
+              {/* Berangkat */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">Berangkat</p>
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span className="text-[11.5px] text-slate-700 font-semibold leading-none">
+                    {item.departDate ? fmtDate(item.departDate) : "Fleksibel"}
                   </span>
+                </div>
+                {item.etd && (
+                  <span className="text-[10.5px] text-slate-400 font-mono ml-4">{item.etd}</span>
                 )}
               </div>
-            </>
+              {/* Divider */}
+              <div className="w-px bg-slate-100 mx-3 self-stretch" />
+              {/* Pulang */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] text-violet-400 uppercase tracking-wide font-semibold mb-0.5">Pulang</p>
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-violet-400 shrink-0" />
+                  <span className="text-[11.5px] text-violet-700 font-semibold leading-none">
+                    {fmtDate(returnDate)}
+                  </span>
+                </div>
+                {returnEtd && (
+                  <span className="text-[10.5px] text-violet-400 font-mono ml-4">{returnEtd}</span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                <span className="text-[11.5px] text-slate-700 font-semibold">
+                  {item.departDate ? fmtDate(item.departDate) : "Fleksibel"}
+                </span>
+                {item.etd && (
+                  <span className="text-[11px] text-slate-500 font-mono">· {item.etd}</span>
+                )}
+              </div>
+              {item.validUntil && (
+                <span className={cn("ml-auto text-[9.5px]", expired ? "text-red-500 font-semibold" : "text-slate-400")}>
+                  {expired ? "⛔ Expired" : `s/d ${fmtDate(item.validUntil)}`}
+                </span>
+              )}
+            </div>
           )}
-          {item.validUntil && (
-            <span className={cn("ml-auto text-[9.5px]", expired ? "text-red-500 font-semibold" : "text-slate-400")}>
+          {/* Valid until — below the two-col date block for RT/ML */}
+          {isRTorML && item.validUntil && (
+            <span className={cn("text-[9.5px] mt-1 block", expired ? "text-red-500 font-semibold" : "text-slate-400")}>
               {expired ? "⛔ Expired" : `s/d ${fmtDate(item.validUntil)}`}
             </span>
           )}
