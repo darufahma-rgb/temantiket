@@ -24,6 +24,7 @@ import {
   Mail, Calendar, AlertCircle,
   Crown, BarChart3, MessageCircle, ChevronRight, Loader2,
   Star, Camera, RefreshCw, Pencil, X, Save, Phone,
+  Wallet, ArrowDownToLine, Coins,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -44,6 +45,9 @@ import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { uploadAvatar, savePhotoUrl } from "@/lib/avatarStorage";
 import { supabase } from "@/lib/supabase";
+import {
+  pullWalletTxs, walletBalance, type WalletTransaction,
+} from "@/lib/agentWallet";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -269,13 +273,14 @@ function MissionRow({
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "misi" | "orders" | "informasi";
+type Tab = "overview" | "misi" | "orders" | "komisi" | "informasi";
 
 const TABS: { key: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: "overview", label: "Ringkasan", icon: BarChart3 },
-  { key: "misi", label: "Misi", icon: Target },
-  { key: "orders", label: "Order", icon: ShoppingBag },
-  { key: "informasi", label: "Informasi", icon: Users },
+  { key: "overview",  label: "Ringkasan", icon: BarChart3  },
+  { key: "misi",      label: "Misi",      icon: Target     },
+  { key: "orders",    label: "Order",     icon: ShoppingBag },
+  { key: "komisi",    label: "Komisi",    icon: Wallet     },
+  { key: "informasi", label: "Informasi", icon: Users      },
 ];
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -305,6 +310,7 @@ export default function AgentProfileOwnerView() {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [walletTxs, setWalletTxs] = useState<WalletTransaction[]>([]);
   const isOwner = user?.role === "owner";
   const canEdit = isOwner || user?.id === agentId;
 
@@ -355,6 +361,9 @@ export default function AgentProfileOwnerView() {
           setEditName(found.displayName);
           setEditEmail(found.email);
         }
+
+        // Pull agent wallet transactions for commission audit panel
+        void pullWalletTxs(agentId).then(setWalletTxs);
       } catch (err) {
         console.warn("[AgentProfileOwnerView] load error:", err);
       } finally {
@@ -422,6 +431,27 @@ export default function AgentProfileOwnerView() {
   const pendingCount = useMemo(
     () => submissions.filter((s) => s.status === "pending").length,
     [submissions],
+  );
+
+  // ── Commission audit derived values ───────────────────────────────────────
+  const orderBonusTxs = useMemo(
+    () => [...walletTxs]
+      .filter((t) => t.type === "order_bonus")
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [walletTxs],
+  );
+  const walletBal = useMemo(() => walletBalance(walletTxs), [walletTxs]);
+  const totalCommissionCredited = useMemo(
+    () => orderBonusTxs.reduce((s, t) => s + t.amountIDR, 0),
+    [orderBonusTxs],
+  );
+  const payoutTxs = useMemo(
+    () => walletTxs.filter((t) => t.type === "payout"),
+    [walletTxs],
+  );
+  const totalPaidOut = useMemo(
+    () => payoutTxs.reduce((s, t) => s + Math.abs(t.amountIDR), 0),
+    [payoutTxs],
   );
 
   const handlePhotoFile = async (file: File) => {
@@ -981,6 +1011,154 @@ export default function AgentProfileOwnerView() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── KOMISI ── */}
+          {tab === "komisi" && (
+            <div className="space-y-4">
+
+              {/* Summary strip */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Total Dikreditkan</span>
+                    <Coins className="h-3.5 w-3.5 text-emerald-500" />
+                  </div>
+                  <p className="text-base font-extrabold font-mono text-emerald-800">{fmtIDR(totalCommissionCredited)}</p>
+                  <p className="text-[10px] text-emerald-600 mt-0.5">{orderBonusTxs.length} order selesai</p>
+                </div>
+                <div className="rounded-2xl border border-orange-100 bg-orange-50 p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-orange-700">Total Dicairkan</span>
+                    <ArrowDownToLine className="h-3.5 w-3.5 text-orange-500" />
+                  </div>
+                  <p className="text-base font-extrabold font-mono text-orange-800">{fmtIDR(totalPaidOut)}</p>
+                  <p className="text-[10px] text-orange-600 mt-0.5">{payoutTxs.length} pencairan</p>
+                </div>
+                <div className={`rounded-2xl border p-3 col-span-2 md:col-span-2 ${walletBal.netIDR >= 0 ? "border-sky-100 bg-sky-50" : "border-red-100 bg-red-50"}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-[10px] font-semibold uppercase tracking-wide ${walletBal.netIDR >= 0 ? "text-sky-700" : "text-red-700"}`}>Saldo Wallet Saat Ini</span>
+                    <Wallet className={`h-3.5 w-3.5 ${walletBal.netIDR >= 0 ? "text-sky-500" : "text-red-500"}`} />
+                  </div>
+                  <p className={`text-xl font-extrabold font-mono ${walletBal.netIDR >= 0 ? "text-sky-800" : "text-red-700"}`}>
+                    {fmtIDR(walletBal.netIDR)}
+                  </p>
+                  <p className={`text-[10px] mt-0.5 ${walletBal.netIDR >= 0 ? "text-sky-600" : "text-red-600"}`}>
+                    Kredit {fmtIDR(walletBal.totalCreditIDR)} − Cair {fmtIDR(walletBal.totalDebitIDR)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Per-order commission audit list */}
+              <div className="rounded-2xl border bg-white overflow-hidden">
+                <div className="px-4 py-3 border-b flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-lg bg-emerald-100 flex items-center justify-center">
+                      <Coins className="h-3.5 w-3.5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">Audit Komisi Per Order</p>
+                      <p className="text-[10px] text-muted-foreground">Setiap order yang selesai & menghasilkan komisi</p>
+                    </div>
+                  </div>
+                  {orderBonusTxs.length > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                      {orderBonusTxs.length} entri
+                    </span>
+                  )}
+                </div>
+
+                {orderBonusTxs.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                    <div className="h-14 w-14 rounded-2xl bg-muted/30 flex items-center justify-center">
+                      <Coins className="h-7 w-7 text-muted-foreground/40" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">Belum ada komisi tercatat</p>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
+                        Komisi akan otomatis muncul saat owner menandai order agen ini sebagai <strong>Completed</strong>.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {orderBonusTxs.map((tx) => {
+                      // Extract order ID hint from description if present (format: "… #abcd1234 …")
+                      const idMatch = tx.description.match(/#([a-f0-9]{8})/i);
+                      const shortId = idMatch?.[1] ?? null;
+                      return (
+                        <div key={tx.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
+                          <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-semibold truncate">{tx.description}</p>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="text-[10px] text-muted-foreground">
+                                {fmtDateTime(tx.createdAt)}
+                              </span>
+                              {shortId && (
+                                <span className="text-[9px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                                  #{shortId}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-[13px] font-extrabold font-mono text-emerald-700">
+                              +{fmtIDR(tx.amountIDR)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Payout history (secondary) */}
+              {payoutTxs.length > 0 && (
+                <div className="rounded-2xl border bg-white overflow-hidden">
+                  <div className="px-4 py-3 border-b flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-lg bg-orange-100 flex items-center justify-center">
+                      <ArrowDownToLine className="h-3.5 w-3.5 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">Riwayat Pencairan</p>
+                      <p className="text-[10px] text-muted-foreground">Komisi yang sudah dicairkan ke agen</p>
+                    </div>
+                  </div>
+                  <div className="divide-y">
+                    {payoutTxs
+                      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+                      .map((tx) => (
+                        <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
+                          <div className="h-8 w-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+                            <ArrowDownToLine className="h-4 w-4 text-orange-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-semibold truncate">{tx.description}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{fmtDateTime(tx.createdAt)}</p>
+                          </div>
+                          <p className="text-[13px] font-extrabold font-mono text-orange-600 shrink-0">
+                            −{fmtIDR(Math.abs(tx.amountIDR))}
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Navigate to Agent Center wallet button */}
+              <button
+                onClick={() => navigate("/agent-center", { state: { focusAgent: agentId, tab: "direktori" } })}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 transition-colors py-3 text-[12px] font-semibold text-sky-700"
+              >
+                <Wallet className="h-3.5 w-3.5" />
+                Kelola Wallet di Agent Center
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
 
