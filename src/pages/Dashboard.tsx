@@ -1154,7 +1154,7 @@ export default function Dashboard() {
 
         {/* ── Primary stat cards (4 main metrics) ── */}
         <motion.div
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4"
           variants={stagger}
           initial="hidden"
           animate="visible"
@@ -1168,19 +1168,18 @@ export default function Dashboard() {
             <motion.button
               key={stat.label}
               onClick={stat.onClick}
-              className="relative overflow-hidden flex items-center gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 hover:shadow-lg hover:border-[hsl(var(--primary))]/30 transition-all duration-200 text-left active:scale-[0.98] group"
+              className="relative overflow-hidden flex flex-col gap-3 rounded-2xl border border-blue-100 bg-white p-4 md:p-5 hover:shadow-md hover:border-blue-300 hover:-translate-y-[1px] transition-all duration-200 text-left active:scale-[0.98] group"
               variants={fadeUp}
             >
-              <div className="absolute -bottom-4 -right-4 opacity-[0.04] group-hover:opacity-[0.07] transition-opacity duration-300">
-                <stat.icon strokeWidth={0.8} className="h-24 w-24 text-[hsl(var(--primary))]" />
+              <div className="absolute -bottom-3 -right-3 opacity-[0.05] group-hover:opacity-[0.09] transition-opacity duration-300 pointer-events-none">
+                <stat.icon strokeWidth={0.7} className="h-20 w-20 text-blue-700" />
               </div>
-              <stat.icon
-                strokeWidth={1.5}
-                className="h-7 w-7 shrink-0 text-[hsl(var(--primary))] transition-all duration-200 group-hover:text-sky-400 group-hover:stroke-[1.8]"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-[32px] font-black text-[hsl(var(--foreground))] leading-none tracking-tight tabular-nums">{stat.value}</p>
-                <p className="text-[12px] text-[hsl(var(--muted-foreground))] mt-1.5 font-medium leading-tight">{stat.label}</p>
+              <div className="h-10 w-10 rounded-xl border border-blue-200 bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-blue-100 group-hover:border-blue-300 transition-colors">
+                <stat.icon strokeWidth={1.6} className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-[30px] font-black text-slate-900 leading-none tracking-tight tabular-nums">{stat.value}</p>
+                <p className="text-[11px] text-slate-500 mt-1 font-medium leading-tight">{stat.label}</p>
               </div>
             </motion.button>
           ))}
@@ -1188,31 +1187,31 @@ export default function Dashboard() {
 
         {/* ── Secondary package stats (desktop only — too dense on mobile) ── */}
         <motion.div
-          className="hidden md:grid grid-cols-4 gap-4 mb-6"
+          className="hidden md:grid grid-cols-4 gap-3 mb-5"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
         >
           {[
-            { icon: Star,        label: t.dash_total_packages,     value: packages.length,                                       borderColor: "#F59E0B", onClick: () => navigate("/packages") },
-            { icon: AlertCircle, label: t.dash_need_action,        value: pendingPackages.length,                                borderColor: pendingPackages.length > 0 ? "#EF4444" : "#9CA3AF", onClick: () => navigate("/packages") },
-            { icon: Clock,       label: t.dash_paid_packages,      value: packages.filter(p => p.status === "Paid").length,      borderColor: "#10B981", onClick: () => navigate("/packages") },
-            { icon: CheckCircle, label: t.dash_completed_packages, value: packages.filter(p => p.status === "Completed").length, borderColor: "#8B5CF6", onClick: () => navigate("/packages") },
+            { icon: Star,        label: t.dash_total_packages,     value: packages.length,                                       dot: "bg-blue-400" },
+            { icon: AlertCircle, label: t.dash_need_action,        value: pendingPackages.length,                                dot: pendingPackages.length > 0 ? "bg-red-400" : "bg-slate-300" },
+            { icon: Clock,       label: t.dash_paid_packages,      value: packages.filter(p => p.status === "Paid").length,      dot: "bg-emerald-400" },
+            { icon: CheckCircle, label: t.dash_completed_packages, value: packages.filter(p => p.status === "Completed").length, dot: "bg-violet-400" },
           ].map((item) => (
             <button
               key={item.label}
-              onClick={item.onClick}
-              className="group flex items-center gap-3 rounded-2xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] border-l-[3px] p-3.5 hover:shadow-md hover:bg-[hsl(var(--secondary))] transition-all text-left active:scale-[0.98]"
-              style={{ borderLeftColor: item.borderColor }}
+              onClick={() => navigate("/packages")}
+              className="group relative flex items-center gap-3 rounded-2xl bg-white border border-blue-100 p-3.5 hover:border-blue-300 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200 text-left active:scale-[0.98] overflow-hidden"
             >
-              <item.icon
-                strokeWidth={1.5}
-                className="h-5 w-5 shrink-0 text-[hsl(var(--primary))] transition-all duration-200 group-hover:text-sky-400 group-hover:stroke-[1.8]"
-              />
-              <div className="min-w-0">
-                <p className="text-[20px] font-bold text-[hsl(var(--foreground))] leading-none tabular-nums">{item.value}</p>
-                <p className="text-[10.5px] text-[hsl(var(--muted-foreground))] mt-0.5 leading-tight truncate">{item.label}</p>
+              <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl bg-blue-100 group-hover:bg-blue-300 transition-colors" />
+              <div className="h-9 w-9 rounded-xl border border-blue-200 bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
+                <item.icon strokeWidth={1.6} className="h-4.5 w-4.5 text-blue-600" />
               </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[22px] font-black text-slate-900 leading-none tabular-nums">{item.value}</p>
+                <p className="text-[10.5px] text-slate-500 mt-0.5 font-medium leading-tight truncate">{item.label}</p>
+              </div>
+              <div className={cn("h-2 w-2 rounded-full shrink-0", item.dot)} />
             </button>
           ))}
         </motion.div>
