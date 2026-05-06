@@ -30,7 +30,7 @@ const USE_OR     = !!OPENROUTER_API_KEY; // true = pakai OpenRouter
 
 // Model mapping
 const MODEL_OCR  = USE_OR ? 'google/gemini-2.0-flash-001'  : 'gpt-4.1-nano';    // vision (gpt-4.1-nano supports images)
-const MODEL_CHAT = USE_OR ? 'openai/gpt-4.1'               : 'gpt-5-mini';       // AI chat / caption
+const MODEL_CHAT = USE_OR ? 'openai/gpt-4.1'               : 'gpt-4o-mini';      // AI chat / caption
 const MODEL_TEXT = USE_OR ? 'google/gemini-2.0-flash-001'  : 'gpt-4o-mini';      // teks ringan / rapikan
 
 // Header tambahan yang direkomendasikan OpenRouter
