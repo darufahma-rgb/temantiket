@@ -1,0 +1,53 @@
+You are redesigning the BoardingPassCard and TicketDetailModal to match Option B style from the reference image.
+
+### Tujuan Utama:
+- Buat tampilan kartu harga tiket (BoardingPassCard) dan modal detail menjadi lebih bersih, modern, dan mudah dibaca.
+- Ikuti gaya **Option B** (vertical flow dengan dotted line, clean spacing, dan struktur yang jelas).
+
+### Yang Harus Dilakukan:
+
+1. **Redesign BoardingPassCard**
+   - Gunakan gaya seperti Option B:
+     - Header putih bersih dengan informasi maskapai, kode penerbangan, dan tipe perjalanan.
+     - Gunakan **vertical dotted timeline** untuk menampilkan rute (bukan horizontal).
+     - Tampilkan kota + nama bandara di setiap titik.
+     - Gunakan ikon pesawat di tengah garis.
+     - Untuk round-trip: tampilkan dua timeline (Berangkat & Pulang) yang dipisah dengan garis putus-putus.
+     - Untuk multi-leg: tampilkan setiap leg dengan jelas.
+   - Tampilkan tanggal keberangkatan dan jumlah penumpang dalam pill/chip (seperti di Option B).
+   - Harga Jual ditampilkan jelas. Owner juga melihat informasi Harga Modal (sesuai role-based visibility yang sudah ada).
+
+2. **Redesign TicketDetailModal**
+   - Sesuaikan desain agar konsisten dengan BoardingPassCard yang baru (vertical timeline style).
+   - Tampilkan informasi secara detail dan terstruktur:
+     - Informasi penerbangan lengkap
+     - Timeline rute yang jelas
+     - Tanggal keberangkatan (dan tanggal kepulangan jika ada)
+     - Harga (Harga Jual untuk semua user, Harga Modal hanya untuk Owner)
+     - Catatan / Keterangan
+   - Tambahkan tombol **"Edit Trip"** dan **"Tambah Trip Baru"** di dalam modal (hanya untuk Owner).
+   - Saat Owner klik "Edit Trip", buka form edit.
+   - Saat Owner klik "Tambah Trip Baru", buka form tambah dengan data rute yang sama (opsional).
+
+3. **Field Tanggal Kepulangan**
+   - Tambahkan field **Return Date** (tanggal kepulangan) di form Edit dan Tambah.
+   - Field ini bersifat **opsional** (bisa diisi atau dikosongkan).
+   - Jika diisi, tampilkan di kartu dan modal detail.
+
+4. **Role-based Visibility**
+   - Pertahankan aturan yang sudah ada:
+     - Owner: bisa melihat Harga Modal + Harga Jual, dan bisa Edit/Tambah.
+     - Non-owner: hanya melihat Harga Jual + catatan margin.
+
+5. **Teknis & UX**
+   - Pastikan desain responsif (bekerja baik di mobile dan desktop).
+   - Modal detail harus rapi dan informatif.
+   - Setelah edit atau tambah data, list harga tiket harus langsung update.
+
+### Hasil yang Diharapkan:
+- BoardingPassCard dan TicketDetailModal memiliki tampilan yang konsisten dan mengikuti gaya Option B.
+- Itinerary terlihat jelas dan mudah dipahami.
+- Owner memiliki akses penuh untuk mengelola trip dari dalam modal detail.
+- User non-owner tetap hanya melihat informasi yang diizinkan.
+
+Mulai dengan mendesain ulang BoardingPassCard terlebih dahulu, lalu sesuaikan TicketDetailModal.

@@ -1,0 +1,51 @@
+You are adding a Search and Filter feature to the Harga Tiket (Ticket Prices) page.
+
+### Permintaan:
+Tambahkan **Search Bar + Filter** di halaman Harga Tiket yang bisa digunakan oleh **semua user** (Owner, Agen, Mitra, dll).
+
+### Fitur yang Diinginkan:
+
+1. **Search Bar**
+   - Bisa mencari berdasarkan:
+     - Nama Maskapai
+     - Kode Penerbangan / IATA
+     - Rute (kota asal atau kota tujuan)
+   - Pencarian bersifat real-time (langsung filter saat mengetik).
+
+2. **Filter Options**
+   - Filter berdasarkan **Tipe Perjalanan**:
+     - Semua
+     - Direct
+     - Transit
+     - Pulang-Pergi (Round Trip)
+   - Filter berdasarkan **Tanggal Keberangkatan** (opsional):
+     - Bisa pakai date picker atau pilihan "Hari ini", "Minggu ini", "Bulan ini", atau range tanggal.
+   - Filter berdasarkan **Status Publish** (hanya untuk Owner):
+     - Semua
+     - Published
+     - Draft
+
+3. **UI/UX**
+   - Letakkan Search Bar di bagian atas halaman, di atas daftar tiket.
+   - Filter bisa ditampilkan dalam bentuk dropdown atau chip yang bisa diklik.
+   - Tambahkan tombol **"Reset Filter"** atau **"Clear"** untuk mengembalikan ke tampilan awal.
+   - Tampilan harus tetap rapi di mobile dan desktop.
+
+4. **Teknis**
+   - Filtering dilakukan di frontend (client-side) berdasarkan data yang sudah di-fetch.
+   - Pastikan filtering tetap menghormati **role-based visibility**:
+     - Non-owner tetap hanya melihat Harga Jual (tidak melihat Harga Modal).
+     - Owner tetap bisa melihat Harga Modal + Harga Jual.
+   - Setelah filter diterapkan, jumlah hasil pencarian sebaiknya ditampilkan (contoh: "Menampilkan 12 dari 45 tiket").
+
+5. **Performa**
+   - Karena data tidak terlalu besar, filtering di client-side sudah cukup.
+   - Jika data sudah sangat banyak di masa depan, bisa dipertimbangkan untuk filtering di server.
+
+### Hasil yang Diharapkan:
+- User bisa dengan mudah mencari dan memfilter daftar harga tiket.
+- Search dan Filter bisa digunakan oleh semua role user.
+- Tampilan tetap bersih dan user-friendly.
+- Tidak mengganggu fungsi Add, Edit, Delete, dan Detail yang sudah ada.
+
+Mulai dengan membuat Search Bar + Filter dasar, lalu hubungkan dengan data tiket yang sudah ada.

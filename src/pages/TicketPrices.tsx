@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Upload, Sparkles, Plus, Trash2, Edit3, Eye, EyeOff, Loader2,
   MessageCircle, AlertTriangle, Check, X, ChevronDown, ChevronUp,
   Tag, RefreshCw, Settings2, ImagePlus, Plane, Share2, Copy,
   Clock, MapPin, ArrowRight, ExternalLink, Instagram, Link2,
-  ArrowLeftRight, RotateCcw,
+  ArrowLeftRight, RotateCcw, Search, Calendar, SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1453,6 +1453,149 @@ function SharePanel({ publicUrl }: { publicUrl: string }) {
   );
 }
 
+// ── Search & Filter Bar ──────────────────────────────────────────────────────
+type TripTypeFilter = "all" | "direct" | "transit" | "pp";
+type DateFilter = "all" | "today" | "week" | "month";
+type PublishFilter = "all" | "published" | "draft";
+
+function SearchFilterBar({
+  searchQuery, onSearchChange,
+  filterTripType, onTripTypeChange,
+  filterDateRange, onDateRangeChange,
+  filterPublish, onPublishChange,
+  isOwner, totalCount, filteredCount, onReset,
+}: {
+  searchQuery: string; onSearchChange: (v: string) => void;
+  filterTripType: TripTypeFilter; onTripTypeChange: (v: TripTypeFilter) => void;
+  filterDateRange: DateFilter; onDateRangeChange: (v: DateFilter) => void;
+  filterPublish: PublishFilter; onPublishChange: (v: PublishFilter) => void;
+  isOwner: boolean; totalCount: number; filteredCount: number; onReset: () => void;
+}) {
+  const isFiltered = searchQuery.trim() !== "" || filterTripType !== "all" || filterDateRange !== "all" || filterPublish !== "all";
+
+  return (
+    <div className="space-y-2">
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Cari maskapai, kode, atau rute…"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full h-10 pl-9 pr-9 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => onSearchChange("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 flex items-center justify-center rounded-full bg-slate-200 hover:bg-slate-300 transition-colors"
+          >
+            <X className="h-3 w-3 text-slate-500" />
+          </button>
+        )}
+      </div>
+
+      {/* Filter chips */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <SlidersHorizontal className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+
+        {/* Trip type chips */}
+        {(["all", "direct", "transit", "pp"] as TripTypeFilter[]).map((t) => {
+          const labels: Record<TripTypeFilter, string> = { all: "Semua", direct: "Direct", transit: "Transit", pp: "Pulang-Pergi" };
+          const active = filterTripType === t;
+          return (
+            <button
+              key={t}
+              onClick={() => onTripTypeChange(t)}
+              className={cn(
+                "inline-flex items-center h-7 px-2.5 rounded-full text-[11px] font-semibold border transition-all",
+                active
+                  ? "bg-sky-600 text-white border-sky-600 shadow-sm"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-sky-300 hover:text-sky-700 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300",
+              )}
+            >
+              {labels[t]}
+            </button>
+          );
+        })}
+
+        <div className="h-4 w-px bg-slate-200 mx-0.5" />
+
+        {/* Date filter chips — click to toggle */}
+        {(["today", "week", "month"] as DateFilter[]).map((d) => {
+          const labels: Record<string, string> = { today: "Hari Ini", week: "Minggu Ini", month: "Bulan Ini" };
+          const active = filterDateRange === d;
+          return (
+            <button
+              key={d}
+              onClick={() => onDateRangeChange(active ? "all" : d)}
+              className={cn(
+                "inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[11px] font-semibold border transition-all",
+                active
+                  ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-700 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300",
+              )}
+            >
+              <Calendar className="h-3 w-3" />
+              {labels[d]}
+            </button>
+          );
+        })}
+
+        {/* Publish filter — owner only */}
+        {isOwner && (
+          <>
+            <div className="h-4 w-px bg-slate-200 mx-0.5" />
+            {(["published", "draft"] as PublishFilter[]).map((p) => {
+              const labels: Record<string, string> = { published: "Published", draft: "Draft" };
+              const active = filterPublish === p;
+              return (
+                <button
+                  key={p}
+                  onClick={() => onPublishChange(active ? "all" : p)}
+                  className={cn(
+                    "inline-flex items-center h-7 px-2.5 rounded-full text-[11px] font-semibold border transition-all",
+                    active
+                      ? p === "published"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : "bg-slate-500 text-white border-slate-500 shadow-sm"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300",
+                  )}
+                >
+                  {labels[p]}
+                </button>
+              );
+            })}
+          </>
+        )}
+
+        {/* Reset */}
+        {isFiltered && (
+          <button
+            onClick={onReset}
+            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[11px] font-semibold text-red-500 border border-red-200 hover:bg-red-50 transition-colors ml-auto"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Reset
+          </button>
+        )}
+      </div>
+
+      {/* Result count */}
+      {isFiltered && (
+        <p className="text-[11px] text-slate-500">
+          Menampilkan{" "}
+          <span className="font-bold text-slate-700">{filteredCount}</span> dari{" "}
+          <span className="font-bold">{totalCount}</span> tiket
+          {filteredCount === 0 && (
+            <span className="text-slate-400"> — coba ubah filter atau kata kunci</span>
+          )}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function TicketPrices() {
   const { user } = useAuthStore();
@@ -1527,6 +1670,19 @@ export default function TicketPrices() {
   }
 
   const waNumber = loadIghAdminSettings().adminWhatsapp ?? "";
+
+  // ── Search & Filter state ───────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterTripType, setFilterTripType] = useState<TripTypeFilter>("all");
+  const [filterDateRange, setFilterDateRange] = useState<DateFilter>("all");
+  const [filterPublish, setFilterPublish] = useState<PublishFilter>("all");
+
+  function resetFilters() {
+    setSearchQuery("");
+    setFilterTripType("all");
+    setFilterDateRange("all");
+    setFilterPublish("all");
+  }
 
   // Public link for sharing
   const publicUrl = `${window.location.origin}/harga-tiket`;
@@ -1791,6 +1947,66 @@ export default function TicketPrices() {
 
   const visiblePrices = isAdmin ? prices : prices.filter((p) => p.isPublished);
 
+  const filteredPrices = useMemo(() => {
+    let list = visiblePrices;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((item) =>
+        item.airline.toLowerCase().includes(q) ||
+        item.airlineCode.toLowerCase().includes(q) ||
+        (item.flightNumber ?? "").toLowerCase().includes(q) ||
+        item.fromCode.toLowerCase().includes(q) ||
+        item.toCode.toLowerCase().includes(q) ||
+        (item.fromCity ?? "").toLowerCase().includes(q) ||
+        (item.toCity ?? "").toLowerCase().includes(q) ||
+        (item.transitCode ?? "").toLowerCase().includes(q) ||
+        (item.transitCity ?? "").toLowerCase().includes(q)
+      );
+    }
+
+    if (filterTripType !== "all") {
+      list = list.filter((item) => {
+        const { ml } = decodeMultiLeg(item.notes);
+        const isML = !!ml;
+        const { leg: rtLeg } = isML ? { leg: null } : decodeReturnLeg(item.notes);
+        const isRT = !!rtLeg;
+        const isDirect = !item.transitCode;
+        if (filterTripType === "pp") return isML || isRT;
+        if (filterTripType === "direct") return !isML && !isRT && isDirect;
+        if (filterTripType === "transit") return !isML && !isRT && !isDirect;
+        return true;
+      });
+    }
+
+    if (filterDateRange !== "all") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      list = list.filter((item) => {
+        if (!item.departDate) return false;
+        const d = new Date(item.departDate);
+        if (filterDateRange === "today") return d.toDateString() === today.toDateString();
+        if (filterDateRange === "week") {
+          const weekEnd = new Date(today);
+          weekEnd.setDate(today.getDate() + 7);
+          return d >= today && d <= weekEnd;
+        }
+        if (filterDateRange === "month") {
+          return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+        }
+        return true;
+      });
+    }
+
+    if (isOwner && filterPublish !== "all") {
+      list = list.filter((item) =>
+        filterPublish === "published" ? item.isPublished : !item.isPublished
+      );
+    }
+
+    return list;
+  }, [visiblePrices, searchQuery, filterTripType, filterDateRange, filterPublish, isOwner]);
+
   const publishedCount = prices.filter(p => p.isPublished).length;
   const hiddenCount    = prices.filter(p => !p.isPublished).length;
 
@@ -1980,6 +2196,18 @@ export default function TicketPrices() {
           </div>
         )}
 
+        {/* ── Search & Filter (mobile) ── */}
+        {!loading && visiblePrices.length > 0 && (
+          <SearchFilterBar
+            searchQuery={searchQuery} onSearchChange={setSearchQuery}
+            filterTripType={filterTripType} onTripTypeChange={setFilterTripType}
+            filterDateRange={filterDateRange} onDateRangeChange={setFilterDateRange}
+            filterPublish={filterPublish} onPublishChange={setFilterPublish}
+            isOwner={isOwner} totalCount={visiblePrices.length}
+            filteredCount={filteredPrices.length} onReset={resetFilters}
+          />
+        )}
+
         {/* ── Ticket list (mobile) ── */}
         {loading ? (
           <div className="space-y-3">
@@ -1993,7 +2221,7 @@ export default function TicketPrices() {
               </div>
             ))}
           </div>
-        ) : visiblePrices.length === 0 ? (
+        ) : filteredPrices.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[hsl(var(--border))] px-4 py-10 text-center flex flex-col items-center">
             <div
               className="h-14 w-14 rounded-2xl flex items-center justify-center mb-3 shadow-sm"
@@ -2001,25 +2229,42 @@ export default function TicketPrices() {
             >
               <Plane className="h-6 w-6 text-white" />
             </div>
-            <p className="text-[13px] font-bold text-[hsl(var(--foreground))]">Belum ada harga tiket</p>
-            <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-1 leading-snug max-w-[220px]">
-              Upload screenshot atau tambah manual untuk mulai.
-            </p>
-            {isAdmin && (
-              <button
-                onClick={openAdd}
-                className="mt-4 inline-flex items-center gap-1.5 h-9 px-5 rounded-xl text-[12px] font-bold text-white shadow-sm active:scale-95 transition-transform"
-                style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
-              >
-                <Plus className="h-3.5 w-3.5" /> Tambah Manual
-              </button>
+            {visiblePrices.length === 0 ? (
+              <>
+                <p className="text-[13px] font-bold text-[hsl(var(--foreground))]">Belum ada harga tiket</p>
+                <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-1 leading-snug max-w-[220px]">
+                  Upload screenshot atau tambah manual untuk mulai.
+                </p>
+                {isAdmin && (
+                  <button
+                    onClick={openAdd}
+                    className="mt-4 inline-flex items-center gap-1.5 h-9 px-5 rounded-xl text-[12px] font-bold text-white shadow-sm active:scale-95 transition-transform"
+                    style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Tambah Manual
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-[13px] font-bold text-[hsl(var(--foreground))]">Tidak ada hasil</p>
+                <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-1 leading-snug max-w-[220px]">
+                  Tidak ada tiket yang cocok. Coba ubah filter atau kata kunci.
+                </p>
+                <button
+                  onClick={resetFilters}
+                  className="mt-3 inline-flex items-center gap-1.5 h-8 px-4 rounded-xl text-[11px] font-bold text-red-500 border border-red-200 active:scale-95 transition-transform"
+                >
+                  <RotateCcw className="h-3 w-3" /> Reset Filter
+                </button>
+              </>
             )}
           </div>
         ) : (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold text-[hsl(var(--muted-foreground))]">
-                {visiblePrices.length} rute tersedia
+                {filteredPrices.length} rute tersedia
               </p>
               {markup > 0 && (
                 <span className="text-[10px] font-bold text-emerald-600">
@@ -2027,7 +2272,7 @@ export default function TicketPrices() {
                 </span>
               )}
             </div>
-            {visiblePrices.map((item) => (
+            {filteredPrices.map((item) => (
               <BoardingPassCard
                 key={item.id} item={item} markup={markup} rates={rates}
                 isAdmin={isAdmin} onEdit={openEdit} onDelete={handleDelete}
@@ -2503,30 +2748,59 @@ export default function TicketPrices() {
         </Card>
       )}
 
+      {/* ── Search & Filter (desktop) ── */}
+      {!loading && visiblePrices.length > 0 && (
+        <SearchFilterBar
+          searchQuery={searchQuery} onSearchChange={setSearchQuery}
+          filterTripType={filterTripType} onTripTypeChange={setFilterTripType}
+          filterDateRange={filterDateRange} onDateRangeChange={setFilterDateRange}
+          filterPublish={filterPublish} onPublishChange={setFilterPublish}
+          isOwner={isOwner} totalCount={visiblePrices.length}
+          filteredCount={filteredPrices.length} onReset={resetFilters}
+        />
+      )}
+
       {/* ── Price grid ── */}
       {loading ? (
         <div className="flex items-center justify-center py-16 text-slate-400 gap-2">
           <Loader2 className="w-5 h-5 animate-spin" />
           <span className="text-sm">Memuat daftar harga…</span>
         </div>
-      ) : visiblePrices.length === 0 ? (
+      ) : filteredPrices.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
           <div className="p-4 rounded-2xl bg-slate-100">
             <Plane className="w-8 h-8 text-slate-300" />
           </div>
-          <p className="text-sm font-medium">Belum ada harga tiket</p>
-          {isAdmin && (
-            <p className="text-xs text-center max-w-xs">
-              Upload screenshot harga tiket di atas untuk mulai menambahkan data via AI,
-              atau klik "Tambah Manual".
-            </p>
+          {visiblePrices.length === 0 ? (
+            <>
+              <p className="text-sm font-medium">Belum ada harga tiket</p>
+              {isAdmin && (
+                <p className="text-xs text-center max-w-xs">
+                  Upload screenshot harga tiket di atas untuk mulai menambahkan data via AI,
+                  atau klik "Tambah Manual".
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-slate-600">Tidak ada hasil yang cocok</p>
+              <p className="text-xs text-center max-w-xs text-slate-400">
+                Tidak ada tiket yang sesuai filter. Coba ubah kata kunci atau filter.
+              </p>
+              <button
+                onClick={resetFilters}
+                className="inline-flex items-center gap-1.5 h-8 px-4 rounded-lg text-[12px] font-semibold text-red-500 border border-red-200 hover:bg-red-50 transition-colors"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
+              </button>
+            </>
           )}
         </div>
       ) : (
         <>
           <div className="flex items-center justify-between">
             <p className="text-sm text-slate-500">
-              {visiblePrices.length} rute tersedia
+              {filteredPrices.length} rute tersedia
               {markup > 0 && <span className="ml-2 text-emerald-600">• Markup {fmtIDR(markup)}/pax sudah termasuk</span>}
             </p>
             <div className="flex items-center gap-1.5 text-xs text-slate-400">
@@ -2536,7 +2810,7 @@ export default function TicketPrices() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {visiblePrices.map((item) => (
+            {filteredPrices.map((item) => (
               <BoardingPassCard
                 key={item.id}
                 item={item}
