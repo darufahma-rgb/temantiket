@@ -239,6 +239,8 @@ export default function Reports() {
     const m = new Map<string, { profit: number; orders: number; revenue: number }>();
     for (const o of filtered) {
       if (!o.createdByAgent) continue;
+      const member = memberById.get(o.createdByAgent);
+      if (!member || member.role !== "agent") continue;
       const cur = m.get(o.createdByAgent) ?? { profit: 0, orders: 0, revenue: 0 };
       cur.profit += profitIDR(o, egpRate);
       cur.revenue += revenueIDR(o, egpRate);
@@ -777,8 +779,7 @@ export default function Reports() {
                   <th className="text-right font-semibold py-2 px-1">Order</th>
                   <th className="text-right font-semibold py-2 px-1">Revenue</th>
                   <th className="text-right font-semibold py-2 px-1">Gross Profit</th>
-                  <th className="text-right font-semibold py-2 px-1">Komisi (%)</th>
-                  <th className="text-right font-semibold py-2 px-1">Komisi Diterima</th>
+                  <th className="text-right font-semibold py-2 px-1">Komisi</th>
                   <th className="text-right font-semibold py-2 px-1">⭐ Poin</th>
                 </tr>
               </thead>
@@ -798,9 +799,6 @@ export default function Reports() {
                       <td className={`py-2 px-1 text-right font-mono font-semibold ${row.profit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
                         {fmtIDR(row.profit)}
                       </td>
-                      <td className="py-2 px-1 text-right font-mono text-muted-foreground">
-                        {row.commissionPct}%
-                      </td>
                       <td className="py-2 px-1 text-right font-mono font-bold text-orange-700">
                         {fmtIDR(row.commission)}
                       </td>
@@ -812,7 +810,7 @@ export default function Reports() {
                 })}
                 {leaderboard.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-6 text-center text-muted-foreground text-[11.5px]">
+                    <td colSpan={7} className="py-6 text-center text-muted-foreground text-[11.5px]">
                       Belum ada mitra terdaftar.
                     </td>
                   </tr>
