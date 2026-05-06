@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import {
   Wand2, Copy, CheckCheck, Loader2, RefreshCw, FileText,
   Plane, BookOpen, Megaphone, Moon, Sparkles, AlignLeft,
-  ImagePlus, X, ScanText, PenLine, MessageCircle, Zap,
+  ImagePlus, X, ScanText, PenLine, MessageCircle, Zap, ArrowRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -84,6 +84,7 @@ export function CaptionGenerator() {
   const [result, setResult]                 = useState<string>("");
   const [lastUsage, setLastUsage]           = useState<TokenUsage | null>(null);
   const [loading, setLoading]               = useState(false);
+  const [posterStatus, setPosterStatus]     = useState<string | null>(null);
   const [copied, setCopied]                 = useState(false);
   const fileInputRef                        = useRef<HTMLInputElement>(null);
 
@@ -128,6 +129,7 @@ export function CaptionGenerator() {
     setLoading(true);
     setResult("");
     setLastUsage(null);
+    setPosterStatus(null);
     try {
       if (mode === "poster") {
         if (!posterFile) { toast.error("Upload poster dulu ya!"); return; }
@@ -136,6 +138,7 @@ export function CaptionGenerator() {
           imageBase64: dataUrl,
           tone: activeTone,
           waNumber,
+          onStatus: setPosterStatus,
         });
         setResult(caption);
         setLastUsage(usage);
@@ -153,6 +156,7 @@ export function CaptionGenerator() {
       toast.error(`Gagal generate: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
+      setPosterStatus(null);
     }
   };
 
@@ -424,7 +428,19 @@ export function CaptionGenerator() {
             <motion.span key="loading" className="flex items-center gap-2"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <Loader2 className="h-4 w-4 animate-spin" />
-              {mode === "poster" ? "AI sedang baca poster…" : "AI sedang nulis caption…"}
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={posterStatus ?? (mode === "poster" ? "poster-init" : "manual")}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {mode === "poster"
+                    ? (posterStatus ?? "Memproses...")
+                    : "AI sedang nulis caption…"}
+                </motion.span>
+              </AnimatePresence>
             </motion.span>
           ) : result ? (
             <motion.span key="regen" className="flex items-center gap-2"
@@ -443,6 +459,54 @@ export function CaptionGenerator() {
           )}
         </AnimatePresence>
       </Button>
+
+      {/* ── 2-step progress indicator (poster mode only) ── */}
+      <AnimatePresence>
+        {mode === "poster" && loading && (
+          <motion.div
+            key="poster-steps"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center justify-center gap-2 px-2 py-0.5"
+          >
+            {/* Step 1 */}
+            <div className={cn(
+              "flex items-center gap-1.5 text-[11.5px] font-medium transition-colors duration-300",
+              posterStatus === "Menyusun caption..."
+                ? "text-emerald-600"
+                : "text-[#1a44d4]",
+            )}>
+              {posterStatus === "Menyusun caption..."
+                ? <CheckCheck className="h-3 w-3 shrink-0" strokeWidth={2.5} />
+                : <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+              }
+              Membaca poster
+            </div>
+
+            {/* Connector */}
+            <ArrowRight className={cn(
+              "h-3 w-3 shrink-0 transition-colors duration-300",
+              posterStatus === "Menyusun caption..." ? "text-emerald-500" : "text-muted-foreground/30",
+            )} strokeWidth={2} />
+
+            {/* Step 2 */}
+            <div className={cn(
+              "flex items-center gap-1.5 text-[11.5px] font-medium transition-colors duration-300",
+              posterStatus === "Menyusun caption..."
+                ? "text-[#1a44d4]"
+                : "text-muted-foreground/40",
+            )}>
+              {posterStatus === "Menyusun caption..."
+                ? <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                : <span className="h-3 w-3 shrink-0 rounded-full border-2 border-current inline-flex" />
+              }
+              Menyusun caption
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Result ── */}
       <AnimatePresence>

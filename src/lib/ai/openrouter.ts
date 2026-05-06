@@ -335,14 +335,16 @@ export async function generateCaptionFromPoster(params: {
   imageBase64: string;
   tone: string;
   waNumber?: string;
+  onStatus?: (msg: string) => void;
 }): Promise<CaptionResult> {
-  const { imageBase64, tone, waNumber } = params;
+  const { imageBase64, tone, waNumber, onStatus } = params;
   const toneInstruction = TONE_INSTRUCTIONS[tone] ?? tone;
   const waSection = waNumber?.trim()
     ? `\nNomor WA untuk baris CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}`
     : "";
 
   // Step 1: Flash Vision membaca poster → ekstrak fakta (text-only output)
+  onStatus?.("Membaca poster...");
   const { content: extractedInfo, usage: usageOcr } = await callAIOpenRouterFull({
     model: OR_MODELS.VISION,
     systemPrompt: POSTER_OCR_SYSTEM_PROMPT,
@@ -354,6 +356,7 @@ export async function generateCaptionFromPoster(params: {
   });
 
   // Step 2: Claude menulis caption dari informasi yang sudah diekstrak
+  onStatus?.("Menyusun caption...");
   const { content: caption, usage: usageCaption } = await callAIOpenRouterFull({
     model: OR_MODELS.CAPTION_WRITER,
     systemPrompt: POSTER_CAPTION_SYSTEM_PROMPT,
