@@ -43,7 +43,7 @@ export function AIModelToggle({
     <button
       type="button"
       onClick={() => toggleOverride(feature, defaultTier)}
-      title={`Model aktif: ${label.long}\nKlik untuk ${isPro ? "ganti ke Gemini Flash (cepat)" : "ganti ke Claude Sonnet (kualitas tinggi)"}`}
+      title={`Model aktif: ${label.long}\nKlik untuk ${isPro ? "ganti ke Gemini Flash (cepat)" : "ganti ke Claude Sonnet 4 (kualitas tinggi)"}`}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-all select-none",
         isPro

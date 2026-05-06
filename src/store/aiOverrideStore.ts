@@ -15,8 +15,8 @@ export type AIFeatureKey = "caption" | "notes";
 export const AI_TIERS = {
   /** Default: cepat & hemat — Gemini Flash via OpenRouter. */
   FAST: "google/gemini-2.0-flash-001",
-  /** Pro: kualitas tinggi — Claude 3.5 Sonnet via OpenRouter. */
-  PRO:  "anthropic/claude-3-5-sonnet-20241022",
+  /** Pro: kualitas tinggi — Claude Sonnet 4 via OpenRouter. */
+  PRO:  "anthropic/claude-sonnet-4",
 } as const;
 
 export type AITier = (typeof AI_TIERS)[keyof typeof AI_TIERS];
@@ -24,12 +24,12 @@ export type AITier = (typeof AI_TIERS)[keyof typeof AI_TIERS];
 export const AI_TIER_LABELS: Record<AITier, { short: string; long: string; badge: string }> = {
   [AI_TIERS.FAST]: {
     short: "Gemini Flash",
-    long:  "Google Gemini 2.0 Flash 001 — cepat & hemat",
+    long:  "Google Gemini 2.0 Flash — cepat & hemat",
     badge: "Cepat",
   },
   [AI_TIERS.PRO]: {
-    short: "Claude Sonnet",
-    long:  "Anthropic Claude 3.5 Sonnet — kualitas tinggi",
+    short: "Claude Sonnet 4",
+    long:  "Anthropic Claude Sonnet 4 — kualitas tinggi",
     badge: "Pro",
   },
 };
