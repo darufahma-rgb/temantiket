@@ -28,9 +28,9 @@ const AI_BASE    = OPENROUTER_API_KEY ? OPENROUTER_BASE_URL : OPENAI_BASE_URL;
 const USE_OR     = !!OPENROUTER_API_KEY; // true = pakai OpenRouter
 
 // Model mapping
-const MODEL_OCR  = USE_OR ? 'google/gemini-2.0-flash-001'  : 'gpt-4.1-nano';    // vision
-const MODEL_CHAT = USE_OR ? 'openai/gpt-4.1'               : 'gpt-4.1';          // AI chat
-const MODEL_TEXT = USE_OR ? 'bytedance/seed-2.0-mini'      : 'gpt-4.1-nano';     // teks ringan
+const MODEL_OCR  = USE_OR ? 'google/gemini-2.0-flash-001'  : 'gpt-4.1-nano';    // vision (gpt-4.1-nano supports images)
+const MODEL_CHAT = USE_OR ? 'openai/gpt-4.1'               : 'gpt-5-mini';       // AI chat / caption
+const MODEL_TEXT = USE_OR ? 'bytedance/seed-2.0-mini'      : 'gpt-5-nano';       // teks ringan / rapikan
 
 // Header tambahan yang direkomendasikan OpenRouter
 function openrouterHeaders(apiKey) {
