@@ -69,27 +69,45 @@ function activeFilterCount(f: Filters): number {
 }
 
 // ── Airline Logo ──────────────────────────────────────────────────────────────
+const LOCAL_AIRLINE_LOGOS = new Set(["QR","EK","EY","GA","TK","WY","SV","MS"]);
+
 function AirlineLogo({ code, airline, size = 40 }: { code: string; airline: string; size?: number }) {
-  const [ok, setOk] = useState(true);
-  const grad = getAirlineGradient(code);
-  if (!ok || !code || code === "??") {
+  const c = (code || "").trim().toUpperCase();
+  const grad = getAirlineGradient(c);
+  const localSrc = LOCAL_AIRLINE_LOGOS.has(c) ? `/airlines/${c}.png` : null;
+  const cdnSrc = getAirlineLogoUrl(c);
+
+  const [src, setSrc] = useState<string | null>(localSrc ?? cdnSrc);
+  const [triedCdn, setTriedCdn] = useState(!localSrc);
+
+  if (!src || !c || c === "??") {
     return (
       <div
         className={cn("flex items-center justify-center rounded-xl bg-gradient-to-br text-white font-bold shrink-0", grad)}
         style={{ width: size, height: size, fontSize: size * 0.32 }}
       >
-        {code.slice(0, 2) || <Plane className="w-4 h-4" />}
+        {c.slice(0, 2) || <Plane className="w-4 h-4" />}
       </div>
     );
   }
+
+  const handleError = () => {
+    if (!triedCdn) {
+      setSrc(cdnSrc);
+      setTriedCdn(true);
+    } else {
+      setSrc(null);
+    }
+  };
+
   return (
     <img
-      src={getAirlineLogoUrl(code)}
+      src={src}
       alt={airline}
       width={size} height={size}
       className="rounded-xl object-contain shrink-0 bg-white border border-white/20"
       style={{ width: size, height: size }}
-      onError={() => setOk(false)}
+      onError={handleError}
     />
   );
 }
