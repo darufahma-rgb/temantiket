@@ -359,7 +359,7 @@ export default function AgentDashboard() {
       {/* ── Tier + Reward Catalog ───────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
         <AgentTierProgress totalPoints={myPoints} />
-        <RewardCatalog totalPoints={myPoints} />
+        <RewardCatalog totalPoints={myPoints} completedOrders={stats.completedOrders} />
       </div>
 
       {/* ── Marketing Kit CTA ───────────────────────────────────────────── */}

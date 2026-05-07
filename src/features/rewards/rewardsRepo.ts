@@ -4,27 +4,22 @@ import { requireAgencyId, useAuthStore } from "@/store/authStore";
 /**
  * Reward Catalog — daftar hadiah yg bisa ditukar pakai poin agent.
  *
- * Sengaja hardcoded di code (bukan DB) supaya:
- *   - Owner bisa lihat preview tanpa setup tabel tambahan.
- *   - Konsisten antar tenant (semua agency dpt katalog yg sama dulu).
- *   - Mudah di-update via deploy biasa.
- *
- * Future: bisa di-mirror ke tabel `reward_catalog` per-agency kalau owner
- * butuh customize (mis. agency tertentu mau merch sendiri). Untuk MVP, ini
- * cukup banget.
+ * Semua reward butuh syarat:
+ *   1. Poin cukup (costPoints)
+ *   2. Tier minimum (minTier)
+ *   3. Minimal order Completed (minCompletedOrders) — biar agen beneran produktif
  *
  * Redemption request → masuk ke `reward_redemptions` (status=pending).
  * Admin (owner) approve manual via UI Reports.
  */
 
 export type RewardKey =
-  | "pulsa_50k"
-  | "pulsa_100k"
-  | "voucher_gofood_100k"
-  | "voucher_grab_100k"
-  | "tshirt_mitra"
-  | "bonus_komisi_5pct"
-  | "free_umrah_voucher";
+  | "bonus_cash_75k"
+  | "paket_data_20gb"
+  | "fee_booster_1_5x_7d"
+  | "merchandise_temantiket"
+  | "fee_booster_2x_7d"
+  | "fee_booster_3x_7d";
 
 export interface RewardItem {
   key: RewardKey;
@@ -34,72 +29,71 @@ export interface RewardItem {
   costPoints: number;
   /** Tier minimum yg bisa redeem (utk gating reward premium) */
   minTier: "bronze" | "silver" | "gold" | "platinum";
-  category: "voucher" | "merchandise" | "bonus" | "exclusive";
+  /** Minimal jumlah order berstatus Completed — syarat produktivitas */
+  minCompletedOrders: number;
+  category: "cash" | "digital" | "booster" | "merchandise";
 }
 
 export const REWARD_CATALOG: RewardItem[] = [
   {
-    key: "pulsa_50k",
-    label: "Pulsa Rp 50.000",
-    emoji: "📱",
-    description: "Pulsa untuk semua operator. Diproses 1×24 jam setelah disetujui admin.",
-    costPoints: 50,
-    minTier: "bronze",
-    category: "voucher",
-  },
-  {
-    key: "pulsa_100k",
-    label: "Pulsa Rp 100.000",
-    emoji: "📱",
-    description: "Pulsa untuk semua operator. Diproses 1×24 jam setelah disetujui admin.",
+    key: "bonus_cash_75k",
+    label: "Bonus Cash Rp 75.000",
+    emoji: "💵",
+    description: "Ditransfer langsung ke rekening / e-wallet lo. Diproses 1×24 jam setelah disetujui admin.",
     costPoints: 100,
     minTier: "bronze",
-    category: "voucher",
+    minCompletedOrders: 1,
+    category: "cash",
   },
   {
-    key: "voucher_gofood_100k",
-    label: "Voucher GoFood Rp 100.000",
-    emoji: "🍔",
-    description: "Voucher GoFood, dikirim via WhatsApp dalam bentuk kode digital.",
-    costPoints: 120,
+    key: "paket_data_20gb",
+    label: "Paket Data 20 GB",
+    emoji: "📶",
+    description: "Paket data semua operator, berlaku 30 hari. Nomor dikirim ke WhatsApp lo.",
+    costPoints: 150,
     minTier: "bronze",
-    category: "voucher",
+    minCompletedOrders: 1,
+    category: "digital",
   },
   {
-    key: "voucher_grab_100k",
-    label: "Voucher Grab Rp 100.000",
-    emoji: "🚗",
-    description: "Voucher Grab transport / GrabFood, kode dikirim via WhatsApp.",
-    costPoints: 120,
-    minTier: "bronze",
-    category: "voucher",
-  },
-  {
-    key: "tshirt_mitra",
-    label: "Kaos Resmi Mitra",
-    emoji: "👕",
-    description: "Kaos eksklusif Mitra Temantiket, dikirim ke alamat lo.",
-    costPoints: 200,
+    key: "fee_booster_1_5x_7d",
+    label: "Fee Booster ×1.5 (7 Hari)",
+    emoji: "⚡",
+    description: "Semua order Completed dalam 7 hari ke depan fee komisi-nya dikali 1.5×. Aktif otomatis setelah approved.",
+    costPoints: 250,
     minTier: "silver",
+    minCompletedOrders: 3,
+    category: "booster",
+  },
+  {
+    key: "merchandise_temantiket",
+    label: "Merchandise Temantiket",
+    emoji: "👕",
+    description: "Paket merchandise eksklusif Temantiket (kaos + totebag + sticker). Dikirim ke alamat lo.",
+    costPoints: 300,
+    minTier: "silver",
+    minCompletedOrders: 5,
     category: "merchandise",
   },
   {
-    key: "bonus_komisi_5pct",
-    label: "Bonus Komisi +5% (1 bulan)",
-    emoji: "💰",
-    description: "Top-up komisi sementara +5% untuk semua order Completed bulan depan.",
-    costPoints: 400,
-    minTier: "silver",
-    category: "bonus",
+    key: "fee_booster_2x_7d",
+    label: "Fee Booster ×2 (7 Hari)",
+    emoji: "🚀",
+    description: "Fee komisi lo double (×2) untuk semua order Completed dalam 7 hari ke depan. Reward paling populer!",
+    costPoints: 500,
+    minTier: "gold",
+    minCompletedOrders: 10,
+    category: "booster",
   },
   {
-    key: "free_umrah_voucher",
-    label: "Voucher Umrah Gratis",
-    emoji: "🕋",
-    description: "Voucher 1 seat umrah reguler, valid 1 tahun. Premium reward.",
-    costPoints: 2500,
-    minTier: "gold",
-    category: "exclusive",
+    key: "fee_booster_3x_7d",
+    label: "Fee Booster ×3 (7 Hari)",
+    emoji: "🔥",
+    description: "Fee komisi lo triple (×3) selama 7 hari penuh. Reward tertinggi — untuk mitra terbaik Temantiket.",
+    costPoints: 2000,
+    minTier: "platinum",
+    minCompletedOrders: 30,
+    category: "booster",
   },
 ];
 
@@ -131,7 +125,6 @@ const fromRow = (r: Record<string, unknown>): RewardRedemption => ({
   resolvedBy: (r.resolved_by as string) ?? undefined,
 });
 
-/** List redemptions — RLS bakal batesin: agent cuma lihat sendiri, owner lihat semua. */
 export async function listRedemptions(): Promise<RewardRedemption[]> {
   if (!isSupabaseConfigured()) return [];
   try {
@@ -148,7 +141,6 @@ export async function listRedemptions(): Promise<RewardRedemption[]> {
   }
 }
 
-/** Submit reward request. agent_id auto = current user. status = 'pending'. */
 export async function requestRedemption(reward: RewardItem): Promise<RewardRedemption> {
   if (!isSupabaseConfigured()) {
     throw new Error("Supabase belum dikonfigurasi.");
@@ -172,7 +164,6 @@ export async function requestRedemption(reward: RewardItem): Promise<RewardRedem
   return fromRow(data);
 }
 
-/** Owner: update status request (approve/reject/fulfill). */
 export async function resolveRedemption(
   id: string,
   status: "approved" | "rejected" | "fulfilled",
@@ -197,7 +188,6 @@ export async function resolveRedemption(
   return fromRow(data);
 }
 
-/** Hitung sisa poin = lifetime points - sum(costPoints redeemed yg approved/fulfilled). */
 export function remainingPoints(
   lifetimePoints: number,
   redemptions: RewardRedemption[],
