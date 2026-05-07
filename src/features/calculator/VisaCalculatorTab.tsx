@@ -1,7 +1,15 @@
-import { useState, useEffect } from "react";
-import { Plus, Trash2, TrendingUp, Plane, GraduationCap, Save, FolderOpen, X, Check } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, Trash2, TrendingUp, Plane, GraduationCap, Save, FolderOpen, X, Check, Loader2, WifiOff } from "lucide-react";
 import { useRatesStore } from "@/store/ratesStore";
+import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import {
+  listVisaSavedCalcs,
+  createVisaSavedCalc,
+  deleteVisaSavedCalc,
+  type SavedVisaCalcRow,
+} from "./visaCalcsRepo";
 
 const M: React.CSSProperties = { fontFamily: "inherit" };
 
@@ -22,33 +30,11 @@ interface VisaCalcState {
   sellCurrency: "IDR" | "USD";
 }
 
-interface SavedCalc {
-  id: string;
-  name: string;
-  visaType: VisaType;
-  state: VisaCalcState;
-  savedAt: number;
-}
-
-const STORAGE_KEY = "temantiket_visa_saved_calcs";
-
-function loadSaved(): SavedCalc[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function persistSaved(list: SavedCalc[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-}
-
 function makeVoaDefault(): VisaCalcState {
   return {
     pax: 10,
     costs: [
-      { id: "v1", label: "Biaya VoA (Government Fee)",   amount: 35, currency: "USD", perPax: true  },
+      { id: "v1", label: "Biaya VoA (Government Fee)",   amount: 35,      currency: "USD", perPax: true  },
       { id: "v2", label: "Biaya Jasa Pengurusan",         amount: 150_000, currency: "IDR", perPax: true  },
       { id: "v3", label: "Biaya Transport Operasional",   amount: 500_000, currency: "IDR", perPax: false },
       { id: "v4", label: "Biaya Administrasi",            amount: 200_000, currency: "IDR", perPax: false },
@@ -77,8 +63,11 @@ function fmtIDR(n: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
 }
 
-function fmtDate(ts: number) {
-  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(ts));
+function fmtDate(ts: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  }).format(new Date(ts));
 }
 
 function numInput(v: number, onChange: (n: number) => void, cls?: string) {
@@ -97,17 +86,9 @@ function numInput(v: number, onChange: (n: number) => void, cls?: string) {
   );
 }
 
-function uid() {
-  return Math.random().toString(36).slice(2, 8);
-}
+function uid() { return Math.random().toString(36).slice(2, 8); }
 
-interface SummaryCardProps {
-  label: string;
-  value: string;
-  sub?: string;
-  color: string;
-}
-
+interface SummaryCardProps { label: string; value: string; sub?: string; color: string; }
 function SummaryCard({ label, value, sub, color }: SummaryCardProps) {
   return (
     <div className={cn("rounded-xl border p-3 space-y-0.5", color)}>
@@ -118,20 +99,13 @@ function SummaryCard({ label, value, sub, color }: SummaryCardProps) {
   );
 }
 
-interface SaveDialogProps {
-  onSave: (name: string) => void;
-  onClose: () => void;
-}
-
-function SaveDialog({ onSave, onClose }: SaveDialogProps) {
+// ── Save Dialog ───────────────────────────────────────────────────────────────
+interface SaveDialogProps { onSave: (name: string) => void; onClose: () => void; saving: boolean; }
+function SaveDialog({ onSave, onClose, saving }: SaveDialogProps) {
   const [name, setName] = useState("");
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 w-80 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-        style={M}
-      >
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 w-80 space-y-4" onClick={(e) => e.stopPropagation()} style={M}>
         <div className="flex items-center justify-between">
           <p className="text-[13px] font-extrabold text-slate-800" style={M}>Simpan Hitungan</p>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
@@ -143,28 +117,24 @@ function SaveDialog({ onSave, onClose }: SaveDialogProps) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) { onSave(name.trim()); } }}
+            onKeyDown={(e) => { if (e.key === "Enter" && name.trim() && !saving) onSave(name.trim()); }}
             placeholder="cth: VoA Grup Bali Juli"
             style={M}
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-sky-400"
           />
         </div>
         <div className="flex gap-2 justify-end">
-          <button
-            onClick={onClose}
-            style={M}
-            className="px-4 py-1.5 rounded-lg text-[11px] font-bold text-slate-500 border border-slate-200 hover:bg-slate-50"
-          >
+          <button onClick={onClose} style={M} className="px-4 py-1.5 rounded-lg text-[11px] font-bold text-slate-500 border border-slate-200 hover:bg-slate-50">
             Batal
           </button>
           <button
             onClick={() => { if (name.trim()) onSave(name.trim()); }}
-            disabled={!name.trim()}
+            disabled={!name.trim() || saving}
             style={M}
             className="px-4 py-1.5 rounded-lg text-[11px] font-bold bg-sky-500 text-white hover:bg-sky-600 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
           >
-            <Check className="h-3.5 w-3.5" />
-            Simpan
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+            {saving ? "Menyimpan..." : "Simpan"}
           </button>
         </div>
       </div>
@@ -172,44 +142,48 @@ function SaveDialog({ onSave, onClose }: SaveDialogProps) {
   );
 }
 
+// ── Load Panel ────────────────────────────────────────────────────────────────
 interface LoadPanelProps {
-  saved: SavedCalc[];
-  onLoad: (item: SavedCalc) => void;
+  saved: SavedVisaCalcRow[];
+  loading: boolean;
+  onLoad: (item: SavedVisaCalcRow) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
 }
+function LoadPanel({ saved, loading, onLoad, onDelete, onClose }: LoadPanelProps) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-function LoadPanel({ saved, onLoad, onDelete, onClose }: LoadPanelProps) {
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    await onDelete(id);
+    setDeletingId(null);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 w-96 space-y-4 max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-        style={M}
-      >
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 w-96 space-y-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()} style={M}>
         <div className="flex items-center justify-between shrink-0">
           <p className="text-[13px] font-extrabold text-slate-800" style={M}>Hitungan Tersimpan</p>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
         </div>
 
-        {saved.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-10 text-slate-400 gap-2" style={M}>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-[12px]">Memuat...</span>
+          </div>
+        ) : saved.length === 0 ? (
           <div className="text-center py-8 text-slate-400 text-[12px]" style={M}>
             Belum ada hitungan tersimpan.
           </div>
         ) : (
           <div className="overflow-y-auto space-y-2 flex-1">
             {saved.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 hover:bg-slate-50 group"
-              >
-                <div
-                  className="flex-1 min-w-0 cursor-pointer"
-                  onClick={() => { onLoad(item); onClose(); }}
-                >
+              <div key={item.id} className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 hover:bg-slate-50 group">
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => { onLoad(item); onClose(); }}>
                   <p className="text-[12px] font-bold text-slate-800 truncate" style={M}>{item.name}</p>
                   <p className="text-[10px] text-slate-400 mt-0.5" style={M}>
-                    {item.visaType === "voa" ? "Visa on Arrival" : "Visa Pelajar"} · {item.state.pax} pax · {fmtDate(item.savedAt)}
+                    {item.visaType === "voa" ? "Visa on Arrival" : "Visa Pelajar"} · {(item.state as VisaCalcState)?.pax ?? "?"} pax · {fmtDate(item.createdAt)}
                   </p>
                 </div>
                 <button
@@ -220,10 +194,14 @@ function LoadPanel({ saved, onLoad, onDelete, onClose }: LoadPanelProps) {
                   Muat
                 </button>
                 <button
-                  onClick={() => onDelete(item.id)}
-                  className="text-slate-300 hover:text-red-400 shrink-0"
+                  onClick={() => handleDelete(item.id)}
+                  disabled={deletingId === item.id}
+                  className="text-slate-300 hover:text-red-400 shrink-0 disabled:opacity-40"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  {deletingId === item.id
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Trash2 className="h-3.5 w-3.5" />
+                  }
                 </button>
               </div>
             ))}
@@ -231,20 +209,20 @@ function LoadPanel({ saved, onLoad, onDelete, onClose }: LoadPanelProps) {
         )}
 
         <div className="shrink-0 text-[10px] text-slate-400 text-center" style={M}>
-          Klik "Muat" untuk memuat hitungan ke form
+          Hitungan tersimpan di cloud — bisa diakses dari device mana saja
         </div>
       </div>
     </div>
   );
 }
 
+// ── Visa Form ─────────────────────────────────────────────────────────────────
 interface VisaFormProps {
   state: VisaCalcState;
   setState: React.Dispatch<React.SetStateAction<VisaCalcState>>;
   usdRate: number;
   onSaveClick: () => void;
 }
-
 function VisaForm({ state, setState, usdRate, onSaveClick }: VisaFormProps) {
   function setField<K extends keyof VisaCalcState>(k: K, v: VisaCalcState[K]) {
     setState((s) => ({ ...s, [k]: v }));
@@ -262,38 +240,23 @@ function VisaForm({ state, setState, usdRate, onSaveClick }: VisaFormProps) {
     }));
   }
 
-  const toIDR = (row: CostRow) =>
-    row.currency === "USD" ? row.amount * usdRate : row.amount;
-
-  const hppPerPax = state.costs
-    .filter((c) => c.perPax)
-    .reduce((acc, c) => acc + toIDR(c), 0);
-
-  const hppGroup = state.costs
-    .filter((c) => !c.perPax)
-    .reduce((acc, c) => acc + toIDR(c), 0);
-
+  const toIDR = (row: CostRow) => row.currency === "USD" ? row.amount * usdRate : row.amount;
+  const hppPerPax = state.costs.filter((c) => c.perPax).reduce((acc, c) => acc + toIDR(c), 0);
+  const hppGroup  = state.costs.filter((c) => !c.perPax).reduce((acc, c) => acc + toIDR(c), 0);
   const hppPerPaxTotal = hppPerPax + (state.pax > 0 ? hppGroup / state.pax : 0);
-  const hppTotal = hppPerPax * state.pax + hppGroup;
-
-  const sellIDR =
-    state.sellCurrency === "USD"
-      ? state.sellPricePerPax * usdRate
-      : state.sellPricePerPax;
-
-  const profitPerPax = sellIDR - hppPerPaxTotal;
-  const profitTotal = profitPerPax * state.pax;
-  const marginPct = hppPerPaxTotal > 0 ? (profitPerPax / hppPerPaxTotal) * 100 : 0;
+  const hppTotal       = hppPerPax * state.pax + hppGroup;
+  const sellIDR        = state.sellCurrency === "USD" ? state.sellPricePerPax * usdRate : state.sellPricePerPax;
+  const profitPerPax   = sellIDR - hppPerPaxTotal;
+  const profitTotal    = profitPerPax * state.pax;
+  const marginPct      = hppPerPaxTotal > 0 ? (profitPerPax / hppPerPaxTotal) * 100 : 0;
 
   return (
     <div className="space-y-4">
-      {/* Jumlah peserta + Simpan button */}
+      {/* Jumlah peserta + Simpan */}
       <div className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
         <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider" style={M}>Jumlah Peserta</span>
         <input
-          type="number"
-          min={1}
-          value={state.pax || ""}
+          type="number" min={1} value={state.pax || ""}
           onChange={(e) => setField("pax", Math.max(1, Number(e.target.value) || 1))}
           style={M}
           className="w-20 border border-slate-200 rounded-lg px-2 py-1 text-[14px] font-bold text-center focus:outline-none focus:ring-2 focus:ring-sky-400"
@@ -324,14 +287,13 @@ function VisaForm({ state, setState, usdRate, onSaveClick }: VisaFormProps) {
           </thead>
           <tbody>
             {state.costs.map((row) => {
-              const rowIDR = toIDR(row);
+              const rowIDR    = toIDR(row);
               const perPaxIDR = row.perPax ? rowIDR : (state.pax > 0 ? rowIDR / state.pax : 0);
               return (
                 <tr key={row.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="px-3 py-2">
                     <input
-                      type="text"
-                      value={row.label}
+                      type="text" value={row.label}
                       onChange={(e) => updateCost(row.id, { label: e.target.value })}
                       style={M}
                       className="w-full bg-transparent border-b border-dashed border-slate-200 text-[11px] focus:outline-none focus:border-sky-400 text-slate-700 font-medium"
@@ -357,9 +319,7 @@ function VisaForm({ state, setState, usdRate, onSaveClick }: VisaFormProps) {
                       style={M}
                       className={cn(
                         "px-2 py-0.5 rounded-full text-[9.5px] font-bold border transition-colors",
-                        row.perPax
-                          ? "bg-sky-100 border-sky-300 text-sky-700"
-                          : "bg-slate-100 border-slate-300 text-slate-500"
+                        row.perPax ? "bg-sky-100 border-sky-300 text-sky-700" : "bg-slate-100 border-slate-300 text-slate-500"
                       )}
                     >
                       {row.perPax ? "Per Pax" : "Total"}
@@ -379,23 +339,15 @@ function VisaForm({ state, setState, usdRate, onSaveClick }: VisaFormProps) {
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-slate-300 bg-slate-50">
-              <td colSpan={4} className="px-3 py-2 text-[11px] font-extrabold text-slate-600" style={M}>
-                HPP Total (Modal per Pax)
-              </td>
-              <td className="px-2 py-2 text-right text-[13px] font-extrabold text-slate-800 tabular-nums" style={M}>
-                {fmtIDR(hppPerPaxTotal)}
-              </td>
+              <td colSpan={4} className="px-3 py-2 text-[11px] font-extrabold text-slate-600" style={M}>HPP Total (Modal per Pax)</td>
+              <td className="px-2 py-2 text-right text-[13px] font-extrabold text-slate-800 tabular-nums" style={M}>{fmtIDR(hppPerPaxTotal)}</td>
               <td />
             </tr>
           </tfoot>
         </table>
       </div>
 
-      <button
-        onClick={addCost}
-        style={M}
-        className="flex items-center gap-1.5 text-[11px] font-semibold text-sky-600 hover:text-sky-700 px-2 py-1"
-      >
+      <button onClick={addCost} style={M} className="flex items-center gap-1.5 text-[11px] font-semibold text-sky-600 hover:text-sky-700 px-2 py-1">
         <Plus className="h-3.5 w-3.5" />
         Tambah Komponen Biaya
       </button>
@@ -404,12 +356,8 @@ function VisaForm({ state, setState, usdRate, onSaveClick }: VisaFormProps) {
       <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 flex flex-wrap items-center gap-3">
         <span className="text-[11px] font-extrabold text-violet-600 uppercase tracking-wider" style={M}>Harga Jual per Pax</span>
         <div className="flex items-center gap-2 ml-auto">
-          <select
-            value={state.sellCurrency}
-            onChange={(e) => setField("sellCurrency", e.target.value as "IDR" | "USD")}
-            style={M}
-            className="text-[11px] font-bold border border-violet-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white"
-          >
+          <select value={state.sellCurrency} onChange={(e) => setField("sellCurrency", e.target.value as "IDR" | "USD")} style={M}
+            className="text-[11px] font-bold border border-violet-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white">
             <option value="IDR">IDR</option>
             <option value="USD">USD</option>
           </select>
@@ -422,18 +370,8 @@ function VisaForm({ state, setState, usdRate, onSaveClick }: VisaFormProps) {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <SummaryCard
-          label="HPP / Pax"
-          value={fmtIDR(hppPerPaxTotal)}
-          sub={`Total group: ${fmtIDR(hppTotal)}`}
-          color="bg-slate-50 border-slate-200 text-slate-800"
-        />
-        <SummaryCard
-          label="Harga Jual / Pax"
-          value={fmtIDR(sellIDR)}
-          sub={`${state.pax} pax: ${fmtIDR(sellIDR * state.pax)}`}
-          color="bg-violet-50 border-violet-200 text-violet-800"
-        />
+        <SummaryCard label="HPP / Pax" value={fmtIDR(hppPerPaxTotal)} sub={`Total group: ${fmtIDR(hppTotal)}`} color="bg-slate-50 border-slate-200 text-slate-800" />
+        <SummaryCard label="Harga Jual / Pax" value={fmtIDR(sellIDR)} sub={`${state.pax} pax: ${fmtIDR(sellIDR * state.pax)}`} color="bg-violet-50 border-violet-200 text-violet-800" />
         <SummaryCard
           label={profitPerPax >= 0 ? "Untung / Pax" : "Rugi / Pax"}
           value={fmtIDR(profitPerPax)}
@@ -448,112 +386,134 @@ function VisaForm({ state, setState, usdRate, onSaveClick }: VisaFormProps) {
         />
       </div>
 
-      {/* Break-even note */}
+      {/* Break-even */}
       {hppPerPaxTotal > 0 && (
         <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[10.5px] text-amber-700" style={M}>
           <strong>Break-even price:</strong> {fmtIDR(hppPerPaxTotal)} / pax ·{" "}
-          {profitPerPax >= 0 ? (
-            <span className="text-emerald-700 font-semibold">✓ Harga jual di atas HPP, sudah untung.</span>
-          ) : (
-            <span className="text-red-600 font-semibold">⚠ Harga jual di bawah HPP, akan merugi!</span>
-          )}
+          {profitPerPax >= 0
+            ? <span className="text-emerald-700 font-semibold">✓ Harga jual di atas HPP, sudah untung.</span>
+            : <span className="text-red-600 font-semibold">⚠ Harga jual di bawah HPP, akan merugi!</span>
+          }
         </div>
       )}
     </div>
   );
 }
 
+// ── Main Tab ──────────────────────────────────────────────────────────────────
 export function VisaCalculatorTab() {
-  const usdRate = useRatesStore((s) => s.rates.USD);
-  const [visaType, setVisaType] = useState<VisaType>("voa");
-  const [voaState, setVoaState] = useState<VisaCalcState>(makeVoaDefault);
+  const usdRate  = useRatesStore((s) => s.rates.USD);
+  const user     = useAuthStore((s) => s.user);
+
+  const [visaType, setVisaType]       = useState<VisaType>("voa");
+  const [voaState, setVoaState]       = useState<VisaCalcState>(makeVoaDefault);
   const [studentState, setStudentState] = useState<VisaCalcState>(makeStudentDefault);
 
-  const [savedList, setSavedList] = useState<SavedCalc[]>(() => loadSaved());
+  const [savedList, setSavedList]     = useState<SavedVisaCalcRow[]>([]);
+  const [loadingList, setLoadingList] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [showLoadPanel, setShowLoadPanel] = useState(false);
-  const [saveToast, setSaveToast] = useState(false);
+  const [showLoadPanel, setShowLoadPanel]   = useState(false);
+  const [saving, setSaving]           = useState(false);
+  const [dbAvailable, setDbAvailable] = useState(true);
+
+  const agencyId = user?.agencyId ?? null;
+  const userId   = user?.id ?? null;
+
+  const fetchSaved = useCallback(async () => {
+    if (!agencyId) return;
+    setLoadingList(true);
+    const rows = await listVisaSavedCalcs(agencyId);
+    setSavedList(rows);
+    setLoadingList(false);
+    if (rows === null) setDbAvailable(false);
+  }, [agencyId]);
 
   useEffect(() => {
-    persistSaved(savedList);
-  }, [savedList]);
+    fetchSaved();
+  }, [fetchSaved]);
 
-  const currentState = visaType === "voa" ? voaState : studentState;
-  const setCurrentState = visaType === "voa" ? setVoaState : setStudentState;
+  const currentState     = visaType === "voa" ? voaState : studentState;
+  const setCurrentState  = visaType === "voa" ? setVoaState : setStudentState;
 
-  function handleSave(name: string) {
-    const entry: SavedCalc = {
-      id: uid(),
-      name,
-      visaType,
-      state: JSON.parse(JSON.stringify(currentState)),
-      savedAt: Date.now(),
-    };
-    setSavedList((prev) => [entry, ...prev]);
-    setShowSaveDialog(false);
-    setSaveToast(true);
-    setTimeout(() => setSaveToast(false), 2500);
-  }
-
-  function handleLoad(item: SavedCalc) {
-    setVisaType(item.visaType);
-    if (item.visaType === "voa") {
-      setVoaState(item.state);
+  async function handleSave(name: string) {
+    if (!userId || !agencyId) return;
+    setSaving(true);
+    const result = await createVisaSavedCalc(
+      userId, agencyId, name, visaType,
+      JSON.parse(JSON.stringify(currentState)),
+    );
+    setSaving(false);
+    if (result) {
+      setSavedList((prev) => [result, ...prev]);
+      setShowSaveDialog(false);
+      toast.success("Hitungan berhasil disimpan!", { duration: 2500 });
     } else {
-      setStudentState(item.state);
+      toast.error("Gagal menyimpan. Coba lagi.");
     }
   }
 
-  function handleDelete(id: string) {
-    setSavedList((prev) => prev.filter((s) => s.id !== id));
+  async function handleDelete(id: string) {
+    const ok = await deleteVisaSavedCalc(id);
+    if (ok) {
+      setSavedList((prev) => prev.filter((s) => s.id !== id));
+    } else {
+      toast.error("Gagal menghapus hitungan.");
+    }
+  }
+
+  function handleLoad(item: SavedVisaCalcRow) {
+    const state = item.state as VisaCalcState;
+    setVisaType(item.visaType);
+    if (item.visaType === "voa") setVoaState(state);
+    else setStudentState(state);
+    toast.success(`Hitungan "${item.name}" dimuat.`, { duration: 2000 });
   }
 
   const tabs: { key: VisaType; label: string; icon: React.ElementType; desc: string }[] = [
     { key: "voa",     label: "Visa on Arrival", icon: Plane,         desc: "VoA untuk turis asing / visa kunjungan" },
-    { key: "student", label: "Visa Pelajar",     icon: GraduationCap, desc: "Visa masuk pelajar / student entry"       },
+    { key: "student", label: "Visa Pelajar",     icon: GraduationCap, desc: "Visa masuk pelajar / student entry"      },
   ];
 
   return (
     <div className="space-y-4" style={M}>
-      {/* Dialogs */}
       {showSaveDialog && (
-        <SaveDialog onSave={handleSave} onClose={() => setShowSaveDialog(false)} />
+        <SaveDialog onSave={handleSave} onClose={() => setShowSaveDialog(false)} saving={saving} />
       )}
       {showLoadPanel && (
         <LoadPanel
           saved={savedList}
+          loading={loadingList}
           onLoad={handleLoad}
           onDelete={handleDelete}
           onClose={() => setShowLoadPanel(false)}
         />
       )}
 
-      {/* Save toast */}
-      {saveToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-emerald-500 text-white text-[12px] font-bold px-4 py-2.5 rounded-xl shadow-xl animate-in fade-in slide-in-from-bottom-4" style={M}>
-          <Check className="h-4 w-4" />
-          Hitungan berhasil disimpan!
-        </div>
-      )}
-
-      {/* Title + Load button */}
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-[11px] text-muted-foreground" style={M}>
           Hitung HPP, harga jual, dan keuntungan per layanan visa
         </p>
-        <button
-          onClick={() => setShowLoadPanel(true)}
-          style={M}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10.5px] font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors relative"
-        >
-          <FolderOpen className="h-3.5 w-3.5" />
-          Hitungan Tersimpan
-          {savedList.length > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 bg-sky-500 text-white text-[9px] font-extrabold rounded-full w-4 h-4 flex items-center justify-center">
-              {savedList.length}
+        <div className="flex items-center gap-2">
+          {!dbAvailable && (
+            <span className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1" style={M}>
+              <WifiOff className="h-3 w-3" /> Tabel belum dibuat
             </span>
           )}
-        </button>
+          <button
+            onClick={() => { fetchSaved(); setShowLoadPanel(true); }}
+            style={M}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10.5px] font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors relative"
+          >
+            <FolderOpen className="h-3.5 w-3.5" />
+            Hitungan Tersimpan
+            {savedList.length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-sky-500 text-white text-[9px] font-extrabold rounded-full w-4 h-4 flex items-center justify-center">
+                {savedList.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Sub-tab switcher */}
@@ -565,9 +525,7 @@ export function VisaCalculatorTab() {
             style={M}
             className={cn(
               "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all inline-flex items-center gap-1.5",
-              visaType === key
-                ? "bg-sky-500 text-white shadow-sm"
-                : "text-slate-500 hover:bg-slate-100"
+              visaType === key ? "bg-sky-500 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100"
             )}
           >
             <Icon className="h-3.5 w-3.5" strokeWidth={2} />
