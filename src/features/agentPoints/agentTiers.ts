@@ -2,7 +2,7 @@
  * Agent Tier system — Bronze / Silver / Gold / Platinum.
  * Threshold dihitung berdasarkan total `points` lifetime di tabel agent_points.
  *
- * Default award: 10 poin per Completed order. Jadi:
+ * Default award: 10 poin per Completed order + 20 poin bonus jika dapat komisi. Jadi:
  *   - Bronze : 0   – 99 pts  (0 – 9 order)
  *   - Silver : 100 – 499 pts (10 – 49 order)
  *   - Gold   : 500 – 1499 pts (50 – 149 order)

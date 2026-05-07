@@ -339,7 +339,7 @@ export default function AgentLeaderboard() {
       <div className="rounded-xl border bg-muted/30 p-3 text-[10.5px] text-muted-foreground leading-relaxed">
         <strong className="text-foreground">Cara naik ranking:</strong> Daftarkan klien baru,
         bantu mereka order, dan pastiin order naik ke status <strong>Completed</strong>. Tiap
-        order Completed = +10 poin. Top performer dapet reward bulanan dari admin.
+        order Completed = +10 poin; +20 poin bonus jika dapat komisi. Top performer dapet reward bulanan dari admin.
       </div>
     </div>
   );

@@ -851,6 +851,47 @@ app.post('/api/ai/assistant', async (req, res) => {
 });
 
 /* ──────────────────────────────────────────────
+   POST /api/award-commission-points
+   Award 20 points to agent when commission is earned.
+   Uses service-role key to bypass RLS (agent_points is INSERT-only via trigger).
+────────────────────────────────────────────── */
+app.post('/api/award-commission-points', async (req, res) => {
+  try {
+    const caller = await getCallerUser(req.headers.authorization, 8000);
+    if (!caller) return err(res, 401, 'Unauthorized');
+
+    const { agencyId, agentId, orderId } = req.body ?? {};
+    if (!agencyId || !agentId || !orderId) {
+      return err(res, 400, 'agencyId, agentId, dan orderId wajib diisi');
+    }
+
+    const adminClient = makeAdminClient();
+    const { error: insertErr } = await withTimeout(
+      adminClient.from('agent_points').insert({
+        agency_id:  agencyId,
+        agent_id:   agentId,
+        order_id:   orderId,
+        points:     20,
+        reason:     'commission_received',
+        awarded_at: new Date().toISOString(),
+      }),
+      10000,
+      'Timeout saat award commission points'
+    );
+
+    if (insertErr) {
+      console.warn('[award-commission-points] insert gagal:', insertErr.message);
+      return err(res, 500, insertErr.message);
+    }
+
+    return ok(res, { awarded: 20, reason: 'commission_received' });
+  } catch (e) {
+    console.error('[award-commission-points] error:', e);
+    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
+  }
+});
+
+/* ──────────────────────────────────────────────
    Serve static frontend in production
 ────────────────────────────────────────────── */
 const isProd = process.env.NODE_ENV === 'production';

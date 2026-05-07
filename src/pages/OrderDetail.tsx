@@ -29,6 +29,28 @@ import { toast } from "sonner";
 import { getCommissionForOrderType } from "@/lib/productCommissions";
 import { addWalletTx } from "@/lib/agentWallet";
 import { useAuthStore } from "@/store/authStore";
+import { supabase } from "@/lib/supabase";
+
+async function awardCommissionPoints(agencyId: string, agentId: string, orderId: string) {
+  try {
+    const session = (await supabase?.auth.getSession())?.data.session;
+    const token = session?.access_token;
+    const res = await fetch("/api/award-commission-points", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ agencyId, agentId, orderId }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      console.warn("[award-commission-points] gagal:", j?.error ?? res.status);
+    }
+  } catch (e) {
+    console.warn("[award-commission-points] exception:", e);
+  }
+}
 
 const fmtIDR = (v: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);
@@ -169,8 +191,11 @@ export default function OrderDetail() {
             createdBy: currentUser?.id ?? "system",
           });
 
-          toast.success(`Komisi agen dicatat: ${fmtIDR(feeAmount)}`, {
-            description: `Order "${order.title || orderLabel}" selesai — wallet agen diperbarui.`,
+          // Award 20 commission points whenever agent earns a fee
+          void awardCommissionPoints(order.agencyId, agentId, order.id);
+
+          toast.success(`Komisi agen dicatat: ${fmtIDR(feeAmount)} · +20 poin`, {
+            description: `Order "${order.title || orderLabel}" selesai — wallet & poin agen diperbarui.`,
             duration: 5000,
           });
         }

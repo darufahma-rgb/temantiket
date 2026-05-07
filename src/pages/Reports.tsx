@@ -1142,7 +1142,7 @@ export default function Reports() {
         <strong className="text-foreground">Catatan:</strong> Profit = Harga Jual − Harga Modal.
         Order EGP (visa Mesir) di-konversi ke IDR pakai kurs <span className="font-mono">1 EGP ≈ Rp {egpRate}</span>.
         Fee komisi mitra dihitung berdasarkan <em>fee flat per jenis produk</em> (bukan persentase profit).
-        Atur nominal fee per produk di <strong>Pengaturan → Fee Produk</strong>. Poin di-award otomatis 10 poin
+        Atur nominal fee per produk di <strong>Pengaturan → Fee Produk</strong>. Poin di-award otomatis: 10 poin saat Completed, +20 poin bonus jika dapat komisi
         per order yg statusnya berubah ke <strong>Completed</strong>.
       </div>
 

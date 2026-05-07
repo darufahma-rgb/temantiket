@@ -505,7 +505,9 @@ export default function AgentDashboard() {
                     <div className="text-right shrink-0 min-w-[60px]">
                       <div className="text-[10.5px] font-mono font-bold text-slate-700">{fmtIDR(revenueIDR(o))}</div>
                       <div className={`text-[9px] font-mono ${o.status === "Completed" ? "text-blue-600 font-bold" : "text-slate-300"}`}>
-                        {o.status === "Completed" ? "+10 pts" : "—"}
+                        {o.status === "Completed"
+                          ? (Number((o.metadata as Record<string, unknown>)?.agentFee ?? 0) > 0 ? "+30 pts" : "+10 pts")
+                          : "—"}
                       </div>
                     </div>
                   </button>
@@ -549,7 +551,9 @@ export default function AgentDashboard() {
                             {fmtIDR(revenueIDR(o))}
                           </td>
                           <td className={`py-3 px-1 text-right font-mono font-bold ${earned ? "text-blue-600" : "text-slate-200"}`}>
-                            {earned ? "+10" : "—"}
+                            {earned
+                              ? (Number((o.metadata as Record<string, unknown>)?.agentFee ?? 0) > 0 ? "+30" : "+10")
+                              : "—"}
                           </td>
                         </tr>
                       );
@@ -572,6 +576,8 @@ export default function AgentDashboard() {
           Setiap order yang lo input dan statusnya berubah ke{" "}
           <strong className="text-emerald-600">Completed</strong>, lo otomatis dapet{" "}
           <strong className="text-blue-700">+10 poin</strong>.
+          Kalau order itu juga ngasih komisi ke lo, lo dapet tambahan{" "}
+          <strong className="text-blue-700">+20 poin</strong> — total <strong className="text-blue-700">+30 poin</strong> sekaligus.
           Poin dipake buat ranking leaderboard dan reward bulanan dari admin.
         </p>
       </div>
