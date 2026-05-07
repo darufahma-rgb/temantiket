@@ -51,7 +51,7 @@ function estimateCost(model: string, promptTokens: number, completionTokens: num
 
 export const OR_MODELS = {
   /** Vision + OCR: poster, paspor, tiket screenshot. Gemini 2.5 Flash — murah, cepat, akurat. */
-  VISION:          "google/gemini-2.5-flash-preview",
+  VISION:          "google/gemini-2.5-flash-preview-05-20",
   /** Caption marketing — manual maupun dari poster. */
   CAPTION:         "google/gemini-2.0-flash-001",
   /** Caption writer setelah OCR poster — Claude untuk kualitas copywriting terbaik. */
