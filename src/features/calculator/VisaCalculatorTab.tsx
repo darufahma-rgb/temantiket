@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Trash2, TrendingUp, Plane, GraduationCap } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trash2, TrendingUp, Plane, GraduationCap, Save, FolderOpen, X, Check } from "lucide-react";
 import { useRatesStore } from "@/store/ratesStore";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,28 @@ interface VisaCalcState {
   costs: CostRow[];
   sellPricePerPax: number;
   sellCurrency: "IDR" | "USD";
+}
+
+interface SavedCalc {
+  id: string;
+  name: string;
+  visaType: VisaType;
+  state: VisaCalcState;
+  savedAt: number;
+}
+
+const STORAGE_KEY = "temantiket_visa_saved_calcs";
+
+function loadSaved(): SavedCalc[] {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function persistSaved(list: SavedCalc[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 }
 
 function makeVoaDefault(): VisaCalcState {
@@ -53,6 +75,10 @@ function makeStudentDefault(): VisaCalcState {
 
 function fmtIDR(n: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
+}
+
+function fmtDate(ts: number) {
+  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(ts));
 }
 
 function numInput(v: number, onChange: (n: number) => void, cls?: string) {
@@ -92,13 +118,134 @@ function SummaryCard({ label, value, sub, color }: SummaryCardProps) {
   );
 }
 
+interface SaveDialogProps {
+  onSave: (name: string) => void;
+  onClose: () => void;
+}
+
+function SaveDialog({ onSave, onClose }: SaveDialogProps) {
+  const [name, setName] = useState("");
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 w-80 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+        style={M}
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-[13px] font-extrabold text-slate-800" style={M}>Simpan Hitungan</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1" style={M}>Nama Hitungan</label>
+          <input
+            autoFocus
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) { onSave(name.trim()); } }}
+            placeholder="cth: VoA Grup Bali Juli"
+            style={M}
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-[12px] focus:outline-none focus:ring-2 focus:ring-sky-400"
+          />
+        </div>
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={onClose}
+            style={M}
+            className="px-4 py-1.5 rounded-lg text-[11px] font-bold text-slate-500 border border-slate-200 hover:bg-slate-50"
+          >
+            Batal
+          </button>
+          <button
+            onClick={() => { if (name.trim()) onSave(name.trim()); }}
+            disabled={!name.trim()}
+            style={M}
+            className="px-4 py-1.5 rounded-lg text-[11px] font-bold bg-sky-500 text-white hover:bg-sky-600 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+          >
+            <Check className="h-3.5 w-3.5" />
+            Simpan
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface LoadPanelProps {
+  saved: SavedCalc[];
+  onLoad: (item: SavedCalc) => void;
+  onDelete: (id: string) => void;
+  onClose: () => void;
+}
+
+function LoadPanel({ saved, onLoad, onDelete, onClose }: LoadPanelProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 w-96 space-y-4 max-h-[80vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+        style={M}
+      >
+        <div className="flex items-center justify-between shrink-0">
+          <p className="text-[13px] font-extrabold text-slate-800" style={M}>Hitungan Tersimpan</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
+        </div>
+
+        {saved.length === 0 ? (
+          <div className="text-center py-8 text-slate-400 text-[12px]" style={M}>
+            Belum ada hitungan tersimpan.
+          </div>
+        ) : (
+          <div className="overflow-y-auto space-y-2 flex-1">
+            {saved.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 hover:bg-slate-50 group"
+              >
+                <div
+                  className="flex-1 min-w-0 cursor-pointer"
+                  onClick={() => { onLoad(item); onClose(); }}
+                >
+                  <p className="text-[12px] font-bold text-slate-800 truncate" style={M}>{item.name}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5" style={M}>
+                    {item.visaType === "voa" ? "Visa on Arrival" : "Visa Pelajar"} · {item.state.pax} pax · {fmtDate(item.savedAt)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => { onLoad(item); onClose(); }}
+                  style={M}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-sky-500 text-white hover:bg-sky-600 shrink-0"
+                >
+                  Muat
+                </button>
+                <button
+                  onClick={() => onDelete(item.id)}
+                  className="text-slate-300 hover:text-red-400 shrink-0"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="shrink-0 text-[10px] text-slate-400 text-center" style={M}>
+          Klik "Muat" untuk memuat hitungan ke form
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface VisaFormProps {
   state: VisaCalcState;
   setState: React.Dispatch<React.SetStateAction<VisaCalcState>>;
   usdRate: number;
+  onSaveClick: () => void;
 }
 
-function VisaForm({ state, setState, usdRate }: VisaFormProps) {
+function VisaForm({ state, setState, usdRate, onSaveClick }: VisaFormProps) {
   function setField<K extends keyof VisaCalcState>(k: K, v: VisaCalcState[K]) {
     setState((s) => ({ ...s, [k]: v }));
   }
@@ -115,7 +262,6 @@ function VisaForm({ state, setState, usdRate }: VisaFormProps) {
     }));
   }
 
-  // Compute totals
   const toIDR = (row: CostRow) =>
     row.currency === "USD" ? row.amount * usdRate : row.amount;
 
@@ -141,7 +287,7 @@ function VisaForm({ state, setState, usdRate }: VisaFormProps) {
 
   return (
     <div className="space-y-4">
-      {/* Jumlah peserta */}
+      {/* Jumlah peserta + Simpan button */}
       <div className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
         <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider" style={M}>Jumlah Peserta</span>
         <input
@@ -153,6 +299,14 @@ function VisaForm({ state, setState, usdRate }: VisaFormProps) {
           className="w-20 border border-slate-200 rounded-lg px-2 py-1 text-[14px] font-bold text-center focus:outline-none focus:ring-2 focus:ring-sky-400"
         />
         <span className="text-[11px] text-slate-400" style={M}>orang</span>
+        <button
+          onClick={onSaveClick}
+          style={M}
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10.5px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm"
+        >
+          <Save className="h-3.5 w-3.5" />
+          Simpan Hitungan
+        </button>
       </div>
 
       {/* Cost rows */}
@@ -315,28 +469,91 @@ export function VisaCalculatorTab() {
   const [voaState, setVoaState] = useState<VisaCalcState>(makeVoaDefault);
   const [studentState, setStudentState] = useState<VisaCalcState>(makeStudentDefault);
 
+  const [savedList, setSavedList] = useState<SavedCalc[]>(() => loadSaved());
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showLoadPanel, setShowLoadPanel] = useState(false);
+  const [saveToast, setSaveToast] = useState(false);
+
+  useEffect(() => {
+    persistSaved(savedList);
+  }, [savedList]);
+
+  const currentState = visaType === "voa" ? voaState : studentState;
+  const setCurrentState = visaType === "voa" ? setVoaState : setStudentState;
+
+  function handleSave(name: string) {
+    const entry: SavedCalc = {
+      id: uid(),
+      name,
+      visaType,
+      state: JSON.parse(JSON.stringify(currentState)),
+      savedAt: Date.now(),
+    };
+    setSavedList((prev) => [entry, ...prev]);
+    setShowSaveDialog(false);
+    setSaveToast(true);
+    setTimeout(() => setSaveToast(false), 2500);
+  }
+
+  function handleLoad(item: SavedCalc) {
+    setVisaType(item.visaType);
+    if (item.visaType === "voa") {
+      setVoaState(item.state);
+    } else {
+      setStudentState(item.state);
+    }
+  }
+
+  function handleDelete(id: string) {
+    setSavedList((prev) => prev.filter((s) => s.id !== id));
+  }
+
   const tabs: { key: VisaType; label: string; icon: React.ElementType; desc: string }[] = [
-    {
-      key: "voa",
-      label: "Visa on Arrival",
-      icon: Plane,
-      desc: "VoA untuk turis asing / visa kunjungan",
-    },
-    {
-      key: "student",
-      label: "Visa Pelajar",
-      icon: GraduationCap,
-      desc: "Visa masuk pelajar / student entry",
-    },
+    { key: "voa",     label: "Visa on Arrival", icon: Plane,         desc: "VoA untuk turis asing / visa kunjungan" },
+    { key: "student", label: "Visa Pelajar",     icon: GraduationCap, desc: "Visa masuk pelajar / student entry"       },
   ];
 
   return (
     <div className="space-y-4" style={M}>
-      {/* Title */}
-      <div>
+      {/* Dialogs */}
+      {showSaveDialog && (
+        <SaveDialog onSave={handleSave} onClose={() => setShowSaveDialog(false)} />
+      )}
+      {showLoadPanel && (
+        <LoadPanel
+          saved={savedList}
+          onLoad={handleLoad}
+          onDelete={handleDelete}
+          onClose={() => setShowLoadPanel(false)}
+        />
+      )}
+
+      {/* Save toast */}
+      {saveToast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-emerald-500 text-white text-[12px] font-bold px-4 py-2.5 rounded-xl shadow-xl animate-in fade-in slide-in-from-bottom-4" style={M}>
+          <Check className="h-4 w-4" />
+          Hitungan berhasil disimpan!
+        </div>
+      )}
+
+      {/* Title + Load button */}
+      <div className="flex items-center justify-between">
         <p className="text-[11px] text-muted-foreground" style={M}>
           Hitung HPP, harga jual, dan keuntungan per layanan visa
         </p>
+        <button
+          onClick={() => setShowLoadPanel(true)}
+          style={M}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10.5px] font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors relative"
+        >
+          <FolderOpen className="h-3.5 w-3.5" />
+          Hitungan Tersimpan
+          {savedList.length > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 bg-sky-500 text-white text-[9px] font-extrabold rounded-full w-4 h-4 flex items-center justify-center">
+              {savedList.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Sub-tab switcher */}
@@ -368,9 +585,9 @@ export function VisaCalculatorTab() {
 
       {/* Form */}
       {visaType === "voa" ? (
-        <VisaForm state={voaState} setState={setVoaState} usdRate={usdRate} />
+        <VisaForm state={voaState} setState={setVoaState} usdRate={usdRate} onSaveClick={() => setShowSaveDialog(true)} />
       ) : (
-        <VisaForm state={studentState} setState={setStudentState} usdRate={usdRate} />
+        <VisaForm state={studentState} setState={setStudentState} usdRate={usdRate} onSaveClick={() => setShowSaveDialog(true)} />
       )}
     </div>
   );
