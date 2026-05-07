@@ -10,11 +10,11 @@ import { cn } from "@/lib/utils";
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
-/** Derive a stable 3-digit agent code from the UUID (001–999). */
+/** Derive a stable 4-digit agent code from the UUID (0001–9999). */
 function deriveAgentCode(uid: string): string {
   const hex = uid.replace(/-/g, "").slice(-8);
-  const num = (parseInt(hex, 16) % 999) + 1;
-  return num.toString().padStart(3, "0");
+  const num = (parseInt(hex, 16) % 9999) + 1;
+  return num.toString().padStart(4, "0");
 }
 
 /** Format a date string to "DD/MM/YY" */
@@ -97,10 +97,10 @@ export function AgentCard({ displayName, agentId, since, className }: AgentCardP
         {/* ── Agent number — positioned just below the bg title text ── */}
         <div style={{
           position: "absolute",
-          top: "168px",
+          top: "99px",
           left: "26px",
           zIndex: 1,
-          fontSize: "14px",
+          fontSize: "13px",
           fontWeight: 700,
           color: "rgba(255,255,255,0.85)",
           letterSpacing: "0.03em",
@@ -137,7 +137,7 @@ export function AgentCard({ displayName, agentId, since, className }: AgentCardP
           {/* Agent ID + Since */}
           <div style={{ textAlign: "right", flexShrink: 0 }}>
             <div style={{
-              fontSize: "11px",
+              fontSize: "13px",
               fontWeight: 700,
               color: "rgba(255,255,255,0.75)",
               lineHeight: 1.2,
@@ -146,14 +146,14 @@ export function AgentCard({ displayName, agentId, since, className }: AgentCardP
               Agent ID.
             </div>
             <div style={{
-              fontSize: "14px",
+              fontSize: "28px",
               fontWeight: 800,
               color: "white",
-              lineHeight: 1.15,
-              letterSpacing: "0.01em",
+              lineHeight: 1.1,
+              letterSpacing: "0.02em",
               fontFamily: FONT,
             }}>
-              {agentLabel}
+              {code}
             </div>
             {sinceStr && (
               <div style={{
