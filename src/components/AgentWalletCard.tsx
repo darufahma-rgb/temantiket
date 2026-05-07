@@ -31,6 +31,7 @@ function fmtDate(iso: string) {
 
 const TX_COLOR: Record<WalletTransaction["type"], string> = {
   mission_conversion: "text-emerald-700",
+  mission_fee:        "text-emerald-600",
   order_bonus:        "text-sky-700",
   payout:             "text-red-600",
   adjustment:         "text-violet-700",
@@ -38,6 +39,7 @@ const TX_COLOR: Record<WalletTransaction["type"], string> = {
 
 const TX_LABEL: Record<WalletTransaction["type"], string> = {
   mission_conversion: "Konversi Poin",
+  mission_fee:        "Fee Side Job",
   order_bonus:        "Bonus Order",
   payout:             "Pencairan",
   adjustment:         "Koreksi",

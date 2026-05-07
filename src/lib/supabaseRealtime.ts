@@ -63,6 +63,19 @@ export function onMissionsChanged(fn: MissionListener): () => void {
   return () => missionListeners.delete(fn);
 }
 
+/**
+ * Listeners khusus untuk INSERT baru ke daily_missions.
+ * AgentDashboard subscribe biar bisa show popup notifikasi saat owner
+ * deploy side job baru. Payload-nya adalah raw DB row dari daily_missions.
+ */
+type NewMissionListener = (row: Record<string, unknown>) => void;
+const newMissionListeners = new Set<NewMissionListener>();
+
+export function onNewMissionInserted(fn: NewMissionListener): () => void {
+  newMissionListeners.add(fn);
+  return () => newMissionListeners.delete(fn);
+}
+
 /** Helper: ambil id dari payload.old (hanya PK yang dijamin ada di DELETE). */
 function oldId(payload: { old: Record<string, unknown> }): string {
   return String(payload.old.id);
@@ -251,11 +264,13 @@ export function startRealtimeSync(agencyId: string): () => void {
     // ── DAILY MISSIONS ────────────────────────────────────────────────────────
     // INSERT (misi baru), UPDATE (edit misi), DELETE (hapus misi) semua relevan
     // bagi agent yang sedang lihat daftar misi.
+    // INSERT juga memicu newMissionListeners dengan raw row — buat popup notif.
     .on("postgres_changes", {
       event: "INSERT", schema: "public", table: "daily_missions",
       filter: agencyFilter,
-    }, () => {
+    }, (payload) => {
       for (const fn of missionListeners) fn();
+      for (const fn of newMissionListeners) fn(payload.new as Record<string, unknown>);
     })
     .on("postgres_changes", {
       event: "UPDATE", schema: "public", table: "daily_missions",

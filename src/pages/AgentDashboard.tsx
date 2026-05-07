@@ -18,6 +18,9 @@ import { RewardCatalog } from "@/components/RewardCatalog";
 import { AgentMissionWidget } from "@/features/missions/AgentMissionWidget";
 import { listMySubmissions, sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
 import type { MissionSubmission } from "@/features/missions/types";
+import { MissionPopupNotification, type PopupMission } from "@/features/missions/MissionPopupNotification";
+import { onNewMissionInserted } from "@/lib/supabaseRealtime";
+import { pullMissionMeta } from "@/lib/missionMeta";
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
   Draft:     "bg-slate-100 text-slate-600 border border-slate-200",
@@ -44,6 +47,7 @@ export default function AgentDashboard() {
   const [points, setPoints] = useState<AgentPoint[]>([]);
   const [missionSubs, setMissionSubs] = useState<MissionSubmission[]>([]);
   const [loadingPoints, setLoadingPoints] = useState(true);
+  const [popupMission, setPopupMission] = useState<PopupMission | null>(null);
 
   useEffect(() => {
     void fetchOrders();
@@ -59,6 +63,34 @@ export default function AgentDashboard() {
       setLoadingPoints(false);
     })();
   }, [fetchOrders, fetchClients, clients.length, user?.agencyId, user?.id]);
+
+  useEffect(() => {
+    if (!user?.agencyId || !user?.id) return;
+    const unsub = onNewMissionInserted(async (row) => {
+      const missionId = String(row.id ?? "");
+      const deadline = String(row.deadline ?? "");
+      if (!missionId || !deadline) return;
+      const { isPast } = await import("date-fns");
+      if (isPast(new Date(deadline))) return;
+      const meta = await pullMissionMeta();
+      const missionMeta = meta[missionId];
+      const targets = missionMeta?.targetAgentIds ?? "all";
+      const isTargeted =
+        targets === "all" ||
+        (Array.isArray(targets) && targets.includes(user.id!));
+      if (!isTargeted) return;
+      setPopupMission({
+        id: missionId,
+        title: String(row.title ?? "Misi Baru"),
+        description: String(row.description ?? ""),
+        rewardPoints: Number(row.reward_points ?? 0),
+        feeIDR: missionMeta?.feeIDR ?? 0,
+        deadline,
+        targetLabel: targets === "all" ? "Semua Agen" : "Kamu",
+      });
+    });
+    return unsub;
+  }, [user?.agencyId, user?.id]);
 
   const myOrders = useMemo(
     () => orders.filter((o) => o.createdByAgent === user?.id),
@@ -127,6 +159,7 @@ export default function AgentDashboard() {
   ];
 
   return (
+    <>
     <div className="pb-8 md:p-6 max-w-6xl md:mx-auto space-y-4 md:space-y-5">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -386,7 +419,9 @@ export default function AgentDashboard() {
 
       {/* ── Mission Widget ──────────────────────────────────────────────── */}
       {user?.agencyId && user?.id && (
-        <AgentMissionWidget agencyId={user.agencyId} agentId={user.id} />
+        <div id="agent-mission-widget">
+          <AgentMissionWidget agencyId={user.agencyId} agentId={user.id} />
+        </div>
       )}
 
       {/* ── Tier + Reward Catalog ───────────────────────────────────────── */}
@@ -583,5 +618,15 @@ export default function AgentDashboard() {
       </div>
 
     </div>
+
+    <MissionPopupNotification
+      mission={popupMission}
+      onClose={() => setPopupMission(null)}
+      onViewMission={() => {
+        const el = document.getElementById("agent-mission-widget");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }}
+    />
+    </>
   );
 }

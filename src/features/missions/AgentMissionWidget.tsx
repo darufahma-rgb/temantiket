@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Target, Clock, CheckCircle2, XCircle, Upload, Star, Send, Zap, History, Trophy,
+  Target, Clock, CheckCircle2, XCircle, Upload, Star, Send, Zap, History, Trophy, Wallet,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,10 @@ import {
 } from "./missionsRepo";
 import type { DailyMission, MissionSubmission } from "./types";
 import { onMissionsChanged } from "@/lib/supabaseRealtime";
+import { pullMissionMeta, type MissionMetaMap } from "@/lib/missionMeta";
+
+const fmtIDR = (v: number) =>
+  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);
 
 interface Props {
   agencyId: string;
@@ -28,10 +32,10 @@ type MissionState = "none" | "pending" | "approved" | "rejected";
 const STATUS_CONFIG: Record<MissionState, {
   label: string; icon: React.ReactNode; cardCls: string; badge: string;
 }> = {
-  none:     { label: "Belum Selesai",    icon: <Clock className="w-4 h-4" />,        cardCls: "border-slate-200 bg-white",           badge: "bg-slate-100 text-slate-600" },
-  pending:  { label: "Menunggu Validasi",icon: <Clock className="w-4 h-4" />,        cardCls: "border-amber-200 bg-amber-50/40",     badge: "bg-amber-100 text-amber-700" },
-  approved: { label: "Selesai ✓",        icon: <CheckCircle2 className="w-4 h-4" />, cardCls: "border-emerald-200 bg-emerald-50/40", badge: "bg-emerald-100 text-emerald-700" },
-  rejected: { label: "Ditolak",          icon: <XCircle className="w-4 h-4" />,      cardCls: "border-red-200 bg-red-50/30",         badge: "bg-red-100 text-red-600" },
+  none:     { label: "Belum Selesai",     icon: <Clock className="w-4 h-4" />,        cardCls: "border-slate-200 bg-white",           badge: "bg-slate-100 text-slate-600" },
+  pending:  { label: "Menunggu Validasi", icon: <Clock className="w-4 h-4" />,        cardCls: "border-amber-200 bg-amber-50/40",     badge: "bg-amber-100 text-amber-700" },
+  approved: { label: "Selesai ✓",         icon: <CheckCircle2 className="w-4 h-4" />, cardCls: "border-emerald-200 bg-emerald-50/40", badge: "bg-emerald-100 text-emerald-700" },
+  rejected: { label: "Ditolak",           icon: <XCircle className="w-4 h-4" />,      cardCls: "border-red-200 bg-red-50/30",         badge: "bg-red-100 text-red-600" },
 };
 
 // ── MissionCard ───────────────────────────────────────────────────────────────
@@ -40,11 +44,12 @@ interface MissionCardProps {
   submission: MissionSubmission | undefined;
   agencyId: string;
   agentId: string;
+  feeIDR: number;
   onSubmitDone: () => void;
   onNewApproval: () => void;
 }
 
-function MissionCard({ mission, submission, agencyId, agentId, onSubmitDone, onNewApproval }: MissionCardProps) {
+function MissionCard({ mission, submission, agencyId, agentId, feeIDR, onSubmitDone, onNewApproval }: MissionCardProps) {
   const state: MissionState = submission?.status ?? "none";
   const cfg = STATUS_CONFIG[state];
   const expired = isPast(new Date(mission.deadline));
@@ -111,10 +116,17 @@ function MissionCard({ mission, submission, agencyId, agentId, onSubmitDone, onN
             <span className={`inline-flex items-center gap-1 text-[10.5px] px-1.5 py-0.5 rounded-full font-semibold ${cfg.badge}`}>
               {cfg.icon} {cfg.label}
             </span>
+            {feeIDR > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full font-semibold">
+                <Wallet className="w-2.5 h-2.5" /> Fee {fmtIDR(feeIDR)}
+              </span>
+            )}
           </div>
           {mission.description && <p className="text-xs text-slate-500 mt-0.5">{mission.description}</p>}
           <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">
-            <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400" />{mission.rewardPoints} poin</span>
+            <span className="flex items-center gap-1">
+              <Star className="w-3 h-3 text-amber-400" />{mission.rewardPoints} poin
+            </span>
             <span>{expired ? "Kedaluwarsa" : `Sisa ${formatDistanceToNow(new Date(mission.deadline), { locale: idLocale })}`}</span>
           </div>
         </div>
@@ -133,9 +145,16 @@ function MissionCard({ mission, submission, agencyId, agentId, onSubmitDone, onN
             initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 400, damping: 15 }}
-            className="shrink-0 flex items-center gap-1 bg-emerald-500 text-white text-xs font-bold px-2.5 py-1 rounded-full"
+            className="shrink-0 flex flex-col items-end gap-1"
           >
-            <Zap className="w-3 h-3" /> +{mission.rewardPoints} poin
+            <span className="flex items-center gap-1 bg-emerald-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+              <Zap className="w-3 h-3" /> +{mission.rewardPoints} poin
+            </span>
+            {feeIDR > 0 && (
+              <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                <Wallet className="w-2.5 h-2.5" /> +{fmtIDR(feeIDR)}
+              </span>
+            )}
           </motion.div>
         )}
       </div>
@@ -189,9 +208,10 @@ function MissionCard({ mission, submission, agencyId, agentId, onSubmitDone, onN
 interface LogProps {
   allMissions: DailyMission[];
   submissions: MissionSubmission[];
+  missionMeta: MissionMetaMap;
 }
 
-function MissionLog({ allMissions, submissions }: LogProps) {
+function MissionLog({ allMissions, submissions, missionMeta }: LogProps) {
   const history = useMemo(() => {
     return submissions
       .map((s) => {
@@ -205,6 +225,13 @@ function MissionLog({ allMissions, submissions }: LogProps) {
   const totalEarned = useMemo(
     () => submissions.filter((s) => s.status === "approved").reduce((sum, s) => sum + s.rewardPoints, 0),
     [submissions],
+  );
+
+  const totalFeeEarned = useMemo(
+    () => submissions
+      .filter((s) => s.status === "approved")
+      .reduce((sum, s) => sum + (missionMeta[s.missionId]?.feeIDR ?? 0), 0),
+    [submissions, missionMeta],
   );
 
   const STATUS_ROW: Record<string, { label: string; cls: string }> = {
@@ -223,21 +250,31 @@ function MissionLog({ allMissions, submissions }: LogProps) {
 
   return (
     <div className="space-y-3">
-      {/* Summary */}
-      <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
-        <Trophy className="w-5 h-5 text-emerald-600 shrink-0" />
-        <div>
-          <p className="text-sm font-bold text-emerald-800">
-            Total Poin dari Misi: <span className="font-mono">{totalEarned}</span>
-          </p>
-          <p className="text-xs text-emerald-600">{history.filter((h) => h.status === "approved").length} misi berhasil diselesaikan</p>
+      <div className="flex gap-2">
+        <div className="flex-1 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2.5">
+          <Trophy className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div>
+            <p className="text-xs font-bold text-emerald-800">
+              <span className="font-mono">{totalEarned}</span> poin earned
+            </p>
+            <p className="text-[10px] text-emerald-600">{history.filter((h) => h.status === "approved").length} misi selesai</p>
+          </div>
         </div>
+        {totalFeeEarned > 0 && (
+          <div className="flex-1 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2.5">
+            <Wallet className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-emerald-800">{fmtIDR(totalFeeEarned)}</p>
+              <p className="text-[10px] text-emerald-600">Total fee IDR</p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Log table */}
       <div className="space-y-2">
         {history.map((h) => {
           const sts = STATUS_ROW[h.status] ?? STATUS_ROW.pending;
+          const fee = missionMeta[h.missionId]?.feeIDR ?? 0;
           return (
             <div key={h.id} className="flex items-start gap-3 bg-white border rounded-xl p-3">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
@@ -262,6 +299,11 @@ function MissionLog({ allMissions, submissions }: LogProps) {
                     <Zap className="w-3 h-3" /> +{h.rewardPoints}
                   </span>
                 )}
+                {h.status === "approved" && fee > 0 && (
+                  <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
+                    <Wallet className="w-2.5 h-2.5" /> +{fmtIDR(fee)}
+                  </span>
+                )}
               </div>
             </div>
           );
@@ -275,32 +317,35 @@ function MissionLog({ allMissions, submissions }: LogProps) {
 export function AgentMissionWidget({ agencyId, agentId }: Props) {
   const [allMissions, setAllMissions] = useState<DailyMission[]>([]);
   const [submissions, setSubmissions] = useState<MissionSubmission[]>([]);
+  const [missionMeta, setMissionMeta] = useState<MissionMetaMap>({});
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
   const [tab, setTab] = useState<ActiveTab>("active");
   const [isLive, setIsLive] = useState(false);
 
-  // Track previous submission statuses so we can detect admin review changes
   const prevSubStatusRef = useRef<Map<string, string>>(new Map());
 
   const reload = useCallback(async (fromRealtime = false) => {
-    const [m, s] = await Promise.all([
+    const [m, s, meta] = await Promise.all([
       listMissions(agencyId),
       listMySubmissions(agencyId, agentId),
+      pullMissionMeta(),
     ]);
     setAllMissions(m);
     setSubmissions(s);
+    setMissionMeta(meta);
     setLoading(false);
 
     if (fromRealtime) {
-      // Detect status changes and notify the agent
       for (const sub of s) {
         const prev = prevSubStatusRef.current.get(sub.missionId);
         if (prev && prev !== sub.status) {
           const mission = m.find((x) => x.id === sub.missionId);
           const title = mission?.title ?? "Misi";
           if (sub.status === "approved") {
-            toast.success(`🎉 "${title}" disetujui! +${sub.rewardPoints} poin`, {
+            const fee = meta[sub.missionId]?.feeIDR ?? 0;
+            const feeLabel = fee > 0 ? ` + fee ${fmtIDR(fee)}` : "";
+            toast.success(`🎉 "${title}" disetujui! +${sub.rewardPoints} poin${feeLabel}`, {
               duration: 5000,
             });
             setShowConfetti(true);
@@ -313,19 +358,16 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
       }
     }
 
-    // Update ref for next comparison
     const nextMap = new Map<string, string>();
     for (const sub of s) nextMap.set(sub.missionId, sub.status);
     prevSubStatusRef.current = nextMap;
   }, [agencyId, agentId]);
 
-  // Initial load
   useEffect(() => {
     if (!agencyId || !agentId) return;
     void reload(false);
   }, [agencyId, agentId, reload]);
 
-  // Realtime subscription — fires whenever mission_submissions or daily_missions change
   useEffect(() => {
     if (!agencyId || !agentId) return;
     setIsLive(true);
@@ -336,10 +378,15 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
     };
   }, [agencyId, agentId, reload]);
 
-  // Active missions = not expired OR the agent has a submission for it
   const activeMissions = useMemo(
-    () => allMissions.filter((m) => !isPast(new Date(m.deadline)) || submissions.some((s) => s.missionId === m.id)),
-    [allMissions, submissions],
+    () => allMissions.filter((m) => {
+      const notExpiredOrHasSub = !isPast(new Date(m.deadline)) || submissions.some((s) => s.missionId === m.id);
+      if (!notExpiredOrHasSub) return false;
+      const meta = missionMeta[m.id];
+      if (!meta || meta.targetAgentIds === "all") return true;
+      return (meta.targetAgentIds as string[]).includes(agentId);
+    }),
+    [allMissions, submissions, missionMeta, agentId],
   );
 
   const totalReward = submissions.filter((s) => s.status === "approved").reduce((sum, s) => sum + s.rewardPoints, 0);
@@ -363,7 +410,6 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
       <MissionConfetti show={showConfetti} onDone={() => setShowConfetti(false)} />
 
       <Card className="p-4 space-y-3">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-sky-100 rounded-lg flex items-center justify-center">
@@ -371,7 +417,7 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <p className="font-bold text-slate-800 text-sm leading-tight">Misi Harian</p>
+                <p className="font-bold text-slate-800 text-sm leading-tight">Side Job Mission</p>
                 {isLive && (
                   <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
                     <span className="relative flex h-1.5 w-1.5">
@@ -383,7 +429,7 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
                 )}
               </div>
               <p className="text-[11px] text-slate-400">
-                {activeMissions.filter((m) => !isPast(new Date(m.deadline))).length} misi aktif
+                {activeMissions.filter((m) => !isPast(new Date(m.deadline))).length} misi aktif untukmu
               </p>
             </div>
           </div>
@@ -403,7 +449,6 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
           {([
             { id: "active" as ActiveTab, label: "Misi Aktif", icon: <Target className="w-3.5 h-3.5" />, count: activeMissions.filter((m) => !isPast(new Date(m.deadline))).length },
@@ -424,34 +469,39 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
           ))}
         </div>
 
-        {/* Tab content */}
         <AnimatePresence mode="wait">
           {tab === "active" && (
             <motion.div key="active" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-              {activeMissions.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-4">Tidak ada misi aktif saat ini.</p>
+              {activeMissions.filter((m) => !isPast(new Date(m.deadline))).length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-4">Tidak ada misi aktif untukmu saat ini.</p>
               ) : (
-                activeMissions.map((m) => (
-                  <MissionCard
-                    key={m.id}
-                    mission={m}
-                    submission={submissions.find((s) => s.missionId === m.id)}
-                    agencyId={agencyId}
-                    agentId={agentId}
-                    onSubmitDone={() => void reload(false)}
-                    onNewApproval={() => setShowConfetti(true)}
-                  />
-                ))
+                activeMissions
+                  .filter((m) => !isPast(new Date(m.deadline)))
+                  .map((m) => (
+                    <MissionCard
+                      key={m.id}
+                      mission={m}
+                      submission={submissions.find((s) => s.missionId === m.id)}
+                      agencyId={agencyId}
+                      agentId={agentId}
+                      feeIDR={missionMeta[m.id]?.feeIDR ?? 0}
+                      onSubmitDone={() => void reload(false)}
+                      onNewApproval={() => setShowConfetti(true)}
+                    />
+                  ))
+              )}
+              {activeMissions.some((m) => submissions.some((s) => s.missionId === m.id && isPast(new Date(m.deadline)))) && (
+                <p className="text-[10.5px] text-slate-400 text-center">Misi kedaluwarsa tersembunyi. Lihat di Riwayat.</p>
               )}
               <p className="text-[10.5px] text-slate-400 text-center">
-                Selesaikan misi untuk mendapatkan poin ekstra!
+                Selesaikan side job untuk poin ekstra + fee IDR!
               </p>
             </motion.div>
           )}
 
           {tab === "log" && (
             <motion.div key="log" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <MissionLog allMissions={allMissions} submissions={submissions} />
+              <MissionLog allMissions={allMissions} submissions={submissions} missionMeta={missionMeta} />
             </motion.div>
           )}
         </AnimatePresence>

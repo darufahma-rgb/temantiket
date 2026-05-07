@@ -9,6 +9,8 @@ export interface DailyMission {
   deadline: string;
   createdBy: string | null;
   createdAt: string;
+  feeIDR?: number;
+  targetAgentIds?: string[] | "all";
 }
 
 export interface MissionSubmission {

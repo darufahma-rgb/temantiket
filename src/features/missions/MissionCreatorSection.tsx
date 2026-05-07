@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import {
   Target, Plus, Trash2, CheckCircle2, XCircle, Clock, ChevronDown,
   ChevronUp, Upload, Star, BookOpen, Zap, BarChart3, Send, RefreshCw,
+  Wallet, Users, User,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,8 +16,17 @@ import {
   listMissions, createMission, deleteMission,
   listSubmissions, reviewSubmission,
   listTemplates, createTemplate, deleteTemplate,
+  incrementTemplateUseCount,
 } from "./missionsRepo";
 import type { DailyMission, MissionSubmission, MissionTemplate } from "./types";
+import {
+  pullMissionMeta, saveMissionMetaEntry, removeMissionMetaEntry,
+  type MissionMetaMap,
+} from "@/lib/missionMeta";
+import { addWalletTx } from "@/lib/agentWallet";
+
+const fmtIDR = (v: number) =>
+  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);
 
 interface Props {
   agencyId: string;
@@ -40,22 +50,122 @@ function deadlineDefault() {
   return d.toISOString().slice(0, 16);
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// ── TargetSelector ────────────────────────────────────────────────────────────
+
+interface TargetSelectorProps {
+  agentNames: Map<string, string>;
+  mode: "all" | "specific";
+  selected: Set<string>;
+  onModeChange: (m: "all" | "specific") => void;
+  onToggle: (id: string) => void;
+}
+
+function TargetSelector({ agentNames, mode, selected, onModeChange, onToggle }: TargetSelectorProps) {
+  return (
+    <div className="space-y-2">
+      <label className="text-[11px] text-slate-500 mb-1 block font-semibold">Target Agen</label>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onModeChange("all")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+            mode === "all"
+              ? "bg-sky-600 border-sky-600 text-white"
+              : "border-slate-200 text-slate-500 hover:border-sky-300"
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" /> Semua Agen
+        </button>
+        <button
+          type="button"
+          onClick={() => onModeChange("specific")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+            mode === "specific"
+              ? "bg-sky-600 border-sky-600 text-white"
+              : "border-slate-200 text-slate-500 hover:border-sky-300"
+          }`}
+        >
+          <User className="w-3.5 h-3.5" /> Pilih Agen
+        </button>
+      </div>
+      <AnimatePresence>
+        {mode === "specific" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-40 overflow-y-auto bg-white">
+              {agentNames.size === 0 ? (
+                <p className="text-xs text-slate-400 py-3 text-center">Belum ada agen terdaftar.</p>
+              ) : (
+                Array.from(agentNames.entries()).map(([id, name]) => (
+                  <label
+                    key={id}
+                    className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-sky-50/50 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected.has(id)}
+                      onChange={() => onToggle(id)}
+                      className="rounded accent-sky-600"
+                    />
+                    <span className="text-xs text-slate-700 font-medium">{name}</span>
+                  </label>
+                ))
+              )}
+            </div>
+            {selected.size > 0 && (
+              <p className="text-[10.5px] text-sky-600 font-semibold mt-1">
+                {selected.size} agen dipilih
+              </p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── DeployForm ────────────────────────────────────────────────────────────────
 
 interface DeployFormProps {
   initialTitle: string;
   initialDescription: string;
   initialPoints: number;
-  onDeploy: (title: string, description: string, points: number, deadline: string) => Promise<void>;
+  agentNames: Map<string, string>;
+  onDeploy: (
+    title: string,
+    description: string,
+    points: number,
+    deadline: string,
+    feeIDR: number,
+    targetAgentIds: string[] | "all",
+  ) => Promise<void>;
   onCancel: () => void;
   deploying: boolean;
 }
 
-function DeployForm({ initialTitle, initialDescription, initialPoints, onDeploy, onCancel, deploying }: DeployFormProps) {
+function DeployForm({ initialTitle, initialDescription, initialPoints, agentNames, onDeploy, onCancel, deploying }: DeployFormProps) {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [pts, setPts] = useState(String(initialPoints));
   const [deadline, setDeadline] = useState(deadlineDefault());
+  const [fee, setFee] = useState("0");
+  const [targetMode, setTargetMode] = useState<"all" | "specific">("all");
+  const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
+
+  function toggleAgent(id: string) {
+    setSelectedAgents((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const targetAgentIds: string[] | "all" =
+    targetMode === "all" ? "all" : Array.from(selectedAgents);
 
   return (
     <motion.div
@@ -91,24 +201,53 @@ function DeployForm({ initialTitle, initialDescription, initialPoints, onDeploy,
             </div>
           </div>
           <div>
-            <label className="text-[11px] text-slate-500 mb-1 block">Deadline</label>
-            <Input
-              type="datetime-local" value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="bg-white text-sm"
-            />
+            <label className="text-[11px] text-slate-500 mb-1 block">Fee IDR (opsional)</label>
+            <div className="relative">
+              <Wallet className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-emerald-500" />
+              <Input
+                type="number" min={0} value={fee} onChange={(e) => setFee(e.target.value)}
+                placeholder="0"
+                className="pl-7 bg-white text-sm"
+              />
+            </div>
           </div>
         </div>
+        <div>
+          <label className="text-[11px] text-slate-500 mb-1 block">Deadline</label>
+          <Input
+            type="datetime-local" value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            className="bg-white text-sm"
+          />
+        </div>
+        <TargetSelector
+          agentNames={agentNames}
+          mode={targetMode}
+          selected={selectedAgents}
+          onModeChange={setTargetMode}
+          onToggle={toggleAgent}
+        />
         <div className="flex gap-2 justify-end">
           <Button variant="ghost" size="sm" onClick={onCancel}>Batal</Button>
           <Button
             size="sm"
             className="bg-sky-600 hover:bg-sky-700 text-white gap-1.5"
-            disabled={deploying}
-            onClick={() => void onDeploy(title, description, parseInt(pts, 10) || initialPoints, deadline)}
+            disabled={deploying || (targetMode === "specific" && selectedAgents.size === 0)}
+            onClick={() => void onDeploy(
+              title,
+              description,
+              parseInt(pts, 10) || initialPoints,
+              deadline,
+              Number(fee) || 0,
+              targetAgentIds,
+            )}
           >
             <Send className="w-3.5 h-3.5" />
-            {deploying ? "Deploying…" : "Deploy ke Semua Agen"}
+            {deploying
+              ? "Deploying…"
+              : targetMode === "all"
+                ? "Deploy ke Semua Agen"
+                : `Deploy ke ${selectedAgents.size} Agen`}
           </Button>
         </div>
       </div>
@@ -116,13 +255,16 @@ function DeployForm({ initialTitle, initialDescription, initialPoints, onDeploy,
   );
 }
 
+// ── SubmissionRow ─────────────────────────────────────────────────────────────
+
 interface SubmissionRowProps {
   sub: MissionSubmission;
   agentNames: Map<string, string>;
+  feeIDR: number;
   onReview: (id: string, status: "approved" | "rejected") => void;
 }
 
-function SubmissionRow({ sub, agentNames, onReview }: SubmissionRowProps) {
+function SubmissionRow({ sub, agentNames, feeIDR, onReview }: SubmissionRowProps) {
   const sts = STATUS_LABEL[sub.status] ?? STATUS_LABEL.pending;
   const agentName = agentNames.get(sub.agentId) ?? sub.agentId.slice(0, 8);
   return (
@@ -142,6 +284,11 @@ function SubmissionRow({ sub, agentNames, onReview }: SubmissionRowProps) {
           <span className={`inline-flex items-center gap-1 text-[10.5px] px-1.5 py-0.5 rounded-full font-semibold ${sts.cls}`}>
             {sts.icon} {sts.label}
           </span>
+          {sub.status === "approved" && feeIDR > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 px-1.5 py-0.5 rounded-full font-semibold">
+              <Wallet className="w-2.5 h-2.5" /> {fmtIDR(feeIDR)}
+            </span>
+          )}
         </div>
         {sub.notes && <p className="text-xs text-slate-500 mt-0.5 italic">"{sub.notes}"</p>}
         <p className="text-[10.5px] text-slate-400 mt-0.5">
@@ -171,48 +318,51 @@ function SubmissionRow({ sub, agentNames, onReview }: SubmissionRowProps) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
+
 export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCount }: Props) {
   const [missions, setMissions] = useState<DailyMission[]>([]);
   const [submissions, setSubmissions] = useState<MissionSubmission[]>([]);
   const [templates, setTemplates] = useState<MissionTemplate[]>([]);
+  const [missionMeta, setMissionMeta] = useState<MissionMetaMap>({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("templates");
   const [expandedMission, setExpandedMission] = useState<string | null>(null);
 
-  // Deploy-from-template state
   const [deployingTemplateId, setDeployingTemplateId] = useState<string | null>(null);
   const [deploying, setDeploying] = useState(false);
 
-  // New template form
   const [showTemplateForm, setShowTemplateForm] = useState(false);
   const [tmplTitle, setTmplTitle] = useState("");
   const [tmplDesc, setTmplDesc] = useState("");
   const [tmplPts, setTmplPts] = useState("20");
   const [savingTemplate, setSavingTemplate] = useState(false);
 
-  // Direct-create form
   const [createTitle, setCreateTitle] = useState("");
   const [createDesc, setCreateDesc] = useState("");
   const [createPts, setCreatePts] = useState("20");
+  const [createFee, setCreateFee] = useState("0");
   const [createDeadline, setCreateDeadline] = useState(deadlineDefault());
+  const [createTargetMode, setCreateTargetMode] = useState<"all" | "specific">("all");
+  const [createSelectedAgents, setCreateSelectedAgents] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
   async function reload() {
     setLoading(true);
-    const [m, s, t] = await Promise.all([
+    const [m, s, t, meta] = await Promise.all([
       listMissions(agencyId),
       listSubmissions(agencyId),
       listTemplates(agencyId),
+      pullMissionMeta(),
     ]);
     setMissions(m);
     setSubmissions(s);
     setTemplates(t);
+    setMissionMeta(meta);
     setLoading(false);
   }
 
   useEffect(() => { void reload(); }, [agencyId]);
 
-  // ── Derived ─────────────────────────────────────────────────────────────────
   const activeMissions = useMemo(
     () => missions.filter((m) => !isPast(new Date(m.deadline))),
     [missions],
@@ -223,8 +373,24 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
     return submissions.filter((s) => s.missionId === missionId);
   }
 
+  function toggleCreateAgent(id: string) {
+    setCreateSelectedAgents((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
   // ── Actions ──────────────────────────────────────────────────────────────────
-  async function handleDeploy(title: string, description: string, points: number, deadline: string) {
+
+  async function handleDeploy(
+    title: string,
+    description: string,
+    points: number,
+    deadline: string,
+    feeIDR: number,
+    targetAgentIds: string[] | "all",
+  ) {
     if (!title.trim()) { toast.error("Judul wajib diisi"); return; }
     if (isNaN(points) || points < 1) { toast.error("Poin minimal 1"); return; }
     setDeploying(true);
@@ -233,14 +399,19 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
       { title: title.trim(), description: description.trim(), rewardPoints: points, deadline: new Date(deadline).toISOString() },
       ownerId,
     );
-    setDeploying(false);
     if (result) {
-      toast.success(`Misi di-deploy ke ${agentCount} agen!`);
+      const newMeta = await saveMissionMetaEntry(missionMeta, result.id, { feeIDR, targetAgentIds });
+      setMissionMeta(newMeta);
+      const targetLabel = targetAgentIds === "all"
+        ? `${agentCount} agen`
+        : `${(targetAgentIds as string[]).length} agen terpilih`;
+      toast.success(`Misi di-deploy ke ${targetLabel}!`);
       setDeployingTemplateId(null);
       void reload();
     } else {
       toast.error("Gagal deploy misi. Pastikan SQL migration sudah dijalankan.");
     }
+    setDeploying(false);
   }
 
   async function handleDeleteTemplate(id: string) {
@@ -253,8 +424,14 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
   async function handleDeleteMission(id: string) {
     if (!confirm("Hapus misi ini?")) return;
     const ok = await deleteMission(id);
-    if (ok) { toast.success("Misi dihapus"); void reload(); }
-    else toast.error("Gagal hapus misi");
+    if (ok) {
+      const newMeta = await removeMissionMetaEntry(missionMeta, id);
+      setMissionMeta(newMeta);
+      toast.success("Misi dihapus");
+      void reload();
+    } else {
+      toast.error("Gagal hapus misi");
+    }
   }
 
   async function handleSaveTemplate() {
@@ -282,27 +459,60 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
     if (!createTitle.trim()) { toast.error("Judul wajib diisi"); return; }
     const pts = parseInt(createPts, 10);
     if (isNaN(pts) || pts < 1) { toast.error("Poin minimal 1"); return; }
+    if (createTargetMode === "specific" && createSelectedAgents.size === 0) {
+      toast.error("Pilih minimal 1 agen atau pilih 'Semua Agen'");
+      return;
+    }
     setSaving(true);
     const result = await createMission(
       agencyId,
       { title: createTitle.trim(), description: createDesc.trim(), rewardPoints: pts, deadline: new Date(createDeadline).toISOString() },
       ownerId,
     );
-    setSaving(false);
     if (result) {
-      toast.success(`Misi di-deploy ke ${agentCount} agen!`);
-      setCreateTitle(""); setCreateDesc(""); setCreatePts("20"); setCreateDeadline(deadlineDefault());
+      const feeIDR = Number(createFee) || 0;
+      const targetAgentIds: string[] | "all" =
+        createTargetMode === "all" ? "all" : Array.from(createSelectedAgents);
+      const newMeta = await saveMissionMetaEntry(missionMeta, result.id, { feeIDR, targetAgentIds });
+      setMissionMeta(newMeta);
+      const targetLabel = targetAgentIds === "all"
+        ? `${agentCount} agen`
+        : `${(targetAgentIds as string[]).length} agen terpilih`;
+      toast.success(`Misi di-deploy ke ${targetLabel}!`);
+      setCreateTitle(""); setCreateDesc(""); setCreatePts("20"); setCreateFee("0");
+      setCreateDeadline(deadlineDefault());
+      setCreateTargetMode("all"); setCreateSelectedAgents(new Set());
       setTab("active");
       void reload();
     } else {
       toast.error("Gagal membuat misi. Cek SQL migration sudah dijalankan.");
     }
+    setSaving(false);
   }
 
   async function handleReview(subId: string, status: "approved" | "rejected") {
     const ok = await reviewSubmission(subId, status, ownerId);
     if (ok) {
-      toast.success(status === "approved" ? "Disetujui! Poin ditambahkan." : "Ditolak.");
+      if (status === "approved") {
+        const sub = submissions.find((s) => s.id === subId);
+        if (sub) {
+          const meta = missionMeta[sub.missionId];
+          if (meta?.feeIDR && meta.feeIDR > 0) {
+            const mission = missions.find((m) => m.id === sub.missionId);
+            addWalletTx(sub.agentId, {
+              agentId:     sub.agentId,
+              type:        "mission_fee",
+              pointsDelta: 0,
+              amountIDR:   meta.feeIDR,
+              description: `Fee side job: "${mission?.title ?? "Misi"}"`,
+              createdBy:   ownerId,
+            });
+          }
+        }
+        toast.success("Disetujui! Poin + fee ditambahkan ke agen.");
+      } else {
+        toast.success("Ditolak.");
+      }
       void reload();
     } else {
       toast.error("Gagal memperbarui status.");
@@ -310,6 +520,7 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
+
   const TABS: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: "templates", label: "Library Template",  icon: <BookOpen className="w-3.5 h-3.5" />, badge: templates.length },
     { id: "active",   label: "Misi Aktif",         icon: <BarChart3 className="w-3.5 h-3.5" />, badge: totalPending || undefined },
@@ -318,7 +529,6 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Target className="w-5 h-5 text-sky-600" />
@@ -333,7 +543,6 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
         </Button>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
         {TABS.map((t) => (
           <button
@@ -360,6 +569,7 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
         <p className="text-sm text-slate-400 py-6 text-center">Memuat data…</p>
       ) : (
         <AnimatePresence mode="wait">
+
           {/* ── Tab: Template Library ───────────────────────────────────── */}
           {tab === "templates" && (
             <motion.div key="templates" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
@@ -374,7 +584,6 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
                 </Button>
               </div>
 
-              {/* New template form */}
               <AnimatePresence>
                 {showTemplateForm && (
                   <motion.div
@@ -452,7 +661,10 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
                             <Button
                               size="sm"
                               className="h-7 bg-sky-600 hover:bg-sky-700 text-white text-xs px-2.5 gap-1"
-                              onClick={() => setDeployingTemplateId(deployingTemplateId === t.id ? null : t.id)}
+                              onClick={() => {
+                                setDeployingTemplateId(deployingTemplateId === t.id ? null : t.id);
+                                void incrementTemplateUseCount(t.id);
+                              }}
                             >
                               <Zap className="w-3 h-3" /> Gunakan
                             </Button>
@@ -466,7 +678,6 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
                           </div>
                         </div>
 
-                        {/* Deploy form */}
                         <AnimatePresence>
                           {deployingTemplateId === t.id && (
                             <DeployForm
@@ -474,6 +685,7 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
                               initialTitle={t.title}
                               initialDescription={t.description}
                               initialPoints={t.defaultPoints}
+                              agentNames={agentNames}
                               deploying={deploying}
                               onDeploy={handleDeploy}
                               onCancel={() => setDeployingTemplateId(null)}
@@ -491,7 +703,6 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
           {/* ── Tab: Misi Aktif ─────────────────────────────────────────── */}
           {tab === "active" && (
             <motion.div key="active" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-              {/* Summary row */}
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { label: "Misi Aktif", value: activeMissions.length, color: "bg-sky-50 text-sky-700 border-sky-100" },
@@ -517,7 +728,17 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
                     const expired = isPast(new Date(m.deadline));
                     const approvedCount = subs.filter((s) => s.status === "approved").length;
                     const pendingCount = subs.filter((s) => s.status === "pending").length;
-                    const pct = agentCount > 0 ? Math.round((approvedCount / agentCount) * 100) : 0;
+                    const meta = missionMeta[m.id];
+                    const feeIDR = meta?.feeIDR ?? 0;
+                    const targets = meta?.targetAgentIds ?? "all";
+                    const targetLabel =
+                      targets === "all"
+                        ? `Semua (${agentCount})`
+                        : `${(targets as string[]).length} agen`;
+                    const denominator = targets === "all"
+                      ? agentCount
+                      : (targets as string[]).length;
+                    const pct = denominator > 0 ? Math.round((approvedCount / denominator) * 100) : 0;
 
                     return (
                       <Card key={m.id} className="overflow-hidden">
@@ -541,13 +762,23 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
                             {m.description && (
                               <p className="text-xs text-slate-500 mt-0.5 truncate">{m.description}</p>
                             )}
-                            {/* Completion bar */}
+                            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                              <span className="flex items-center gap-1 text-[10.5px] text-slate-500">
+                                <Star className="w-3 h-3 text-amber-400" /> {m.rewardPoints} poin
+                              </span>
+                              {feeIDR > 0 && (
+                                <span className="flex items-center gap-1 text-[10.5px] text-emerald-700 font-semibold">
+                                  <Wallet className="w-3 h-3" /> {fmtIDR(feeIDR)}
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1 text-[10.5px] text-slate-400">
+                                <Users className="w-3 h-3" /> {targetLabel}
+                              </span>
+                            </div>
                             <div className="mt-2 space-y-1">
                               <div className="flex items-center justify-between text-[10.5px] text-slate-500">
-                                <span>{approvedCount} / {agentCount} agen selesai</span>
-                                <span className="flex items-center gap-1">
-                                  <Star className="w-3 h-3 text-amber-400" /> {m.rewardPoints} poin
-                                </span>
+                                <span>{approvedCount} / {denominator} agen selesai</span>
+                                <span>{pct}%</span>
                               </div>
                               <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                 <div
@@ -569,7 +800,6 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
                           </div>
                         </div>
 
-                        {/* Submissions */}
                         {isExpanded && (
                           <div className="border-t bg-slate-50/60 p-4 space-y-2">
                             {subs.length === 0 ? (
@@ -580,6 +810,7 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
                                   key={s.id}
                                   sub={s}
                                   agentNames={agentNames}
+                                  feeIDR={feeIDR}
                                   onReview={(id, status) => void handleReview(id, status)}
                                 />
                               ))
@@ -598,7 +829,7 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
           {tab === "create" && (
             <motion.div key="create" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <div className="bg-slate-50 border rounded-xl p-4 space-y-3">
-                <p className="text-xs font-semibold text-slate-600">Buat misi baru dan deploy langsung ke semua agen.</p>
+                <p className="text-xs font-semibold text-slate-600">Buat side job baru dan deploy ke agen pilihan.</p>
                 <Input
                   placeholder="Judul Misi"
                   value={createTitle}
@@ -621,18 +852,36 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">Deadline</label>
-                    <Input type="datetime-local" value={createDeadline} onChange={(e) => setCreateDeadline(e.target.value)} className="bg-white text-sm" />
+                    <label className="text-xs text-slate-500 mb-1 block">Fee IDR (opsional)</label>
+                    <div className="relative">
+                      <Wallet className="absolute left-2.5 top-2.5 w-4 h-4 text-emerald-500" />
+                      <Input type="number" min={0} value={createFee} onChange={(e) => setCreateFee(e.target.value)} placeholder="0" className="pl-8 bg-white" />
+                    </div>
                   </div>
                 </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Deadline</label>
+                  <Input type="datetime-local" value={createDeadline} onChange={(e) => setCreateDeadline(e.target.value)} className="bg-white text-sm" />
+                </div>
+                <TargetSelector
+                  agentNames={agentNames}
+                  mode={createTargetMode}
+                  selected={createSelectedAgents}
+                  onModeChange={setCreateTargetMode}
+                  onToggle={toggleCreateAgent}
+                />
                 <div className="pt-1 flex justify-end">
                   <Button
                     className="bg-sky-600 hover:bg-sky-700 text-white gap-2"
-                    disabled={saving}
+                    disabled={saving || (createTargetMode === "specific" && createSelectedAgents.size === 0)}
                     onClick={handleDirectCreate}
                   >
                     <Send className="w-4 h-4" />
-                    {saving ? "Deploying…" : `Deploy ke Semua Agen (${agentCount})`}
+                    {saving
+                      ? "Deploying…"
+                      : createTargetMode === "all"
+                        ? `Deploy ke Semua (${agentCount})`
+                        : `Deploy ke ${createSelectedAgents.size} Agen`}
                   </Button>
                 </div>
               </div>

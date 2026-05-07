@@ -14,6 +14,7 @@ export const POINT_TO_IDR_RATE = 1_000;
 
 export type WalletTxType =
   | "mission_conversion"
+  | "mission_fee"
   | "order_bonus"
   | "payout"
   | "adjustment";
