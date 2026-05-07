@@ -858,136 +858,126 @@ export default function Notes() {
                   </div>
                 </div>
               ) : (
-                /* ── View mode ── */
-                <>
-                  <div className="flex items-start justify-between gap-2">
-                    <h3
-                      className="text-[13px] font-bold text-[hsl(var(--foreground))] leading-snug line-clamp-1 flex-1 cursor-pointer hover:text-sky-600 transition-colors"
-                      onClick={() => setExpandedNote(note)}
-                    >
-                      {note.title}
-                    </h3>
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => togglePin(note.id)}
-                        className={cn(
-                          "p-1 rounded-lg transition-colors",
-                          note.pinned
-                            ? "text-sky-500 hover:bg-sky-100"
-                            : "text-slate-400 hover:bg-sky-50 hover:text-sky-500"
-                        )}
-                        title={note.pinned ? t.notes_unpin : t.notes_pin}
-                      >
-                        {note.pinned ? (
-                          <PinOff className="h-3.5 w-3.5" />
-                        ) : (
-                          <Pin className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setExpandedNote(note)}
-                        className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-                        title={t.notes_expand}
-                      >
-                        <Maximize2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => copyNote(note)}
-                        className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-                        title={t.notes_copy}
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => copyNotePlain(note)}
-                        className="p-1 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 transition-colors"
-                        title="Salin teks biasa (untuk WhatsApp)"
-                      >
-                        <ClipboardCheck className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => startEdit(note)}
-                        className="p-1 rounded-lg hover:bg-sky-100 text-slate-400 hover:text-sky-600 transition-colors"
-                        title={t.btn_edit}
-                      >
-                        <Edit3 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteNote(note.id)}
-                        className="p-1 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
-                        title={t.btn_delete}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                /* ── View mode (compact) ── */
+                <div className="flex flex-col h-full min-h-0 gap-0">
+
+                  {/* ── Clickable body ── */}
+                  <div
+                    className="flex-1 cursor-pointer space-y-2 pb-2.5"
+                    onClick={() => setExpandedNote(note)}
+                  >
+                    {/* Title + pin badge */}
+                    <div className="flex items-start gap-1.5 pr-6">
+                      {note.pinned && (
+                        <Pin className="h-3 w-3 text-sky-500 fill-sky-500 rotate-45 shrink-0 mt-0.5" />
+                      )}
+                      <h3 className="text-[13px] font-bold text-[hsl(var(--foreground))] leading-snug line-clamp-1">
+                        {note.title}
+                      </h3>
                     </div>
+
+                    {/* Plain text preview — 2 lines only */}
+                    {note.content && (
+                      <p className="text-[12px] text-muted-foreground leading-relaxed line-clamp-2">
+                        {markdownToPlainText(note.content)}
+                      </p>
+                    )}
+
+                    {/* Tags */}
+                    {(note.tags ?? []).length > 0 && (
+                      <div className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
+                        {(note.tags ?? []).map((tag) => (
+                          <button
+                            key={tag}
+                            onClick={() => setFilterTag(filterTag === tag ? null : tag)}
+                            className="flex items-center gap-0.5 text-[9.5px] font-semibold text-sky-600 bg-sky-100 hover:bg-sky-200 px-1.5 py-0.5 rounded-full transition-colors"
+                          >
+                            <Hash className="h-2.5 w-2.5" />
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Tags */}
-                  {(note.tags ?? []).length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {(note.tags ?? []).map((tag) => (
-                        <button
-                          key={tag}
-                          onClick={() =>
-                            setFilterTag(filterTag === tag ? null : tag)
-                          }
-                          className="flex items-center gap-0.5 text-[9.5px] font-semibold text-sky-600 bg-sky-100 hover:bg-sky-200 px-1.5 py-0.5 rounded-full transition-colors"
-                        >
-                          <Hash className="h-2.5 w-2.5" />
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {note.content && (
-                    <div
-                      className="line-clamp-5 overflow-hidden cursor-pointer"
-                      onClick={() => setExpandedNote(note)}
-                    >
-                      <MarkdownContent content={note.content} />
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between gap-2 pt-1">
-                    <p className="text-[10px] text-[hsl(var(--muted-foreground))] opacity-70">
+                  {/* ── Footer bar ── */}
+                  <div className="flex items-center justify-between gap-1 pt-2 border-t border-slate-200/60">
+                    {/* Left: date */}
+                    <p className="text-[10px] text-muted-foreground opacity-60 shrink-0">
                       {formatDate(note.updatedAt)}
                     </p>
-                    <div className="flex items-center gap-2">
+
+                    {/* Right: word count + rapikan + actions on hover */}
+                    <div className="flex items-center gap-0.5">
                       {note.content && (
-                        <span className="text-[10px] text-slate-400">
-                          <AlignLeft className="h-2.5 w-2.5 inline mr-0.5" />
-                          {wordCount(note.content)} {t.notes_words}
+                        <span className="text-[10px] text-slate-400 mr-1 shrink-0">
+                          ≡ {wordCount(note.content)} {t.notes_words}
                         </span>
                       )}
+
+                      {/* Rapikan — always visible */}
                       {note.content.trim() && (
                         <button
                           type="button"
-                          onClick={() =>
-                            handleRapihkan(note.id, note.content)
-                          }
+                          onClick={() => handleRapihkan(note.id, note.content)}
                           disabled={formatting === note.id}
                           title={t.notes_clean}
-                          className="flex items-center gap-1 text-[10px] text-sky-400 hover:text-sky-600 font-medium transition-colors"
+                          className="flex items-center gap-0.5 text-[10px] text-sky-400 hover:text-sky-600 font-medium transition-colors px-1 py-0.5 rounded"
                         >
-                          <Sparkles
-                            className={cn(
-                              "h-3 w-3",
-                              formatting === note.id && "animate-pulse"
-                            )}
-                          />
+                          <Sparkles className={cn("h-3 w-3", formatting === note.id && "animate-pulse")} />
                           {t.notes_clean}
                         </button>
                       )}
+
+                      {/* Actions — visible on card hover */}
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => togglePin(note.id)}
+                          className={cn(
+                            "p-1 rounded-lg transition-colors",
+                            note.pinned ? "text-sky-500 hover:bg-sky-100" : "text-slate-400 hover:bg-sky-50 hover:text-sky-500"
+                          )}
+                          title={note.pinned ? t.notes_unpin : t.notes_pin}
+                        >
+                          {note.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copyNote(note)}
+                          className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                          title={t.notes_copy}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copyNotePlain(note)}
+                          className="p-1 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 transition-colors"
+                          title="Salin teks biasa (untuk WhatsApp)"
+                        >
+                          <ClipboardCheck className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(note)}
+                          className="p-1 rounded-lg hover:bg-sky-100 text-slate-400 hover:text-sky-600 transition-colors"
+                          title={t.btn_edit}
+                        >
+                          <Edit3 className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteNote(note.id)}
+                          className="p-1 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                          title={t.btn_delete}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </>
+                </div>
               )}
             </motion.div>
           ))}
