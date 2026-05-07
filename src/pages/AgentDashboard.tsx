@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   Users, ShoppingBag, Trophy, TrendingUp, Plus,
   Megaphone, Crown, ChevronRight, Wallet, UserCircle,
-  Zap, BarChart2, Package, Target, ArrowUpRight,
+  Zap, BarChart2, Package, Target, ArrowUpRight, Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
@@ -134,63 +134,49 @@ export default function AgentDashboard() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="rounded-2xl md:rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 p-4 md:p-7 text-white shadow-xl shadow-blue-900/20 relative overflow-hidden"
+        className="rounded-2xl md:rounded-3xl bg-white border border-slate-100 shadow-sm p-4 md:p-6 flex items-start justify-between gap-4"
       >
-        {/* Subtle geometric accent */}
-        <div className="absolute top-0 right-0 w-56 h-56 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4 pointer-events-none" />
-        <div className="absolute bottom-0 left-20 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 pointer-events-none" />
-
-        <div className="relative">
-          <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200 mb-1">
+        <div className="min-w-0">
+          <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 mb-1">
             Mitra Dashboard
           </p>
-          <h1 className="text-[18px] md:text-[28px] font-extrabold leading-tight">
+          <h1 className="text-[20px] md:text-[26px] font-extrabold leading-tight text-slate-900 tracking-tight">
             Halo, {user?.displayName ?? "Mitra"} 👋
           </h1>
-          <p className="hidden md:block text-[13px] text-blue-200 mt-1.5">
+          <p className="hidden md:block text-[12.5px] text-slate-400 mt-1">
             Pantau perkembangan klien &amp; poin reward lo di sini.
           </p>
 
-          {/* Desktop nav buttons */}
-          <div className="hidden md:flex flex-wrap gap-2 mt-5">
+          {/* Nav buttons */}
+          <div className="flex flex-wrap gap-1.5 mt-3.5">
             {navButtons.map((btn) => (
               <button
                 key={btn.path}
                 onClick={() => navigate(btn.path)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-[12.5px] font-semibold bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] md:text-[12px] font-semibold bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 transition-all active:scale-95"
               >
-                <btn.icon className="h-4 w-4 stroke-[1.5]" />
+                <btn.icon className="h-3.5 w-3.5 stroke-[1.5]" />
                 {btn.label}
               </button>
             ))}
             <button
               onClick={() => navigate("/orders")}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-[12.5px] font-semibold bg-white text-blue-700 hover:bg-blue-50 transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] md:text-[12px] font-semibold bg-slate-900 text-white hover:bg-slate-700 transition-all active:scale-95"
             >
-              <Plus className="h-4 w-4 stroke-[2]" />
+              <Plus className="h-3.5 w-3.5 stroke-[2]" />
               Order Baru
             </button>
           </div>
+        </div>
 
-          {/* Mobile nav row */}
-          <div className="md:hidden flex gap-1.5 mt-3 overflow-x-auto scrollbar-none pb-0.5">
-            {navButtons.map((btn) => (
-              <button
-                key={btn.path}
-                onClick={() => navigate(btn.path)}
-                className="shrink-0 flex items-center gap-1.5 h-7 px-3 rounded-full text-[10.5px] font-semibold bg-white/15 text-white border border-white/25 transition-all active:scale-95"
-              >
-                <btn.icon className="h-3 w-3 stroke-[1.5]" />
-                {btn.label}
-              </button>
-            ))}
-            <button
-              onClick={() => navigate("/orders")}
-              className="shrink-0 flex items-center gap-1.5 h-7 px-3 rounded-full text-[10.5px] font-semibold bg-white text-blue-700 transition-all active:scale-95"
-            >
-              <Plus className="h-3 w-3 stroke-[2]" />
-              Order Baru
-            </button>
+        {/* Points pill */}
+        <div className="shrink-0 text-right">
+          <div className="inline-flex flex-col items-center rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+            <Star className="h-4 w-4 text-amber-400 mb-1 stroke-[1.75]" />
+            <p className="text-[18px] font-black text-slate-800 leading-none font-mono">
+              {loadingPoints ? "…" : myPoints}
+            </p>
+            <p className="text-[9px] text-slate-400 mt-0.5 font-medium uppercase tracking-wide">poin</p>
           </div>
         </div>
       </motion.div>
@@ -202,33 +188,33 @@ export default function AgentDashboard() {
             icon: Trophy,
             label: "Total Poin",
             value: loadingPoints ? "…" : myPoints.toString(),
-            sub: rank.position ? `Peringkat #${rank.position} dari ${rank.total}` : "Mulai kumpulkan poin",
-            accent: "text-blue-600",
-            ring: "ring-blue-100",
+            sub: rank.position ? `Rank #${rank.position} dari ${rank.total}` : "Mulai kumpulkan poin",
+            iconBg: "bg-amber-50",
+            iconColor: "text-amber-500",
           },
           {
             icon: Users,
             label: "Total Klien",
             value: stats.totalClients.toString(),
             sub: "Klien aktif lo",
-            accent: "text-blue-500",
-            ring: "ring-blue-100",
+            iconBg: "bg-emerald-50",
+            iconColor: "text-emerald-600",
           },
           {
             icon: ShoppingBag,
             label: "Total Order",
             value: stats.totalOrders.toString(),
             sub: `${stats.completedOrders} selesai`,
-            accent: "text-blue-600",
-            ring: "ring-blue-100",
+            iconBg: "bg-violet-50",
+            iconColor: "text-violet-600",
           },
           {
             icon: TrendingUp,
             label: "Total Komisi",
             value: fmtIDR(feeStats.total),
-            sub: "akumulasi fee komisi",
-            accent: "text-blue-700",
-            ring: "ring-blue-100",
+            sub: "akumulasi fee",
+            iconBg: "bg-sky-50",
+            iconColor: "text-sky-600",
           },
         ]).map((card, i) => (
           <motion.div
@@ -238,12 +224,12 @@ export default function AgentDashboard() {
             initial="hidden"
             animate="visible"
           >
-            <div className={`rounded-2xl border border-slate-100 bg-white p-3.5 md:p-5 shadow-sm hover:shadow-md transition-shadow ring-4 ${card.ring} ring-opacity-0 hover:ring-opacity-100`}>
+            <div className="rounded-2xl border border-slate-100 bg-white p-3.5 md:p-5 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-widest text-slate-400">
                   {card.label}
                 </p>
-                <div className={`h-7 w-7 md:h-8 md:w-8 rounded-xl bg-blue-50 flex items-center justify-center ${card.accent}`}>
+                <div className={`h-7 w-7 md:h-8 md:w-8 rounded-xl flex items-center justify-center ${card.iconBg} ${card.iconColor}`}>
                   <card.icon className="h-3.5 w-3.5 md:h-4 md:w-4 stroke-[1.75]" />
                 </div>
               </div>
@@ -358,7 +344,11 @@ export default function AgentDashboard() {
 
       {/* ── Tier + Reward Catalog ───────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-        <AgentTierProgress totalPoints={myPoints} />
+        <AgentTierProgress
+          totalPoints={myPoints}
+          rank={rank}
+          completedOrders={stats.completedOrders}
+        />
         <RewardCatalog totalPoints={myPoints} completedOrders={stats.completedOrders} />
       </div>
 
@@ -368,25 +358,25 @@ export default function AgentDashboard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.35 }}
         onClick={() => navigate("/agent/marketing")}
-        className="w-full text-left rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-600 to-blue-800 p-4 md:p-5 text-white shadow-lg shadow-blue-800/15 hover:shadow-xl hover:shadow-blue-800/20 transition-all active:scale-[0.99] flex items-center justify-between gap-3 group"
+        className="w-full text-left rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-between gap-3 group"
       >
         <div className="flex items-center gap-3 md:gap-4">
-          <div className="h-10 w-10 md:h-12 md:w-12 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0 backdrop-blur group-hover:bg-white/20 transition-colors">
-            <Megaphone className="h-5 w-5 md:h-6 md:w-6 stroke-[1.5]" />
+          <div className="h-10 w-10 md:h-12 md:w-12 rounded-2xl bg-slate-900 flex items-center justify-center shrink-0 group-hover:bg-slate-700 transition-colors">
+            <Megaphone className="h-5 w-5 md:h-6 md:w-6 stroke-[1.5] text-white" />
           </div>
           <div>
-            <p className="text-[9.5px] md:text-[10.5px] font-bold uppercase tracking-[0.15em] text-blue-200 mb-0.5">
+            <p className="text-[9.5px] md:text-[10.5px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-0.5">
               Materi Promosi Siap Pakai
             </p>
-            <p className="text-[13.5px] md:text-[15px] font-extrabold leading-snug">
-              Buat poster promo &amp; download →
+            <p className="text-[13.5px] md:text-[15px] font-extrabold leading-snug text-slate-800">
+              Buat poster promo &amp; download
             </p>
-            <p className="hidden md:block text-[11.5px] text-blue-200 mt-0.5">
+            <p className="hidden md:block text-[11.5px] text-slate-400 mt-0.5">
               Tinggal download, langsung upload ke status WA / IG / FB.
             </p>
           </div>
         </div>
-        <ChevronRight className="h-5 w-5 shrink-0 text-blue-200 group-hover:translate-x-1 transition-transform stroke-[1.75]" />
+        <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 group-hover:translate-x-1 group-hover:text-slate-500 transition-all stroke-[1.75]" />
       </motion.button>
 
       {/* ── Riwayat Order ───────────────────────────────────────────────── */}
