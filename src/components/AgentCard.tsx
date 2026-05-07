@@ -52,41 +52,6 @@ function TemantiketLogo({ className }: { className?: string }) {
   );
 }
 
-/* ── Diamond SVG Pattern ────────────────────────────────────────────────── */
-function DiamondPattern() {
-  return (
-    <svg
-      className="absolute inset-0 w-full h-full opacity-100"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ pointerEvents: "none" }}
-    >
-      <defs>
-        <pattern
-          id="diamonds"
-          x="0"
-          y="0"
-          width="52"
-          height="52"
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(45 0 0)"
-        >
-          <rect
-            x="1"
-            y="1"
-            width="50"
-            height="50"
-            fill="none"
-            stroke="rgba(255,255,255,0.10)"
-            strokeWidth="1.5"
-            rx="3"
-          />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#diamonds)" />
-    </svg>
-  );
-}
-
 /* ── Pixel Decoration (matches the reference dot-grid element) ───────────── */
 function PixelDots() {
   const grid = [
@@ -151,7 +116,9 @@ export function AgentCard({ displayName, agentId, since, className }: AgentCardP
         style={{
           width: "320px",
           height: "420px",
-          background: "linear-gradient(160deg, #1a3ef0 0%, #0a12c8 40%, #0008aa 100%)",
+          backgroundImage: "url('/agent-card-bg.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
           borderRadius: "18px",
           position: "relative",
           overflow: "hidden",
@@ -164,8 +131,6 @@ export function AgentCard({ displayName, agentId, since, className }: AgentCardP
           flexShrink: 0,
         }}
       >
-        {/* Diamond pattern */}
-        <DiamondPattern />
 
         {/* ── Top section ─────────────────────────────────────────── */}
         <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
