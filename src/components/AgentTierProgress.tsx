@@ -15,7 +15,7 @@ const TIER_RING: Record<string, {
   pillText: string;
   pillBorder: string;
 }> = {
-  bronze:   { ring: "ring-amber-400",   ringGlow: "shadow-amber-200",   pillBg: "bg-amber-50",   pillText: "text-amber-700",   pillBorder: "border-amber-200" },
+  bronze:   { ring: "ring-blue-400",    ringGlow: "shadow-blue-200",    pillBg: "bg-blue-50",    pillText: "text-blue-700",    pillBorder: "border-blue-200" },
   silver:   { ring: "ring-slate-400",   ringGlow: "shadow-slate-200",   pillBg: "bg-slate-50",   pillText: "text-slate-700",   pillBorder: "border-slate-200" },
   gold:     { ring: "ring-yellow-400",  ringGlow: "shadow-yellow-200",  pillBg: "bg-yellow-50",  pillText: "text-yellow-700",  pillBorder: "border-yellow-200" },
   platinum: { ring: "ring-violet-400",  ringGlow: "shadow-violet-200",  pillBg: "bg-violet-50",  pillText: "text-violet-700",  pillBorder: "border-violet-200" },

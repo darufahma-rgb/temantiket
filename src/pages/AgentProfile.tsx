@@ -322,9 +322,9 @@ export default function AgentProfile() {
       )}
 
       {/* ── Fee Komisi Akumulasi ── */}
-      <div className="rounded-2xl border border-orange-100 bg-white overflow-hidden">
-        <div className="px-4 py-3 border-b border-orange-100 bg-orange-50 flex items-center gap-2">
-          <Wallet className="h-4 w-4 text-orange-500" />
+      <div className="rounded-2xl border border-blue-100 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-blue-100 bg-blue-50 flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-blue-500" />
           <div>
             <p className="text-sm font-semibold">Akumulasi Fee Komisi</p>
             <p className="text-[11px] text-muted-foreground">Total fee yang sudah lo kumpulkan dari semua order</p>
@@ -379,7 +379,7 @@ export default function AgentProfile() {
                 </div>
                 <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
                   <motion.div
-                    className="h-full rounded-full bg-gradient-to-r from-orange-400 to-amber-500"
+                    className="h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-600"
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.round(pct * 100)}%` }}
                     transition={{ duration: 0.7, ease: "easeOut" }}
@@ -403,7 +403,7 @@ export default function AgentProfile() {
               <div key={`${m.year}-${m.month}`} className="flex-1 flex flex-col items-center gap-1 h-full">
                 <div className="flex-1 w-full flex items-end">
                   <motion.div
-                    className="w-full rounded-t-md bg-gradient-to-t from-orange-500 to-amber-400"
+                    className="w-full rounded-t-md bg-gradient-to-t from-blue-600 to-blue-400"
                     initial={{ height: 0 }}
                     animate={{ height: `${Math.max(4, Math.round(m.pct * 100))}%` }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
@@ -411,7 +411,7 @@ export default function AgentProfile() {
                   />
                 </div>
                 {m.count > 0 && (
-                  <span className="text-[9px] font-mono font-bold text-orange-600">{m.count}</span>
+                  <span className="text-[9px] font-mono font-bold text-blue-600">{m.count}</span>
                 )}
                 <span className="text-[10px] text-muted-foreground leading-none">{m.label}</span>
               </div>
@@ -462,7 +462,7 @@ export default function AgentProfile() {
         </Button>
         <Button
           onClick={() => navigate("/agent")}
-          className="h-10 bg-orange-500 hover:bg-orange-600 text-white"
+          className="h-10 bg-blue-600 hover:bg-blue-700 text-white"
         >
           Ke Dashboard
         </Button>
