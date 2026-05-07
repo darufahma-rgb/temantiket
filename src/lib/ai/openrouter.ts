@@ -224,6 +224,10 @@ ATURAN KETAT:
 4. Nama "Temantiket" WAJIB ada di caption.
 5. Emoji: 3–4 saja, pilih yang memperkuat emosi teks.
 6. Hindari klaim berlebihan: "paling murah", "gratis", "terbatas!" secara hard-sell.
+7. FORMAT WAJIB — gunakan WhatsApp markdown supaya langsung bisa di-paste ke WA:
+   - *teks* untuk bold (nama paket, harga, poin penting)
+   - _teks_ untuk italic (penekanan lembut)
+   - Daftar pakai angka (1. 2. 3.) atau bullet (- item) untuk keunggulan
 
 OUTPUT: Langsung tulis caption-nya saja — tanpa label, tanpa penjelasan tambahan.`;
 
@@ -269,6 +273,10 @@ ATURAN KETAT:
 3. Gaya: mengalir natural, santai, meyakinkan — bukan daftar kaku atau terlalu salesy.
 4. Nama "Temantiket" WAJIB muncul di caption.
 5. Emoji: 3–4 saja.
+6. FORMAT WAJIB — gunakan WhatsApp markdown supaya langsung bisa di-paste ke WA:
+   - *teks* untuk bold (nama paket, harga, poin penting)
+   - _teks_ untuk italic (penekanan lembut)
+   - Daftar pakai angka (1. 2. 3.) atau bullet (- item) untuk keunggulan
 
 OUTPUT: Langsung tulis caption-nya saja — tanpa label, tanpa penjelasan tambahan.`;
 
@@ -277,6 +285,7 @@ const TONE_INSTRUCTIONS: Record<string, string> = {
   formal:    "Profesional, sopan, & terpercaya — cocok untuk korporat",
   hardsell:  "FOMO & urgency — buat pembaca merasa harus bertindak sekarang",
   story:     "Storytelling emosional — cerita perjalanan yang menyentuh hati",
+  penasaran: "Bikin penasaran & teaser — mulai dengan pertanyaan atau fakta mengejutkan, tahan info kunci di tengah, baru reveal di akhir. Cliffhanger style, buat orang pengen tanya lebih lanjut",
 };
 
 /**

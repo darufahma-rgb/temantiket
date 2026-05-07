@@ -25,10 +25,11 @@ const CATEGORIES = [
 
 /* ─── Tone ──────────────────────────────────────────────── */
 const TONES = [
-  { key: "santai",   label: "Santai",       desc: "Friendly, casual, akrab"      },
-  { key: "formal",   label: "Formal",       desc: "Profesional & terpercaya"     },
-  { key: "hardsell", label: "Hard Selling", desc: "FOMO, urgent, ajak action"    },
-  { key: "story",    label: "Storytelling", desc: "Emosional, cerita perjalanan" },
+  { key: "santai",    label: "Santai",       desc: "Friendly, casual, akrab"         },
+  { key: "formal",    label: "Formal",       desc: "Profesional & terpercaya"        },
+  { key: "hardsell",  label: "Hard Selling", desc: "FOMO, urgent, ajak action"       },
+  { key: "story",     label: "Storytelling", desc: "Emosional, cerita perjalanan"    },
+  { key: "penasaran", label: "Penasaran",    desc: "Bikin penasaran, teaser, cliffhanger" },
 ];
 
 /* ─── Helpers ───────────────────────────────────────────── */
@@ -52,6 +53,58 @@ function compressImage(file: File, maxWidth = 900, quality = 0.80): Promise<stri
     img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("Gagal memuat gambar")); };
     img.src = objectUrl;
   });
+}
+
+/* ─── WA Markdown Renderer ──────────────────────────────── */
+function parseInline(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const regex = /(\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~|`[^`\n]+`)/g;
+  let last = 0; let match; let key = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    const raw = match[0];
+    if (raw.startsWith("*") && raw.endsWith("*"))
+      parts.push(<strong key={key++} className="font-bold">{raw.slice(1, -1)}</strong>);
+    else if (raw.startsWith("_") && raw.endsWith("_"))
+      parts.push(<em key={key++} className="italic">{raw.slice(1, -1)}</em>);
+    else if (raw.startsWith("~") && raw.endsWith("~"))
+      parts.push(<s key={key++} className="line-through opacity-60">{raw.slice(1, -1)}</s>);
+    else if (raw.startsWith("`") && raw.endsWith("`"))
+      parts.push(<code key={key++} className="bg-slate-100 text-blue-700 px-1 rounded text-[12px] font-mono">{raw.slice(1, -1)}</code>);
+    last = match.index + raw.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+function WAMarkdown({ text }: { text: string }) {
+  const lines = text.split("\n");
+  const nodes: React.ReactNode[] = [];
+  let key = 0;
+  for (const line of lines) {
+    const num    = line.match(/^(\d+)\.\s(.*)$/);
+    const bullet = line.match(/^[-•]\s(.*)$/);
+    if (num) {
+      nodes.push(
+        <div key={key++} className="flex gap-2 leading-relaxed">
+          <span className="font-bold text-muted-foreground shrink-0 tabular-nums text-[13px]">{num[1]}.</span>
+          <span className="text-[13px]">{parseInline(num[2])}</span>
+        </div>
+      );
+    } else if (bullet) {
+      nodes.push(
+        <div key={key++} className="flex gap-2 leading-relaxed">
+          <span className="text-muted-foreground shrink-0 mt-0.5">•</span>
+          <span className="text-[13px]">{parseInline(bullet[1])}</span>
+        </div>
+      );
+    } else if (line.trim() === "") {
+      nodes.push(<div key={key++} className="h-2" />);
+    } else {
+      nodes.push(<div key={key++} className="text-[13px] leading-relaxed">{parseInline(line)}</div>);
+    }
+  }
+  return <div className="text-foreground space-y-0.5">{nodes}</div>;
 }
 
 /* ─── Section wrapper ───────────────────────────────────── */
@@ -344,7 +397,7 @@ export function CaptionGenerator() {
 
       {/* ── Tone (shared) ── */}
       <Section label="Gaya Penulisan" icon={FileText}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           {TONES.map(({ key, label, desc }) => {
             const isActive = key === activeTone;
             return (
@@ -560,9 +613,7 @@ export function CaptionGenerator() {
                   }
                 </button>
               </div>
-              <p className="text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
-                {result}
-              </p>
+              <WAMarkdown text={result} />
             </div>
 
             {/* ── Token usage indicator ── */}
