@@ -47,9 +47,9 @@ export const REWARD_CATALOG: RewardItem[] = [
   },
   {
     key: "paket_data_20gb",
-    label: "Paket Data 20 GB",
+    label: "Paket Data 8 GB",
     emoji: "📶",
-    description: "Paket data semua operator, berlaku 30 hari. Nomor dikirim ke WhatsApp lo.",
+    description: "Paket data 8GB semua operator Mesir (Vodafone, Orange, Etisalat, WE), berlaku 30 hari. Nomor dikirim ke WhatsApp lo.",
     costPoints: 150,
     minTier: "bronze",
     minCompletedOrders: 1,
