@@ -44,6 +44,10 @@ export default defineConfig(({ mode }) => ({
         target: "http://localhost:3001",
         changeOrigin: true,
       },
+      "/api/award-commission-points": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
     },
   },
   plugins: [
@@ -60,7 +64,7 @@ export default defineConfig(({ mode }) => ({
         type: "module",
         navigateFallback: "index.html",
       },
-      includeAssets: ["favicon.ico", "logo-igh-tour.png", "offline.html"],
+      includeAssets: ["favicon.ico", "temantiket-pwa-icon.png", "offline.html"],
       manifest: {
         name: "Temantiket - Manajemen Umrah & Haji",
         short_name: "Temantiket",
@@ -78,47 +82,47 @@ export default defineConfig(({ mode }) => ({
         categories: ["travel", "business", "productivity"],
         icons: [
           {
-            src: "/logo-igh-tour.png",
+            src: "/temantiket-pwa-icon.png",
             sizes: "72x72",
             type: "image/png",
           },
           {
-            src: "/logo-igh-tour.png",
+            src: "/temantiket-pwa-icon.png",
             sizes: "96x96",
             type: "image/png",
           },
           {
-            src: "/logo-igh-tour.png",
+            src: "/temantiket-pwa-icon.png",
             sizes: "128x128",
             type: "image/png",
           },
           {
-            src: "/logo-igh-tour.png",
+            src: "/temantiket-pwa-icon.png",
             sizes: "144x144",
             type: "image/png",
           },
           {
-            src: "/logo-igh-tour.png",
+            src: "/temantiket-pwa-icon.png",
             sizes: "152x152",
             type: "image/png",
           },
           {
-            src: "/logo-igh-tour.png",
+            src: "/temantiket-pwa-icon.png",
             sizes: "192x192",
             type: "image/png",
           },
           {
-            src: "/logo-igh-tour.png",
+            src: "/temantiket-pwa-icon.png",
             sizes: "384x384",
             type: "image/png",
           },
           {
-            src: "/logo-igh-tour.png",
+            src: "/temantiket-pwa-icon.png",
             sizes: "512x512",
             type: "image/png",
           },
           {
-            src: "/logo-igh-tour-maskable.png",
+            src: "/temantiket-pwa-icon.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
@@ -130,14 +134,14 @@ export default defineConfig(({ mode }) => ({
             short_name: "Kalkulator",
             description: "Hitung biaya paket Umrah & Haji",
             url: "/calculator?source=pwa",
-            icons: [{ src: "/logo-igh-tour.png", sizes: "96x96" }],
+            icons: [{ src: "/temantiket-pwa-icon.png", sizes: "96x96" }],
           },
           {
             name: "Paket Trip",
             short_name: "Paket",
             description: "Kelola paket perjalanan",
             url: "/packages?source=pwa",
-            icons: [{ src: "/logo-igh-tour.png", sizes: "96x96" }],
+            icons: [{ src: "/temantiket-pwa-icon.png", sizes: "96x96" }],
           },
         ],
       },
