@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  Users, Trophy, Wallet, TrendingUp, ShieldCheck, Edit2, Check, X,
+  Users, Trophy, Wallet, TrendingUp, ShieldCheck, Check, X,
   ChevronDown, ChevronUp, BarChart3, Crown, Zap, RefreshCw, Target,
   FileBarChart, UserPlus, Mail, Lock, Percent, Loader2, Search, Eye,
   ShoppingBag, UserCheck, ChevronRight, ClipboardList, Phone, MessageCircle,
@@ -435,7 +435,7 @@ function AgentProfileDialog({
               <div className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide">Komisi Terhutang</div>
               <div className="text-sm font-bold text-amber-800 font-mono">{fmtIDR(agent.commissionOwed)}</div>
             </div>
-            <span className="text-xs text-amber-600">{agent.commissionPct ?? 0}% komisi</span>
+            <span className="text-xs text-amber-600">fee per produk</span>
           </div>
           <div className="grid grid-cols-3 gap-1.5">
             {[
@@ -471,7 +471,6 @@ export default function AgentCommandCenter() {
   const location   = useLocation();
   const user       = useAuthStore((s) => s.user);
   const listMembers       = useAuthStore((s) => s.listMembers);
-  const setMemberCommission = useAuthStore((s) => s.setMemberCommission);
   const { orders, fetchOrders } = useOrdersStore();
   const { clients, fetchClients } = useClientsStore();
 
@@ -494,9 +493,6 @@ export default function AgentCommandCenter() {
   const [addOpen, setAddOpen]       = useState(false);
 
   // ── Analytics state ──
-  const [editingId, setEditingId]   = useState<string | null>(null);
-  const [draftPct, setDraftPct]     = useState<number>(0);
-  const [saving, setSaving]         = useState(false);
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
   type SortKey = "name" | "points" | "orders" | "commission" | "clients";
   const [sortKey, setSortKey]       = useState<SortKey>("points");
@@ -572,7 +568,9 @@ export default function AgentCommandCenter() {
     const totalRevenue     = agentOrders.reduce((s, o) => s + revenueIDR(o), 0);
     const totalProfit      = completedList.reduce((s, o) => s + Math.max(0, profitIDR(o)), 0);
     const pc               = loadProductCommissions();
-    const commissionOwed   = completedList.reduce((s, o) => s + getCommissionForOrderType(
+    // Hitung fee dari semua order (kecuali Cancelled) — bukan hanya Completed.
+    const billableOrders   = agentOrders.filter((o) => o.status !== "Cancelled");
+    const commissionOwed   = billableOrders.reduce((s, o) => s + getCommissionForOrderType(
       o.type as "umrah" | "flight" | "visa_voa" | "visa_student", pc,
     ), 0);
     return {
@@ -644,21 +642,6 @@ export default function AgentCommandCenter() {
       return row;
     });
   }, [agentRows, ordersByAgent]);
-
-  // Commission save
-  async function saveCommission(agentId: string) {
-    setSaving(true);
-    try {
-      await setMemberCommission(agentId, Math.max(0, Math.min(100, draftPct)));
-      setMembers((prev) => prev.map((m) => m.userId === agentId ? { ...m, commissionPct: draftPct } : m));
-      toast.success("Komisi diperbarui!");
-      setEditingId(null);
-    } catch {
-      toast.error("Gagal simpan komisi. Coba lagi.");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   function rankOf(idx: number) {
     if (idx === 0) return "🥇";
@@ -894,7 +877,7 @@ export default function AgentCommandCenter() {
               sub={`${agentRows.filter((a) => a.tierInfo.current.key !== "bronze").length} sudah naik tier`}
               icon={Users} tone="sky" />
             <StatCard label="Komisi Harus Dibayar" value={fmtIDR(totalCommissionOwed)}
-              sub="dari order Completed" icon={Wallet} tone="amber" />
+              sub="dari semua order aktif (fee per produk)" icon={Wallet} tone="amber" />
             <StatCard label="Total Revenue Mitra" value={fmtIDR(totalAgentRevenue)}
               sub={`${agentRows.reduce((s, a) => s + a.totalOrders, 0)} order total`}
               icon={TrendingUp} tone="emerald" />
@@ -952,15 +935,13 @@ export default function AgentCommandCenter() {
                           Poin <SortIcon col="points" />
                         </th>
                         <th className="text-right font-semibold py-2 px-2 cursor-pointer hover:text-foreground" onClick={() => toggleSort("commission")}>
-                          Komisi % <SortIcon col="commission" />
+                          Fee Komisi <SortIcon col="commission" />
                         </th>
-                        <th className="text-right font-semibold py-2 px-2">Komisi Owed</th>
                         <th className="text-center font-semibold py-2 px-2">Aksi</th>
                       </tr>
                     </thead>
                     <tbody>
                       {sortedRows.map((agent, i) => {
-                        const isEditing = editingId === agent.userId;
                         const { current: tier, next, progress } = agent.tierInfo;
                         return (
                           <tr key={agent.userId} className="border-b last:border-b-0 hover:bg-blue-50/30 transition-colors">
@@ -994,45 +975,12 @@ export default function AgentCommandCenter() {
                               <span className="text-[10px] text-muted-foreground ml-1">({agent.completedOrders} done)</span>
                             </td>
                             <td className="py-2.5 px-2 text-right font-mono font-bold text-amber-700">⭐ {agent.totalPoints}</td>
-                            <td className="py-2.5 px-2 text-right">
-                              {isEditing ? (
-                                <input type="number" min={0} max={100} value={draftPct}
-                                  onChange={(e) => setDraftPct(Number(e.target.value))}
-                                  className="w-16 h-7 rounded-lg border border-blue-300 text-center text-[12px] font-mono focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                />
-                              ) : (
-                                <span className="font-mono font-bold text-orange-700">{agent.commissionPct}%</span>
-                              )}
-                            </td>
                             <td className="py-2.5 px-2 text-right font-mono font-bold text-rose-700">{fmtIDR(agent.commissionOwed)}</td>
                             <td className="py-2.5 px-2 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                {isEditing ? (
-                                  <>
-                                    <button onClick={() => saveCommission(agent.userId)} disabled={saving}
-                                      className="h-6 w-6 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-700 flex items-center justify-center transition-colors">
-                                      <Check className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button onClick={() => setEditingId(null)}
-                                      className="h-6 w-6 rounded-md bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center transition-colors">
-                                      <X className="h-3.5 w-3.5" />
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    {isOwner && (
-                                      <button onClick={() => { setEditingId(agent.userId); setDraftPct(agent.commissionPct ?? 0); }}
-                                        className="h-6 w-6 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 flex items-center justify-center transition-colors" title="Edit Komisi">
-                                        <Edit2 className="h-3.5 w-3.5" />
-                                      </button>
-                                    )}
-                                    <button onClick={() => setExpandedAgent(expandedAgent === agent.userId ? null : agent.userId)}
-                                      className="h-6 w-6 rounded-md bg-slate-50 hover:bg-slate-100 text-slate-600 flex items-center justify-center transition-colors" title="Commission Tracker">
-                                      {expandedAgent === agent.userId ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                    </button>
-                                  </>
-                                )}
-                              </div>
+                              <button onClick={() => setExpandedAgent(expandedAgent === agent.userId ? null : agent.userId)}
+                                className="h-6 w-6 rounded-md bg-slate-50 hover:bg-slate-100 text-slate-600 flex items-center justify-center transition-colors" title="Commission Tracker">
+                                {expandedAgent === agent.userId ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                              </button>
                             </td>
                           </tr>
                         );
