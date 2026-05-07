@@ -18,6 +18,8 @@ import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, type OrderType } from "@/features/orders/ordersRepo";
 import { fmtIDR } from "@/lib/profit";
 import { uploadAvatar, savePhotoUrl, loadPhotoUrl } from "@/lib/avatarStorage";
+import { supabase } from "@/lib/supabase";
+import { AgentCard } from "@/components/AgentCard";
 
 export default function AgentProfile() {
   const navigate = useNavigate();
@@ -27,6 +29,7 @@ export default function AgentProfile() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [joinedAt, setJoinedAt] = useState<string | null>(null);
 
   const [points, setPoints] = useState<AgentPoint[]>([]);
   const [missionSubs, setMissionSubs] = useState<MissionSubmission[]>([]);
@@ -48,6 +51,18 @@ export default function AgentProfile() {
       await refreshMissions();
       setLoading(false);
     })();
+    // Fetch agent join date from agency_members
+    if (user?.id && user?.agencyId && supabase) {
+      void supabase
+        .from("agency_members")
+        .select("created_at")
+        .eq("user_id", user.id)
+        .eq("agency_id", user.agencyId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.created_at) setJoinedAt(data.created_at as string);
+        });
+    }
   }, [fetchOrders, fetchClients, clients.length, user?.agencyId, user?.id, refreshMissions]);
 
   // Realtime: auto-refresh mission points when admin approves / rejects
@@ -280,6 +295,31 @@ export default function AgentProfile() {
           </div>
         ))}
       </div>
+
+      {/* ── Agent Card ── */}
+      {user?.id && (
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.08 }}
+          className="rounded-2xl border border-slate-100 bg-white overflow-hidden"
+        >
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Kartu Agen Digital</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">ID card resmi lo sebagai Mitra Temantiket</p>
+            </div>
+          </div>
+          <div className="p-5 flex justify-center">
+            <AgentCard
+              displayName={user.displayName}
+              agentId={user.id}
+              since={joinedAt}
+              agencyName={user.agencyName}
+            />
+          </div>
+        </motion.div>
+      )}
 
       {/* ── Fee Komisi Akumulasi ── */}
       <div className="rounded-2xl border border-orange-100 bg-white overflow-hidden">
