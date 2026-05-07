@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Gift, Lock, Check, Hourglass, X as XIcon, Zap, ShoppingBag } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  Gift, Lock, Check, Hourglass, X as XIcon, Zap, ShoppingBag,
+  Banknote, Wifi, Shirt, Flame, Star, Package,
+} from "lucide-react";
+import type { RewardKey } from "@/features/rewards/rewardsRepo";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -20,10 +25,26 @@ import { TIERS, type AgentTier, getTierInfo } from "@/features/agentPoints/agent
 import { useAuthStore } from "@/store/authStore";
 
 const CATEGORY_COLOR: Record<RewardItem["category"], string> = {
-  cash:        "bg-emerald-50 text-emerald-600",
-  digital:     "bg-sky-50 text-sky-600",
-  booster:     "bg-blue-50 text-blue-600",
-  merchandise: "bg-violet-50 text-violet-600",
+  cash:        "bg-blue-50 text-blue-600",
+  digital:     "bg-blue-50 text-blue-500",
+  booster:     "bg-blue-50 text-blue-700",
+  merchandise: "bg-blue-50 text-blue-600",
+};
+
+const CATEGORY_ICON: Record<RewardItem["category"], LucideIcon> = {
+  cash:        Banknote,
+  digital:     Wifi,
+  booster:     Zap,
+  merchandise: Shirt,
+};
+
+const REWARD_ICON: Partial<Record<RewardKey, LucideIcon>> = {
+  bonus_cash_75k:        Banknote,
+  paket_data_20gb:       Wifi,
+  fee_booster_1_5x_7d:   Zap,
+  merchandise_temantiket: Shirt,
+  fee_booster_2x_7d:     Flame,
+  fee_booster_3x_7d:     Star,
 };
 
 const CATEGORY_LABEL: Record<RewardItem["category"], string> = {
@@ -159,12 +180,17 @@ export function RewardCatalog({
               )}
             >
               <div className="flex items-start gap-2.5">
-                <div className={cn(
-                  "h-10 w-10 rounded-xl flex items-center justify-center text-xl shrink-0",
-                  locked ? "bg-slate-100" : CATEGORY_COLOR[reward.category],
-                )}>
-                  {reward.emoji}
-                </div>
+                {(() => {
+                  const RewardIco = REWARD_ICON[reward.key] ?? CATEGORY_ICON[reward.category];
+                  return (
+                    <div className={cn(
+                      "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
+                      locked ? "bg-slate-100 text-slate-400" : CATEGORY_COLOR[reward.category],
+                    )}>
+                      <RewardIco className="h-5 w-5 stroke-[1.5]" />
+                    </div>
+                  );
+                })()}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-1">
                     <p className="text-[12px] font-bold text-slate-700 leading-tight">{reward.label}</p>
