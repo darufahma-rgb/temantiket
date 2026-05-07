@@ -1,135 +1,146 @@
 import { useMemo } from "react";
-import { Sparkles, Star } from "lucide-react";
+import { Star, CheckCircle2, Lock, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getTierInfo, TIERS, type AgentTier } from "@/features/agentPoints/agentTiers";
 
-/**
- * AgentTierProgress — widget di Mitra Dashboard yang ngasih tau:
- *   - Tier saat ini (badge gede)
- *   - Progress bar menuju tier berikutnya
- *   - Sisa poin yg dibutuhin
- *   - Perks tier saat ini & next tier (preview reward)
- *   - Roadmap semua tier (mini-stepper)
- */
+/* ── Blue palette overrides for all tiers ─────────────────────────────────── */
+const TIER_BLUE: Record<string, { banner: string; badge: string; badgeText: string; border: string; dot: string }> = {
+  bronze:   { banner: "from-blue-500 to-blue-700",   badge: "bg-blue-50 text-blue-700 border-blue-200",  badgeText: "text-blue-700",  border: "border-blue-300", dot: "bg-blue-500" },
+  silver:   { banner: "from-blue-600 to-blue-800",   badge: "bg-blue-50 text-blue-700 border-blue-200",  badgeText: "text-blue-700",  border: "border-blue-300", dot: "bg-blue-600" },
+  gold:     { banner: "from-blue-700 to-blue-900",   badge: "bg-blue-50 text-blue-800 border-blue-200",  badgeText: "text-blue-800",  border: "border-blue-400", dot: "bg-blue-700" },
+  platinum: { banner: "from-slate-700 to-blue-900",  badge: "bg-blue-50 text-blue-900 border-blue-300",  badgeText: "text-blue-900",  border: "border-blue-400", dot: "bg-blue-800" },
+};
+
 export function AgentTierProgress({ totalPoints }: { totalPoints: number }) {
   const info = useMemo(() => getTierInfo(totalPoints), [totalPoints]);
   const { current, next, pointsToNext, progress } = info;
+  const blue = TIER_BLUE[current.key];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className="rounded-2xl border bg-white overflow-hidden shadow-sm"
+      transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+      className="rounded-2xl border border-slate-100 bg-white overflow-hidden shadow-sm"
     >
-      {/* Top: tier banner */}
-      <div className={cn("p-4 md:p-5 bg-gradient-to-br", current.gradient)}>
+      {/* ── Tier banner ───────────────────────────────────────────────── */}
+      <div className={cn("bg-gradient-to-br p-5 md:p-6", blue.banner)}>
         <div className="flex items-start justify-between gap-3">
-          <div className="text-white">
-            <p className="text-[11px] font-semibold uppercase tracking-widest opacity-90">
+          <div className="text-white min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-100 mb-2">
               Level Mitra
             </p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-3xl md:text-4xl">{current.emoji}</span>
-              <h3 className="text-2xl md:text-3xl font-extrabold">{current.label}</h3>
+            <div className="flex items-center gap-2.5 mb-2">
+              <span className="text-3xl md:text-4xl leading-none">{current.emoji}</span>
+              <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight">{current.label}</h3>
             </div>
-            <p className="text-[12px] mt-1.5 opacity-95">
-              {totalPoints} poin lifetime
+            <p className="text-[12px] text-blue-100 leading-snug">
+              <span className="font-bold text-white">{totalPoints}</span> poin lifetime
               {next && pointsToNext > 0 && (
-                <> · <span className="font-bold">{pointsToNext} poin lagi</span> menuju {next.label} {next.emoji}</>
+                <>
+                  {" · "}
+                  <span className="font-bold text-white">{pointsToNext} poin lagi</span>
+                  {" menuju "}{next.label}
+                </>
               )}
-              {!next && <> · 🎉 Lo udah di tier tertinggi!</>}
+              {!next && <> · <span className="font-semibold text-white">🎉 Tier tertinggi!</span></>}
             </p>
           </div>
-          <div className="hidden md:block bg-white/20 backdrop-blur rounded-2xl p-3 border border-white/30">
-            <Star className="h-5 w-5 text-white mb-1" />
-            <p className="text-[11px] text-white font-bold">⭐ {totalPoints}</p>
+
+          {/* Points badge */}
+          <div className="shrink-0 bg-white/15 border border-white/25 backdrop-blur rounded-2xl px-3 py-2.5 text-center min-w-[56px]">
+            <Star className="h-4 w-4 text-white mx-auto mb-1 stroke-[1.5]" />
+            <p className="text-[13px] font-extrabold text-white leading-none">{totalPoints}</p>
+            <p className="text-[9px] text-blue-100 mt-0.5 font-medium">pts</p>
           </div>
         </div>
 
         {/* Progress bar */}
         {next && (
-          <div className="mt-4">
-            <div className="h-3 rounded-full bg-white/25 overflow-hidden">
+          <div className="mt-5">
+            <div className="h-2 rounded-full bg-white/20 overflow-hidden">
               <motion.div
-                className="h-full bg-white rounded-full shadow-sm"
+                className="h-full bg-white rounded-full shadow"
                 initial={{ width: 0 }}
                 animate={{ width: `${progress * 100}%` }}
-                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
               />
             </div>
-            <div className="flex justify-between text-[10.5px] text-white/85 mt-1.5 font-semibold">
+            <div className="flex justify-between text-[10px] text-blue-100 mt-1.5 font-semibold">
               <span>{current.minPoints} pts</span>
-              <span className="text-white">
-                {Math.round(progress * 100)}%
-              </span>
+              <span className="text-white font-bold">{Math.round(progress * 100)}%</span>
               <span>{next.minPoints} pts</span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Bottom: tier perks + roadmap */}
+      {/* ── Body ──────────────────────────────────────────────────────── */}
       <div className="p-4 md:p-5 space-y-4">
+
+        {/* Current perks */}
         <div>
-          <p className="text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
-            <Sparkles className="h-3 w-3 text-amber-500" />
-            Benefit Lo Sekarang ({current.label})
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5 flex items-center gap-1.5">
+            <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 stroke-[1.75]" />
+            Benefit Lo Sekarang
           </p>
-          <ul className="space-y-1.5">
+          <ul className="space-y-2">
             {current.perks.map((perk) => (
-              <li key={perk} className="flex items-start gap-2 text-[12px] text-foreground">
-                <span className="text-emerald-600 font-bold mt-0.5">✓</span>
-                <span>{perk}</span>
+              <li key={perk} className="flex items-start gap-2.5 text-[12px] text-slate-600">
+                <span className="h-4 w-4 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-blue-600 text-[9px] font-extrabold">✓</span>
+                </span>
+                {perk}
               </li>
             ))}
           </ul>
         </div>
 
+        {/* Next tier preview */}
         {next && (
-          <div className={cn("rounded-xl border p-3", next.softBg, "border-dashed")}>
-            <p className={cn("text-[10.5px] font-bold uppercase tracking-wide mb-1.5 flex items-center gap-1.5", next.softText)}>
-              <span className="text-base">{next.emoji}</span>
-              Unlock di {next.label}
+          <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3.5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-2 flex items-center gap-1.5">
+              <Lock className="h-3 w-3 stroke-[1.75]" />
+              Unlock di {next.label} {next.emoji}
             </p>
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {next.perks.map((perk) => (
-                <li key={perk} className={cn("flex items-start gap-1.5 text-[11.5px]", next.softText)}>
-                  <span className="opacity-60 mt-0.5">→</span>
-                  <span>{perk}</span>
+                <li key={perk} className="flex items-start gap-2 text-[11.5px] text-blue-700">
+                  <ChevronRight className="h-3.5 w-3.5 text-blue-400 shrink-0 mt-0.5 stroke-[2]" />
+                  {perk}
                 </li>
               ))}
             </ul>
           </div>
         )}
 
-        {/* Roadmap stepper — semua tier dgn current highlighted */}
+        {/* Tier roadmap */}
         <div>
-          <p className="text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5">
             Roadmap Tier
           </p>
           <div className="grid grid-cols-4 gap-1.5">
             {TIERS.map((t) => {
               const isCurrent = t.key === current.key;
-              const isPassed = totalPoints >= t.minPoints;
+              const isPassed  = totalPoints >= t.minPoints;
               return (
                 <div
                   key={t.key}
                   className={cn(
-                    "rounded-lg p-2 text-center border-2 transition-all",
+                    "rounded-xl p-2 text-center border-2 transition-all",
                     isCurrent
-                      ? cn("bg-gradient-to-br shadow-sm scale-105", t.gradient, t.borderColor, "text-white")
+                      ? "bg-gradient-to-br from-blue-600 to-blue-800 border-blue-500 text-white scale-105 shadow-md shadow-blue-200"
                       : isPassed
-                        ? cn(t.softBg, t.borderColor, t.softText)
-                        : "bg-muted/30 border-transparent text-muted-foreground opacity-60",
+                        ? "bg-blue-50 border-blue-200 text-blue-700"
+                        : "bg-slate-50 border-slate-100 text-slate-300",
                   )}
                 >
-                  <div className="text-base leading-none">{t.emoji}</div>
-                  <div className={cn("text-[10px] font-bold mt-0.5", isCurrent ? "text-white" : "")}>
+                  <div className="text-[15px] leading-none">{t.emoji}</div>
+                  <div className={cn("text-[10px] font-bold mt-1", isCurrent ? "text-white" : "")}>
                     {t.label}
                   </div>
-                  <div className={cn("text-[9.5px] font-mono mt-0.5", isCurrent ? "text-white/85" : "opacity-70")}>
+                  <div className={cn("text-[9px] font-mono mt-0.5", isCurrent ? "text-blue-100" : "opacity-60")}>
                     {t.minPoints}+
                   </div>
                 </div>
@@ -142,18 +153,15 @@ export function AgentTierProgress({ totalPoints }: { totalPoints: number }) {
   );
 }
 
-/** Mini badge utk dipake di tabel leaderboard / list. */
+/** Mini tier badge — blue themed */
 export function AgentTierBadge({ tier, size = "sm" }: { tier: AgentTier; size?: "xs" | "sm" }) {
   const meta = TIERS.find((t) => t.key === tier) ?? TIERS[0];
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full font-bold",
+        "inline-flex items-center gap-1 rounded-full font-bold border",
         size === "xs" ? "px-1.5 py-0.5 text-[9.5px]" : "px-2 py-0.5 text-[10.5px]",
-        meta.softBg,
-        meta.softText,
-        "border",
-        meta.borderColor,
+        "bg-blue-50 text-blue-700 border-blue-200",
       )}
       title={`Tier ${meta.label}`}
     >
