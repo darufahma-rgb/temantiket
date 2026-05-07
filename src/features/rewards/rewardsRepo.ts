@@ -62,7 +62,7 @@ export const REWARD_CATALOG: RewardItem[] = [
     description: "Semua order Completed dalam 7 hari ke depan fee komisi-nya dikali 1.5×. Aktif otomatis setelah approved.",
     costPoints: 250,
     minTier: "silver",
-    minCompletedOrders: 3,
+    minCompletedOrders: 5,
     category: "booster",
   },
   {
@@ -92,7 +92,7 @@ export const REWARD_CATALOG: RewardItem[] = [
     description: "Fee komisi lo triple (×3) selama 7 hari penuh. Reward tertinggi — untuk mitra terbaik Temantiket.",
     costPoints: 2000,
     minTier: "platinum",
-    minCompletedOrders: 30,
+    minCompletedOrders: 20,
     category: "booster",
   },
 ];
