@@ -352,32 +352,34 @@ export default function AgentDashboard() {
         <RewardCatalog totalPoints={myPoints} completedOrders={stats.completedOrders} />
       </div>
 
-      {/* ── Marketing Kit CTA ───────────────────────────────────────────── */}
-      <motion.button
+      {/* ── Canva Poster CTA ────────────────────────────────────────────── */}
+      <motion.a
+        href="https://www.canva.com/design/DAG_glvMLsg/v8BotKSwxMy-AC2Y7eTmDg/edit?utm_content=DAG_glvMLsg&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton"
+        target="_blank"
+        rel="noopener noreferrer"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.35 }}
-        onClick={() => navigate("/agent/marketing")}
-        className="w-full text-left rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-between gap-3 group"
+        className="w-full text-left rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-600 to-blue-700 p-4 md:p-5 shadow-sm hover:shadow-lg hover:from-blue-700 hover:to-blue-800 transition-all active:scale-[0.99] flex items-center justify-between gap-3 group no-underline"
       >
         <div className="flex items-center gap-3 md:gap-4">
-          <div className="h-10 w-10 md:h-12 md:w-12 rounded-2xl bg-slate-900 flex items-center justify-center shrink-0 group-hover:bg-slate-700 transition-colors">
+          <div className="h-10 w-10 md:h-12 md:w-12 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0 group-hover:bg-white/25 transition-colors">
             <Megaphone className="h-5 w-5 md:h-6 md:w-6 stroke-[1.5] text-white" />
           </div>
           <div>
-            <p className="text-[9.5px] md:text-[10.5px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-0.5">
-              Materi Promosi Siap Pakai
+            <p className="text-[9.5px] md:text-[10.5px] font-bold uppercase tracking-[0.15em] text-blue-200 mb-0.5">
+              Buka di Canva
             </p>
-            <p className="text-[13.5px] md:text-[15px] font-extrabold leading-snug text-slate-800">
-              Buat poster promo &amp; download
+            <p className="text-[13.5px] md:text-[15px] font-extrabold leading-snug text-white">
+              Buat Poster Temantiket Kamu Di Sini!
             </p>
-            <p className="hidden md:block text-[11.5px] text-slate-400 mt-0.5">
-              Tinggal download, langsung upload ke status WA / IG / FB.
+            <p className="hidden md:block text-[11.5px] text-blue-200 mt-0.5">
+              Edit desain poster langsung di Canva, lalu download &amp; share ke WA / IG / FB.
             </p>
           </div>
         </div>
-        <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 group-hover:translate-x-1 group-hover:text-slate-500 transition-all stroke-[1.75]" />
-      </motion.button>
+        <ChevronRight className="h-5 w-5 shrink-0 text-white/50 group-hover:translate-x-1 group-hover:text-white transition-all stroke-[1.75]" />
+      </motion.a>
 
       {/* ── Riwayat Order ───────────────────────────────────────────────── */}
       <motion.div
