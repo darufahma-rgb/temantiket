@@ -1,8 +1,7 @@
 /**
  * AgentCard — Digital ID card for each agent.
- * Background: /agent-card-bg.png
+ * Background: /agent-card-bg.png (has "Temantiket Agent Card" baked in)
  * Font: Sk-Modernist (loaded globally via index.css)
- * Layout: agent code top-left, pixel dots mid-right, name + ID/since bottom
  */
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
@@ -14,7 +13,7 @@ import { cn } from "@/lib/utils";
 /** Derive a stable 3-digit agent code from the UUID (001–999). */
 function deriveAgentCode(uid: string): string {
   const hex = uid.replace(/-/g, "").slice(-8);
-  const num = (parseInt(hex, 16) % 999) + 1; // 1–999
+  const num = (parseInt(hex, 16) % 999) + 1;
   return num.toString().padStart(3, "0");
 }
 
@@ -31,26 +30,11 @@ function fmtSince(iso: string): string {
   }
 }
 
-/* ── Pixel Decoration ───────────────────────────────────────────────────── */
-function PixelDots() {
-  const cells = [
-    [1, 0],
-    [1, 0],
-    [1, 1],
-  ];
-  return (
-    <div style={{ display: "grid", gap: "5px", gridTemplateColumns: "repeat(2, 10px)" }}>
-      {cells.map(([a, b], ri) => (
-        <div key={ri} style={{ display: "contents" }}>
-          <div style={{ width: 10, height: 10, borderRadius: 2, background: a ? "rgba(255,255,255,0.70)" : "transparent" }} />
-          <div style={{ width: 10, height: 10, borderRadius: 2, background: b ? "rgba(255,255,255,0.70)" : "transparent" }} />
-        </div>
-      ))}
-    </div>
-  );
+/** Take at most the first 3 words of a name. */
+function firstThreeWords(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 3).join(" ");
 }
 
-/* ── Font shorthand ─────────────────────────────────────────────────────── */
 const FONT = "'Sk-Modernist', 'Inter', system-ui, sans-serif";
 
 /* ── Main Component ─────────────────────────────────────────────────────── */
@@ -67,8 +51,9 @@ export function AgentCard({ displayName, agentId, since, className }: AgentCardP
   const [downloading, setDownloading] = useState(false);
 
   const code = deriveAgentCode(agentId);
-  const sinceStr = since ? fmtSince(since) : null;
   const agentLabel = `#AGNTMNTKT${code}`;
+  const sinceStr = since ? fmtSince(since) : null;
+  const shortName = firstThreeWords(displayName);
 
   const handleDownload = async () => {
     if (!cardRef.current) return;
@@ -104,81 +89,77 @@ export function AgentCard({ displayName, agentId, since, className }: AgentCardP
           borderRadius: "18px",
           position: "relative",
           overflow: "hidden",
-          padding: "28px 26px",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
           fontFamily: FONT,
           boxShadow: "0 20px 60px rgba(0,20,160,0.45)",
           flexShrink: 0,
         }}
       >
-        {/* ── Top: agent number only ───────────────────────────────── */}
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{
-            fontSize: "15px",
-            fontWeight: 700,
-            color: "rgba(255,255,255,0.85)",
-            letterSpacing: "0.02em",
-            fontFamily: FONT,
-          }}>
-            {agentLabel}
-          </div>
-        </div>
-
-        {/* ── Middle: pixel dots right-aligned ─────────────────────── */}
-        <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "flex-end" }}>
-          <PixelDots />
-        </div>
-
-        {/* ── Bottom: name left + ID/Since right ───────────────────── */}
+        {/* ── Agent number — positioned just below the bg title text ── */}
         <div style={{
-          position: "relative",
+          position: "absolute",
+          top: "168px",
+          left: "26px",
+          zIndex: 1,
+          fontSize: "14px",
+          fontWeight: 700,
+          color: "rgba(255,255,255,0.85)",
+          letterSpacing: "0.03em",
+          fontFamily: FONT,
+        }}>
+          {agentLabel}
+        </div>
+
+        {/* ── Bottom section ───────────────────────────────────────────── */}
+        <div style={{
+          position: "absolute",
+          bottom: "28px",
+          left: "26px",
+          right: "26px",
           zIndex: 1,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-end",
         }}>
-          {/* Agent name */}
+          {/* Agent name (max 3 words) */}
           <div style={{
             fontSize: "34px",
             fontWeight: 800,
             color: "white",
             lineHeight: 1.08,
             letterSpacing: "-0.01em",
-            maxWidth: "54%",
+            maxWidth: "52%",
             wordBreak: "break-word",
             fontFamily: FONT,
           }}>
-            {displayName}
+            {shortName}
           </div>
 
           {/* Agent ID + Since */}
           <div style={{ textAlign: "right", flexShrink: 0 }}>
             <div style={{
-              fontSize: "12px",
+              fontSize: "11px",
               fontWeight: 700,
-              color: "white",
+              color: "rgba(255,255,255,0.75)",
               lineHeight: 1.2,
               fontFamily: FONT,
             }}>
               Agent ID.
             </div>
             <div style={{
-              fontSize: "26px",
+              fontSize: "14px",
               fontWeight: 800,
               color: "white",
-              lineHeight: 1.05,
-              letterSpacing: "-0.01em",
+              lineHeight: 1.15,
+              letterSpacing: "0.01em",
               fontFamily: FONT,
             }}>
-              {code}
+              {agentLabel}
             </div>
             {sinceStr && (
               <div style={{
                 fontSize: "11px",
                 fontWeight: 500,
-                color: "rgba(255,255,255,0.65)",
+                color: "rgba(255,255,255,0.6)",
                 marginTop: "5px",
                 fontFamily: FONT,
               }}>
