@@ -24,7 +24,7 @@ import {
   Mail, Calendar, AlertCircle,
   Crown, BarChart3, MessageCircle, ChevronRight, Loader2,
   Star, Camera, RefreshCw, Pencil, X, Save, Phone,
-  Wallet, ArrowDownToLine, Coins,
+  Wallet, ArrowDownToLine, Coins, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -49,7 +49,8 @@ import {
   pullWalletTxs, walletBalance, addWalletTx, type WalletTransaction,
 } from "@/lib/agentWallet";
 import { getCommissionForOrderType } from "@/lib/productCommissions";
-import { ORDER_TYPE_LABEL } from "@/features/orders/ordersRepo";
+import { ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI, type OrderType } from "@/features/orders/ordersRepo";
+import { AgentCard } from "@/components/AgentCard";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -424,6 +425,40 @@ export default function AgentProfileOwnerView() {
     ), 0),
     [agentOrders],
   );
+
+  const feeStats = useMemo(() => {
+    const total = agentOrders.reduce(
+      (s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0,
+    );
+    const paid = agentOrders
+      .filter((o) => o.status === "Paid" || o.status === "Completed")
+      .reduce((s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
+    return { total, paid, pending: total - paid };
+  }, [agentOrders]);
+
+  const portfolio = useMemo(() => {
+    const types: OrderType[] = ["umrah", "flight", "visa_voa", "visa_student"];
+    const counts: Record<string, number> = Object.fromEntries(types.map((t) => [t, 0]));
+    for (const o of agentOrders) if (counts[o.type] !== undefined) counts[o.type]++;
+    const max = Math.max(1, ...Object.values(counts));
+    return types.map((t) => ({ type: t, count: counts[t], pct: counts[t] / max }));
+  }, [agentOrders]);
+
+  const monthly = useMemo(() => {
+    const now = new Date();
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      return { label: d.toLocaleDateString("id-ID", { month: "short" }), year: d.getFullYear(), month: d.getMonth(), count: 0 };
+    });
+    for (const o of agentOrders) {
+      const d = new Date(o.createdAt);
+      const m = months.find((x) => x.year === d.getFullYear() && x.month === d.getMonth());
+      if (m) m.count++;
+    }
+    const max = Math.max(1, ...months.map((m) => m.count));
+    return months.map((m) => ({ ...m, pct: m.count / max }));
+  }, [agentOrders]);
+
   const subMap = useMemo(
     () => new Map(submissions.map((s) => [s.missionId, s])),
     [submissions],
@@ -874,101 +909,205 @@ export default function AgentProfileOwnerView() {
           {/* ── OVERVIEW ── */}
           {tab === "overview" && (
             <div className="space-y-4">
+              {/* Stats Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard
-                  icon={ShoppingBag}
-                  label="Total Order"
-                  value={String(agentOrders.length)}
-                  sub={`${agentOrders.filter((o) => o.status === "Completed").length} selesai`}
-                  colorCls="text-violet-600"
-                  bgCls="bg-violet-50 border-violet-100"
-                />
-                <StatCard
-                  icon={TrendingUp}
-                  label="Total Komisi"
-                  value={fmtIDR(totalKomisi)}
-                  sub="akumulasi fee agen"
-                  colorCls="text-emerald-600"
-                  bgCls="bg-emerald-50 border-emerald-100"
-                />
-                <StatCard
-                  icon={Trophy}
-                  label="Total Poin"
-                  value={totalPoints.toLocaleString("id-ID")}
-                  sub={`Tier ${tier.label}`}
-                  colorCls="text-amber-600"
-                  bgCls="bg-amber-50 border-amber-100"
-                />
-                <StatCard
-                  icon={Crown}
-                  label="Rank"
-                  value={rank ? `#${rank}` : "—"}
-                  sub="di leaderboard"
-                  colorCls="text-sky-600"
-                  bgCls="bg-sky-50 border-sky-100"
-                />
+                {[
+                  { icon: ShoppingBag, label: "Total Order",  value: String(agentOrders.length),            sub: `${agentOrders.filter((o) => o.status === "Completed").length} selesai`, color: "text-violet-600", bg: "bg-violet-50 border-violet-100" },
+                  { icon: Users,       label: "Total Klien",  value: String(agentClients.length),           sub: "klien aktif",                        color: "text-sky-600",    bg: "bg-sky-50 border-sky-100" },
+                  { icon: TrendingUp,  label: "Total Komisi", value: fmtIDR(feeStats.total || totalKomisi), sub: "akumulasi fee agen",                  color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
+                  { icon: Trophy,      label: "Total Poin",   value: totalPoints.toLocaleString("id-ID"),   sub: `Tier ${tier.label}`,                  color: "text-amber-600",  bg: "bg-amber-50 border-amber-100" },
+                ].map((s) => (
+                  <div key={s.label} className={`rounded-2xl border p-3 ${s.bg}`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{s.label}</span>
+                      <s.icon className={`h-3.5 w-3.5 ${s.color}`} />
+                    </div>
+                    <div className={`text-base font-extrabold font-mono ${s.color}`}>{s.value}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{s.sub}</div>
+                  </div>
+                ))}
               </div>
 
-              {/* Summary stats */}
-              <div className="rounded-2xl border bg-white overflow-hidden">
-                <div className="p-4 grid grid-cols-2 gap-3">
-                  {[
-                    { label: "Total Klien", value: String(agentClients.length), color: "text-sky-700" },
-                    { label: "Misi Selesai", value: String(submissions.filter((s) => s.status === "approved").length), color: "text-purple-700" },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="rounded-xl bg-secondary/30 border px-3 py-2.5">
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</div>
-                      <div className={`text-base font-bold font-mono mt-0.5 ${color}`}>{value}</div>
+              {/* Agent Card Digital */}
+              <motion.div
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: 0.08 }}
+                className="rounded-2xl border border-slate-100 bg-white overflow-hidden"
+              >
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <p className="text-sm font-semibold text-slate-800">Kartu Agen Digital</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    ID card resmi {agent.displayName} sebagai Mitra Temantiket
+                  </p>
+                </div>
+                <div className="p-5 flex justify-center">
+                  <AgentCard
+                    displayName={agent.displayName}
+                    agentId={agentId ?? ""}
+                    since={agent.createdAt}
+                  />
+                </div>
+              </motion.div>
+
+              {/* Fee Komisi Akumulasi */}
+              <div className="rounded-2xl border border-blue-100 bg-white overflow-hidden">
+                <div className="px-4 py-3 border-b border-blue-100 bg-blue-50 flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-blue-500" />
+                  <div>
+                    <p className="text-sm font-semibold">Akumulasi Fee Komisi</p>
+                    <p className="text-[11px] text-muted-foreground">Total fee yang dikumpulkan dari semua order</p>
+                  </div>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div className="text-center py-1">
+                    <div className="text-3xl font-extrabold font-mono">{fmtIDR(feeStats.total || totalKomisi)}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">total akumulasi fee</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wide">Terbayar</div>
+                        <div className="text-sm font-bold font-mono text-emerald-700">{fmtIDR(feeStats.paid)}</div>
+                        <div className="text-[10px] text-muted-foreground">order Paid/Completed</div>
+                      </div>
                     </div>
-                  ))}
+                    <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 flex items-start gap-2">
+                      <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide">Belum Cair</div>
+                        <div className="text-sm font-bold font-mono text-amber-700">{fmtIDR(feeStats.pending)}</div>
+                        <div className="text-[10px] text-muted-foreground">order belum selesai</div>
+                      </div>
+                    </div>
+                  </div>
+                  {(feeStats.total === 0 && totalKomisi === 0) && (
+                    <p className="text-center text-[11px] text-muted-foreground italic py-1">
+                      Belum ada fee. Agen belum memiliki order dengan fee komisi.
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Recent orders */}
-              {agentOrders.length > 0 && (
+              {/* Portofolio Produk */}
+              <div className="rounded-2xl border bg-white overflow-hidden">
+                <div className="px-4 py-3 border-b">
+                  <p className="text-sm font-semibold">Portofolio Produk</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Distribusi order berdasarkan tipe produk</p>
+                </div>
+                <div className="p-4 space-y-3">
+                  {agentOrders.length === 0 ? (
+                    <p className="text-center text-[11px] text-muted-foreground py-4 italic">Belum ada order.</p>
+                  ) : (
+                    portfolio.map(({ type, count, pct }) => (
+                      <div key={type}>
+                        <div className="flex items-center justify-between text-[12px] mb-1">
+                          <span className="font-medium">
+                            {ORDER_TYPE_EMOJI[type as keyof typeof ORDER_TYPE_EMOJI]}{" "}
+                            {ORDER_TYPE_LABEL[type as keyof typeof ORDER_TYPE_LABEL]}
+                          </span>
+                          <span className="font-mono font-semibold text-muted-foreground">{count} order</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
+                          <motion.div
+                            className="h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-600"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.round(pct * 100)}%` }}
+                            transition={{ duration: 0.7, ease: "easeOut" }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Performa 6 Bulan Terakhir */}
+              <div className="rounded-2xl border bg-white overflow-hidden">
+                <div className="px-4 py-3 border-b">
+                  <p className="text-sm font-semibold">Performa 6 Bulan Terakhir</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Jumlah order yang dibuat per bulan</p>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-end gap-2" style={{ height: "96px" }}>
+                    {monthly.map((m) => (
+                      <div key={`${m.year}-${m.month}`} className="flex-1 flex flex-col items-center gap-1 h-full">
+                        <div className="flex-1 w-full flex items-end">
+                          <motion.div
+                            className="w-full rounded-t-md bg-gradient-to-t from-blue-600 to-blue-400"
+                            initial={{ height: 0 }}
+                            animate={{ height: `${Math.max(4, Math.round(m.pct * 100))}%` }}
+                            transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
+                            title={`${m.count} order`}
+                          />
+                        </div>
+                        {m.count > 0 && (
+                          <span className="text-[9px] font-mono font-bold text-blue-600">{m.count}</span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground leading-none">{m.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Klien Terbaru */}
+              {agentClients.length > 0 && (
                 <div className="rounded-2xl border bg-white overflow-hidden">
                   <div className="px-4 py-3 border-b flex items-center justify-between">
-                    <p className="text-sm font-semibold">Order Terbaru</p>
+                    <p className="text-sm font-semibold">Klien Terbaru</p>
                     <button
-                      onClick={() => setTab("orders")}
-                      className="flex items-center gap-1 text-[11px] text-primary font-semibold hover:underline"
+                      onClick={() => navigate("/clients")}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
                     >
-                      Lihat semua <ChevronRight className="h-3 w-3" />
+                      Lihat semua <ExternalLink className="h-3 w-3" />
                     </button>
                   </div>
                   <div className="divide-y">
-                    {[...agentOrders]
-                      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-                      .slice(0, 3)
-                      .map((o) => (
-                        <div key={o.id} className="flex items-center gap-3 px-4 py-2.5">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-medium truncate">
-                              {clientMap.get(o.clientId ?? "")?.name ?? o.title ?? o.type}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {fmtDate(o.createdAt)}
-                            </p>
+                    {[...agentClients]
+                      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+                      .slice(0, 5)
+                      .map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => navigate(`/clients/${c.id}`)}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 text-left transition-colors"
+                        >
+                          <div className="h-7 w-7 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 text-[11px] font-bold shrink-0">
+                            {c.name.charAt(0).toUpperCase()}
                           </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-[12px] font-mono font-semibold text-orange-700">
-                              +{fmtIDR(getCommissionForOrderType(o.type as "umrah" | "flight" | "visa_voa" | "visa_student"))}
-                            </p>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                              o.status === "Completed"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : o.status === "Cancelled"
-                                ? "bg-red-100 text-red-600"
-                                : "bg-amber-100 text-amber-700"
-                            }`}>
-                              {o.status}
-                            </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[12px] font-medium truncate">{c.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{c.phone ?? "—"}</p>
                           </div>
-                        </div>
+                        </button>
                       ))}
                   </div>
                 </div>
               )}
+
+              {/* Rank & Misi summary row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border bg-sky-50 border-sky-100 p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Rank</span>
+                    <Crown className="h-3.5 w-3.5 text-sky-600" />
+                  </div>
+                  <div className="text-base font-extrabold font-mono text-sky-600">{rank ? `#${rank}` : "—"}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">di leaderboard</div>
+                </div>
+                <div className="rounded-2xl border bg-purple-50 border-purple-100 p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Misi Selesai</span>
+                    <Target className="h-3.5 w-3.5 text-purple-600" />
+                  </div>
+                  <div className="text-base font-extrabold font-mono text-purple-600">
+                    {submissions.filter((s) => s.status === "approved").length}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">misi disetujui</div>
+                </div>
+              </div>
             </div>
           )}
 
