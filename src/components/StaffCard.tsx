@@ -99,16 +99,6 @@ export function StaffCard({ displayName, staffId, since, className }: StaffCardP
           fontFamily: FONT,
         }}>
           <div style={{
-            fontSize: "22px",
-            fontWeight: 800,
-            color: "white",
-            lineHeight: 1.15,
-            letterSpacing: "-0.01em",
-          }}>
-            Temantiket<br />Staff Card
-          </div>
-          <div style={{
-            marginTop: "8px",
             fontSize: "12px",
             fontWeight: 700,
             color: "rgba(255,255,255,0.80)",
