@@ -141,115 +141,104 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
 
           {/* ── Mobile floating header ── */}
           <header
-            className="md:hidden fixed z-50 flex items-center gap-2 px-2.5"
+            className="md:hidden fixed z-50 flex items-center gap-0 px-3.5"
             style={{
               top: "calc(8px + env(safe-area-inset-top, 0px))",
               left: "8px",
               right: "8px",
-              height: "44px",
-              borderRadius: "14px",
-              background: "color-mix(in srgb, hsl(var(--card)) 94%, transparent)",
-              backdropFilter: "blur(20px) saturate(1.8)",
-              WebkitBackdropFilter: "blur(20px) saturate(1.8)",
-              border: "1px solid hsl(var(--border))",
-              boxShadow: "0 2px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)",
+              height: "46px",
+              borderRadius: "16px",
+              background: "color-mix(in srgb, hsl(var(--card)) 96%, transparent)",
+              backdropFilter: "blur(24px) saturate(1.8)",
+              WebkitBackdropFilter: "blur(24px) saturate(1.8)",
+              boxShadow: "0 2px 14px rgba(0,0,0,0.09), 0 1px 3px rgba(0,0,0,0.04), inset 0 0.5px 0 rgba(255,255,255,0.22)",
             }}
           >
-            {/* Left — logo */}
+            {/* Logo — bare icon, brand-blue tint, no box */}
             <button
               onClick={() => navigate(homeRoute)}
-              className="shrink-0 active:scale-90 transition-transform"
+              className="shrink-0 active:opacity-60 transition-opacity pr-3"
               style={{ WebkitTapHighlightColor: "transparent" }}
+              aria-label="Home"
             >
-              <div
-                className="h-[30px] w-[30px] rounded-[9px] flex items-center justify-center"
+              <img
+                src="/temantiket-icon.png"
+                alt="Temantiket"
+                className="h-[19px] w-[19px] object-contain"
                 style={{
-                  background: "linear-gradient(140deg, #2563eb 0%, #1a44d4 60%, #0a2472 100%)",
-                  boxShadow: "0 2px 6px rgba(26,68,212,0.30)",
+                  filter: "brightness(0) saturate(100%) invert(22%) sepia(80%) saturate(1800%) hue-rotate(214deg) brightness(90%) contrast(96%)",
                 }}
-              >
-                <img
-                  src="/temantiket-icon.png"
-                  alt="Temantiket"
-                  className="h-[17px] w-[17px] object-contain"
-                  style={{ filter: "brightness(0) invert(1)" }}
-                />
-              </div>
+              />
             </button>
 
-            {/* Center — compact currency pill */}
+            {/* Thin divider */}
+            <div className="h-[16px] w-px shrink-0 mr-3" style={{ background: "hsl(var(--border))" }} />
+
+            {/* Currency — inline, no background box */}
             <button
               onClick={() => refreshRates()}
               title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")}` : "Tap untuk perbarui"}
-              className="flex-1 flex items-center justify-center gap-1.5 h-[30px] rounded-[8px] active:opacity-60 transition-opacity min-w-0 overflow-hidden"
-              style={{
-                background: "hsl(var(--secondary))",
-                border: "1px solid hsl(var(--border))",
-              }}
+              className="flex-1 flex items-center gap-1.5 active:opacity-60 transition-opacity min-w-0 overflow-hidden"
+              style={{ WebkitTapHighlightColor: "transparent" }}
             >
               <span
                 className="h-[5px] w-[5px] rounded-full shrink-0"
                 style={{
                   background: rateMode === "manual" ? "#2563eb" : "#10b981",
-                  boxShadow: rateMode === "manual" ? "0 0 4px rgba(37,99,235,0.8)" : "0 0 4px rgba(16,185,129,0.8)",
+                  boxShadow: rateMode === "manual" ? "0 0 4px rgba(37,99,235,0.7)" : "0 0 4px rgba(16,185,129,0.7)",
                 }}
               />
-              <span className="text-[11.5px] font-semibold tabular-nums leading-none truncate" style={{ color: "hsl(var(--foreground))" }}>
-                <span style={{ color: "hsl(var(--muted-foreground))", fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>USD </span>
+              <span className="text-[11px] font-semibold tabular-nums leading-none truncate" style={{ color: "hsl(var(--foreground))" }}>
+                <span style={{ color: "hsl(var(--muted-foreground))", fontSize: "8.5px", fontWeight: 700, letterSpacing: "0.05em" }}>USD </span>
                 <span className="text-sky-500 font-extrabold">{rates.USD ? `${(rates.USD / 1000).toFixed(1)}k` : "—"}</span>
                 {rates.SAR && (
                   <>
-                    <span className="mx-1.5 opacity-25">·</span>
-                    <span style={{ color: "hsl(var(--muted-foreground))", fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>SAR </span>
+                    <span className="mx-1 opacity-20">·</span>
+                    <span style={{ color: "hsl(var(--muted-foreground))", fontSize: "8.5px", fontWeight: 700, letterSpacing: "0.05em" }}>SAR </span>
                     <span className="text-sky-500 font-extrabold">{rates.SAR.toLocaleString("id-ID")}</span>
                   </>
                 )}
               </span>
               <RefreshCw
-                className={cn("h-[9px] w-[9px] shrink-0", ratesLoading && "animate-spin")}
-                style={{ color: "hsl(var(--muted-foreground))", opacity: 0.4 }}
+                className={cn("h-[8px] w-[8px] shrink-0", ratesLoading && "animate-spin")}
+                style={{ color: "hsl(var(--muted-foreground))", opacity: 0.35 }}
                 strokeWidth={2.5}
               />
             </button>
 
-            {/* Right — search + avatar */}
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="h-[30px] w-[30px] flex items-center justify-center rounded-[8px] active:scale-90 transition-transform"
+            {/* Search — bare icon, no box */}
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="h-[38px] w-[38px] flex items-center justify-center shrink-0 active:opacity-60 transition-opacity"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+              aria-label="Cari"
+            >
+              <Search strokeWidth={1.8} className="h-[15px] w-[15px]" style={{ color: "hsl(var(--muted-foreground))" }} />
+            </button>
+
+            {/* Avatar — circular, no square box, keep sync dot */}
+            <button
+              onClick={() => navigate("/settings")}
+              className="relative shrink-0 active:opacity-75 transition-opacity"
+              title={syncTitle}
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <div
+                className="h-[28px] w-[28px] rounded-full flex items-center justify-center text-white text-[11px] font-black"
                 style={{
-                  background: "hsl(var(--secondary))",
-                  border: "1px solid hsl(var(--border))",
-                  WebkitTapHighlightColor: "transparent",
+                  background: "linear-gradient(140deg, #2563eb 0%, #1a44d4 60%, #0a2472 100%)",
                 }}
               >
-                <Search strokeWidth={2} className="h-[13px] w-[13px]" style={{ color: "hsl(var(--muted-foreground))" }} />
-              </button>
-
-              <button
-                onClick={() => navigate("/settings")}
-                className="relative h-[30px] w-[30px] shrink-0 active:scale-90 transition-transform"
-                title={syncTitle}
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                <div
-                  className="h-full w-full rounded-[9px] flex items-center justify-center text-white text-[11px] font-black"
-                  style={{
-                    background: "linear-gradient(140deg, #2563eb 0%, #1a44d4 60%, #0a2472 100%)",
-                    boxShadow: "0 2px 6px rgba(26,68,212,0.28)",
-                  }}
-                >
-                  {displayName.charAt(0).toUpperCase()}
-                </div>
-                <span
-                  className="absolute bottom-[-1px] right-[-1px] h-[8px] w-[8px] rounded-full border-[1.5px]"
-                  style={{
-                    background: syncInfo.color,
-                    borderColor: "hsl(var(--card))",
-                  }}
-                />
-              </button>
-            </div>
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <span
+                className="absolute bottom-0 right-0 h-[7px] w-[7px] rounded-full border-[1.5px]"
+                style={{
+                  background: syncInfo.color,
+                  borderColor: "hsl(var(--card))",
+                }}
+              />
+            </button>
           </header>
 
           {/* ── Desktop full header ── */}

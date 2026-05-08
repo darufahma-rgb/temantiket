@@ -1,0 +1,108 @@
+Simplify the mobile top navbar by removing the boxed container backgrounds behind the logo, currency section, search icon, and avatar.
+
+Current problem:
+The mobile navbar still looks too segmented and bulky because every element sits inside its own rounded box:
+
+* logo has a square container
+* currency area has a large rounded box
+* search icon has a square box
+* avatar/initial has a square box
+
+This creates visual noise and makes the navbar feel heavy.
+
+Goal:
+Create a cleaner, flatter, more minimal mobile navbar with lighter visual grouping.
+
+Required changes:
+
+1. Remove boxed backgrounds
+   Remove the separate rounded rectangle/square backgrounds behind:
+
+* logo
+* currency display
+* search button
+* avatar/initial
+
+Do NOT remove functionality.
+Only simplify the visual containers.
+
+2. Keep only one main navbar container
+   The navbar itself can remain inside one clean rounded container or floating header area.
+
+Inside it:
+
+* elements should feel naturally aligned
+* no individual heavy boxes
+* no segmented card look
+
+3. Currency section
+   Instead of a boxed pill:
+
+* make currency text inline/minimal
+* use subtle spacing/dividers only
+* keep tiny green status dot
+* keep tiny refresh icon
+
+Example style:
+● USD 17.4k · SAR 4.620 ↻
+
+No giant background block.
+
+4. Search icon
+   Make search:
+
+* standalone icon button
+* transparent background
+* subtle hover/tap state only
+* no large rounded square
+
+5. Avatar / Initial
+   Make avatar:
+
+* cleaner circular avatar only
+* remove outer square container
+* keep small online indicator
+* reduce visual weight
+
+6. Logo
+   Remove heavy square background behind logo.
+   Use:
+
+* transparent logo
+* or subtle blur/light tint only if needed
+
+7. Navbar spacing
+   After removing boxes:
+
+* rebalance spacing
+* improve alignment
+* keep touch-friendly tap areas
+* avoid elements looking too close together
+
+8. Visual style
+   Target aesthetic:
+
+* modern mobile banking app
+* premium fintech/travel app
+* lighter UI
+* minimal
+* elegant
+* clean hierarchy
+
+Avoid:
+
+* too many borders
+* too many floating cards
+* over-layered UI
+
+9. Keep functionality
+   Do NOT break:
+
+* search
+* refresh
+* profile/avatar click
+* currency updates
+* mobile responsiveness
+
+Expected result:
+The mobile navbar should feel much cleaner, lighter, flatter, and more premium — without all the individual boxed backgrounds behind each element.
