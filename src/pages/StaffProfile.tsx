@@ -145,8 +145,8 @@ export default function StaffProfile() {
   }, [joinedAt]);
 
   const quickActions = [
-    { label: "Visa Saya", icon: ClipboardList, path: "/staff/visa", color: "bg-blue-600 hover:bg-blue-700 text-white" },
-    { label: "Komisi Saya", icon: Wallet, path: "/staff/visa?tab=komisi", color: "bg-emerald-600 hover:bg-emerald-700 text-white" },
+    { label: "Visa", icon: ClipboardList, path: "/staff/visa", color: "bg-blue-600 hover:bg-blue-700 text-white" },
+    { label: "Komisi", icon: Wallet, path: "/staff/visa?tab=komisi", color: "bg-emerald-600 hover:bg-emerald-700 text-white" },
     { label: "Edit Profil", icon: UserCircle, path: "/settings", color: "bg-slate-100 hover:bg-slate-200 text-slate-700" },
   ];
 
