@@ -372,7 +372,7 @@ export default function Packages() {
                           <img src={pkg.coverImage} alt={pkg.name} className="w-full h-full object-cover" />
                         ) : (
                           <div
-                            className="w-full h-full flex items-center justify-center text-5xl"
+                            className="w-full h-full flex items-center justify-center text-3xl md:text-5xl"
                             style={{ background: "linear-gradient(135deg, #1a44d4 0%, #0a2472 100%)" }}
                           >
                             {pkg.emoji}
@@ -536,7 +536,7 @@ export default function Packages() {
                         {pkg.coverImage ? (
                           <img src={pkg.coverImage} alt={pkg.name} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-4xl" style={{ background: "linear-gradient(135deg,hsl(198 92% 39%),hsl(205 90% 50%))" }}>
+                          <div className="w-full h-full flex items-center justify-center text-3xl md:text-4xl" style={{ background: "linear-gradient(135deg,hsl(198 92% 39%),hsl(205 90% 50%))" }}>
                             {pkg.emoji}
                           </div>
                         )}

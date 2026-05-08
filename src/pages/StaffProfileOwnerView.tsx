@@ -94,7 +94,7 @@ export default function StaffProfileOwnerView() {
         transition={{ duration: 0.3 }}
         className="rounded-2xl border bg-white p-5 flex items-center gap-4"
       >
-        <div className="h-14 w-14 rounded-2xl bg-blue-100 border-2 border-blue-200 flex items-center justify-center text-2xl font-extrabold text-blue-700 shrink-0">
+        <div className="h-14 w-14 rounded-2xl bg-blue-100 border-2 border-blue-200 flex items-center justify-center text-xl font-extrabold text-blue-700 shrink-0">
           {(staff.displayName || "S").charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">

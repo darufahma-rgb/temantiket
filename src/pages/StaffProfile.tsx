@@ -180,7 +180,7 @@ export default function StaffProfile() {
               {photoUrl ? (
                 <img src={photoUrl} alt="foto" className="h-full w-full object-cover" />
               ) : (
-                <span className="text-2xl font-extrabold">
+                <span className="text-lg font-extrabold">
                   {(user?.displayName ?? "?").charAt(0).toUpperCase()}
                 </span>
               )}

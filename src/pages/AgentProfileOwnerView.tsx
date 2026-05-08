@@ -697,7 +697,7 @@ export default function AgentProfileOwnerView() {
                   {agentPhotoUrl ? (
                     <img src={agentPhotoUrl} alt="foto" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-2xl font-extrabold">
+                    <span className="text-lg font-extrabold">
                       {agent.displayName.charAt(0).toUpperCase()}
                     </span>
                   )}
@@ -717,7 +717,7 @@ export default function AgentProfileOwnerView() {
                 {agentPhotoUrl ? (
                   <img src={agentPhotoUrl} alt="foto" className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-2xl font-extrabold">
+                  <span className="text-lg font-extrabold">
                     {agent.displayName.charAt(0).toUpperCase()}
                   </span>
                 )}
@@ -961,7 +961,7 @@ export default function AgentProfileOwnerView() {
                 </div>
                 <div className="p-4 space-y-3">
                   <div className="text-center py-1">
-                    <div className="text-3xl font-extrabold font-mono">{fmtIDR(feeStats.total || totalKomisi)}</div>
+                    <div className="text-xl md:text-3xl font-extrabold font-mono">{fmtIDR(feeStats.total || totalKomisi)}</div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">total akumulasi fee</div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">

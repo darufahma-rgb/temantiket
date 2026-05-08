@@ -587,7 +587,7 @@ export default function JamaahProfile() {
           <div className="flex items-end justify-between -mt-12 mb-4">
             <div className="relative">
               <div className={cn(
-                "h-24 w-24 rounded-2xl border-4 border-white shadow-md overflow-hidden flex items-center justify-center text-white text-3xl font-bold",
+                "h-24 w-24 rounded-2xl border-4 border-white shadow-md overflow-hidden flex items-center justify-center text-white text-2xl font-bold",
                 person.gender === "P" ? "bg-gradient-to-br from-pink-400 to-rose-500" : "bg-gradient-to-br from-blue-400 to-indigo-500"
               )}>
                 {person.photoDataUrl

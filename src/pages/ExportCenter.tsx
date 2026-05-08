@@ -227,7 +227,7 @@ export default function ExportCenter() {
     >
       {/* ── Header ── */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
           <FileSpreadsheet className="h-6 w-6 text-primary" />
           Export Center
         </h1>

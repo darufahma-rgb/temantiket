@@ -70,7 +70,7 @@ export default function PublicLeaderboard() {
           <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-700 text-[11px] font-semibold px-3 py-1 rounded-full border border-amber-200">
             <Sparkles className="h-3 w-3" /> {thisMonth}
           </div>
-          <h1 className="text-2xl font-extrabold text-sky-900">Top Travel Enthusiast</h1>
+          <h1 className="text-xl md:text-2xl font-extrabold text-sky-900">Top Travel Enthusiast</h1>
           <p className="text-sm text-sky-700/80">
             Member Temantiket paling aktif — diukur dari jumlah stamp perjalanan.
           </p>

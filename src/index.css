@@ -1898,3 +1898,48 @@ button, [role="button"], a, input, select, textarea {
     letter-spacing: -0.02em;
   }
 }
+
+/* ── Mobile-first responsive typography utility classes ───────────────────── */
+/* Use these instead of raw text-2xl/3xl/4xl/5xl on shared layouts.           */
+/* Desktop sizes are restored via md: prefix automatically.                   */
+@layer utilities {
+  /* Page title: max 20px mobile, 24px desktop */
+  .page-title {
+    @apply text-xl font-bold md:text-2xl;
+  }
+
+  /* Section heading: 18px mobile, 20px desktop */
+  .section-title {
+    @apply text-lg font-semibold md:text-xl;
+  }
+
+  /* Card title: 16px mobile, 18px desktop */
+  .card-title-mobile {
+    @apply text-base font-semibold md:text-lg;
+  }
+
+  /* Body text: 13–14px mobile, 15px desktop */
+  .body-mobile {
+    @apply text-[13px] leading-relaxed md:text-sm;
+  }
+
+  /* Metadata / caption text: 11–12px mobile, 12–13px desktop */
+  .meta-mobile {
+    @apply text-[11px] md:text-xs;
+  }
+
+  /* Button text: compact 14px, stays compact */
+  .btn-mobile {
+    @apply text-sm font-semibold;
+  }
+
+  /* Mono display values (prices, totals): 20px mobile → 30px desktop */
+  .mono-display {
+    @apply text-xl md:text-3xl font-extrabold font-mono;
+  }
+
+  /* Stat/counter value: 18px mobile → 24px desktop */
+  .stat-value {
+    @apply text-lg md:text-2xl font-bold;
+  }
+}

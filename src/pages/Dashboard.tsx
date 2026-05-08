@@ -447,7 +447,7 @@ function RightPanel({ trips, totalJamaah }: { trips: Trip[]; totalJamaah: number
                 const isPast = countDown === "Selesai";
                 return (
                   <div key={trip.id} className="flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-2.5">
-                    <div className="h-10 w-10 rounded-xl shrink-0 flex items-center justify-center text-2xl overflow-hidden"
+                    <div className="h-10 w-10 rounded-xl shrink-0 flex items-center justify-center text-lg md:text-2xl overflow-hidden"
                       style={{ background: `${from}22` }}>
                       {trip.coverImage ? (
                         <img src={trip.coverImage} alt={trip.name} className="w-full h-full object-cover rounded-xl" />

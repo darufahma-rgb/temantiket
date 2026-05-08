@@ -438,7 +438,7 @@ function JamaahPreviewDialog({
           <div className="flex items-end justify-between -mt-10 mb-4">
             <div className="relative group">
               <div className={cn(
-                "h-20 w-20 rounded-2xl border-4 border-white shadow-md overflow-hidden flex items-center justify-center text-white text-3xl font-bold",
+                "h-20 w-20 rounded-2xl border-4 border-white shadow-md overflow-hidden flex items-center justify-center text-white text-xl font-bold",
                 person.gender === "P" ? "bg-gradient-to-br from-pink-400 to-rose-500" : "bg-gradient-to-br from-blue-400 to-indigo-500"
               )}>
                 {person.photoDataUrl
@@ -751,8 +751,8 @@ export default function TripDetail() {
         </Button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-3xl">{trip.emoji}</span>
-            <h1 className="text-2xl font-bold tracking-tight text-[hsl(var(--card-foreground))] truncate">{trip.name}</h1>
+            <span className="text-xl md:text-3xl">{trip.emoji}</span>
+            <h1 className="text-lg md:text-2xl font-bold tracking-tight text-[hsl(var(--card-foreground))] truncate">{trip.name}</h1>
           </div>
           <div className="flex flex-wrap gap-3 mt-1.5 text-sm text-[hsl(var(--muted-foreground))]">
             <span className="flex items-center gap-1"><MapPin strokeWidth={1.5} className="h-3.5 w-3.5" /> {trip.destination}</span>

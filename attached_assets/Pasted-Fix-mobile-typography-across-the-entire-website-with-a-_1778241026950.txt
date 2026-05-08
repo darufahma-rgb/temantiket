@@ -1,0 +1,148 @@
+Fix mobile typography across the entire website with a consistent responsive type scale.
+
+Current problem:
+Many texts on mobile are still too large and feel oversized:
+
+* page titles
+* card titles
+* action buttons
+* client names
+* detail links
+* form placeholders
+* section headings
+* dashboard labels
+
+The UI feels zoomed-in on mobile.
+
+Goal:
+Create a global mobile typography system so all text sizes become more compact, balanced, and mobile-friendly.
+
+Requirements:
+
+1. Audit all mobile text sizes
+   Review all pages and components for oversized mobile text:
+
+* dashboards
+* cards
+* order pages
+* visa tracker
+* agent dashboard
+* staff dashboard
+* forms
+* buttons
+* modals
+* bottom nav
+* top nav
+
+2. Add responsive text scaling
+   On mobile screens, reduce font sizes globally:
+
+* Page title: max 24px on mobile
+* Section title: 18–20px
+* Card title: 16–18px
+* Body text: 13–15px
+* Metadata text: 12–13px
+* Button text: 14–16px
+* Input placeholder: 14–16px
+* Large CTA text should not exceed 16px on mobile
+
+3. Fix oversized buttons
+   Buttons on mobile should not have huge text.
+   Use compact touch-friendly button styles:
+
+* height around 44–48px
+* font-size 14–15px
+* icon size 18–20px
+* prevent text overflow
+* allow truncation or wrapping only when needed
+
+4. Fix card typography
+   For mobile cards:
+
+* client names should be 16–18px, not huge
+* “Lihat Detail” should be 14–15px
+* status badges should be 12–13px
+* notes/placeholders should be 14–15px
+* avoid oversized line-height
+
+5. Add reusable mobile text classes
+   Create or standardize utility classes/components for:
+
+* mobile page title
+* mobile section heading
+* mobile card title
+* mobile body text
+* mobile muted text
+* mobile button text
+* mobile metadata text
+
+Use these consistently instead of random `text-3xl`, `text-4xl`, or oversized Tailwind classes on mobile.
+
+6. Replace hardcoded large text classes
+   Find and fix mobile-unfriendly classes like:
+
+* `text-3xl`
+* `text-4xl`
+* `text-5xl`
+* `text-2xl`
+* large button text
+* oversized placeholders
+
+Use responsive classes instead:
+
+* smaller default mobile size
+* larger desktop size only with `md:` or `lg:`
+
+Example:
+Instead of:
+`text-3xl`
+
+Use:
+`text-xl md:text-3xl`
+
+Instead of:
+`text-2xl`
+
+Use:
+`text-base md:text-2xl`
+
+7. Keep desktop unchanged
+   Desktop typography should remain mostly the same.
+   Only mobile and narrow screens should become more compact.
+
+8. Prevent overflow
+   Make sure long text does not break layout:
+
+* use line-clamp where appropriate
+* use truncate for short labels
+* allow wrapping for names only when needed
+* prevent buttons from overflowing card width
+
+9. Test mobile pages
+   Test at mobile widths:
+
+* 390px
+* 414px
+* 430px
+
+Especially check:
+
+* Staff Visa cards
+* Agent Dashboard
+* Staff Dashboard
+* Order cards
+* Client detail
+* Forms
+* Top navbar
+* Bottom nav
+
+Expected result:
+The entire website should feel properly scaled on mobile:
+
+* no oversized text
+* no giant buttons
+* no text overflow
+* cleaner hierarchy
+* more compact cards
+* more premium mobile-app feel
+* desktop layout remains unchanged

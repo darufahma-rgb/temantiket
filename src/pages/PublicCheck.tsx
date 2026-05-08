@@ -66,7 +66,7 @@ export default function PublicCheck() {
 
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-8">
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-          <h1 className="text-2xl font-bold text-[hsl(var(--foreground))]">Cek Status Booking Umrah</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-[hsl(var(--foreground))]">Cek Status Booking Umrah</h1>
           <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
             Masukkan kode booking yang kamu terima dari admin Temantiket buat lihat detail paket & status pembayaran.
           </p>

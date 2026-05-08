@@ -236,7 +236,7 @@ export default function OrderDetail() {
           </Button>
           <div className="min-w-0">
             <h1 className="text-lg md:text-xl font-bold truncate flex items-center gap-2">
-              <span className="text-2xl">{ORDER_TYPE_EMOJI[order.type]}</span>
+              <span className="text-xl md:text-2xl">{ORDER_TYPE_EMOJI[order.type]}</span>
               {order.title || ORDER_TYPE_LABEL[order.type]}
             </h1>
             <p className="text-[11.5px] text-muted-foreground">

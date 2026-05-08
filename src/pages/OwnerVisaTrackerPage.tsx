@@ -262,7 +262,7 @@ export default function OwnerVisaTrackerPage() {
               <p className="text-[10px] font-semibold uppercase tracking-wide opacity-70">{label}</p>
               <Icon className={`h-3.5 w-3.5 shrink-0 ${iconCls}`} />
             </div>
-            <p className={`font-extrabold ${isText ? "text-sm font-mono" : "text-2xl"}`}>{value}</p>
+            <p className={`font-extrabold ${isText ? "text-sm font-mono" : "text-xl md:text-2xl"}`}>{value}</p>
           </div>
         ))}
       </motion.div>

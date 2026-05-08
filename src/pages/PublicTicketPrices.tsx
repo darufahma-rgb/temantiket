@@ -1318,7 +1318,7 @@ export default function PublicTicketPrices() {
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 border border-slate-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">
                   ✈️ Tips Perjalanan
                 </span>
-                <h2 className="text-2xl font-black text-slate-900 leading-tight">
+                <h2 className="text-xl md:text-2xl font-black text-slate-900 leading-tight">
                   Siap Terbang?{" "}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-blue-600">Jangan Sampai Lupa Ini!</span>
                 </h2>

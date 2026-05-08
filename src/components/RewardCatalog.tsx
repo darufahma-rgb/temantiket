@@ -294,7 +294,7 @@ export function RewardCatalog({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <span className="text-2xl">{confirmTarget?.emoji}</span>
+              <span className="text-xl">{confirmTarget?.emoji}</span>
               Tukar {confirmTarget?.label}?
             </AlertDialogTitle>
             <AlertDialogDescription asChild>

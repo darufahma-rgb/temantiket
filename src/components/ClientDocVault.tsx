@@ -203,7 +203,7 @@ function UploadDialog({
               </div>
             ) : file ? (
               <div className="flex items-center justify-center gap-2 py-2">
-                <span className="text-2xl">📄</span>
+                <span className="text-xl">📄</span>
                 <span className="text-sm font-medium text-sky-700">{file.name}</span>
                 <button
                   type="button"
@@ -254,7 +254,7 @@ function PreviewDialog({ doc, open, onOpenChange }: { doc: ClientDoc | null; ope
             <img src={doc.dataUrl} alt={doc.label} className="max-w-full max-h-[460px] rounded-lg object-contain" />
           ) : (
             <div className="text-center p-8">
-              <span className="text-5xl">📄</span>
+              <span className="text-4xl">📄</span>
               <p className="text-sm text-muted-foreground mt-3">{doc.fileName}</p>
             </div>
           )}
@@ -376,7 +376,7 @@ export function ClientDocVault({ client, memberIndex }: ClientDocVaultProps) {
                         {doc.fileType === "image" ? (
                           <img src={doc.dataUrl} alt={doc.label} className="h-full w-full object-cover" />
                         ) : (
-                          <span className="text-2xl">📄</span>
+                          <span className="text-xl">📄</span>
                         )}
                       </button>
 
