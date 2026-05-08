@@ -99,15 +99,16 @@ const STAFF_SECTIONS: SectionDef[] = [
     key: "tugas",
     label: "Tugas Saya",
     items: [
-      { title: "Visa Saya",    url: "/staff/visa",            icon: Landmark },
-      { title: "Komisi Saya",  url: "/staff/visa?tab=komisi", icon: Wallet  },
+      { title: "Dashboard Staff", url: "/staff/visa",            icon: LayoutDashboard, end: true },
+      { title: "Visa Saya",       url: "/staff/visa",            icon: Landmark },
     ],
   },
   {
-    key: "tools",
-    label: "Tools",
+    key: "operasional",
+    label: "Operasional",
     items: [
-      { title: "Kalkulator Visa", url: "/calculator", icon: Calculator },
+      { title: "Komisi Saya",     url: "/staff/visa?tab=komisi", icon: Wallet },
+      { title: "Kalkulator Visa", url: "/calculator",            icon: Calculator },
     ],
   },
   {
@@ -291,11 +292,11 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
 
   const roleLabel =
     user?.role === "owner" ? "Owner" :
-    user?.role === "staff" ? "Staff" : "Agen Mitra";
+    user?.role === "staff" ? "Pelaksana Visa" : "Agen Mitra";
 
   const roleColor =
     user?.role === "owner" ? "#f59e0b" :
-    user?.role === "staff" ? ACCENT : "#10b981";
+    user?.role === "staff" ? "#0ea5e9" : "#10b981";
 
   const sidebarContent = (
     <div
@@ -321,7 +322,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
       {/* ── User profile ── */}
       {user && (
         <button
-          onClick={() => { navigate("/settings"); onClose?.(); }}
+          onClick={() => { navigate(isStaff ? "/staff/profile" : "/settings"); onClose?.(); }}
           className="flex items-center gap-2.5 mx-3 mt-3 mb-2.5 px-3 py-2.5 rounded-xl hover:bg-[hsl(var(--accent))] transition-colors text-left group"
         >
           <div
