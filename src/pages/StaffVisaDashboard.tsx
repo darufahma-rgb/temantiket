@@ -176,34 +176,32 @@ export default function StaffVisaDashboard() {
                 >
                   {/* Card header */}
                   <div className="px-4 pt-4 pb-3 border-b border-slate-50">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-[13px] font-bold text-slate-800 leading-tight">
-                            {client?.name ?? order.title ?? `Order #${order.id.slice(0, 8)}`}
-                          </p>
-                          <StepBadge step={currentStep} VISA_STEPS={VISA_STEPS} />
-                          {kendala && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
-                              ⚠️ Kendala
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap text-[10px] text-slate-400">
-                          <span>{fmtDate(order.createdAt)}</span>
-                          <span className="font-mono opacity-60">#{order.id.slice(0, 8)}</span>
-                          {client?.phone && <span>· {client.phone}</span>}
-                          {client?.passportNumber && (
-                            <span className="font-mono">· Paspor {client.passportNumber}</span>
-                          )}
-                        </div>
-                      </div>
+                    {/* Name row — name truncates, badge + detail button always visible */}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-[13px] font-bold text-slate-800 leading-tight truncate flex-1 min-w-0">
+                        {client?.name ?? order.title ?? `Order #${order.id.slice(0, 8)}`}
+                      </p>
+                      <StepBadge step={currentStep} VISA_STEPS={VISA_STEPS} />
                       <button
                         onClick={() => navigate(`/orders/detail/${order.id}`)}
                         className="flex items-center gap-0.5 text-[10.5px] text-blue-600 font-semibold hover:text-blue-800 transition-colors shrink-0"
                       >
-                        Lihat Detail <ArrowUpRight className="h-3 w-3 stroke-[2]" />
+                        <ArrowUpRight className="h-3.5 w-3.5 stroke-[2]" />
                       </button>
+                    </div>
+                    {/* Meta row */}
+                    <div className="flex items-center gap-2 mt-1 flex-wrap text-[10px] text-slate-400">
+                      {kendala && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                          ⚠️ Kendala
+                        </span>
+                      )}
+                      <span>{fmtDate(order.createdAt)}</span>
+                      <span className="font-mono opacity-60">#{order.id.slice(0, 8)}</span>
+                      {client?.phone && <span>· {client.phone}</span>}
+                      {client?.passportNumber && (
+                        <span className="font-mono">· Paspor {client.passportNumber}</span>
+                      )}
                     </div>
                   </div>
 
@@ -296,27 +294,31 @@ export default function StaffVisaDashboard() {
                       {!isDone ? (
                         <Button
                           size="sm"
-                          className="h-8 text-[11px] bg-blue-600 hover:bg-blue-700 text-white flex-1 rounded-xl"
+                          className="h-8 text-[11px] bg-blue-600 hover:bg-blue-700 text-white flex-1 min-w-0 rounded-xl"
                           disabled={advancing === order.id}
                           onClick={() => void handleAdvance(order.id, currentStep)}
                         >
                           {advancing === order.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                            <Loader2 className="h-3 w-3 animate-spin shrink-0 mr-1" />
                           ) : (
-                            <ChevronRight className="h-3.5 w-3.5 mr-1" />
+                            <ChevronRight className="h-3 w-3 shrink-0 mr-1" />
                           )}
-                          Update: {VISA_STEPS[currentStep + 1]?.label ?? "Selesai"}
+                          <span className="truncate">
+                            {VISA_STEPS[currentStep + 1]?.emoji}{" "}
+                            {VISA_STEPS[currentStep + 1]?.label ?? "Selesai"}
+                          </span>
                         </Button>
                       ) : (
-                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 flex-1">
-                          <CheckCircle2 className="h-4 w-4" /> Visa Terbit — Selesai
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 flex-1 min-w-0">
+                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">Visa Terbit — Selesai</span>
                         </div>
                       )}
                       {!isEditing && (
                         <Button
                           size="sm"
                           variant="outline"
-                          className={`h-8 text-[11px] rounded-xl shrink-0 ${
+                          className={`h-8 text-[11px] rounded-xl shrink-0 gap-1 ${
                             kendala
                               ? "border-amber-200 text-amber-700 hover:bg-amber-50"
                               : "border-slate-200 text-slate-600"
@@ -326,8 +328,8 @@ export default function StaffVisaDashboard() {
                             setEditingNote(order.id);
                           }}
                         >
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          {kendala ? "Update Kendala" : "Catat Kendala"}
+                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                          {kendala ? "Edit" : "Kendala"}
                         </Button>
                       )}
                     </div>
