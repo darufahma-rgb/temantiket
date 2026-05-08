@@ -30,6 +30,7 @@ import { getCommissionForOrderType } from "@/lib/productCommissions";
 import { addWalletTx } from "@/lib/agentWallet";
 import { useAuthStore } from "@/store/authStore";
 import { supabase } from "@/lib/supabase";
+import { VisaEntryPanel } from "@/components/VisaEntryPanel";
 
 async function awardCommissionPoints(agencyId: string, agentId: string, orderId: string) {
   try {
@@ -423,6 +424,16 @@ export default function OrderDetail() {
           </div>
         );
       })()}
+
+      {/* Visa Entry Panel — hanya untuk visa_student */}
+      {order.type === "visa_student" && (
+        <VisaEntryPanel
+          order={{ ...order, metadata: (draft.metadata ?? order.metadata) as Record<string, unknown> }}
+          onMetaChange={(newMeta) =>
+            setDraft((d) => ({ ...d, metadata: newMeta }))
+          }
+        />
+      )}
 
       {/* Metadata viewer (esp. for umrah breakdown) */}
       {order.metadata && Object.keys(order.metadata).length > 0 && (

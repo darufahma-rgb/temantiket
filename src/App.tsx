@@ -54,6 +54,7 @@ import ItineraryGenerator from "./pages/ItineraryGenerator";
 import DemoSeed from "./pages/DemoSeed";
 import TicketPrices from "./pages/TicketPrices";
 import PublicTicketPrices from "./pages/PublicTicketPrices";
+import StaffVisaDashboard from "./pages/StaffVisaDashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -310,6 +311,7 @@ function AnimatedRoutes() {
         <Route path="/itinerary" element={<RequireAuth><DashboardLayout><ItineraryGenerator /></DashboardLayout></RequireAuth>} />
         <Route path="/demo-seed" element={<RequireAuth><DashboardLayout><DemoSeed /></DashboardLayout></RequireAuth>} />
         <Route path="/ticket-prices" element={<RequireAuth><DashboardLayout><TicketPrices /></DashboardLayout></RequireAuth>} />
+        <Route path="/staff/visa" element={<RequireAuth><DashboardLayout><StaffVisaDashboard /></DashboardLayout></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><DashboardLayout><Settings /></DashboardLayout></RequireAuth>} />
         <Route path="/auth" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<NotFound />} />
