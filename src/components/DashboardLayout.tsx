@@ -6,6 +6,7 @@ import {
   LayoutDashboard, ShoppingBag, Users, Settings, Package,
   Ticket, Calculator, StickyNote, FileSpreadsheet, BarChart3,
   MessageSquare, Megaphone, BookUser, Trophy, MoreHorizontal, LogOut,
+  Landmark, Wallet,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -34,26 +35,70 @@ interface DashboardLayoutProps {
   noPadding?: boolean;
 }
 
-const BOTTOM_NAV = [
-  { icon: LayoutDashboard, label: "Home",    path: "/",         exact: true  },
-  { icon: Package,         label: "Paket",   path: "/packages", exact: false },
-  { icon: ShoppingBag,     label: "Order",   path: "/orders",   exact: false },
-  { icon: Users,           label: "Klien",   path: "/clients",  exact: false },
-  { icon: MoreHorizontal,  label: "Lainnya", path: null,        exact: false },
-] as const;
+interface NavItem {
+  icon: React.ElementType;
+  label: string;
+  path: string | null;
+  exact?: boolean;
+  navigateTo?: string;
+  isActiveFn?: (pathname: string, search: string) => boolean;
+}
 
-const MORE_ITEMS = [
-  { icon: Calculator,      label: "Kalkulator",   path: "/calculator"      },
-  { icon: Sparkles,        label: "Itinerary AI", path: "/itinerary"       },
-  { icon: Ticket,          label: "Harga Tiket",  path: "/ticket-prices"   },
-  { icon: BarChart3,       label: "Laporan",      path: "/reports"         },
-  { icon: FileSpreadsheet, label: "Export",       path: "/exports"         },
-  { icon: MessageSquare,   label: "Broadcast",    path: "/bc-templates"    },
-  { icon: Megaphone,       label: "Caption Gen",  path: "/agent/marketing" },
-  { icon: StickyNote,      label: "Catatan",      path: "/notes"           },
-  { icon: BookUser,        label: "Mgt. Agen",    path: "/agent-center"    },
+/* ── Owner ── */
+const OWNER_BOTTOM_NAV: NavItem[] = [
+  { icon: LayoutDashboard, label: "Home",    path: "/",         exact: true },
+  { icon: ShoppingBag,     label: "Order",   path: "/orders"               },
+  { icon: Users,           label: "Klien",   path: "/clients"              },
+  { icon: Package,         label: "Paket",   path: "/packages"             },
+  { icon: MoreHorizontal,  label: "Lainnya", path: null                    },
+];
+const OWNER_MORE_ITEMS: NavItem[] = [
+  { icon: Calculator,      label: "Kalkulator",   path: "/calculator"        },
+  { icon: Sparkles,        label: "Itinerary AI", path: "/itinerary"         },
+  { icon: Ticket,          label: "Harga Tiket",  path: "/ticket-prices"     },
+  { icon: BarChart3,       label: "Laporan",      path: "/reports"           },
+  { icon: FileSpreadsheet, label: "Export",       path: "/exports"           },
+  { icon: MessageSquare,   label: "Broadcast",    path: "/bc-templates"      },
+  { icon: Megaphone,       label: "Caption Gen",  path: "/agent/marketing"   },
+  { icon: StickyNote,      label: "Catatan",      path: "/notes"             },
+  { icon: BookUser,        label: "Mgt. Agen",    path: "/agent-center"      },
   { icon: Trophy,          label: "Leaderboard",  path: "/agent/leaderboard" },
-  { icon: Settings,        label: "Pengaturan",   path: "/settings"        },
+  { icon: Settings,        label: "Pengaturan",   path: "/settings"          },
+];
+
+/* ── Agent ── */
+const AGENT_BOTTOM_NAV: NavItem[] = [
+  { icon: Trophy,         label: "Home",    path: "/agent",    exact: true },
+  { icon: Package,        label: "Paket",   path: "/packages"              },
+  { icon: ShoppingBag,    label: "Order",   path: "/orders"                },
+  { icon: Users,          label: "Klien",   path: "/clients"               },
+  { icon: MoreHorizontal, label: "Lainnya", path: null                     },
+];
+const AGENT_MORE_ITEMS: NavItem[] = [
+  { icon: MessageSquare, label: "Broadcast",    path: "/bc-templates"      },
+  { icon: Megaphone,     label: "Caption Gen",  path: "/agent/marketing"   },
+  { icon: Trophy,        label: "Leaderboard",  path: "/agent/leaderboard" },
+  { icon: Settings,      label: "Pengaturan",   path: "/settings"          },
+];
+
+/* ── Staff ── */
+const STAFF_BOTTOM_NAV: NavItem[] = [
+  {
+    icon: Landmark, label: "Visa", path: "/staff/visa",
+    isActiveFn: (p, s) => p === "/staff/visa" && !s.includes("tab=komisi"),
+    exact: true,
+  },
+  {
+    icon: Wallet, label: "Komisi", path: "/staff/visa",
+    navigateTo: "/staff/visa?tab=komisi",
+    isActiveFn: (p, s) => p === "/staff/visa" && s.includes("tab=komisi"),
+  },
+  { icon: Calculator,     label: "Kalkulator", path: "/calculator"    },
+  { icon: BookUser,       label: "Profil",     path: "/staff/profile" },
+  { icon: MoreHorizontal, label: "Lainnya",    path: null             },
+];
+const STAFF_MORE_ITEMS: NavItem[] = [
+  { icon: Settings, label: "Pengaturan", path: "/settings" },
 ];
 
 export function DashboardLayout({ children, noPadding = false }: DashboardLayoutProps) {
@@ -72,6 +117,12 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
   const syncTitle  = `${syncInfo.label}${lastSync ? ` · ${formatLastSync(lastSync)}` : ""}${lastError ? ` · ${lastError}` : ""}`;
 
   const displayName = currentUser?.displayName ?? "Temantiket";
+
+  const isAgent = currentUser?.role === "agent";
+  const isStaff = currentUser?.role === "staff";
+  const homeRoute = isStaff ? "/staff/visa" : isAgent ? "/agent" : "/";
+  const bottomNav = isStaff ? STAFF_BOTTOM_NAV : isAgent ? AGENT_BOTTOM_NAV : OWNER_BOTTOM_NAV;
+  const moreItems = isStaff ? STAFF_MORE_ITEMS : isAgent ? AGENT_MORE_ITEMS : OWNER_MORE_ITEMS;
 
   const handleLogout = () => { logout(); navigate("/login"); };
 
@@ -113,7 +164,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
           >
             {/* Left — logo in gradient badge */}
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate(homeRoute)}
               className="shrink-0 active:scale-90 transition-transform"
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
@@ -332,10 +383,12 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
           boxShadow: "0 8px 28px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08), inset 0 0.5px 0 rgba(255,255,255,0.18)",
         }}
       >
-        {BOTTOM_NAV.map((item) => {
+        {bottomNav.map((item) => {
           const isMore = item.path === null;
           const isActive = isMore
             ? moreOpen
+            : item.isActiveFn
+            ? item.isActiveFn(location.pathname, location.search)
             : item.exact
             ? location.pathname === item.path
             : !!item.path && location.pathname.startsWith(item.path);
@@ -348,7 +401,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                   setMoreOpen((v) => !v);
                 } else if (item.path) {
                   setMoreOpen(false);
-                  navigate(item.path);
+                  navigate(item.navigateTo ?? item.path);
                 }
               }}
               className="relative flex-1 flex flex-col items-center justify-center gap-[3px] h-full transition-all active:scale-90 select-none"
@@ -411,12 +464,12 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
 
               {/* Items grid */}
               <div className="px-4 pb-4 grid grid-cols-4 gap-x-2 gap-y-4">
-                {MORE_ITEMS.map((item) => {
-                  const isActive = location.pathname.startsWith(item.path);
+                {moreItems.map((item) => {
+                  const isActive = !!item.path && location.pathname.startsWith(item.path);
                   return (
                     <button
                       key={item.path}
-                      onClick={() => { navigate(item.path); setMoreOpen(false); }}
+                      onClick={() => { navigate(item.path!); setMoreOpen(false); }}
                       className="flex flex-col items-center gap-1.5 active:scale-90 transition-transform"
                     >
                       <div

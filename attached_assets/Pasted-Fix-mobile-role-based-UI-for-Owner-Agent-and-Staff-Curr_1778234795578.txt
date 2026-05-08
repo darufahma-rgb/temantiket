@@ -1,0 +1,221 @@
+Fix mobile role-based UI for Owner, Agent, and Staff.
+
+Current problem:
+On mobile mode, Agent and Staff still see the same layout/menu/dashboard as Owner.
+This is wrong.
+
+The mobile experience must be role-specific, just like desktop.
+
+Main rule:
+Mobile UI must respect user role:
+
+* Owner sees Owner mobile dashboard and Owner menus.
+* Agent sees Agent/Mitra mobile dashboard and Agent menus.
+* Staff sees Staff mobile dashboard and Staff menus.
+
+Do not reuse Owner mobile layout for Agent or Staff.
+
+1. Role Detection
+   Audit all mobile layout components and navigation logic.
+
+Make sure role detection uses clear helpers:
+
+* isOwner(user)
+* isAgent(user)
+* isStaff(user)
+
+Important:
+
+* Staff mode only if role === "staff"
+* Agent mode only if role === "agent" or existing agent role value
+* Owner mode only if role === "owner"
+* If role is missing, do NOT default to owner menus for non-owner accounts.
+
+2. Mobile Bottom Navigation
+
+OWNER mobile bottom nav should show owner-relevant menus:
+
+* Dashboard
+* Order
+* Klien
+* Tools / Lainnya
+* Pengaturan
+
+AGENT mobile bottom nav should show agent-relevant menus:
+
+* Home / Mitra Dashboard
+* Paket / Produk
+* Order
+* Klien
+* Lainnya
+
+Agent “Lainnya” should include:
+
+* Template Broadcast
+* Caption Generator
+* Leaderboard
+* Pengaturan
+* Logout
+
+STAFF mobile bottom nav should show staff-relevant menus:
+
+* Dashboard Staff / Visa Saya
+* Komisi Saya
+* Kalkulator Visa
+* Profil Staff
+* Lainnya / Logout
+
+Staff must NOT see:
+
+* Owner dashboard
+* Order Hub global
+* Klien global
+* Paket Trip
+* Harga Tiket
+* Template Broadcast
+* Caption Generator
+* Leaderboard
+* HPP
+* Margin
+* Laporan Keuangan
+* Manajemen Agen
+* Owner settings
+
+3. Mobile Dashboard Pages
+
+OWNER mobile dashboard:
+Keep existing owner dashboard behavior.
+
+AGENT mobile dashboard:
+Use Agent/Mitra dashboard layout:
+
+* greeting with agent name
+* agent card / profile shortcut
+* total order
+* total client
+* total commission
+* total point
+* marketing kit
+* order baru
+* agent card digital
+* no owner HPP/margin
+
+STAFF mobile dashboard:
+Use Staff dashboard layout:
+
+* greeting with staff name
+* role badge: Staff / Pelaksana Visa
+* total assigned visa
+* in progress
+* completed
+* kendala
+* fee pelaksana saya
+* visa saya list
+* update progress shortcut
+* staff card digital
+* no leaderboard
+* no sales tools
+* no HPP/margin/client payment
+
+4. Mobile Sidebar / Drawer / More Menu
+
+If the app uses a mobile drawer or “Lainnya” menu, make it role-specific.
+
+Owner drawer:
+full owner menu.
+
+Agent drawer:
+only agent menu.
+
+Staff drawer:
+only staff menu.
+
+Do not render owner links inside agent/staff mobile drawers.
+
+5. Route Guards on Mobile
+   Make sure mobile navigation cannot open forbidden routes.
+
+Agent should not access:
+
+* owner dashboard
+* financial reports
+* HPP/margin settings
+* management pages
+
+Staff should not access:
+
+* owner dashboard
+* global orders
+* global clients
+* agent leaderboard
+* marketing tools
+* sales tools
+* HPP/margin/pricing
+* financial reports
+
+Staff should only access:
+
+* /staff/visa
+* /staff/profile or staff-safe settings
+* /calculator in staff-limited mode
+* assigned visa order/client detail pages
+
+6. Top Mobile Header
+   Make top mobile header role-aware.
+
+Owner:
+
+* show owner search/global tools if needed
+
+Agent:
+
+* show agent identity, sync/currency, search if relevant
+
+Staff:
+
+* show staff identity, visa status shortcut, refresh if relevant
+* do not show global search if it exposes owner/global data
+
+7. Data Filtering
+   Do not only hide UI.
+
+Also ensure:
+
+* Agent only sees own sales/order/client data.
+* Staff only sees assigned visa work.
+* Owner sees all data.
+* Staff queries must filter by assigned executor / pelaksana ID.
+* Agent queries must filter by agent ID.
+
+8. Visual Consistency
+   Mobile UI should feel polished for each role:
+
+* Agent mobile should match Mitra Dashboard style.
+* Staff mobile should match Agent/Mitra style but with staff content.
+* Owner mobile stays full admin.
+* Keep blue/white Temantiket design.
+* Keep compact mobile spacing.
+* Avoid oversized cards/buttons.
+
+9. Important
+
+* Do not break desktop layouts.
+* Do not break owner access.
+* Do not break agent dashboard.
+* Do not break staff dashboard.
+* Do not mix staff and agent permissions.
+* Do not show owner-sensitive data to agent/staff.
+* Test using all 3 roles on mobile width:
+
+  * Owner
+  * Agent
+  * Staff
+
+Expected result:
+On mobile, each role has a completely appropriate experience:
+
+* Owner = full admin mobile dashboard
+* Agent = Mitra mobile dashboard with sales/marketing tools only
+* Staff = operational visa dashboard with assigned work and personal fee only
+
+Agent and Staff must no longer see Owner-style mobile dashboard, menu, drawer, or navigation.
