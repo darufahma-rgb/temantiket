@@ -54,6 +54,7 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
   const [feeInput, setFeeInput] = useState("");
 
   const isOwner = user?.role === "owner";
+  const isStaff = user?.role === "staff";
   const meta = (order.metadata ?? {}) as Record<string, unknown>;
   const currentStep = Number(meta.processStep ?? 0);
   const pelaksanaId = (meta.pelaksanaId as string | null) ?? null;
@@ -66,7 +67,6 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
   const canAdvance = (isOwner || isPelaksana) && !isDone;
 
   useEffect(() => {
-    if (!isOwner) return;
     setLoadingMembers(true);
     void listMembers().then((members) => {
       setAllMembers(
@@ -79,7 +79,7 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
       );
       setLoadingMembers(false);
     });
-  }, [isOwner]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const assignedPelaksana = useMemo(
     () => allMembers.find((s) => s.userId === pelaksanaId),
@@ -210,11 +210,13 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <p className="text-[12px] font-semibold text-sky-900">
                 {allMembers.find((m) => m.userId === order.createdByAgent)?.displayName
-                  ?? `#${(order.createdByAgent as string).slice(0, 8)}`}
+                  ?? order.createdByAgent?.slice(0, 8) ?? "—"}
               </p>
-              <span className="text-[11px] font-mono font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">
-                Fee Agen: {fmtIDR(Number((meta.agentFee as number | null) ?? 0))}
-              </span>
+              {!isStaff && (
+                <span className="text-[11px] font-mono font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">
+                  Fee Agen: {fmtIDR(Number((meta.agentFee as number | null) ?? 0))}
+                </span>
+              )}
             </div>
             <p className="text-[10px] text-sky-600 italic">
               Komisi agen dicatat terpisah di wallet agen saat status → Selesai.
