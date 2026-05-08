@@ -93,7 +93,7 @@ export function StaffCard({ displayName, staffId, since, className }: StaffCardP
         {/* ── Top-left: staff code ───────────────────────────────── */}
         <div style={{
           position: "absolute",
-          top: "26px",
+          top: "150px",
           left: "26px",
           zIndex: 1,
           fontSize: "12px",
