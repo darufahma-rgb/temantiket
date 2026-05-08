@@ -255,7 +255,7 @@ export default function StaffProfile() {
             className="flex items-center justify-center gap-2 h-10 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-[12px] font-semibold transition-all active:scale-[0.97]"
           >
             <ClipboardList className="h-4 w-4 shrink-0" />
-            Lihat Visa Saya
+            Lihat Visa
           </button>
         </div>
       </motion.div>
