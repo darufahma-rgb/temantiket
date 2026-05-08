@@ -1,0 +1,200 @@
+Audit and optimize the entire Temantiket website for mobile responsiveness, mobile-friendly usability, and compact adaptive layouts.
+
+Current problem:
+Many UI components still feel like desktop layouts squeezed into mobile screens:
+
+* oversized cards
+* excessive spacing
+* crowded headers
+* inconsistent mobile scaling
+* bulky buttons
+* overflow issues
+* inefficient vertical space usage
+* desktop-style layouts on phones
+
+Goal:
+Make the entire website feel like a polished modern mobile app while keeping the existing Temantiket branding and desktop experience intact.
+
+Main focus:
+
+* mobile responsiveness
+* compact mobile UI
+* adaptive layouts
+* touch-friendly interactions
+* consistent spacing
+* professional SaaS/mobile-app feel
+
+1. Responsive Audit
+   Review all major UI components on:
+
+* small phones
+* large phones
+* tablets
+* narrow screens
+
+Check:
+
+* overflow
+* broken layouts
+* oversized typography
+* inconsistent spacing
+* horizontal scrolling
+* cramped elements
+* giant empty spaces
+* stacked layouts that feel awkward
+
+2. Mobile Layout Optimization
+   Convert desktop-heavy layouts into mobile-friendly layouts.
+
+Examples:
+
+* multi-column grids → adaptive stacked cards
+* wide tables → compact cards or horizontal scroll containers
+* large desktop paddings → tighter mobile spacing
+* huge cards → compact responsive cards
+* oversized sections → efficient mobile blocks
+
+3. Typography Scaling
+   Improve mobile typography:
+
+* reduce oversized titles
+* improve line-height
+* prevent giant text blocks
+* keep readability balanced
+* use responsive font scaling
+
+Especially fix:
+
+* hero titles
+* card headings
+* dashboard stats
+* sidebar/menu text
+* card names/IDs
+
+4. Spacing & Density
+   Optimize spacing globally for mobile:
+
+* reduce excessive margins
+* reduce oversized paddings
+* tighten card gaps
+* improve vertical rhythm
+* make dashboards more compact
+
+Goal:
+more content visible without feeling cramped.
+
+5. Buttons & Touch Targets
+   Make buttons mobile-friendly:
+
+* compact but touch-safe
+* consistent height
+* cleaner spacing
+* prevent oversized CTA blocks
+
+Fix:
+
+* giant buttons
+* uneven icon alignment
+* bulky mobile controls
+
+6. Navigation Optimization
+   Improve mobile navigation:
+
+* compact top navbar
+* clean bottom navigation
+* role-aware menus
+* responsive drawers
+* avoid crowded mobile headers
+
+Ensure:
+
+* owner mobile
+* agent mobile
+* staff mobile
+  all feel intentional and different.
+
+7. Card Components
+   Refine all cards:
+
+* responsive heights
+* cleaner padding
+* better hierarchy
+* improved mobile scaling
+* avoid giant empty areas
+
+Especially:
+
+* Agent Card
+* Staff Card
+* dashboard stat cards
+* order cards
+* visa cards
+* profile cards
+
+8. Dashboard Responsiveness
+   Optimize all dashboards:
+
+* Owner Dashboard
+* Agent Dashboard
+* Staff Dashboard
+
+Goals:
+
+* compact widgets
+* balanced spacing
+* better stacking
+* proper mobile hierarchy
+* no oversized hero sections
+
+9. Adaptive Behavior
+   Use adaptive layouts where needed:
+
+* desktop sidebar → mobile bottom nav/drawer
+* desktop grids → stacked mobile layout
+* desktop actions → compact mobile actions
+
+Do not force desktop layouts onto phones.
+
+10. Performance & UX
+    Ensure mobile UI still feels:
+
+* fast
+* smooth
+* premium
+* modern
+* app-like
+
+Avoid:
+
+* unnecessary animations
+* giant shadows
+* excessive blur
+* heavy spacing
+
+11. Visual Consistency
+    Keep:
+
+* existing Temantiket blue/white branding
+* rounded modern UI
+* premium SaaS/travel app aesthetic
+
+Do NOT redesign the entire product visually.
+This is a mobile UX refinement and responsiveness pass.
+
+12. Important
+
+* Desktop layout must remain stable.
+* Existing functionality must remain unchanged.
+* Do not break routing or permissions.
+* Do not remove features.
+* Focus on responsiveness, compactness, hierarchy, and usability.
+
+Expected result:
+The website should feel fully mobile-optimized:
+
+* cleaner
+* more compact
+* more responsive
+* easier to use on phones
+* more premium
+* more like a professionally designed mobile SaaS/travel app instead of a desktop web app squeezed into mobile.
