@@ -1,0 +1,192 @@
+Refine the staff access system for Visa Staff / Pelaksana Visa.
+
+Current access is too restricted. Staff should not see sensitive financial data, but they still need enough operational client data to process Visa Student Entry orders properly.
+
+Main rule:
+Staff can see operational client and visa processing details for assigned Visa Student Entry orders, but must NOT see any pricing, payment, HPP, margin, profit, or sales commission data.
+
+Staff should be able to access:
+
+1. Staff Dashboard / Visa Saya
+   Create or improve `/staff/visa` as the main staff dashboard.
+
+It should show:
+
+* total assigned visa berkas
+* total in progress
+* total completed
+* total with kendala
+* total executor fee earned
+* list of assigned Visa Student Entry clients/orders
+* quick status summary per client
+* latest progress update
+* deadline or estimated processing date if available
+
+2. Assigned Visa Orders Only
+   Staff can only see Visa Student Entry orders where:
+
+* assigned executor / pelaksana lapangan = current staff user
+
+Do not show all orders.
+
+3. Client Operational Details
+   Staff can open assigned client/order detail and see:
+
+* client name
+* WhatsApp/phone number
+* email if available
+* passport number if available
+* date of birth if available
+* nationality if available
+* address if available
+* university/campus information if available
+* visa type
+* document checklist
+* uploaded documents/attachments
+* notes related to visa processing
+* visa progress history
+* kendala notes
+* assigned executor information
+
+Staff must NOT see:
+
+* harga jual
+* harga modal / HPP
+* margin
+* profit
+* payment status
+* payment method
+* invoice
+* agent sales commission
+* owner financial notes
+* package cost breakdown
+* currency conversion margin
+
+4. Visa Progress Update
+   Staff can update operational visa progress only.
+
+Allowed statuses:
+
+* Berkas diterima
+* Dicek admin
+* Siap diajukan ke Kedutaan
+* Proses di Kedutaan
+* Visa terbit
+* Ada kendala
+* Selesai
+
+Staff can add:
+
+* progress note
+* kendala note
+* timestamped update
+* optional attachment/proof if existing upload system supports it
+
+Staff should not be able to change commercial/order/payment status.
+
+5. Staff Commission / Fee Pelaksana
+   Staff can see their own executor fee dashboard:
+
+* total fee earned
+* total berkas completed
+* fee per berkas
+* commission history per assigned berkas
+* paid/unpaid status if available
+
+Use executor fee only, not sales agent commission.
+
+Label it clearly as:
+
+* “Fee Pelaksana Visa”
+* “Komisi Pelaksana”
+* “Riwayat Fee Pelaksana”
+
+Do not mix with:
+
+* Fee Agen
+* Komisi Agen
+* Sales commission
+
+6. Staff Profile Page
+   Staff should be able to access their own profile/settings page.
+
+Profile page should include:
+
+* staff name
+* email
+* role
+* staff scope/type
+* Staff Card preview
+* download Staff Card as PNG
+* basic settings tabs only:
+
+  * Profil
+  * Notifikasi
+  * Keamanan
+  * Tampilan
+
+7. Sidebar for Staff
+   Keep staff sidebar minimal but useful:
+
+* Visa Saya
+* Kalkulator Visa
+* Komisi Saya
+* Profil Staff
+* Keluar
+
+Hide:
+
+* AI Itinerary
+* Order Hub
+* Klien & Jamaah global
+* Laporan Keuangan
+* Export & Manifest
+* Agent Center
+* Paket Trip
+* Harga Tiket
+* Template Broadcast
+* Caption Generator
+* Owner settings
+
+8. Visa Calculator for Staff
+   Staff may access a limited Visa Calculator.
+
+It should allow operational calculations only, but hide:
+
+* HPP
+* margin
+* owner profit
+* pricing builder
+* internal cost breakdown
+
+9. Route Guards
+   Staff should be redirected away from owner-only routes.
+   But staff should be allowed to open:
+
+* `/staff/visa`
+* assigned visa order detail pages
+* assigned client profile/detail pages
+* `/calculator` limited staff view
+* `/settings` limited staff profile view
+
+10. Security
+    Do not only hide UI.
+    Also enforce:
+
+* query-level filtering by assigned executor ID
+* route guards
+* role/scope checks
+* prevent staff from accessing unauthorized data via direct URL
+
+Important:
+
+* Do not break owner access.
+* Owner can still see all data.
+* Owner can still assign/change Pelaksana Lapangan.
+* Owner can still see financial fields.
+* Staff can only see assigned visa work.
+* Staff can see client operational details, but never financial details.
+* Use Indonesian labels and keep the current blue/white UI style.
+
+Expected result:
+Visa staff can properly process assigned Visa Student Entry clients, see all operational details needed for embassy work, update visa progress, view their own executor fee, and access their own Staff Card profile — without seeing client payment amounts, HPP, margin, or owner-sensitive financial data.

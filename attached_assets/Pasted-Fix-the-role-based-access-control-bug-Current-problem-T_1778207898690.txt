@@ -1,0 +1,78 @@
+Fix the role-based access control bug.
+
+Current problem:
+The OWNER account is incorrectly being treated like STAFF.
+Owner sidebar/settings are now limited like staff, which is wrong.
+
+Expected behavior:
+
+* Owner must keep full access exactly like before.
+* Staff restrictions must apply ONLY to users with role = "staff".
+* Owner must NOT be redirected to /staff/visa.
+* Owner must NOT see the staff-only sidebar.
+* Owner must NOT have settings tabs hidden.
+* Owner must still see all owner menus and sensitive settings.
+
+Fix requirements:
+
+1. Audit the role detection logic.
+2. Make sure staff mode is activated ONLY when:
+   `user.role === "staff"`
+   or the existing app role field explicitly equals staff.
+3. Do NOT treat owner as staff just because they can access Visa Tracker.
+4. Do NOT treat owner as staff because they have staff-related permissions.
+5. Restore owner sidebar exactly as before.
+6. Restore owner Settings page tabs exactly as before:
+
+   * Profil
+   * Notifikasi
+   * Keamanan
+   * Tampilan
+   * Regional
+   * Kurs
+   * Agen
+   * Invoice
+   * Audit Log
+   * Status
+7. Restore owner routes:
+
+   * Dashboard
+   * Klien & Jamaah
+   * Order Hub
+   * Visa Tracker
+   * Harga Tiket
+   * Itinerary
+   * Kalkulator & Kurs
+   * Paket Trip
+   * Template Broadcast
+   * Caption Generator
+   * Manajemen Agen
+   * Leaderboard
+   * Pengaturan
+8. Staff restrictions should only apply to real staff accounts.
+9. Add clear helper functions if needed:
+
+   * isOwner(user)
+   * isStaff(user)
+   * isAgent(user)
+10. Use these helpers consistently in:
+
+* Sidebar
+* route guards
+* HomeRedirect
+* Settings page tab visibility
+* order detail visibility
+* calculator visibility
+
+Important:
+
+* Do not remove the staff restrictions.
+* Do not break staff dashboard.
+* Only fix the condition so owner is no longer affected.
+* Owner should always bypass staff restrictions.
+* If role is missing or unclear, default should NOT be staff.
+
+Expected result:
+Owner gets the original full dashboard and settings back.
+Staff still gets the limited staff dashboard.
+Agent still gets agent access as before.
