@@ -287,7 +287,7 @@ export default function OrderDetail() {
       {/* Generic editable form */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Field label="Judul">
-          <Input value={draft.title ?? ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+          <Input value={draft.title ?? ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} disabled={currentUser?.role === "staff"} />
         </Field>
         <Field label="Tipe (read-only)">
           <Select value={draft.type as OrderType ?? order.type} disabled>
@@ -297,21 +297,27 @@ export default function OrderDetail() {
             </SelectContent>
           </Select>
         </Field>
-        <Field label="Status">
-          <Select value={draft.status as OrderStatus ?? order.status} onValueChange={(v) => setDraft({ ...draft, status: v as OrderStatus })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {ORDER_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field label={`Harga Modal (${order.currency})`}>
-          <Input type="number" value={String(draft.costPrice ?? 0)} onChange={(e) => setDraft({ ...draft, costPrice: Number(e.target.value) || 0 })} />
-        </Field>
-        <Field label={`Harga Jual (${order.currency})`}>
-          <Input type="number" value={String(draft.totalPrice ?? 0)} onChange={(e) => setDraft({ ...draft, totalPrice: Number(e.target.value) || 0 })} />
-        </Field>
-        {order.createdByAgent && (
+        {currentUser?.role !== "staff" && (
+          <Field label="Status">
+            <Select value={draft.status as OrderStatus ?? order.status} onValueChange={(v) => setDraft({ ...draft, status: v as OrderStatus })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ORDER_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Field>
+        )}
+        {currentUser?.role !== "staff" && (
+          <Field label={`Harga Modal (${order.currency})`}>
+            <Input type="number" value={String(draft.costPrice ?? 0)} onChange={(e) => setDraft({ ...draft, costPrice: Number(e.target.value) || 0 })} />
+          </Field>
+        )}
+        {currentUser?.role !== "staff" && (
+          <Field label={`Harga Jual (${order.currency})`}>
+            <Input type="number" value={String(draft.totalPrice ?? 0)} onChange={(e) => setDraft({ ...draft, totalPrice: Number(e.target.value) || 0 })} />
+          </Field>
+        )}
+        {order.createdByAgent && currentUser?.role !== "staff" && (
           <Field label="Fee Komisi Agen (IDR)">
             <Input
               type="number"
@@ -326,16 +332,20 @@ export default function OrderDetail() {
             />
           </Field>
         )}
-        <Field label="Klien">
-          <Select value={(draft.clientId ?? order.clientId) || "__none"} onValueChange={(v) => setDraft({ ...draft, clientId: v === "__none" ? null : v })}>
-            <SelectTrigger><SelectValue placeholder="Pilih klien" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none">— Tanpa klien —</SelectItem>
-              {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field label="Currency"><Input value={order.currency} disabled /></Field>
+        {currentUser?.role !== "staff" && (
+          <Field label="Klien">
+            <Select value={(draft.clientId ?? order.clientId) || "__none"} onValueChange={(v) => setDraft({ ...draft, clientId: v === "__none" ? null : v })}>
+              <SelectTrigger><SelectValue placeholder="Pilih klien" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— Tanpa klien —</SelectItem>
+                {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Field>
+        )}
+        {currentUser?.role !== "staff" && (
+          <Field label="Currency"><Input value={order.currency} disabled /></Field>
+        )}
       </div>
 
       <Field label="Catatan">

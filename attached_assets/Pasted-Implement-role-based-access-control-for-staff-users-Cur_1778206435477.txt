@@ -1,0 +1,91 @@
+Implement role-based access control for staff users.
+
+Current problem:
+Staff users can see too many owner-level features, including sensitive business data like HPP, pricing margin, commission settings, and other modules that are not related to their work.
+
+Business rule:
+Staff should only see and access the work assigned to them.
+
+Staff access requirements:
+
+1. Staff must NOT see:
+
+   * HPP / modal / cost price
+   * margin owner
+   * profit calculation
+   * agent commission settings
+   * financial reports
+   * global order data
+   * owner-only dashboards
+   * agency settings
+   * package pricing builder
+   * all customer/order records
+
+2. Staff should only see:
+
+   * tasks/orders assigned to them
+   * relevant status update tools
+   * their own commission/fee dashboard
+   * their own work history
+
+For Visa Staff / Pelaksana Visa:
+
+* Staff can only access Visa Tracker.
+* Staff can only see Visa Student Entry orders assigned to them as Pelaksana Lapangan.
+* Staff can update visa progress/status.
+* Staff can add kendala/notes.
+* Staff can see their own Fee Pelaksana Visa.
+* Staff can see their own commission history.
+* Staff can access Visa Calculator only if needed.
+* Staff must not see owner HPP or internal pricing margin.
+
+Sidebar/Menu rules:
+For role = staff:
+
+* Hide owner-only menu items.
+* Show only allowed modules based on staff permission.
+* For visa executor staff, show:
+
+  * Visa Tracker
+  * Kalkulator Visa
+  * Profile / Staff Card
+  * Logout
+
+Permission model:
+Add staff permissions or staff type if not already available:
+
+* staff_scope: "visa_executor"
+* future scopes can include other staff roles later.
+
+Filtering rules:
+
+* All staff queries must be filtered by assigned_staff_id / executor_id.
+* Never show all orders to staff.
+* Owner can see all orders.
+* Agent can only see their own sales-related data.
+* Staff can only see assigned operational work.
+
+Security requirements:
+
+* Do not rely only on hiding UI.
+* Add query-level filtering in data fetching.
+* If possible, add Supabase RLS or guard checks to prevent staff from reading unauthorized data.
+* Add route guards so staff cannot access owner pages by URL.
+
+Important:
+
+* Do not break owner access.
+* Do not break agent sales access.
+* Do not remove existing Visa Tracker functionality.
+* Keep UI clean and simple for staff.
+* Use Indonesian labels:
+
+  * “Tugas Saya”
+  * “Visa Saya”
+  * “Komisi Saya”
+  * “Kalkulator Visa”
+  * “Status Visa”
+  * “Kendala”
+
+Expected result:
+A staff user only sees the modules and data related to their assigned work. For visa staff, they only see assigned Visa Student Entry berkas, can update progress, see their own fee, and use visa calculator without seeing owner HPP or sensitive pricing data.

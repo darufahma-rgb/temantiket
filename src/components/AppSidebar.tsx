@@ -41,62 +41,24 @@ interface SectionDef {
 
 const STAFF_SECTIONS: SectionDef[] = [
   {
-    key: "home",
-    label: "",
+    key: "tugas",
+    label: "Tugas Saya",
     items: [
-      { title: "Dashboard", url: "/", icon: LayoutDashboard, end: true },
-    ],
-  },
-  {
-    key: "bisnis",
-    label: "Bisnis",
-    items: [
-      { title: "Klien & Jamaah",  url: "/clients", icon: Users },
-      { title: "Order Hub",       url: "/orders",  icon: ShoppingBag },
-      { title: "Visa Tracker",    url: "/staff/visa", icon: Landmark },
+      { title: "Visa Saya",     url: "/staff/visa", icon: Landmark },
     ],
   },
   {
     key: "tools",
     label: "Tools",
     items: [
-      { title: "Harga Tiket",       url: "/ticket-prices", icon: Ticket },
-      { title: "Itinerary",          url: "/itinerary",     icon: Sparkles, badge: "AI" },
-      { title: "Kalkulator & Kurs", url: "/calculator",    icon: Calculator },
-      { title: "Paket Trip",        url: "/packages",      icon: Package },
+      { title: "Kalkulator Visa", url: "/calculator", icon: Calculator },
     ],
   },
   {
-    key: "konten",
-    label: "Konten",
+    key: "profil",
+    label: "Profil",
     items: [
-      { title: "Template Broadcast", url: "/bc-templates",    icon: MessageSquare },
-      { title: "Caption Generator",  url: "/agent/marketing", icon: Megaphone },
-      { title: "Catatan",            url: "/notes",           icon: StickyNote },
-    ],
-  },
-  {
-    key: "finance",
-    label: "Keuangan",
-    ownerOnly: true,
-    items: [
-      { title: "Laporan Keuangan", url: "/reports", icon: BarChart3 },
-      { title: "Export & Manifest", url: "/exports", icon: FileSpreadsheet },
-    ],
-  },
-  {
-    key: "agent",
-    label: "Agen",
-    items: [
-      { title: "Manajemen Agen",   url: "/agent-center",      icon: BookUser },
-      { title: "Leaderboard",     url: "/agent/leaderboard", icon: Trophy },
-    ],
-  },
-  {
-    key: "settings",
-    label: "",
-    items: [
-      { title: "Pengaturan", url: "/settings", icon: Settings },
+      { title: "Pengaturan & Profil", url: "/settings", icon: Settings },
     ],
   },
 ];
@@ -261,6 +223,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
   const isOwner = user?.role === "owner";
   const isAgent = user?.role === "agent";
 
+  const isStaff = user?.role === "staff";
   const sections = (isAgent ? AGENT_SECTIONS : STAFF_SECTIONS).filter(
     (s) => !s.ownerOnly || isOwner
   );
@@ -344,7 +307,8 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
         className="shrink-0 px-3 pt-2.5 pb-4 space-y-1.5"
         style={{ borderTop: "1px solid hsl(var(--border))" }}
       >
-        {/* AI CTA */}
+        {/* AI CTA — owner/agent only */}
+        {!isStaff && (
         <button
           onClick={() => { navigate("/itinerary"); onClose?.(); }}
           className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-150 hover:scale-[1.01] active:scale-[0.99]"
@@ -366,6 +330,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
           </div>
           <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: ACCENT, opacity: 0.6 }} strokeWidth={2} />
         </button>
+        )}
 
         {/* Logout */}
         <button

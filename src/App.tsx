@@ -188,7 +188,9 @@ function RequireRole({
     );
   }
   if (!user || !roles.includes(user.role)) {
-    const fallback = user?.role === "agent" ? "/agent" : "/";
+    const fallback =
+      user?.role === "agent" ? "/agent" :
+      user?.role === "staff" ? "/staff/visa" : "/";
     return <Navigate to={fallback} replace />;
   }
   return <>{children}</>;
@@ -197,6 +199,7 @@ function RequireRole({
 function HomeRedirect() {
   const user = useAuthStore((s) => s.user);
   if (user?.role === "agent") return <Navigate to="/agent" replace />;
+  if (user?.role === "staff") return <Navigate to="/staff/visa" replace />;
   return <Index />;
 }
 
@@ -227,20 +230,20 @@ function AnimatedRoutes() {
 
         <Route path="/" element={<RequireAuth><HomeRedirect /></RequireAuth>} />
         <Route path="/calculator" element={<RequireAuth><DashboardLayout><Calculator /></DashboardLayout></RequireAuth>} />
-        <Route path="/packages" element={<RequireAuth><DashboardLayout><Packages /></DashboardLayout></RequireAuth>} />
-        <Route path="/packages/:id" element={<RequireAuth><DashboardLayout><PackageDetail /></DashboardLayout></RequireAuth>} />
+        <Route path="/packages" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><Packages /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/packages/:id" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><PackageDetail /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/progress" element={<Navigate to="/packages?tab=progress" replace />} />
-        <Route path="/trips/:id" element={<RequireAuth><DashboardLayout><TripDetail /></DashboardLayout></RequireAuth>} />
-        <Route path="/trips/:id/jamaah/:jamaahId" element={<RequireAuth><DashboardLayout><JamaahProfile /></DashboardLayout></RequireAuth>} />
-        <Route path="/paket/:id" element={<RequireAuth><DashboardLayout><TripDetail /></DashboardLayout></RequireAuth>} />
-        <Route path="/paket/:id/jamaah/:jamaahId" element={<RequireAuth><DashboardLayout><JamaahProfile /></DashboardLayout></RequireAuth>} />
-        <Route path="/notes" element={<RequireAuth><DashboardLayout><Notes /></DashboardLayout></RequireAuth>} />
-        <Route path="/exports" element={<RequireAuth><DashboardLayout><ExportCenter /></DashboardLayout></RequireAuth>} />
-        <Route path="/clients" element={<RequireAuth><DashboardLayout><Clients /></DashboardLayout></RequireAuth>} />
-        <Route path="/clients/:id" element={<RequireAuth><DashboardLayout><Clients /></DashboardLayout></RequireAuth>} />
-        <Route path="/orders" element={<RequireAuth><DashboardLayout><Orders /></DashboardLayout></RequireAuth>} />
+        <Route path="/trips/:id" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><TripDetail /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/trips/:id/jamaah/:jamaahId" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><JamaahProfile /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/paket/:id" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><TripDetail /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/paket/:id/jamaah/:jamaahId" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><JamaahProfile /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/notes" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><Notes /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/exports" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><ExportCenter /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/clients" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><Clients /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/clients/:id" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><Clients /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/orders" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><Orders /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/orders/detail/:id" element={<RequireAuth><DashboardLayout><OrderDetail /></DashboardLayout></RequireAuth>} />
-        <Route path="/orders/:type" element={<RequireAuth><DashboardLayout><Orders /></DashboardLayout></RequireAuth>} />
+        <Route path="/orders/:type" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><Orders /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route
           path="/agent"
           element={
@@ -292,7 +295,7 @@ function AnimatedRoutes() {
           path="/agent-center"
           element={
             <RequireAuth>
-              <RequireRole roles={["owner", "staff"]}>
+              <RequireRole roles={["owner"]}>
                 <DashboardLayout><AgentCommandCenter /></DashboardLayout>
               </RequireRole>
             </RequireAuth>
@@ -302,16 +305,16 @@ function AnimatedRoutes() {
           path="/agents/:agentId"
           element={
             <RequireAuth>
-              <RequireRole roles={["owner", "staff"]}>
+              <RequireRole roles={["owner"]}>
                 <DashboardLayout><AgentProfileOwnerView /></DashboardLayout>
               </RequireRole>
             </RequireAuth>
           }
         />
-        <Route path="/bc-templates" element={<RequireAuth><DashboardLayout><BCTemplates /></DashboardLayout></RequireAuth>} />
-        <Route path="/itinerary" element={<RequireAuth><DashboardLayout><ItineraryGenerator /></DashboardLayout></RequireAuth>} />
-        <Route path="/demo-seed" element={<RequireAuth><DashboardLayout><DemoSeed /></DashboardLayout></RequireAuth>} />
-        <Route path="/ticket-prices" element={<RequireAuth><DashboardLayout><TicketPrices /></DashboardLayout></RequireAuth>} />
+        <Route path="/bc-templates" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><BCTemplates /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/itinerary" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><ItineraryGenerator /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/demo-seed" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><DemoSeed /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/ticket-prices" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><TicketPrices /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/staff/visa" element={<RequireAuth><DashboardLayout><StaffVisaDashboard /></DashboardLayout></RequireAuth>} />
         <Route
           path="/staff/:staffId"

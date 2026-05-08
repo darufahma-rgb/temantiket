@@ -92,19 +92,22 @@ function ToggleRow({ label, desc, checked, onChange }: { label: string; desc: st
 export default function Settings() {
   const t = useT();
   const [tab, setTab] = useState("profile");
+  const currentSessionUser = useAuthStore((s) => s.user);
 
-  const TABS = [
-    { key: "profile",       label: t.settings_profile,       icon: User },
-    { key: "notifications", label: t.settings_notifications, icon: Bell },
-    { key: "security",      label: t.settings_security,      icon: Shield },
-    { key: "appearance",    label: t.settings_appearance,    icon: Palette },
-    { key: "regional",      label: t.settings_regional,      icon: Globe },
-    { key: "rates",         label: t.settings_rates,         icon: TrendingUp },
-    { key: "agents",        label: t.settings_agents,        icon: Users },
-    { key: "invoice",       label: "Invoice",                icon: FileText },
-    { key: "audit",         label: "Audit Log",              icon: History },
-    { key: "status",        label: "Status",                 icon: Activity },
+  const isStaffUser = currentSessionUser?.role === "staff";
+  const ALL_TABS = [
+    { key: "profile",       label: t.settings_profile,       icon: User,       staffAllowed: true  },
+    { key: "notifications", label: t.settings_notifications, icon: Bell,       staffAllowed: true  },
+    { key: "security",      label: t.settings_security,      icon: Shield,     staffAllowed: true  },
+    { key: "appearance",    label: t.settings_appearance,    icon: Palette,    staffAllowed: true  },
+    { key: "regional",      label: t.settings_regional,      icon: Globe,      staffAllowed: false },
+    { key: "rates",         label: t.settings_rates,         icon: TrendingUp, staffAllowed: false },
+    { key: "agents",        label: t.settings_agents,        icon: Users,      staffAllowed: false },
+    { key: "invoice",       label: "Invoice",                icon: FileText,   staffAllowed: false },
+    { key: "audit",         label: "Audit Log",              icon: History,    staffAllowed: false },
+    { key: "status",        label: "Status",                 icon: Activity,   staffAllowed: false },
   ];
+  const TABS = isStaffUser ? ALL_TABS.filter((t) => t.staffAllowed) : ALL_TABS;
 
   const [profile, setProfile] = useState({
     name: "",
