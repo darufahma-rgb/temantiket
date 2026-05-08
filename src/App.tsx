@@ -240,7 +240,7 @@ function AnimatedRoutes() {
         <Route path="/notes" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><Notes /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/exports" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><ExportCenter /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/clients" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><Clients /></DashboardLayout></RequireRole></RequireAuth>} />
-        <Route path="/clients/:id" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><Clients /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/clients/:id" element={<RequireAuth><RequireRole roles={["owner", "agent", "staff"]}><DashboardLayout><Clients /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/orders" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><Orders /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/orders/detail/:id" element={<RequireAuth><DashboardLayout><OrderDetail /></DashboardLayout></RequireAuth>} />
         <Route path="/orders/:type" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><Orders /></DashboardLayout></RequireRole></RequireAuth>} />

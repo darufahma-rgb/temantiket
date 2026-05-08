@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Calculator, Package, LogOut, Settings,
   StickyNote, FileSpreadsheet, Users, ShoppingBag,
   MessageSquare, Sparkles, Ticket,
-  Command, Trophy, BookUser, Megaphone, BarChart3, Landmark,
+  Command, Trophy, BookUser, Megaphone, BarChart3, Landmark, Wallet,
 } from "lucide-react";
 
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -99,7 +99,8 @@ const STAFF_SECTIONS: SectionDef[] = [
     key: "tugas",
     label: "Tugas Saya",
     items: [
-      { title: "Visa Saya",     url: "/staff/visa", icon: Landmark },
+      { title: "Visa Saya",    url: "/staff/visa",           icon: Landmark },
+      { title: "Komisi Saya",  url: "/staff/visa?tab=komisi", icon: Wallet  },
     ],
   },
   {
@@ -113,7 +114,7 @@ const STAFF_SECTIONS: SectionDef[] = [
     key: "profil",
     label: "Profil",
     items: [
-      { title: "Pengaturan & Profil", url: "/settings", icon: Settings },
+      { title: "Profil Staff", url: "/settings", icon: Settings },
     ],
   },
 ];

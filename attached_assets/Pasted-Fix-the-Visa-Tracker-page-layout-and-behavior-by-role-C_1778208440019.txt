@@ -1,0 +1,139 @@
+Fix the Visa Tracker page layout and behavior by role.
+
+Current problem:
+The Owner’s Visa Tracker page is incorrectly showing the Staff/Pelaksana Visa dashboard view, including personal executor-style cards and commission wallet display.
+
+Expected behavior:
+Visa Tracker must have different views depending on role:
+
+1. OWNER VIEW — Operational Control / Monitoring Dashboard
+   Owner should see a management dashboard for all Visa Student Entry orders.
+
+Owner Visa Tracker should show:
+
+* Total Visa Student Entry orders
+* Total berkas belum didelegasikan
+* Total berkas sedang diproses
+* Total berkas selesai / visa terbit
+* Total berkas bermasalah / ada kendala
+* Total fee pelaksana yang harus dibayar
+* Total fee pelaksana sudah dibayar
+* Total fee pelaksana belum dibayar
+
+Owner should see a table/list with all Visa Student Entry berkas:
+
+* Client name
+* Order ID
+* Visa type
+* Agen Penjual
+* Pelaksana Lapangan assigned
+* Current visa status
+* Latest update / progress note
+* Kendala indicator
+* Deadline / estimated date if available
+* Fee Pelaksana Visa
+* Fee payment status
+* Action buttons:
+
+  * View Detail
+  * Assign / Change Pelaksana
+  * Update status if needed
+  * Mark executor fee as paid
+  * View progress history
+
+Owner should be able to:
+
+* assign or change Pelaksana Lapangan
+* see which staff handles each berkas
+* monitor progress from all staff
+* see all operational and financial fields
+* filter by status, executor, kendala, unpaid fee, and date
+* search by client name or order ID
+
+Owner should NOT see:
+
+* personal staff header card saying “Pelaksana Visa”
+* “Komisi Saya” style wallet card
+* staff-only dashboard wording
+* staff-only restricted view
+
+2. STAFF VIEW — My Assigned Visa Work
+   Staff/Pelaksana Visa should only see their own assigned berkas.
+
+Staff Visa Tracker should show:
+
+* Total berkas assigned to this staff
+* Total in progress
+* Total selesai
+* Total kendala
+* Total Fee Pelaksana Visa earned
+* Assigned client list only
+* Progress update tools
+* Kendala notes
+* Staff commission history
+
+Staff must NOT see:
+
+* all orders
+* owner-level reports
+* HPP
+* harga jual
+* margin
+* profit
+* agent commission
+* global financial data
+
+3. ROLE SPLIT REQUIREMENTS
+   Create separate components if needed:
+
+* OwnerVisaTrackerPage
+* StaffVisaTrackerPage
+
+Or add a clean conditional:
+
+* if role === "owner" → render Owner operational dashboard
+* if role === "staff" → render Staff assigned dashboard
+* if role === "agent" → do not show owner/staff visa tracker unless explicitly allowed
+
+Do NOT determine the view based only on URL.
+Do NOT show staff layout to owner.
+Do NOT show owner layout to staff.
+
+4. ROUTING
+
+* Owner accessing `/visa-tracker` should see the Owner operational monitoring dashboard.
+* Staff accessing `/staff/visa` should see the Staff assigned work dashboard.
+* If both routes reuse the same component, split the rendering by exact role.
+
+5. INDONESIAN LABELS
+   Use these labels:
+
+* “Laporan Visa Student Entry”
+* “Semua Berkas Visa”
+* “Belum Didelegasikan”
+* “Pelaksana Lapangan”
+* “Agen Penjual”
+* “Status Visa”
+* “Update Terakhir”
+* “Kendala”
+* “Fee Pelaksana”
+* “Sudah Dibayar”
+* “Belum Dibayar”
+* “Delegasikan”
+* “Ubah Pelaksana”
+* “Riwayat Progress”
+
+6. IMPORTANT
+
+* Do not break staff dashboard.
+* Do not break owner full access.
+* Do not mix sales agent commission with executor fee.
+* Owner can see executor fee reporting.
+* Staff can only see their own executor fee.
+* Keep the existing blue/white design language.
+* Preserve all existing data and functionality.
+
+Expected result:
+Owner Visa Tracker becomes a proper operational report/control center for all Visa Student Entry processing, showing delegation, staff assignment, status, kendala, and executor fee tracking.
+
+Staff Visa Tracker remains a personal work dashboard showing only assigned visa work and personal executor fee.

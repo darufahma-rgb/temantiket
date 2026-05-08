@@ -526,6 +526,7 @@ export default function Calculator() {
   const { formatCurrency } = useRegional();
   const userRole = useAuthStore((s) => s.user?.role);
   const isOwner = userRole === "owner";
+  const isStaffUser = userRole === "staff";
   const [showInternalView, setShowInternalView] = useState(false);
 
   const [calc, setCalc] = useState<CalcState>(() => {
@@ -540,7 +541,9 @@ export default function Calculator() {
   const [creatingTrip, setCreatingTrip] = useState(false);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
-  const [calcSection, setCalcSection] = useState<"umroh" | "converter" | "visa">("umroh");
+  const [calcSection, setCalcSection] = useState<"umroh" | "converter" | "visa">(() =>
+    isStaffUser ? "visa" : "umroh"
+  );
 
   const navigate = useNavigate();
   const createPackage = usePackagesStore((s) => s.create);
@@ -1234,10 +1237,10 @@ export default function Calculator() {
       {/* ── Top-level section switcher ── */}
       <div className="flex items-center gap-1 p-1 rounded-xl border border-slate-200 bg-slate-50 self-start flex-wrap">
         {([
-          { key: "umroh" as const,     label: "Umroh / Haji",          icon: Moon          },
-          { key: "converter" as const, label: "Konverter Mata Uang",    icon: ArrowLeftRight },
-          { key: "visa" as const,      label: "Kalkulator Visa",        icon: Stamp          },
-        ]).map(({ key, label, icon: Icon }) => (
+          { key: "umroh" as const,     label: "Umroh / Haji",          icon: Moon,          staffHidden: true },
+          { key: "converter" as const, label: "Konverter Mata Uang",    icon: ArrowLeftRight, staffHidden: false },
+          { key: "visa" as const,      label: "Kalkulator Visa",        icon: Stamp,          staffHidden: false },
+        ]).filter((t) => !isStaffUser || !t.staffHidden).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setCalcSection(key)}

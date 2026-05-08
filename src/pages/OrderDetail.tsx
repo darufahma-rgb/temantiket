@@ -245,7 +245,7 @@ export default function OrderDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {order.type === "flight" && (
+          {order.type === "flight" && currentUser?.role !== "staff" && (
             <Button
               variant="outline"
               onClick={() => setClientViewOpen(true)}
@@ -255,13 +255,19 @@ export default function OrderDetail() {
               <Eye className="h-3.5 w-3.5 mr-1.5" /> Client View
             </Button>
           )}
-          <InvoiceButton order={order} client={linkedClient ?? null} phone={linkedClient?.phone} variant="default" className="gradient-primary text-white border-0 hover:opacity-90 shadow-sm" />
-          <Button onClick={handleSave} disabled={!dirty || saving}>
-            <Save className="h-3.5 w-3.5 mr-1.5" /> {saving ? "Menyimpan…" : "Simpan"}
-          </Button>
-          <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {currentUser?.role !== "staff" && (
+            <InvoiceButton order={order} client={linkedClient ?? null} phone={linkedClient?.phone} variant="default" className="gradient-primary text-white border-0 hover:opacity-90 shadow-sm" />
+          )}
+          {currentUser?.role !== "staff" && (
+            <Button onClick={handleSave} disabled={!dirty || saving}>
+              <Save className="h-3.5 w-3.5 mr-1.5" /> {saving ? "Menyimpan…" : "Simpan"}
+            </Button>
+          )}
+          {currentUser?.role !== "staff" && (
+            <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -389,8 +395,8 @@ export default function OrderDetail() {
         </div>
       )}
 
-      {/* Total preview */}
-      {(() => {
+      {/* Total preview — hidden from staff */}
+      {currentUser?.role !== "staff" && (() => {
         const total = Number(draft.totalPrice ?? order.totalPrice);
         const cost = Number(draft.costPrice ?? order.costPrice ?? 0);
         const meta = (draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>;
@@ -454,8 +460,8 @@ export default function OrderDetail() {
         />
       )}
 
-      {/* Metadata viewer (esp. for umrah breakdown) */}
-      {order.metadata && Object.keys(order.metadata).length > 0 && (
+      {/* Metadata viewer — hidden from staff */}
+      {currentUser?.role !== "staff" && order.metadata && Object.keys(order.metadata).length > 0 && (
         <details className="rounded-2xl border border-border bg-white p-4">
           <summary className="cursor-pointer text-sm font-semibold">
             Metadata{order.type === "umrah" ? " (Breakdown Kalkulator)" : ""}
