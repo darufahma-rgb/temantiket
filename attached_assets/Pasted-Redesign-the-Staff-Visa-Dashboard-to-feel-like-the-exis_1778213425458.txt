@@ -1,0 +1,175 @@
+Redesign the Staff Visa Dashboard to feel like the existing Mitra / Agent Dashboard, but adapted for staff operational work.
+
+Current problem:
+The staff dashboard looks too plain and isolated. It feels like a basic internal admin page, not a polished staff dashboard.
+
+Goal:
+Make the staff dashboard visually and structurally similar to the Agent/Mitra dashboard, but with staff-specific content and permissions.
+
+Staff dashboard should feel like:
+
+* personal dashboard
+* clean operational workspace
+* commission/fee summary
+* assigned visa tasks
+* progress tracking
+* no owner-sensitive financial data
+
+Important:
+Do NOT copy agent sales features blindly.
+Use the Agent Dashboard layout style, but adapt the content for staff.
+
+Staff Dashboard layout requirements:
+
+1. Header / Welcome Card
+   Create a polished top welcome card similar to Agent Dashboard.
+
+Show:
+
+* Staff name
+* Role badge: “Pelaksana Visa”
+* Email
+* Staff ID if available
+* Total assigned berkas
+* Total selesai
+* Total proses
+* Total kendala
+* Staff Card shortcut or preview button
+
+Do NOT show:
+
+* sales rank
+* leaderboard position
+* agent sales target
+* public referral stats
+
+2. Quick Stats Cards
+   Use compact dashboard stat cards like Agent Dashboard.
+
+Cards:
+
+* Visa Ditugaskan
+* Sedang Diproses
+* Visa Terbit / Selesai
+* Ada Kendala
+* Fee Pelaksana Saya
+* Fee Belum Dibayar
+
+3. Main Work Section — “Visa Saya”
+   Show assigned Visa Student Entry orders only.
+
+Each card/table row should show:
+
+* client name
+* order ID
+* visa type
+* current status
+* latest update
+* kendala indicator
+* deadline/estimated date if available
+* action button: “Update Progress”
+* action button: “Lihat Detail”
+
+Staff can only see orders assigned to them as Pelaksana Lapangan.
+
+4. Commission/Fee Section — “Komisi Saya”
+   Show staff’s own executor fee only.
+
+Show:
+
+* total fee earned
+* total paid
+* total unpaid
+* fee per berkas
+* commission history per completed berkas
+
+Use labels:
+
+* “Fee Pelaksana Visa”
+* “Komisi Saya”
+* “Riwayat Fee”
+* “Belum Dibayar”
+* “Sudah Dibayar”
+
+Do NOT show:
+
+* HPP
+* harga jual
+* margin
+* profit
+* payment from client
+* sales agent commission
+* owner financial report
+
+5. Progress Update Widget
+   Add a practical update widget/card.
+
+Staff should be able to:
+
+* choose status:
+
+  * Berkas diterima
+  * Dicek admin
+  * Siap diajukan ke Kedutaan
+  * Proses di Kedutaan
+  * Visa terbit
+  * Ada kendala
+  * Selesai
+* add notes/kendala
+* submit progress update
+
+6. Sidebar for Staff
+   Make sidebar minimal but dashboard-like.
+
+Show:
+
+* Dashboard Staff / Visa Saya
+* Komisi Saya
+* Kalkulator Visa
+* Profil Staff
+* Keluar
+
+Hide:
+
+* Leaderboard
+* Sales tools
+* Marketing tools
+* Caption Generator
+* Template Broadcast
+* Paket Trip
+* Harga Tiket
+* Laporan Keuangan
+* HPP / Margin features
+* Owner settings
+
+7. Staff Profile / Staff Card
+   Staff should have access to:
+
+* profile info
+* Staff Card preview
+* download Staff Card
+* basic settings only
+
+8. Visual Style
+   Match the Agent Dashboard visual language:
+
+* same blue/white theme
+* same rounded cards
+* same spacing rhythm
+* same dashboard grid feeling
+* polished empty states
+* mobile responsive
+
+But avoid the current oversized purple card dominating the page.
+Make it cleaner and more balanced.
+
+9. Role Safety
+   This design applies ONLY to role = staff.
+
+Owner should keep owner dashboard.
+Agent should keep agent dashboard.
+Staff should never see owner HPP/margin/pricing.
+Staff should only see assigned operational work.
+
+Expected result:
+Staff dashboard feels like a proper Mitra/Agent-style dashboard, but focused on Visa execution work: assigned berkas, progress updates, fee pelaksana, and staff profile — without leaderboard, sales ranking, HPP, margin, or owner financial data.
