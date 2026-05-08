@@ -30,9 +30,8 @@ export interface TokenUsage {
  * Source: OpenRouter model cards (as of May 2025). Input / Output in USD/M.
  */
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
-  "google/gemini-2.0-flash":                { input: 0.10,  output: 0.40  },
   "google/gemini-2.0-flash-001":            { input: 0.10,  output: 0.40  },
-  "google/gemini-1.5-flash":                { input: 0.075, output: 0.30  },
+  "google/gemini-flash-1.5":                { input: 0.075, output: 0.30  },
   "google/gemini-2.5-pro":                  { input: 1.25,  output: 10.00 },
   "anthropic/claude-sonnet-4":              { input: 3.00,  output: 15.00 },
   "anthropic/claude-3-5-sonnet-20241022":   { input: 3.00,  output: 15.00 },
@@ -47,25 +46,26 @@ function estimateCost(model: string, promptTokens: number, completionTokens: num
 // ── Model registry ──────────────────────────────────────────────────────────
 // Satu tempat untuk semua model — ubah di sini kalau mau ganti model.
 
+// ✓ All model IDs verified valid on OpenRouter as of 2025-05
 export const OR_MODELS = {
-  /** Vision + OCR: poster, paspor, tiket screenshot. Gemini 2.0 Flash — stabil, murah, vision. */
-  VISION:          "google/gemini-2.0-flash",
+  /** Vision + OCR: poster, paspor, tiket screenshot. Gemini 2.0 Flash 001 — stabil, murah, vision. */
+  VISION:          "google/gemini-2.0-flash-001",
   /** Caption marketing — manual maupun dari poster. */
-  CAPTION:         "google/gemini-2.0-flash",
-  /** Caption writer setelah OCR poster — pakai Gemini 2.0 Flash yang sudah terbukti stabil. */
-  CAPTION_WRITER:  "google/gemini-2.0-flash",
+  CAPTION:         "google/gemini-2.0-flash-001",
+  /** Caption writer setelah OCR poster — Gemini 2.0 Flash 001. */
+  CAPTION_WRITER:  "google/gemini-2.0-flash-001",
   /** Rapikan catatan, formatting teks ringan. */
-  TEXT_FAST:       "google/gemini-2.0-flash",
+  TEXT_FAST:       "google/gemini-2.0-flash-001",
   /** Rapikan catatan dengan Claude — kualitas terbaik untuk formatting Markdown. */
   NOTES_WRITER:    "anthropic/claude-3-5-sonnet-20241022",
   /** Structured JSON output: itinerary, data terstruktur. */
-  STRUCTURED:      "google/gemini-2.0-flash",
+  STRUCTURED:      "google/gemini-2.0-flash-001",
   /** Reasoning kompleks — hanya pakai kalau butuh kualitas tinggi. */
   REASONING:       "anthropic/claude-3-5-sonnet-20241022",
 } as const;
 
 /** Fallback model jika primary Gemini model gagal (misal: model ID tidak valid). */
-const GEMINI_FALLBACK = "google/gemini-1.5-flash";
+const GEMINI_FALLBACK = "google/gemini-flash-1.5";
 
 export type ORModel = (typeof OR_MODELS)[keyof typeof OR_MODELS];
 
@@ -165,8 +165,12 @@ async function callAIOpenRouterFull(opts: CallAIOpenRouterOptions): Promise<Open
   }
 
   let lastError = "";
-  for (const tryModel of modelsToTry) {
-    console.log(`[callAIOpenRouter] model="${tryModel}" imageBase64=${!!imageBase64}`);
+  for (let i = 0; i < modelsToTry.length; i++) {
+    const tryModel = modelsToTry[i];
+    const isFallback = i > 0;
+    console.log(
+      `[callAIOpenRouter] ${isFallback ? "⬇ FALLBACK → " : "→ "}model="${tryModel}" imageBase64=${!!imageBase64}`
+    );
 
     const body: Record<string, unknown> = {
       model: tryModel,
@@ -187,8 +191,9 @@ async function callAIOpenRouterFull(opts: CallAIOpenRouterOptions): Promise<Open
 
       if (data.error) {
         const errMsg = extractErrorMessage(data.error);
-        if (isInvalidModelError(errMsg) && modelsToTry.indexOf(tryModel) < modelsToTry.length - 1) {
-          console.warn(`[callAIOpenRouter] model "${tryModel}" tidak valid, mencoba fallback...`);
+        console.error(`[callAIOpenRouter] Provider error for model "${tryModel}": ${errMsg}`);
+        if (isInvalidModelError(errMsg) && i < modelsToTry.length - 1) {
+          console.warn(`[callAIOpenRouter] Model "${tryModel}" tidak valid — aktivasi fallback ke "${modelsToTry[i + 1]}"`);
           lastError = errMsg;
           continue;
         }
@@ -197,6 +202,8 @@ async function callAIOpenRouterFull(opts: CallAIOpenRouterOptions): Promise<Open
 
       const content = data.choices?.[0]?.message?.content?.trim() ?? "";
       if (!content) throw new Error("AI tidak mengembalikan konten — coba lagi");
+
+      console.log(`[callAIOpenRouter] ✓ Success — model="${data.model ?? tryModel}"`);
 
       // Parse usage if available
       let usage: TokenUsage | null = null;
@@ -217,8 +224,9 @@ async function callAIOpenRouterFull(opts: CallAIOpenRouterOptions): Promise<Open
       return { content, usage };
     } catch (error: unknown) {
       const errMsg = extractErrorMessage(error);
-      if (isInvalidModelError(errMsg) && modelsToTry.indexOf(tryModel) < modelsToTry.length - 1) {
-        console.warn(`[callAIOpenRouter] model "${tryModel}" tidak valid, mencoba fallback...`);
+      console.error(`[callAIOpenRouter] Exception for model "${tryModel}": ${errMsg}`);
+      if (isInvalidModelError(errMsg) && i < modelsToTry.length - 1) {
+        console.warn(`[callAIOpenRouter] Model "${tryModel}" tidak valid — aktivasi fallback ke "${modelsToTry[i + 1]}"`);
         lastError = errMsg;
         continue;
       }

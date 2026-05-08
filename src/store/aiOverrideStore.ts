@@ -13,8 +13,8 @@ export type AIFeatureKey = "caption" | "notes";
 
 /** Dua tier model yang tersedia untuk di-toggle user. */
 export const AI_TIERS = {
-  /** Default: cepat & hemat — Gemini Flash via OpenRouter. */
-  FAST: "google/gemini-2.0-flash",
+  /** Default: cepat & hemat — Gemini 2.0 Flash 001 via OpenRouter (verified valid). */
+  FAST: "google/gemini-2.0-flash-001",
   /** Pro: kualitas tinggi — Claude Sonnet 4 via OpenRouter. */
   PRO:  "anthropic/claude-sonnet-4",
 } as const;

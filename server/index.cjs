@@ -21,10 +21,11 @@ const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 // Model constants (OpenRouter format: "provider/model")
-const MODEL_OCR  = 'google/gemini-2.0-flash';        // vision — baca gambar paspor & poster
-const MODEL_OCR_FALLBACK = 'google/gemini-1.5-flash'; // fallback jika primary gagal
-const MODEL_CHAT = 'openai/gpt-4.1';                 // Caption Generator
-const MODEL_TEXT = 'google/gemini-2.0-flash';        // teks ringan / rapikan
+// ✓ Verified valid on OpenRouter as of 2025-05
+const MODEL_OCR          = 'google/gemini-2.0-flash-001'; // vision — baca gambar paspor & poster
+const MODEL_OCR_FALLBACK = 'google/gemini-flash-1.5';     // fallback jika primary gagal
+const MODEL_CHAT         = 'openai/gpt-4.1';              // Caption Generator
+const MODEL_TEXT         = 'google/gemini-2.0-flash-001'; // teks ringan / rapikan
 
 // Header standar OpenRouter
 function openrouterHeaders() {
@@ -699,44 +700,94 @@ Rules:
 - gender must be exactly "L" (laki-laki) or "P" (perempuan), null if unreadable.
 - Return ONLY the JSON object, nothing else.`;
 
-    console.log(`[ocr-passport] Using OpenRouter with model: ${MODEL_OCR}`);
-    const ocrRes = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: openrouterHeaders(),
-      body: JSON.stringify({
-        model: MODEL_OCR,
-        temperature: 0,
-        max_tokens: 400,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'Read the MRZ from this passport and return the JSON.' },
-              { type: 'image_url', image_url: { url: imageDataUrl, detail: 'high' } },
-            ],
-          },
-        ],
-      }),
-    });
+    // Try primary model first, fall back to MODEL_OCR_FALLBACK on invalid model error
+    const ocrModelsToTry = [MODEL_OCR, MODEL_OCR_FALLBACK];
+    let lastOcrError = '';
+    let ocrRaw = null;
+    let ocrUsedModel = MODEL_OCR;
 
-    if (!ocrRes.ok) {
-      const errTxt = await ocrRes.text();
-      return err(res, 502, `OCR API error (${MODEL_OCR}): ${errTxt.slice(0, 300)}`);
+    for (const tryModel of ocrModelsToTry) {
+      console.log(`[ocr-passport] Calling OpenRouter — model: "${tryModel}"`);
+      const ocrRes = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: openrouterHeaders(),
+        body: JSON.stringify({
+          model: tryModel,
+          temperature: 0,
+          max_tokens: 400,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: 'Read the MRZ from this passport and return the JSON.' },
+                { type: 'image_url', image_url: { url: imageDataUrl, detail: 'high' } },
+              ],
+            },
+          ],
+        }),
+      });
+
+      const bodyText = await ocrRes.text();
+
+      if (!ocrRes.ok) {
+        console.error(`[ocr-passport] Model "${tryModel}" HTTP ${ocrRes.status} error — provider response: ${bodyText.slice(0, 400)}`);
+        lastOcrError = `OCR API error (${tryModel}) HTTP ${ocrRes.status}: ${bodyText.slice(0, 300)}`;
+        if (
+          bodyText.includes('not a valid model') ||
+          bodyText.includes('model_not_found') ||
+          bodyText.includes('No endpoints found')
+        ) {
+          console.warn(`[ocr-passport] Model "${tryModel}" tidak valid — aktivasi fallback ke model berikutnya`);
+          continue;
+        }
+        return err(res, 502, lastOcrError);
+      }
+
+      let completion;
+      try { completion = JSON.parse(bodyText); }
+      catch { lastOcrError = `OCR model "${tryModel}" returned non-JSON response`; continue; }
+
+      // Check for API-level error inside a 200 response body
+      if (completion.error) {
+        const errDetail = typeof completion.error === 'string'
+          ? completion.error
+          : JSON.stringify(completion.error);
+        console.error(`[ocr-passport] Model "${tryModel}" API-level error — provider says: ${errDetail}`);
+        lastOcrError = errDetail.slice(0, 300);
+        if (
+          errDetail.includes('not a valid model') ||
+          errDetail.includes('model_not_found') ||
+          errDetail.includes('No endpoints found')
+        ) {
+          console.warn(`[ocr-passport] Model "${tryModel}" tidak valid — aktivasi fallback ke model berikutnya`);
+          continue;
+        }
+        return err(res, 502, `OCR error: ${lastOcrError}`);
+      }
+
+      const candidate = completion?.choices?.[0]?.message?.content;
+      if (!candidate || typeof candidate !== 'string') {
+        lastOcrError = `OCR model "${tryModel}" returned empty response`;
+        continue;
+      }
+
+      ocrRaw = candidate;
+      ocrUsedModel = tryModel;
+      console.log(`[ocr-passport] Success — model: "${tryModel}"`);
+      break;
     }
 
-    const completion = await ocrRes.json();
-    const raw = completion?.choices?.[0]?.message?.content;
-    if (!raw || typeof raw !== 'string') {
-      return err(res, 502, 'OCR model returned empty response');
+    if (!ocrRaw) {
+      return err(res, 502, lastOcrError || 'Semua model OCR gagal — coba lagi');
     }
 
     let parsed;
-    try { parsed = JSON.parse(raw); }
-    catch { return err(res, 502, 'OCR model returned invalid JSON'); }
+    try { parsed = JSON.parse(ocrRaw); }
+    catch { return err(res, 502, `OCR model returned invalid JSON: ${ocrRaw.slice(0, 100)}`); }
 
-    const out = { source: 'openrouter', model: MODEL_OCR, mrzValid: parsed.mrzValid === true };
+    const out = { source: 'openrouter', model: ocrUsedModel, mrzValid: parsed.mrzValid === true };
     if (typeof parsed.name === 'string' && parsed.name.trim()) out.name = parsed.name.trim();
     if (typeof parsed.passportNumber === 'string' && parsed.passportNumber.trim()) {
       out.passportNumber = parsed.passportNumber.replace(/[<\s]/g, '').toUpperCase();
