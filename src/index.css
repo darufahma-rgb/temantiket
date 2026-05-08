@@ -198,6 +198,27 @@
     }
   }
 
+  /* ── Safe-area-inset utilities for floating nav elements ──────────────────
+     .layout-safe-inset  : content area below floating header + above bottom nav
+     .layout-safe-pb     : extra bottom padding matching bottom nav + home indicator
+     These use env() which resolves to 0px on browsers without notch support. */
+  .layout-safe-inset {
+    padding-top: calc(64px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+
+  @media (min-width: 768px) {
+    /* Desktop: layout-safe-inset is a no-op — Tailwind md: classes take over */
+    .layout-safe-inset {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+  }
+
+  .layout-safe-pb {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
   /* Re-enable text selection for inputs and content areas */
   input, textarea, [contenteditable], p, span, h1, h2, h3, h4, h5, h6, a, label {
     -webkit-user-select: auto;

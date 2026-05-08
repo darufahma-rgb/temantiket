@@ -143,7 +143,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
           <header
             className="md:hidden fixed z-50 flex items-center gap-2 px-2.5"
             style={{
-              top: "8px",
+              top: "calc(8px + env(safe-area-inset-top, 0px))",
               left: "8px",
               right: "8px",
               height: "44px",
@@ -325,10 +325,10 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
             <AnimatePresence mode="sync" initial={false}>
               <motion.main
                 key={location.pathname}
-                className={`absolute inset-0 overflow-auto ${
+                className={`absolute inset-0 overflow-auto layout-safe-inset ${
                   noPadding
-                    ? "pt-[64px] pb-[76px] md:pt-0 md:pb-0"
-                    : "px-4 pt-[64px] pb-[76px] md:pl-10 md:pr-8 md:py-7"
+                    ? "md:pt-0 md:pb-0"
+                    : "px-4 md:pl-10 md:pr-8 md:py-7"
                 }`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -348,7 +348,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
       <nav
         className="md:hidden fixed z-50 flex items-center"
         style={{
-          bottom: "10px",
+          bottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
           left: "10px",
           right: "10px",
           height: "54px",
@@ -474,7 +474,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               </div>
 
               {/* Logout row */}
-              <div className="mx-4 mb-6 mt-1 pt-3" style={{ borderTop: "1px solid hsl(var(--border))" }}>
+              <div className="mx-4 mt-1 pt-3 layout-safe-pb" style={{ borderTop: "1px solid hsl(var(--border))" }}>
                 <button
                   onClick={() => { setMoreOpen(false); handleLogout(); }}
                   className="flex items-center gap-2 h-9 px-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors active:opacity-70"
