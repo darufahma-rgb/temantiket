@@ -39,6 +39,61 @@ interface SectionDef {
   collapsible?: boolean;
 }
 
+const OWNER_SECTIONS: SectionDef[] = [
+  {
+    key: "home",
+    label: "",
+    items: [
+      { title: "Dashboard", url: "/", icon: LayoutDashboard, end: true },
+    ],
+  },
+  {
+    key: "bisnis",
+    label: "Bisnis",
+    items: [
+      { title: "Klien & Jamaah", url: "/clients",  icon: Users },
+      { title: "Order Hub",      url: "/orders",   icon: ShoppingBag },
+      { title: "Paket & Trip",   url: "/packages", icon: Package },
+    ],
+  },
+  {
+    key: "operasional",
+    label: "Operasional",
+    items: [
+      { title: "Visa Tracker",   url: "/staff/visa",     icon: Landmark },
+      { title: "Harga Tiket",    url: "/ticket-prices",  icon: Ticket },
+      { title: "Kalkulator",     url: "/calculator",     icon: Calculator },
+      { title: "Itinerary AI",   url: "/itinerary",      icon: Sparkles },
+    ],
+  },
+  {
+    key: "laporan",
+    label: "Laporan & Data",
+    items: [
+      { title: "Laporan Keuangan", url: "/reports",  icon: BarChart3 },
+      { title: "Export Center",    url: "/exports",  icon: FileSpreadsheet },
+      { title: "Catatan",          url: "/notes",    icon: StickyNote },
+    ],
+  },
+  {
+    key: "konten",
+    label: "Konten & Agen",
+    items: [
+      { title: "Template Broadcast", url: "/bc-templates",       icon: MessageSquare },
+      { title: "Caption Generator",  url: "/agent/marketing",    icon: Megaphone },
+      { title: "Manajemen Agen",     url: "/agent-center",       icon: BookUser },
+      { title: "Leaderboard",        url: "/agent/leaderboard",  icon: Trophy },
+    ],
+  },
+  {
+    key: "settings",
+    label: "",
+    items: [
+      { title: "Pengaturan", url: "/settings", icon: Settings },
+    ],
+  },
+];
+
 const STAFF_SECTIONS: SectionDef[] = [
   {
     key: "tugas",
@@ -224,9 +279,11 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
   const isAgent = user?.role === "agent";
 
   const isStaff = user?.role === "staff";
-  const sections = (isAgent ? AGENT_SECTIONS : STAFF_SECTIONS).filter(
-    (s) => !s.ownerOnly || isOwner
-  );
+  const sections = (
+    isAgent ? AGENT_SECTIONS :
+    isStaff ? STAFF_SECTIONS :
+    OWNER_SECTIONS
+  ).filter((s) => !s.ownerOnly || isOwner);
 
   const handleLogout = () => { logout(); onClose?.(); navigate("/login"); };
 
