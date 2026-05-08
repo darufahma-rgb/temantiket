@@ -97,78 +97,130 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
 
           {/* ── Mobile floating header ── */}
           <header
-            className="md:hidden fixed z-50 flex items-center gap-2 px-3.5"
+            className="md:hidden fixed z-50 flex items-center gap-2.5 px-3"
             style={{
               top: "12px",
               left: "12px",
               right: "12px",
-              height: "52px",
-              borderRadius: "18px",
-              background: "color-mix(in srgb, hsl(var(--card)) 94%, transparent)",
-              backdropFilter: "blur(24px) saturate(2)",
-              WebkitBackdropFilter: "blur(24px) saturate(2)",
-              border: "1px solid hsl(var(--border))",
-              boxShadow: "0 8px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07), inset 0 0.5px 0 rgba(255,255,255,0.18)",
+              height: "54px",
+              borderRadius: "20px",
+              background: "color-mix(in srgb, hsl(var(--card)) 92%, transparent)",
+              backdropFilter: "blur(32px) saturate(2.2)",
+              WebkitBackdropFilter: "blur(32px) saturate(2.2)",
+              border: "1px solid color-mix(in srgb, hsl(var(--border)) 80%, rgba(26,68,212,0.15))",
+              boxShadow: "0 10px 32px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -0.5px 0 rgba(0,0,0,0.04)",
             }}
           >
-            {/* Left — Temantiket logo icon, no box */}
+            {/* Left — logo in gradient badge */}
             <button
               onClick={() => navigate("/")}
-              className="flex items-center active:opacity-70 transition-opacity shrink-0"
+              className="shrink-0 active:scale-90 transition-transform"
+              style={{ WebkitTapHighlightColor: "transparent" }}
             >
-              <img
-                src="/temantiket-icon.png"
-                alt="Temantiket"
-                className="h-[28px] w-[28px] object-contain"
-                style={{ filter: "contrast(9999) brightness(0) invert(27%) sepia(89%) saturate(1200%) hue-rotate(214deg) brightness(90%)" }}
-              />
+              <div
+                className="h-9 w-9 rounded-[14px] flex items-center justify-center"
+                style={{
+                  background: "linear-gradient(140deg, #2563eb 0%, #1a44d4 55%, #0a2472 100%)",
+                  boxShadow: "0 3px 10px rgba(26,68,212,0.38), inset 0 1px 0 rgba(255,255,255,0.22)",
+                }}
+              >
+                <img
+                  src="/temantiket-icon.png"
+                  alt="Temantiket"
+                  className="h-[20px] w-[20px] object-contain"
+                  style={{ filter: "brightness(0) invert(1)" }}
+                />
+              </div>
             </button>
 
-            <div className="flex-1" />
-
-            {/* Center — rates flat, no box */}
+            {/* Center — premium currency pill */}
             <button
               onClick={() => refreshRates()}
               title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")}` : "Tap untuk perbarui"}
-              className="flex items-center gap-1.5 active:opacity-60 transition-opacity shrink-0"
+              className="flex-1 flex items-center justify-center gap-2 h-9 rounded-[14px] active:opacity-70 transition-all active:scale-[0.97] min-w-0"
+              style={{
+                background: "color-mix(in srgb, rgba(26,68,212,0.07) 100%, transparent)",
+                border: "1px solid rgba(26,68,212,0.12)",
+              }}
             >
-              <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: rateMode === "manual" ? "#1a44d4" : "#10b981" }} />
-              <div className="flex items-baseline gap-1 tabular-nums">
-                <span className="text-[9.5px] font-semibold text-[hsl(var(--muted-foreground))]">USD</span>
-                <span className="text-[12px] font-extrabold text-sky-500">
+              {/* Live dot */}
+              <span
+                className="h-[7px] w-[7px] rounded-full shrink-0"
+                style={{
+                  background: rateMode === "manual" ? "#2563eb" : "#10b981",
+                  boxShadow: rateMode === "manual" ? "0 0 6px rgba(37,99,235,0.7)" : "0 0 6px rgba(16,185,129,0.7)",
+                }}
+              />
+
+              {/* USD */}
+              <div className="flex items-baseline gap-[3px] shrink-0">
+                <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))", opacity: 0.65 }}>USD</span>
+                <span className="text-[13px] font-extrabold text-sky-500 tabular-nums leading-none">
                   {rates.USD ? `${(rates.USD / 1000).toFixed(1)}k` : "—"}
                 </span>
-                {rates.SAR && (
-                  <>
-                    <span className="text-[10px] text-[hsl(var(--muted-foreground))] opacity-40 mx-0.5">·</span>
-                    <span className="text-[9.5px] font-semibold text-[hsl(var(--muted-foreground))]">SAR</span>
-                    <span className="text-[12px] font-extrabold text-sky-500">
-                      {rates.SAR.toLocaleString("id-ID")}
-                    </span>
-                  </>
-                )}
               </div>
+
+              {/* Divider */}
+              <span className="h-3 w-px shrink-0 opacity-20" style={{ background: "hsl(var(--foreground))" }} />
+
+              {/* SAR */}
+              {rates.SAR && (
+                <div className="flex items-baseline gap-[3px] shrink-0">
+                  <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "hsl(var(--muted-foreground))", opacity: 0.65 }}>SAR</span>
+                  <span className="text-[13px] font-extrabold text-sky-500 tabular-nums leading-none">
+                    {rates.SAR.toLocaleString("id-ID")}
+                  </span>
+                </div>
+              )}
+
               <RefreshCw
-                className={cn("h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]", ratesLoading && "animate-spin")}
-                strokeWidth={2}
+                className={cn("h-[11px] w-[11px] shrink-0 ml-0.5", ratesLoading && "animate-spin")}
+                style={{ color: "hsl(var(--muted-foreground))", opacity: 0.5 }}
+                strokeWidth={2.2}
               />
             </button>
 
-            {/* Right — search + sync */}
-            <div className="flex items-center gap-1 shrink-0 ml-1">
+            {/* Right — search + user avatar (with sync badge) */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Search */}
               <button
                 onClick={() => setSearchOpen(true)}
-                className="flex items-center justify-center h-8 w-8 rounded-xl transition-opacity active:opacity-60 shrink-0"
-                style={{ background: "hsl(var(--secondary))" }}
+                className="h-9 w-9 flex items-center justify-center rounded-[14px] active:scale-90 transition-transform"
+                style={{
+                  background: "hsl(var(--secondary))",
+                  border: "1px solid hsl(var(--border))",
+                  WebkitTapHighlightColor: "transparent",
+                }}
               >
-                <Search strokeWidth={2} className="h-[15px] w-[15px] text-[hsl(var(--muted-foreground))]" />
+                <Search strokeWidth={2} className="h-[15px] w-[15px]" style={{ color: "hsl(var(--muted-foreground))" }} />
               </button>
 
-              <span
-                className="h-2 w-2 rounded-full shrink-0 ml-0.5"
+              {/* User avatar with sync status dot */}
+              <button
+                onClick={() => navigate("/settings")}
+                className="relative h-9 w-9 shrink-0 active:scale-90 transition-transform"
                 title={syncTitle}
-                style={{ background: syncInfo.color, boxShadow: syncInfo.glow }}
-              />
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <div
+                  className="h-full w-full rounded-[14px] flex items-center justify-center text-white text-[12px] font-black"
+                  style={{
+                    background: "linear-gradient(140deg, #2563eb 0%, #1a44d4 55%, #0a2472 100%)",
+                    boxShadow: "0 3px 10px rgba(26,68,212,0.32), inset 0 1px 0 rgba(255,255,255,0.22)",
+                  }}
+                >
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+                {/* Sync status badge */}
+                <span
+                  className="absolute bottom-0 right-0 h-[10px] w-[10px] rounded-full border-2"
+                  style={{
+                    background: syncInfo.color,
+                    borderColor: "hsl(var(--card))",
+                    boxShadow: syncInfo.glow,
+                  }}
+                />
+              </button>
             </div>
           </header>
 
