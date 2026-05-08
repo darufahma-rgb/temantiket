@@ -96,27 +96,33 @@ const OWNER_SECTIONS: SectionDef[] = [
 
 const STAFF_SECTIONS: SectionDef[] = [
   {
+    key: "home",
+    label: "",
+    items: [
+      { title: "Dashboard", url: "/staff/visa", icon: LayoutDashboard, end: true },
+    ],
+  },
+  {
     key: "tugas",
     label: "Tugas Saya",
     items: [
-      { title: "Dashboard Staff", url: "/staff/visa",            icon: LayoutDashboard, end: true },
-      { title: "Visa Saya",       url: "/staff/visa",            icon: Landmark },
+      { title: "Visa Saya",   url: "/staff/visa",            icon: Landmark },
+      { title: "Komisi Saya", url: "/staff/visa?tab=komisi", icon: Wallet },
     ],
   },
   {
     key: "operasional",
     label: "Operasional",
     items: [
-      { title: "Komisi Saya",     url: "/staff/visa?tab=komisi", icon: Wallet },
-      { title: "Kalkulator Visa", url: "/calculator",            icon: Calculator },
+      { title: "Kalkulator Visa", url: "/calculator", icon: Calculator },
     ],
   },
   {
-    key: "profil",
-    label: "Profil",
+    key: "settings",
+    label: "",
     items: [
-      { title: "Profil Staff",  url: "/staff/profile", icon: BookUser },
-      { title: "Pengaturan",    url: "/settings",      icon: Settings },
+      { title: "Profil Staff", url: "/staff/profile", icon: BookUser },
+      { title: "Pengaturan",   url: "/settings",      icon: Settings },
     ],
   },
 ];
@@ -263,7 +269,7 @@ function SidebarSection({
 
       <div className="space-y-1">
         {visibleItems.map((item) => (
-          <SidebarNavItem key={item.url} item={item} onClose={onClose} />
+          <SidebarNavItem key={item.title} item={item} onClose={onClose} />
         ))}
       </div>
     </div>
