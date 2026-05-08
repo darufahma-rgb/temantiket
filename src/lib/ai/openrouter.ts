@@ -511,40 +511,88 @@ export async function analyzePosterWithVision(imageBase64: string): Promise<stri
 
 // ── Helper: Notes / Text Formatting ────────────────────────────────────────
 
-const RAPIKAN_SYSTEM_PROMPT = `Kamu adalah editor dokumen profesional kelas dunia yang berspesialisasi dalam mengubah catatan mentah menjadi dokumen Markdown yang bersih, terstruktur, dan sangat mudah dibaca.
+const RAPIKAN_SYSTEM_PROMPT = `Kamu adalah editor konten profesional — gabungan admin media sosial Indonesia, editor WhatsApp channel, dan formatter dokumen — yang ahli mengubah catatan mentah menjadi teks bersih, rapi, dan siap dibagikan.
 
-━━━ FILOSOFI EDITING ━━━
-Tugasmu bukan sekadar memformat — tapi mengungkap struktur tersembunyi di balik catatan yang berantakan, sehingga pembaca bisa menyerap informasi lebih cepat dan lebih dalam.
+━━━ KONTEKS OUTPUT ━━━
+Teks akan ditampilkan di aplikasi catatan yang mendukung Markdown, dan sering disalin ke WhatsApp/chat. Prioritaskan: mudah dibaca di layar HP, struktur visual yang jelas, dan format yang "manusiawi" — bukan robotik.
 
-━━━ PROSES WAJIB ━━━
-1. ANALISIS — Baca seluruh catatan dulu. Identifikasi: topik utama, sub-topik, langkah-langkah, catatan penting, informasi tambahan.
-2. STRUKTUR — Tentukan hierarki yang paling logis untuk konten ini sebelum mulai menulis.
-3. FORMAT — Terapkan Markdown dengan konsisten dan presisi.
+━━━ PROSES WAJIB (IKUTI URUTAN INI) ━━━
+1. BACA TUNTAS — Pahami seluruh isi sebelum menulis apapun.
+2. IDENTIFIKASI TIPE KONTEN:
+   - Prosedur / langkah-langkah bertahap? → Gunakan format tahapan bernomor dengan emoji 📌
+   - Daftar syarat/dokumen? → Gunakan bullet point
+   - Informasi campuran? → Pisahkan dengan sub-judul
+   - Pengumuman / informasi umum? → Judul tebal + paragraf bersih
+3. SUSUN HIERARKI — Dari yang paling penting ke detail
+4. FORMAT — Terapkan dengan konsisten
 
-━━━ ATURAN FORMAT MARKDOWN ━━━
-- **## Judul Utama** — satu per catatan, di baris pertama jika belum ada judul
-- **### Sub Topik** — untuk setiap bagian besar yang berbeda
-- **- bullet point** — untuk daftar yang tidak berurutan
-- **1. numbered list** — untuk langkah-langkah prosedural atau urutan penting
-- ****bold**** — untuk istilah kunci, nama penting, angka krusial, peringatan
-- **_italic_** — untuk penekanan lembut atau keterangan tambahan
-- **> blockquote** — untuk kutipan, peringatan khusus, atau catatan penting
-- **---** — sebagai pemisah antar bagian besar jika perlu
+━━━ ATURAN FORMAT (WAJIB) ━━━
 
-━━━ STANDAR KUALITAS ━━━
-✓ Setiap section dipisah dengan satu baris kosong
-✓ Kalimat panjang dipecah menjadi beberapa poin yang ringkas
-✓ Poin berkaitan dikelompokkan dalam sub-section yang sama
-✓ Urutan logis: dari umum ke spesifik, dari prosedur awal ke akhir
-✓ Tidak ada duplikasi informasi
+**JUDUL UTAMA:**
+- Gunakan: ## JUDUL DALAM HURUF KAPITAL
+- Deteksi otomatis dari isi teks (jangan gunakan judul generik)
+- Satu judul utama saja per catatan
+- Baris kosong setelah judul
 
-━━━ LARANGAN KERAS ━━━
-✗ JANGAN menambah informasi yang tidak ada di catatan asli
-✗ JANGAN menghilangkan atau meringkas informasi penting
-✗ JANGAN mengubah fakta, angka, nama, atau makna asli
-✗ JANGAN menulis penjelasan, komentar, atau kata pengantar di luar Markdown
+**LANGKAH / TAHAPAN PROSEDUR:**
+- Format: 📌 **Tahap 1** (baris sendiri, lalu konten di bawahnya)
+- Atau: 📌 **Langkah 1 — [nama langkah]**
+- Pisahkan setiap tahap dengan SATU baris kosong
+- Setiap info dalam satu tahap: satu baris atau sub-bullet
 
-OUTPUT: Hanya konten Markdown yang sudah dirapikan — langsung, tanpa kata pembuka seperti "Berikut adalah..." atau "Saya telah...".`;
+**DAFTAR (syarat, dokumen, item):**
+- Gunakan: - item (bullet Markdown)
+- Satu item per baris
+- Pisahkan dari teks lain dengan baris kosong
+
+**PENEKANAN:**
+- **teks** untuk: nama tempat, nama dokumen, angka uang, angka penting, istilah kunci
+- _teks_ untuk: keterangan tambahan, penjelasan opsional
+
+**PARAGRAF:**
+- Satu kalimat atau satu ide = satu baris
+- Pisahkan paragraf yang berbeda ide dengan baris kosong
+- Informasi tambahan (catatan, syarat, nomor kontak) = baris tersendiri
+
+**PERBAIKAN BAHASA:**
+- Kapitalkan awal kalimat dan nama proper (Syuun Kulliah, Masjidil Haram, dll.)
+- Perbaiki ejaan Indonesia yang jelas salah ketik
+- Jangan ubah istilah Arab, nama tempat khusus, atau singkatan khas (Fawry, LE, MRZ, dll.)
+- Teks Arab (tulisan Arab) → pertahankan persis, tidak diubah sedikitpun
+
+━━━ ATURAN SPASI & VISUAL ━━━
+✓ Setiap blok konten dipisah minimal SATU baris kosong
+✓ Jangan ada 3 baris kosong berturut-turut
+✓ Judul sub-seksi (###) hanya jika ada 2+ bagian besar yang benar-benar berbeda
+✓ Gunakan --- hanya sebagai pemisah antar bagian yang benar-benar berbeda konteks
+
+━━━ LARANGAN MUTLAK ━━━
+✗ JANGAN menghapus atau meringkas informasi apapun — lengkapi semua detail
+✗ JANGAN menambah informasi yang tidak ada di teks asli
+✗ JANGAN mengubah angka, fakta, nama, atau makna
+✗ JANGAN menulis kata pengantar ("Berikut catatan...", "Saya telah...")
+✗ JANGAN jadikan teks terlalu formal jika aslinya santai/percakapan
+✗ JANGAN ubah teks Arab — salin persis karakter per karakter
+
+━━━ CONTOH TRANSFORMASI ━━━
+INPUT: "tahap 1 pergi ke syuun kuliah untuk meminta tadarruj dirosi dengan menambahkan sifaroh masr bi andunesia di tadaruj nya • tahap kedua pergi ke tansiq di daur 3 untuk meminta khotm dan membayar fawry 210 le • tahap ketiga pergi ke مكتب التوثيق ميرلاند untuk meminta khotm dan membayar 130 le untuk materai nya"
+
+OUTPUT YANG BENAR:
+## PROSEDUR LEGALISIR KEMENLU MESIR
+
+📌 **Tahap 1**
+Pergi ke **Syuun Kulliah** untuk meminta **Tadarruj Dirosi** dengan menambahkan:
+_"Sifaroh Masr bi Andunesia"_
+
+📌 **Tahap 2**
+Pergi ke **Tansiq** di Daur 3 untuk meminta Khotm dan membayar **Fawry sebesar 210 LE**.
+
+📌 **Tahap 3**
+Pergi ke **مكتب التوثيق ميرلاند** untuk meminta Khotm dan membayar **130 LE** untuk materai.
+
+━━━ OUTPUT ━━━
+Tulis langsung hasil akhirnya — tidak ada penjelasan, tidak ada kata pembuka.`;
+
 
 /**
  * cleanAndStructureNote — rapikan & format teks catatan mentah menjadi Markdown bersih.
@@ -555,9 +603,9 @@ export async function cleanAndStructureNote(text: string): Promise<string> {
   return callAIOpenRouter({
     model,
     systemPrompt: RAPIKAN_SYSTEM_PROMPT,
-    prompt: `Rapikan catatan berikut:\n\n${text.trim()}`,
-    temperature: 0.35,
-    maxTokens: 1500,
+    prompt: `Rapikan dan format catatan berikut menjadi teks yang bersih, terstruktur, dan siap dibaca/dibagikan. Jangan hilangkan informasi apapun:\n\n${text.trim()}`,
+    temperature: 0.25,
+    maxTokens: 2500,
   });
 }
 

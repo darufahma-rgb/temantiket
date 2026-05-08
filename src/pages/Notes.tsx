@@ -122,9 +122,16 @@ function markdownToPlainText(md: string): string {
 }
 
 function smartFormat(text: string): string {
-  const lines = text.split("\n");
+  // Split on existing newlines AND on bullet/step separators run together in one line
+  const expanded = text
+    .replace(/\s*[•·]\s+/g, "\n• ")
+    .replace(/\s*(tahap|langkah|step)\s+(\d+|[ivxlcdm]+)\b/gi, "\n\n📌 **$1 $2**\n")
+    .replace(/\s*(\d+)\s*[.)]\s+/g, "\n$1. ");
+
+  const lines = expanded.split("\n");
   const result: string[] = [];
   let prevWasBlank = false;
+
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trimEnd();
     if (line.trim() === "") {
@@ -133,23 +140,34 @@ function smartFormat(text: string): string {
       continue;
     }
     prevWasBlank = false;
-    line = line.replace(/^\s*[-*•·]\s+/, "• ");
-    line = line.replace(/^\s*(\d+)[.)]\s+/, "$1. ");
-    line = line.replace(/^(•\s*|[0-9]+\.\s*)?([a-z])/, (_m, prefix, ch) =>
+
+    // Normalize bullet variants
+    line = line.replace(/^\s*[-*•·]\s+/, "- ");
+
+    // Capitalize first real character of non-emoji, non-markdown lines
+    line = line.replace(/^([-•\d.\s📌🔹✅⚠️➡️]*)?([a-z])/, (_m, prefix, ch) =>
       (prefix ?? "") + ch.toUpperCase()
     );
+
+    // Add period to prose lines that are missing punctuation
+    const trimmed = line.trim();
     if (
-      !/^•/.test(line) &&
+      !/^[-•]/.test(line) &&
       !/^[0-9]/.test(line) &&
-      !/[.!?:,;]$/.test(line.trim()) &&
-      line.trim().split(/\s+/).length > 3
+      !/^#+/.test(line) &&
+      !/^📌/.test(line) &&
+      !/[.!?:,;"]$/.test(trimmed) &&
+      trimmed.split(/\s+/).length > 4 &&
+      !/[\u0600-\u06FF]/.test(trimmed)
     ) {
       line = line.trimEnd() + ".";
     }
+
     result.push(line);
   }
+
   while (result.length > 0 && result[result.length - 1].trim() === "") result.pop();
-  return result.join("\n");
+  return result.join("\n").replace(/\n{3,}/g, "\n\n");
 }
 
 function loadNotes(): Note[] {
