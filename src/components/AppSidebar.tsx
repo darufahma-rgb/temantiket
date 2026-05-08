@@ -105,15 +105,16 @@ const STAFF_SECTIONS: SectionDef[] = [
     key: "home",
     label: "",
     items: [
-      { title: "Dashboard", url: "/staff/dashboard", icon: LayoutDashboard, end: true },
+      { title: "Dashboard",   url: "/staff/dashboard", icon: LayoutDashboard, end: true },
+      { title: "Profil Staff", url: "/staff/profile",  icon: BookUser,        end: true },
     ],
   },
   {
     key: "tugas",
     label: "Tugas Saya",
     items: [
-      { title: "Visa Saya",   url: "/staff/visa",        icon: Landmark, end: true },
-      { title: "Komisi Saya", url: "/staff/commission",  icon: Wallet,   end: true },
+      { title: "Visa Saya",   url: "/staff/visa",       icon: Landmark, end: true },
+      { title: "Komisi Saya", url: "/staff/commission", icon: Wallet,   end: true },
     ],
   },
   {
@@ -127,8 +128,7 @@ const STAFF_SECTIONS: SectionDef[] = [
     key: "settings",
     label: "",
     items: [
-      { title: "Profil Staff", url: "/staff/profile", icon: BookUser },
-      { title: "Pengaturan",   url: "/settings",      icon: Settings },
+      { title: "Pengaturan", url: "/settings", icon: Settings },
     ],
   },
 ];
