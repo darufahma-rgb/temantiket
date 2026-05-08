@@ -162,10 +162,10 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               aria-label="Home"
             >
               <img
-                src="/temantiket-logo-rounded.png"
+                src="/temantiket-logo-blue.png"
                 alt="Temantiket"
-                className="object-cover"
-                style={{ width: 28, height: 28, borderRadius: 8 }}
+                className="object-contain"
+                style={{ width: 28, height: 28 }}
               />
             </button>
 

@@ -317,7 +317,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
     >
       {/* ── Logo ── */}
       <div className="flex items-center gap-2.5 px-4 py-[14px] shrink-0">
-        <div className="h-7 w-7 shrink-0 icon-mark" role="img" aria-label="Temantiket" />
+        <img src="/temantiket-logo-blue.png" alt="Temantiket" className="h-7 w-7 shrink-0 object-contain" />
         <div className="flex-1 min-w-0">
           <p className="text-[13.5px] font-black text-[hsl(var(--foreground))] leading-none tracking-[-0.02em]">
             Temantiket
