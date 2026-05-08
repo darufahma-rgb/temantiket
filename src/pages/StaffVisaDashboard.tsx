@@ -89,9 +89,12 @@ export default function StaffVisaDashboard() {
     [clients],
   );
 
-  const walletBal = useMemo(() => walletBalance(walletTxs), [walletTxs]);
+  const walletBal = useMemo(() => {
+    const pelaksanaTxs = walletTxs.filter((t) => t.type === "pelaksana_fee" || t.type === "payout");
+    return walletBalance(pelaksanaTxs);
+  }, [walletTxs]);
   const komisiTxs = useMemo(
-    () => walletTxs.filter((t) => t.type === "order_bonus"),
+    () => walletTxs.filter((t) => t.type === "pelaksana_fee"),
     [walletTxs],
   );
 
@@ -221,8 +224,8 @@ export default function StaffVisaDashboard() {
         <div className="px-4 py-3 border-b border-emerald-100 bg-emerald-50 flex items-center gap-2">
           <Wallet className="h-4 w-4 text-emerald-500" />
           <div>
-            <p className="text-sm font-semibold">Akumulasi Komisi</p>
-            <p className="text-[11px] text-muted-foreground">Rp 200.000 per berkas yang diselesaikan</p>
+            <p className="text-sm font-semibold">Riwayat Komisi Pelaksana</p>
+            <p className="text-[11px] text-muted-foreground">Fee Pelaksana Visa — terpisah dari komisi agen penjual</p>
           </div>
         </div>
         <div className="p-4 space-y-3">

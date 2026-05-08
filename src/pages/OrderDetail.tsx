@@ -385,8 +385,11 @@ export default function OrderDetail() {
         const cost = Number(draft.costPrice ?? order.costPrice ?? 0);
         const meta = (draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>;
         const agentFee = order.createdByAgent ? Number(meta.agentFee ?? 0) : 0;
+        const pelaksanaFee = order.type === "visa_student" && meta.pelaksanaId
+          ? Number(meta.pelaksanaFee ?? 200_000)
+          : 0;
         const profit = total - cost;
-        const net = profit - agentFee;
+        const net = profit - agentFee - pelaksanaFee;
         const profitPositive = profit >= 0;
         const netPositive = net >= 0;
         return (
@@ -406,18 +409,24 @@ export default function OrderDetail() {
                   </span>
                 </div>
                 {agentFee > 0 && (
-                  <>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Fee Komisi Agen</span>
-                      <span className="font-mono text-orange-600">−{fmtIDR(agentFee)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm font-semibold border-t border-sky-100 pt-2">
-                      <span>Net Profit</span>
-                      <span className={`font-bold font-mono ${netPositive ? "text-sky-700" : "text-red-600"}`}>
-                        {netPositive ? "+" : ""}{fmtIDR(net)}
-                      </span>
-                    </div>
-                  </>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Fee Agen Penjual</span>
+                    <span className="font-mono text-orange-600">−{fmtIDR(agentFee)}</span>
+                  </div>
+                )}
+                {pelaksanaFee > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Fee Pelaksana Visa</span>
+                    <span className="font-mono text-violet-600">−{fmtIDR(pelaksanaFee)}</span>
+                  </div>
+                )}
+                {(agentFee > 0 || pelaksanaFee > 0) && (
+                  <div className="flex items-center justify-between text-sm font-semibold border-t border-sky-100 pt-2">
+                    <span>Net Profit</span>
+                    <span className={`font-bold font-mono ${netPositive ? "text-sky-700" : "text-red-600"}`}>
+                      {netPositive ? "+" : ""}{fmtIDR(net)}
+                    </span>
+                  </div>
                 )}
               </div>
             )}

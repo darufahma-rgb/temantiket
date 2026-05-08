@@ -1,0 +1,108 @@
+Fix the Visa Student Entry commission and executor workflow.
+
+Current problem:
+The system incorrectly uses the sales agent commission for the field executor/staff dashboard.
+
+Business rules:
+
+1. One Visa Student Entry order = one berkas/person.
+2. Sales agent fee and field executor fee are different.
+3. Sales agent gets Rp150.000 per person for selling the order.
+4. Field executor/staff gets Rp200.000 per berkas/person for processing the visa at the embassy.
+5. The field executor is NOT always the owner.
+6. Even if the order is created under the owner, the owner must be able to select which staff member is assigned as the field executor.
+7. The selected field executor should have their own dashboard showing:
+
+   * total berkas assigned
+   * total berkas completed
+   * berkas currently in progress
+   * total commission earned
+   * commission history per berkas/order
+   * current visa progress status
+   * kendala/notes if any
+
+Required changes:
+
+* Separate “sales agent commission” from “field executor commission”.
+* Do not use agent sales fee for the executor dashboard.
+* Add a dedicated executor/staff fee field for Visa Student Entry.
+* Default executor fee should be Rp200.000 per berkas, but owner can configure it manually.
+* Add an “Assigned Field Executor / Pelaksana Lapangan” selector on Visa Student Entry orders.
+* The selector should list eligible staff/users, not only agents.
+* When a Visa Student Entry order is created or updated, owner can assign the executor manually.
+* The assigned executor should see that berkas in their own Visa Tracker dashboard.
+* The executor should be able to update progress stages, for example:
+
+  * Berkas diterima
+  * Dicek admin
+  * Siap diajukan ke Kedutaan
+  * Proses di Kedutaan
+  * Visa terbit
+  * Ada kendala
+  * Selesai
+* Executor can add notes/kendala updates.
+* Owner can view all progress updates.
+* Client/owner-side status should stay synced with executor updates.
+
+Commission rules:
+
+* Sales agent commission:
+
+  * paid to the selling agent
+  * amount: Rp150.000/person
+  * appears as sales commission
+* Field executor commission:
+
+  * paid to assigned staff executor
+  * amount: Rp200.000/berkas
+  * appears as “Fee Pelaksana Visa” or “Komisi Pelaksana”
+* These two commissions must be stored, calculated, and displayed separately.
+* Do not double count.
+* Do not credit executor fee to owner unless owner is manually selected as executor.
+* Do not credit executor fee to sales agent unless the sales agent is also manually selected as executor.
+
+Dashboard requirements for Staff Executor:
+Create or update the staff visa dashboard so the assigned executor can see:
+
+* Total berkas ditugaskan
+* Total selesai
+* Total proses
+* Total komisi pelaksana
+* Riwayat komisi berkas
+* List berkas Visa Student Entry assigned to them
+* Status each berkas
+* Button/update form to update progress and kendala
+
+Owner requirements:
+Owner should be able to:
+
+* assign/change executor per Visa Student Entry order
+* set executor fee manually
+* see sales agent commission separately
+* see executor commission separately
+* approve/mark executor fee as paid if needed
+* monitor visa progress updates from executor
+
+Important:
+
+* Do not remove existing agent sales commission system.
+* Do not break existing wallet/commission history.
+* Do not mix sales agent fee and executor fee.
+* Keep current UI design language.
+* Make the wording clear in Indonesian:
+
+  * “Agen Penjual”
+  * “Fee Agen”
+  * “Pelaksana Lapangan”
+  * “Fee Pelaksana Visa”
+  * “Status Visa”
+  * “Kendala”
+  * “Riwayat Komisi Pelaksana”
+
+Expected result:
+Visa Student Entry orders can have two different people attached:
+
+1. Agen Penjual who gets sales fee.
+2. Staff/Pelaksana Lapangan who processes the visa and gets executor fee.
+
+The executor dashboard must calculate commission from assigned Visa Student Entry berkas only, using the executor fee, not the sales agent commission.

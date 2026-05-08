@@ -2,10 +2,11 @@
  * VisaEntryPanel — Panel pelaksana visa student di OrderDetail
  *
  * Fitur:
- * - Owner: assign staff pelaksana ke order visa student
- * - Owner: catat komisi Rp 200.000 ke wallet pelaksana saat selesai
+ * - Owner: assign pelaksana lapangan (semua member, bukan hanya staff)
+ * - Owner: set fee pelaksana manual (default Rp 200.000)
+ * - Owner: kredit fee pelaksana ke wallet setelah selesai
  * - Pelaksana: update progress step & catat kendala
- * - Semua: lihat progress tracker real-time
+ * - Tampilan terpisah: Agen Penjual vs Pelaksana Lapangan
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -13,8 +14,10 @@ import { motion } from "framer-motion";
 import {
   Users, CheckCircle2, AlertTriangle, ChevronRight,
   Loader2, MessageSquare, Wallet, UserCheck, X,
+  BadgeDollarSign, Edit2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -27,7 +30,7 @@ import { toast } from "sonner";
 import type { Order } from "@/features/orders/ordersRepo";
 
 const VISA_STEPS = ORDER_PROCESS_STEPS["visa_student"];
-const PELAKSANA_FEE = 200_000;
+const DEFAULT_PELAKSANA_FEE = 200_000;
 
 interface Props {
   order: Order;
@@ -39,7 +42,7 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
   const listMembers = useAuthStore((s) => s.listMembers);
   const { patchOrder } = useOrdersStore();
 
-  const [staffMembers, setStaffMembers] = useState<{ userId: string; displayName: string; email: string }[]>([]);
+  const [allMembers, setAllMembers] = useState<{ userId: string; displayName: string; email: string; role: string }[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [advancing, setAdvancing] = useState(false);
@@ -47,6 +50,8 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
   const [creditingFee, setCreditingFee] = useState(false);
   const [editingNote, setEditingNote] = useState(false);
   const [noteText, setNoteText] = useState("");
+  const [editingFee, setEditingFee] = useState(false);
+  const [feeInput, setFeeInput] = useState("");
 
   const isOwner = user?.role === "owner";
   const meta = (order.metadata ?? {}) as Record<string, unknown>;
@@ -54,6 +59,7 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
   const pelaksanaId = (meta.pelaksanaId as string | null) ?? null;
   const kendala = (meta.visaKendala as string | null) ?? null;
   const feeCredited = !!(meta.pelaksanaFeeCredited as boolean | null);
+  const pelaksanaFee = Number(meta.pelaksanaFee ?? DEFAULT_PELAKSANA_FEE);
   const isDone = currentStep >= VISA_STEPS.length - 1;
 
   const isPelaksana = user?.id === pelaksanaId;
@@ -63,33 +69,51 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
     if (!isOwner) return;
     setLoadingMembers(true);
     void listMembers().then((members) => {
-      setStaffMembers(
-        members.filter((m) => m.role === "staff").map((m) => ({
+      setAllMembers(
+        members.map((m) => ({
           userId: m.userId,
           displayName: m.displayName,
           email: m.email,
+          role: m.role,
         })),
       );
       setLoadingMembers(false);
     });
   }, [isOwner]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const assignedStaff = useMemo(
-    () => staffMembers.find((s) => s.userId === pelaksanaId),
-    [staffMembers, pelaksanaId],
+  const assignedPelaksana = useMemo(
+    () => allMembers.find((s) => s.userId === pelaksanaId),
+    [allMembers, pelaksanaId],
   );
 
-  async function handleAssign(staffId: string) {
+  async function handleAssign(memberId: string) {
     setAssigning(true);
     try {
-      const newMeta = { ...meta, pelaksanaId: staffId === "__none" ? null : staffId };
+      const newMeta = {
+        ...meta,
+        pelaksanaId: memberId === "__none" ? null : memberId,
+      };
       await patchOrder(order.id, { metadata: newMeta });
       onMetaChange(newMeta);
-      toast.success(staffId === "__none" ? "Pelaksana dilepas" : "Pelaksana berhasil di-assign!");
+      toast.success(memberId === "__none" ? "Pelaksana dilepas" : "Pelaksana lapangan berhasil di-assign!");
     } catch {
       toast.error("Gagal assign pelaksana.");
     } finally {
       setAssigning(false);
+    }
+  }
+
+  async function handleSaveFee() {
+    const fee = Number(feeInput);
+    if (!fee || fee < 0) { toast.error("Nominal fee tidak valid."); return; }
+    try {
+      const newMeta = { ...meta, pelaksanaFee: fee };
+      await patchOrder(order.id, { metadata: newMeta });
+      onMetaChange(newMeta);
+      setEditingFee(false);
+      toast.success(`Fee Pelaksana diperbarui: ${fmtIDR(fee)}`);
+    } catch {
+      toast.error("Gagal simpan fee.");
     }
   }
 
@@ -134,24 +158,30 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
     try {
       addWalletTx(pelaksanaId, {
         agentId: pelaksanaId,
-        type: "order_bonus",
+        type: "pelaksana_fee",
         pointsDelta: 0,
-        amountIDR: PELAKSANA_FEE,
-        description: `Komisi berkas Visa Student #${order.id.slice(0, 8)}${order.title ? ` — ${order.title}` : ""}`,
+        amountIDR: pelaksanaFee,
+        description: `Fee Pelaksana Visa Student #${order.id.slice(0, 8)}${order.title ? ` — ${order.title}` : ""}`,
         createdBy: user?.id ?? "owner",
       });
       const newMeta = { ...meta, pelaksanaFeeCredited: true };
       await patchOrder(order.id, { metadata: newMeta });
       onMetaChange(newMeta);
-      toast.success(`Komisi ${fmtIDR(PELAKSANA_FEE)} berhasil dikreditkan ke wallet pelaksana!`, {
+      toast.success(`Fee Pelaksana ${fmtIDR(pelaksanaFee)} berhasil dikreditkan ke wallet pelaksana!`, {
         duration: 5000,
       });
     } catch {
-      toast.error("Gagal catat komisi.");
+      toast.error("Gagal catat fee pelaksana.");
     } finally {
       setCreditingFee(false);
     }
   }
+
+  const roleLabel: Record<string, string> = {
+    owner: "Owner",
+    staff: "Staff",
+    agent: "Agen",
+  };
 
   return (
     <motion.div
@@ -166,17 +196,36 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
           <Users className="h-3.5 w-3.5 text-indigo-600" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-indigo-900">Pelaksana Visa Entry</p>
-          <p className="text-[11px] text-indigo-600">Tracking progress berkas ke kedutaan</p>
+          <p className="text-sm font-semibold text-indigo-900">Visa Student Entry — Pelaksana & Progress</p>
+          <p className="text-[11px] text-indigo-600">Komisi agen & fee pelaksana dicatat terpisah</p>
         </div>
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* Assign Pelaksana — owner only */}
+      <div className="p-4 space-y-5">
+
+        {/* ── Agen Penjual (read-only info) ──────────────────────────── */}
+        {order.createdByAgent && (
+          <div className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2.5 space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-sky-700">Agen Penjual</p>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p className="text-[12px] font-semibold text-sky-900">
+                {order.createdByAgent}
+              </p>
+              <span className="text-[11px] font-mono font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">
+                Fee Agen: {fmtIDR(Number((meta.agentFee as number | null) ?? 0))}
+              </span>
+            </div>
+            <p className="text-[10px] text-sky-600 italic">
+              Komisi agen dicatat terpisah di wallet agen saat status → Selesai.
+            </p>
+          </div>
+        )}
+
+        {/* ── Assign Pelaksana Lapangan — owner only ──────────────────── */}
         {isOwner && (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Assign Pelaksana
+              Pelaksana Lapangan
             </p>
             <div className="flex items-center gap-2">
               <Select
@@ -185,48 +234,98 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
                 disabled={assigning || loadingMembers}
               >
                 <SelectTrigger className="flex-1 h-9 text-[12px]">
-                  <SelectValue placeholder="Pilih staff pelaksana…" />
+                  <SelectValue placeholder="Pilih pelaksana lapangan…" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none">— Belum ditugaskan —</SelectItem>
-                  {staffMembers.map((s) => (
-                    <SelectItem key={s.userId} value={s.userId}>
-                      {s.displayName} <span className="text-muted-foreground text-[10px]">({s.email})</span>
+                  {allMembers.map((m) => (
+                    <SelectItem key={m.userId} value={m.userId}>
+                      {m.displayName}
+                      <span className="text-muted-foreground text-[10px] ml-1">
+                        ({roleLabel[m.role] ?? m.role} · {m.email})
+                      </span>
                     </SelectItem>
                   ))}
-                  {staffMembers.length === 0 && !loadingMembers && (
+                  {allMembers.length === 0 && !loadingMembers && (
                     <SelectItem value="__empty" disabled>
-                      Belum ada staff terdaftar
+                      Belum ada member terdaftar
                     </SelectItem>
                   )}
                 </SelectContent>
               </Select>
               {assigning && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
             </div>
-            {assignedStaff && (
+            {assignedPelaksana && (
               <div className="flex items-center gap-1.5 text-[11px] text-indigo-700 font-medium">
                 <UserCheck className="h-3.5 w-3.5" />
-                Ditugaskan ke: <span className="font-bold">{assignedStaff.displayName}</span>
+                Ditugaskan ke: <span className="font-bold">{assignedPelaksana.displayName}</span>
+                <span className="text-[10px] text-muted-foreground">({roleLabel[assignedPelaksana.role] ?? assignedPelaksana.role})</span>
               </div>
             )}
           </div>
         )}
 
-        {/* Tidak ada pelaksana — info saja */}
-        {!pelaksanaId && !isOwner && (
-          <div className="rounded-xl bg-muted/30 border px-3 py-2.5 text-[11px] text-muted-foreground">
-            Belum ada pelaksana yang ditugaskan untuk berkas ini.
+        {/* Non-owner: tampilkan info pelaksana jika ada */}
+        {!isOwner && pelaksanaId && isPelaksana && (
+          <div className="rounded-xl bg-indigo-50 border border-indigo-200 px-3 py-2.5">
+            <p className="text-[11px] font-bold text-indigo-800">Anda adalah Pelaksana Lapangan berkas ini.</p>
           </div>
         )}
 
-        {/* Progress Tracker */}
+        {!pelaksanaId && !isOwner && (
+          <div className="rounded-xl bg-muted/30 border px-3 py-2.5 text-[11px] text-muted-foreground">
+            Belum ada pelaksana lapangan yang ditugaskan untuk berkas ini.
+          </div>
+        )}
+
+        {/* ── Fee Pelaksana Visa — owner configures ──────────────────── */}
+        {isOwner && pelaksanaId && (
+          <div className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                Fee Pelaksana Visa
+              </p>
+              {!editingFee && !feeCredited && (
+                <button
+                  onClick={() => { setFeeInput(String(pelaksanaFee)); setEditingFee(true); }}
+                  className="text-[10px] font-semibold text-violet-700 hover:underline flex items-center gap-0.5"
+                >
+                  <Edit2 className="h-2.5 w-2.5" /> Edit
+                </button>
+              )}
+            </div>
+            {editingFee ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  value={feeInput}
+                  onChange={(e) => setFeeInput(e.target.value)}
+                  className="h-8 text-[12px] flex-1"
+                  placeholder="Nominal fee IDR"
+                />
+                <Button size="sm" className="h-8 text-[11px] bg-violet-600 hover:bg-violet-700 text-white" onClick={() => void handleSaveFee()}>
+                  Simpan
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 text-[11px]" onClick={() => setEditingFee(false)}>
+                  Batal
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-extrabold font-mono text-violet-800">{fmtIDR(pelaksanaFee)}</span>
+                <span className="text-[10px] text-violet-600">per berkas</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Progress Tracker ──────────────────────────────────────── */}
         {pelaksanaId && (
           <div className="space-y-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Progress Berkas
+              Status Visa / Progress Berkas
             </p>
 
-            {/* Step track visual */}
             <div className="flex items-start gap-1">
               {VISA_STEPS.map((step, i) => {
                 const done = i < currentStep;
@@ -255,7 +354,6 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
               })}
             </div>
 
-            {/* Status baris */}
             <div className={`rounded-xl px-3 py-2 text-[12px] font-semibold flex items-center gap-2 ${
               isDone ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-indigo-50 border border-indigo-200 text-indigo-700"
             }`}>
@@ -265,7 +363,6 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
               }
             </div>
 
-            {/* Advance button */}
             {canAdvance && (
               <Button
                 size="sm"
@@ -283,12 +380,12 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
           </div>
         )}
 
-        {/* Kendala / Catatan */}
+        {/* ── Kendala / Catatan ──────────────────────────────────────── */}
         {pelaksanaId && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Kendala / Catatan
+                Kendala
               </p>
               {!editingNote && (isOwner || isPelaksana) && (
                 <button
@@ -338,21 +435,28 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
           </div>
         )}
 
-        {/* Kredit Komisi — owner only, setelah ada pelaksana */}
+        {/* ── Kredit Fee Pelaksana — owner only ─────────────────────── */}
         {isOwner && pelaksanaId && (
           <div className="border-t pt-3 space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Komisi Pelaksana
-            </p>
+            <div className="flex items-center gap-1.5">
+              <BadgeDollarSign className="h-3.5 w-3.5 text-emerald-600" />
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Komisi Pelaksana
+              </p>
+            </div>
             {feeCredited ? (
               <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-[12px] font-semibold text-emerald-700">
                 <CheckCircle2 className="h-4 w-4" />
-                Komisi {fmtIDR(PELAKSANA_FEE)} sudah dikreditkan ke wallet pelaksana
+                Fee Pelaksana {fmtIDR(pelaksanaFee)} sudah dikreditkan ke wallet pelaksana
               </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-[11px] text-muted-foreground">
-                  Fee pelaksana lapangan: <span className="font-bold text-indigo-700">{fmtIDR(PELAKSANA_FEE)}/berkas</span>
+                  Fee pelaksana lapangan:{" "}
+                  <span className="font-bold text-violet-700">{fmtIDR(pelaksanaFee)}/berkas</span>
+                  {pelaksanaFee !== DEFAULT_PELAKSANA_FEE && (
+                    <span className="ml-1 text-[10px] text-amber-600">(dikustomisasi)</span>
+                  )}
                 </p>
                 <Button
                   size="sm"
@@ -364,7 +468,7 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
                     ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
                     : <Wallet className="h-3.5 w-3.5 mr-1.5" />
                   }
-                  Kredit Komisi {fmtIDR(PELAKSANA_FEE)} ke Wallet Pelaksana
+                  Kredit Fee Pelaksana {fmtIDR(pelaksanaFee)} ke Wallet
                 </Button>
               </div>
             )}

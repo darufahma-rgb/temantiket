@@ -16,6 +16,7 @@ export type WalletTxType =
   | "mission_conversion"
   | "mission_fee"
   | "order_bonus"
+  | "pelaksana_fee"
   | "payout"
   | "adjustment";
 
