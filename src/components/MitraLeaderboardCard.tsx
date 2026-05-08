@@ -69,6 +69,7 @@ export function MitraLeaderboardCard() {
     const lifetimePoints = sumPointsByAgent(points);
     const memberById = new Map(members.map((m) => [m.userId, m]));
     const productCommissions = loadProductCommissions();
+    const agentIds = new Set(agentMembers.map((a) => a.userId));
     const stats = new Map<
       string,
       { revenue: number; commission: number; orders: number }
@@ -76,6 +77,7 @@ export function MitraLeaderboardCard() {
 
     for (const o of orders) {
       if (!o.createdByAgent) continue;
+      if (!agentIds.has(o.createdByAgent)) continue;
       const t = new Date(o.createdAt).getTime();
       if (t < monthBounds.from || t >= monthBounds.to) continue;
       const cur = stats.get(o.createdByAgent) ?? { revenue: 0, commission: 0, orders: 0 };

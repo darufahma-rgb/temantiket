@@ -129,9 +129,11 @@ export default function AgentLeaderboard() {
   const rows = useMemo(() => {
     const lifetime = sumPointsByAgent(points);
     const periodic = sumPointsByAgent(periodPoints);
+    const agentIds = new Set(agentMembers.map((a) => a.userId));
     const stats = new Map<string, { revenue: number; orders: number }>();
     for (const o of periodOrders) {
       if (!o.createdByAgent) continue;
+      if (!agentIds.has(o.createdByAgent)) continue;
       const cur = stats.get(o.createdByAgent) ?? { revenue: 0, orders: 0 };
       // Gunakan revenueIDR (total penjualan), bukan profitIDR, agar tidak
       // bergantung pada HPP/costPrice yang mungkin belum diisi
