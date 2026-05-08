@@ -257,23 +257,22 @@ export default function AgentProfile() {
           ))}
         </div>
 
-        <div className="mt-4 flex gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur text-[11px] h-8"
+        {/* Action buttons — full-width 2-col grid */}
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
             onClick={() => navigate("/settings")}
+            className="flex items-center justify-center gap-2 h-10 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-[12px] font-semibold transition-all active:scale-[0.97]"
           >
-            <UserCircle className="h-3.5 w-3.5 mr-1" /> Edit Profil
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur text-[11px] h-8"
+            <UserCircle className="h-4 w-4 shrink-0" />
+            Edit Profil
+          </button>
+          <button
             onClick={() => navigate("/agent/leaderboard")}
+            className="flex items-center justify-center gap-2 h-10 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-[12px] font-semibold transition-all active:scale-[0.97]"
           >
-            <Trophy className="h-3.5 w-3.5 mr-1" /> Leaderboard
-          </Button>
+            <Trophy className="h-4 w-4 shrink-0" />
+            Leaderboard
+          </button>
         </div>
       </motion.div>
 

@@ -225,42 +225,38 @@ export default function StaffProfile() {
           </div>
         </div>
 
-        {/* Staff ID + Since */}
-        <div className="mt-4 flex items-center gap-4 flex-wrap">
-          <div className="rounded-xl bg-white/10 border border-white/20 px-3 py-2">
-            <div className="text-[9px] opacity-70 uppercase tracking-wider">Staff ID</div>
-            <div className="text-[13px] font-extrabold font-mono">{staffLabel}</div>
+        {/* Staff ID + Since + Fee Wallet — full-width 3-col grid */}
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="rounded-xl bg-white/10 border border-white/15 px-2.5 py-2">
+            <div className="text-[8.5px] opacity-60 uppercase tracking-wider mb-0.5">Staff ID</div>
+            <div className="text-[11.5px] font-extrabold font-mono truncate">{staffLabel}</div>
           </div>
-          {joinedLabel && (
-            <div className="rounded-xl bg-white/10 border border-white/20 px-3 py-2">
-              <div className="text-[9px] opacity-70 uppercase tracking-wider">Bergabung Sejak</div>
-              <div className="text-[13px] font-bold">{joinedLabel}</div>
-            </div>
-          )}
-          <div className="rounded-xl bg-white/10 border border-white/20 px-3 py-2">
-            <div className="text-[9px] opacity-70 uppercase tracking-wider">Fee Wallet</div>
-            <div className="text-[13px] font-extrabold font-mono">{fmtIDR(walletBal.netIDR)}</div>
+          <div className="rounded-xl bg-white/10 border border-white/15 px-2.5 py-2">
+            <div className="text-[8.5px] opacity-60 uppercase tracking-wider mb-0.5">Bergabung</div>
+            <div className="text-[11.5px] font-bold truncate">{joinedLabel ?? "—"}</div>
+          </div>
+          <div className="rounded-xl bg-white/10 border border-white/15 px-2.5 py-2">
+            <div className="text-[8.5px] opacity-60 uppercase tracking-wider mb-0.5">Fee Wallet</div>
+            <div className="text-[11.5px] font-extrabold font-mono truncate">{fmtIDR(walletBal.netIDR)}</div>
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="mt-4 flex gap-2 flex-wrap">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur text-[11px] h-8"
+        {/* Action buttons — full-width 2-col grid */}
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
             onClick={() => navigate("/settings")}
+            className="flex items-center justify-center gap-2 h-10 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-[12px] font-semibold transition-all active:scale-[0.97]"
           >
-            <UserCircle className="h-3.5 w-3.5 mr-1" /> Edit Profil
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur text-[11px] h-8"
+            <UserCircle className="h-4 w-4 shrink-0" />
+            Edit Profil
+          </button>
+          <button
             onClick={() => navigate("/staff/visa")}
+            className="flex items-center justify-center gap-2 h-10 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-[12px] font-semibold transition-all active:scale-[0.97]"
           >
-            <ClipboardList className="h-3.5 w-3.5 mr-1" /> Lihat Visa Saya
-          </Button>
+            <ClipboardList className="h-4 w-4 shrink-0" />
+            Lihat Visa Saya
+          </button>
         </div>
       </motion.div>
 
