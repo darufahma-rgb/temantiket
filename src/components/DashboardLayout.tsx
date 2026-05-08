@@ -346,18 +346,17 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
 
       {/* ── Mobile floating bottom nav ── */}
       <nav
-        className="md:hidden fixed z-50 flex items-center"
+        className="md:hidden fixed z-50 flex items-center px-1"
         style={{
-          bottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
-          left: "10px",
-          right: "10px",
-          height: "54px",
-          borderRadius: "16px",
-          background: "color-mix(in srgb, hsl(var(--card)) 92%, transparent)",
-          backdropFilter: "blur(24px) saturate(2)",
-          WebkitBackdropFilter: "blur(24px) saturate(2)",
-          border: "1px solid hsl(var(--border))",
-          boxShadow: "0 8px 28px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08), inset 0 0.5px 0 rgba(255,255,255,0.18)",
+          bottom: "calc(8px + env(safe-area-inset-bottom, 0px))",
+          left: "8px",
+          right: "8px",
+          height: "58px",
+          borderRadius: "20px",
+          background: "color-mix(in srgb, hsl(var(--card)) 96%, transparent)",
+          backdropFilter: "blur(28px) saturate(2)",
+          WebkitBackdropFilter: "blur(28px) saturate(2)",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06), inset 0 0.5px 0 rgba(255,255,255,0.22)",
         }}
       >
         {bottomNav.map((item) => {
@@ -381,22 +380,29 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                   navigate(item.navigateTo ?? item.path);
                 }
               }}
-              className="relative flex-1 flex flex-col items-center justify-center gap-[3px] h-full transition-all active:scale-90 select-none"
+              className="relative flex-1 flex flex-col items-center justify-center h-full gap-[3px] active:scale-90 transition-transform select-none"
+              style={{ WebkitTapHighlightColor: "transparent" }}
             >
-              {isActive && !isMore && (
+              {/* Active: subtle pill behind icon only */}
+              {isActive && (
                 <span
-                  className="absolute top-0 left-1/2 -translate-x-1/2 h-[2.5px] w-8 rounded-b-full"
-                  style={{ background: "#1a44d4" }}
+                  className="absolute top-[8px] w-10 h-8 rounded-full"
+                  style={{ background: "rgba(26,68,212,0.10)" }}
                 />
               )}
               <item.icon
                 strokeWidth={isActive ? 2.2 : 1.6}
                 className={cn(
-                  "h-[19px] w-[19px] transition-colors",
+                  "h-[20px] w-[20px] relative transition-colors",
                   isActive ? "text-[#1a44d4]" : "text-[hsl(var(--muted-foreground))]"
                 )}
               />
-              <span className={cn("mobile-nav-label transition-colors", isActive ? "text-[#1a44d4]" : "text-[hsl(var(--muted-foreground))]")}>
+              <span
+                className={cn(
+                  "relative text-[10px] font-semibold tracking-[0.01em] transition-colors",
+                  isActive ? "text-[#1a44d4]" : "text-[hsl(var(--muted-foreground))]"
+                )}
+              >
                 {item.label}
               </span>
             </button>
@@ -439,8 +445,8 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 </button>
               </div>
 
-              {/* Items grid */}
-              <div className="px-4 pb-4 grid grid-cols-4 gap-x-2 gap-y-4">
+              {/* Items grid — bare icon + label, no boxes */}
+              <div className="px-5 pb-5 grid grid-cols-4 gap-x-3 gap-y-5">
                 {moreItems.map((item) => {
                   const isActive = !!item.path && location.pathname.startsWith(item.path);
                   return (
@@ -448,22 +454,15 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                       key={item.path}
                       onClick={() => { navigate(item.path!); setMoreOpen(false); }}
                       className="flex flex-col items-center gap-1.5 active:scale-90 transition-transform"
+                      style={{ WebkitTapHighlightColor: "transparent" }}
                     >
-                      <div
-                        className="h-[50px] w-[50px] rounded-2xl flex items-center justify-center transition-colors"
-                        style={{
-                          background: isActive ? "rgba(26,68,212,0.1)" : "hsl(var(--secondary))",
-                          border: isActive ? "1.5px solid rgba(26,68,212,0.3)" : "1px solid hsl(var(--border))",
-                        }}
-                      >
-                        <item.icon
-                          strokeWidth={1.7}
-                          className="h-[22px] w-[22px]"
-                          style={{ color: isActive ? "#1a44d4" : "hsl(var(--muted-foreground))" }}
-                        />
-                      </div>
+                      <item.icon
+                        strokeWidth={isActive ? 2.1 : 1.6}
+                        className="h-[22px] w-[22px]"
+                        style={{ color: isActive ? "#1a44d4" : "hsl(var(--muted-foreground))" }}
+                      />
                       <span
-                        className="mobile-nav-label text-center"
+                        className="text-[10px] font-semibold text-center leading-tight"
                         style={{ color: isActive ? "#1a44d4" : "hsl(var(--muted-foreground))" }}
                       >
                         {item.label}
