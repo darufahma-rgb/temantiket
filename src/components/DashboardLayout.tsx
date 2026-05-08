@@ -154,29 +154,27 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               boxShadow: "0 2px 16px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
             }}
           >
-            {/* Logo — bare brand-blue icon */}
+            {/* Logo — rounded app-icon style */}
             <button
               onClick={() => navigate(homeRoute)}
-              className="shrink-0 active:opacity-55 transition-opacity -ml-0.5"
-              style={{ WebkitTapHighlightColor: "transparent" }}
+              className="shrink-0 active:opacity-60 transition-opacity flex items-center justify-center"
+              style={{ WebkitTapHighlightColor: "transparent", width: 32, height: 32 }}
               aria-label="Home"
             >
               <img
-                src="/temantiket-icon.png"
+                src="/temantiket-logo-rounded.png"
                 alt="Temantiket"
-                className="h-[20px] w-[20px] object-contain"
-                style={{
-                  filter: "brightness(0) saturate(100%) invert(22%) sepia(80%) saturate(1800%) hue-rotate(214deg) brightness(90%) contrast(96%)",
-                }}
+                className="object-cover"
+                style={{ width: 28, height: 28, borderRadius: 8 }}
               />
             </button>
 
-            {/* Currency — inline, fills remaining space */}
+            {/* Currency — inline, fills remaining space, vertically centered */}
             <button
               onClick={() => refreshRates()}
               title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")}` : "Tap untuk perbarui"}
               className="flex-1 flex items-center gap-1.5 active:opacity-55 transition-opacity min-w-0 overflow-hidden"
-              style={{ WebkitTapHighlightColor: "transparent" }}
+              style={{ WebkitTapHighlightColor: "transparent", height: 32 }}
             >
               <span
                 className="h-[5px] w-[5px] rounded-full shrink-0"
@@ -203,7 +201,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               />
             </button>
 
-            {/* Search — bare icon, generous tap area */}
+            {/* Search — bare icon, 32×32 tap area, vertically centered */}
             <button
               onClick={() => setSearchOpen(true)}
               className="shrink-0 flex items-center justify-center active:opacity-55 transition-opacity"
@@ -213,22 +211,22 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               <Search strokeWidth={1.75} className="h-[15px] w-[15px]" style={{ color: "hsl(var(--muted-foreground))" }} />
             </button>
 
-            {/* Avatar — circular only, sync dot */}
+            {/* Avatar — 32×32 tap area, 27px circular avatar, sync dot */}
             <button
               onClick={() => navigate("/settings")}
-              className="relative shrink-0 active:opacity-70 transition-opacity"
+              className="relative shrink-0 flex items-center justify-center active:opacity-70 transition-opacity"
               title={syncTitle}
-              style={{ WebkitTapHighlightColor: "transparent" }}
+              style={{ WebkitTapHighlightColor: "transparent", width: 32, height: 32 }}
             >
               <div
-                className="h-[27px] w-[27px] rounded-full flex items-center justify-center text-white text-[10.5px] font-black"
-                style={{ background: "linear-gradient(140deg, #2563eb 0%, #1a44d4 55%, #0a2472 100%)" }}
+                className="rounded-full flex items-center justify-center text-white text-[10.5px] font-black"
+                style={{ width: 27, height: 27, background: "linear-gradient(140deg, #2563eb 0%, #1a44d4 55%, #0a2472 100%)" }}
               >
                 {displayName.charAt(0).toUpperCase()}
               </div>
               <span
-                className="absolute bottom-0 right-0 h-[7px] w-[7px] rounded-full border-[1.5px]"
-                style={{ background: syncInfo.color, borderColor: "hsl(var(--card))" }}
+                className="absolute rounded-full border-[1.5px]"
+                style={{ width: 7, height: 7, bottom: 3, right: 3, background: syncInfo.color, borderColor: "hsl(var(--card))" }}
               />
             </button>
           </header>
