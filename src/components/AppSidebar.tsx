@@ -51,38 +51,44 @@ const OWNER_SECTIONS: SectionDef[] = [
     key: "bisnis",
     label: "Bisnis",
     items: [
-      { title: "Klien & Jamaah", url: "/clients",  icon: Users },
-      { title: "Order Hub",      url: "/orders",   icon: ShoppingBag },
-      { title: "Paket & Trip",   url: "/packages", icon: Package },
+      { title: "Klien & Jamaah", url: "/clients", icon: Users },
+      { title: "Order Hub",      url: "/orders",  icon: ShoppingBag },
     ],
   },
   {
-    key: "operasional",
-    label: "Operasional",
+    key: "tools",
+    label: "Tools",
     items: [
-      { title: "Visa Tracker",   url: "/visa-tracker",   icon: Landmark },
-      { title: "Harga Tiket",    url: "/ticket-prices",  icon: Ticket },
-      { title: "Kalkulator",     url: "/calculator",     icon: Calculator },
-      { title: "Itinerary AI",   url: "/itinerary",      icon: Sparkles },
-    ],
-  },
-  {
-    key: "laporan",
-    label: "Laporan & Data",
-    items: [
-      { title: "Laporan Keuangan", url: "/reports",  icon: BarChart3 },
-      { title: "Export Center",    url: "/exports",  icon: FileSpreadsheet },
-      { title: "Catatan",          url: "/notes",    icon: StickyNote },
+      { title: "Harga Tiket",    url: "/ticket-prices", icon: Ticket },
+      { title: "Itinerary",      url: "/itinerary",     icon: Sparkles, badge: "AI" },
+      { title: "Kalkulator & Kurs", url: "/calculator", icon: Calculator },
+      { title: "Paket & Trip",   url: "/packages",      icon: Package },
     ],
   },
   {
     key: "konten",
-    label: "Konten & Agen",
+    label: "Konten",
     items: [
-      { title: "Template Broadcast", url: "/bc-templates",       icon: MessageSquare },
-      { title: "Caption Generator",  url: "/agent/marketing",    icon: Megaphone },
-      { title: "Manajemen Agen",     url: "/agent-center",       icon: BookUser },
-      { title: "Leaderboard",        url: "/agent/leaderboard",  icon: Trophy },
+      { title: "Template Broadcast", url: "/bc-templates",    icon: MessageSquare },
+      { title: "Caption Generator",  url: "/agent/marketing", icon: Megaphone },
+      { title: "Catatan",            url: "/notes",           icon: StickyNote },
+    ],
+  },
+  {
+    key: "keuangan",
+    label: "Keuangan",
+    items: [
+      { title: "Laporan Keuangan", url: "/reports",  icon: BarChart3 },
+      { title: "Export Center",    url: "/exports",  icon: FileSpreadsheet },
+    ],
+  },
+  {
+    key: "manajemen",
+    label: "Manajemen",
+    items: [
+      { title: "Visa Tracker",   url: "/visa-tracker",      icon: Landmark },
+      { title: "Manajemen Agen", url: "/agent-center",      icon: BookUser },
+      { title: "Leaderboard",    url: "/agent/leaderboard", icon: Trophy },
     ],
   },
   {
