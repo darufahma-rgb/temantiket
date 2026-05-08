@@ -161,10 +161,10 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               style={{ WebkitTapHighlightColor: "transparent", width: 32, height: 32 }}
               aria-label="Home"
             >
-              <img
-                src="/temantiket-logo-blue.png"
-                alt="Temantiket"
-                className="object-contain"
+              <div
+                className="icon-mark"
+                role="img"
+                aria-label="Temantiket"
                 style={{ width: 28, height: 28 }}
               />
             </button>
