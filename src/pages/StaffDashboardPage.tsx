@@ -1,12 +1,15 @@
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   ClipboardList, Clock, CheckCircle2, AlertTriangle,
   Wallet, FileText, RefreshCw, Loader2,
   ArrowUpRight, UserCircle, Calculator, Settings,
-  Target, ChevronRight,
+  Target, ChevronRight, BadgeCheck,
 } from "lucide-react";
 import { useStaffData } from "@/hooks/useStaffData";
+import { StaffCard } from "@/components/StaffCard";
+import { supabase } from "@/lib/supabase";
 import { fmtIDR } from "@/lib/profit";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -30,6 +33,21 @@ export default function StaffDashboardPage() {
     walletBal, stats, totalAssignedFee, pendingFeeTotal,
     loading, refreshing, handleRefresh, VISA_STEPS,
   } = useStaffData();
+
+  const [joinedAt, setJoinedAt] = useState<string | null>(null);
+  useEffect(() => {
+    if (user?.id && user?.agencyId && supabase) {
+      void supabase
+        .from("agency_members")
+        .select("created_at")
+        .eq("user_id", user.id)
+        .eq("agency_id", user.agencyId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.created_at) setJoinedAt(data.created_at as string);
+        });
+    }
+  }, [user?.id, user?.agencyId]);
 
   if (loading) {
     return (
@@ -218,22 +236,37 @@ export default function StaffDashboardPage() {
         </div>
       </motion.div>
 
-      {/* ── Staff Card shortcut ── */}
-      <motion.div custom={8} variants={fadeUp} initial="hidden" animate="visible">
-        <button
-          onClick={() => navigate("/staff/profile")}
-          className="w-full flex items-center gap-4 rounded-2xl border border-slate-100 bg-white shadow-sm p-4 hover:shadow-md transition-all active:scale-[0.99] text-left"
-        >
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-900 flex items-center justify-center text-white text-lg font-extrabold shrink-0">
-            {user?.displayName?.charAt(0).toUpperCase() ?? "S"}
+      {/* ── Official Staff Card ── */}
+      {user?.id && (
+        <motion.div custom={8} variants={fadeUp} initial="hidden" animate="visible">
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+            <div className="px-4 py-3.5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <BadgeCheck className="h-3.5 w-3.5 text-blue-600 stroke-[1.75]" />
+                </div>
+                <div>
+                  <p className="text-[12.5px] font-bold text-slate-700">Kartu Staff Official</p>
+                  <p className="text-[10px] text-slate-400">ID card resmi kamu sebagai staff Temantiket</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/staff/profile")}
+                className="flex items-center gap-0.5 text-[10.5px] font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                Profil <ArrowUpRight className="h-3 w-3 stroke-[2]" />
+              </button>
+            </div>
+            <div className="p-5 flex justify-center">
+              <StaffCard
+                displayName={user.displayName ?? "Staff"}
+                staffId={user.id}
+                since={joinedAt}
+              />
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-bold text-slate-700">Staff Card Digital</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Lihat & download kartu identitas staff kamu</p>
-          </div>
-          <ArrowUpRight className="h-4 w-4 text-blue-500 shrink-0" strokeWidth={2} />
-        </button>
-      </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }
