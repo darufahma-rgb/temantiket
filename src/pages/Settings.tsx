@@ -42,6 +42,7 @@ import { migrateBase64ToStorage, type MigrateProgress } from "@/lib/migrateBase6
 import { useRegionalStore } from "@/store/regionalStore";
 import { useT } from "@/lib/regional";
 import { useOrdersStore } from "@/store/ordersStore";
+import { useNavigate } from "react-router-dom";
 
 async function resizeImageToDataUrl(file: File, maxSize = 320, quality = 0.85): Promise<string> {
   const blobUrl = URL.createObjectURL(file);
@@ -1343,6 +1344,7 @@ export default function Settings() {
                 {members.map((m) => {
                   const draft = commissionDraft[m.userId];
                   const isAgentRow = m.role === "agent";
+                  const isStaffRow = m.role === "staff";
                   return (
                     <div key={m.userId} className="flex items-center justify-between px-4 py-3 gap-3 flex-wrap">
                       <div className="min-w-0 flex-1">
@@ -1362,6 +1364,16 @@ export default function Settings() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">
+                        {isOwner && isStaffRow && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-2.5 text-[11px] border-blue-200 text-blue-700 hover:bg-blue-50"
+                            onClick={() => (window.location.href = `/staff/${m.userId}`)}
+                          >
+                            🪪 Kartu Staff
+                          </Button>
+                        )}
                         {isOwner && isAgentRow && (
                           <>
                             <Input

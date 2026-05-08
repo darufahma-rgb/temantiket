@@ -55,6 +55,7 @@ import DemoSeed from "./pages/DemoSeed";
 import TicketPrices from "./pages/TicketPrices";
 import PublicTicketPrices from "./pages/PublicTicketPrices";
 import StaffVisaDashboard from "./pages/StaffVisaDashboard";
+import StaffProfileOwnerView from "./pages/StaffProfileOwnerView";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -312,6 +313,16 @@ function AnimatedRoutes() {
         <Route path="/demo-seed" element={<RequireAuth><DashboardLayout><DemoSeed /></DashboardLayout></RequireAuth>} />
         <Route path="/ticket-prices" element={<RequireAuth><DashboardLayout><TicketPrices /></DashboardLayout></RequireAuth>} />
         <Route path="/staff/visa" element={<RequireAuth><DashboardLayout><StaffVisaDashboard /></DashboardLayout></RequireAuth>} />
+        <Route
+          path="/staff/:staffId"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["owner"]}>
+                <DashboardLayout><StaffProfileOwnerView /></DashboardLayout>
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
         <Route path="/settings" element={<RequireAuth><DashboardLayout><Settings /></DashboardLayout></RequireAuth>} />
         <Route path="/auth" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<NotFound />} />

@@ -1,0 +1,76 @@
+Add a Staff Card feature for users with role = staff.
+
+I want staff members to have their own digital card similar to the attached “Temantiket Staff Card” design.
+
+Reference design:
+
+* Use the existing blue Temantiket card background/template.
+* The card should say “Temantiket Staff Card”.
+* It should display the staff member’s full name.
+* It should display a generated Staff ID.
+* It should display “Since” date based on when the staff account was created.
+* Data must be taken from users with role = staff.
+
+Card content requirements:
+
+1. Title:
+   “Temantiket Staff Card”
+
+2. Staff code:
+   Format:
+   `#TMNSTF0001`
+   Use sequential numbering for staff if possible.
+   If sequential numbering is not available, generate from staff user ID but keep the display format clean.
+
+3. Staff name:
+   Use the staff user profile name.
+   Example:
+   “Naufal Alfatih”
+
+4. Staff ID:
+   Display numeric ID only.
+   Example:
+   `0001`
+
+5. Since date:
+   Use staff created_at date.
+   Format:
+   `Since DD/MM/YY`
+   Example:
+   `Since 18/02/26`
+
+UI requirements:
+
+* Add a staff card preview inside the staff detail/profile page or staff management area.
+* Add a download/export button for the staff card as PNG.
+* Use the blank card template/background from the uploaded/reference design.
+* Keep typography large, bold, clean, and modern.
+* Position text similar to the example:
+
+  * top-left: “Temantiket Staff Card”
+  * below title: `#TMNSTF0001`
+  * bottom-left: staff full name
+  * bottom-right: “Staff ID.”, numeric ID, and “Since” date
+* Make sure text is white and readable.
+* Keep the Temantiket logo/ornaments from the template.
+* Preserve the existing app design language.
+
+Data rules:
+
+* Only users with role = staff should get Staff Cards.
+* Staff card data must not use agent data.
+* Staff name must come from the staff profile.
+* Staff ID must be generated consistently and not change every refresh.
+* Staff card should not be shown for owner or sales agent unless their role is staff.
+
+Technical requirements:
+
+* Reuse existing card generation/export logic if there is already an agent card feature.
+* If there is already an Agent Card component, create a separate StaffCard component or extend it safely without breaking agent cards.
+* Do not rename existing agent card functionality.
+* Do not break existing agent card download/export.
+* Add proper fallback if staff name or created_at is missing.
+* Make the card responsive in preview but export in high quality.
+
+Expected result:
+Owner can open a staff profile and generate/download a “Temantiket Staff Card” automatically populated from that staff user’s data.
