@@ -1,0 +1,103 @@
+Fix the Staff navigation so each sidebar menu opens its own separate page, not multiple sections at once.
+
+Current problem:
+When staff opens the dashboard, multiple pages/sections appear together:
+
+* Dashboard
+* Visa Saya
+* Komisi Saya
+
+This is confusing. Each menu item should route to its own dedicated page.
+
+Expected behavior:
+Each staff sidebar item must open only one page:
+
+1. Dashboard
+   Route: `/staff/dashboard`
+   Content:
+
+* staff welcome card
+* summary stats
+* quick shortcuts
+* latest assigned visa updates
+* staff card shortcut
+  Do NOT show the full Visa Saya list or Komisi Saya page unless only as compact preview widgets.
+
+2. Visa Saya
+   Route: `/staff/visa`
+   Content:
+
+* assigned Visa Student Entry list only
+* client/berkas cards
+* status
+* progress update button
+* kendala notes
+* detail access
+  Do NOT show full dashboard or full commission page.
+
+3. Komisi Saya
+   Route: `/staff/commission`
+   Content:
+
+* Fee Pelaksana Visa summary
+* total earned
+* paid/unpaid
+* commission history per berkas
+  Do NOT show full dashboard or full Visa Saya page.
+
+4. Kalkulator Visa
+   Route: `/staff/calculator` or `/calculator` with staff-limited mode
+   Content:
+
+* visa calculator only
+* hide HPP, margin, owner profit, and internal pricing
+
+5. Profil Staff
+   Route: `/staff/profile`
+   Content:
+
+* staff profile dashboard
+* staff card digital
+* profile info
+* download Staff Card
+
+6. Pengaturan
+   Route: `/staff/settings` or `/settings` with staff-safe tabs
+   Content:
+
+* Profil
+* Notifikasi
+* Keamanan
+* Tampilan only
+
+Sidebar active state:
+
+* Only the current route should be active.
+* Do not highlight Dashboard, Visa Saya, and Komisi Saya at the same time.
+* Active menu should be based on pathname, not shared tab state.
+
+Implementation requirements:
+
+* Separate StaffDashboardPage, StaffVisaPage, StaffCommissionPage, StaffProfilePage if needed.
+* Do not render all staff sections inside one giant component.
+* If using tabs internally, keep them inside the correct page only.
+* Update staff sidebar links to the correct routes.
+* Update mobile bottom navigation to use the same separate routes.
+* Add route guards so staff can only access staff-safe routes.
+* Owner and Agent routes must remain unchanged.
+
+Important:
+
+* Do not remove existing staff features.
+* Only reorganize them into separate pages.
+* Keep staff role permissions intact.
+* Staff must still only see assigned visa work.
+* Staff must not see HPP, margin, client payment, or owner financial data.
+* Keep the current blue/white visual style.
+
+Expected result:
+Staff navigation feels normal and clean:
+Dashboard opens dashboard only.
+Visa Saya opens visa work only.
+Komisi Saya opens commission page only.
+Each sidebar item has its own page and only one active state.

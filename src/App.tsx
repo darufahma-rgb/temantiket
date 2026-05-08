@@ -55,6 +55,8 @@ import DemoSeed from "./pages/DemoSeed";
 import TicketPrices from "./pages/TicketPrices";
 import PublicTicketPrices from "./pages/PublicTicketPrices";
 import StaffVisaDashboard from "./pages/StaffVisaDashboard";
+import StaffDashboardPage from "./pages/StaffDashboardPage";
+import StaffCommissionPage from "./pages/StaffCommissionPage";
 import StaffProfile from "./pages/StaffProfile";
 import OwnerVisaTrackerPage from "./pages/OwnerVisaTrackerPage";
 import StaffProfileOwnerView from "./pages/StaffProfileOwnerView";
@@ -192,7 +194,7 @@ function RequireRole({
   if (!user || !roles.includes(user.role)) {
     const fallback =
       user?.role === "agent" ? "/agent" :
-      user?.role === "staff" ? "/staff/visa" : "/";
+      user?.role === "staff" ? "/staff/dashboard" : "/";
     return <Navigate to={fallback} replace />;
   }
   return <>{children}</>;
@@ -201,7 +203,7 @@ function RequireRole({
 function HomeRedirect() {
   const user = useAuthStore((s) => s.user);
   if (user?.role === "agent") return <Navigate to="/agent" replace />;
-  if (user?.role === "staff") return <Navigate to="/staff/visa" replace />;
+  if (user?.role === "staff") return <Navigate to="/staff/dashboard" replace />;
   return <Index />;
 }
 
@@ -318,7 +320,9 @@ function AnimatedRoutes() {
         <Route path="/demo-seed" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><DemoSeed /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/ticket-prices" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><TicketPrices /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/visa-tracker" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><OwnerVisaTrackerPage /></DashboardLayout></RequireRole></RequireAuth>} />
-        <Route path="/staff/visa" element={<RequireAuth><DashboardLayout><StaffVisaDashboard /></DashboardLayout></RequireAuth>} />
+        <Route path="/staff/dashboard" element={<RequireAuth><RequireRole roles={["staff"]}><DashboardLayout><StaffDashboardPage /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/staff/visa" element={<RequireAuth><RequireRole roles={["staff"]}><DashboardLayout><StaffVisaDashboard /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/staff/commission" element={<RequireAuth><RequireRole roles={["staff"]}><DashboardLayout><StaffCommissionPage /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/staff/profile" element={<RequireAuth><RequireRole roles={["staff"]}><DashboardLayout><StaffProfile /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route
           path="/staff/:staffId"

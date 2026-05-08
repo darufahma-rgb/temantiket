@@ -83,22 +83,15 @@ const AGENT_MORE_ITEMS: NavItem[] = [
 
 /* ── Staff ── */
 const STAFF_BOTTOM_NAV: NavItem[] = [
-  {
-    icon: Landmark, label: "Visa", path: "/staff/visa",
-    isActiveFn: (p, s) => p === "/staff/visa" && !s.includes("tab=komisi"),
-    exact: true,
-  },
-  {
-    icon: Wallet, label: "Komisi", path: "/staff/visa",
-    navigateTo: "/staff/visa?tab=komisi",
-    isActiveFn: (p, s) => p === "/staff/visa" && s.includes("tab=komisi"),
-  },
-  { icon: Calculator,     label: "Kalkulator", path: "/calculator"    },
-  { icon: BookUser,       label: "Profil",     path: "/staff/profile" },
-  { icon: MoreHorizontal, label: "Lainnya",    path: null             },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/staff/dashboard", exact: true },
+  { icon: Landmark,        label: "Visa",      path: "/staff/visa",      exact: true },
+  { icon: Wallet,          label: "Komisi",    path: "/staff/commission", exact: true },
+  { icon: BookUser,        label: "Profil",    path: "/staff/profile" },
+  { icon: MoreHorizontal,  label: "Lainnya",   path: null             },
 ];
 const STAFF_MORE_ITEMS: NavItem[] = [
-  { icon: Settings, label: "Pengaturan", path: "/settings" },
+  { icon: Calculator, label: "Kalkulator", path: "/calculator" },
+  { icon: Settings,   label: "Pengaturan", path: "/settings"   },
 ];
 
 export function DashboardLayout({ children, noPadding = false }: DashboardLayoutProps) {

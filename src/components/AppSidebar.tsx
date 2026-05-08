@@ -105,15 +105,15 @@ const STAFF_SECTIONS: SectionDef[] = [
     key: "home",
     label: "",
     items: [
-      { title: "Dashboard", url: "/staff/visa", icon: LayoutDashboard, end: true },
+      { title: "Dashboard", url: "/staff/dashboard", icon: LayoutDashboard, end: true },
     ],
   },
   {
     key: "tugas",
     label: "Tugas Saya",
     items: [
-      { title: "Visa Saya",   url: "/staff/visa",            icon: Landmark },
-      { title: "Komisi Saya", url: "/staff/visa?tab=komisi", icon: Wallet },
+      { title: "Visa Saya",   url: "/staff/visa",        icon: Landmark, end: true },
+      { title: "Komisi Saya", url: "/staff/commission",  icon: Wallet,   end: true },
     ],
   },
   {
