@@ -1,0 +1,176 @@
+Redesign the mobile top navbar to follow modern premium mobile app design principles.
+
+Current problem:
+The mobile navbar feels too “web dashboard” and visually heavy because:
+
+* every item has its own box/container
+* too many borders and segmented areas
+* layout feels crowded
+* spacing feels bulky
+* overall hierarchy is unclear
+
+Goal:
+Create a clean, modern, compact, premium mobile navbar similar to fintech/travel/mobile SaaS apps like:
+
+* Revolut
+* Wise
+* Airbnb
+* Traveloka
+* Tiket.com
+* Stripe
+* Linear
+
+Main design direction:
+
+* minimal
+* lightweight
+* elegant
+* app-like
+* modern mobile UI
+* soft visual hierarchy
+* clean spacing
+* less visual noise
+
+1. Navbar Structure
+   Use ONE main navbar container only.
+
+Inside it:
+LEFT:
+
+* small Temantiket logo
+
+CENTER:
+
+* compact currency info
+
+RIGHT:
+
+* search icon
+* user avatar
+
+Do NOT create separate heavy boxes/cards for each item.
+
+2. Remove segmented boxed UI
+   Remove:
+
+* square background behind logo
+* giant currency pill box
+* square background behind search
+* square background behind avatar
+
+Keep:
+
+* subtle hover/tap states only
+* transparent or lightweight backgrounds
+
+3. Currency Display
+   Make the currency display inline and compact.
+
+Target style:
+● USD 17.4k · SAR 4.620 ↻
+
+Requirements:
+
+* tiny green status dot
+* compact spacing
+* tiny refresh icon
+* no oversized pill
+* no giant border
+* no large background block
+
+4. Search Button
+   Search should become:
+
+* simple icon button
+* transparent background
+* subtle tap feedback only
+* compact touch-friendly size
+
+Avoid:
+
+* giant rounded square
+* oversized padding
+
+5. Avatar / User Profile
+   Use:
+
+* clean circular avatar only
+* smaller size
+* subtle online indicator
+* lightweight appearance
+
+Avoid:
+
+* giant square background
+* oversized shadows
+* thick borders
+
+6. Logo Area
+   Logo should:
+
+* feel lighter
+* use transparent background
+* align naturally with navbar content
+* not dominate the navbar
+
+7. Navbar Height & Spacing
+   Target:
+
+* compact mobile header
+* around 48–56px effective height
+* balanced horizontal spacing
+* comfortable touch targets
+* reduced visual clutter
+
+8. Visual Style
+   Use:
+
+* subtle shadow only
+* soft borders
+* light blur if needed
+* premium white/blue Temantiket aesthetic
+
+Avoid:
+
+* multiple nested cards
+* excessive borders
+* bulky pills
+* heavy floating boxes
+* over-layered UI
+
+9. Responsive Behavior
+   Ensure navbar works properly on:
+
+* 390px width
+* 414px width
+* 430px width
+
+Prevent:
+
+* text overflow
+* cramped alignment
+* wrapping
+* oversized elements
+
+10. Keep Functionality
+    Do NOT break:
+
+* search
+* profile click
+* currency refresh
+* sync indicators
+* mobile responsiveness
+
+11. Final UX Goal
+    The navbar should feel:
+
+* like a native mobile app
+* premium
+* lightweight
+* modern
+* minimal
+* easier to scan visually
+* less cluttered
+
+Expected result:
+The mobile top navbar should transform from a segmented “dashboard web UI” into a clean modern mobile app header with elegant spacing, lightweight hierarchy, and minimal visual noise.
