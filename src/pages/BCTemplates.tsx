@@ -784,10 +784,12 @@ function TemplateCard({
   const cat = BC_CATEGORIES.find((c) => c.key === template.category)!;
   const vars = extractVariables(template.body);
 
-  const PREVIEW_LINES = 4;
-  const lines = template.body.split("\n");
+  const PREVIEW_LINES = 3;
+  const lines = template.body.split("\n").filter((l) => l.trim() !== "");
   const isLong = lines.length > PREVIEW_LINES;
-  const previewText = expanded ? template.body : lines.slice(0, PREVIEW_LINES).join("\n");
+  const previewText = expanded
+    ? template.body
+    : lines.slice(0, PREVIEW_LINES).join("\n");
 
   const CatIcon = CATEGORY_ICONS[cat.key] ?? MessageCircle;
 
@@ -796,75 +798,85 @@ function TemplateCard({
       layout
       className="rounded-xl border border-slate-200 bg-white overflow-hidden"
     >
-      {/* Header row: badges left, actions right */}
-      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5">
-        <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0", cat.color)}>
-          <CatIcon className="h-2.5 w-2.5 shrink-0" />
-          {cat.label}
-        </span>
-        {vars.length > 0 && (
-          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
-            🔧 {vars.length} var
-          </span>
-        )}
-        <div className="flex-1" />
-        {canEdit && (
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={onEdit}
-              className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-              title="Edit"
-            >
-              <Pencil className="h-3 w-3 text-slate-500" />
-            </button>
-            <button
-              onClick={onDelete}
-              className="w-7 h-7 rounded-lg border border-red-100 bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors"
-              title="Hapus"
-            >
-              <Trash2 className="h-3 w-3 text-red-400" />
-            </button>
+      <div className="flex items-stretch gap-0">
+
+        {/* ── Left: content ── */}
+        <div className="flex-1 min-w-0 px-3 py-2.5">
+
+          {/* Badge row */}
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <span className={cn(
+              "inline-flex items-center gap-1 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 leading-none",
+              cat.color,
+            )}>
+              <CatIcon className="h-2 w-2 shrink-0" />
+              {cat.label}
+            </span>
+            {vars.length > 0 && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0 leading-none">
+                🔧 {vars.length} var
+              </span>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Title */}
-      <div className="px-3 pb-1.5">
-        <h3 className="text-[12.5px] font-bold text-slate-900 leading-snug">{template.title}</h3>
-      </div>
+          {/* Title */}
+          <h3 className="text-[12.5px] font-bold text-slate-900 leading-snug mb-1.5 line-clamp-1">
+            {template.title}
+          </h3>
 
-      {/* Body preview — rendered markdown, no nested box */}
-      <div className="px-3 pb-1">
-        <div className="border-t border-slate-100 pt-2">
+          {/* Body preview */}
           <WAMarkdown text={previewText} />
+
           {isLong && (
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="text-[10.5px] text-blue-500 font-semibold mt-1.5 hover:text-blue-700"
+              className="text-[10px] text-blue-500 font-semibold mt-1 hover:text-blue-700 transition-colors"
             >
               {expanded ? "Sembunyikan ↑" : "Lihat selengkapnya ↓"}
             </button>
           )}
         </div>
-      </div>
 
-      {/* Copy button — compact */}
-      <div className="px-3 pb-2.5 pt-2">
-        <button
-          onClick={onCopy}
-          className={cn(
-            "w-full h-9 rounded-lg flex items-center justify-center gap-1.5 text-[12px] font-bold text-white transition-colors",
-            isCopied
-              ? "bg-emerald-500"
-              : "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+        {/* ── Right: actions ── */}
+        <div className="flex flex-col items-center justify-between gap-2 px-2.5 py-2.5 border-l border-slate-100 shrink-0 w-[60px]">
+
+          {/* Copy button — pill, compact */}
+          <button
+            onClick={onCopy}
+            title={vars.length > 0 ? "Copy & Isi Variabel" : "Copy"}
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 w-full rounded-lg py-2 text-[9.5px] font-bold text-white transition-colors flex-1",
+              isCopied
+                ? "bg-emerald-500"
+                : "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+            )}
+          >
+            {isCopied
+              ? <><Check className="h-3.5 w-3.5" /><span>Done</span></>
+              : <><Copy className="h-3.5 w-3.5" /><span>Copy</span></>}
+          </button>
+
+          {/* Edit + Delete */}
+          {canEdit && (
+            <div className="flex flex-col items-center gap-1 w-full">
+              <button
+                onClick={onEdit}
+                title="Edit"
+                className="w-full h-7 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors"
+              >
+                <Pencil className="h-3 w-3 text-slate-400" />
+              </button>
+              <button
+                onClick={onDelete}
+                title="Hapus"
+                className="w-full h-7 rounded-lg border border-red-100 bg-red-50 flex items-center justify-center hover:bg-red-100 active:bg-red-200 transition-colors"
+              >
+                <Trash2 className="h-3 w-3 text-red-400" />
+              </button>
+            </div>
           )}
-        >
-          {isCopied ? (
-            <><Check className="h-3.5 w-3.5" /> Tercopy!</>
-          ) : (
-            <><Copy className="h-3.5 w-3.5" /> {vars.length > 0 ? "Copy & Isi Variabel" : "Copy"}</>
-          )}
-        </button>
+        </div>
+
       </div>
     </motion.div>
   );
