@@ -99,7 +99,7 @@ const STAFF_SECTIONS: SectionDef[] = [
     key: "tugas",
     label: "Tugas Saya",
     items: [
-      { title: "Visa Saya",    url: "/staff/visa",           icon: Landmark },
+      { title: "Visa Saya",    url: "/staff/visa",            icon: Landmark },
       { title: "Komisi Saya",  url: "/staff/visa?tab=komisi", icon: Wallet  },
     ],
   },
@@ -114,7 +114,8 @@ const STAFF_SECTIONS: SectionDef[] = [
     key: "profil",
     label: "Profil",
     items: [
-      { title: "Profil Staff", url: "/settings", icon: Settings },
+      { title: "Profil Staff",  url: "/staff/profile", icon: BookUser },
+      { title: "Pengaturan",    url: "/settings",      icon: Settings },
     ],
   },
 ];

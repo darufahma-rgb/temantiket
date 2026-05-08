@@ -55,6 +55,7 @@ import DemoSeed from "./pages/DemoSeed";
 import TicketPrices from "./pages/TicketPrices";
 import PublicTicketPrices from "./pages/PublicTicketPrices";
 import StaffVisaDashboard from "./pages/StaffVisaDashboard";
+import StaffProfile from "./pages/StaffProfile";
 import OwnerVisaTrackerPage from "./pages/OwnerVisaTrackerPage";
 import StaffProfileOwnerView from "./pages/StaffProfileOwnerView";
 
@@ -318,6 +319,7 @@ function AnimatedRoutes() {
         <Route path="/ticket-prices" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><TicketPrices /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/visa-tracker" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><OwnerVisaTrackerPage /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/staff/visa" element={<RequireAuth><DashboardLayout><StaffVisaDashboard /></DashboardLayout></RequireAuth>} />
+        <Route path="/staff/profile" element={<RequireAuth><RequireRole roles={["staff"]}><DashboardLayout><StaffProfile /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route
           path="/staff/:staffId"
           element={

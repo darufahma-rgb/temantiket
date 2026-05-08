@@ -1,0 +1,152 @@
+Create a Staff Profile Dashboard that visually matches the existing Agent/Mitra Profile Dashboard, but adapted for staff needs.
+
+Current reference:
+The Agent/Mitra profile page has:
+
+* large blue profile hero card
+* avatar initials
+* name, email, agency name
+* badge/tier
+* stats cards
+* digital agent card preview
+* edit profile button
+* dashboard-style layout
+
+Goal:
+Create the same polished experience for staff users, but with staff-specific data and features.
+
+For role = staff, the profile page should show a Staff Profile Dashboard, not the generic settings form.
+
+Staff Profile Dashboard requirements:
+
+1. Header / Hero Card
+   Use the same visual style as the Agent/Mitra hero card.
+
+Show:
+
+* staff avatar/initial
+* staff full name
+* staff email
+* role badge: “Staff”
+* staff scope badge, for example:
+
+  * “Pelaksana Visa”
+  * “Admin Operasional”
+  * “Support Staff”
+* Staff ID
+* Since date
+
+Do NOT show:
+
+* agent tier
+* agent points
+* leaderboard button
+* sales ranking
+
+2. Staff Stats Cards
+   Show compact cards similar to Agent Dashboard stats.
+
+For Visa Staff / Pelaksana Visa, show:
+
+* Total Berkas Ditugaskan
+* Sedang Diproses
+* Selesai / Visa Terbit
+* Ada Kendala
+* Fee Pelaksana Saya
+* Fee Belum Dibayar
+
+Do NOT show:
+
+* total sales
+* sales target
+* leaderboard
+* HPP
+* margin
+* profit
+* client payment amount
+* agent sales commission
+
+3. Staff Card Digital
+   Add a “Kartu Staff Digital” section similar to “Kartu Agen Digital”.
+
+Show:
+
+* Staff Card preview using the Temantiket Staff Card design.
+* Download button.
+* If possible, allow copy/share or export as PNG.
+
+Staff card data:
+
+* staff name
+* Staff ID
+* staff code format: `#TMNSTF0001`
+* Since date from created_at
+* title: “Temantiket Staff Card”
+
+4. Quick Actions
+   Add action buttons suitable for staff:
+
+* “Lihat Visa Saya”
+* “Update Progress”
+* “Lihat Komisi Saya”
+* “Edit Profil”
+
+Do NOT include:
+
+* Leaderboard
+* Marketing kit
+* Sales tools
+* Broadcast template
+* Caption generator
+
+5. Profile Information Section
+   Below the dashboard, include editable/basic profile information:
+
+* name
+* email
+* phone number
+* role
+* staff scope/type
+* address if available
+* profile photo upload if available
+
+6. Role Safety
+   This Staff Profile Dashboard should apply ONLY when current user role = staff.
+
+Owner should still see owner settings/profile.
+Agent should still see Agent/Mitra Profile Dashboard.
+Staff should not see owner settings tabs or agent leaderboard/tier features.
+
+7. Routing
+   When staff clicks “Profil Staff” in sidebar:
+
+* open the Staff Profile Dashboard.
+* do not show the full owner settings page.
+* staff can still access only safe settings:
+
+  * profile
+  * notification
+  * security
+  * appearance
+
+8. Visual Style
+   Match the existing Agent/Mitra Dashboard style:
+
+* same blue gradient hero card
+* same rounded cards
+* same stat card grid
+* same spacing and typography
+* same polished dashboard feeling
+* responsive on desktop and mobile
+
+Important:
+
+* Do not break existing Agent Profile Dashboard.
+* Do not break owner settings/profile.
+* Do not expose owner financial data.
+* Do not expose HPP, margin, sales commission, or client payment.
+* Staff data must come from staff user profile, not agent profile.
+* Staff Card must use staff data only.
+
+Expected result:
+Staff users get a polished profile dashboard almost like the Agent/Mitra profile page, but focused on staff identity, assigned visa work, staff card, and personal executor fee — without leaderboard, sales tier, HPP, margin, or owner-sensitive data.
