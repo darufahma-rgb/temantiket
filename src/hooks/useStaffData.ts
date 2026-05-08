@@ -6,6 +6,7 @@ import { pullWalletTxs, walletBalance, type WalletTransaction } from "@/lib/agen
 import { ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
 
 const VISA_STEPS = ORDER_PROCESS_STEPS["visa_student"];
+export const DEFAULT_PELAKSANA_FEE = 200_000;
 
 export function useStaffData() {
   const user = useAuthStore((s) => s.user);
@@ -53,6 +54,25 @@ export function useStaffData() {
     [walletTxs],
   );
 
+  const feeByOrder = useMemo(() => {
+    return myOrders.map((o) => {
+      const meta = (o.metadata ?? {}) as Record<string, unknown>;
+      const fee = Number(meta.pelaksanaFee ?? DEFAULT_PELAKSANA_FEE);
+      const credited = !!(meta.pelaksanaFeeCredited as boolean | null);
+      return { order: o, fee, credited };
+    });
+  }, [myOrders]);
+
+  const pendingFeeTotal = useMemo(
+    () => feeByOrder.filter((f) => !f.credited).reduce((sum, f) => sum + f.fee, 0),
+    [feeByOrder],
+  );
+
+  const totalAssignedFee = useMemo(
+    () => feeByOrder.reduce((sum, f) => sum + f.fee, 0),
+    [feeByOrder],
+  );
+
   const stats = useMemo(() => {
     const total   = myOrders.length;
     const selesai = myOrders.filter(
@@ -77,6 +97,7 @@ export function useStaffData() {
     user, orders, patchOrder,
     myOrders, clientMap,
     walletTxs, walletBal, komisiTxs,
+    feeByOrder, pendingFeeTotal, totalAssignedFee,
     stats, loading, refreshing, handleRefresh,
     VISA_STEPS,
   };

@@ -27,7 +27,7 @@ export default function StaffDashboardPage() {
   const navigate = useNavigate();
   const {
     user, myOrders, clientMap,
-    walletBal, stats,
+    walletBal, stats, totalAssignedFee, pendingFeeTotal,
     loading, refreshing, handleRefresh, VISA_STEPS,
   } = useStaffData();
 
@@ -117,8 +117,8 @@ export default function StaffDashboardPage() {
           { icon: Clock,         label: "Diproses",   value: String(stats.proses),  sub: "sedang berjalan",   iconBg: "bg-sky-50",     iconColor: "text-sky-600" },
           { icon: CheckCircle2,  label: "Selesai",    value: String(stats.selesai), sub: "visa terbit",       iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
           { icon: AlertTriangle, label: "Kendala",    value: String(stats.kendala), sub: "perlu tindak",      iconBg: stats.kendala > 0 ? "bg-amber-50" : "bg-slate-50", iconColor: stats.kendala > 0 ? "text-amber-500" : "text-slate-400" },
-          { icon: Wallet,        label: "Fee Earned", value: fmtIDR(walletBal.totalCreditIDR), sub: "total dikreditkan", iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
-          { icon: FileText,      label: "Belum Cair", value: fmtIDR(Math.max(0, walletBal.totalCreditIDR - walletBal.totalDebitIDR)), sub: "belum dicairkan", iconBg: "bg-orange-50", iconColor: "text-orange-500" },
+          { icon: Wallet,        label: "Total Fee",   value: fmtIDR(totalAssignedFee),  sub: "sejak ditugaskan",  iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
+          { icon: FileText,      label: "Blm Dikreditkan", value: fmtIDR(pendingFeeTotal), sub: "menunggu owner",   iconBg: "bg-amber-50",   iconColor: "text-amber-500" },
         ] as const).map((card, i) => (
           <motion.div key={card.label} custom={i} variants={fadeUp} initial="hidden" animate="visible">
             <div className="rounded-2xl border border-slate-100 bg-white p-3 md:p-4 shadow-sm hover:shadow-md transition-shadow h-full">
