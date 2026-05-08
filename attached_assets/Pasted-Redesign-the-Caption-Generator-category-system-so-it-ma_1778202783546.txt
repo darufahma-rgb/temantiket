@@ -1,0 +1,74 @@
+Redesign the Caption Generator category system so it matches my actual business products and daily workflow.
+
+Current problem:
+The current categories are too generic:
+
+* Promo Umrah
+* Paket Haji
+* Tiket Pesawat
+* Layanan Visa
+* Promo Umum
+
+I want the categories to be more specific to my business: Temantiket / travel Mesir / Masisir services / agent workflow.
+
+Replace the current category options with these new categories:
+
+1. Paket Umrah
+   For umrah package promotions, group departures, hotel details, price offers, itinerary highlights, and jamaah-focused captions.
+
+2. Visa Student Mesir
+   For Egypt student entry visa, berkas mahasiswa, legalisir, izin tinggal, kampus, and Masisir-related administration.
+
+3. Visa on Arrival Mesir
+   For Egypt VOA information, requirements, pricing, arrival process, and tourist/traveler visa captions.
+
+4. Tiket Pesawat Masisir
+   For flight tickets between Indonesia and Egypt, student tickets, baggage info, transit info, airline promos, and Masisir travel needs.
+
+5. Jasa IMEI & Kepulangan
+   For IMEI registration services, return-to-Indonesia assistance, airport help, baggage/cargo, and services needed during kepulangan.
+
+6. Follow Up Agen
+   For agent follow-up messages, daily reminders, sales scripts, closing prompts, broadcast to agents, motivation, and operational instructions.
+
+7. Broadcast Informasi
+   For general announcements, regulations, KBRI info, campus info, legalization updates, immigration updates, and public service information.
+
+8. Testimoni & Storytelling
+   For customer testimonials, journey stories, before-after stories, emotional trust-building captions, and experience-based content.
+
+9. Hard Selling Promo
+   For urgent promotions, limited seats, discount offers, closing-focused captions, countdowns, scarcity, and strong CTA.
+
+UI requirements:
+
+* Replace the large category cards with compact selectable chips/pills.
+* Chips should wrap nicely into multiple rows.
+* Each chip should have an icon and label.
+* Selected category should use the existing primary blue style.
+* Unselected categories should remain clean white with subtle border.
+* Make it responsive for desktop and mobile.
+* The layout should not take too much vertical space.
+
+AI behavior requirements:
+Each selected category must inject a specific context into the caption generation prompt.
+
+For example:
+
+* If "Visa Student Mesir" is selected, the AI should write for Masisir/student audience using administrative, clear, trustworthy language.
+* If "Follow Up Agen" is selected, the AI should generate messages suitable for agents, including reminders, sales encouragement, and operational follow-up.
+* If "Hard Selling Promo" is selected, the AI should use stronger urgency, scarcity, CTA, and conversion-focused wording.
+* If "Broadcast Informasi" is selected, the AI should prioritize clarity, structure, and easy-to-understand public information formatting.
+
+Important:
+
+* Do not remove existing caption generation functionality.
+* Do not break poster scan/OCR mode.
+* Do not break manual input mode.
+* Do not change the writing style options unless needed.
+* Keep the current blue/white design language.
+* Update all category mappings, labels, icons, and prompt context consistently.
+* Make sure generated captions become more relevant to the selected product category.
+
+Expected result:
+The Caption Generator should feel custom-built for my travel/Mesir/Masisir business, not like a generic travel caption tool.
