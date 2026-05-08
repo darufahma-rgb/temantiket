@@ -1,0 +1,104 @@
+Redesign the Staff sidebar to visually match the existing Agent/Mitra sidebar, but with staff-specific menu items and permissions.
+
+Current problem:
+The staff sidebar looks different and less polished than the Agent/Mitra sidebar.
+I want the staff sidebar to use the same visual layout, spacing, typography, icon style, section dividers, and profile header style as the Agent/Mitra sidebar.
+
+Reference:
+Use the Agent/Mitra sidebar design as the visual reference:
+
+* profile avatar at top
+* name + role badge under it
+* grouped sections with uppercase labels
+* clean line dividers
+* large readable menu items
+* blue icons
+* active menu state
+* logout at bottom
+
+Staff sidebar content requirements:
+
+Top profile:
+
+* staff avatar/initial
+* staff full name
+* role label:
+  “STAFF”
+  or more specific:
+  “PELAKSANA VISA”
+* use blue/green status dot style similar to Agent/Mitra
+
+Menu sections:
+
+1. TUGAS SAYA
+
+* Dashboard Staff
+* Visa Saya
+
+2. OPERASIONAL
+
+* Komisi Saya
+* Kalkulator Visa
+
+3. PROFIL
+
+* Profil Staff
+* Pengaturan
+
+Bottom:
+
+* Keluar
+
+Hide these from staff:
+
+* Mitra Dashboard
+* Klien & Jamaah global
+* Order Hub
+* Template Broadcast
+* Caption Generator
+* Leaderboard
+* Paket Trip
+* Harga Tiket
+* Laporan Keuangan
+* Export & Manifest
+* Agent Center / Manajemen Agen
+* AI Itinerary bottom widget
+* Owner settings
+* HPP / margin tools
+
+Behavior:
+
+* The sidebar should render this staff version only when user.role === "staff".
+* Owner sidebar must remain unchanged.
+* Agent/Mitra sidebar must remain unchanged.
+* Do not accidentally apply staff sidebar to owner or agent.
+
+Routes:
+
+* Dashboard Staff → `/staff/visa`
+* Visa Saya → `/staff/visa`
+* Komisi Saya → `/staff/visa?tab=komisi` or the existing staff commission route
+* Kalkulator Visa → `/calculator` with staff-limited view
+* Profil Staff → `/staff/profile` or `/settings` staff profile view
+* Pengaturan → `/settings` with staff-safe tabs only
+* Keluar → existing logout function
+
+Visual requirements:
+
+* Match Agent/Mitra sidebar spacing and size.
+* Use same icon sizing and color style.
+* Use same active state background.
+* Use same grouped section label style.
+* Keep it clean, premium, and consistent with the rest of the app.
+* Make it responsive if the app already supports collapsed/mobile sidebar.
+
+Important:
+
+* Staff should still only access assigned work.
+* Staff must not see financial owner data.
+* Staff must not see HPP, margin, sales commission, or client payment.
+* This is only a visual/sidebar navigation redesign, not permission removal.
+* Keep existing route guards and query-level restrictions.
+
+Expected result:
+Staff sidebar looks as polished and consistent as the Agent/Mitra sidebar, but contains only staff-relevant menus: Dashboard Staff, Visa Saya, Komisi Saya, Kalkulator Visa, Profil Staff, Pengaturan, and Keluar.
