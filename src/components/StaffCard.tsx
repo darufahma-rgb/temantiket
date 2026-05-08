@@ -90,19 +90,33 @@ export function StaffCard({ displayName, staffId, since, className }: StaffCardP
           flexShrink: 0,
         }}
       >
-        {/* ── Top-left: staff code ───────────────────────────────── */}
+        {/* ── Top-left: title + staff code ───────────────────────── */}
         <div style={{
           position: "absolute",
-          top: "150px",
+          top: "26px",
           left: "26px",
           zIndex: 1,
-          fontSize: "12px",
-          fontWeight: 700,
-          color: "rgba(255,255,255,0.80)",
-          letterSpacing: "0.03em",
           fontFamily: FONT,
         }}>
-          {staffLabel}
+          <div style={{
+            fontSize: "22px",
+            fontWeight: 800,
+            color: "white",
+            lineHeight: 1.15,
+            letterSpacing: "-0.01em",
+          }}>
+            Temantiket<br />Staff Card
+          </div>
+          <div style={{
+            marginTop: "8px",
+            fontSize: "12px",
+            fontWeight: 700,
+            color: "rgba(255,255,255,0.80)",
+            letterSpacing: "0.03em",
+            fontFamily: FONT,
+          }}>
+            {staffLabel}
+          </div>
         </div>
 
         {/* ── Bottom section ──────────────────────────────────────── */}
