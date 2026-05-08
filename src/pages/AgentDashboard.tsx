@@ -160,7 +160,7 @@ export default function AgentDashboard() {
 
   return (
     <>
-    <div className="pb-8 md:p-6 max-w-6xl md:mx-auto space-y-4 md:space-y-5">
+    <div className="pb-6 md:p-6 max-w-6xl md:mx-auto space-y-3 md:space-y-5">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <motion.div
@@ -171,7 +171,7 @@ export default function AgentDashboard() {
         {/* ── Mobile header card ── */}
         <div className="md:hidden rounded-2xl bg-white border border-slate-100 shadow-sm overflow-hidden">
           {/* Top strip: label + points badge */}
-          <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5">
+          <div className="flex items-center justify-between px-4 pt-3 pb-2">
             <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-slate-400">
               Mitra Dashboard
             </p>
@@ -185,31 +185,31 @@ export default function AgentDashboard() {
           </div>
 
           {/* Name */}
-          <div className="px-4 pb-3">
-            <h1 className="text-[16px] font-extrabold text-slate-900 tracking-tight leading-snug">
+          <div className="px-4 pb-2">
+            <h1 className="text-[15px] font-extrabold text-slate-900 tracking-tight leading-snug">
               Halo, {user?.displayName ?? "Mitra"} 👋
             </h1>
           </div>
 
           {/* Nav grid: 3 equal columns */}
-          <div className="px-3 pb-2.5 grid grid-cols-3 gap-2">
+          <div className="px-3 pb-2 grid grid-cols-3 gap-1.5">
             {navButtons.map((btn) => (
               <button
                 key={btn.path}
                 onClick={() => navigate(btn.path)}
-                className="flex flex-col items-center gap-1.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 transition-all active:scale-95"
+                className="flex flex-col items-center gap-1 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 transition-all active:scale-95"
               >
-                <btn.icon className="h-4 w-4 stroke-[1.5]" />
+                <btn.icon className="h-3.5 w-3.5 stroke-[1.5]" />
                 <span className="text-[10px] font-semibold leading-none text-center">{btn.label}</span>
               </button>
             ))}
           </div>
 
           {/* Order Baru CTA */}
-          <div className="px-3 pb-3.5">
+          <div className="px-3 pb-3">
             <button
               onClick={() => navigate("/orders")}
-              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl text-[12px] font-bold bg-slate-900 text-white hover:bg-slate-700 transition-all active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2 h-9 rounded-xl text-[12px] font-bold bg-slate-900 text-white hover:bg-slate-700 transition-all active:scale-[0.98]"
             >
               <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
               Order Baru
@@ -262,7 +262,7 @@ export default function AgentDashboard() {
       </motion.div>
 
       {/* ── Stats Grid ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
         {([
           {
             icon: Trophy,

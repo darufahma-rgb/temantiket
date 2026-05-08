@@ -78,6 +78,8 @@ export function AgentCard({ displayName, agentId, since, className }: AgentCardP
   return (
     <div className={cn("flex flex-col items-center gap-3", className)}>
       {/* ── Card ─────────────────────────────────────────────────────── */}
+      {/* scale-down on mobile so card fits small screens without clipping */}
+      <div className="scale-[0.84] md:scale-100 origin-top -mb-[67px] md:mb-0">
       <div
         ref={cardRef}
         style={{
@@ -169,6 +171,7 @@ export function AgentCard({ displayName, agentId, since, className }: AgentCardP
           </div>
         </div>
       </div>
+      </div>{/* end mobile scale wrapper */}
 
       {/* ── Download button ──────────────────────────────────────────── */}
       <button

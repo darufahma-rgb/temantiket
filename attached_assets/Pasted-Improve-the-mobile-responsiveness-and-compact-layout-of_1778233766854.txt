@@ -1,0 +1,115 @@
+Improve the mobile responsiveness and compact layout of the Agent Dashboard and Agent Card.
+
+Current problems on mobile:
+
+1. The agent name inside the Agent Card is too large and dominates the card.
+2. The card layout feels oversized on smaller screens.
+3. The mobile dashboard spacing is too loose and wastes vertical space.
+4. Buttons and dashboard widgets are too tall.
+5. The mobile dashboard feels zoomed-in instead of compact and premium.
+
+Goal:
+Make the Agent Dashboard and Agent Card feel more compact, balanced, and polished on mobile devices while keeping the same visual identity.
+
+1. Agent Card — Mobile Improvements
+   Reduce the size of the agent name text on mobile only.
+
+Current issue:
+The agent name takes too much space and breaks the card balance.
+
+Required changes:
+
+* Decrease font size of the agent name on screens below mobile breakpoint.
+* Keep desktop size unchanged.
+* Improve line-height and spacing for long names.
+* Prevent the name from visually overpowering the card.
+* Maintain readability and premium appearance.
+
+Mobile card adjustments:
+
+* Slightly reduce overall card height on mobile.
+* Reduce vertical padding.
+* Reduce oversized empty spaces.
+* Keep logo and ID placement unchanged.
+* Keep the visual hierarchy elegant.
+
+2. Dashboard Mobile Layout Improvements
+   Make the mobile dashboard more compact and efficient.
+
+Adjust:
+
+* Reduce section padding.
+* Reduce excessive vertical margins between widgets.
+* Make cards slightly shorter.
+* Tighten spacing between action buttons.
+* Reduce unnecessary whitespace.
+* Improve mobile content density while keeping readability.
+
+3. Quick Action Buttons
+   Buttons like:
+
+* Profil Saya
+* Marketing Kit
+* Leaderboard
+* Order Baru
+
+should:
+
+* become slightly shorter in height
+* use tighter spacing
+* keep touch-friendly size
+* align better in compact mobile layout
+
+4. Stats & Widgets
+   Compact the dashboard widgets:
+
+* reduce card padding
+* reduce header spacing
+* reduce oversized typography
+* maintain readability
+
+5. Agent Card Section
+   The “Kartu Agen Digital” section should:
+
+* fit better on mobile
+* avoid excessive empty spacing
+* scale proportionally
+* maintain centered alignment
+* keep Download button visible without excessive vertical gap
+
+6. Top Mobile Header
+   Improve compactness of:
+
+* logo
+* currency display
+* search button
+* status indicators
+
+Reduce overall height slightly while preserving usability.
+
+7. Bottom Navigation
+   Improve mobile bottom nav spacing:
+
+* slightly smaller vertical padding
+* better icon/text alignment
+* more compact overall height
+* preserve touch targets
+
+8. Responsive Rules
+   Desktop version should remain visually unchanged.
+   Apply these improvements mainly to:
+
+* small tablets
+* mobile devices
+* narrow screens
+
+9. Important
+
+* Do NOT redesign the entire dashboard.
+* Keep the existing blue/white Temantiket visual identity.
+* Keep all functionality unchanged.
+* Only improve sizing, spacing, typography scaling, and mobile responsiveness.
+* Preserve premium SaaS/mobile-app feel.
+
+Expected result:
+The Agent Dashboard and Agent Card should feel cleaner, more compact, more premium, and better balanced on mobile devices — especially the Agent Card typography and dashboard spacing.

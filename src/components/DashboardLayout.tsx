@@ -99,10 +99,10 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
           <header
             className="md:hidden fixed z-50 flex items-center gap-2.5 px-3"
             style={{
-              top: "12px",
-              left: "12px",
-              right: "12px",
-              height: "54px",
+              top: "10px",
+              left: "10px",
+              right: "10px",
+              height: "48px",
               borderRadius: "20px",
               background: "color-mix(in srgb, hsl(var(--card)) 92%, transparent)",
               backdropFilter: "blur(32px) saturate(2.2)",
@@ -118,7 +118,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
               <div
-                className="h-9 w-9 rounded-[14px] flex items-center justify-center"
+                className="h-8 w-8 rounded-[12px] flex items-center justify-center"
                 style={{
                   background: "linear-gradient(140deg, #2563eb 0%, #1a44d4 55%, #0a2472 100%)",
                   boxShadow: "0 3px 10px rgba(26,68,212,0.38), inset 0 1px 0 rgba(255,255,255,0.22)",
@@ -137,7 +137,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
             <button
               onClick={() => refreshRates()}
               title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")}` : "Tap untuk perbarui"}
-              className="flex-1 flex items-center justify-center gap-2 h-9 rounded-[14px] active:opacity-70 transition-all active:scale-[0.97] min-w-0"
+              className="flex-1 flex items-center justify-center gap-2 h-8 rounded-[12px] active:opacity-70 transition-all active:scale-[0.97] min-w-0"
               style={{
                 background: "color-mix(in srgb, rgba(26,68,212,0.07) 100%, transparent)",
                 border: "1px solid rgba(26,68,212,0.12)",
@@ -185,7 +185,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               {/* Search */}
               <button
                 onClick={() => setSearchOpen(true)}
-                className="h-9 w-9 flex items-center justify-center rounded-[14px] active:scale-90 transition-transform"
+                className="h-8 w-8 flex items-center justify-center rounded-[12px] active:scale-90 transition-transform"
                 style={{
                   background: "hsl(var(--secondary))",
                   border: "1px solid hsl(var(--border))",
@@ -198,7 +198,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               {/* User avatar with sync status dot */}
               <button
                 onClick={() => navigate("/settings")}
-                className="relative h-9 w-9 shrink-0 active:scale-90 transition-transform"
+                className="relative h-8 w-8 shrink-0 active:scale-90 transition-transform"
                 title={syncTitle}
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
@@ -299,8 +299,8 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 key={location.pathname}
                 className={`absolute inset-0 overflow-auto ${
                   noPadding
-                    ? "pt-[74px] pb-[88px] md:pt-0 md:pb-0"
-                    : "px-4 pt-[74px] pb-[88px] md:pl-10 md:pr-8 md:py-7"
+                    ? "pt-[64px] pb-[76px] md:pt-0 md:pb-0"
+                    : "px-4 pt-[64px] pb-[76px] md:pl-10 md:pr-8 md:py-7"
                 }`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -320,11 +320,11 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
       <nav
         className="md:hidden fixed z-50 flex items-center"
         style={{
-          bottom: "12px",
-          left: "12px",
-          right: "12px",
-          height: "60px",
-          borderRadius: "18px",
+          bottom: "10px",
+          left: "10px",
+          right: "10px",
+          height: "54px",
+          borderRadius: "16px",
           background: "color-mix(in srgb, hsl(var(--card)) 92%, transparent)",
           backdropFilter: "blur(24px) saturate(2)",
           WebkitBackdropFilter: "blur(24px) saturate(2)",
