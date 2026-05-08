@@ -55,6 +55,7 @@ import DemoSeed from "./pages/DemoSeed";
 import TicketPrices from "./pages/TicketPrices";
 import PublicTicketPrices from "./pages/PublicTicketPrices";
 import StaffVisaDashboard from "./pages/StaffVisaDashboard";
+import OwnerVisaTrackerPage from "./pages/OwnerVisaTrackerPage";
 import StaffProfileOwnerView from "./pages/StaffProfileOwnerView";
 
 const queryClient = new QueryClient({
@@ -315,6 +316,7 @@ function AnimatedRoutes() {
         <Route path="/itinerary" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><ItineraryGenerator /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/demo-seed" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><DemoSeed /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/ticket-prices" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><TicketPrices /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/visa-tracker" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><OwnerVisaTrackerPage /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/staff/visa" element={<RequireAuth><DashboardLayout><StaffVisaDashboard /></DashboardLayout></RequireAuth>} />
         <Route
           path="/staff/:staffId"

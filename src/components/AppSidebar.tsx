@@ -60,7 +60,7 @@ const OWNER_SECTIONS: SectionDef[] = [
     key: "operasional",
     label: "Operasional",
     items: [
-      { title: "Visa Tracker",   url: "/staff/visa",     icon: Landmark },
+      { title: "Visa Tracker",   url: "/visa-tracker",   icon: Landmark },
       { title: "Harga Tiket",    url: "/ticket-prices",  icon: Ticket },
       { title: "Kalkulator",     url: "/calculator",     icon: Calculator },
       { title: "Itinerary AI",   url: "/itinerary",      icon: Sparkles },
