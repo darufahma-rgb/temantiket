@@ -58,7 +58,7 @@ export default function StaffCommissionPage() {
           Fee Pelaksana Visa
         </h1>
         <p className="text-[11px] md:text-[12.5px] text-slate-400 mt-1">
-          Dihitung sejak berkas ditugaskan oleh owner.
+          Fee langsung dihitung setelah berkas didelegasikan.
         </p>
       </motion.div>
 
@@ -216,7 +216,7 @@ export default function StaffCommissionPage() {
         </div>
         <p>
           <strong className="text-slate-700">Tentang Fee Pelaksana Visa:</strong>{" "}
-          Fee dihitung sejak berkas ditugaskan owner ke kamu. Status{" "}
+          Fee langsung dihitung setelah berkas didelegasikan ke kamu. Status{" "}
           <strong className="text-amber-600">Menunggu Kredit</strong> artinya fee sudah terhitung
           tapi belum dikreditkan ke wallet — owner akan mengkreditkannya setelah berkas selesai.
           Label resmi: <strong className="text-blue-700">Fee Pelaksana Visa</strong>.
