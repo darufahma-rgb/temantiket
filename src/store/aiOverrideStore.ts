@@ -14,7 +14,7 @@ export type AIFeatureKey = "caption" | "notes";
 /** Dua tier model yang tersedia untuk di-toggle user. */
 export const AI_TIERS = {
   /** Default: cepat & hemat — Gemini Flash via OpenRouter. */
-  FAST: "google/gemini-2.0-flash-001",
+  FAST: "google/gemini-2.0-flash",
   /** Pro: kualitas tinggi — Claude Sonnet 4 via OpenRouter. */
   PRO:  "anthropic/claude-sonnet-4",
 } as const;
@@ -87,6 +87,6 @@ export const useAIOverrideStore = create<AIOverrideState>()(
       isPro: (feature) =>
         get().overrides[feature] === AI_TIERS.PRO,
     }),
-    { name: "ai-override-v1" },
+    { name: "ai-override-v2" },
   ),
 );

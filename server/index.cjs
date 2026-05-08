@@ -21,9 +21,10 @@ const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 // Model constants (OpenRouter format: "provider/model")
-const MODEL_OCR  = 'google/gemini-2.0-flash-001';   // vision — baca gambar paspor & poster
+const MODEL_OCR  = 'google/gemini-2.0-flash';        // vision — baca gambar paspor & poster
+const MODEL_OCR_FALLBACK = 'google/gemini-1.5-flash'; // fallback jika primary gagal
 const MODEL_CHAT = 'openai/gpt-4.1';                 // Caption Generator
-const MODEL_TEXT = 'google/gemini-2.0-flash-001';    // teks ringan / rapikan
+const MODEL_TEXT = 'google/gemini-2.0-flash';        // teks ringan / rapikan
 
 // Header standar OpenRouter
 function openrouterHeaders() {

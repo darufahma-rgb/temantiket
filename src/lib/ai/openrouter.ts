@@ -30,8 +30,9 @@ export interface TokenUsage {
  * Source: OpenRouter model cards (as of May 2025). Input / Output in USD/M.
  */
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  "google/gemini-2.0-flash":                { input: 0.10,  output: 0.40  },
   "google/gemini-2.0-flash-001":            { input: 0.10,  output: 0.40  },
-  "google/gemini-2.5-flash-preview":        { input: 0.15,  output: 0.60  },
+  "google/gemini-1.5-flash":                { input: 0.075, output: 0.30  },
   "google/gemini-2.5-pro":                  { input: 1.25,  output: 10.00 },
   "anthropic/claude-sonnet-4":              { input: 3.00,  output: 15.00 },
   "anthropic/claude-3-5-sonnet-20241022":   { input: 3.00,  output: 15.00 },
@@ -48,20 +49,23 @@ function estimateCost(model: string, promptTokens: number, completionTokens: num
 
 export const OR_MODELS = {
   /** Vision + OCR: poster, paspor, tiket screenshot. Gemini 2.0 Flash — stabil, murah, vision. */
-  VISION:          "google/gemini-2.0-flash-001",
+  VISION:          "google/gemini-2.0-flash",
   /** Caption marketing — manual maupun dari poster. */
-  CAPTION:         "google/gemini-2.0-flash-001",
+  CAPTION:         "google/gemini-2.0-flash",
   /** Caption writer setelah OCR poster — pakai Gemini 2.0 Flash yang sudah terbukti stabil. */
-  CAPTION_WRITER:  "google/gemini-2.0-flash-001",
+  CAPTION_WRITER:  "google/gemini-2.0-flash",
   /** Rapikan catatan, formatting teks ringan. */
-  TEXT_FAST:       "google/gemini-2.0-flash-001",
+  TEXT_FAST:       "google/gemini-2.0-flash",
   /** Rapikan catatan dengan Claude — kualitas terbaik untuk formatting Markdown. */
   NOTES_WRITER:    "anthropic/claude-3-5-sonnet-20241022",
   /** Structured JSON output: itinerary, data terstruktur. */
-  STRUCTURED:      "google/gemini-2.0-flash-001",
+  STRUCTURED:      "google/gemini-2.0-flash",
   /** Reasoning kompleks — hanya pakai kalau butuh kualitas tinggi. */
   REASONING:       "anthropic/claude-3-5-sonnet-20241022",
 } as const;
+
+/** Fallback model jika primary Gemini model gagal (misal: model ID tidak valid). */
+const GEMINI_FALLBACK = "google/gemini-1.5-flash";
 
 export type ORModel = (typeof OR_MODELS)[keyof typeof OR_MODELS];
 
@@ -117,6 +121,16 @@ interface OpenRouterFullResult {
   usage: TokenUsage | null;
 }
 
+/** Returns true if the error message indicates an invalid/unknown model ID. */
+function isInvalidModelError(msg: string): boolean {
+  return (
+    msg.includes("is not a valid model") ||
+    msg.includes("model_not_found") ||
+    msg.includes("No endpoints found") ||
+    msg.includes("invalid model")
+  );
+}
+
 async function callAIOpenRouterFull(opts: CallAIOpenRouterOptions): Promise<OpenRouterFullResult> {
   const {
     prompt,
@@ -144,50 +158,75 @@ async function callAIOpenRouterFull(opts: CallAIOpenRouterOptions): Promise<Open
     messages.push({ role: "user", content: prompt });
   }
 
-  console.log(`[callAIOpenRouter] model="${model}" imageBase64=${!!imageBase64}`);
-
-  const body: Record<string, unknown> = {
-    model,
-    messages,
-    temperature,
-    max_tokens: maxTokens,
-  };
-  if (jsonMode) body.response_format = { type: "json_object" };
-
-  try {
-    const res = await callAI(body, fetchOptions);
-    const data = await res.json() as {
-      model?: string;
-      choices?: { message?: { content?: string } }[];
-      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
-      error?: unknown;
-    };
-
-    if (data.error) throw new Error(extractErrorMessage(data.error));
-
-    const content = data.choices?.[0]?.message?.content?.trim() ?? "";
-    if (!content) throw new Error("AI tidak mengembalikan konten — coba lagi");
-
-    // Parse usage if available
-    let usage: TokenUsage | null = null;
-    if (data.usage) {
-      const promptTokens     = data.usage.prompt_tokens     ?? 0;
-      const completionTokens = data.usage.completion_tokens ?? 0;
-      const totalTokens      = data.usage.total_tokens      ?? promptTokens + completionTokens;
-      const resolvedModel    = data.model ?? model;
-      usage = {
-        promptTokens,
-        completionTokens,
-        totalTokens,
-        estimatedCostUsd: estimateCost(resolvedModel, promptTokens, completionTokens),
-        resolvedModel,
-      };
-    }
-
-    return { content, usage };
-  } catch (error: unknown) {
-    throw new Error(extractErrorMessage(error));
+  const modelsToTry: string[] = [model];
+  // If primary is a Gemini model, automatically queue the fallback
+  if (model !== GEMINI_FALLBACK && model.includes("gemini")) {
+    modelsToTry.push(GEMINI_FALLBACK);
   }
+
+  let lastError = "";
+  for (const tryModel of modelsToTry) {
+    console.log(`[callAIOpenRouter] model="${tryModel}" imageBase64=${!!imageBase64}`);
+
+    const body: Record<string, unknown> = {
+      model: tryModel,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+    };
+    if (jsonMode) body.response_format = { type: "json_object" };
+
+    try {
+      const res = await callAI(body, fetchOptions);
+      const data = await res.json() as {
+        model?: string;
+        choices?: { message?: { content?: string } }[];
+        usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+        error?: unknown;
+      };
+
+      if (data.error) {
+        const errMsg = extractErrorMessage(data.error);
+        if (isInvalidModelError(errMsg) && modelsToTry.indexOf(tryModel) < modelsToTry.length - 1) {
+          console.warn(`[callAIOpenRouter] model "${tryModel}" tidak valid, mencoba fallback...`);
+          lastError = errMsg;
+          continue;
+        }
+        throw new Error(errMsg);
+      }
+
+      const content = data.choices?.[0]?.message?.content?.trim() ?? "";
+      if (!content) throw new Error("AI tidak mengembalikan konten — coba lagi");
+
+      // Parse usage if available
+      let usage: TokenUsage | null = null;
+      if (data.usage) {
+        const promptTokens     = data.usage.prompt_tokens     ?? 0;
+        const completionTokens = data.usage.completion_tokens ?? 0;
+        const totalTokens      = data.usage.total_tokens      ?? promptTokens + completionTokens;
+        const resolvedModel    = data.model ?? tryModel;
+        usage = {
+          promptTokens,
+          completionTokens,
+          totalTokens,
+          estimatedCostUsd: estimateCost(resolvedModel, promptTokens, completionTokens),
+          resolvedModel,
+        };
+      }
+
+      return { content, usage };
+    } catch (error: unknown) {
+      const errMsg = extractErrorMessage(error);
+      if (isInvalidModelError(errMsg) && modelsToTry.indexOf(tryModel) < modelsToTry.length - 1) {
+        console.warn(`[callAIOpenRouter] model "${tryModel}" tidak valid, mencoba fallback...`);
+        lastError = errMsg;
+        continue;
+      }
+      throw new Error(errMsg);
+    }
+  }
+
+  throw new Error(lastError || "Semua model AI gagal — coba lagi beberapa saat");
 }
 
 export async function callAIOpenRouter(opts: CallAIOpenRouterOptions): Promise<string> {
