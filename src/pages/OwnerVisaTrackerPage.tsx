@@ -356,7 +356,10 @@ export default function OwnerVisaTrackerPage() {
             const feeCredited  = !!(m.pelaksanaFeeCredited as boolean | null);
             const client       = clientMap.get(order.clientId ?? "");
             const pelaksana    = pelaksanaId ? memberMap.get(pelaksanaId) : null;
-            const agenPenjual  = order.createdByAgent as string | null;
+            const agenId       = order.createdByAgent as string | null;
+            const agenPenjual  = agenId
+              ? (memberMap.get(agenId)?.displayName ?? `#${agenId.slice(0, 8)}`)
+              : null;
 
             return (
               <motion.div

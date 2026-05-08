@@ -209,7 +209,8 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
             <p className="text-[10px] font-bold uppercase tracking-wide text-sky-700">Agen Penjual</p>
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <p className="text-[12px] font-semibold text-sky-900">
-                {order.createdByAgent}
+                {allMembers.find((m) => m.userId === order.createdByAgent)?.displayName
+                  ?? `#${(order.createdByAgent as string).slice(0, 8)}`}
               </p>
               <span className="text-[11px] font-mono font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">
                 Fee Agen: {fmtIDR(Number((meta.agentFee as number | null) ?? 0))}
