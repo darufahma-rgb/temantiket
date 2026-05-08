@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback } from "react";
 import {
   Wand2, Copy, CheckCheck, Loader2, RefreshCw, FileText,
-  Plane, BookOpen, Megaphone, Moon, Sparkles, AlignLeft,
+  Plane, Megaphone, Moon, Sparkles, AlignLeft,
   ImagePlus, X, ScanText, PenLine, MessageCircle, Zap, ArrowRight,
+  GraduationCap, Globe, Smartphone, Users, Heart,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -16,11 +17,69 @@ type Mode = "manual" | "poster";
 
 /* ─── Kategori ─────────────────────────────────────────── */
 const CATEGORIES = [
-  { key: "umrah",   label: "Promo Umrah",   Icon: Moon,       prompt: "paket umrah hemat" },
-  { key: "haji",    label: "Paket Haji",    Icon: Sparkles,   prompt: "paket haji plus / furoda" },
-  { key: "flight",  label: "Tiket Pesawat", Icon: Plane,      prompt: "tiket pesawat murah" },
-  { key: "visa",    label: "Layanan Visa",  Icon: BookOpen,   prompt: "layanan visa cepat" },
-  { key: "general", label: "Promo Umum",    Icon: Megaphone,  prompt: "layanan travel umrah & haji" },
+  {
+    key: "umrah",
+    label: "Paket Umrah",
+    Icon: Moon,
+    prompt: "paket umrah",
+    context: "Tulis untuk calon jamaah umrah Indonesia. Fokus pada paket keberangkatan grup, detail hotel, penawaran harga, highlight itinerari, dan pengalaman jamaah. Bahasa hangat, kekeluargaan, dan menyentuh kerinduan Baitullah.",
+  },
+  {
+    key: "visa-student",
+    label: "Visa Student Mesir",
+    Icon: GraduationCap,
+    prompt: "visa pelajar Mesir / Masisir",
+    context: "Tulis untuk mahasiswa Indonesia di Mesir (komunitas Masisir). Fokus pada proses visa pelajar, berkas, legalisir, izin tinggal, kampus Al-Azhar, dan administrasi keperluan studi. Bahasa jelas, informatif, dan terpercaya.",
+  },
+  {
+    key: "voa-mesir",
+    label: "Visa on Arrival Mesir",
+    Icon: Globe,
+    prompt: "Visa on Arrival Mesir",
+    context: "Tulis untuk wisatawan atau traveler yang ingin masuk Mesir via VOA. Fokus pada syarat, harga, proses kedatangan, dan info praktis tourist visa. Bahasa praktis, informatif, dan reassuring.",
+  },
+  {
+    key: "tiket-masisir",
+    label: "Tiket Pesawat Masisir",
+    Icon: Plane,
+    prompt: "tiket pesawat Indonesia–Mesir untuk Masisir",
+    context: "Tulis untuk mahasiswa Masisir atau calon mahasiswa yang butuh tiket Indonesia–Mesir (atau sebaliknya). Fokus pada rute, bagasi, transit, promo maskapai, dan kebutuhan perjalanan mahasiswa. Bahasa akrab dan informatif.",
+  },
+  {
+    key: "imei-kepulangan",
+    label: "Jasa IMEI & Kepulangan",
+    Icon: Smartphone,
+    prompt: "jasa IMEI dan kepulangan dari Mesir",
+    context: "Tulis untuk mahasiswa atau WNI yang sedang atau akan pulang ke Indonesia dari Mesir. Fokus pada registrasi IMEI, bantu kepulangan, airport assistance, kargo/bagasi, dan layanan pendampingan. Bahasa praktis, membantu, dan solutif.",
+  },
+  {
+    key: "follow-up-agen",
+    label: "Follow Up Agen",
+    Icon: Users,
+    prompt: "follow-up dan motivasi agen",
+    context: "Tulis pesan khusus untuk agen atau mitra Temantiket. Fokus pada follow-up prospek, reminder harian, sales script, closing prompt, broadcast motivasi, dan instruksi operasional. Bahasa semangat, praktis, dan action-oriented. Hindari gaya caption publik — ini untuk konsumsi internal agen.",
+  },
+  {
+    key: "broadcast-info",
+    label: "Broadcast Informasi",
+    Icon: Megaphone,
+    prompt: "broadcast informasi publik",
+    context: "Tulis sebagai pengumuman informasi penting. Fokus pada regulasi terbaru, info KBRI, kampus, legalisir, imigrasi, atau update layanan publik. Prioritaskan kejelasan, struktur yang rapi, dan kemudahan pemahaman. Hindari bahasa marketing berlebihan.",
+  },
+  {
+    key: "testimoni",
+    label: "Testimoni & Storytelling",
+    Icon: Heart,
+    prompt: "testimoni dan storytelling pelanggan",
+    context: "Tulis berdasarkan pengalaman nyata pelanggan. Fokus pada cerita perjalanan, transformasi emosional, before-after, trust building, dan authenticity. Bahasa hangat, personal, dan menyentuh. Hindari hiperbola — keaslian cerita adalah kekuatannya.",
+  },
+  {
+    key: "hard-selling",
+    label: "Hard Selling Promo",
+    Icon: Zap,
+    prompt: "hard selling dan promosi urgensi tinggi",
+    context: "Tulis caption dengan urgensi tinggi dan CTA kuat. Fokus pada scarcity (kuota/seat terbatas), deadline harga, penawaran terbatas waktu, dan konversi cepat. Gunakan loss aversion dan FOMO yang nyata (berbasis fakta). CTA muncul minimal dua kali — di tengah dan di akhir.",
+  },
 ];
 
 /* ─── Tone ──────────────────────────────────────────────── */
@@ -198,6 +257,7 @@ export function CaptionGenerator() {
       } else {
         const { caption, usage } = await generateCaptionFromDetail({
           categoryPrompt: cat.prompt,
+          categoryContext: cat.context,
           tone: activeTone,
           packageDetail,
           waNumber,
@@ -278,7 +338,7 @@ export function CaptionGenerator() {
           >
             {/* Kategori */}
             <Section label="Kategori" icon={Wand2}>
-              <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+              <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map(({ key, label, Icon }) => {
                   const isActive = key === activeCategory;
                   return (
@@ -286,16 +346,14 @@ export function CaptionGenerator() {
                       key={key}
                       onClick={() => setActiveCategory(key)}
                       className={cn(
-                        "flex flex-col items-center gap-2 rounded-xl border py-3.5 px-2 transition-all text-center",
+                        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-all",
                         isActive
                           ? "border-[#1a44d4] bg-[#1a44d4] text-white shadow-sm"
                           : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40 hover:bg-blue-50/40",
                       )}
                     >
-                      <Icon className={cn("h-5 w-5", isActive ? "text-white" : "text-muted-foreground")} strokeWidth={1.5} />
-                      <span className={cn("text-[11px] font-medium leading-tight", isActive ? "text-white" : "text-foreground")}>
-                        {label}
-                      </span>
+                      <Icon className={cn("h-3.5 w-3.5 shrink-0", isActive ? "text-white" : "text-muted-foreground")} strokeWidth={1.5} />
+                      {label}
                     </button>
                   );
                 })}

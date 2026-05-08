@@ -254,17 +254,19 @@ export interface CaptionResult {
 const CAPTION_SYSTEM_PROMPT = `Kamu adalah copywriter legendaris kelas dunia — gabungan keahlian David Ogilvy, Gary Halbert, dan Joseph Sugarman — yang sepenuhnya berdedikasi untuk Temantiket.
 
 ━━━ IDENTITAS BRAND ━━━
-Temantiket adalah travel Umrah & Haji Indonesia yang ramah, hangat, kekeluargaan, dan amanah.
+Temantiket adalah travel agency Indonesia spesialis layanan perjalanan ke Timur Tengah & Mesir:
+- Paket Umrah & Haji (grup dan individu)
+- Visa Pelajar Mesir & Visa on Arrival Mesir untuk komunitas Masisir
+- Tiket pesawat Indonesia–Mesir untuk mahasiswa (Masisir) dan wisatawan
+- Jasa IMEI & pendampingan kepulangan dari Mesir ke Indonesia
 Brand name selalu: "Temantiket" (bukan TemanTiket, bukan Teman Tiket, tanpa spasi).
 Tagline: "mudah, cepat, amanah"
 
 ━━━ PSIKOLOGI TARGET PEMBACA ━━━
-Kamu menulis untuk calon jamaah Indonesia yang:
-- Memendam impian Umrah/Haji bertahun-tahun — ini bukan sekadar liburan, ini ibadah seumur hidup
-- Cemas soal biaya, keamanan, dan memilih agen yang tepat (takut ditipu)
-- Termotivasi oleh: rasa rindu Baitullah, tanggung jawab kepada orang tua, impian keluarga berangkat bersama
-- Merespons kuat terhadap: kisah nyata, bukti sosial, detail spesifik, dan rasa kekeluargaan
-- Alergi terhadap: janji berlebihan, kata "GRATIS!", tekanan terlalu kuat, terlalu formal/kaku
+Temantiket melayani dua segmen utama:
+1. Calon jamaah Umrah/Haji — memendam impian ibadah, cemas soal biaya & keamanan, termotivasi rindu Baitullah dan tanggung jawab keluarga
+2. Komunitas Masisir (mahasiswa Indonesia di Mesir) — butuh kepastian visa, tiket terjangkau, dan layanan administratif yang cepat dan amanah
+Kedua segmen alergi terhadap: janji berlebihan, kata "GRATIS!", tekanan berlebihan, info yang tidak jelas
 
 ━━━ PRINSIP COPYWRITING KELAS DUNIA ━━━
 1. SPESIFIK MENGALAHKAN UMUM — "Hotel 200m dari Masjidil Haram" jauh lebih kuat dari "hotel dekat masjid"
@@ -417,14 +419,18 @@ Teknik wajib:
  */
 export async function generateCaptionFromDetail(params: {
   categoryPrompt: string;
+  categoryContext?: string;
   tone: string;
   packageDetail?: string;
   waNumber?: string;
-}): Promise<string> {
-  const { categoryPrompt, tone, packageDetail, waNumber } = params;
+}): Promise<CaptionResult> {
+  const { categoryPrompt, categoryContext, tone, packageDetail, waNumber } = params;
   const toneInstruction = TONE_INSTRUCTIONS[tone] ?? tone;
+  const contextSection = categoryContext?.trim()
+    ? `\n\nKonteks kategori:\n${categoryContext.trim()}`
+    : "";
   const detailSection = packageDetail?.trim()
-    ? `\n\nDetail paket:\n${packageDetail.trim()}`
+    ? `\n\nDetail paket/produk:\n${packageDetail.trim()}`
     : "";
   const waSection = waNumber?.trim()
     ? `\n\nNomor WA untuk CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}`
@@ -434,7 +440,7 @@ export async function generateCaptionFromDetail(params: {
   const { content, usage } = await callAIOpenRouterFull({
     model,
     systemPrompt: CAPTION_SYSTEM_PROMPT,
-    prompt: `Buat 1 caption marketing untuk ${categoryPrompt}.\nTone yang diminta: ${toneInstruction}.${detailSection}${waSection}`,
+    prompt: `Buat 1 caption marketing untuk ${categoryPrompt}.${contextSection}\nTone yang diminta: ${toneInstruction}.${detailSection}${waSection}`,
     temperature: 0.85,
     maxTokens: 1500,
   });
