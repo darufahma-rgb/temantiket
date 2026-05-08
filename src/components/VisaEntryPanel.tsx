@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Users, CheckCircle2, AlertTriangle, ChevronRight,
+  Users, CheckCircle2, AlertTriangle, ChevronRight, ChevronLeft,
   Loader2, MessageSquare, Wallet, UserCheck, X,
   BadgeDollarSign, Edit2,
 } from "lucide-react";
@@ -134,6 +134,23 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
       toast.error("Gagal update progress.");
     } finally {
       setAdvancing(false);
+    }
+  }
+
+  const [goingBack, setGoingBack] = useState(false);
+  async function handleGoBack() {
+    const prevStep = currentStep - 1;
+    if (prevStep < 0) return;
+    setGoingBack(true);
+    try {
+      const newMeta = { ...meta, processStep: prevStep };
+      await patchOrder(order.id, { metadata: newMeta });
+      onMetaChange(newMeta);
+      toast.success(`Kembali ke: ${VISA_STEPS[prevStep]?.label}`);
+    } catch {
+      toast.error("Gagal mundur fase.");
+    } finally {
+      setGoingBack(false);
     }
   }
 
@@ -366,20 +383,37 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
               }
             </div>
 
-            {canAdvance && (
-              <Button
-                size="sm"
-                className="w-full h-9 text-[12px] bg-indigo-600 hover:bg-indigo-700 text-white"
-                disabled={advancing}
-                onClick={() => void handleAdvance()}
-              >
-                {advancing
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                  : <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
-                }
-                Lanjut ke: {VISA_STEPS[currentStep + 1]?.label}
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {(isOwner || isPelaksana) && currentStep > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-9 text-[12px] text-slate-600 border-slate-300 hover:bg-slate-50 shrink-0"
+                  disabled={goingBack}
+                  onClick={() => void handleGoBack()}
+                  title={`Kembali ke: ${VISA_STEPS[currentStep - 1]?.label}`}
+                >
+                  {goingBack
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <ChevronLeft className="h-3.5 w-3.5" />
+                  }
+                </Button>
+              )}
+              {canAdvance && (
+                <Button
+                  size="sm"
+                  className="flex-1 h-9 text-[12px] bg-indigo-600 hover:bg-indigo-700 text-white"
+                  disabled={advancing}
+                  onClick={() => void handleAdvance()}
+                >
+                  {advancing
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                    : <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
+                  }
+                  Lanjut ke: {VISA_STEPS[currentStep + 1]?.label}
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
