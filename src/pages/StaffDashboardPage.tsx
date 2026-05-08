@@ -45,11 +45,11 @@ export default function StaffDashboardPage() {
     .slice(0, 3);
 
   const quickActions = [
-    { icon: ClipboardList, label: "Visa Saya",    path: "/staff/visa",       color: "bg-blue-50 text-blue-600 border-blue-200" },
-    { icon: Wallet,        label: "Komisi Saya",  path: "/staff/commission", color: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-    { icon: Calculator,    label: "Kalkulator",   path: "/calculator",       color: "bg-sky-50 text-sky-600 border-sky-200" },
-    { icon: UserCircle,    label: "Profil Staff", path: "/staff/profile",    color: "bg-violet-50 text-violet-600 border-violet-200" },
-    { icon: Settings,      label: "Pengaturan",   path: "/settings",         color: "bg-slate-50 text-slate-600 border-slate-200" },
+    { icon: ClipboardList, label: "Visa Saya",    path: "/staff/visa",       color: "bg-white text-blue-600 border-blue-300" },
+    { icon: Wallet,        label: "Komisi Saya",  path: "/staff/commission", color: "bg-white text-blue-600 border-blue-300" },
+    { icon: Calculator,    label: "Kalkulator",   path: "/calculator",       color: "bg-white text-blue-600 border-blue-300" },
+    { icon: UserCircle,    label: "Profil Staff", path: "/staff/profile",    color: "bg-white text-blue-600 border-blue-300" },
+    { icon: Settings,      label: "Pengaturan",   path: "/settings",         color: "bg-white text-blue-600 border-blue-300" },
   ];
 
   return (
