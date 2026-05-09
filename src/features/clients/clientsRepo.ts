@@ -30,6 +30,9 @@ export interface Client {
   /** UID agent yg input client ini (null/undef = ditambahkan oleh owner/staff).
    *  Auto-injected client-side oleh createClient() kalau user role 'agent'. */
   createdByAgent?: string | null;
+  /** ID klien lain yg mereferensikan klien ini.
+   *  Saat order klien ini sukses, referrer dapat +1 referral_stamp otomatis via trigger DB. */
+  referredByClientId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -66,6 +69,7 @@ const fromRow = (r: Record<string, unknown>): Client => ({
   notes: (r.notes as string) ?? undefined,
   legacyJamaahId: (r.legacy_jamaah_id as string) ?? undefined,
   createdByAgent: (r.created_by_agent as string) ?? null,
+  referredByClientId: (r.referred_by_client_id as string) ?? null,
   createdAt: String(r.created_at ?? new Date().toISOString()),
   updatedAt: String(r.updated_at ?? r.created_at ?? new Date().toISOString()),
 });
@@ -104,6 +108,7 @@ const toRow = (c: Partial<Client>, agencyId?: string) => ({
   ...(c.notes !== undefined ? { notes: c.notes || null } : {}),
   ...(c.legacyJamaahId !== undefined ? { legacy_jamaah_id: c.legacyJamaahId || null } : {}),
   ...(c.createdByAgent !== undefined ? { created_by_agent: c.createdByAgent } : {}),
+  ...(c.referredByClientId !== undefined ? { referred_by_client_id: c.referredByClientId ?? null } : {}),
   ...(agencyId ? { agency_id: agencyId } : {}),
 });
 
@@ -134,7 +139,7 @@ export async function listClients(): Promise<Client[]> {
       const { data, error } = await withTimeout(
         supabase!
           .from("clients")
-          .select("id,name,phone,email,birth_date,birth_place,passport_number,passport_expiry,passport_issue_date,passport_issuing_office,gender,notes,legacy_jamaah_id,created_by_agent,created_at,updated_at")
+          .select("id,name,phone,email,birth_date,birth_place,passport_number,passport_expiry,passport_issue_date,passport_issuing_office,gender,notes,legacy_jamaah_id,created_by_agent,referred_by_client_id,created_at,updated_at")
           .order("created_at", { ascending: false }),
         10000,
       );

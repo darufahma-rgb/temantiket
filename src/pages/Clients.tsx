@@ -49,13 +49,15 @@ interface ClientFormData {
   notes: string;
   /** user_id dari agen/owner yang closing/mereferensikan klien ini. "" = belum dipilih. */
   referredBy: string;
+  /** client_id dari klien lain yang mengajak klien ini (referral antar klien). "" = belum dipilih. */
+  referredByClientId: string;
 }
 
 const emptyForm: ClientFormData = {
   name: "", phone: "", email: "",
   passportNumber: "", birthDate: "", birthPlace: "",
   passportExpiry: "", passportIssueDate: "", passportIssuingOffice: "",
-  gender: "", notes: "", referredBy: "",
+  gender: "", notes: "", referredBy: "", referredByClientId: "",
 };
 
 function clientToForm(c: Client): ClientFormData {
@@ -72,6 +74,7 @@ function clientToForm(c: Client): ClientFormData {
     gender: c.gender ?? "",
     notes: c.notes ?? "",
     referredBy: c.createdByAgent ?? "",
+    referredByClientId: c.referredByClientId ?? "",
   };
 }
 
@@ -153,6 +156,7 @@ function ClientDetailInner({ id }: { id: string }) {
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [referredByName, setReferredByName] = useState<string | null>(null);
+  const [referredByClientName, setReferredByClientName] = useState<string | null>(null);
   const [advancingOrderId, setAdvancingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -181,6 +185,16 @@ function ClientDetailInner({ id }: { id: string }) {
       })
       .catch(() => {});
   }, [isOwner, client?.createdByAgent]);
+
+  useEffect(() => {
+    if (!client?.referredByClientId) { setReferredByClientName(null); return; }
+    const found = clients.find((c) => c.id === client.referredByClientId);
+    if (found) { setReferredByClientName(found.name); return; }
+    // Fallback: fetch langsung kalau belum ada di cache
+    import("@/features/clients/clientsRepo").then(({ getClient }) =>
+      getClient(client.referredByClientId!)
+    ).then((c) => setReferredByClientName(c?.name ?? null)).catch(() => {});
+  }, [client?.referredByClientId, clients]);
 
   const clientOrders = useMemo(() => orders.filter((o) => o.clientId === id), [orders, id]);
 
@@ -247,6 +261,13 @@ function ClientDetailInner({ id }: { id: string }) {
             icon={<UserCheck className="h-3.5 w-3.5 text-violet-400" />}
             label="Closing / Referensi"
             value={referredByName}
+          />
+        )}
+        {referredByClientName && (
+          <InfoRow
+            icon={<span className="text-sm">🤝</span>}
+            label="Direferensikan oleh klien"
+            value={referredByClientName}
           />
         )}
       </div>
@@ -345,7 +366,7 @@ function ClientDetailInner({ id }: { id: string }) {
         )}
       </section>
 
-      <ClientFormDialog open={editOpen} onOpenChange={setEditOpen} initial={clientToForm(client)} title="Edit Klien"
+      <ClientFormDialog open={editOpen} onOpenChange={setEditOpen} initial={clientToForm(client)} title="Edit Klien" currentClientId={client.id}
         onSubmit={async (form) => {
           await patchClient(client.id, {
             name: form.name.trim(),
@@ -360,6 +381,7 @@ function ClientDetailInner({ id }: { id: string }) {
             gender: (form.gender as "L" | "P" | "") || undefined,
             notes: form.notes.trim() || undefined,
             createdByAgent: form.referredBy || null,
+            referredByClientId: form.referredByClientId || null,
           });
           toast.success("Klien diperbarui");
           setEditOpen(false);
@@ -438,9 +460,10 @@ function SkeletonInput() {
 // ── Form dialog ──────────────────────────────────────────────────────────────
 type MemberOption = { userId: string; displayName: string; role: string };
 
-function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit }: {
+function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit, currentClientId }: {
   open: boolean; onOpenChange: (v: boolean) => void; initial: ClientFormData; title: string;
   onSubmit: (form: ClientFormData) => Promise<void>;
+  currentClientId?: string;
 }) {
   const [form, setForm] = useState<ClientFormData>(initial);
   const [saving, setSaving] = useState(false);
@@ -449,6 +472,7 @@ function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit }: {
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { clients } = useClientsStore();
 
   useEffect(() => { if (open) setForm(initial); }, [open, initial]);
 
@@ -652,6 +676,27 @@ function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit }: {
             {!membersLoading && members.length === 0 && (
               <p className="text-[10px] text-muted-foreground mt-1">Belum ada agen/owner terdaftar.</p>
             )}
+          </Field>
+
+          {/* Direferensikan oleh klien */}
+          <Field label="Direferensikan oleh Klien" icon={<span className="text-[11px]">🤝</span>}>
+            <select
+              value={form.referredByClientId}
+              onChange={(e) => update("referredByClientId", e.target.value)}
+              disabled={scanning}
+              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+            >
+              <option value="">— Tidak ada / belum dipilih —</option>
+              {clients
+                .filter((c) => c.id !== currentClientId)
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+            </select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Jika klien ini datang karena ajakan klien lain, pilih referrernya di sini. Saat order klien ini Confirmed/Paid/Selesai, referrer otomatis dapat +1 stamp.
+            </p>
           </Field>
 
           {/* Catatan */}
@@ -1066,6 +1111,7 @@ export default function Clients() {
             gender: form.gender || undefined,
             notes: form.notes.trim() || undefined,
             createdByAgent: form.referredBy || undefined,
+            referredByClientId: form.referredByClientId || null,
           });
           toast.success("Klien dibuat", { description: c.name });
           setAddOpen(false);
