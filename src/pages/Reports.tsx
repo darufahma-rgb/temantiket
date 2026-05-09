@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -137,6 +137,20 @@ export default function Reports() {
     });
   }, [orders, from, to, agentFilter]);
 
+  // Helper: gross profit dikurangi komisi agen → profit bersih agency.
+  const agencyProfit = useCallback(
+    (o: Order): number => {
+      const gross = profitIDR(o, egpRate);
+      const member = o.createdByAgent ? memberById.get(o.createdByAgent) : undefined;
+      if (!member || member.role !== "agent") return gross;
+      return gross - getCommissionForOrderType(
+        o.type as "umrah" | "flight" | "visa_voa" | "visa_student",
+        productCommissions,
+      );
+    },
+    [egpRate, memberById, productCommissions],
+  );
+
   // Total aggregations
   const totals = useMemo(() => {
     let revenue = 0;
@@ -145,10 +159,10 @@ export default function Reports() {
     for (const o of filtered) {
       revenue += revenueIDR(o, egpRate);
       cost += costIDR(o, egpRate);
-      profit += profitIDR(o, egpRate);
+      profit += agencyProfit(o);
     }
     return { revenue, cost, profit, count: filtered.length };
-  }, [filtered, egpRate]);
+  }, [filtered, egpRate, agencyProfit]);
 
   // Direct vs Agent split (always computed from filtered set,
   // even when agentFilter aktif — supaya angka konsisten dgn yg dilihat).
@@ -195,12 +209,12 @@ export default function Reports() {
     };
   }, [filtered, memberById, egpRate, productCommissions]);
 
-  // Profit per type (utk pie chart).
+  // Profit per type (utk pie chart) — pakai agency profit (sudah dikurangi komisi agen).
   const byType = useMemo(() => {
     const m = new Map<OrderType, { profit: number; revenue: number; count: number }>();
     for (const o of filtered) {
       const cur = m.get(o.type) ?? { profit: 0, revenue: 0, count: 0 };
-      cur.profit += profitIDR(o, egpRate);
+      cur.profit += agencyProfit(o);
       cur.revenue += revenueIDR(o, egpRate);
       cur.count += 1;
       m.set(o.type, cur);
@@ -211,7 +225,7 @@ export default function Reports() {
       emoji: ORDER_TYPE_EMOJI[type],
       ...v,
     }));
-  }, [filtered, egpRate]);
+  }, [filtered, egpRate, agencyProfit]);
 
   // Profit per client.
   const clientNameById = useMemo(() => {
@@ -225,7 +239,7 @@ export default function Reports() {
     for (const o of filtered) {
       const key = o.clientId ?? "__none";
       const cur = m.get(key) ?? { profit: 0, revenue: 0, count: 0, orders: [] };
-      cur.profit += profitIDR(o, egpRate);
+      cur.profit += agencyProfit(o);
       cur.revenue += revenueIDR(o, egpRate);
       cur.count += 1;
       cur.orders.push(o);
@@ -238,7 +252,7 @@ export default function Reports() {
         ...v,
       }))
       .sort((a, b) => b.profit - a.profit);
-  }, [filtered, clientNameById, egpRate]);
+  }, [filtered, clientNameById, egpRate, agencyProfit]);
 
   // ── Agent Leaderboard ──
   // Built from `filtered` (so date-range applies). Ranked by total profit
@@ -308,7 +322,7 @@ export default function Reports() {
       const ip = (meta?.internalProfit ?? null) as { opexIDR?: number } | null;
       const opex = ip?.opexIDR ? Number(ip.opexIDR) : 0;
       const modal = Math.max(0, cost - opex);
-      const profit = profitIDR(o, egpRate);
+      const profit = agencyProfit(o);
       const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
       return {
         id: o.id,
@@ -322,7 +336,7 @@ export default function Reports() {
         margin,
       };
     });
-  }, [filtered, egpRate]);
+  }, [filtered, egpRate, agencyProfit]);
 
   const byOrderFiltered = useMemo(() => {
     const q = pkgSearch.trim().toLowerCase();
