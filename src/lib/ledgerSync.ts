@@ -9,6 +9,7 @@
 
 import type { Order } from "@/features/orders/ordersRepo";
 import { getCommissionForOrderType, type ProductCommissions } from "./productCommissions";
+import { voaOpCost } from "./profit";
 
 export interface LedgerEntry {
   orderId: string;
@@ -31,6 +32,8 @@ export interface LedgerEntry {
   runningBalance: number;
   /** True kalau ini entri komisi agen (debit), bukan entri order biasa. */
   isCommission?: boolean;
+  /** True kalau ini entri biaya operasional VOA (debit). */
+  isVoaOpex?: boolean;
   /** UID agen — hanya terisi kalau isCommission = true. */
   agentId?: string;
   /** Nama agen — hanya terisi kalau isCommission = true. */
@@ -127,6 +130,35 @@ export function buildLedgerEntries(
       runningBalance:   0, // filled below
     });
 
+    // ── Entri biaya operasional VOA ────────────────────────────────────────
+    // Untuk order visa_voa, tambahkan baris debit biaya operasional lapangan
+    // (agent lapangan, transport, dll) tepat setelah baris order.
+    if (o.type === "visa_voa") {
+      const opexIDR = voaOpCost(o); // always IDR
+      if (opexIDR > 0) {
+        entries.push({
+          orderId:         `voa_opex_${o.id}`,
+          orderTitle:      `Biaya Operasional VOA · ${o.title ?? o.id.slice(0, 8)}`,
+          orderType:       o.type,
+          clientName:      o.clientId ? (clientNameById.get(o.clientId) ?? "—") : "—",
+          clientId:        o.clientId,
+          paidAt,
+          revenue:         0,
+          cost:            opexIDR,
+          profit:          -opexIDR,
+          currency:        "IDR",
+          egpRateSnapshot: egpRate,
+          sarRateSnapshot: sarRate,
+          revenueIDR:      0,
+          costIDR:         opexIDR,
+          profitIDR:       -opexIDR,
+          marginPct:       0,
+          runningBalance:  0,
+          isVoaOpex:       true,
+        });
+      }
+    }
+
     // ── Entri komisi agen ──────────────────────────────────────────────────
     // Kalau order dibawa oleh agen (role === "agent"), tambahkan baris debit
     // fee nominal per-produk tepat setelah baris order ini (paidAt sama).
@@ -189,23 +221,27 @@ export function ledgerSummary(entries: LedgerEntry[]) {
   let totalCost     = 0;
   let totalProfit   = 0;
   let totalCommission = 0;
+  let totalVoaOpex  = 0;
   for (const e of entries) {
     if (e.isCommission) {
       totalCommission += Math.abs(e.profitIDR);
+    } else if (e.isVoaOpex) {
+      totalVoaOpex += Math.abs(e.profitIDR);
     } else {
       totalRevenue += e.revenueIDR;
       totalCost    += e.costIDR;
       totalProfit  += e.profitIDR;
     }
   }
-  const netProfit = totalProfit - totalCommission;
+  const netProfit = totalProfit - totalCommission - totalVoaOpex;
   return {
     totalRevenue,
     totalCost,
     totalProfit,
     totalCommission,
+    totalVoaOpex,
     netProfit,
-    count: entries.filter((e) => !e.isCommission).length,
+    count: entries.filter((e) => !e.isCommission && !e.isVoaOpex).length,
     avgMargin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
   };
 }

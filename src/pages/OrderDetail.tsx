@@ -24,6 +24,7 @@ import {
   ORDER_STATUSES, ORDER_TYPES, ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI,
   type Order, type OrderStatus, type OrderType,
 } from "@/features/orders/ordersRepo";
+import { voaOpCost } from "@/lib/profit";
 import { FlightOrderEditor, type FlightMeta } from "@/features/orders/FlightOrderEditor";
 import { toast } from "sonner";
 import { getCommissionForOrderType } from "@/lib/productCommissions";
@@ -395,6 +396,71 @@ export default function OrderDetail() {
         </div>
       )}
 
+      {/* ── VOA Biaya Operasional Panel ─────────────────────────────────────── */}
+      {order.type === "visa_voa" && currentUser?.role !== "staff" && (
+        <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50 to-white p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🛂</span>
+            <div>
+              <div className="text-sm font-semibold">Biaya Operasional VOA</div>
+              <div className="text-[11px] text-muted-foreground">Biaya agent lapangan di bandara — bukan komisi sales</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Field label="Fee Bantuan Operasional Agent (IDR)">
+              <input
+                type="number"
+                min="0"
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                value={String(Number(((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>).voaAgentFee ?? 0))}
+                onChange={(e) => setDraft({
+                  ...draft,
+                  metadata: {
+                    ...((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>),
+                    voaAgentFee: Number(e.target.value) || 0,
+                  },
+                })}
+              />
+            </Field>
+            <Field label="Ongkos Transport / Perjalanan (IDR)">
+              <input
+                type="number"
+                min="0"
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                value={String(Number(((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>).voaTransportFee ?? 0))}
+                onChange={(e) => setDraft({
+                  ...draft,
+                  metadata: {
+                    ...((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>),
+                    voaTransportFee: Number(e.target.value) || 0,
+                  },
+                })}
+              />
+            </Field>
+            <Field label="Biaya Operasional Lainnya (IDR)">
+              <input
+                type="number"
+                min="0"
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                value={String(Number(((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>).voaOtherFee ?? 0))}
+                onChange={(e) => setDraft({
+                  ...draft,
+                  metadata: {
+                    ...((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>),
+                    voaOtherFee: Number(e.target.value) || 0,
+                  },
+                })}
+              />
+            </Field>
+          </div>
+          {voaOpCost({ ...order, metadata: (draft.metadata ?? order.metadata) as Record<string, unknown> }) > 0 && (
+            <div className="text-[11.5px] text-purple-700 font-semibold border-t border-purple-100 pt-3">
+              Total Biaya Operasional: {fmtIDR(voaOpCost({ ...order, metadata: (draft.metadata ?? order.metadata) as Record<string, unknown> }))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Total preview — hidden from staff */}
       {currentUser?.role !== "staff" && (() => {
         const total = Number(draft.totalPrice ?? order.totalPrice);
@@ -404,26 +470,54 @@ export default function OrderDetail() {
         const pelaksanaFee = order.type === "visa_student" && meta.pelaksanaId
           ? Number(meta.pelaksanaFee ?? 200_000)
           : 0;
+        const voaOpexTotal = order.type === "visa_voa"
+          ? voaOpCost({ ...order, metadata: meta })
+          : 0;
         const profit = total - cost;
-        const net = profit - agentFee - pelaksanaFee;
+        const net = profit - agentFee - pelaksanaFee - voaOpexTotal;
         const profitPositive = profit >= 0;
         const netPositive = net >= 0;
+        const hasDeductions = agentFee > 0 || pelaksanaFee > 0 || voaOpexTotal > 0;
         return (
           <div className="rounded-2xl bg-gradient-to-br from-sky-50 to-white border border-sky-100 p-5 space-y-3">
             <div>
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Harga Jual</div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Pendapatan Kotor</div>
               <div className="text-2xl md:text-3xl font-extrabold font-mono mt-1">
-                {fmtIDR(total)}
+                {order.currency !== "IDR" ? `${order.currency} ` : ""}{total.toLocaleString("id-ID")}
               </div>
             </div>
             {cost > 0 && (
               <div className="border-t border-sky-100 pt-3 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Profit Kotor</span>
+                  <span className="text-muted-foreground">Modal (Harga Visa)</span>
+                  <span className="font-mono text-slate-600">−{order.currency !== "IDR" ? `${order.currency} ` : "Rp "}{cost.toLocaleString("id-ID")}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm border-t border-sky-100 pt-2">
+                  <span className="text-muted-foreground font-medium">Profit Kotor</span>
                   <span className={`font-bold font-mono ${profitPositive ? "text-emerald-700" : "text-red-600"}`}>
-                    {profitPositive ? "+" : ""}{fmtIDR(profit)}
+                    {profitPositive ? "+" : "−"}{order.currency !== "IDR" ? `${order.currency} ` : "Rp "}{Math.abs(profit).toLocaleString("id-ID")}
                   </span>
                 </div>
+                {voaOpexTotal > 0 && (
+                  <>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Fee Agent Lapangan</span>
+                      <span className="font-mono text-purple-600">−{fmtIDR(Number(meta.voaAgentFee ?? 0))}</span>
+                    </div>
+                    {Number(meta.voaTransportFee ?? 0) > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Ongkos Transport</span>
+                        <span className="font-mono text-purple-600">−{fmtIDR(Number(meta.voaTransportFee ?? 0))}</span>
+                      </div>
+                    )}
+                    {Number(meta.voaOtherFee ?? 0) > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Biaya Lainnya</span>
+                        <span className="font-mono text-purple-600">−{fmtIDR(Number(meta.voaOtherFee ?? 0))}</span>
+                      </div>
+                    )}
+                  </>
+                )}
                 {agentFee > 0 && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Fee Agen Penjual</span>
@@ -436,9 +530,9 @@ export default function OrderDetail() {
                     <span className="font-mono text-violet-600">−{fmtIDR(pelaksanaFee)}</span>
                   </div>
                 )}
-                {(agentFee > 0 || pelaksanaFee > 0) && (
+                {hasDeductions && (
                   <div className="flex items-center justify-between text-sm font-semibold border-t border-sky-100 pt-2">
-                    <span>Net Profit</span>
+                    <span>Profit Bersih</span>
                     <span className={`font-bold font-mono ${netPositive ? "text-sky-700" : "text-red-600"}`}>
                       {netPositive ? "+" : ""}{fmtIDR(net)}
                     </span>

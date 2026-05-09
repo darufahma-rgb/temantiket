@@ -57,3 +57,26 @@ export function costIDR(order: Order, egpRate = EGP_TO_IDR): number {
 
 export const fmtIDR = (v: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);
+
+/**
+ * Total biaya operasional lapangan VOA.
+ * Disimpan dalam IDR di metadata: voaAgentFee + voaTransportFee + voaOtherFee.
+ * Bukan komisi sales — ini biaya operasional agent lapangan di bandara (Mesir).
+ */
+export function voaOpCost(order: Order): number {
+  if (order.type !== "visa_voa") return 0;
+  const meta = (order.metadata ?? {}) as Record<string, unknown>;
+  return (
+    Number(meta.voaAgentFee ?? 0) +
+    Number(meta.voaTransportFee ?? 0) +
+    Number(meta.voaOtherFee ?? 0)
+  );
+}
+
+/**
+ * Profit bersih setelah dipotong semua biaya: costPrice + voaOpCost (untuk visa_voa).
+ * Selalu dalam IDR (sudah di-normalize via toIDR).
+ */
+export function netProfitIDR(order: Order, egpRate = EGP_TO_IDR): number {
+  return profitIDR(order, egpRate) - voaOpCost(order);
+}

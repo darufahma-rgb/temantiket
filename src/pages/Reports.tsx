@@ -21,7 +21,7 @@ import {
   ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI, type Order, type OrderType,
 } from "@/features/orders/ordersRepo";
 import {
-  profitIDR, revenueIDR, costIDR, fmtIDR,
+  profitIDR, revenueIDR, costIDR, fmtIDR, voaOpCost,
 } from "@/lib/profit";
 import { useRatesStore } from "@/store/ratesStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
@@ -137,16 +137,16 @@ export default function Reports() {
     });
   }, [orders, from, to, agentFilter]);
 
-  // Helper: gross profit dikurangi komisi agen → profit bersih agency.
+  // Helper: gross profit dikurangi komisi agen + biaya operasional VOA → profit bersih agency.
   const agencyProfit = useCallback(
     (o: Order): number => {
       const gross = profitIDR(o, egpRate);
       const member = o.createdByAgent ? memberById.get(o.createdByAgent) : undefined;
-      if (!member || member.role !== "agent") return gross;
-      return gross - getCommissionForOrderType(
-        o.type as "umrah" | "flight" | "visa_voa" | "visa_student",
-        productCommissions,
-      );
+      const salesComm = (member && member.role === "agent")
+        ? getCommissionForOrderType(o.type as "umrah" | "flight" | "visa_voa" | "visa_student", productCommissions)
+        : 0;
+      const opex = voaOpCost(o); // 0 for non-VOA orders
+      return gross - salesComm - opex;
     },
     [egpRate, memberById, productCommissions],
   );
@@ -320,8 +320,11 @@ export default function Reports() {
       // Coba ambil opex dari metadata.internalProfit (order baru via "Jadikan Order")
       const meta = o.metadata as Record<string, unknown> | null;
       const ip = (meta?.internalProfit ?? null) as { opexIDR?: number } | null;
-      const opex = ip?.opexIDR ? Number(ip.opexIDR) : 0;
-      const modal = Math.max(0, cost - opex);
+      const internalOpex = ip?.opexIDR ? Number(ip.opexIDR) : 0;
+      // Untuk VOA: tambahkan biaya operasional lapangan ke opex
+      const voaOpexIDR = voaOpCost(o);
+      const opex = internalOpex + voaOpexIDR;
+      const modal = Math.max(0, cost - internalOpex);
       const profit = agencyProfit(o);
       const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
       return {
