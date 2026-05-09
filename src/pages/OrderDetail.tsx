@@ -29,7 +29,7 @@ import { FlightOrderEditor, type FlightMeta } from "@/features/orders/FlightOrde
 import { toast } from "sonner";
 import { getCommissionForOrderType } from "@/lib/productCommissions";
 import { addWalletTx } from "@/lib/agentWallet";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import { supabase } from "@/lib/supabase";
 import { VisaEntryPanel } from "@/components/VisaEntryPanel";
 
@@ -66,6 +66,7 @@ export default function OrderDetail() {
   const packages = usePackagesStore((s) => s.packages);
   const trips = useTripsStore((s) => s.trips);
   const currentUser = useAuthStore((s) => s.user);
+  const listMembers = useAuthStore((s) => s.listMembers);
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,11 +74,13 @@ export default function OrderDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [clientViewOpen, setClientViewOpen] = useState(false);
+  const [members, setMembers] = useState<MemberInfo[]>([]);
 
   useEffect(() => {
     if (clients.length === 0) void fetchClients();
     if (orders.length === 0) void fetchOrders();
-  }, [clients.length, orders.length, fetchClients, fetchOrders]);
+    void listMembers().then((m) => setMembers(m)).catch(() => {});
+  }, [clients.length, orders.length, fetchClients, fetchOrders, listMembers]);
 
   useEffect(() => {
     if (!id) return;
@@ -169,6 +172,30 @@ export default function OrderDetail() {
 
       const fresh = await getOneOrder(order.id);
       if (fresh) { setOrder(fresh); setDraft(fresh); }
+
+      // ── VOA Field Agent wallet credit ───────────────────────────────────────
+      // Ketika order VOA selesai (Completed) dan ada agent lapangan dipilih,
+      // otomatis catat fee operasional ke wallet agent tersebut.
+      if (isCompletedTransition && order.type === "visa_voa") {
+        const fieldAgentId = (metaPatch.voaFieldAgentId as string | undefined) ?? null;
+        const fieldFee = Number(metaPatch.voaAgentFee ?? 0);
+        if (fieldAgentId && fieldFee > 0) {
+          const orderId8 = order.id.slice(0, 8);
+          const agentName = members.find((m) => m.userId === fieldAgentId)?.displayName ?? "agent lapangan";
+          addWalletTx(fieldAgentId, {
+            agentId: fieldAgentId,
+            type: "pelaksana_fee",
+            pointsDelta: 0,
+            amountIDR: fieldFee,
+            description: `Fee Operasional VOA #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            createdBy: currentUser?.id ?? "system",
+          });
+          toast.success(`Fee dicatat ke wallet ${agentName}: ${fmtIDR(fieldFee)}`, {
+            description: "Pemasukan agent lapangan VOA otomatis terekap di akun mereka.",
+            duration: 5000,
+          });
+        }
+      }
 
       // ── Agent commission recording ──────────────────────────────────────────
       // When status → Completed and this order was brought in by an agent,
@@ -397,69 +424,105 @@ export default function OrderDetail() {
       )}
 
       {/* ── VOA Biaya Operasional Panel ─────────────────────────────────────── */}
-      {order.type === "visa_voa" && currentUser?.role !== "staff" && (
-        <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50 to-white p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="text-base">🛂</span>
-            <div>
-              <div className="text-sm font-semibold">Biaya Operasional VOA</div>
-              <div className="text-[11px] text-muted-foreground">Biaya agent lapangan di bandara — bukan komisi sales</div>
+      {order.type === "visa_voa" && currentUser?.role !== "staff" && (() => {
+        const meta = (draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>;
+        const fieldAgentId = (meta.voaFieldAgentId as string | undefined) ?? "__none";
+        const selectedAgent = members.find((m) => m.userId === fieldAgentId);
+        const totalOpex = voaOpCost({ ...order, metadata: meta });
+        return (
+          <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50 to-white p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🛂</span>
+              <div>
+                <div className="text-sm font-semibold">Operasional VOA — Agent Lapangan</div>
+                <div className="text-[11px] text-muted-foreground">Pilih agent bertugas · fee otomatis masuk ke wallet mereka saat order Completed</div>
+              </div>
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Field label="Fee Bantuan Operasional Agent (IDR)">
-              <input
-                type="number"
-                min="0"
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                value={String(Number(((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>).voaAgentFee ?? 0))}
-                onChange={(e) => setDraft({
-                  ...draft,
-                  metadata: {
-                    ...((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>),
-                    voaAgentFee: Number(e.target.value) || 0,
-                  },
-                })}
-              />
-            </Field>
-            <Field label="Ongkos Transport / Perjalanan (IDR)">
-              <input
-                type="number"
-                min="0"
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                value={String(Number(((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>).voaTransportFee ?? 0))}
-                onChange={(e) => setDraft({
-                  ...draft,
-                  metadata: {
-                    ...((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>),
-                    voaTransportFee: Number(e.target.value) || 0,
-                  },
-                })}
-              />
-            </Field>
-            <Field label="Biaya Operasional Lainnya (IDR)">
-              <input
-                type="number"
-                min="0"
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                value={String(Number(((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>).voaOtherFee ?? 0))}
-                onChange={(e) => setDraft({
-                  ...draft,
-                  metadata: {
-                    ...((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>),
-                    voaOtherFee: Number(e.target.value) || 0,
-                  },
-                })}
-              />
-            </Field>
-          </div>
-          {voaOpCost({ ...order, metadata: (draft.metadata ?? order.metadata) as Record<string, unknown> }) > 0 && (
-            <div className="text-[11.5px] text-purple-700 font-semibold border-t border-purple-100 pt-3">
-              Total Biaya Operasional: {fmtIDR(voaOpCost({ ...order, metadata: (draft.metadata ?? order.metadata) as Record<string, unknown> }))}
+
+            {/* Agent selector + fee */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Field label="Agent Lapangan (bertugas di bandara)">
+                <Select
+                  value={fieldAgentId}
+                  onValueChange={(v) => setDraft({
+                    ...draft,
+                    metadata: { ...meta, voaFieldAgentId: v === "__none" ? null : v },
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih agent lapangan…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">— Tidak ada / belum ditentukan —</SelectItem>
+                    {members.map((m) => (
+                      <SelectItem key={m.userId} value={m.userId}>
+                        {m.displayName}
+                        <span className="ml-1.5 text-[10px] text-muted-foreground capitalize">({m.role})</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field label={`Fee Agent Lapangan – ${selectedAgent?.displayName ?? "belum dipilih"} (IDR)`}>
+                <input
+                  type="number"
+                  min="0"
+                  disabled={!selectedAgent}
+                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm disabled:opacity-50"
+                  value={String(Number(meta.voaAgentFee ?? 0))}
+                  onChange={(e) => setDraft({
+                    ...draft,
+                    metadata: { ...meta, voaAgentFee: Number(e.target.value) || 0 },
+                  })}
+                />
+              </Field>
             </div>
-          )}
-        </div>
-      )}
+
+            {/* Transport + Other fees */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Field label="Ongkos Transport / Perjalanan (IDR)">
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                  value={String(Number(meta.voaTransportFee ?? 0))}
+                  onChange={(e) => setDraft({
+                    ...draft,
+                    metadata: { ...meta, voaTransportFee: Number(e.target.value) || 0 },
+                  })}
+                />
+              </Field>
+              <Field label="Biaya Operasional Lainnya (IDR)">
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                  value={String(Number(meta.voaOtherFee ?? 0))}
+                  onChange={(e) => setDraft({
+                    ...draft,
+                    metadata: { ...meta, voaOtherFee: Number(e.target.value) || 0 },
+                  })}
+                />
+              </Field>
+            </div>
+
+            {/* Summary + info badge */}
+            {totalOpex > 0 && (
+              <div className="border-t border-purple-100 pt-3 flex items-center justify-between flex-wrap gap-2">
+                <div className="text-[11.5px] text-purple-700 font-semibold">
+                  Total Biaya Operasional: {fmtIDR(totalOpex)}
+                </div>
+                {selectedAgent && Number(meta.voaAgentFee ?? 0) > 0 && (
+                  <div className="text-[10.5px] px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 font-medium">
+                    🔄 {fmtIDR(Number(meta.voaAgentFee ?? 0))} akan masuk wallet {selectedAgent.displayName} saat Completed
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Total preview — hidden from staff */}
       {currentUser?.role !== "staff" && (() => {
