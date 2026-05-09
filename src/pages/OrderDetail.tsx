@@ -57,6 +57,26 @@ async function awardCommissionPoints(agencyId: string, agentId: string, orderId:
 const fmtIDR = (v: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);
 
+type FeeCurrency = "IDR" | "SAR" | "USD";
+const FEE_CURRENCIES: { value: FeeCurrency; flag: string; label: string }[] = [
+  { value: "IDR", flag: "🇮🇩", label: "IDR" },
+  { value: "SAR", flag: "🇸🇦", label: "SAR" },
+  { value: "USD", flag: "🇺🇸", label: "USD" },
+];
+
+function toIDRAmount(amount: number, currency: FeeCurrency, rates: Record<string, number>): number {
+  if (!amount || !Number.isFinite(amount)) return 0;
+  if (currency === "SAR") return Math.round(amount * (rates.SAR ?? 4250));
+  if (currency === "USD") return Math.round(amount * (rates.USD ?? 16000));
+  return Math.round(amount);
+}
+
+function fmtNative(amount: number, currency: FeeCurrency): string {
+  if (currency === "IDR") return fmtIDR(amount);
+  if (currency === "SAR") return `SAR ${amount.toLocaleString("id-ID")}`;
+  return `USD ${amount.toLocaleString("id-ID")}`;
+}
+
 export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -192,6 +212,30 @@ export default function OrderDetail() {
           });
           toast.success(`Fee dicatat ke wallet ${agentName}: ${fmtIDR(fieldFee)}`, {
             description: "Pemasukan agent lapangan VOA otomatis terekap di akun mereka.",
+            duration: 5000,
+          });
+        }
+      }
+
+      // ── Kurir agent wallet credit ───────────────────────────────────────────
+      // Ketika order selesai (Completed) dan ada kurir dipilih,
+      // otomatis catat fee kurir ke wallet agent yang didelegasi.
+      if (isCompletedTransition) {
+        const kurirAgentId = (metaPatch.kurirAgentId as string | undefined) ?? null;
+        const kurirFeeAmount = Number(metaPatch.kurirFee ?? 0);
+        if (kurirAgentId && kurirFeeAmount > 0) {
+          const orderId8 = order.id.slice(0, 8);
+          const kurirName = members.find((m) => m.userId === kurirAgentId)?.displayName ?? "kurir";
+          addWalletTx(kurirAgentId, {
+            agentId: kurirAgentId,
+            type: "kurir_fee",
+            pointsDelta: 0,
+            amountIDR: kurirFeeAmount,
+            description: `Fee Kurir Setoran #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            createdBy: currentUser?.id ?? "system",
+          });
+          toast.success(`Fee kurir dicatat ke wallet ${kurirName}: ${fmtIDR(kurirFeeAmount)}`, {
+            description: "Agen kurir otomatis mendapat kredit dari fee setoran uang.",
             duration: 5000,
           });
         }
@@ -351,35 +395,69 @@ export default function OrderDetail() {
             <Input type="number" value={String(draft.totalPrice ?? 0)} onChange={(e) => setDraft({ ...draft, totalPrice: Number(e.target.value) || 0 })} />
           </Field>
         )}
-        {order.createdByAgent && currentUser?.role !== "staff" && (
-          <div className="space-y-1">
-            <Field label="Fee Komisi Agen (IDR)">
-              <Input
-                type="number"
-                value={String(Number(((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>).agentFee ?? 0))}
-                onChange={(e) => setDraft({
-                  ...draft,
-                  metadata: {
-                    ...((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>),
-                    agentFee: Number(e.target.value) || 0,
-                  },
-                })}
-              />
-            </Field>
-            {(() => {
-              const ag = members.find((m) => m.userId === order.createdByAgent);
-              if (!ag) return null;
-              return (
+        {order.createdByAgent && currentUser?.role !== "staff" && (() => {
+          const meta = (draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>;
+          const agentFeeCurrency = ((meta.agentFeeCurrency as FeeCurrency | undefined) ?? "IDR");
+          const agentFeeRaw = Number(meta.agentFeeRaw ?? meta.agentFee ?? 0);
+          const agentFeeIDR = Number(meta.agentFee ?? 0);
+          const ag = members.find((m) => m.userId === order.createdByAgent);
+          return (
+            <div className="space-y-1.5 md:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+                  Fee Komisi Agen
+                </label>
+                <Select
+                  value={agentFeeCurrency}
+                  onValueChange={(v) => {
+                    const cur = v as FeeCurrency;
+                    const idr = toIDRAmount(agentFeeRaw, cur, rates);
+                    setDraft({ ...draft, metadata: { ...meta, agentFeeCurrency: cur, agentFee: idr } });
+                  }}
+                >
+                  <SelectTrigger className="h-7 w-24 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FEE_CURRENCIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.flag} {c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="relative">
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={String(agentFeeRaw || 0)}
+                  onChange={(e) => {
+                    const raw = Number(e.target.value) || 0;
+                    const idr = toIDRAmount(raw, agentFeeCurrency, rates);
+                    setDraft({ ...draft, metadata: { ...meta, agentFeeRaw: raw, agentFeeCurrency, agentFee: idr } });
+                  }}
+                />
+                {agentFeeCurrency !== "IDR" && (
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    ≈ {fmtIDR(toIDRAmount(agentFeeRaw, agentFeeCurrency, rates))} — disimpan dalam IDR
+                  </div>
+                )}
+                {agentFeeCurrency === "IDR" && agentFeeIDR > 0 && (
+                  <div className="text-[10px] text-orange-600 mt-0.5 font-medium">
+                    {fmtIDR(agentFeeIDR)} masuk wallet agen saat Completed
+                  </div>
+                )}
+              </div>
+              {ag && (
                 <div className="text-[11px] text-muted-foreground flex items-center gap-1 pl-0.5">
                   Agen penjual:
                   <Link to={`/agents/${order.createdByAgent}`} className="text-sky-600 hover:underline font-semibold flex items-center gap-0.5 ml-0.5">
                     {ag.displayName} <ExternalLink className="h-2.5 w-2.5" />
                   </Link>
                 </div>
-              );
-            })()}
-          </div>
-        )}
+              )}
+            </div>
+          );
+        })()}
         {currentUser?.role !== "staff" && (
           <Field label="Klien">
             <Select value={(draft.clientId ?? order.clientId) || "__none"} onValueChange={(v) => setDraft({ ...draft, clientId: v === "__none" ? null : v })}>
@@ -451,86 +529,102 @@ export default function OrderDetail() {
         const meta = (draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>;
         const fieldAgentId = (meta.voaFieldAgentId as string | undefined) ?? "__none";
         const selectedAgent = members.find((m) => m.userId === fieldAgentId);
+        const voaFeeCurrency = ((meta.voaFeeCurrency as FeeCurrency | undefined) ?? "IDR");
         const totalOpex = voaOpCost({ ...order, metadata: meta });
+
+        const voaFields = [
+          { label: `Fee Agent – ${selectedAgent?.displayName ?? "belum dipilih"}`, rawKey: "voaAgentFeeRaw", idrKey: "voaAgentFee", disabled: !selectedAgent },
+          { label: "Ongkos Transport / Perjalanan", rawKey: "voaTransportFeeRaw", idrKey: "voaTransportFee", disabled: false },
+          { label: "Biaya Operasional Lainnya", rawKey: "voaOtherFeeRaw", idrKey: "voaOtherFee", disabled: false },
+        ] as const;
+
+        const onVoaCurrencyChange = (newCur: FeeCurrency) => {
+          const newMeta: Record<string, unknown> = { ...meta, voaFeeCurrency: newCur };
+          for (const f of voaFields) {
+            const raw = Number(meta[f.rawKey] ?? meta[f.idrKey] ?? 0);
+            newMeta[f.idrKey] = toIDRAmount(raw, newCur, rates);
+          }
+          setDraft({ ...draft, metadata: newMeta });
+        };
+
         return (
           <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50 to-white p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="text-base">🛂</span>
-              <div>
-                <div className="text-sm font-semibold">Operasional VOA — Agent Lapangan</div>
-                <div className="text-[11px] text-muted-foreground">Pilih agent bertugas · fee otomatis masuk ke wallet mereka saat order Completed</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🛂</span>
+                <div>
+                  <div className="text-sm font-semibold">Operasional VOA — Agent Lapangan</div>
+                  <div className="text-[11px] text-muted-foreground">Pilih agent bertugas · fee otomatis masuk ke wallet mereka saat order Completed</div>
+                </div>
               </div>
+              <Select value={voaFeeCurrency} onValueChange={(v) => onVoaCurrencyChange(v as FeeCurrency)}>
+                <SelectTrigger className="h-8 w-24 text-xs border-purple-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FEE_CURRENCIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.flag} {c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Agent selector + fee */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label="Agent Lapangan (bertugas di bandara)">
-                <Select
-                  value={fieldAgentId}
-                  onValueChange={(v) => setDraft({
-                    ...draft,
-                    metadata: { ...meta, voaFieldAgentId: v === "__none" ? null : v },
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih agent lapangan…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none">— Tidak ada / belum ditentukan —</SelectItem>
-                    {members.map((m) => (
-                      <SelectItem key={m.userId} value={m.userId}>
-                        {m.displayName}
-                        <span className="ml-1.5 text-[10px] text-muted-foreground capitalize">({m.role})</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+            {/* Agent selector */}
+            <Field label="Agent Lapangan (bertugas di bandara)">
+              <Select
+                value={fieldAgentId}
+                onValueChange={(v) => setDraft({
+                  ...draft,
+                  metadata: { ...meta, voaFieldAgentId: v === "__none" ? null : v },
+                })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih agent lapangan…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Tidak ada / belum ditentukan —</SelectItem>
+                  {members.map((m) => (
+                    <SelectItem key={m.userId} value={m.userId}>
+                      {m.displayName}
+                      <span className="ml-1.5 text-[10px] text-muted-foreground capitalize">({m.role})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
 
-              <Field label={`Fee Agent Lapangan – ${selectedAgent?.displayName ?? "belum dipilih"} (IDR)`}>
-                <input
-                  type="number"
-                  min="0"
-                  disabled={!selectedAgent}
-                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm disabled:opacity-50"
-                  value={String(Number(meta.voaAgentFee ?? 0))}
-                  onChange={(e) => setDraft({
-                    ...draft,
-                    metadata: { ...meta, voaAgentFee: Number(e.target.value) || 0 },
-                  })}
-                />
-              </Field>
+            {/* Fee fields */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {voaFields.map((f) => {
+                const rawVal = Number(meta[f.rawKey] ?? meta[f.idrKey] ?? 0);
+                const idrVal = toIDRAmount(rawVal, voaFeeCurrency, rates);
+                return (
+                  <div key={f.rawKey} className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                      {f.label} ({voaFeeCurrency})
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      disabled={f.disabled}
+                      placeholder="0"
+                      className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm disabled:opacity-50"
+                      value={String(rawVal || 0)}
+                      onChange={(e) => {
+                        const raw = Number(e.target.value) || 0;
+                        const idr = toIDRAmount(raw, voaFeeCurrency, rates);
+                        setDraft({ ...draft, metadata: { ...meta, [f.rawKey]: raw, [f.idrKey]: idr } });
+                      }}
+                    />
+                    {voaFeeCurrency !== "IDR" && rawVal > 0 && (
+                      <div className="text-[10px] text-muted-foreground">≈ {fmtIDR(idrVal)}</div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Transport + Other fees */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label="Ongkos Transport / Perjalanan (IDR)">
-                <input
-                  type="number"
-                  min="0"
-                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                  value={String(Number(meta.voaTransportFee ?? 0))}
-                  onChange={(e) => setDraft({
-                    ...draft,
-                    metadata: { ...meta, voaTransportFee: Number(e.target.value) || 0 },
-                  })}
-                />
-              </Field>
-              <Field label="Biaya Operasional Lainnya (IDR)">
-                <input
-                  type="number"
-                  min="0"
-                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                  value={String(Number(meta.voaOtherFee ?? 0))}
-                  onChange={(e) => setDraft({
-                    ...draft,
-                    metadata: { ...meta, voaOtherFee: Number(e.target.value) || 0 },
-                  })}
-                />
-              </Field>
-            </div>
-
-            {/* Summary + info badge */}
+            {/* Summary */}
             {totalOpex > 0 && (
               <div className="border-t border-purple-100 pt-3 flex items-center justify-between flex-wrap gap-2">
                 <div className="text-[11.5px] text-purple-700 font-semibold">
@@ -538,7 +632,7 @@ export default function OrderDetail() {
                 </div>
                 {selectedAgent && Number(meta.voaAgentFee ?? 0) > 0 && (
                   <div className="text-[10.5px] px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 font-medium">
-                    🔄 {fmtIDR(Number(meta.voaAgentFee ?? 0))} akan masuk wallet {selectedAgent.displayName} saat Completed
+                    🔄 {fmtIDR(Number(meta.voaAgentFee ?? 0))} masuk wallet {selectedAgent.displayName} saat Completed
                   </div>
                 )}
               </div>
@@ -550,69 +644,124 @@ export default function OrderDetail() {
       {/* ── Biaya Kurir Setoran Panel — semua jenis order, owner only ──────── */}
       {currentUser?.role !== "staff" && (() => {
         const meta = (draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>;
+        const kurirCurrency = ((meta.kurirFeeCurrency as FeeCurrency | undefined) ?? "IDR");
+        const kurirAgentId = (meta.kurirAgentId as string | undefined) ?? "__none";
+        const selectedKurir = members.find((m) => m.userId === kurirAgentId);
         const totalKurir = kurirOpCost({ ...order, metadata: meta });
+
+        const kurirFields = [
+          { label: "Fee Jasa Kurir", rawKey: "kurirFeeRaw", idrKey: "kurirFee" },
+          { label: "Ongkos Transport", rawKey: "kurirTransportFeeRaw", idrKey: "kurirTransportFee" },
+          { label: "Biaya Lainnya", rawKey: "kurirOtherFeeRaw", idrKey: "kurirOtherFee" },
+        ] as const;
+
+        const onKurirCurrencyChange = (newCur: FeeCurrency) => {
+          const newMeta: Record<string, unknown> = { ...meta, kurirFeeCurrency: newCur };
+          for (const f of kurirFields) {
+            const raw = Number(meta[f.rawKey] ?? meta[f.idrKey] ?? 0);
+            newMeta[f.idrKey] = toIDRAmount(raw, newCur, rates);
+          }
+          setDraft({ ...draft, metadata: newMeta });
+        };
+
         return (
           <div className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="text-base">🚴</span>
-              <div>
-                <div className="text-sm font-semibold">Biaya Kurir Setoran Uang</div>
-                <div className="text-[11px] text-muted-foreground">Isi jika customer bayar tunai via kurir · otomatis memotong profit bersih transaksi</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🚴</span>
+                <div>
+                  <div className="text-sm font-semibold">Biaya Kurir Setoran Uang</div>
+                  <div className="text-[11px] text-muted-foreground">Isi jika customer bayar tunai via kurir · memotong profit & masuk wallet agen yang dipilih</div>
+                </div>
               </div>
+              <Select value={kurirCurrency} onValueChange={(v) => onKurirCurrencyChange(v as FeeCurrency)}>
+                <SelectTrigger className="h-8 w-24 text-xs border-amber-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FEE_CURRENCIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.flag} {c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
+            {/* Delegasi kurir ke agent */}
+            <Field label="Delegasi ke Agent / Kurir">
+              <Select
+                value={kurirAgentId}
+                onValueChange={(v) => setDraft({
+                  ...draft,
+                  metadata: { ...meta, kurirAgentId: v === "__none" ? null : v },
+                })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih agent kurir yang bertugas…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Tanpa delegasi —</SelectItem>
+                  {members.map((m) => (
+                    <SelectItem key={m.userId} value={m.userId}>
+                      {m.displayName}
+                      <span className="ml-1.5 text-[10px] text-muted-foreground capitalize">({m.role})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            {/* Fee fields */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Fee Jasa Kurir (IDR)</label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                  value={String(Number(meta.kurirFee ?? 0))}
-                  onChange={(e) => setDraft({
-                    ...draft,
-                    metadata: { ...meta, kurirFee: Number(e.target.value) || 0 },
-                  })}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Ongkos Transport (IDR)</label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                  value={String(Number(meta.kurirTransportFee ?? 0))}
-                  onChange={(e) => setDraft({
-                    ...draft,
-                    metadata: { ...meta, kurirTransportFee: Number(e.target.value) || 0 },
-                  })}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Biaya Lainnya (IDR)</label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                  value={String(Number(meta.kurirOtherFee ?? 0))}
-                  onChange={(e) => setDraft({
-                    ...draft,
-                    metadata: { ...meta, kurirOtherFee: Number(e.target.value) || 0 },
-                  })}
-                />
-              </div>
+              {kurirFields.map((f) => {
+                const rawVal = Number(meta[f.rawKey] ?? meta[f.idrKey] ?? 0);
+                const idrVal = toIDRAmount(rawVal, kurirCurrency, rates);
+                return (
+                  <div key={f.rawKey} className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                      {f.label} ({kurirCurrency})
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                      value={String(rawVal || 0)}
+                      onChange={(e) => {
+                        const raw = Number(e.target.value) || 0;
+                        const idr = toIDRAmount(raw, kurirCurrency, rates);
+                        setDraft({ ...draft, metadata: { ...meta, [f.rawKey]: raw, [f.idrKey]: idr } });
+                      }}
+                    />
+                    {kurirCurrency !== "IDR" && rawVal > 0 && (
+                      <div className="text-[10px] text-muted-foreground">≈ {fmtIDR(idrVal)}</div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {totalKurir > 0 && (
               <div className="border-t border-amber-100 pt-3 flex items-center justify-between flex-wrap gap-2">
                 <div className="text-[11.5px] text-amber-700 font-semibold">
                   Total Biaya Kurir: {fmtIDR(totalKurir)}
+                  {kurirCurrency !== "IDR" && (
+                    <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
+                      ({fmtNative(
+                        (Number(meta.kurirFeeRaw ?? 0) + Number(meta.kurirTransportFeeRaw ?? 0) + Number(meta.kurirOtherFeeRaw ?? 0)),
+                        kurirCurrency
+                      )} {kurirCurrency})
+                    </span>
+                  )}
                 </div>
-                <div className="text-[10.5px] px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-medium">
-                  🔄 Biaya ini otomatis tercatat di Buku Besar sebagai pengurang profit
+                <div className="flex flex-col items-end gap-1">
+                  {selectedKurir && Number(meta.kurirFee ?? 0) > 0 && (
+                    <div className="text-[10.5px] px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-medium">
+                      🔄 {fmtIDR(Number(meta.kurirFee ?? 0))} masuk wallet {selectedKurir.displayName} saat Completed
+                    </div>
+                  )}
+                  <div className="text-[10.5px] px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 font-medium">
+                    ✂️ Memotong profit bersih transaksi
+                  </div>
                 </div>
               </div>
             )}

@@ -33,6 +33,8 @@ const TX_COLOR: Record<WalletTransaction["type"], string> = {
   mission_conversion: "text-emerald-700",
   mission_fee:        "text-emerald-600",
   order_bonus:        "text-sky-700",
+  pelaksana_fee:      "text-purple-700",
+  kurir_fee:          "text-amber-700",
   payout:             "text-red-600",
   adjustment:         "text-violet-700",
 };
@@ -41,6 +43,8 @@ const TX_LABEL: Record<WalletTransaction["type"], string> = {
   mission_conversion: "Konversi Poin",
   mission_fee:        "Fee Side Job",
   order_bonus:        "Bonus Order",
+  pelaksana_fee:      "Fee Operasional",
+  kurir_fee:          "Fee Kurir",
   payout:             "Pencairan",
   adjustment:         "Koreksi",
 };
