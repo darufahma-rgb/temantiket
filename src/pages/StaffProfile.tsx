@@ -23,6 +23,7 @@ import { pullWalletTxs, walletBalance, type WalletTransaction } from "@/lib/agen
 import { ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
 import { fmtIDR } from "@/lib/profit";
 import { uploadAvatar, savePhotoUrl, loadPhotoUrl } from "@/lib/avatarStorage";
+import { uploadCardBack, saveCardBackUrl, loadCardBackUrl } from "@/lib/cardBackStorage";
 import { supabase } from "@/lib/supabase";
 import { StaffCard } from "@/components/StaffCard";
 
@@ -51,8 +52,11 @@ export default function StaffProfile() {
   const [joinedAt, setJoinedAt] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [cardBackUrl, setCardBackUrl] = useState<string | null>(null);
+  const [cardBackUploading, setCardBackUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const cardBackInputRef = useRef<HTMLInputElement>(null);
 
   const staffId = user?.id ?? "";
 
@@ -89,7 +93,31 @@ export default function StaffProfile() {
       } catch { /* ignore */ }
       void loadPhotoUrl(user.id).then((url) => { if (url) setPhotoUrl(url); });
     }
+
+    // Load card back image
+    if (user?.id && user?.agencyId) {
+      void loadCardBackUrl(user.id, user.agencyId).then((url) => {
+        if (url) setCardBackUrl(url);
+      });
+    }
   }, [staffId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleCardBackFile = async (file: File) => {
+    if (!user?.id || !user?.agencyId || !file.type.startsWith("image/")) return;
+    setCardBackUploading(true);
+    try {
+      const url = await uploadCardBack(user.id, file);
+      await saveCardBackUrl(user.id, user.agencyId, url);
+      setCardBackUrl(url);
+      const { toast } = await import("sonner");
+      toast.success("Gambar belakang kartu diperbarui!");
+    } catch (e: unknown) {
+      const { toast } = await import("sonner");
+      toast.error(`Gagal upload: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setCardBackUploading(false);
+    }
+  };
 
   const handlePhotoFile = async (file: File) => {
     if (!user?.id || !file.type.startsWith("image/")) return;
@@ -366,12 +394,49 @@ export default function StaffProfile() {
               </div>
             </div>
           </div>
-          <div className="p-5 flex justify-center">
+          <div className="p-5 flex flex-col items-center gap-4">
             <StaffCard
               displayName={user.displayName}
               staffId={user.id}
               since={joinedAt}
+              backImageUrl={cardBackUrl}
             />
+            {/* Upload gambar belakang kartu */}
+            <div className="w-full max-w-[320px]">
+              <input
+                ref={cardBackInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void handleCardBackFile(f);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                onClick={() => cardBackInputRef.current?.click()}
+                disabled={cardBackUploading}
+                className="w-full flex items-center justify-center gap-2 h-9 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-500 text-[12px] font-semibold transition-all disabled:opacity-60 active:scale-[0.98]"
+              >
+                {cardBackUploading ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Mengupload…
+                  </>
+                ) : (
+                  <>
+                    <Camera className="h-3.5 w-3.5" />
+                    {cardBackUrl ? "Ganti Gambar Belakang Kartu" : "Upload Gambar Belakang Kartu"}
+                  </>
+                )}
+              </button>
+              {cardBackUrl && (
+                <p className="text-center text-[10px] text-slate-400 mt-1.5">
+                  Klik kartu → "Lihat Belakang" untuk pratinjau
+                </p>
+              )}
+            </div>
           </div>
         </motion.div>
       )}

@@ -44,6 +44,7 @@ import { fmtIDR } from "@/lib/profit";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { uploadAvatar, savePhotoUrl } from "@/lib/avatarStorage";
+import { uploadCardBack, saveCardBackUrl, loadCardBackUrl } from "@/lib/cardBackStorage";
 import { supabase } from "@/lib/supabase";
 import {
   pullWalletTxs, walletBalance, addWalletTx, type WalletTransaction,
@@ -308,6 +309,9 @@ export default function AgentProfileOwnerView() {
   const [agentPhotoUrl, setAgentPhotoUrl] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [cardBackUrl, setCardBackUrl] = useState<string | null>(null);
+  const [cardBackUploading, setCardBackUploading] = useState(false);
+  const cardBackInputRef = useRef<HTMLInputElement>(null);
   const [agentPhoneWa, setAgentPhoneWa] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editName, setEditName] = useState("");
@@ -375,6 +379,29 @@ export default function AgentProfileOwnerView() {
       }
     })();
   }, [agentId, agencyId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load card back image for this agent
+  useEffect(() => {
+    if (!agentId || !agencyId) return;
+    void loadCardBackUrl(agentId, agencyId).then((url) => {
+      if (url) setCardBackUrl(url);
+    });
+  }, [agentId, agencyId]);
+
+  const handleCardBackFile = async (file: File) => {
+    if (!agentId || !agencyId || !file.type.startsWith("image/")) return;
+    setCardBackUploading(true);
+    try {
+      const url = await uploadCardBack(agentId, file);
+      await saveCardBackUrl(agentId, agencyId, url);
+      setCardBackUrl(url);
+      toast.success(`Gambar belakang kartu ${agent?.displayName ?? "agen"} diperbarui!`);
+    } catch (e: unknown) {
+      toast.error(`Gagal upload: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setCardBackUploading(false);
+    }
+  };
 
   const agentOrders = useMemo(
     () => orders.filter((o) => o.createdByAgent === agentId),
@@ -941,12 +968,49 @@ export default function AgentProfileOwnerView() {
                     ID card resmi {agent.displayName} sebagai Mitra Temantiket
                   </p>
                 </div>
-                <div className="p-5 flex justify-center">
+                <div className="p-5 flex flex-col items-center gap-4">
                   <AgentCard
                     displayName={agent.displayName}
                     agentId={agentId ?? ""}
                     since={agent.createdAt}
+                    backImageUrl={cardBackUrl}
                   />
+                  {/* Upload gambar belakang kartu (owner only) */}
+                  <div className="w-full max-w-[320px]">
+                    <input
+                      ref={cardBackInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void handleCardBackFile(f);
+                        e.target.value = "";
+                      }}
+                    />
+                    <button
+                      onClick={() => cardBackInputRef.current?.click()}
+                      disabled={cardBackUploading}
+                      className="w-full flex items-center justify-center gap-2 h-9 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-600 text-[12px] font-semibold transition-all disabled:opacity-60 active:scale-[0.98]"
+                    >
+                      {cardBackUploading ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Mengupload…
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="h-3.5 w-3.5" />
+                          {cardBackUrl ? "Ganti Gambar Belakang Kartu" : "Upload Gambar Belakang Kartu"}
+                        </>
+                      )}
+                    </button>
+                    {cardBackUrl && (
+                      <p className="text-center text-[10px] text-slate-400 mt-1.5">
+                        Klik "Lihat Belakang" pada kartu untuk pratinjau
+                      </p>
+                    )}
+                  </div>
                 </div>
               </motion.div>
 

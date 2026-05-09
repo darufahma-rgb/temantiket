@@ -3,15 +3,18 @@
  *
  * Halaman profil staff yang bisa diakses owner.
  * Menampilkan kartu digital Staff Card + info dasar member.
+ * Owner bisa upload gambar belakang kartu untuk staff.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, Mail, Shield, Loader2, UserCheck } from "lucide-react";
+import { ArrowLeft, Calendar, Mail, Shield, Loader2, UserCheck, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import { StaffCard } from "@/components/StaffCard";
+import { uploadCardBack, saveCardBackUrl, loadCardBackUrl } from "@/lib/cardBackStorage";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
@@ -32,6 +35,9 @@ export default function StaffProfileOwnerView() {
   const [staff, setStaff] = useState<MemberInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [cardBackUrl, setCardBackUrl] = useState<string | null>(null);
+  const [cardBackUploading, setCardBackUploading] = useState(false);
+  const cardBackInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!staffId) return;
@@ -46,6 +52,29 @@ export default function StaffProfileOwnerView() {
       setLoading(false);
     });
   }, [staffId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load card back image once we know the staff member + agency
+  useEffect(() => {
+    if (!staffId || !currentUser?.agencyId) return;
+    void loadCardBackUrl(staffId, currentUser.agencyId).then((url) => {
+      if (url) setCardBackUrl(url);
+    });
+  }, [staffId, currentUser?.agencyId]);
+
+  const handleCardBackFile = async (file: File) => {
+    if (!staffId || !currentUser?.agencyId || !file.type.startsWith("image/")) return;
+    setCardBackUploading(true);
+    try {
+      const url = await uploadCardBack(staffId, file);
+      await saveCardBackUrl(staffId, currentUser.agencyId, url);
+      setCardBackUrl(url);
+      toast.success(`Gambar belakang kartu ${staff?.displayName ?? "staff"} diperbarui!`);
+    } catch (e: unknown) {
+      toast.error(`Gagal upload: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setCardBackUploading(false);
+    }
+  };
 
   const isOwner = currentUser?.role === "owner";
 
@@ -150,14 +179,14 @@ export default function StaffProfileOwnerView() {
         )}
       </motion.div>
 
-      {/* Staff Card Digital */}
+      {/* Staff Card Digital + upload belakang */}
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.1 }}
         className="rounded-2xl border border-slate-100 bg-white overflow-hidden"
       >
-        <div className="px-4 py-3 border-b border-slate-100">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <UserCheck className="h-4 w-4 text-blue-600" />
             <div>
@@ -168,12 +197,50 @@ export default function StaffProfileOwnerView() {
             </div>
           </div>
         </div>
-        <div className="p-5 flex justify-center">
+        <div className="p-5 flex flex-col items-center gap-4">
           <StaffCard
             displayName={staff.displayName || staff.email}
             staffId={staff.userId}
             since={staff.createdAt}
+            backImageUrl={cardBackUrl}
           />
+
+          {/* Upload gambar belakang (owner only) */}
+          <div className="w-full max-w-[320px]">
+            <input
+              ref={cardBackInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void handleCardBackFile(f);
+                e.target.value = "";
+              }}
+            />
+            <button
+              onClick={() => cardBackInputRef.current?.click()}
+              disabled={cardBackUploading}
+              className="w-full flex items-center justify-center gap-2 h-9 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-600 text-[12px] font-semibold transition-all disabled:opacity-60 active:scale-[0.98]"
+            >
+              {cardBackUploading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Mengupload…
+                </>
+              ) : (
+                <>
+                  <Camera className="h-3.5 w-3.5" />
+                  {cardBackUrl ? "Ganti Gambar Belakang Kartu" : "Upload Gambar Belakang Kartu"}
+                </>
+              )}
+            </button>
+            {cardBackUrl && (
+              <p className="text-center text-[10px] text-slate-400 mt-1.5">
+                Klik "Lihat Belakang" pada kartu untuk pratinjau
+              </p>
+            )}
+          </div>
         </div>
       </motion.div>
     </div>
