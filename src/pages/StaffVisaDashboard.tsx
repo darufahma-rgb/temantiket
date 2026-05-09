@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   FileText, AlertTriangle, CheckCircle2,
-  Loader2, MessageSquare, ChevronRight,
+  Loader2, MessageSquare, ChevronRight, ChevronLeft,
   ArrowUpRight, Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,7 @@ export default function StaffVisaDashboard() {
   } = useStaffData();
 
   const [advancing, setAdvancing] = useState<string | null>(null);
+  const [goingBack, setGoingBack] = useState<string | null>(null);
   const [savingNote, setSavingNote] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [editingNote, setEditingNote] = useState<string | null>(null);
@@ -68,6 +69,24 @@ export default function StaffVisaDashboard() {
       });
     } finally {
       setAdvancing(null);
+    }
+  }
+
+  async function handleGoBack(orderId: string, currentStep: number) {
+    const prevStep = currentStep - 1;
+    if (prevStep < 0) return;
+    setGoingBack(orderId);
+    try {
+      const order = orders.find((o) => o.id === orderId);
+      if (!order) return;
+      await patchOrder(orderId, {
+        metadata: {
+          ...(order.metadata as Record<string, unknown>),
+          processStep: prevStep,
+        },
+      });
+    } finally {
+      setGoingBack(null);
     }
   }
 
@@ -291,6 +310,21 @@ export default function StaffVisaDashboard() {
 
                     {/* Action row */}
                     <div className="flex items-center gap-2 pt-1 border-t border-slate-50">
+                      {currentStep > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-[11px] rounded-xl shrink-0 border-slate-200 text-slate-500 hover:bg-slate-50 px-2"
+                          disabled={goingBack === order.id}
+                          title={`Kembali ke: ${VISA_STEPS[currentStep - 1]?.label}`}
+                          onClick={() => void handleGoBack(order.id, currentStep)}
+                        >
+                          {goingBack === order.id
+                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                            : <ChevronLeft className="h-3 w-3" />
+                          }
+                        </Button>
+                      )}
                       {!isDone ? (
                         <Button
                           size="sm"
