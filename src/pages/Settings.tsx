@@ -2055,7 +2055,17 @@ function PromoPostersPanel() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      savePromoPosters(posts);
+      // Normalize ctaUrl: tambahkan https:// jika user lupa menulis protokol.
+      // Mencegah URL seperti "instagram.com/foo" ditafsirkan sebagai path relatif
+      // di halaman publik /m/... yang menyebabkan 404.
+      const normalized = posts.map((p) => ({
+        ...p,
+        ctaUrl: p.ctaUrl && !/^https?:\/\//i.test(p.ctaUrl.trim())
+          ? `https://${p.ctaUrl.trim()}`
+          : p.ctaUrl.trim(),
+      }));
+      setPosts(normalized);
+      savePromoPosters(normalized);
       toast.success("Poster promo disimpan & akan muncul di halaman publik member card.");
     } catch (e: any) {
       toast.error(`Gagal menyimpan: ${e?.message ?? e}`);

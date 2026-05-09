@@ -17,6 +17,18 @@ import { loadIghAdminSettings } from "@/lib/ighSettings";
 const AGENT_THRESHOLD = 8;
 const AGENT_RECRUIT_WA = "6281311506025";
 
+/**
+ * Pastikan URL selalu punya protokol https:// di depannya.
+ * Jika user menyimpan "instagram.com/foo" tanpa protokol,
+ * browser akan menafsirkan sebagai path relatif → 404.
+ * Fungsi ini menambahkan https:// otomatis jika belum ada.
+ */
+function ensureExternalUrl(url: string): string {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  return `https://${url}`;
+}
+
 // ── Reward milestones — 8 baris × 2 stamp per baris = 16 stamp total ─────────
 const REWARD_MILESTONES = [
   { row: 1, stamps: 2,  emoji: "⭐", label: "Selamat Datang",         desc: "Priority response WhatsApp & sambutan eksklusif member baru",       color: "blue"   },
@@ -160,7 +172,7 @@ function PromoCarousel({ posters }: { posters: PromoPost[] }) {
                     )}
                     {post.ctaUrl && (
                       <a
-                        href={post.ctaUrl}
+                        href={ensureExternalUrl(post.ctaUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 text-[10.5px] font-semibold transition-colors"
@@ -190,7 +202,7 @@ function PromoCarousel({ posters }: { posters: PromoPost[] }) {
                   )}
                   {post.ctaUrl && (
                     <a
-                      href={post.ctaUrl}
+                      href={ensureExternalUrl(post.ctaUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mt-1 self-start inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors"
