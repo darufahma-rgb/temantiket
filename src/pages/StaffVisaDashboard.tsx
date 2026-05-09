@@ -240,7 +240,7 @@ export default function StaffVisaDashboard() {
                             <div className={`h-1.5 w-full rounded-full transition-colors ${
                               done ? "bg-emerald-500" : active ? "bg-blue-500" : "bg-slate-100"
                             }`} />
-                            <StepIcon className={`h-4 w-4 stroke-[1.5] ${
+                            <StepIcon className={`h-4 w-4 stroke-[1.5] mt-[5px] ${
                               active ? "text-blue-600" : done ? "text-emerald-500" : "text-slate-300"
                             }`} />
                           </div>
