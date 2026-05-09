@@ -74,9 +74,24 @@ export function voaOpCost(order: Order): number {
 }
 
 /**
- * Profit bersih setelah dipotong semua biaya: costPrice + voaOpCost (untuk visa_voa).
+ * Total biaya operasional kurir setoran uang.
+ * Berlaku untuk SEMUA jenis order — saat customer bayar tunai via agent/kurir.
+ * Disimpan dalam IDR di metadata: kurirFee + kurirTransportFee + kurirOtherFee.
+ * Bukan komisi penjualan — ini biaya operasional pengiriman uang ke kantor.
+ */
+export function kurirOpCost(order: Order): number {
+  const meta = (order.metadata ?? {}) as Record<string, unknown>;
+  return (
+    Number(meta.kurirFee ?? 0) +
+    Number(meta.kurirTransportFee ?? 0) +
+    Number(meta.kurirOtherFee ?? 0)
+  );
+}
+
+/**
+ * Profit bersih setelah dipotong semua biaya: costPrice + voaOpCost + kurirOpCost.
  * Selalu dalam IDR (sudah di-normalize via toIDR).
  */
 export function netProfitIDR(order: Order, egpRate = EGP_TO_IDR): number {
-  return profitIDR(order, egpRate) - voaOpCost(order);
+  return profitIDR(order, egpRate) - voaOpCost(order) - kurirOpCost(order);
 }

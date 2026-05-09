@@ -24,7 +24,7 @@ import {
   ORDER_STATUSES, ORDER_TYPES, ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI,
   type Order, type OrderStatus, type OrderType,
 } from "@/features/orders/ordersRepo";
-import { voaOpCost } from "@/lib/profit";
+import { voaOpCost, kurirOpCost } from "@/lib/profit";
 import { FlightOrderEditor, type FlightMeta } from "@/features/orders/FlightOrderEditor";
 import { toast } from "sonner";
 import { getCommissionForOrderType } from "@/lib/productCommissions";
@@ -547,6 +547,79 @@ export default function OrderDetail() {
         );
       })()}
 
+      {/* ── Biaya Kurir Setoran Panel — semua jenis order, owner only ──────── */}
+      {currentUser?.role !== "staff" && (() => {
+        const meta = (draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>;
+        const totalKurir = kurirOpCost({ ...order, metadata: meta });
+        return (
+          <div className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🚴</span>
+              <div>
+                <div className="text-sm font-semibold">Biaya Kurir Setoran Uang</div>
+                <div className="text-[11px] text-muted-foreground">Isi jika customer bayar tunai via kurir · otomatis memotong profit bersih transaksi</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Fee Jasa Kurir (IDR)</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                  value={String(Number(meta.kurirFee ?? 0))}
+                  onChange={(e) => setDraft({
+                    ...draft,
+                    metadata: { ...meta, kurirFee: Number(e.target.value) || 0 },
+                  })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Ongkos Transport (IDR)</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                  value={String(Number(meta.kurirTransportFee ?? 0))}
+                  onChange={(e) => setDraft({
+                    ...draft,
+                    metadata: { ...meta, kurirTransportFee: Number(e.target.value) || 0 },
+                  })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Biaya Lainnya (IDR)</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                  value={String(Number(meta.kurirOtherFee ?? 0))}
+                  onChange={(e) => setDraft({
+                    ...draft,
+                    metadata: { ...meta, kurirOtherFee: Number(e.target.value) || 0 },
+                  })}
+                />
+              </div>
+            </div>
+
+            {totalKurir > 0 && (
+              <div className="border-t border-amber-100 pt-3 flex items-center justify-between flex-wrap gap-2">
+                <div className="text-[11.5px] text-amber-700 font-semibold">
+                  Total Biaya Kurir: {fmtIDR(totalKurir)}
+                </div>
+                <div className="text-[10.5px] px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-medium">
+                  🔄 Biaya ini otomatis tercatat di Buku Besar sebagai pengurang profit
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Total preview — hidden from staff */}
       {currentUser?.role !== "staff" && (() => {
         const total = Number(draft.totalPrice ?? order.totalPrice);
@@ -559,11 +632,12 @@ export default function OrderDetail() {
         const voaOpexTotal = order.type === "visa_voa"
           ? voaOpCost({ ...order, metadata: meta })
           : 0;
+        const kurirOpexTotal = kurirOpCost({ ...order, metadata: meta });
         const profit = total - cost;
-        const net = profit - agentFee - pelaksanaFee - voaOpexTotal;
+        const net = profit - agentFee - pelaksanaFee - voaOpexTotal - kurirOpexTotal;
         const profitPositive = profit >= 0;
         const netPositive = net >= 0;
-        const hasDeductions = agentFee > 0 || pelaksanaFee > 0 || voaOpexTotal > 0;
+        const hasDeductions = agentFee > 0 || pelaksanaFee > 0 || voaOpexTotal > 0 || kurirOpexTotal > 0;
         return (
           <div className="rounded-2xl bg-gradient-to-br from-sky-50 to-white border border-sky-100 p-5 space-y-3">
             <div>
@@ -587,19 +661,41 @@ export default function OrderDetail() {
                 {voaOpexTotal > 0 && (
                   <>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Fee Agent Lapangan</span>
+                      <span className="text-muted-foreground">Fee Agent Lapangan 🛂</span>
                       <span className="font-mono text-purple-600">−{fmtIDR(Number(meta.voaAgentFee ?? 0))}</span>
                     </div>
                     {Number(meta.voaTransportFee ?? 0) > 0 && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Ongkos Transport</span>
+                        <span className="text-muted-foreground">Ongkos Transport VOA</span>
                         <span className="font-mono text-purple-600">−{fmtIDR(Number(meta.voaTransportFee ?? 0))}</span>
                       </div>
                     )}
                     {Number(meta.voaOtherFee ?? 0) > 0 && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Biaya Lainnya</span>
+                        <span className="text-muted-foreground">Biaya Lainnya VOA</span>
                         <span className="font-mono text-purple-600">−{fmtIDR(Number(meta.voaOtherFee ?? 0))}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {kurirOpexTotal > 0 && (
+                  <>
+                    {Number(meta.kurirFee ?? 0) > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Fee Jasa Kurir 🚴</span>
+                        <span className="font-mono text-amber-700">−{fmtIDR(Number(meta.kurirFee ?? 0))}</span>
+                      </div>
+                    )}
+                    {Number(meta.kurirTransportFee ?? 0) > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Ongkos Transport Kurir</span>
+                        <span className="font-mono text-amber-700">−{fmtIDR(Number(meta.kurirTransportFee ?? 0))}</span>
+                      </div>
+                    )}
+                    {Number(meta.kurirOtherFee ?? 0) > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Biaya Lainnya Kurir</span>
+                        <span className="font-mono text-amber-700">−{fmtIDR(Number(meta.kurirOtherFee ?? 0))}</span>
                       </div>
                     )}
                   </>
