@@ -239,10 +239,10 @@ export default function OrderDetail() {
           voaFieldAgentId!,
           {
             agentId:     voaFieldAgentId!,
-            type:        "pelaksana_fee",
+            type:        "voa_agent_fee",
             pointsDelta: 0,
             amountIDR:   voaFieldFee,
-            description: `Fee Operasional VOA #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            description: `Fee Agent Lapangan VOA #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy:   currentUser?.id ?? "system",
           },
           `voa-${order.id}`,

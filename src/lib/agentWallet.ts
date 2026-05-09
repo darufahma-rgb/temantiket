@@ -17,8 +17,9 @@ export type WalletTxType =
   | "mission_conversion"
   | "mission_fee"
   | "order_bonus"
-  | "pelaksana_fee"
-  | "kurir_fee"
+  | "pelaksana_fee"    // fee pelaksana visa pelajar (role=staff)
+  | "voa_agent_fee"   // fee agent lapangan VOA (role=agent, bertugas di bandara)
+  | "kurir_fee"       // fee kurir setoran uang
   | "payout"
   | "adjustment";
 

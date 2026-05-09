@@ -83,8 +83,10 @@ export function MitraLeaderboardCard() {
       const cur = stats.get(o.createdByAgent) ?? { revenue: 0, commission: 0, orders: 0 };
       // Gunakan revenueIDR (total penjualan) — tidak bergantung pada HPP/costPrice
       cur.revenue += revenueIDR(o);
-      // Komisi = flat fee per tipe order (konsisten dgn AgentProfileOwnerView & OrderDetail)
-      cur.commission += getCommissionForOrderType(o.type, productCommissions);
+      // Komisi = gunakan agentFee yang tersimpan di metadata jika ada,
+      // fallback ke flat default rate agar data lama tetap tampil.
+      const storedFee = Number((o.metadata as Record<string, unknown>).agentFee ?? -1);
+      cur.commission += storedFee >= 0 ? storedFee : getCommissionForOrderType(o.type, productCommissions);
       cur.orders += 1;
       stats.set(o.createdByAgent, cur);
     }

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Trophy, Users, ShoppingBag, TrendingUp,
   Wallet, CheckCircle, Clock, UserCircle, ExternalLink,
-  Camera, RefreshCw,
+  Camera, RefreshCw, Loader2, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
@@ -17,6 +17,7 @@ import type { MissionSubmission } from "@/features/missions/types";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, type OrderType } from "@/features/orders/ordersRepo";
 import { fmtIDR } from "@/lib/profit";
+import { pullWalletTxs, walletBalance, type WalletTransaction } from "@/lib/agentWallet";
 import { uploadAvatar, savePhotoUrl, loadPhotoUrl } from "@/lib/avatarStorage";
 import { uploadCardBack, saveCardBackUrl, loadCardBackUrl } from "@/lib/cardBackStorage";
 import { supabase } from "@/lib/supabase";
@@ -37,6 +38,7 @@ export default function AgentProfile() {
 
   const [points, setPoints] = useState<AgentPoint[]>([]);
   const [missionSubs, setMissionSubs] = useState<MissionSubmission[]>([]);
+  const [walletTxs, setWalletTxs] = useState<WalletTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refreshMissions = useCallback(async () => {
@@ -50,8 +52,12 @@ export default function AgentProfile() {
     if (clients.length === 0) void fetchClients();
     void (async () => {
       setLoading(true);
-      const p = await listAgentPoints();
+      const [p, txs] = await Promise.all([
+        listAgentPoints(),
+        user?.id ? pullWalletTxs(user.id) : Promise.resolve([]),
+      ]);
       setPoints(p);
+      setWalletTxs(txs);
       await refreshMissions();
       setLoading(false);
     })();
@@ -158,14 +164,20 @@ export default function AgentProfile() {
     [myOrders],
   );
   const feeStats = useMemo(() => {
-    const total = myOrders.reduce(
+    const salesTotal = myOrders.reduce(
       (s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0,
     );
-    const paid = myOrders
+    const salesPaid = myOrders
       .filter((o) => o.status === "Paid" || o.status === "Completed")
       .reduce((s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
-    return { total, paid, pending: total - paid };
-  }, [myOrders]);
+    // VOA field fees + kurir fees credited to wallet
+    const voaFieldTotal = walletTxs
+      .filter((t) => t.type === "voa_agent_fee" || t.type === "kurir_fee")
+      .reduce((s, t) => s + t.amountIDR, 0);
+    const total = salesTotal + voaFieldTotal;
+    const paid  = salesPaid  + voaFieldTotal; // wallet credits are always "paid"
+    return { total, paid, pending: salesTotal - salesPaid, salesTotal, voaFieldTotal };
+  }, [myOrders, walletTxs]);
 
   const portfolio = useMemo(() => {
     const types: OrderType[] = ["umrah", "flight", "visa_voa", "visa_student"];
@@ -397,15 +409,19 @@ export default function AgentProfile() {
         <div className="p-4 space-y-3">
           <div className="text-center py-1">
             <div className="text-xl md:text-3xl font-extrabold font-mono">{fmtIDR(feeStats.total)}</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">total akumulasi fee</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">
+              total akumulasi · sales{feeStats.voaFieldTotal > 0 ? " + lapangan VOA" : ""}
+            </div>
           </div>
+
+          {/* Breakdown: sales komisi vs VOA field */}
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 flex items-start gap-2">
               <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
               <div>
-                <div className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wide">Terbayar</div>
-                <div className="text-sm font-bold font-mono text-emerald-700">{fmtIDR(feeStats.paid)}</div>
-                <div className="text-[10px] text-muted-foreground">order Paid/Completed</div>
+                <div className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wide">Komisi Sales</div>
+                <div className="text-sm font-bold font-mono text-emerald-700">{fmtIDR(feeStats.salesTotal)}</div>
+                <div className="text-[10px] text-muted-foreground">dari order yang lo buat</div>
               </div>
             </div>
             <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 flex items-start gap-2">
@@ -413,14 +429,36 @@ export default function AgentProfile() {
               <div>
                 <div className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide">Belum Cair</div>
                 <div className="text-sm font-bold font-mono text-amber-700">{fmtIDR(feeStats.pending)}</div>
-                <div className="text-[10px] text-muted-foreground">order belum selesai</div>
+                <div className="text-[10px] text-muted-foreground">order belum Completed</div>
               </div>
             </div>
           </div>
+
+          {/* VOA field fee row — only shown when there's a field fee */}
+          {feeStats.voaFieldTotal > 0 && (
+            <div className="rounded-xl bg-purple-50 border border-purple-100 p-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🛂</span>
+                <div>
+                  <div className="text-[10px] text-purple-700 font-semibold uppercase tracking-wide">
+                    Fee Agent Lapangan VOA
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">dikreditkan ke wallet saat order Completed</div>
+                </div>
+              </div>
+              <div className="text-sm font-extrabold font-mono text-purple-700 shrink-0">
+                {fmtIDR(feeStats.voaFieldTotal)}
+              </div>
+            </div>
+          )}
+
           {feeStats.total === 0 && (
-            <p className="text-center text-[11px] text-muted-foreground italic py-1">
-              Belum ada fee. Buat order baru untuk mulai akumulasi fee komisi.
-            </p>
+            <div className="flex items-start gap-2 rounded-xl bg-muted/30 p-3">
+              <Zap className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Belum ada fee tercatat. Fee komisi akan otomatis muncul saat order yang lo buat di-Completed oleh owner.
+              </p>
+            </div>
           )}
         </div>
       </div>

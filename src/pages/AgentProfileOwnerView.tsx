@@ -447,9 +447,12 @@ export default function AgentProfileOwnerView() {
   }, [allAgentsPts, agentId]);
 
   const totalKomisi = useMemo(
-    () => agentOrders.reduce((s, o) => s + getCommissionForOrderType(
-      o.type as "umrah" | "flight" | "visa_voa" | "visa_student",
-    ), 0),
+    () => agentOrders.reduce((s, o) => {
+      const stored = Number((o.metadata as Record<string, unknown>).agentFee ?? -1);
+      return s + (stored >= 0 ? stored : getCommissionForOrderType(
+        o.type as "umrah" | "flight" | "visa_voa" | "visa_student",
+      ));
+    }, 0),
     [agentOrders],
   );
 
@@ -514,7 +517,7 @@ export default function AgentProfileOwnerView() {
   );
   const pelaksanaTxs = useMemo(
     () => [...walletTxs]
-      .filter((t) => t.type === "pelaksana_fee")
+      .filter((t) => t.type === "voa_agent_fee")
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [walletTxs],
   );

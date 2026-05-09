@@ -143,10 +143,10 @@ export default function AgentDashboard() {
       .filter((o) => o.status === "Paid" || o.status === "Completed")
       .reduce((s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
 
-    // Field agent fees from wallet (pelaksana_fee = VOA field work, kurir_fee = courier)
+    // Field agent fees from wallet (voa_agent_fee = agent lapangan VOA, kurir_fee = courier)
     const walletBal  = walletBalance(walletTxs);
     const fieldTotal = walletTxs
-      .filter((t) => t.type === "pelaksana_fee" || t.type === "kurir_fee")
+      .filter((t) => t.type === "voa_agent_fee" || t.type === "kurir_fee")
       .reduce((s, t) => s + t.amountIDR, 0);
 
     const total   = salesTotal + fieldTotal;
