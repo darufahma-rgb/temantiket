@@ -10,6 +10,7 @@ import {
 import { useStaffData } from "@/hooks/useStaffData";
 import { StaffCard } from "@/components/StaffCard";
 import { supabase } from "@/lib/supabase";
+import { loadCardBackUrl } from "@/lib/cardBackStorage";
 import { fmtIDR } from "@/lib/profit";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -35,6 +36,8 @@ export default function StaffDashboardPage() {
   } = useStaffData();
 
   const [joinedAt, setJoinedAt] = useState<string | null>(null);
+  const [cardBackUrl, setCardBackUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (user?.id && user?.agencyId && supabase) {
       void supabase
@@ -46,6 +49,14 @@ export default function StaffDashboardPage() {
         .then(({ data }) => {
           if (data?.created_at) setJoinedAt(data.created_at as string);
         });
+    }
+  }, [user?.id, user?.agencyId]);
+
+  useEffect(() => {
+    if (user?.id && user?.agencyId) {
+      void loadCardBackUrl(user.id, user.agencyId).then((url) => {
+        if (url) setCardBackUrl(url);
+      });
     }
   }, [user?.id, user?.agencyId]);
 
@@ -262,6 +273,7 @@ export default function StaffDashboardPage() {
                 displayName={user.displayName ?? "Staff"}
                 staffId={user.id}
                 since={joinedAt}
+                backImageUrl={cardBackUrl}
               />
             </div>
           </div>
