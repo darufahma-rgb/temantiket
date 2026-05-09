@@ -6,6 +6,7 @@
   font-weight: 400;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0030-0039, U+002E, U+002C, U+0025, U+002B, U+002D;
 }
 @font-face {
   font-family: 'Sk-Modernist';
@@ -13,6 +14,7 @@
   font-weight: 600 700 800 900;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0030-0039, U+002E, U+002C, U+0025, U+002B, U+002D;
 }
 
 @tailwind base;
@@ -164,7 +166,7 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+    font-family: 'Sk-Modernist', 'Manrope', system-ui, -apple-system, sans-serif;
     font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;

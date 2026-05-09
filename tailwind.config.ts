@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Manrope", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["Sk-Modernist", "Manrope", "system-ui", "-apple-system", "sans-serif"],
       },
       colors: {
         /* ── Brand palette override ──
