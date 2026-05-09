@@ -7,7 +7,7 @@ import {
   type FeePaymentRecord,
 } from "@/lib/agentFeePayments";
 import { AnimatePresence, motion } from "framer-motion";
-import { User, Bell, Shield, Palette, Globe, Save, Camera, TrendingUp, RefreshCw, Users, Plus, Trash2, Radio, PencilLine, KeyRound, Clock, CheckCircle2, Lock, History, FileEdit, FileX, FilePlus, Activity, XCircle, AlertCircle, Database, Cloud, HardDrive, UserCheck, MessageCircle, Instagram, FileText, Phone, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { User, Bell, Shield, Palette, Globe, Save, Camera, TrendingUp, RefreshCw, Users, Plus, Trash2, Radio, PencilLine, KeyRound, Clock, CheckCircle2, Lock, History, FileEdit, FileX, FilePlus, Activity, XCircle, AlertCircle, Database, Cloud, HardDrive, UserCheck, MessageCircle, Instagram, FileText, Phone, Send, ChevronDown, ChevronUp, Megaphone, Image, ExternalLink, GripVertical, Eye, EyeOff, Link } from "lucide-react";
 import { InvoiceTemplateUploader } from "@/components/InvoiceTemplateUploader";
 import { loadIghAdminSettings, saveIghAdminSettings, formatWhatsappDisplay, type IghAdminSettings } from "@/lib/ighSettings";
 import { supabase, isSupabaseConfigured, SUPABASE_URL } from "@/lib/supabase";
@@ -43,6 +43,8 @@ import { useRegionalStore } from "@/store/regionalStore";
 import { useT } from "@/lib/regional";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useNavigate } from "react-router-dom";
+import { loadPromoPosters, savePromoPosters, pullPromoPosters, makeNewPost, type PromoPost } from "@/lib/promoPostersSettings";
+import { uploadPromoImage } from "@/lib/supabaseStorage";
 
 async function resizeImageToDataUrl(file: File, maxSize = 320, quality = 0.85): Promise<string> {
   const blobUrl = URL.createObjectURL(file);
@@ -103,6 +105,7 @@ export default function Settings() {
     { key: "regional",      label: t.settings_regional,      icon: Globe,      staffAllowed: false },
     { key: "rates",         label: t.settings_rates,         icon: TrendingUp, staffAllowed: false },
     { key: "agents",        label: t.settings_agents,        icon: Users,      staffAllowed: false },
+    { key: "promo",         label: "Promo",                  icon: Megaphone,  staffAllowed: false },
     { key: "invoice",       label: "Invoice",                icon: FileText,   staffAllowed: false },
     { key: "audit",         label: "Audit Log",              icon: History,    staffAllowed: false },
     { key: "status",        label: "Status",                 icon: Activity,   staffAllowed: false },
@@ -1758,12 +1761,14 @@ export default function Settings() {
           </div>
         )}
 
+        {tab === "promo" && <PromoPostersPanel />}
+
         {tab === "audit" && <AuditLogPanel />}
 
         {tab === "status" && <ConnectionHealthPanel />}
 
         {/* Save */}
-        {tab !== "audit" && tab !== "status" && tab !== "invoice" && (
+        {tab !== "audit" && tab !== "status" && tab !== "invoice" && tab !== "promo" && (
           <div className="mt-6 pt-4 border-t border-[hsl(var(--border))] max-w-xl">
             <div className="flex items-center gap-2">
               <Button onClick={handleSave} className="gradient-primary text-white shadow-glow hover:opacity-90 rounded-xl h-9 px-5 text-sm">
@@ -2013,6 +2018,238 @@ function CheckRow({ check }: { check: HealthCheck }) {
 function extractErr(e: unknown): string {
   const err = e as { message?: string; hint?: string; details?: string; code?: string };
   return err?.message || err?.hint || err?.details || (typeof e === "string" ? e : "Unknown error");
+}
+
+function PromoPostersPanel() {
+  const [posts, setPosts] = useState<PromoPost[]>(() => loadPromoPosters());
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  useEffect(() => {
+    pullPromoPosters().then((remote) => {
+      if (remote) setPosts(remote);
+    });
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      savePromoPosters(posts);
+      toast.success("Poster promo disimpan & akan muncul di halaman publik member card.");
+    } catch (e: any) {
+      toast.error(`Gagal menyimpan: ${e?.message ?? e}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAdd = () => {
+    setPosts((prev) => [...prev, makeNewPost(prev.length)]);
+  };
+
+  const handleRemove = (id: string) => {
+    setPosts((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const handleChange = (id: string, field: keyof PromoPost, value: unknown) => {
+    setPosts((prev) => prev.map((p) => p.id === id ? { ...p, [field]: value } : p));
+  };
+
+  const handleImageUpload = async (id: string, file: File) => {
+    setUploading(id);
+    try {
+      const url = await uploadPromoImage(file);
+      handleChange(id, "imageUrl", url);
+      toast.success("Gambar poster berhasil diunggah.");
+    } catch (e: any) {
+      toast.error(`Gagal upload: ${e?.message ?? e}`);
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4 max-w-2xl">
+      <SectionHeader
+        title="Promo & Info Terbaru"
+        desc="Poster atau informasi yang akan muncul di halaman publik Member Card setiap klien."
+      />
+
+      <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-3 text-[11.5px] text-slate-700 leading-relaxed">
+        <p className="font-semibold text-blue-900 mb-0.5 flex items-center gap-1.5">
+          <Megaphone className="h-3.5 w-3.5" /> Cara kerja
+        </p>
+        <p>Poster aktif akan tampil sebagai carousel di halaman publik member card (<code className="font-mono bg-white/80 px-1 rounded">/m/slug</code>) semua klien. Klik Simpan setelah selesai edit.</p>
+        <p className="mt-1 text-blue-700/70">Butuh jalankan SQL migration <code className="font-mono bg-white/80 px-1 rounded">2026_05_09_public_promo_posters.sql</code> di Supabase SQL Editor agar fungsi RPC publik tersedia.</p>
+      </div>
+
+      {posts.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-[hsl(var(--border))] bg-white py-10 text-center">
+          <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto mb-3">
+            <Megaphone className="h-5 w-5 text-slate-400" />
+          </div>
+          <p className="text-[13px] font-medium text-slate-700">Belum ada poster</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Klik tombol di bawah untuk tambah poster pertama</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {posts.map((post, idx) => (
+          <motion.div
+            key={post.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden"
+          >
+            {/* Card header */}
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[hsl(var(--border))] bg-slate-50/60">
+              <GripVertical className="h-4 w-4 text-slate-300 shrink-0" />
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Poster #{idx + 1}</span>
+              <div className="flex-1" />
+              <button
+                type="button"
+                onClick={() => handleChange(post.id, "active", !post.active)}
+                className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full transition-colors ${
+                  post.active
+                    ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                    : "bg-slate-100 text-slate-500 border border-slate-200"
+                }`}
+              >
+                {post.active ? <><Eye className="h-3 w-3" /> Aktif</> : <><EyeOff className="h-3 w-3" /> Nonaktif</>}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRemove(post.id)}
+                className="h-7 w-7 rounded-lg hover:bg-red-50 border border-transparent hover:border-red-200 flex items-center justify-center transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-red-400" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {/* Image upload */}
+              <div>
+                <Label className="text-[11px] font-semibold text-slate-600 mb-1.5 block">Gambar Poster</Label>
+                <div className="flex gap-2 items-start">
+                  {post.imageUrl && (
+                    <div className="relative h-16 w-28 rounded-xl overflow-hidden border border-slate-200 shrink-0">
+                      <img src={post.imageUrl} alt="preview" className="h-full w-full object-cover" />
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-1.5">
+                    <Input
+                      value={post.imageUrl}
+                      onChange={(e) => handleChange(post.id, "imageUrl", e.target.value)}
+                      placeholder="URL gambar atau upload file…"
+                      className="h-8 text-[12px]"
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRefs.current[post.id]?.click()}
+                        disabled={uploading === post.id}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {uploading === post.id ? (
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Image className="h-3 w-3" />
+                        )}
+                        {uploading === post.id ? "Uploading…" : "Upload Foto"}
+                      </button>
+                      <span className="text-[10px] text-slate-400">JPG/PNG/WebP, maks 10MB</span>
+                    </div>
+                    <input
+                      ref={(el) => { fileInputRefs.current[post.id] = el; }}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleImageUpload(post.id, f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Title + Caption */}
+              <div className="grid grid-cols-1 gap-2.5">
+                <div>
+                  <Label className="text-[11px] font-semibold text-slate-600 mb-1 block">Judul</Label>
+                  <Input
+                    value={post.title}
+                    onChange={(e) => handleChange(post.id, "title", e.target.value)}
+                    placeholder="Promo Ramadhan 2025 ✈️"
+                    className="h-8 text-[12px]"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px] font-semibold text-slate-600 mb-1 block">Keterangan (opsional)</Label>
+                  <Input
+                    value={post.caption}
+                    onChange={(e) => handleChange(post.id, "caption", e.target.value)}
+                    placeholder="Diskon 15% untuk booking sebelum 30 Maret"
+                    className="h-8 text-[12px]"
+                  />
+                </div>
+              </div>
+
+              {/* CTA */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[11px] font-semibold text-slate-600 mb-1 flex items-center gap-1 block">
+                    <ExternalLink className="h-3 w-3" /> Label Tombol CTA
+                  </Label>
+                  <Input
+                    value={post.ctaLabel}
+                    onChange={(e) => handleChange(post.id, "ctaLabel", e.target.value)}
+                    placeholder="Info Lebih Lanjut"
+                    className="h-8 text-[12px]"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px] font-semibold text-slate-600 mb-1 flex items-center gap-1 block">
+                    <Link className="h-3 w-3" /> URL Tujuan (opsional)
+                  </Label>
+                  <Input
+                    value={post.ctaUrl}
+                    onChange={(e) => handleChange(post.id, "ctaUrl", e.target.value)}
+                    placeholder="https://wa.me/628..."
+                    className="h-8 text-[12px]"
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 pt-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleAdd}
+          className="h-9 rounded-xl gap-1.5"
+        >
+          <Plus className="h-3.5 w-3.5" /> Tambah Poster
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleSave}
+          disabled={saving}
+          className="h-9 rounded-xl gap-1.5 gradient-primary text-white shadow-glow hover:opacity-90"
+        >
+          {saving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          {saving ? "Menyimpan…" : "Simpan Poster"}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function AuditLogPanel() {

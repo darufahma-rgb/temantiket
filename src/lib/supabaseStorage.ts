@@ -181,3 +181,29 @@ export async function removePdfTemplate(storagePath: string): Promise<void> {
   const { error } = await supabase!.storage.from(PDF_TEMPLATE_BUCKET).remove([storagePath]);
   if (error) console.warn("[storage] cleanup pdf template failed", error, storagePath);
 }
+
+const PROMO_BUCKET = "jamaah-photos";
+
+/**
+ * Upload gambar poster promo ke Supabase Storage (bucket jamaah-photos, subfolder promo/).
+ * Reuse bucket existing yang sudah ada RLS policy-nya.
+ * Return public URL. Throw kalau upload gagal.
+ */
+export async function uploadPromoImage(file: File): Promise<string> {
+  if (!isSupabaseConfigured()) throw new Error("Supabase belum dikonfigurasi.");
+  const ct = file.type || "image/jpeg";
+  if (!ct.startsWith("image/")) throw new Error("File harus berupa gambar (JPG, PNG, WebP).");
+  if (file.size > 10 * 1024 * 1024) throw new Error("Ukuran file maks 10 MB.");
+  const agencyId = requireAgencyId();
+  const compressed = await compressIfImage(file, ct);
+  const finalContentType = compressed.type || ct;
+  const ext = extFromContentType(finalContentType);
+  const path = `${agencyId}/promo/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+  const { error } = await supabase!.storage.from(PROMO_BUCKET).upload(path, compressed, {
+    upsert: false,
+    contentType: finalContentType,
+  });
+  if (error) throw new Error(`Upload gagal: ${error.message}`);
+  const { data } = supabase!.storage.from(PROMO_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
