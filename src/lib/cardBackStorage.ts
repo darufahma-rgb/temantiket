@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 
 const BUCKET = "card-backs";
 
-async function resizeToBlob(file: File, maxW = 640, maxH = 400, quality = 0.9): Promise<Blob> {
+async function resizeToBlob(file: File, maxW = 1600, maxH = 2000, quality = 0.92): Promise<Blob> {
   const blobUrl = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -46,7 +46,7 @@ export async function uploadCardBack(userId: string, file: File): Promise<string
   if (!file.type.startsWith("image/")) throw new Error("File harus berupa gambar.");
   if (file.size > 10 * 1024 * 1024) throw new Error("Ukuran maksimum 10 MB.");
 
-  const blob = await resizeToBlob(file, 640, 400, 0.9);
+  const blob = await resizeToBlob(file, 1600, 2000, 0.92);
   const path = `${userId}/card-back.jpg`;
 
   const { error } = await supabase.storage

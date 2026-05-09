@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 
 const BUCKET = "avatars";
 
-async function resizeToBlob(file: File, maxSize = 480, quality = 0.88): Promise<Blob> {
+async function resizeToBlob(file: File, maxSize = 1200, quality = 0.92): Promise<Blob> {
   const blobUrl = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -37,7 +37,7 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
   if (!file.type.startsWith("image/")) throw new Error("File harus berupa gambar.");
   if (file.size > 8 * 1024 * 1024) throw new Error("Ukuran maksimum 8 MB.");
 
-  const blob = await resizeToBlob(file, 480, 0.88);
+  const blob = await resizeToBlob(file, 1200, 0.92);
   const path = `${userId}/profile.jpg`;
 
   const { error } = await supabase.storage
