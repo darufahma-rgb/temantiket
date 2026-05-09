@@ -5,7 +5,7 @@ import {
   Loader2, AlertCircle, MessageCircle, History,
   Share2, Users, Trophy, Gift, Crown, Copy, Check,
   ChevronLeft, ChevronRight, Sparkles, ExternalLink,
-  Star, Calendar, Hash, TrendingUp,
+  Star, Calendar, Hash, TrendingUp, Briefcase, Zap, BadgeCheck, DollarSign,
 } from "lucide-react";
 import MemberCard from "@/components/MemberCard";
 import { OrderProgressTracker, ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
@@ -15,6 +15,7 @@ import { buildPublicMemberUrl, buildReferralUrl, normalizePhoneForWa } from "@/l
 import { loadIghAdminSettings } from "@/lib/ighSettings";
 
 const AGENT_THRESHOLD = 8;
+const AGENT_RECRUIT_WA = "6281311506025";
 
 // ── Reward milestones — 8 baris × 2 stamp per baris = 16 stamp total ─────────
 const REWARD_MILESTONES = [
@@ -749,6 +750,92 @@ export default function PublicMemberCardPage() {
                       {referralUrl}
                     </p>
                   </div>
+                )}
+
+                {/* ── Gabung Jadi Agen ─────────────────────────────────── */}
+                {!isReferralView && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="rounded-2xl overflow-hidden shadow-sm"
+                    style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 55%, #312e81 100%)" }}
+                  >
+                    {/* Top accent bar */}
+                    <div className="h-0.5 w-full bg-gradient-to-r from-blue-300 via-indigo-300 to-violet-400 opacity-60" />
+
+                    <div className="p-5 space-y-4">
+                      {/* Header */}
+                      <div className="flex items-start gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0 border border-white/20">
+                          <Briefcase className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-white font-black text-[15px] leading-tight">
+                              Gabung Jadi Agen Temantiket
+                            </p>
+                            <span className="text-[9px] font-black uppercase tracking-wider bg-amber-400 text-amber-900 px-2 py-0.5 rounded-full">
+                              Partner Resmi
+                            </span>
+                          </div>
+                          <p className="text-blue-200 text-[11.5px] mt-0.5 leading-relaxed">
+                            {totalStamps > 0
+                              ? `Sudah ${totalStamps} transaksi bersama kami — saatnya hasilkan komisi dari setiap perjalanan.`
+                              : "Hasilkan penghasilan tambahan dengan menjadi partner perjalanan terpercaya."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 4 Benefit pills */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { icon: DollarSign, label: "Komisi per Order",    desc: "Dapatkan fee setiap order berhasil"        },
+                          { icon: Users,      label: "Bonus Referral",       desc: "Tambah stamp setiap ajak member baru"     },
+                          { icon: Zap,        label: "Sistem Poin & Misi",   desc: "Misi mingguan + konversi poin jadi cash"  },
+                          { icon: TrendingUp, label: "Dashboard Agent",      desc: "Pantau komisi, order & performa realtime" },
+                        ].map(({ icon: Icon, label, desc }) => (
+                          <div key={label} className="flex items-start gap-2.5 bg-white/10 hover:bg-white/15 transition-colors rounded-xl px-3 py-2.5 border border-white/10">
+                            <div className="h-6 w-6 rounded-lg bg-white/15 flex items-center justify-center shrink-0 mt-0.5">
+                              <Icon className="h-3 w-3 text-blue-200" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-white text-[11px] font-bold leading-tight">{label}</p>
+                              <p className="text-blue-300 text-[10px] leading-relaxed mt-0.5">{desc}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Trust row */}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {[
+                          { icon: BadgeCheck, text: "Tanpa modal awal" },
+                          { icon: BadgeCheck, text: "Leaderboard agen" },
+                          { icon: BadgeCheck, text: "Support penuh admin" },
+                        ].map(({ icon: Icon, text }) => (
+                          <div key={text} className="flex items-center gap-1">
+                            <Icon className="h-3 w-3 text-emerald-400 shrink-0" />
+                            <span className="text-[10.5px] text-blue-200">{text}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* CTA */}
+                      <a
+                        href={`https://wa.me/${AGENT_RECRUIT_WA}?text=${encodeURIComponent(
+                          `Halo Admin Temantiket! 👋\n\nSaya ${data.client.name.trim()} (Member ${memberIdStr}) tertarik untuk bergabung sebagai Agen Temantiket.\n\nSudah ${totalStamps} transaksi bersama Temantiket dan ingin mulai menghasilkan komisi. Bisa tolong share info syarat & benefit jadi agen? Terima kasih! ✈️`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full bg-white hover:bg-blue-50 text-blue-900 text-[13.5px] font-black py-3 rounded-xl transition-colors shadow-lg shadow-blue-900/30"
+                      >
+                        <Briefcase className="h-4 w-4" />
+                        Mulai Jadi Partner Temantiket
+                        <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+                      </a>
+                    </div>
+                  </motion.div>
                 )}
 
                 {/* Riwayat Transaksi */}
