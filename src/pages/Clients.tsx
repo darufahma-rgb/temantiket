@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import MemberCard from "@/components/MemberCard";
 import { ClientDocVault } from "@/components/ClientDocVault";
 import { buildMemberSlug, buildPublicMemberUrl } from "@/lib/memberSlug";
+import { decrementReferralStamp } from "@/features/clients/clientsRepo";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const fmtIDR = (v: number) =>
@@ -158,6 +159,8 @@ function ClientDetailInner({ id }: { id: string }) {
   const [referredByName, setReferredByName] = useState<string | null>(null);
   const [referredByClientName, setReferredByClientName] = useState<string | null>(null);
   const [advancingOrderId, setAdvancingOrderId] = useState<string | null>(null);
+  // Track locally-hidden order stamp IDs (optimistic, complements DB metadata.stampHidden)
+  const [localHiddenStampIds, setLocalHiddenStampIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -197,6 +200,32 @@ function ClientDetailInner({ id }: { id: string }) {
   }, [client?.referredByClientId, clients]);
 
   const clientOrders = useMemo(() => orders.filter((o) => o.clientId === id), [orders, id]);
+
+  // Orders filtered by locally-hidden stamps (real-time UI before page refresh)
+  const visibleStampOrders = useMemo(
+    () => clientOrders.filter((o) => !localHiddenStampIds.has(o.id)),
+    [clientOrders, localHiddenStampIds],
+  );
+
+  /** Owner: hapus satu stamp dari order tertentu.
+   *  Simpan flag stampHidden=true ke order metadata agar persisten ke DB.
+   */
+  async function handleDeleteOrderStamp(orderId: string) {
+    if (!isOwner) return;
+    const order = clientOrders.find((o) => o.id === orderId);
+    if (!order) return;
+    const meta = (order.metadata ?? {}) as Record<string, unknown>;
+    await patchOrder(orderId, { metadata: { ...meta, stampHidden: true } });
+    // Optimistic local hide (instant UI update)
+    setLocalHiddenStampIds((prev) => new Set([...prev, orderId]));
+  }
+
+  /** Owner: hapus satu stamp referral (decrement referral_stamps). */
+  async function handleDeleteReferralStamp() {
+    if (!isOwner || !client) return;
+    const updated = await decrementReferralStamp(client.id);
+    setClient(updated);
+  }
 
   async function handleAdvanceStep(orderId: string, type: string, currentStep: number, metadata: Record<string, unknown>) {
     const steps = ORDER_PROCESS_STEPS[type];
@@ -282,13 +311,22 @@ function ClientDetailInner({ id }: { id: string }) {
             <span className="text-base">🪪</span>
             <h2 className="text-sm font-semibold">Member Card</h2>
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-100 text-sky-700">
-              {clientOrders.filter((o) => ["Confirmed","Paid","Completed"].includes(o.status)).length + (client.referralStamps ?? 0)} stamp
+              {visibleStampOrders.filter((o) => ["Confirmed","Paid","Completed"].includes(o.status) && !(o.metadata as Record<string, unknown> | null)?.stampHidden).length + (client.referralStamps ?? 0)} stamp
             </span>
           </div>
           <span className="text-[10px] text-muted-foreground">Klik Download di kartu untuk export PNG</span>
         </div>
         <div className="p-4 md:p-5">
-          <MemberCard client={client} memberIndex={memberIndex} orders={clientOrders} referralStamps={client.referralStamps ?? 0} publicUrl={buildPublicMemberUrl(buildMemberSlug(client.name, memberIndex))} />
+          <MemberCard
+            client={client}
+            memberIndex={memberIndex}
+            orders={visibleStampOrders.filter((o) => !(o.metadata as Record<string, unknown> | null)?.stampHidden)}
+            referralStamps={client.referralStamps ?? 0}
+            publicUrl={buildPublicMemberUrl(buildMemberSlug(client.name, memberIndex))}
+            isOwner={isOwner}
+            onDeleteOrderStamp={isOwner ? handleDeleteOrderStamp : undefined}
+            onDeleteReferralStamp={isOwner ? handleDeleteReferralStamp : undefined}
+          />
           <p className="mt-3 text-[11px] text-muted-foreground">
             Link publik klien:{" "}
             <a href={buildPublicMemberUrl(buildMemberSlug(client.name, memberIndex))} target="_blank" rel="noreferrer" className="font-mono text-sky-600 hover:underline break-all">

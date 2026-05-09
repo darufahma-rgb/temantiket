@@ -112,6 +112,7 @@ const toRow = (c: Partial<Client>, agencyId?: string) => ({
   ...(c.legacyJamaahId !== undefined ? { legacy_jamaah_id: c.legacyJamaahId || null } : {}),
   ...(c.createdByAgent !== undefined ? { created_by_agent: c.createdByAgent } : {}),
   ...(c.referredByClientId !== undefined ? { referred_by_client_id: c.referredByClientId ?? null } : {}),
+  ...(c.referralStamps !== undefined ? { referral_stamps: c.referralStamps } : {}),
   ...(agencyId ? { agency_id: agencyId } : {}),
 });
 
@@ -267,6 +268,37 @@ export async function deleteClient(id: string): Promise<void> {
     }
   }
   saveCache(loadCache().filter((c) => c.id !== id));
+}
+
+/**
+ * Decrement referral_stamps by 1 (min 0) — dipakai owner/admin untuk hapus stamp referral.
+ * Langsung update DB dan cache lokal.
+ */
+export async function decrementReferralStamp(clientId: string): Promise<Client> {
+  const current = loadCache().find((c) => c.id === clientId);
+  const currentStamps = current?.referralStamps ?? 0;
+  const newStamps = Math.max(0, currentStamps - 1);
+  if (isSupabaseConfigured()) {
+    const { data, error } = await withTimeout(
+      supabase!
+        .from("clients")
+        .update({ referral_stamps: newStamps })
+        .eq("id", clientId)
+        .select("*")
+        .single(),
+    );
+    if (error) throw error;
+    const c = fromRow(data);
+    saveCache(loadCache().map((x) => (x.id === clientId ? c : x)));
+    return c;
+  }
+  const all = loadCache();
+  const idx = all.findIndex((c) => c.id === clientId);
+  if (idx === -1) throw new Error("Client not found");
+  const updated = { ...all[idx], referralStamps: newStamps, updatedAt: new Date().toISOString() };
+  all[idx] = updated;
+  saveCache(all);
+  return updated;
 }
 
 /** Reset cache — biasanya dipanggil saat ganti agency. */

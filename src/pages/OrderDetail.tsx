@@ -196,9 +196,18 @@ export default function OrderDetail() {
       const shouldCreditKurir = willBeCompleted && !!kurirAgentIdPre &&
         kurirFeeAmountPre > 0 && !metaPatch.kurirFeeCredited;
 
-      // Agent order commission (sales agent, not VOA field agent)
-      const agentCommId     = order.createdByAgent ?? null;
-      const agentFeeAmount  = Number(metaPatch.agentFee) || getCommissionForOrderType(order.type);
+      // Agent order commission (sales agent, not VOA field agent).
+      // Only credit if the order was created by an agent (not a direct/owner order).
+      // If agentFee was explicitly stored in metadata, use that value.
+      // If agentFee is not stored yet, auto-fallback to productCommission default.
+      // Direct orders (no createdByAgent) always get agentFeeAmount = 0 — no deduction.
+      const agentCommId = order.createdByAgent ?? null;
+      const agentFeeStored = metaPatch.agentFee !== undefined && metaPatch.agentFee !== null
+        ? Number(metaPatch.agentFee)
+        : -1;
+      const agentFeeAmount = agentCommId
+        ? (agentFeeStored >= 0 ? agentFeeStored : getCommissionForOrderType(order.type))
+        : 0;
       const shouldCreditAgent = willBeCompleted && !!agentCommId &&
         agentFeeAmount > 0 && !metaPatch.agentFeeCredited;
 
