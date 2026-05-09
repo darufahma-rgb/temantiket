@@ -512,6 +512,16 @@ export default function AgentProfileOwnerView() {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [walletTxs],
   );
+  const pelaksanaTxs = useMemo(
+    () => [...walletTxs]
+      .filter((t) => t.type === "pelaksana_fee")
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [walletTxs],
+  );
+  const totalPelaksanaFee = useMemo(
+    () => pelaksanaTxs.reduce((s, t) => s + t.amountIDR, 0),
+    [pelaksanaTxs],
+  );
   const walletBal = useMemo(() => walletBalance(walletTxs), [walletTxs]);
   const totalCommissionCredited = useMemo(
     () => orderBonusTxs.reduce((s, t) => s + t.amountIDR, 0),
@@ -1332,21 +1342,32 @@ export default function AgentProfileOwnerView() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Total Dikreditkan</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Komisi Sales</span>
                     <Coins className="h-3.5 w-3.5 text-emerald-500" />
                   </div>
                   <p className="text-base font-extrabold font-mono text-emerald-800">{fmtIDR(totalCommissionCredited)}</p>
                   <p className="text-[10px] text-emerald-600 mt-0.5">{orderBonusTxs.length} order selesai</p>
                 </div>
-                <div className="rounded-2xl border border-orange-100 bg-orange-50 p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-orange-700">Total Dicairkan</span>
-                    <ArrowDownToLine className="h-3.5 w-3.5 text-orange-500" />
+                {totalPelaksanaFee > 0 ? (
+                  <div className="rounded-2xl border border-purple-100 bg-purple-50 p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-purple-700">Fee Lapangan VOA</span>
+                      <span className="text-sm">🛂</span>
+                    </div>
+                    <p className="text-base font-extrabold font-mono text-purple-800">{fmtIDR(totalPelaksanaFee)}</p>
+                    <p className="text-[10px] text-purple-600 mt-0.5">{pelaksanaTxs.length} penugasan</p>
                   </div>
-                  <p className="text-base font-extrabold font-mono text-orange-800">{fmtIDR(totalPaidOut)}</p>
-                  <p className="text-[10px] text-orange-600 mt-0.5">{payoutTxs.length} pencairan</p>
-                </div>
-                <div className={`rounded-2xl border p-3 col-span-2 md:col-span-2 ${walletBal.netIDR >= 0 ? "border-sky-100 bg-sky-50" : "border-red-100 bg-red-50"}`}>
+                ) : (
+                  <div className="rounded-2xl border border-orange-100 bg-orange-50 p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-orange-700">Total Dicairkan</span>
+                      <ArrowDownToLine className="h-3.5 w-3.5 text-orange-500" />
+                    </div>
+                    <p className="text-base font-extrabold font-mono text-orange-800">{fmtIDR(totalPaidOut)}</p>
+                    <p className="text-[10px] text-orange-600 mt-0.5">{payoutTxs.length} pencairan</p>
+                  </div>
+                )}
+                <div className={`rounded-2xl border p-3 col-span-2 ${walletBal.netIDR >= 0 ? "border-sky-100 bg-sky-50" : "border-red-100 bg-red-50"}`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-[10px] font-semibold uppercase tracking-wide ${walletBal.netIDR >= 0 ? "text-sky-700" : "text-red-700"}`}>Saldo Wallet Saat Ini</span>
                     <Wallet className={`h-3.5 w-3.5 ${walletBal.netIDR >= 0 ? "text-sky-500" : "text-red-500"}`} />
@@ -1359,6 +1380,19 @@ export default function AgentProfileOwnerView() {
                   </p>
                 </div>
               </div>
+              {/* Jika ada fee lapangan, tampilkan baris pencairan di bawah summary strip */}
+              {totalPelaksanaFee > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-orange-100 bg-orange-50 p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-orange-700">Total Dicairkan</span>
+                      <ArrowDownToLine className="h-3.5 w-3.5 text-orange-500" />
+                    </div>
+                    <p className="text-base font-extrabold font-mono text-orange-800">{fmtIDR(totalPaidOut)}</p>
+                    <p className="text-[10px] text-orange-600 mt-0.5">{payoutTxs.length} pencairan</p>
+                  </div>
+                </div>
+              )}
 
               {/* Per-order commission audit list */}
               <div className="rounded-2xl border bg-white overflow-hidden">
@@ -1436,6 +1470,55 @@ export default function AgentProfileOwnerView() {
                   </div>
                 )}
               </div>
+
+              {/* VOA pelaksana fee history */}
+              {pelaksanaTxs.length > 0 && (
+                <div className="rounded-2xl border bg-white overflow-hidden">
+                  <div className="px-4 py-3 border-b flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-purple-100 flex items-center justify-center">
+                        <span className="text-sm">🛂</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">Riwayat Fee Lapangan VOA</p>
+                        <p className="text-[10px] text-muted-foreground">Fee operasional saat bertugas sebagai agent lapangan di bandara</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                      {pelaksanaTxs.length} penugasan
+                    </span>
+                  </div>
+                  <div className="divide-y">
+                    {pelaksanaTxs.map((tx) => {
+                      const idMatch = tx.description.match(/#([a-f0-9]{8})/i);
+                      const shortId = idMatch?.[1] ?? null;
+                      return (
+                        <div key={tx.id} className="flex items-center gap-3 px-4 py-3 hover:bg-purple-50/40 transition-colors">
+                          <div className="h-8 w-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 text-sm">
+                            🛂
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] text-muted-foreground truncate">{tx.description}</p>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="text-[10px] text-muted-foreground">{fmtDateTime(tx.createdAt)}</span>
+                              {shortId && (
+                                <span className="text-[9px] font-mono bg-purple-100 px-1.5 py-0.5 rounded text-purple-700">
+                                  #{shortId}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-[13px] font-extrabold font-mono text-purple-700">
+                              +{fmtIDR(tx.amountIDR)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Payout history (secondary) */}
               {payoutTxs.length > 0 && (

@@ -181,12 +181,13 @@ export default function Reports() {
     for (const o of filtered) {
       const p = profitIDR(o, egpRate);
       const r = revenueIDR(o, egpRate);
+      const opex = voaOpCost(o as Parameters<typeof voaOpCost>[0]);
       // Cek apakah createdByAgent mengarah ke member berole "agent".
       // Owner/staff yang di-set sebagai "Closing Ref" TIDAK dihitung Via Agent.
       const member = o.createdByAgent ? memberById.get(o.createdByAgent) : undefined;
       const isAgentOrder = o.createdByAgent != null && member?.role === "agent";
       if (isAgentOrder) {
-        agentProfit += p;
+        agentProfit += p - opex;
         agentRevenue += r;
         agentCount += 1;
         // Komisi = nominal flat per jenis produk (bukan % dari profit).
@@ -195,7 +196,7 @@ export default function Reports() {
           productCommissions,
         );
       } else {
-        directProfit += p;
+        directProfit += p - opex;
         directRevenue += r;
         directCount += 1;
       }
@@ -1097,11 +1098,35 @@ export default function Reports() {
                           </tr>
                         );
                       }
+                      if (e.isVoaOpex) {
+                        // Baris debit biaya operasional VOA — styling ungu
+                        const balColor = e.runningBalance >= 0 ? "text-emerald-700 font-bold" : "text-red-600 font-bold";
+                        return (
+                          <tr key={e.orderId} className="border-b last:border-b-0 bg-purple-50/60 hover:bg-purple-50">
+                            <td className="py-1.5 px-2 text-muted-foreground">—</td>
+                            <td className="py-1.5 px-2 whitespace-nowrap text-muted-foreground">{fmtDate(e.paidAt)}</td>
+                            <td className="py-1.5 px-2 max-w-[120px] truncate text-purple-700/70" title={e.clientName}>{e.clientName}</td>
+                            <td className="py-1.5 px-2 max-w-[200px] truncate text-purple-700 font-semibold" title={e.orderTitle}>
+                              <span className="mr-1">🛂</span>
+                              {e.orderTitle}
+                            </td>
+                            <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">—</td>
+                            <td className="py-1.5 px-2 text-right font-mono text-purple-700 font-semibold">−{fmtIDR(e.costIDR)}</td>
+                            <td className="py-1.5 px-2 text-right font-mono font-semibold text-purple-700">
+                              −{fmtIDR(Math.abs(e.profitIDR))}
+                            </td>
+                            <td className="py-1.5 px-2 text-right text-muted-foreground">—</td>
+                            <td className={`py-1.5 px-2 text-right font-mono ${balColor}`}>
+                              {fmtIDR(e.runningBalance)}
+                            </td>
+                          </tr>
+                        );
+                      }
                       const profitColor = e.profitIDR >= 0 ? "text-emerald-700" : "text-red-600";
                       const balColor    = e.runningBalance >= 0 ? "text-emerald-700 font-bold" : "text-red-600 font-bold";
                       const marginColor = e.marginPct >= 20 ? "text-emerald-700" : e.marginPct >= 10 ? "text-sky-700" : e.marginPct >= 0 ? "text-amber-700" : "text-red-600";
-                      // Count only non-commission entries for the # column
-                      const orderCount = ledgerEntries.slice(i).filter((x) => !x.isCommission).length;
+                      // Count only non-commission, non-voaOpex entries for the # column
+                      const orderCount = ledgerEntries.slice(i).filter((x) => !x.isCommission && !x.isVoaOpex).length;
                       return (
                         <tr key={e.orderId} className="border-b last:border-b-0 hover:bg-muted/30">
                           <td className="py-2 px-2 text-muted-foreground">{orderCount}</td>
@@ -1128,7 +1153,7 @@ export default function Reports() {
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-emerald-200 bg-emerald-50/50 font-bold text-[12px]">
-                      <td colSpan={4} className="py-2.5 px-2 text-emerald-800">Total ({ledgerStats.count} order · {ledgerEntries.filter(e => e.isCommission).length} komisi)</td>
+                      <td colSpan={4} className="py-2.5 px-2 text-emerald-800">Total ({ledgerStats.count} order · {ledgerEntries.filter(e => e.isCommission).length} komisi 💸 · {ledgerEntries.filter(e => e.isVoaOpex).length > 0 ? `${ledgerEntries.filter(e => e.isVoaOpex).length} opex VOA 🛂` : ""})</td>
                       <td className="py-2.5 px-2 text-right font-mono text-sky-700">{fmtIDR(ledgerStats.totalRevenue)}</td>
                       <td className="py-2.5 px-2 text-right font-mono text-rose-700">{fmtIDR(ledgerStats.totalCost)}</td>
                       <td className={`py-2.5 px-2 text-right font-mono ${ledgerStats.totalProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
@@ -1147,7 +1172,8 @@ export default function Reports() {
               <p className="mt-3 text-[10.5px] text-muted-foreground">
                 * Revenue & profit di-konversi ke IDR menggunakan kurs yang di-snapshot saat order pertama kali berstatus Paid.
                 Order lama yang belum punya snapshot menggunakan kurs live saat ini (1 EGP ≈ Rp {egpRate}).
-                Baris 💸 = pengeluaran fee komisi agen, dihitung otomatis dari persentase yang kamu tetapkan di Pengaturan → Tim.
+                Baris 💸 = pengeluaran fee komisi agen (otomatis dari Pengaturan → Tim).
+                Baris 🛂 = biaya operasional VOA (fee agent lapangan + transport + lainnya), diinput di detail order VOA.
               </p>
             </Card>
           )}
