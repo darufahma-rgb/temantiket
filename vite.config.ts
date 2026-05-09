@@ -24,31 +24,7 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/frankfurter/, ""),
       },
-      "/api/ocr-passport": {
-        target: "http://localhost:3001",
-        changeOrigin: true,
-      },
-      "/api/invite-member": {
-        target: "http://localhost:3001",
-        changeOrigin: true,
-      },
-      "/api/remove-member": {
-        target: "http://localhost:3001",
-        changeOrigin: true,
-      },
-      "/api/bootstrap": {
-        target: "http://localhost:3001",
-        changeOrigin: true,
-      },
-      "/api/ai": {
-        target: "http://localhost:3001",
-        changeOrigin: true,
-      },
-      "/api/export": {
-        target: "http://localhost:3001",
-        changeOrigin: true,
-      },
-      "/api/award-commission-points": {
+      "/api": {
         target: "http://localhost:3001",
         changeOrigin: true,
       },

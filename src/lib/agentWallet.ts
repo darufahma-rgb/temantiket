@@ -219,8 +219,12 @@ export async function addWalletTxAsync(
     }
 
     console.error("[agentWallet] anon-client fallback upsert juga gagal:", anonErr.message);
-    // Return the original server error (more informative)
-    return { tx: full, persisted: false, error: serverError };
+    // Return the fallback error — it's more specific (e.g. CHECK constraint, RLS)
+    // than the original server error (which may just be "HTTP 404" if proxy wasn't set up).
+    const finalError = anonErr.message
+      ? `${anonErr.message} (server: ${serverError})`
+      : serverError;
+    return { tx: full, persisted: false, error: finalError };
 
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
