@@ -314,7 +314,9 @@ function ClientDetailInner({ id }: { id: string }) {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <div className="text-sm font-mono font-semibold">{fmtIDR(o.totalPrice)}</div>
+                      {userRole !== "staff" && (
+                        <div className="text-sm font-mono font-semibold">{fmtIDR(o.totalPrice)}</div>
+                      )}
                       <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/50" />
                     </div>
                   </Link>
