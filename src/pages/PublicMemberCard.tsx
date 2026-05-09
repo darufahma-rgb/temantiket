@@ -275,7 +275,8 @@ export default function PublicMemberCardPage() {
   const [posters,       setPosters]       = useState<PromoPost[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [err,           setErr]           = useState<"not_found" | "invalid_slug" | "network" | null>(null);
-  const [referralCopied,setReferralCopied]= useState(false);
+  const [referralCopied,  setReferralCopied]  = useState(false);
+  const [showAllHistory,  setShowAllHistory]  = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -427,7 +428,7 @@ export default function PublicMemberCardPage() {
       </header>
 
       {/* ── Main scrollable area ─────────────────────────────────────────── */}
-      <main className="max-w-5xl mx-auto w-full px-4 py-6 pb-12">
+      <main className="max-w-5xl mx-auto w-full px-4 py-4 pb-8">
 
         {/* Loading */}
         <AnimatePresence>
@@ -479,41 +480,41 @@ export default function PublicMemberCardPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-5"
+            className="space-y-4"
           >
             {/* Referral Banner */}
             {isReferralView && (
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3.5 flex items-start gap-3"
+                className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 flex items-center gap-2.5"
               >
-                <div className="h-9 w-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 text-lg">
+                <div className="h-7 w-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0 text-base">
                   🤝
                 </div>
                 <div>
-                  <p className="text-[13px] font-bold text-emerald-800">
+                  <p className="text-[12px] font-bold text-emerald-800">
                     {refData
                       ? `Kamu dibawa oleh ${refData.client.name.trim().split(/\s+/).slice(0, 2).join(" ")}!`
                       : "Kamu dibuka dari link referral!"}
                   </p>
-                  <p className="text-[11.5px] text-emerald-600 mt-0.5 leading-relaxed">
-                    Order lewat Temantiket & sebut nama referrer ke admin — dia dapat bonus stamp reward 🎁
+                  <p className="text-[10.5px] text-emerald-600 leading-snug">
+                    Order lewat Temantiket & sebut nama referrer ke admin — dapat bonus stamp 🎁
                   </p>
                 </div>
               </motion.div>
             )}
 
             {/* Page Header */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center justify-between gap-2">
               <div>
-                <div className="inline-flex items-center gap-1.5 bg-blue-600/10 border border-blue-200 text-blue-600 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full mb-2">
-                  <Sparkles className="h-2.5 w-2.5" /> Temantiket Member
+                <div className="inline-flex items-center gap-1 bg-blue-600/10 border border-blue-200 text-blue-600 text-[9.5px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mb-1">
+                  <Sparkles className="h-2 w-2" /> Temantiket Member
                 </div>
-                <h1 className="text-[26px] md:text-[30px] font-black text-gray-900 tracking-tight leading-tight">
+                <h1 className="text-[19px] md:text-[22px] font-black text-gray-900 tracking-tight leading-tight">
                   {data.client.name}
                 </h1>
-                <p className="text-[12px] text-gray-400 mt-0.5">
+                <p className="text-[11px] text-gray-400">
                   {memberIdStr} · Bergabung {fmtDateShort(data.client.createdAt)}
                 </p>
               </div>
@@ -521,9 +522,9 @@ export default function PublicMemberCardPage() {
                 href={ctaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1eb858] text-white text-[13px] font-bold px-5 py-2.5 rounded-xl transition-colors shadow-md shadow-green-200"
+                className="flex items-center gap-1.5 bg-[#25D366] hover:bg-[#1eb858] text-white text-[12px] font-bold px-4 py-2 rounded-xl transition-colors shadow shadow-green-200 shrink-0"
               >
-                <MessageCircle className="h-4 w-4" />
+                <MessageCircle className="h-3.5 w-3.5" />
                 {isReferralView ? "Hubungi Admin" : "Pesan Sekarang"}
               </a>
             </div>
@@ -534,9 +535,9 @@ export default function PublicMemberCardPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08 }}
-                className="rounded-3xl border border-blue-100 bg-white shadow-sm overflow-hidden"
+                className="rounded-2xl border border-blue-100 bg-white shadow-sm overflow-hidden"
               >
-                <div className="px-5 pt-5 pb-4">
+                <div className="px-3 pt-3 pb-2">
                   <PromoCarousel posters={posters} />
                 </div>
               </motion.div>
@@ -549,7 +550,7 @@ export default function PublicMemberCardPage() {
               <div className="lg:col-span-1 space-y-4">
 
                 {/* Card */}
-                <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
                   <MemberCard
                     client={{ name: data.client.name, createdAt: data.client.createdAt }}
                     memberIndex={data.client.memberIndex}
@@ -558,7 +559,7 @@ export default function PublicMemberCardPage() {
                     }))}
                     readOnly
                   />
-                  <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+                  <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
                     {(data.client.referralStamps ?? 0) > 0 && (
                       <div className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10.5px] font-semibold px-2.5 py-1 rounded-full">
                         <Gift className="h-2.5 w-2.5" /> +{data.client.referralStamps} referral
@@ -582,27 +583,27 @@ export default function PublicMemberCardPage() {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.97 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 p-4 space-y-3"
+                    className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 p-3 space-y-2"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="h-10 w-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center">
-                        <Crown className="h-5 w-5 text-amber-600" />
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                        <Crown className="h-4 w-4 text-amber-600" />
                       </div>
                       <div>
-                        <p className="text-[13px] font-bold text-amber-900">Gold Member 🏅</p>
-                        <p className="text-[10.5px] text-amber-600">{totalStamps} transaksi — pelanggan terbaik</p>
+                        <p className="text-[12px] font-bold text-amber-900">Gold Member 🏅</p>
+                        <p className="text-[10px] text-amber-600">{totalStamps} transaksi — pelanggan terbaik</p>
                       </div>
                     </div>
-                    <p className="text-[12px] text-amber-800 leading-relaxed">
-                      Mau naik level jadi <strong>Agen Resmi Temantiket</strong>? Komisi, akses eksklusif, dan banyak benefit lainnya!
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      Naik level jadi <strong>Agen Resmi Temantiket</strong> — komisi, akses eksklusif & lebih banyak benefit!
                     </p>
                     <a
                       href={agentWaUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full bg-amber-500 hover:bg-amber-600 text-white text-[13px] font-bold py-2.5 rounded-xl transition-colors shadow shadow-amber-200"
+                      className="flex items-center justify-center gap-1.5 w-full bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-bold py-2 rounded-lg transition-colors shadow shadow-amber-200"
                     >
-                      <Crown className="h-4 w-4" /> Daftar Jadi Agen
+                      <Crown className="h-3.5 w-3.5" /> Daftar Jadi Agen
                     </a>
                   </motion.div>
                 )}
