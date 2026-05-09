@@ -360,8 +360,8 @@ export default function BCTemplates() {
             })}
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {filtered.map((t) => (
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            {filtered.map((t, i) => (
               <TemplateCard
                 key={t.id}
                 template={t}
@@ -370,6 +370,7 @@ export default function BCTemplates() {
                 onCopy={() => handleCopyClick(t)}
                 onEdit={() => openEdit(t)}
                 onDelete={() => setDeleteTarget(t)}
+                isLast={i === filtered.length - 1}
               />
             ))}
           </div>
@@ -658,39 +659,34 @@ function CategorySection({
   onDelete: (t: BCTemplate) => void;
 }) {
   const [open, setOpen] = useState(true);
+  const Icon = CATEGORY_ICONS[cat.key] ?? MessageCircle;
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      {/* Section header */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3.5 active:bg-slate-50 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition-colors group"
       >
-        <div className="flex items-center gap-2.5">
-          {(() => { const Icon = CATEGORY_ICONS[cat.key] ?? MessageCircle; return <Icon className="h-4 w-4 text-blue-500 shrink-0" />; })()}
-          <span className="text-[13.5px] font-bold text-slate-800">{cat.label}</span>
-          <span className={cn("text-[10.5px] font-bold px-2 py-0.5 rounded-full border", cat.color)}>
-            {items.length}
-          </span>
-        </div>
-        <div className={cn(
-          "w-6 h-6 rounded-full flex items-center justify-center transition-colors",
-          open ? "bg-slate-100" : "bg-slate-50",
-        )}>
-          {open
-            ? <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
-            : <ChevronDown className="h-3.5 w-3.5 text-slate-500" />}
-        </div>
+        <ChevronDown className={cn(
+          "h-3.5 w-3.5 text-slate-400 transition-transform shrink-0",
+          !open && "-rotate-90"
+        )} />
+        <Icon className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+        <span className="text-[12px] font-semibold text-slate-600 uppercase tracking-wide">{cat.label}</span>
+        <span className="text-[11px] text-slate-400 font-medium">{items.length}</span>
       </button>
+
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <div className="px-3 pb-3 pt-0.5 space-y-2.5">
-              {items.map((t) => (
+            <div className="border-t border-slate-100">
+              {items.map((t, i) => (
                 <TemplateCard
                   key={t.id}
                   template={t}
@@ -699,6 +695,7 @@ function CategorySection({
                   onCopy={() => onCopy(t)}
                   onEdit={() => onEdit(t)}
                   onDelete={() => onDelete(t)}
+                  isLast={i === items.length - 1}
                 />
               ))}
             </div>
@@ -771,7 +768,7 @@ function WAMarkdown({ text, className }: { text: string; className?: string }) {
 // ── TemplateCard ─────────────────────────────────────────────────────────────
 
 function TemplateCard({
-  template, canEdit, isCopied, onCopy, onEdit, onDelete,
+  template, canEdit, isCopied, onCopy, onEdit, onDelete, isLast,
 }: {
   template: BCTemplate;
   canEdit: boolean;
@@ -779,105 +776,126 @@ function TemplateCard({
   onCopy: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  isLast?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const cat = BC_CATEGORIES.find((c) => c.key === template.category)!;
   const vars = extractVariables(template.body);
-
-  const PREVIEW_LINES = 3;
-  const lines = template.body.split("\n").filter((l) => l.trim() !== "");
-  const isLong = lines.length > PREVIEW_LINES;
-  const previewText = expanded
-    ? template.body
-    : lines.slice(0, PREVIEW_LINES).join("\n");
-
   const CatIcon = CATEGORY_ICONS[cat.key] ?? MessageCircle;
 
+  const PREVIEW_LINES = 4;
+  const lines = template.body.split("\n").filter((l) => l.trim() !== "");
+  const isLong = lines.length > PREVIEW_LINES;
+  const previewText = expanded ? template.body : lines.slice(0, PREVIEW_LINES).join("\n");
+
   return (
-    <motion.div
-      layout
-      className="rounded-xl border border-slate-200 bg-white overflow-hidden"
-    >
-      <div className="flex items-stretch gap-0">
+    <div className={cn("group", !isLast && "border-b border-slate-100")}>
+      {/* ── Main row ── */}
+      <div className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50/70 transition-colors">
 
-        {/* ── Left: content ── */}
-        <div className="flex-1 min-w-0 px-3 py-2.5">
+        {/* Page icon */}
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="shrink-0 w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <ChevronDown className={cn(
+            "h-3.5 w-3.5 transition-transform",
+            !expanded && "-rotate-90"
+          )} />
+        </button>
 
-          {/* Badge row */}
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <span className={cn(
-              "inline-flex items-center gap-1 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 leading-none",
-              cat.color,
-            )}>
-              <CatIcon className="h-2 w-2 shrink-0" />
-              {cat.label}
-            </span>
-            {vars.length > 0 && (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0 leading-none">
-                🔧 {vars.length} var
-              </span>
-            )}
-          </div>
-
-          {/* Title */}
-          <h3 className="text-[12.5px] font-bold text-slate-900 leading-snug mb-1.5 line-clamp-1">
+        {/* Title — click row to expand */}
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex-1 min-w-0 text-left flex items-center gap-2"
+        >
+          <span className="text-[13px] font-medium text-slate-800 truncate leading-none">
             {template.title}
-          </h3>
-
-          {/* Body preview */}
-          <WAMarkdown text={previewText} />
-
-          {isLong && (
-            <button
-              onClick={() => setExpanded((v) => !v)}
-              className="text-[10px] text-blue-500 font-semibold mt-1 hover:text-blue-700 transition-colors"
-            >
-              {expanded ? "Sembunyikan ↑" : "Lihat selengkapnya ↓"}
-            </button>
+          </span>
+          {vars.length > 0 && (
+            <span className="shrink-0 text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200 leading-none">
+              {vars.length} var
+            </span>
           )}
-        </div>
+        </button>
 
-        {/* ── Right: actions ── */}
-        <div className="flex flex-col items-center justify-between gap-2 px-2.5 py-2.5 border-l border-slate-100 shrink-0 w-[60px]">
-
-          {/* Copy button — pill, compact */}
-          <button
-            onClick={onCopy}
-            title={vars.length > 0 ? "Copy & Isi Variabel" : "Copy"}
-            className={cn(
-              "flex flex-col items-center justify-center gap-0.5 w-full rounded-lg py-2 text-[9.5px] font-bold text-white transition-colors flex-1",
-              isCopied
-                ? "bg-emerald-500"
-                : "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
-            )}
-          >
-            {isCopied
-              ? <><Check className="h-3.5 w-3.5" /><span>Done</span></>
-              : <><Copy className="h-3.5 w-3.5" /><span>Copy</span></>}
-          </button>
-
-          {/* Edit + Delete */}
+        {/* Actions — always visible on mobile, visible on hover desktop */}
+        <div className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           {canEdit && (
-            <div className="flex flex-col items-center gap-1 w-full">
+            <>
               <button
                 onClick={onEdit}
                 title="Edit"
-                className="w-full h-7 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 transition-colors"
               >
-                <Pencil className="h-3 w-3 text-slate-400" />
+                <Pencil className="h-3.5 w-3.5 text-slate-400" />
               </button>
               <button
                 onClick={onDelete}
                 title="Hapus"
-                className="w-full h-7 rounded-lg border border-red-100 bg-red-50 flex items-center justify-center hover:bg-red-100 active:bg-red-200 transition-colors"
+                className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-red-50 active:bg-red-100 transition-colors"
               >
-                <Trash2 className="h-3 w-3 text-red-400" />
+                <Trash2 className="h-3.5 w-3.5 text-slate-400 hover:text-red-500" />
               </button>
-            </div>
+            </>
           )}
-        </div>
 
+          {/* Copy button */}
+          <button
+            onClick={onCopy}
+            title={vars.length > 0 ? "Copy & Isi Variabel" : "Copy ke clipboard"}
+            className={cn(
+              "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-semibold transition-colors",
+              isCopied
+                ? "bg-emerald-500 text-white"
+                : "bg-blue-500 hover:bg-blue-600 text-white active:bg-blue-700",
+            )}
+          >
+            {isCopied
+              ? <><Check className="h-3 w-3" /> Copied</>
+              : <><Copy className="h-3 w-3" /> Copy</>}
+          </button>
+        </div>
       </div>
-    </motion.div>
+
+      {/* ── Expanded body ── */}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="pl-10 pr-4 pb-3">
+              {/* Category badge */}
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className={cn(
+                  "inline-flex items-center gap-1 text-[9.5px] font-semibold px-1.5 py-0.5 rounded border leading-none",
+                  cat.color,
+                )}>
+                  <CatIcon className="h-2.5 w-2.5" />
+                  {cat.label}
+                </span>
+              </div>
+
+              {/* Body */}
+              <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2.5">
+                <WAMarkdown text={previewText} />
+                {isLong && (
+                  <button
+                    onClick={() => setExpanded((v) => !v)}
+                    className="text-[10.5px] text-blue-500 font-semibold mt-2 block hover:text-blue-700 transition-colors"
+                  >
+                    {expanded ? "Sembunyikan ↑" : "Lihat selengkapnya ↓"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
