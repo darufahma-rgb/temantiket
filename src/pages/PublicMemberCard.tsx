@@ -29,16 +29,36 @@ function ensureExternalUrl(url: string): string {
   return `https://${url}`;
 }
 
-// ── Reward milestones — 8 baris × 2 stamp per baris = 16 stamp total ─────────
+// ── Reward milestones — 4 baris × 4 stamp per baris = 16 stamp total ─────────
 const REWARD_MILESTONES = [
-  { row: 1, stamps: 2,  emoji: "⭐", label: "Selamat Datang",         desc: "Priority response WhatsApp & sambutan eksklusif member baru",       color: "blue"   },
-  { row: 2, stamps: 4,  emoji: "🎟️", label: "Diskon 5%",              desc: "Voucher diskon 5% untuk order berikutnya (berlaku 3 bulan)",         color: "violet" },
-  { row: 3, stamps: 6,  emoji: "📋", label: "Konsultasi Gratis",       desc: "Sesi konsultasi dokumen perjalanan & visa gratis via WhatsApp",      color: "sky"    },
-  { row: 4, stamps: 8,  emoji: "💰", label: "Cashback Rp 100.000",     desc: "Voucher cashback Rp 100.000 untuk paket umrah atau tiket pesawat",   color: "emerald"},
-  { row: 5, stamps: 10, emoji: "🎒", label: "Bonus Upgrade Layanan",   desc: "Gratis upgrade layanan atau bonus bagasi 1 koper untuk 1 paket",     color: "amber"  },
-  { row: 6, stamps: 12, emoji: "🎁", label: "Merchandise Eksklusif",   desc: "Paket merchandise resmi Temantiket dikirim ke rumah Anda",           color: "orange" },
-  { row: 7, stamps: 14, emoji: "✨", label: "Diskon 10% Spesial",      desc: "Diskon 10% untuk 1 paket pilihan — umrah, tiket, atau visa",         color: "rose"   },
-  { row: 8, stamps: 16, emoji: "👑", label: "VIP Grand Reward",        desc: "Hadiah utama eksklusif + free upgrade paket Umrah Premium pilihan",  color: "amber"  },
+  {
+    row: 1, stamps: 4,
+    emoji: "🎫",
+    label: "Voucher Diskon Rp100.000",
+    desc:  "Potongan harga Rp100.000 untuk order berikutnya — berlaku untuk paket umrah, tiket pesawat, maupun visa.",
+    color: "blue",
+  },
+  {
+    row: 2, stamps: 8,
+    emoji: "🎁",
+    label: "Merchandise Resmi Temantiket",
+    desc:  "Paket merchandise eksklusif branded Temantiket dikirim langsung ke alamat Anda sebagai apresiasi loyalitas.",
+    color: "violet",
+  },
+  {
+    row: 3, stamps: 12,
+    emoji: "💸",
+    label: "Voucher Diskon Rp300.000",
+    desc:  "Voucher diskon besar Rp300.000 untuk 1 paket pilihan — umrah, tiket pesawat, atau pengurusan visa.",
+    color: "emerald",
+  },
+  {
+    row: 4, stamps: 16,
+    emoji: "✈️",
+    label: "VIP Grand Reward — Pengalaman Transit Qatar",
+    desc:  "Akses lounge premium & pengalaman jalan-jalan eksklusif saat transit di Qatar bersama Temantiket. Termasuk city tour & airport lounge. Syarat & ketentuan berlaku.",
+    color: "amber",
+  },
 ] as const;
 
 const TYPE_LABEL: Record<string, string> = {
@@ -619,33 +639,45 @@ export default function PublicMemberCardPage() {
                     </div>
                     <span className="text-[13px] font-bold text-blue-600">{totalStamps} / 16</span>
                   </div>
-                  {/* 8-row progress bars */}
-                  <div className="flex gap-1">
+                  {/* 4-row progress bars — setiap bar = 1 baris (4 stamp) */}
+                  <div className="flex gap-2">
                     {REWARD_MILESTONES.map((m) => {
                       const rowDone = totalStamps >= m.stamps;
                       const rowPrev = m.row === 1 ? 0 : REWARD_MILESTONES[m.row - 2].stamps;
-                      const rowStampsIn = Math.max(0, Math.min(2, totalStamps - rowPrev));
-                      const rowPct = rowDone ? 100 : (rowStampsIn / 2) * 100;
+                      const rowStampsIn = Math.max(0, Math.min(4, totalStamps - rowPrev));
+                      const rowPct = rowDone ? 100 : (rowStampsIn / 4) * 100;
+                      const isVip = m.row === 4;
                       return (
-                        <div key={m.row} className="flex-1 flex flex-col gap-0.5 items-center">
-                          <div className="w-full h-2 rounded-full bg-blue-50 border border-blue-100 overflow-hidden">
+                        <div key={m.row} className="flex-1 flex flex-col gap-1 items-center">
+                          <div className={`w-full h-2.5 rounded-full overflow-hidden border ${isVip ? "bg-amber-50 border-amber-200" : "bg-blue-50 border-blue-100"}`}>
                             <div
-                              className={`h-full rounded-full transition-all duration-700 ${rowDone ? "bg-gradient-to-r from-blue-500 to-blue-400" : "bg-blue-300"}`}
+                              className={`h-full rounded-full transition-all duration-700 ${
+                                rowDone
+                                  ? isVip
+                                    ? "bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500"
+                                    : "bg-gradient-to-r from-blue-500 to-blue-400"
+                                  : isVip
+                                  ? "bg-amber-200"
+                                  : "bg-blue-300"
+                              }`}
                               style={{ width: `${rowPct}%` }}
                             />
                           </div>
+                          <span className="text-[8.5px] font-semibold text-center leading-none" style={{ color: isVip ? "#b45309" : "#6b7280" }}>
+                            {m.emoji}
+                          </span>
                         </div>
                       );
                     })}
                   </div>
                   <div className="flex items-center justify-between">
                     <p className="text-[11px] text-gray-400">
-                      Baris {Math.floor(totalStamps / 2)}/8 selesai
+                      Baris {Math.min(4, Math.floor(totalStamps / 4))}/4 selesai
                     </p>
                     <p className="text-[11px] text-blue-500 font-semibold">
                       {totalStamps >= 16
-                        ? "🎉 Full card! Klaim reward VIP"
-                        : `${16 - totalStamps} stamp lagi`}
+                        ? "🎉 Full card! Klaim reward VIP Qatar"
+                        : `${16 - totalStamps} stamp lagi menuju Qatar ✈️`}
                     </p>
                   </div>
                 </div>
@@ -660,53 +692,153 @@ export default function PublicMemberCardPage() {
                       Hadiah Member Point
                     </h2>
                     <span className="text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                      {Math.floor(totalStamps / 2)}/8 baris
+                      {Math.min(4, Math.floor(totalStamps / 4))}/4 baris
                     </span>
                   </div>
                   <ul className="divide-y divide-gray-50">
                     {REWARD_MILESTONES.map((m) => {
                       const unlocked = totalStamps >= m.stamps;
                       const current  = totalStamps >= (m.row === 1 ? 0 : REWARD_MILESTONES[m.row - 2].stamps) && !unlocked;
+                      const isVip    = m.row === 4;
+
+                      /* ── VIP Grand Reward — full-width premium card ─────── */
+                      if (isVip) {
+                        return (
+                          <li key={m.row} className="overflow-hidden">
+                            <div
+                              className={`relative px-4 py-4 transition-all ${
+                                unlocked
+                                  ? "bg-gradient-to-br from-amber-400 via-yellow-300 to-amber-500"
+                                  : current
+                                  ? "bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 border-t-2 border-amber-300"
+                                  : "bg-gradient-to-br from-gray-50 to-slate-50"
+                              }`}
+                            >
+                              {/* shimmer overlay when unlocked */}
+                              {unlocked && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+                              )}
+
+                              <div className="flex items-start gap-3">
+                                {/* Big icon */}
+                                <div className={`shrink-0 h-12 w-12 rounded-2xl flex items-center justify-center text-2xl border-2 shadow-sm ${
+                                  unlocked
+                                    ? "bg-white/30 border-white/50"
+                                    : current
+                                    ? "bg-amber-100 border-amber-300"
+                                    : "bg-gray-100 border-gray-200"
+                                }`}>
+                                  ✈️
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  {/* Badges row */}
+                                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                                      unlocked
+                                        ? "bg-white/40 text-amber-900"
+                                        : "bg-amber-400 text-white"
+                                    }`}>
+                                      👑 VIP EXCLUSIVE
+                                    </span>
+                                    <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
+                                      unlocked
+                                        ? "bg-white/30 text-amber-900"
+                                        : "bg-orange-100 text-orange-700 border border-orange-200"
+                                    }`}>
+                                      Full Card
+                                    </span>
+                                  </div>
+
+                                  {/* Title */}
+                                  <p className={`text-[13.5px] font-black leading-snug ${
+                                    unlocked ? "text-amber-950" : current ? "text-amber-900" : "text-gray-500"
+                                  }`}>
+                                    {m.label}
+                                  </p>
+
+                                  {/* Desc */}
+                                  <p className={`text-[10.5px] mt-1 leading-relaxed ${
+                                    unlocked ? "text-amber-900" : current ? "text-amber-700" : "text-gray-400"
+                                  }`}>
+                                    {m.desc}
+                                  </p>
+
+                                  {/* Highlight pills */}
+                                  {(current || unlocked) && (
+                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                      {["🛫 Airport Lounge", "🌆 City Tour Qatar", "🏨 Transit Eksklusif"].map((tag) => (
+                                        <span
+                                          key={tag}
+                                          className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full border ${
+                                            unlocked
+                                              ? "bg-white/30 border-white/40 text-amber-950"
+                                              : "bg-amber-50 border-amber-200 text-amber-800"
+                                          }`}
+                                        >
+                                          {tag}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Status chip */}
+                                <div className="shrink-0">
+                                  <span className={`text-[9.5px] font-bold px-2.5 py-1 rounded-full border block text-center ${
+                                    unlocked
+                                      ? "bg-white/40 text-amber-950 border-white/50"
+                                      : current
+                                      ? "bg-amber-100 text-amber-700 border-amber-300"
+                                      : "bg-gray-100 text-gray-400 border-gray-200"
+                                  }`}>
+                                    {unlocked ? "✓ Diraih!" : current ? "Hampir!" : "16 stamp"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      }
+
+                      /* ── Regular reward row ─────────────────────────────── */
                       return (
                         <li
                           key={m.row}
-                          className={`flex items-start gap-3 px-4 py-3 transition-colors ${
-                            unlocked
-                              ? "bg-emerald-50/50"
-                              : current
-                              ? "bg-blue-50/40"
-                              : ""
+                          className={`flex items-start gap-3 px-4 py-3.5 transition-colors ${
+                            unlocked ? "bg-emerald-50/50" : current ? "bg-blue-50/40" : ""
                           }`}
                         >
-                          {/* Row badge */}
-                          <div className={`shrink-0 h-9 w-9 rounded-xl flex flex-col items-center justify-center text-center border ${
+                          {/* Icon badge */}
+                          <div className={`shrink-0 h-10 w-10 rounded-xl flex items-center justify-center text-center border ${
                             unlocked
                               ? "bg-emerald-100 border-emerald-200"
                               : current
                               ? "bg-blue-100 border-blue-200"
                               : "bg-gray-50 border-gray-200"
                           }`}>
-                            <span className="text-base leading-none">{m.emoji}</span>
+                            <span className="text-xl leading-none">{m.emoji}</span>
                           </div>
 
                           {/* Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className={`text-[12.5px] font-bold leading-tight ${unlocked ? "text-emerald-800" : current ? "text-blue-800" : "text-gray-500"}`}>
+                              <p className={`text-[12.5px] font-bold leading-tight ${
+                                unlocked ? "text-emerald-800" : current ? "text-blue-800" : "text-gray-500"
+                              }`}>
                                 {m.label}
                               </p>
-                              {m.row === 8 && (
-                                <span className="text-[9px] font-black uppercase tracking-wider bg-amber-400 text-white px-1.5 py-0.5 rounded">VIP</span>
-                              )}
                             </div>
-                            <p className={`text-[10.5px] mt-0.5 leading-relaxed ${unlocked ? "text-emerald-700" : "text-gray-400"}`}>
+                            <p className={`text-[10.5px] mt-0.5 leading-relaxed ${
+                              unlocked ? "text-emerald-700" : "text-gray-400"
+                            }`}>
                               {m.desc}
                             </p>
                           </div>
 
                           {/* Status */}
-                          <div className="shrink-0 flex flex-col items-end gap-1">
-                            <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border ${
+                          <div className="shrink-0">
+                            <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border block text-center ${
                               unlocked
                                 ? "bg-emerald-100 text-emerald-700 border-emerald-300"
                                 : current
@@ -722,7 +854,7 @@ export default function PublicMemberCardPage() {
                   </ul>
                   <div className="px-4 py-3 bg-gradient-to-r from-amber-50 to-yellow-50 border-t border-amber-100">
                     <p className="text-[10.5px] text-amber-700 leading-relaxed">
-                      💡 Setiap 2 stamp = 1 baris selesai. Klaim hadiah langsung via WhatsApp ke admin Temantiket setelah baris terpenuhi.
+                      💡 Setiap 4 stamp = 1 baris selesai. Klaim hadiah via WhatsApp ke admin Temantiket setelah baris terpenuhi. Grand Reward Qatar menanti di baris ke-4!
                     </p>
                   </div>
                 </div>
