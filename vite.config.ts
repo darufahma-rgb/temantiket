@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
@@ -219,13 +219,24 @@ export default defineConfig(({ mode }) => ({
     }),
   ],
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@assets": path.resolve(__dirname, "./attached_assets"),
-    },
+    alias: [
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+      { find: "@assets", replacement: path.resolve(__dirname, "./attached_assets") },
+      { find: /^pdf-lib$/, replacement: path.resolve(__dirname, "node_modules/pdf-lib/dist/pdf-lib.esm.js") },
+      { find: /^pdfjs-dist$/, replacement: path.resolve(__dirname, "node_modules/pdfjs-dist/build/pdf.mjs") },
+    ],
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
   optimizeDeps: {
-    exclude: ["@swc/core", "@swc/wasm"],
+    exclude: [
+      "@swc/core",
+      "@swc/wasm",
+    ],
+    include: [
+      "pdf-lib",
+      "@pdf-lib/fontkit",
+      "tesseract.js",
+      "xlsx",
+    ],
   },
 }));
