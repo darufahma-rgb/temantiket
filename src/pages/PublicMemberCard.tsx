@@ -267,11 +267,13 @@ export default function PublicMemberCardPage() {
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <header className="px-5 py-3.5 flex items-center justify-between border-b border-gray-100 bg-white sticky top-0 z-20 shadow-sm">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center">
-            <img src="/temantiket-icon.svg" alt="Temantiket" className="h-4 w-4 object-contain brightness-0 invert" />
-          </div>
-          <span className="text-[13px] font-bold text-gray-900 tracking-wide">TEMANTIKET</span>
+        <Link to="/">
+          <img
+            src="/temantiket-logo.png"
+            alt="Temantiket"
+            className="h-8 w-auto object-contain"
+            style={{ filter: "invert(1)" }}
+          />
         </Link>
         <div className="flex items-center gap-3">
           <Link to="/leaderboard"
