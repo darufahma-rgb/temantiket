@@ -8,6 +8,7 @@ import type { ComponentType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { MarkdownContent } from "@/components/MarkdownContent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -470,12 +471,10 @@ export default function BCTemplates() {
 
             {draft.body && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
                   Preview
                 </p>
-                <pre className="text-[12px] whitespace-pre-wrap leading-relaxed text-slate-700 break-words">
-                  {draft.body}
-                </pre>
+                <MarkdownContent content={draft.body} size="sm" />
               </div>
             )}
           </div>
@@ -531,12 +530,10 @@ export default function BCTemplates() {
               </div>
 
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700 mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700 mb-2.5">
                   Preview Pesan
                 </p>
-                <pre className="text-[12px] whitespace-pre-wrap leading-relaxed text-slate-800 break-words">
-                  {livePreview}
-                </pre>
+                <MarkdownContent content={livePreview} size="sm" />
               </div>
             </div>
           )}
@@ -799,12 +796,12 @@ function TemplateCard({
           {template.title}
         </p>
 
-        {/* Body preview — visible like a note */}
-        <div className={cn(
-          "text-[12px] leading-relaxed text-slate-500 whitespace-pre-wrap break-words",
-          !expanded && "line-clamp-4",
-        )}>
-          {previewText}
+        {/* Body preview — rendered markdown */}
+        <div className={cn(!expanded && "max-h-[5.5rem] overflow-hidden relative")}>
+          <MarkdownContent content={previewText} size="xs" />
+          {!expanded && (
+            <div className="absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+          )}
         </div>
 
         {isLong && !expanded && (

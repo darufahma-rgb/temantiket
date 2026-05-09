@@ -21,8 +21,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { pullNotes, upsertNote, deleteNoteCloud, syncNotesFull, type NoteCloud } from "@/lib/cloudSync";
 import { cleanAndStructureNote } from "@/lib/ai/openrouter";
 import { AIModelToggle } from "@/components/AIModelToggle";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MarkdownContent } from "@/components/MarkdownContent";
 
 const STORAGE_KEY = "travelhub.notes.v2";
 
@@ -48,56 +47,6 @@ const NOTE_COLORS = [
   { label: "Kuning", value: "bg-yellow-50 border-yellow-200", dot: "bg-yellow-400" },
 ];
 
-function MarkdownContent({ content, className }: { content: string; className?: string }) {
-  return (
-    <div className={className}>
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        h1: ({ children }) => (
-          <h1 className="text-[15px] font-extrabold text-slate-900 leading-snug mt-3 mb-1 first:mt-0">{children}</h1>
-        ),
-        h2: ({ children }) => (
-          <h2 className="text-[13.5px] font-bold text-slate-800 leading-snug mt-2.5 mb-1 first:mt-0">{children}</h2>
-        ),
-        h3: ({ children }) => (
-          <h3 className="text-[12.5px] font-semibold text-slate-700 leading-snug mt-2 mb-0.5 first:mt-0">{children}</h3>
-        ),
-        p: ({ children }) => (
-          <p className="text-[12.5px] leading-relaxed text-[hsl(var(--foreground))] mb-1.5 last:mb-0">{children}</p>
-        ),
-        strong: ({ children }) => (
-          <strong className="font-semibold text-slate-800">{children}</strong>
-        ),
-        em: ({ children }) => (
-          <em className="italic text-slate-600">{children}</em>
-        ),
-        ul: ({ children }) => (
-          <ul className="space-y-0.5 mb-1.5 pl-3">{children}</ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="space-y-0.5 mb-1.5 pl-4 list-decimal">{children}</ol>
-        ),
-        li: ({ children }) => (
-          <li className="text-[12.5px] leading-relaxed text-[hsl(var(--foreground))] flex gap-1.5 items-start list-none">
-            <span className="mt-[5px] h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
-            <span>{children}</span>
-          </li>
-        ),
-        blockquote: ({ children }) => (
-          <blockquote className="border-l-2 border-sky-300 pl-3 italic text-slate-500 my-1.5">{children}</blockquote>
-        ),
-        code: ({ children }) => (
-          <code className="bg-slate-100 text-slate-700 px-1 py-0.5 rounded text-[11px] font-mono">{children}</code>
-        ),
-        hr: () => <hr className="border-slate-200 my-2" />,
-      }}
-    >
-      {content}
-    </ReactMarkdown>
-    </div>
-  );
-}
 
 function markdownToPlainText(md: string): string {
   return md

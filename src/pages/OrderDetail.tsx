@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Trash2, Save, ExternalLink, Eye } from "lucide-react";
+import { ArrowLeft, Trash2, Save, ExternalLink, Eye, FileText } from "lucide-react";
+import { MarkdownContent } from "@/components/MarkdownContent";
 import ClientViewDialog from "@/components/ClientViewDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -538,8 +539,17 @@ export default function OrderDetail() {
         <textarea
           value={draft.notes ?? ""}
           onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-          className="w-full min-h-[80px] rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+          className="w-full min-h-[80px] rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono"
+          placeholder="Tulis catatan dalam format Markdown… (# Judul, **bold**, - list)"
         />
+        {draft.notes && draft.notes.trim().length > 0 && (
+          <div className="mt-2 rounded-lg border border-border bg-muted/20 px-3.5 py-3">
+            <p className="text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1">
+              <FileText className="h-3 w-3" /> Preview
+            </p>
+            <MarkdownContent content={draft.notes} size="sm" />
+          </div>
+        )}
       </Field>
 
       {/* Linked entities */}

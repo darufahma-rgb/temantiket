@@ -10,6 +10,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { OrderProgressTracker, ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
+import { MarkdownContent } from "@/components/MarkdownContent";
 import { scanPassport } from "@/lib/ocrPassport";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -302,7 +303,9 @@ function ClientDetailInner({ id }: { id: string }) {
       </div>
 
       {client.notes && (
-        <div className="rounded-2xl border border-border bg-secondary/40 p-4 text-sm whitespace-pre-wrap">{client.notes}</div>
+        <div className="rounded-2xl border border-border bg-secondary/40 p-4">
+          <MarkdownContent content={client.notes} size="sm" />
+        </div>
       )}
 
       <section className="rounded-2xl border border-sky-100 bg-gradient-to-br from-white to-sky-50/40 overflow-hidden">
