@@ -6,6 +6,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -212,6 +219,11 @@ export default function Notes() {
   const [newTags, setNewTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [formatting, setFormatting] = useState<string | null>(null);
+  const [rapihkanPreview, setRapihkanPreview] = useState<{
+    id: string;
+    original: string;
+    formatted: string;
+  } | null>(null);
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [filterTag, setFilterTag] = useState<string | null>(null);
@@ -413,32 +425,37 @@ export default function Notes() {
       } catch {
         formatted = smartFormat(content);
       }
-
-      if (id === "new") {
-        setNewContent(formatted);
-      } else if (id === editingId) {
-        setEditContent(formatted);
-      } else {
-        const updatedAt = Date.now();
-        let rapihNote: Note | undefined;
-        setNotes((prev) =>
-          prev.map((n) => {
-            if (n.id !== id) return n;
-            rapihNote = { ...n, content: formatted, updatedAt };
-            return rapihNote;
-          })
-        );
-        if (expandedNote?.id === id)
-          setExpandedNote((prev) => (prev ? { ...prev, content: formatted } : prev));
-        // Sync rapihkan result to cloud immediately.
-        if (rapihNote) {
-          void upsertNote(rapihNote as NoteCloud).catch(() => undefined);
-        }
-      }
-      toast.success("Catatan dirapihkan!");
+      setRapihkanPreview({ id, original: content, formatted });
     } finally {
       setFormatting(null);
     }
+  };
+
+  const applyRapihkan = () => {
+    if (!rapihkanPreview) return;
+    const { id, formatted } = rapihkanPreview;
+    if (id === "new") {
+      setNewContent(formatted);
+    } else if (id === editingId) {
+      setEditContent(formatted);
+    } else {
+      const updatedAt = Date.now();
+      let rapihNote: Note | undefined;
+      setNotes((prev) =>
+        prev.map((n) => {
+          if (n.id !== id) return n;
+          rapihNote = { ...n, content: formatted, updatedAt };
+          return rapihNote;
+        })
+      );
+      if (expandedNote?.id === id)
+        setExpandedNote((prev) => (prev ? { ...prev, content: formatted } : prev));
+      if (rapihNote) {
+        void upsertNote(rapihNote as NoteCloud).catch(() => undefined);
+      }
+    }
+    toast.success("Catatan dirapihkan!");
+    setRapihkanPreview(null);
   };
 
   const copyNote = (note: Note) => {
@@ -1146,6 +1163,72 @@ export default function Notes() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Rapihkan Preview Modal ────────────────────────────────────────── */}
+      <Dialog
+        open={!!rapihkanPreview}
+        onOpenChange={(open) => { if (!open) setRapihkanPreview(null); }}
+      >
+        <DialogContent className="max-w-3xl w-full p-0 overflow-hidden">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b border-slate-100">
+            <DialogTitle className="flex items-center gap-2 text-[15px]">
+              <Sparkles className="h-4 w-4 text-sky-500 shrink-0" />
+              Pratinjau Rapihkan
+            </DialogTitle>
+            <p className="text-[12px] text-muted-foreground mt-0.5">
+              Bandingkan teks asli dengan hasil AI sebelum diterapkan.
+            </p>
+          </DialogHeader>
+
+          {rapihkanPreview && (
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100 max-h-[58vh]">
+              {/* Left — Original */}
+              <div className="flex flex-col">
+                <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 shrink-0">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                    Teks Asli
+                  </span>
+                </div>
+                <div className="overflow-y-auto p-4 text-[12.5px] leading-relaxed text-slate-500 whitespace-pre-wrap font-mono bg-slate-50/60 flex-1">
+                  {rapihkanPreview.original}
+                </div>
+              </div>
+
+              {/* Right — AI Result */}
+              <div className="flex flex-col">
+                <div className="px-4 py-2 bg-sky-50/60 border-b border-sky-100 shrink-0 flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3 text-sky-400 shrink-0" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-sky-500">
+                    Hasil AI
+                  </span>
+                </div>
+                <div className="overflow-y-auto p-4 flex-1 bg-white">
+                  <MarkdownContent content={rapihkanPreview.formatted} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="px-5 py-3 border-t border-slate-100 flex flex-row justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setRapihkanPreview(null)}
+            >
+              <X className="h-3.5 w-3.5 mr-1.5" />
+              Batalkan
+            </Button>
+            <Button
+              size="sm"
+              className="bg-sky-500 hover:bg-sky-600 text-white"
+              onClick={applyRapihkan}
+            >
+              <Check className="h-3.5 w-3.5 mr-1.5" />
+              Terapkan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
