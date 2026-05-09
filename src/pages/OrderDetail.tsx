@@ -114,21 +114,10 @@ export default function OrderDetail() {
       if (!cancelled) {
         setOrder(fresh);
         if (fresh) {
-          // Auto-populate agentFee from productCommissions if order belongs to
-          // an agent and fee hasn't been set yet (0 or missing).
-          if (fresh.createdByAgent && !Number((fresh.metadata as Record<string, unknown>)?.agentFee)) {
-            const autoFee = getCommissionForOrderType(fresh.type);
-            if (autoFee > 0) {
-              setDraft({
-                ...fresh,
-                metadata: { ...(fresh.metadata ?? {}), agentFee: autoFee },
-              });
-            } else {
-              setDraft(fresh);
-            }
-          } else {
-            setDraft(fresh);
-          }
+          // Don't auto-populate agentFee here — members might not be loaded
+          // yet so we can't verify whether createdByAgent is an actual agent.
+          // A separate useEffect below handles role-aware auto-populate.
+          setDraft(fresh);
         }
         setLoading(false);
       }
@@ -136,6 +125,35 @@ export default function OrderDetail() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // ── Role-aware auto-populate of agentFee ───────────────────────────────
+  // Fires when BOTH order AND members are ready. Only auto-populates agentFee
+  // when createdByAgent points to a member with role === "agent". Owner/staff
+  // set as "referral source" never trigger this.
+  useEffect(() => {
+    if (!order || members.length === 0) return;
+    const isRealAgent = members.some(
+      (m) => m.userId === order.createdByAgent && m.role === "agent",
+    );
+    if (!isRealAgent) return;
+    const existingFee = Number((order.metadata as Record<string, unknown> | null)?.agentFee ?? 0);
+    if (existingFee > 0) return; // already set — don't overwrite
+    const autoFee = getCommissionForOrderType(order.type);
+    if (autoFee <= 0) return;
+    setDraft((prev) => ({
+      ...prev,
+      metadata: { ...((prev.metadata ?? order.metadata) ?? {}), agentFee: autoFee },
+    }));
+  }, [order, members]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // True only when createdByAgent points to a real agent member (role === "agent").
+  // Owner/staff set as "referral source" do NOT qualify — no fee deduction for them.
+  const isValidAgentOrder = useMemo(
+    () =>
+      !!order?.createdByAgent &&
+      members.some((m) => m.userId === order.createdByAgent && m.role === "agent"),
+    [order, members],
+  );
 
   const dirty = useMemo(() => {
     if (!order) return false;
@@ -198,11 +216,10 @@ export default function OrderDetail() {
         kurirFeeAmountPre > 0 && !metaPatch.kurirFeeCredited;
 
       // Agent order commission (sales agent, not VOA field agent).
-      // Only credit if the order was created by an agent (not a direct/owner order).
-      // If agentFee was explicitly stored in metadata, use that value.
-      // If agentFee is not stored yet, auto-fallback to productCommission default.
-      // Direct orders (no createdByAgent) always get agentFeeAmount = 0 — no deduction.
-      const agentCommId = order.createdByAgent ?? null;
+      // Only credit if createdByAgent resolves to a member with role === "agent".
+      // Owner/staff set as "referral source" do NOT get a commission credit.
+      // isValidAgentOrder is the single source of truth for this check.
+      const agentCommId = isValidAgentOrder ? (order.createdByAgent ?? null) : null;
       const agentFeeStored = metaPatch.agentFee !== undefined && metaPatch.agentFee !== null
         ? Number(metaPatch.agentFee)
         : -1;
@@ -456,7 +473,7 @@ export default function OrderDetail() {
             <Input type="number" value={String(draft.totalPrice ?? 0)} onChange={(e) => setDraft({ ...draft, totalPrice: Number(e.target.value) || 0 })} />
           </Field>
         )}
-        {order.createdByAgent && currentUser?.role !== "staff" && (() => {
+        {isValidAgentOrder && currentUser?.role !== "staff" && (() => {
           const meta = (draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>;
           const agentFeeCurrency = ((meta.agentFeeCurrency as FeeCurrency | undefined) ?? "IDR");
           const agentFeeRaw = Number(meta.agentFeeRaw ?? meta.agentFee ?? 0);
@@ -844,7 +861,9 @@ export default function OrderDetail() {
         const total = Number(draft.totalPrice ?? order.totalPrice);
         const cost = Number(draft.costPrice ?? order.costPrice ?? 0);
         const meta = (draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>;
-        const agentFee = order.createdByAgent ? Number(meta.agentFee ?? 0) : 0;
+        // Only deduct agentFee when createdByAgent is a real sales agent (role === "agent").
+        // Direct owner orders or orders where a staff/owner is set as referral source → 0.
+        const agentFee = isValidAgentOrder ? Number(meta.agentFee ?? 0) : 0;
         const pelaksanaFee = order.type === "visa_student" && meta.pelaksanaId
           ? Number(meta.pelaksanaFee ?? 200_000)
           : 0;
