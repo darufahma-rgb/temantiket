@@ -181,14 +181,14 @@ const CardFront = ({
         left: "8.5%",
         bottom: "8%",
         right: "45%",
-        fontSize: "6.5cqw",
+        fontSize: "7.5cqw",
         fontFamily: "'Sk-Modernist', sans-serif",
         fontWeight: 700,
         textTransform: "none",
         textShadow: "0 1px 2px rgba(0,0,0,0.18)",
       }}
     >
-      {toTitleCase(name).split(" ").map((part, i) => (
+      {toTitleCase(name).split(" ").slice(0, 3).map((part, i) => (
         <div key={i}>{part}</div>
       ))}
     </div>
