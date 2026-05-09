@@ -309,10 +309,10 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                     ? "md:pt-0 md:pb-0"
                     : "px-4 md:pl-10 md:pr-8 md:py-7"
                 }`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12, ease: "easeOut" }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               >
                 <div className="mx-auto w-full max-w-[1400px]">
                   {children}

@@ -365,6 +365,8 @@ export default function Packages() {
                         hidden:   { opacity: 0, y: 16, scale: 0.97 },
                         visible:  { opacity: 1, y: 0,  scale: 1, transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1] } },
                       }}
+                      whileHover={{ y: -3, boxShadow: "0 12px 32px -6px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.06)" }}
+                      whileTap={{ scale: 0.985 }}
                     >
                       {/* ── Cover image — compact fixed height ── */}
                       <div className="relative w-full h-[120px]">

@@ -1211,7 +1211,15 @@ function SummaryCard({
     violet: "from-violet-50 to-white border-violet-100 text-violet-700",
   }[tone];
   return (
-    <div className={`rounded-2xl border bg-gradient-to-br p-3 md:p-4 ${toneClass}`}>
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 12 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } },
+      }}
+      whileHover={{ y: -3, boxShadow: "0 10px 24px -6px rgba(0,0,0,0.10)" }}
+      whileTap={{ scale: 0.98 }}
+      className={`rounded-2xl border bg-gradient-to-br p-3 md:p-4 cursor-default ${toneClass}`}
+    >
       <div className="flex items-center justify-between">
         <span className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
           {label}
@@ -1221,7 +1229,7 @@ function SummaryCard({
       <div className={`mt-1.5 font-extrabold font-mono ${big ? "text-xl md:text-2xl" : "text-base md:text-lg"} text-foreground`}>
         {value}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -1238,7 +1246,14 @@ function SplitCard({
   highlight?: boolean;
 }) {
   return (
-    <div className={`rounded-2xl border bg-gradient-to-br p-3 md:p-4 ${accent} ${highlight ? "ring-2 ring-emerald-300" : ""}`}>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ y: -2, boxShadow: "0 8px 20px -6px rgba(0,0,0,0.09)" }}
+      whileTap={{ scale: 0.98 }}
+      className={`rounded-2xl border bg-gradient-to-br p-3 md:p-4 cursor-default ${accent} ${highlight ? "ring-2 ring-emerald-300" : ""}`}
+    >
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
           <Icon className="h-3.5 w-3.5" />
@@ -1253,6 +1268,6 @@ function SplitCard({
         Revenue: <span className="font-mono">{fmtIDR(revenue)}</span>
       </div>
       {extra}
-    </div>
+    </motion.div>
   );
 }

@@ -1942,4 +1942,53 @@ button, [role="button"], a, input, select, textarea {
   .stat-value {
     @apply text-lg md:text-2xl font-bold;
   }
+
+  /* ── Card micro-interactions (CSS-only, GPU accelerated) ── */
+  .card-lift {
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px -6px rgba(0,0,0,0.10);
+  }
+  .card-lift:active {
+    transform: scale(0.985);
+  }
+
+  /* ── Shimmer loading skeleton ── */
+  .skeleton-shimmer {
+    background: linear-gradient(90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--secondary)) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-sweep 1.6s ease-in-out infinite;
+  }
+
+  /* ── Floating action button pulse ── */
+  .fab-pulse {
+    animation: fab-ring 2.4s ease-in-out infinite;
+  }
+}
+
+/* Prefer reduced motion — kill all animations globally */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes skeleton-sweep {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fab-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(26,68,212,0.35); }
+  50%       { box-shadow: 0 0 0 8px rgba(26,68,212,0); }
 }

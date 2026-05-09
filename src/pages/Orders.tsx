@@ -288,14 +288,21 @@ export default function Orders() {
               </button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <motion.div
+              className="space-y-2"
+              initial="hidden"
+              animate="visible"
+              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04, delayChildren: 0.03 } } }}
+            >
               {filtered.map((o) => {
                 const clientName = o.clientId ? clientNameById.get(o.clientId) : null;
                 return (
-                  <button
+                  <motion.button
                     key={o.id}
+                    variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] } } }}
+                    whileTap={{ scale: 0.985 }}
                     onClick={() => navigate(`/orders/detail/${o.id}`)}
-                    className="w-full flex items-center gap-3 rounded-2xl border border-[hsl(var(--border))] bg-white px-3.5 py-3 text-left active:scale-[0.985] transition-all hover:border-sky-200 hover:shadow-sm"
+                    className="w-full flex items-center gap-3 rounded-2xl border border-[hsl(var(--border))] bg-white px-3.5 py-3 text-left hover:border-sky-200 hover:shadow-sm transition-colors"
                   >
                     <div
                       className="h-10 w-10 rounded-xl flex items-center justify-center text-[18px] shrink-0 shadow-sm"
@@ -321,10 +328,10 @@ export default function Orders() {
                       <span className="text-[11.5px] font-extrabold text-[hsl(var(--foreground))] tabular-nums">{fmtIDR(o.totalPrice)}</span>
                     </div>
                     <ChevronRight className="h-4 w-4 text-[hsl(var(--muted-foreground))]/50 shrink-0 -ml-1" />
-                  </button>
+                  </motion.button>
                 );
               })}
-            </div>
+            </motion.div>
           )}
         </div>
       </div>
@@ -403,9 +410,11 @@ export default function Orders() {
                   hidden: { opacity: 0, y: 8 },
                   visible: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } },
                 }}
+                whileHover={{ y: -2, boxShadow: "0 8px 20px -6px rgba(0,0,0,0.09)" }}
+                whileTap={{ scale: 0.985 }}
               >
                 <Link to={`/orders/detail/${o.id}`}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3 hover:bg-secondary/50 hover:border-primary/30 transition-all hover:shadow-sm">
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3 hover:bg-secondary/40 hover:border-primary/20 transition-colors">
                   <div className="min-w-0 flex items-center gap-3">
                     <span className="text-2xl">{ORDER_TYPE_EMOJI[o.type]}</span>
                     <div className="min-w-0">

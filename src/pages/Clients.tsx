@@ -848,7 +848,9 @@ function ClientCard({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97 }}
-      className="rounded-2xl border border-border bg-white overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)] active:scale-[0.99] transition-transform"
+      whileHover={{ y: -2, boxShadow: "0 8px 22px -6px rgba(0,0,0,0.10)" }}
+      whileTap={{ scale: 0.985 }}
+      className="rounded-2xl border border-border bg-white overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)] cursor-pointer"
     >
       {/* Top — clickable area → detail */}
       <button
