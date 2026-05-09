@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import {
   Target, Plus, Trash2, CheckCircle2, XCircle, Clock, ChevronDown,
   ChevronUp, Upload, Star, BookOpen, Zap, BarChart3, Send, RefreshCw,
-  Wallet, Users, User,
+  Wallet, Users, User, CalendarClock, Settings2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,10 @@ import {
   pullMissionMeta, saveMissionMetaEntry, removeMissionMetaEntry,
   type MissionMetaMap,
 } from "@/lib/missionMeta";
+import {
+  pullTemplateMeta, saveTemplateMetaEntry, removeTemplateMetaEntry,
+  type TemplateMetaMap,
+} from "@/lib/templateMeta";
 import { addWalletTx } from "@/lib/agentWallet";
 
 const fmtIDR = (v: number) =>
@@ -48,6 +52,12 @@ function deadlineDefault() {
   d.setHours(23, 59, 0, 0);
   d.setDate(d.getDate() + 1);
   return d.toISOString().slice(0, 16);
+}
+
+function deadlineToday() {
+  const d = new Date();
+  d.setHours(23, 59, 0, 0);
+  return d.toISOString();
 }
 
 // ── TargetSelector ────────────────────────────────────────────────────────────
@@ -128,12 +138,15 @@ function TargetSelector({ agentNames, mode, selected, onModeChange, onToggle }: 
   );
 }
 
-// ── DeployForm ────────────────────────────────────────────────────────────────
+// ── DeployForm (kustomisasi sebelum deploy) ───────────────────────────────────
 
 interface DeployFormProps {
   initialTitle: string;
   initialDescription: string;
   initialPoints: number;
+  initialFee?: number;
+  initialTargetMode?: "all" | "specific";
+  initialTargetAgentIds?: string[];
   agentNames: Map<string, string>;
   onDeploy: (
     title: string,
@@ -147,14 +160,18 @@ interface DeployFormProps {
   deploying: boolean;
 }
 
-function DeployForm({ initialTitle, initialDescription, initialPoints, agentNames, onDeploy, onCancel, deploying }: DeployFormProps) {
+function DeployForm({
+  initialTitle, initialDescription, initialPoints,
+  initialFee = 0, initialTargetMode = "all", initialTargetAgentIds = [],
+  agentNames, onDeploy, onCancel, deploying,
+}: DeployFormProps) {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [pts, setPts] = useState(String(initialPoints));
   const [deadline, setDeadline] = useState(deadlineDefault());
-  const [fee, setFee] = useState("0");
-  const [targetMode, setTargetMode] = useState<"all" | "specific">("all");
-  const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
+  const [fee, setFee] = useState(String(initialFee));
+  const [targetMode, setTargetMode] = useState<"all" | "specific">(initialTargetMode);
+  const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set(initialTargetAgentIds));
 
   function toggleAgent(id: string) {
     setSelectedAgents((prev) => {
@@ -175,7 +192,7 @@ function DeployForm({ initialTitle, initialDescription, initialPoints, agentName
       className="overflow-hidden"
     >
       <div className="mt-3 pt-3 border-t border-sky-200 space-y-2.5">
-        <p className="text-xs font-semibold text-sky-700">Sesuaikan sebelum deploy:</p>
+        <p className="text-xs font-semibold text-sky-700">Kustomisasi sebelum deploy:</p>
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -324,17 +341,22 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
   const [submissions, setSubmissions] = useState<MissionSubmission[]>([]);
   const [templates, setTemplates] = useState<MissionTemplate[]>([]);
   const [missionMeta, setMissionMeta] = useState<MissionMetaMap>({});
+  const [templateMeta, setTemplateMeta] = useState<TemplateMetaMap>({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("templates");
   const [expandedMission, setExpandedMission] = useState<string | null>(null);
 
   const [deployingTemplateId, setDeployingTemplateId] = useState<string | null>(null);
   const [deploying, setDeploying] = useState(false);
+  const [injectingTemplateId, setInjectingTemplateId] = useState<string | null>(null);
 
   const [showTemplateForm, setShowTemplateForm] = useState(false);
   const [tmplTitle, setTmplTitle] = useState("");
   const [tmplDesc, setTmplDesc] = useState("");
   const [tmplPts, setTmplPts] = useState("20");
+  const [tmplFee, setTmplFee] = useState("0");
+  const [tmplTargetMode, setTmplTargetMode] = useState<"all" | "specific">("all");
+  const [tmplTargetAgents, setTmplTargetAgents] = useState<Set<string>>(new Set());
   const [savingTemplate, setSavingTemplate] = useState(false);
 
   const [createTitle, setCreateTitle] = useState("");
@@ -348,16 +370,18 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
 
   async function reload() {
     setLoading(true);
-    const [m, s, t, meta] = await Promise.all([
+    const [m, s, t, meta, tmplMeta] = await Promise.all([
       listMissions(agencyId),
       listSubmissions(agencyId),
       listTemplates(agencyId),
       pullMissionMeta(),
+      pullTemplateMeta(),
     ]);
     setMissions(m);
     setSubmissions(s);
     setTemplates(t);
     setMissionMeta(meta);
+    setTemplateMeta(tmplMeta);
     setLoading(false);
   }
 
@@ -381,6 +405,14 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
     });
   }
 
+  function toggleTmplTargetAgent(id: string) {
+    setTmplTargetAgents((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
   // ── Actions ──────────────────────────────────────────────────────────────────
 
   async function handleDeploy(
@@ -390,6 +422,7 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
     deadline: string,
     feeIDR: number,
     targetAgentIds: string[] | "all",
+    templateId?: string,
   ) {
     if (!title.trim()) { toast.error("Judul wajib diisi"); return; }
     if (isNaN(points) || points < 1) { toast.error("Poin minimal 1"); return; }
@@ -402,6 +435,9 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
     if (result) {
       const newMeta = await saveMissionMetaEntry(missionMeta, result.id, { feeIDR, targetAgentIds });
       setMissionMeta(newMeta);
+      if (templateId) {
+        await incrementTemplateUseCount(templateId);
+      }
       const targetLabel = targetAgentIds === "all"
         ? `${agentCount} agen`
         : `${(targetAgentIds as string[]).length} agen terpilih`;
@@ -414,10 +450,54 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
     setDeploying(false);
   }
 
+  async function handleInjectToday(template: MissionTemplate) {
+    const meta = templateMeta[template.id];
+    const feeIDR = meta?.feeIDR ?? 0;
+    const targetMode = meta?.targetMode ?? "all";
+    const targetAgentIds: string[] | "all" =
+      targetMode === "all" ? "all" : (meta?.targetAgentIds ?? []);
+
+    if (targetMode === "specific" && (meta?.targetAgentIds ?? []).length === 0) {
+      toast.error("Template ini belum ada target agen. Edit dulu lewat tombol Kustomisasi.");
+      return;
+    }
+
+    setInjectingTemplateId(template.id);
+    const deadline = deadlineToday();
+    const result = await createMission(
+      agencyId,
+      {
+        title: template.title,
+        description: template.description,
+        rewardPoints: template.defaultPoints,
+        deadline,
+      },
+      ownerId,
+    );
+    if (result) {
+      const newMeta = await saveMissionMetaEntry(missionMeta, result.id, { feeIDR, targetAgentIds });
+      setMissionMeta(newMeta);
+      await incrementTemplateUseCount(template.id);
+      const targetLabel = targetAgentIds === "all"
+        ? `${agentCount} agen`
+        : `${(targetAgentIds as string[]).length} agen`;
+      toast.success(`"${template.title}" diinjeksi ke ${targetLabel}! Deadline hari ini 23:59.`);
+      void reload();
+    } else {
+      toast.error("Gagal injeksi misi. Cek SQL migration sudah dijalankan.");
+    }
+    setInjectingTemplateId(null);
+  }
+
   async function handleDeleteTemplate(id: string) {
     if (!confirm("Hapus template ini?")) return;
     const ok = await deleteTemplate(id);
-    if (ok) { toast.success("Template dihapus"); void reload(); }
+    if (ok) {
+      const newTmplMeta = await removeTemplateMetaEntry(templateMeta, id);
+      setTemplateMeta(newTmplMeta);
+      toast.success("Template dihapus");
+      void reload();
+    }
     else toast.error("Gagal hapus template");
   }
 
@@ -438,21 +518,33 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
     if (!tmplTitle.trim()) { toast.error("Judul wajib diisi"); return; }
     const pts = parseInt(tmplPts, 10);
     if (isNaN(pts) || pts < 1) { toast.error("Poin minimal 1"); return; }
+    if (tmplTargetMode === "specific" && tmplTargetAgents.size === 0) {
+      toast.error("Pilih minimal 1 agen atau pilih 'Semua Agen'");
+      return;
+    }
     setSavingTemplate(true);
     const result = await createTemplate(
       agencyId,
       { title: tmplTitle.trim(), description: tmplDesc.trim(), defaultPoints: pts },
       ownerId,
     );
-    setSavingTemplate(false);
     if (result) {
-      toast.success("Template disimpan!");
-      setTmplTitle(""); setTmplDesc(""); setTmplPts("20");
+      const fee = Number(tmplFee) || 0;
+      const newTmplMeta = await saveTemplateMetaEntry(templateMeta, result.id, {
+        feeIDR: fee,
+        targetMode: tmplTargetMode,
+        targetAgentIds: Array.from(tmplTargetAgents),
+      });
+      setTemplateMeta(newTmplMeta);
+      toast.success("Template disimpan! Tinggal klik ⚡ Inject untuk deploy kapanpun.");
+      setTmplTitle(""); setTmplDesc(""); setTmplPts("20"); setTmplFee("0");
+      setTmplTargetMode("all"); setTmplTargetAgents(new Set());
       setShowTemplateForm(false);
       void reload();
     } else {
       toast.error("Gagal simpan template. Pastikan SQL migration sudah dijalankan.");
     }
+    setSavingTemplate(false);
   }
 
   async function handleDirectCreate() {
@@ -573,6 +665,18 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
           {/* ── Tab: Template Library ───────────────────────────────────── */}
           {tab === "templates" && (
             <motion.div key="templates" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+
+              {/* ── Callout cara pakai ─────────────────────────────────── */}
+              <div className="bg-sky-50 border border-sky-200 rounded-xl px-3.5 py-2.5 flex items-start gap-2.5">
+                <CalendarClock className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-semibold text-sky-800">Cara pakai Template Injeksi</p>
+                  <p className="text-[11px] text-sky-700 mt-0.5 leading-relaxed">
+                    Simpan misi sekali sebagai template — besok atau kapanpun, tinggal klik <strong>⚡ Inject Hari Ini</strong> untuk deploy otomatis dengan deadline 23:59 malam ini.
+                  </p>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between">
                 <p className="text-xs text-slate-500">{templates.length} template tersimpan</p>
                 <Button
@@ -607,22 +711,39 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
                         rows={2}
                         className="bg-white text-sm"
                       />
-                      <div className="flex items-end gap-2">
-                        <div className="flex-1">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
                           <label className="text-[11px] text-slate-500 mb-1 block">Default Poin</label>
                           <div className="relative">
                             <Star className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-amber-400" />
                             <Input type="number" min={1} value={tmplPts} onChange={(e) => setTmplPts(e.target.value)} className="pl-7 bg-white text-sm" />
                           </div>
                         </div>
+                        <div>
+                          <label className="text-[11px] text-slate-500 mb-1 block">Default Fee IDR</label>
+                          <div className="relative">
+                            <Wallet className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-emerald-500" />
+                            <Input type="number" min={0} value={tmplFee} onChange={(e) => setTmplFee(e.target.value)} placeholder="0" className="pl-7 bg-white text-sm" />
+                          </div>
+                        </div>
+                      </div>
+                      <TargetSelector
+                        agentNames={agentNames}
+                        mode={tmplTargetMode}
+                        selected={tmplTargetAgents}
+                        onModeChange={setTmplTargetMode}
+                        onToggle={toggleTmplTargetAgent}
+                      />
+                      <div className="flex items-center gap-2 justify-end pt-1">
                         <Button variant="ghost" size="sm" onClick={() => setShowTemplateForm(false)}>Batal</Button>
                         <Button
                           size="sm"
-                          className="bg-sky-600 hover:bg-sky-700 text-white"
+                          className="bg-sky-600 hover:bg-sky-700 text-white gap-1"
                           disabled={savingTemplate}
                           onClick={handleSaveTemplate}
                         >
-                          {savingTemplate ? "Menyimpan…" : "Simpan"}
+                          <BookOpen className="w-3.5 h-3.5" />
+                          {savingTemplate ? "Menyimpan…" : "Simpan Template"}
                         </Button>
                       </div>
                     </div>
@@ -636,65 +757,100 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {templates.map((t) => (
-                    <Card key={t.id} className="overflow-hidden">
-                      <div className="p-3.5">
-                        <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-sky-100 flex items-center justify-center shrink-0">
-                            <BookOpen className="w-4 h-4 text-sky-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-sm text-slate-800">{t.title}</span>
-                              <span className="flex items-center gap-0.5 text-[10.5px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">
-                                <Star className="w-3 h-3" /> {t.defaultPoints} poin
-                              </span>
-                              {t.useCount > 0 && (
-                                <span className="text-[10px] text-slate-400">Dipakai {t.useCount}×</span>
+                  {templates.map((t) => {
+                    const meta = templateMeta[t.id];
+                    const savedFee = meta?.feeIDR ?? 0;
+                    const savedTargetMode = meta?.targetMode ?? "all";
+                    const savedTargetIds = meta?.targetAgentIds ?? [];
+                    const targetLabel = savedTargetMode === "all"
+                      ? `Semua (${agentCount})`
+                      : savedTargetIds.length > 0
+                        ? `${savedTargetIds.length} agen`
+                        : "Belum diset";
+                    const isInjecting = injectingTemplateId === t.id;
+                    const isCustomizing = deployingTemplateId === t.id;
+
+                    return (
+                      <Card key={t.id} className="overflow-hidden">
+                        <div className="p-3.5">
+                          <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-sky-100 flex items-center justify-center shrink-0">
+                              <BookOpen className="w-4 h-4 text-sky-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-sm text-slate-800">{t.title}</span>
+                                <span className="flex items-center gap-0.5 text-[10.5px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">
+                                  <Star className="w-3 h-3" /> {t.defaultPoints} poin
+                                </span>
+                                {savedFee > 0 && (
+                                  <span className="flex items-center gap-0.5 text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 px-1.5 py-0.5 rounded-full font-bold">
+                                    <Wallet className="w-2.5 h-2.5" /> {fmtIDR(savedFee)}
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-0.5 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">
+                                  <Users className="w-2.5 h-2.5" /> {targetLabel}
+                                </span>
+                                {t.useCount > 0 && (
+                                  <span className="text-[10px] text-slate-400">Dipakai {t.useCount}×</span>
+                                )}
+                              </div>
+                              {t.description && (
+                                <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{t.description}</p>
                               )}
                             </div>
-                            {t.description && (
-                              <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{t.description}</p>
-                            )}
+                            <div className="flex gap-1.5 shrink-0">
+                              <Button
+                                size="sm"
+                                className="h-7 bg-sky-600 hover:bg-sky-700 text-white text-xs px-2.5 gap-1"
+                                disabled={isInjecting || deploying}
+                                onClick={() => void handleInjectToday(t)}
+                              >
+                                <Zap className="w-3 h-3" />
+                                {isInjecting ? "…" : "Inject"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 border-slate-200 text-slate-600 hover:bg-slate-50 text-xs px-2 gap-1"
+                                onClick={() => setDeployingTemplateId(isCustomizing ? null : t.id)}
+                              >
+                                <Settings2 className="w-3 h-3" />
+                                <span className="hidden sm:inline">Kustom</span>
+                              </Button>
+                              <Button
+                                variant="ghost" size="icon"
+                                className="h-7 w-7 text-red-400 hover:bg-red-50 hover:text-red-600"
+                                onClick={() => void handleDeleteTemplate(t.id)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex gap-1.5 shrink-0">
-                            <Button
-                              size="sm"
-                              className="h-7 bg-sky-600 hover:bg-sky-700 text-white text-xs px-2.5 gap-1"
-                              onClick={() => {
-                                setDeployingTemplateId(deployingTemplateId === t.id ? null : t.id);
-                                void incrementTemplateUseCount(t.id);
-                              }}
-                            >
-                              <Zap className="w-3 h-3" /> Gunakan
-                            </Button>
-                            <Button
-                              variant="ghost" size="icon"
-                              className="h-7 w-7 text-red-400 hover:bg-red-50 hover:text-red-600"
-                              onClick={() => void handleDeleteTemplate(t.id)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </div>
 
-                        <AnimatePresence>
-                          {deployingTemplateId === t.id && (
-                            <DeployForm
-                              key={t.id}
-                              initialTitle={t.title}
-                              initialDescription={t.description}
-                              initialPoints={t.defaultPoints}
-                              agentNames={agentNames}
-                              deploying={deploying}
-                              onDeploy={handleDeploy}
-                              onCancel={() => setDeployingTemplateId(null)}
-                            />
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </Card>
-                  ))}
+                          <AnimatePresence>
+                            {isCustomizing && (
+                              <DeployForm
+                                key={t.id}
+                                initialTitle={t.title}
+                                initialDescription={t.description}
+                                initialPoints={t.defaultPoints}
+                                initialFee={savedFee}
+                                initialTargetMode={savedTargetMode}
+                                initialTargetAgentIds={savedTargetIds}
+                                agentNames={agentNames}
+                                deploying={deploying}
+                                onDeploy={(title, desc, pts, dl, fee, target) =>
+                                  handleDeploy(title, desc, pts, dl, fee, target, t.id)
+                                }
+                                onCancel={() => setDeployingTemplateId(null)}
+                              />
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </motion.div>
