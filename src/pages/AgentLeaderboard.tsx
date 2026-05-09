@@ -162,10 +162,13 @@ export default function AgentLeaderboard() {
         };
       })
       .sort((a, b) => {
-        // Sort by period points desc, then orders desc, then lifetime points desc
+        // Sort by period points desc, then orders desc, then lifetime points desc,
+        // then alphabetically by name — guarantees a stable, fair tiebreaker so
+        // no agent ends up #1 simply because of DB insertion order.
         if (b.periodPoints !== a.periodPoints) return b.periodPoints - a.periodPoints;
         if (b.orders !== a.orders) return b.orders - a.orders;
-        return b.lifetimePoints - a.lifetimePoints;
+        if (b.lifetimePoints !== a.lifetimePoints) return b.lifetimePoints - a.lifetimePoints;
+        return a.name.localeCompare(b.name, "id");
       });
   }, [periodOrders, periodPoints, points, agentMembers, memberById, me?.id]);
 

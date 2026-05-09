@@ -375,7 +375,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // 1. Ambil member rows dari agency_members
     const { data: members, error } = await supabase
       .from("agency_members").select("user_id, role, commission_pct, created_at")
-      .eq("agency_id", user.agencyId);
+      .eq("agency_id", user.agencyId)
+      .order("created_at", { ascending: true });
     if (error) throw error;
 
     const rows = members ?? [];
