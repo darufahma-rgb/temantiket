@@ -94,7 +94,7 @@ interface AuthState {
   setMemberCommission: (userId: string, pct: number) => Promise<void>;
 
   // Self
-  changePassword: (newPassword: string) => Promise<void>;
+  changePassword: (currentPw: string, newPw: string) => Promise<void>;
   getSecuritySettings: () => SecuritySettings;
   updateSecuritySettings: (partial: Partial<SecuritySettings>) => void;
   setupPin: (pin: string) => Promise<void>;
@@ -437,10 +437,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (error) throw error;
   },
 
-  changePassword: async (newPassword) => {
+  changePassword: async (currentPw, newPw) => {
     if (!supabase) throw new Error("Supabase belum dikonfigurasi");
-    if (newPassword.length < 8) throw new Error("Password minimal 8 karakter.");
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (!currentPw) throw new Error("Masukkan kata sandi saat ini.");
+    if (newPw.length < 8) throw new Error("Password baru minimal 8 karakter.");
+    const { user } = get();
+    if (!user?.email) throw new Error("Sesi tidak valid. Silakan login ulang.");
+    // Verifikasi kata sandi lama sebelum ganti
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPw,
+    });
+    if (signInErr) throw new Error("Kata sandi saat ini tidak benar.");
+    const { error } = await supabase.auth.updateUser({ password: newPw });
     if (error) throw error;
   },
 

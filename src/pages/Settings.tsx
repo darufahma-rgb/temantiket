@@ -38,6 +38,7 @@ import {
 import { useRatesStore } from "@/store/ratesStore";
 import { listRecentAuditLogs, describeChange, type AuditLog } from "@/features/audit/auditRepo";
 import { useAuthStore, type LoginEvent, type MemberInfo } from "@/store/authStore";
+import { usePresenceStore } from "@/store/presenceStore";
 import { migrateBase64ToStorage, type MigrateProgress } from "@/lib/migrateBase64ToStorage";
 import { useRegionalStore } from "@/store/regionalStore";
 import { useT } from "@/lib/regional";
@@ -196,6 +197,7 @@ export default function Settings() {
   // commissionDraft per-userId — utk inline edit di list anggota.
   const [commissionDraft, setCommissionDraft] = useState<Record<string, string>>({});
   const setMemberCommission = useAuthStore((s) => s.setMemberCommission);
+  const isOnline = usePresenceStore((s) => s.isOnline);
 
   // ── Orders (untuk akumulasi fee agen) ────────────────────────────────────
   const { orders, fetchOrders } = useOrdersStore();
@@ -1351,11 +1353,29 @@ export default function Settings() {
                   const draft = commissionDraft[m.userId];
                   const isAgentRow = m.role === "agent";
                   const isStaffRow = m.role === "staff";
+                  const online = isOnline(m.userId);
                   return (
                     <div key={m.userId} className="flex items-center justify-between px-4 py-3 gap-3 flex-wrap">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{m.displayName || m.email}</p>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          {/* Online presence dot */}
+                          <span
+                            className={cn(
+                              "shrink-0 inline-block w-2 h-2 rounded-full",
+                              online
+                                ? "bg-emerald-500 shadow-[0_0_5px_#10b981]"
+                                : "bg-gray-300",
+                            )}
+                            title={online ? "Sedang online" : "Offline"}
+                          />
+                          <p className="text-sm font-medium truncate">{m.displayName || m.email}</p>
+                          {online && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold shrink-0">
+                              online
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap pl-4">
                           <span className="text-xs text-[hsl(var(--muted-foreground))] font-mono truncate">{m.email}</span>
                           <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide",
                             m.role === "owner" ? "bg-sky-100 text-sky-700"

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSidebar } from "./AppSidebar";
 import { AIChatWidget } from "./AIChatWidget";
 import {
@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRatesStore } from "@/store/ratesStore";
 import { useAuthStore } from "@/store/authStore";
 import { useSyncStatusStore, type SyncStatus } from "@/store/syncStatusStore";
+import { usePresenceStore } from "@/store/presenceStore";
 
 const SYNC_DOT: Record<SyncStatus, { color: string; glow: string; label: string }> = {
   ok:      { color: "#10b981", glow: "0 0 5px #10b981", label: "Tersinkron" },
@@ -103,6 +104,21 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
 
   const { rates, mode: rateMode, loading: ratesLoading, lastUpdated, refresh: refreshRates } = useRatesStore();
   const { user: currentUser, logout } = useAuthStore();
+  const { join: joinPresence, leave: leavePresence } = usePresenceStore();
+
+  // Broadcast presence while logged in
+  useEffect(() => {
+    if (currentUser?.id && currentUser?.agencyId) {
+      joinPresence(
+        currentUser.agencyId,
+        currentUser.id,
+        currentUser.displayName ?? "—",
+        currentUser.role,
+      );
+    }
+    return () => { leavePresence(); };
+  }, [currentUser?.id, currentUser?.agencyId, joinPresence, leavePresence]);
+
   const syncStatus = useSyncStatusStore((s) => s.status);
   const lastSync   = useSyncStatusStore((s) => s.lastSync);
   const lastError  = useSyncStatusStore((s) => s.lastError);

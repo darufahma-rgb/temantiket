@@ -79,14 +79,26 @@ function StatCard({
 }
 
 // ── Validation helpers ─────────────────────────────────────────────────────────
+/**
+ * Normalisasi nomor telepon internasional.
+ * - Angka diawali "0" → dianggap Indonesia: ganti jadi "+62..."
+ * - Sudah ada "+" di depan → simpan apa adanya (misal +20 Mesir, +44 UK, dll)
+ * - Tanpa "+" dan bukan "0" → tambahkan "+" di depan
+ */
 function normalizeWa(raw: string): string {
-  let d = raw.replace(/\D/g, "");
-  if (d.startsWith("0")) d = "62" + d.slice(1);
-  return d;
+  const trimmed = raw.trim().replace(/[\s\-()]/g, "");
+  if (!trimmed) return "";
+  if (trimmed.startsWith("0")) return "+62" + trimmed.slice(1);
+  if (trimmed.startsWith("+")) return trimmed;
+  return "+" + trimmed;
 }
+/**
+ * Validasi nomor telepon internasional: 7–15 digit setelah strip non-angka.
+ * Terima format +62, +20, +44, dll.
+ */
 function isValidWa(raw: string): boolean {
-  const d = normalizeWa(raw);
-  return /^62\d{8,13}$/.test(d);
+  const digits = raw.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15;
 }
 
 // ── Add Agent Dialog ───────────────────────────────────────────────────────────
@@ -116,8 +128,8 @@ function AddAgentDialog({ open, onClose, onSuccess }: {
     if (!name.trim())              e.name  = "Nama lengkap wajib diisi.";
     if (!email.trim() || !email.includes("@")) e.email = "Format email tidak valid.";
     if (pass.length < 8)           e.pass  = "Password minimal 8 karakter.";
-    if (wa.trim() && !isValidWa(wa)) e.wa  = "Format nomor WA tidak valid (cth: 08123456789).";
     if (!wa.trim())                e.wa    = "Nomor WhatsApp wajib diisi.";
+    else if (!isValidWa(wa))       e.wa    = "Nomor tidak valid. Min. 7 digit (cth: 08123 atau +20123).";
     setErrs(e);
     return Object.keys(e).length === 0;
   }
@@ -240,20 +252,17 @@ function AddAgentDialog({ open, onClose, onSuccess }: {
               <Label className="text-xs font-semibold flex items-center gap-1.5">
                 <MessageCircle className="h-3 w-3 text-emerald-500" /> Nomor WhatsApp <span className="text-red-500">*</span>
               </Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-mono text-muted-foreground select-none">+62</span>
-                <Input
-                  type="tel"
-                  placeholder="812-3456-7890"
-                  value={wa}
-                  onChange={(e) => { setWa(e.target.value); setErrs((p) => ({ ...p, wa: "" })); }}
-                  className={`h-9 text-sm pl-10 ${errs.wa ? "border-red-400 focus-visible:ring-red-300" : ""}`}
-                  disabled={loading}
-                />
-              </div>
+              <Input
+                type="tel"
+                placeholder="cth: 08123456789 atau +201234567890"
+                value={wa}
+                onChange={(e) => { setWa(e.target.value); setErrs((p) => ({ ...p, wa: "" })); }}
+                className={`h-9 text-sm ${errs.wa ? "border-red-400 focus-visible:ring-red-300" : ""}`}
+                disabled={loading}
+              />
               {errs.wa
                 ? <p className="text-[10.5px] text-red-500">{errs.wa}</p>
-                : <p className="text-[10.5px] text-muted-foreground">Untuk dihubungi terkait order & komisi.</p>}
+                : <p className="text-[10.5px] text-muted-foreground">Nomor Indonesia (08xxx) atau internasional (cth: +20 Mesir, +44 UK). Min. 7 digit.</p>}
             </div>
           </div>
 
