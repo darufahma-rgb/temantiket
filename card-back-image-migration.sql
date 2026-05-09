@@ -1,17 +1,23 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- CARD BACK IMAGE — Jalankan di Supabase Dashboard → SQL Editor
+-- Aman dijalankan berkali-kali (idempotent).
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- ── 1. Tambah kolom card_back_image_url di agency_members ────────────────
+-- ── 1. Tambah kolom card_back_image_url di agency_members ─────────────────
 alter table public.agency_members
   add column if not exists card_back_image_url text;
 
--- ── 2. Buat storage bucket "card-backs" (public) ─────────────────────────
+-- ── 2. Buat storage bucket "card-backs" (public) ──────────────────────────
 insert into storage.buckets (id, name, public)
 values ('card-backs', 'card-backs', true)
-on conflict (id) do nothing;
+on conflict (id) do update set public = true;
 
--- ── 3. RLS policies untuk bucket card-backs ──────────────────────────────
+-- ── 3. RLS policies — drop dulu kalau sudah ada, baru buat ulang ──────────
+
+drop policy if exists "card_backs_select" on storage.objects;
+drop policy if exists "card_backs_insert" on storage.objects;
+drop policy if exists "card_backs_update" on storage.objects;
+drop policy if exists "card_backs_delete" on storage.objects;
 
 -- Siapa pun yang login bisa baca (bucket sudah public, ini sebagai fallback)
 create policy "card_backs_select"
@@ -24,13 +30,11 @@ create policy "card_backs_insert"
   with check (
     bucket_id = 'card-backs'
     and (
-      -- owner bisa upload untuk siapapun di agency-nya
       exists (
         select 1 from public.agency_members
         where user_id = auth.uid()
           and role = 'owner'
       )
-      -- atau member itu sendiri (folder = userId mereka)
       or (storage.foldername(name))[1] = auth.uid()::text
     )
   );
