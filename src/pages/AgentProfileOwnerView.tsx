@@ -951,7 +951,7 @@ export default function AgentProfileOwnerView() {
                 {[
                   { icon: ShoppingBag, label: "Total Order",  value: String(agentOrders.length),            sub: `${agentOrders.filter((o) => o.status === "Completed").length} selesai`, color: "text-violet-600", bg: "bg-violet-50 border-violet-100" },
                   { icon: Users,       label: "Total Klien",  value: String(agentClients.length),           sub: "klien aktif",                        color: "text-sky-600",    bg: "bg-sky-50 border-sky-100" },
-                  { icon: TrendingUp,  label: "Total Komisi", value: fmtIDR(feeStats.total || totalKomisi), sub: "akumulasi fee agen",                  color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
+                  { icon: TrendingUp,  label: "Total Komisi", value: fmtIDR((feeStats.total || totalKomisi) + totalPelaksanaFee), sub: "fee agen + lapangan VOA",                  color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
                   { icon: Trophy,      label: "Total Poin",   value: totalPoints.toLocaleString("id-ID"),   sub: `Tier ${tier.label}`,                  color: "text-amber-600",  bg: "bg-amber-50 border-amber-100" },
                 ].map((s) => (
                   <div key={s.label} className={`rounded-2xl border p-3 ${s.bg}`}>
@@ -1035,14 +1035,14 @@ export default function AgentProfileOwnerView() {
                 </div>
                 <div className="p-4 space-y-3">
                   <div className="text-center py-1">
-                    <div className="text-xl md:text-3xl font-extrabold font-mono">{fmtIDR(feeStats.total || totalKomisi)}</div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">total akumulasi fee</div>
+                    <div className="text-xl md:text-3xl font-extrabold font-mono">{fmtIDR((feeStats.total || totalKomisi) + totalPelaksanaFee)}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">total akumulasi (komisi + lapangan VOA)</div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 flex items-start gap-2">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                       <div>
-                        <div className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wide">Terbayar</div>
+                        <div className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wide">Komisi Order</div>
                         <div className="text-sm font-bold font-mono text-emerald-700">{fmtIDR(feeStats.paid)}</div>
                         <div className="text-[10px] text-muted-foreground">order Paid/Completed</div>
                       </div>
@@ -1056,7 +1056,19 @@ export default function AgentProfileOwnerView() {
                       </div>
                     </div>
                   </div>
-                  {(feeStats.total === 0 && totalKomisi === 0) && (
+                  {totalPelaksanaFee > 0 && (
+                    <div className="rounded-xl bg-purple-50 border border-purple-100 p-3 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🛂</span>
+                        <div>
+                          <div className="text-[10px] text-purple-700 font-semibold uppercase tracking-wide">Fee Lapangan VOA</div>
+                          <div className="text-[10px] text-muted-foreground">dikreditkan ke wallet</div>
+                        </div>
+                      </div>
+                      <div className="text-sm font-extrabold font-mono text-purple-700">{fmtIDR(totalPelaksanaFee)}</div>
+                    </div>
+                  )}
+                  {(feeStats.total === 0 && totalKomisi === 0 && totalPelaksanaFee === 0) && (
                     <p className="text-center text-[11px] text-muted-foreground italic py-1">
                       Belum ada fee. Agen belum memiliki order dengan fee komisi.
                     </p>

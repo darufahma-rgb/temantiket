@@ -13,6 +13,7 @@ import { useClientsStore } from "@/store/clientsStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, ORDER_STATUSES, type OrderStatus } from "@/features/orders/ordersRepo";
 import { revenueIDR, profitIDR, fmtIDR } from "@/lib/profit";
+import { pullWalletTxs, walletBalance, type WalletTransaction } from "@/lib/agentWallet";
 import { AgentTierProgress } from "@/components/AgentTierProgress";
 import { AgentCard } from "@/components/AgentCard";
 import { RewardCatalog } from "@/components/RewardCatalog";
@@ -49,6 +50,7 @@ export default function AgentDashboard() {
   const [missionSubs, setMissionSubs] = useState<MissionSubmission[]>([]);
   const [loadingPoints, setLoadingPoints] = useState(true);
   const [popupMission, setPopupMission] = useState<PopupMission | null>(null);
+  const [walletTxs, setWalletTxs] = useState<WalletTransaction[]>([]);
 
   useEffect(() => {
     void fetchOrders();
@@ -64,6 +66,11 @@ export default function AgentDashboard() {
       setLoadingPoints(false);
     })();
   }, [fetchOrders, fetchClients, clients.length, user?.agencyId, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    void pullWalletTxs(user.id).then(setWalletTxs);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.agencyId || !user?.id) return;
@@ -128,14 +135,24 @@ export default function AgentDashboard() {
   );
 
   const feeStats = useMemo(() => {
-    const total = myOrders.reduce(
+    // Sales commission from orders I created (agentFee)
+    const salesTotal = myOrders.reduce(
       (s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0,
     );
-    const paid = myOrders
+    const salesPaid = myOrders
       .filter((o) => o.status === "Paid" || o.status === "Completed")
       .reduce((s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
-    return { total, paid, pending: total - paid };
-  }, [myOrders]);
+
+    // Field agent fees from wallet (pelaksana_fee = VOA field work, kurir_fee = courier)
+    const walletBal  = walletBalance(walletTxs);
+    const fieldTotal = walletTxs
+      .filter((t) => t.type === "pelaksana_fee" || t.type === "kurir_fee")
+      .reduce((s, t) => s + t.amountIDR, 0);
+
+    const total   = salesTotal + fieldTotal;
+    const paid    = salesPaid  + fieldTotal; // wallet credits are always "paid"
+    return { total, paid, pending: salesTotal - salesPaid, walletNet: walletBal.netIDR, fieldTotal };
+  }, [myOrders, walletTxs]);
 
   const portfolio = useMemo(() => {
     const types = ["umrah", "flight", "visa_voa", "visa_student"] as const;
@@ -370,7 +387,7 @@ export default function AgentDashboard() {
                 <div className="text-[22px] md:text-[28px] font-extrabold font-mono text-slate-800 leading-tight">
                   {fmtIDR(feeStats.total)}
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">total akumulasi</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">total akumulasi (komisi + lapangan)</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5">
@@ -382,6 +399,12 @@ export default function AgentDashboard() {
                   <div className="text-[13px] font-extrabold font-mono text-blue-700 mt-0.5">{fmtIDR(feeStats.pending)}</div>
                 </div>
               </div>
+              {feeStats.fieldTotal > 0 && (
+                <div className="rounded-xl bg-purple-50 border border-purple-100 px-3 py-2 flex items-center justify-between">
+                  <div className="text-[9px] text-purple-700 font-bold uppercase tracking-wide">🛂 Fee Lapangan VOA/Kurir</div>
+                  <div className="text-[12px] font-extrabold font-mono text-purple-700">{fmtIDR(feeStats.fieldTotal)}</div>
+                </div>
+              )}
               {feeStats.total === 0 && (
                 <p className="text-[10px] text-slate-400 text-center italic">Buat order dengan fee dulu.</p>
               )}

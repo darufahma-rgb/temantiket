@@ -28,7 +28,7 @@ import { voaOpCost, kurirOpCost } from "@/lib/profit";
 import { FlightOrderEditor, type FlightMeta } from "@/features/orders/FlightOrderEditor";
 import { toast } from "sonner";
 import { getCommissionForOrderType } from "@/lib/productCommissions";
-import { addWalletTx } from "@/lib/agentWallet";
+import { addWalletTxAsync } from "@/lib/agentWallet";
 import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import { supabase } from "@/lib/supabase";
 import { VisaEntryPanel } from "@/components/VisaEntryPanel";
@@ -177,104 +177,133 @@ export default function OrderDetail() {
         metaPatch = buildRateSnapshotPatch(metaPatch, rates.EGP ?? 515, rates.SAR ?? 4250);
       }
 
-      // ── Pre-compute wallet credit decisions BEFORE saving ──────────────────
-      // Use "willBeCompleted" so the credit fires even when the order is ALREADY
-      // Completed and the owner later assigns/changes the agent/fee.
-      // A one-time flag stored in metadata prevents double-crediting.
+      // ── Pre-compute wallet credit decisions ────────────────────────────────
+      // willBeCompleted fires even when status is already Completed so the owner
+      // can assign a field agent AFTER closing the order — idempotency key on
+      // the wallet upsert (wtx-voa-{orderId}) prevents double-credit.
       const willBeCompleted = newStatus === "Completed";
 
       // VOA field-agent fee
-      const voaFieldAgentId  = (metaPatch.voaFieldAgentId as string | undefined) ?? null;
-      const voaFieldFee      = Number(metaPatch.voaAgentFee ?? 0);
-      const shouldCreditVoa  = order.type === "visa_voa" &&
+      const voaFieldAgentId = (metaPatch.voaFieldAgentId as string | undefined) ?? null;
+      const voaFieldFee     = Number(metaPatch.voaAgentFee ?? 0);
+      const shouldCreditVoa = order.type === "visa_voa" &&
         willBeCompleted && !!voaFieldAgentId && voaFieldFee > 0 &&
         !metaPatch.voaFeeCredited;
 
       // Kurir fee
-      const kurirAgentIdPre     = (metaPatch.kurirAgentId as string | undefined) ?? null;
-      const kurirFeeAmountPre   = Number(metaPatch.kurirFee ?? 0);
-      const shouldCreditKurir   = willBeCompleted && !!kurirAgentIdPre &&
+      const kurirAgentIdPre   = (metaPatch.kurirAgentId as string | undefined) ?? null;
+      const kurirFeeAmountPre = Number(metaPatch.kurirFee ?? 0);
+      const shouldCreditKurir = willBeCompleted && !!kurirAgentIdPre &&
         kurirFeeAmountPre > 0 && !metaPatch.kurirFeeCredited;
 
-      // Agent order commission
-      const agentCommId         = order.createdByAgent ?? null;
-      const agentFeeAmount      =
-        Number(metaPatch.agentFee) || getCommissionForOrderType(order.type);
-      const shouldCreditAgent   = willBeCompleted && !!agentCommId &&
+      // Agent order commission (sales agent, not VOA field agent)
+      const agentCommId     = order.createdByAgent ?? null;
+      const agentFeeAmount  = Number(metaPatch.agentFee) || getCommissionForOrderType(order.type);
+      const shouldCreditAgent = willBeCompleted && !!agentCommId &&
         agentFeeAmount > 0 && !metaPatch.agentFeeCredited;
 
-      // Stamp the "already-credited" flags into metadata so we never double-pay
-      if (shouldCreditVoa)    metaPatch = { ...metaPatch, voaFeeCredited: true };
-      if (shouldCreditKurir)  metaPatch = { ...metaPatch, kurirFeeCredited: true };
-      if (shouldCreditAgent)  metaPatch = { ...metaPatch, agentFeeCredited: true };
-
+      // ── Step 1: Save order WITHOUT "credited" flags ────────────────────────
+      // Flags are only stamped AFTER Supabase confirms each wallet insert.
+      // This prevents the flag being set while the wallet stays empty.
       await patchOrder(order.id, {
-        title: draft.title ?? null,
-        status: newStatus,
+        title:      draft.title ?? null,
+        status:     newStatus,
         totalPrice: Number(draft.totalPrice ?? 0),
-        costPrice: Number(draft.costPrice ?? 0),
-        clientId: (draft.clientId as string | null) ?? null,
-        notes: (draft.notes as string | null) ?? null,
-        metadata: metaPatch,
+        costPrice:  Number(draft.costPrice ?? 0),
+        clientId:   (draft.clientId as string | null) ?? null,
+        notes:      (draft.notes as string | null) ?? null,
+        metadata:   metaPatch,
       });
+
+      // ── Step 2: Wallet credits — awaited & idempotent ──────────────────────
+      // addWalletTxAsync upserts to Supabase (no fire-and-forget).
+      // Deterministic idempotency key means retrying the same order never
+      // produces a duplicate wallet row.
+      const orderId8   = order.id.slice(0, 8);
+      const flagsPatch: Record<string, unknown> = {};
+
+      if (shouldCreditVoa) {
+        const agentName = members.find((m) => m.userId === voaFieldAgentId)?.displayName ?? "agent lapangan";
+        const { persisted } = await addWalletTxAsync(
+          voaFieldAgentId!,
+          {
+            agentId:     voaFieldAgentId!,
+            type:        "pelaksana_fee",
+            pointsDelta: 0,
+            amountIDR:   voaFieldFee,
+            description: `Fee Operasional VOA #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            createdBy:   currentUser?.id ?? "system",
+          },
+          `voa-${order.id}`,
+        );
+        if (persisted) {
+          flagsPatch.voaFeeCredited = true;
+          toast.success(`Fee dicatat ke wallet ${agentName}: ${fmtIDR(voaFieldFee)}`, {
+            description: "Pemasukan agent lapangan VOA otomatis terekap di akun mereka.",
+            duration: 5000,
+          });
+        } else {
+          toast.warning(`Fee VOA tersimpan lokal — sinkronisasi cloud tertunda`, {
+            description: `${fmtIDR(voaFieldFee)} → ${agentName}. Coba simpan ulang atau buka profil agen.`,
+            duration: 7000,
+          });
+        }
+      }
+
+      if (shouldCreditKurir) {
+        const kurirName = members.find((m) => m.userId === kurirAgentIdPre)?.displayName ?? "kurir";
+        const { persisted } = await addWalletTxAsync(
+          kurirAgentIdPre!,
+          {
+            agentId:     kurirAgentIdPre!,
+            type:        "kurir_fee",
+            pointsDelta: 0,
+            amountIDR:   kurirFeeAmountPre,
+            description: `Fee Kurir Setoran #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            createdBy:   currentUser?.id ?? "system",
+          },
+          `kurir-${order.id}`,
+        );
+        if (persisted) {
+          flagsPatch.kurirFeeCredited = true;
+          toast.success(`Fee kurir dicatat ke wallet ${kurirName}: ${fmtIDR(kurirFeeAmountPre)}`, {
+            description: "Agen kurir otomatis mendapat kredit dari fee setoran uang.",
+            duration: 5000,
+          });
+        }
+      }
+
+      if (shouldCreditAgent) {
+        const orderLabel = ORDER_TYPE_LABEL[order.type];
+        const { persisted } = await addWalletTxAsync(
+          agentCommId!,
+          {
+            agentId:     agentCommId!,
+            type:        "order_bonus",
+            pointsDelta: 0,
+            amountIDR:   agentFeeAmount,
+            description: `Komisi order ${orderLabel} #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            createdBy:   currentUser?.id ?? "system",
+          },
+          `agent-${order.id}`,
+        );
+        if (persisted) {
+          flagsPatch.agentFeeCredited = true;
+          void awardCommissionPoints(order.agencyId, agentCommId!, order.id);
+          toast.success(`Komisi agen dicatat: ${fmtIDR(agentFeeAmount)} · +20 poin`, {
+            description: `Order "${order.title || orderLabel}" selesai — wallet & poin agen diperbarui.`,
+            duration: 5000,
+          });
+        }
+      }
+
+      // ── Step 3: Stamp credited flags only after confirmed cloud inserts ─────
+      if (Object.keys(flagsPatch).length > 0) {
+        await patchOrder(order.id, { metadata: { ...metaPatch, ...flagsPatch } });
+      }
 
       const fresh = await getOneOrder(order.id);
       if (fresh) { setOrder(fresh); setDraft(fresh); }
-
-      // ── VOA Field Agent wallet credit ───────────────────────────────────────
-      if (shouldCreditVoa) {
-        const orderId8  = order.id.slice(0, 8);
-        const agentName = members.find((m) => m.userId === voaFieldAgentId)?.displayName ?? "agent lapangan";
-        addWalletTx(voaFieldAgentId!, {
-          agentId:     voaFieldAgentId!,
-          type:        "pelaksana_fee",
-          pointsDelta: 0,
-          amountIDR:   voaFieldFee,
-          description: `Fee Operasional VOA #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
-          createdBy:   currentUser?.id ?? "system",
-        });
-        toast.success(`Fee dicatat ke wallet ${agentName}: ${fmtIDR(voaFieldFee)}`, {
-          description: "Pemasukan agent lapangan VOA otomatis terekap di akun mereka.",
-          duration: 5000,
-        });
-      }
-
-      // ── Kurir agent wallet credit ───────────────────────────────────────────
-      if (shouldCreditKurir) {
-        const orderId8  = order.id.slice(0, 8);
-        const kurirName = members.find((m) => m.userId === kurirAgentIdPre)?.displayName ?? "kurir";
-        addWalletTx(kurirAgentIdPre!, {
-          agentId:     kurirAgentIdPre!,
-          type:        "kurir_fee",
-          pointsDelta: 0,
-          amountIDR:   kurirFeeAmountPre,
-          description: `Fee Kurir Setoran #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
-          createdBy:   currentUser?.id ?? "system",
-        });
-        toast.success(`Fee kurir dicatat ke wallet ${kurirName}: ${fmtIDR(kurirFeeAmountPre)}`, {
-          description: "Agen kurir otomatis mendapat kredit dari fee setoran uang.",
-          duration: 5000,
-        });
-      }
-
-      // ── Agent commission recording ──────────────────────────────────────────
-      if (shouldCreditAgent) {
-        const orderLabel = ORDER_TYPE_LABEL[order.type];
-        const orderId8   = order.id.slice(0, 8);
-        addWalletTx(agentCommId!, {
-          agentId:     agentCommId!,
-          type:        "order_bonus",
-          pointsDelta: 0,
-          amountIDR:   agentFeeAmount,
-          description: `Komisi order ${orderLabel} #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
-          createdBy:   currentUser?.id ?? "system",
-        });
-        void awardCommissionPoints(order.agencyId, agentCommId!, order.id);
-        toast.success(`Komisi agen dicatat: ${fmtIDR(agentFeeAmount)} · +20 poin`, {
-          description: `Order "${order.title || orderLabel}" selesai — wallet & poin agen diperbarui.`,
-          duration: 5000,
-        });
-      }
 
       // Trigger side-effect notifications after status change
       if (isPaidTransition) {

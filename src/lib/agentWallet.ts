@@ -113,6 +113,65 @@ export function addWalletTx(
   return full;
 }
 
+/**
+ * Async version of addWalletTx — awaits the Supabase insert and returns
+ * whether it was persisted to the cloud. Bypasses beginFeatureSync so the
+ * insert is always attempted. Uses upsert for idempotency: if you pass an
+ * `idempotencyKey`, the tx ID is deterministic (`wtx-{key}`) so retrying
+ * the same credit won't produce a duplicate row.
+ */
+export async function addWalletTxAsync(
+  agentId: string,
+  tx: Omit<WalletTransaction, "id" | "createdAt">,
+  idempotencyKey?: string,
+): Promise<{ tx: WalletTransaction; persisted: boolean }> {
+  const full: WalletTransaction = {
+    ...tx,
+    id: idempotencyKey
+      ? `wtx-${idempotencyKey}`
+      : `wtx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    createdAt: new Date().toISOString(),
+  };
+
+  // Write to localStorage, deduplicating by id so a retry doesn't append twice
+  saveTxsCache(agentId, [full, ...listWalletTxs(agentId).filter((t) => t.id !== full.id)]);
+
+  if (!isSupabaseConfigured()) {
+    return { tx: full, persisted: false };
+  }
+
+  try {
+    const agencyId = requireAgencyId();
+    const { error } = await supabase!
+      .from("agent_wallet_transactions")
+      .upsert(
+        {
+          id:           full.id,
+          agency_id:    agencyId,
+          agent_id:     full.agentId,
+          type:         full.type,
+          points_delta: full.pointsDelta,
+          amount_idr:   full.amountIDR,
+          description:  full.description,
+          created_by:   full.createdBy,
+          created_at:   full.createdAt,
+        },
+        { onConflict: "id" },
+      );
+    if (error) {
+      console.warn("[agentWallet] async upsert gagal:", error.message);
+      return { tx: full, persisted: false };
+    }
+    // Also update sync badge if it's being tracked
+    const syncKey = walletSyncKey(agentId);
+    resolveFeatureSync(syncKey);
+    return { tx: full, persisted: true };
+  } catch (e) {
+    console.warn("[agentWallet] async upsert exception:", e);
+    return { tx: full, persisted: false };
+  }
+}
+
 /** Pull wallet txs dari Supabase → update localStorage cache → return list. */
 export async function pullWalletTxs(agentId: string): Promise<WalletTransaction[]> {
   if (!isSupabaseConfigured()) return listWalletTxs(agentId);
