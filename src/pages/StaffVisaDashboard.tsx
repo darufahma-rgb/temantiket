@@ -338,8 +338,7 @@ export default function StaffVisaDashboard() {
                             <ChevronRight className="h-3 w-3 shrink-0 mr-1" />
                           )}
                           <span className="truncate">
-                            {VISA_STEPS[currentStep + 1]?.emoji}{" "}
-                            {VISA_STEPS[currentStep + 1]?.label ?? "Selesai"}
+                            {(VISA_STEPS[currentStep + 1]?.label ?? "Selesai").split(" ")[0]}
                           </span>
                         </Button>
                       ) : (
