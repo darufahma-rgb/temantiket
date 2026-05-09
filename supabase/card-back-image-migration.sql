@@ -1,6 +1,10 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Migration: Kartu Staff Digital — Gambar Belakang
 -- Jalankan di Supabase SQL Editor (dashboard.supabase.com → SQL Editor)
+--
+-- Script ini idempotent — aman dijalankan ulang berkali-kali.
+-- DROP POLICY IF EXISTS dipakai karena PostgreSQL tidak mendukung
+-- CREATE POLICY IF NOT EXISTS.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- 1. Tambah kolom card_back_image_url ke tabel agency_members
@@ -23,6 +27,11 @@ on conflict (id) do update
       allowed_mime_types = excluded.allowed_mime_types;
 
 -- 3. RLS policies untuk bucket card-backs
+--    Drop dulu sebelum create agar aman dijalankan ulang
+
+drop policy if exists "card_backs_select" on storage.objects;
+drop policy if exists "card_backs_insert" on storage.objects;
+drop policy if exists "card_backs_update" on storage.objects;
 
 -- Anggota agency yang sama boleh melihat file
 create policy "card_backs_select" on storage.objects
@@ -79,10 +88,9 @@ create policy "card_backs_update" on storage.objects
     )
   );
 
--- 4. RLS untuk kolom card_back_image_url di agency_members
---    (menggunakan policy yang sudah ada di agency_members, kolom baru
---    otomatis ikut policy SELECT/UPDATE bestehende)
-
--- Verifikasi:
+-- 4. Verifikasi (opsional):
 -- select column_name from information_schema.columns
 --   where table_name = 'agency_members' and column_name = 'card_back_image_url';
+--
+-- select policyname from pg_policies
+--   where tablename = 'objects' and policyname like 'card_backs%';
