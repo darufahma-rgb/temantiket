@@ -9,12 +9,16 @@ import { motion } from "framer-motion";
 import {
   FileText, AlertTriangle, CheckCircle2,
   Loader2, MessageSquare, ChevronRight, ChevronLeft,
-  ArrowUpRight, Target,
+  ArrowUpRight, Target, Send, FolderCheck, Landmark, Clock, Award,
+  type LucideIcon,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { useStaffData } from "@/hooks/useStaffData";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+
+const VISA_STEP_ICONS: LucideIcon[] = [Send, FolderCheck, Landmark, Clock, Award];
 
 const fadeUp = {
   hidden: { opacity: 0, y: 14 },
@@ -230,16 +234,15 @@ export default function StaffVisaDashboard() {
                       {VISA_STEPS.map((step, i) => {
                         const done   = i < currentStep;
                         const active = i === currentStep;
+                        const StepIcon = VISA_STEP_ICONS[i] ?? FileText;
                         return (
                           <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
                             <div className={`h-1.5 w-full rounded-full transition-colors ${
                               done ? "bg-emerald-500" : active ? "bg-blue-500" : "bg-slate-100"
                             }`} />
-                            <span className={`text-[8px] text-center leading-tight ${
-                              active ? "text-blue-700 font-bold" : done ? "text-emerald-600" : "text-slate-300"
-                            }`}>
-                              {step.emoji}
-                            </span>
+                            <StepIcon className={`h-4 w-4 stroke-[1.5] ${
+                              active ? "text-blue-600" : done ? "text-emerald-500" : "text-slate-300"
+                            }`} />
                           </div>
                         );
                       })}
