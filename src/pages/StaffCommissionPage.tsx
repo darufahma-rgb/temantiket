@@ -95,22 +95,22 @@ export default function StaffCommissionPage() {
 
             {/* 4-column breakdown */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5">
-                <div className="text-[9px] text-emerald-600 font-bold uppercase tracking-wide">Dikreditkan</div>
-                <div className="text-[13px] font-extrabold font-mono text-emerald-700 mt-0.5">{fmtIDR(walletBal.totalCreditIDR)}</div>
+              <div className="rounded-xl bg-white border border-blue-200 px-3 py-2.5">
+                <div className="text-[9px] text-blue-600 font-bold uppercase tracking-wide">Dikreditkan</div>
+                <div className="text-[13px] font-extrabold font-mono text-blue-700 mt-0.5">{fmtIDR(walletBal.totalCreditIDR)}</div>
                 <div className="text-[9px] text-slate-400">{creditedOrders.length} berkas</div>
               </div>
-              <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
-                <div className="text-[9px] text-amber-600 font-bold uppercase tracking-wide">Menunggu Kredit</div>
-                <div className="text-[13px] font-extrabold font-mono text-amber-700 mt-0.5">{fmtIDR(pendingFeeTotal)}</div>
+              <div className="rounded-xl bg-white border border-blue-200 px-3 py-2.5">
+                <div className="text-[9px] text-blue-600 font-bold uppercase tracking-wide">Menunggu Kredit</div>
+                <div className="text-[13px] font-extrabold font-mono text-blue-700 mt-0.5">{fmtIDR(pendingFeeTotal)}</div>
                 <div className="text-[9px] text-slate-400">{pendingOrders.length} berkas</div>
               </div>
-              <div className="rounded-xl bg-orange-50 border border-orange-100 px-3 py-2.5">
-                <div className="text-[9px] text-orange-600 font-bold uppercase tracking-wide">Dicairkan</div>
-                <div className="text-[13px] font-extrabold font-mono text-orange-700 mt-0.5">{fmtIDR(walletBal.totalDebitIDR)}</div>
+              <div className="rounded-xl bg-white border border-blue-200 px-3 py-2.5">
+                <div className="text-[9px] text-blue-600 font-bold uppercase tracking-wide">Dicairkan</div>
+                <div className="text-[13px] font-extrabold font-mono text-blue-700 mt-0.5">{fmtIDR(walletBal.totalDebitIDR)}</div>
                 <div className="text-[9px] text-slate-400">{walletTxs.filter((t) => t.type === "payout").length} pencairan</div>
               </div>
-              <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2.5">
+              <div className="rounded-xl bg-white border border-blue-200 px-3 py-2.5">
                 <div className="text-[9px] text-blue-600 font-bold uppercase tracking-wide">Saldo Wallet</div>
                 <div className="text-[13px] font-extrabold font-mono text-blue-700 mt-0.5">{fmtIDR(walletBal.netIDR)}</div>
                 <div className="text-[9px] text-slate-400">{stats.selesai} selesai</div>
