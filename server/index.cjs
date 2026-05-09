@@ -934,6 +934,82 @@ app.post('/api/ai/assistant', async (req, res) => {
 });
 
 /* ──────────────────────────────────────────────
+   POST /api/credit-wallet-tx
+   Insert a wallet transaction using service-role key so RLS never blocks
+   cross-agent credits (e.g. owner crediting a field agent's wallet).
+   Validates the caller is an authenticated member of the agency, then
+   upserts to agent_wallet_transactions. Idempotent via tx ID conflict.
+────────────────────────────────────────────── */
+app.post('/api/credit-wallet-tx', async (req, res) => {
+  try {
+    if (!SERVICE_ROLE_KEY) {
+      return err(res, 503, 'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. Tambahkan di Secrets Replit lalu restart server.');
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return err(res, 401, 'Missing Authorization header');
+
+    const caller = await getCallerUser(authHeader, 8000).catch(() => null);
+    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
+
+    const admin = makeAdminClient();
+
+    // Verify caller belongs to the stated agency
+    const { data: membership, error: memErr } = await withTimeout(
+      admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle(),
+      8000, 'DB timeout saat verifikasi membership'
+    );
+    if (memErr || !membership) {
+      console.error('[credit-wallet-tx] membership lookup error:', memErr?.message);
+      return err(res, 403, 'Tidak terdaftar di agency manapun');
+    }
+
+    const { id, agencyId, agentId, type, pointsDelta, amountIDR, description, createdBy, createdAt } = req.body ?? {};
+
+    // Basic field validation
+    if (!id || !agencyId || !agentId || !type || amountIDR === undefined) {
+      return err(res, 400, 'Field wajib: id, agencyId, agentId, type, amountIDR');
+    }
+
+    // Agency must match the caller's agency (prevent cross-tenant abuse)
+    if (membership.agency_id !== agencyId) {
+      console.error(`[credit-wallet-tx] agency mismatch: caller=${membership.agency_id} req=${agencyId}`);
+      return err(res, 403, 'Agency ID tidak sesuai dengan akun yang login');
+    }
+
+    // Upsert — idempotent on tx id
+    const { error: upsertErr } = await withTimeout(
+      admin.from('agent_wallet_transactions').upsert(
+        {
+          id,
+          agency_id:    agencyId,
+          agent_id:     agentId,
+          type,
+          points_delta: pointsDelta ?? 0,
+          amount_idr:   amountIDR,
+          description:  description ?? '',
+          created_by:   createdBy ?? caller.id,
+          created_at:   createdAt ?? new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      ),
+      12000, 'Timeout saat insert wallet transaction ke Supabase'
+    );
+
+    if (upsertErr) {
+      console.error('[credit-wallet-tx] upsert error:', upsertErr.message, upsertErr);
+      return err(res, 500, `Gagal insert wallet: ${upsertErr.message}`);
+    }
+
+    console.log(`[credit-wallet-tx] OK — id=${id} agent=${agentId} amount=${amountIDR} type=${type}`);
+    return ok(res, { ok: true, id });
+  } catch (e) {
+    console.error('[credit-wallet-tx] exception:', e);
+    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
+  }
+});
+
+/* ──────────────────────────────────────────────
    POST /api/award-commission-points
    Award 20 points to agent when commission is earned.
    Uses service-role key to bypass RLS (agent_points is INSERT-only via trigger).

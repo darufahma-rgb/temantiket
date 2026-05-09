@@ -233,7 +233,8 @@ export default function OrderDetail() {
 
       if (shouldCreditVoa) {
         const agentName = members.find((m) => m.userId === voaFieldAgentId)?.displayName ?? "agent lapangan";
-        const { persisted } = await addWalletTxAsync(
+        console.log(`[OrderDetail] crediting VOA wallet: agent=${voaFieldAgentId} amount=${voaFieldFee} order=${order.id}`);
+        const { persisted, error: walletErr } = await addWalletTxAsync(
           voaFieldAgentId!,
           {
             agentId:     voaFieldAgentId!,
@@ -247,21 +248,25 @@ export default function OrderDetail() {
         );
         if (persisted) {
           flagsPatch.voaFeeCredited = true;
-          toast.success(`Fee dicatat ke wallet ${agentName}: ${fmtIDR(voaFieldFee)}`, {
+          toast.success(`Fee VOA masuk wallet ${agentName}: ${fmtIDR(voaFieldFee)}`, {
             description: "Pemasukan agent lapangan VOA otomatis terekap di akun mereka.",
             duration: 5000,
           });
         } else {
-          toast.warning(`Fee VOA tersimpan lokal — sinkronisasi cloud tertunda`, {
-            description: `${fmtIDR(voaFieldFee)} → ${agentName}. Coba simpan ulang atau buka profil agen.`,
-            duration: 7000,
+          // Surface real database error — never mark as credited
+          const errMsg = walletErr ?? "Gagal konek ke server";
+          console.error(`[OrderDetail] VOA wallet credit FAILED — agent=${voaFieldAgentId}:`, errMsg);
+          toast.error(`Gagal catat fee VOA ke wallet ${agentName}`, {
+            description: `Error: ${errMsg}. Fee TIDAK dicatat ke database — coba simpan ulang.`,
+            duration: 10000,
           });
         }
       }
 
       if (shouldCreditKurir) {
         const kurirName = members.find((m) => m.userId === kurirAgentIdPre)?.displayName ?? "kurir";
-        const { persisted } = await addWalletTxAsync(
+        console.log(`[OrderDetail] crediting kurir wallet: agent=${kurirAgentIdPre} amount=${kurirFeeAmountPre}`);
+        const { persisted, error: walletErr } = await addWalletTxAsync(
           kurirAgentIdPre!,
           {
             agentId:     kurirAgentIdPre!,
@@ -279,12 +284,20 @@ export default function OrderDetail() {
             description: "Agen kurir otomatis mendapat kredit dari fee setoran uang.",
             duration: 5000,
           });
+        } else {
+          const errMsg = walletErr ?? "Gagal konek ke server";
+          console.error(`[OrderDetail] kurir wallet credit FAILED — agent=${kurirAgentIdPre}:`, errMsg);
+          toast.error(`Gagal catat fee kurir ke wallet ${kurirName}`, {
+            description: `Error: ${errMsg}. Fee TIDAK dicatat ke database — coba simpan ulang.`,
+            duration: 10000,
+          });
         }
       }
 
       if (shouldCreditAgent) {
         const orderLabel = ORDER_TYPE_LABEL[order.type];
-        const { persisted } = await addWalletTxAsync(
+        console.log(`[OrderDetail] crediting sales agent wallet: agent=${agentCommId} amount=${agentFeeAmount}`);
+        const { persisted, error: walletErr } = await addWalletTxAsync(
           agentCommId!,
           {
             agentId:     agentCommId!,
@@ -302,6 +315,13 @@ export default function OrderDetail() {
           toast.success(`Komisi agen dicatat: ${fmtIDR(agentFeeAmount)} · +20 poin`, {
             description: `Order "${order.title || orderLabel}" selesai — wallet & poin agen diperbarui.`,
             duration: 5000,
+          });
+        } else {
+          const errMsg = walletErr ?? "Gagal konek ke server";
+          console.error(`[OrderDetail] agent commission credit FAILED — agent=${agentCommId}:`, errMsg);
+          toast.error(`Gagal catat komisi agen ke wallet`, {
+            description: `Error: ${errMsg}. Komisi TIDAK dicatat ke database — coba simpan ulang.`,
+            duration: 10000,
           });
         }
       }

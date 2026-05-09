@@ -1,7 +1,8 @@
 /**
  * Agent Wallet — Fase 29
  * Converts approved mission points → commission IDR credit.
- * localStorage = instant cache; setiap mutasi juga di-push ke Supabase.
+ * localStorage = instant cache; setiap mutasi juga di-push ke Supabase
+ * melalui server endpoint /api/credit-wallet-tx (service role key — no RLS).
  *
  * Tabel Supabase: public.agent_wallet_transactions
  */
@@ -114,17 +115,24 @@ export function addWalletTx(
 }
 
 /**
- * Async version of addWalletTx — awaits the Supabase insert and returns
- * whether it was persisted to the cloud. Bypasses beginFeatureSync so the
- * insert is always attempted. Uses upsert for idempotency: if you pass an
- * `idempotencyKey`, the tx ID is deterministic (`wtx-{key}`) so retrying
- * the same credit won't produce a duplicate row.
+ * Async version of addWalletTx that routes the Supabase insert through the
+ * server-side /api/credit-wallet-tx endpoint (service role key — bypasses RLS).
+ *
+ * This is necessary because the frontend anon client is blocked by RLS when an
+ * owner tries to credit a different agent's wallet (auth.uid() ≠ agent_id).
+ *
+ * Falls back to direct anon-client insert only when the server endpoint is
+ * unavailable (e.g. dev without server running). In that case it still writes
+ * to localStorage so the tx isn't lost, but returns persisted=false.
+ *
+ * Uses upsert for idempotency: if you pass an `idempotencyKey`, the tx ID is
+ * deterministic (`wtx-{key}`) so retrying the same credit won't duplicate.
  */
 export async function addWalletTxAsync(
   agentId: string,
   tx: Omit<WalletTransaction, "id" | "createdAt">,
   idempotencyKey?: string,
-): Promise<{ tx: WalletTransaction; persisted: boolean }> {
+): Promise<{ tx: WalletTransaction; persisted: boolean; error?: string }> {
   const full: WalletTransaction = {
     ...tx,
     id: idempotencyKey
@@ -133,16 +141,59 @@ export async function addWalletTxAsync(
     createdAt: new Date().toISOString(),
   };
 
-  // Write to localStorage, deduplicating by id so a retry doesn't append twice
+  // Write to localStorage first — instant cache, deduplicating by id
   saveTxsCache(agentId, [full, ...listWalletTxs(agentId).filter((t) => t.id !== full.id)]);
 
   if (!isSupabaseConfigured()) {
-    return { tx: full, persisted: false };
+    return { tx: full, persisted: false, error: "Supabase tidak dikonfigurasi" };
   }
 
+  // ── Primary path: server endpoint (service role key — bypasses RLS) ────────
   try {
     const agencyId = requireAgencyId();
-    const { error } = await supabase!
+    const session = (await supabase!.auth.getSession()).data.session;
+    const token = session?.access_token;
+
+    if (!token) {
+      const msg = "Tidak ada sesi aktif — login ulang dulu";
+      console.error("[agentWallet] credit-wallet-tx: no auth token");
+      return { tx: full, persisted: false, error: msg };
+    }
+
+    const res = await fetch("/api/credit-wallet-tx", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        id:          full.id,
+        agencyId,
+        agentId:     full.agentId,
+        type:        full.type,
+        pointsDelta: full.pointsDelta,
+        amountIDR:   full.amountIDR,
+        description: full.description,
+        createdBy:   full.createdBy,
+        createdAt:   full.createdAt,
+      }),
+    });
+
+    if (res.ok) {
+      console.log(`[agentWallet] credit-wallet-tx OK — id=${full.id} agent=${full.agentId} amount=${full.amountIDR}`);
+      const syncKey = walletSyncKey(agentId);
+      resolveFeatureSync(syncKey);
+      return { tx: full, persisted: true };
+    }
+
+    // Server returned an error — extract the real message
+    const body = await res.json().catch(() => ({})) as { error?: string };
+    const serverError = body?.error ?? `HTTP ${res.status}`;
+    console.error(`[agentWallet] credit-wallet-tx server error (${res.status}):`, serverError);
+
+    // ── Fallback: try direct anon-client upsert (may work if RLS allows) ─────
+    console.warn("[agentWallet] falling back to anon-client upsert after server error");
+    const { error: anonErr } = await supabase!
       .from("agent_wallet_transactions")
       .upsert(
         {
@@ -158,17 +209,22 @@ export async function addWalletTxAsync(
         },
         { onConflict: "id" },
       );
-    if (error) {
-      console.warn("[agentWallet] async upsert gagal:", error.message);
-      return { tx: full, persisted: false };
+
+    if (!anonErr) {
+      console.log("[agentWallet] anon-client fallback upsert succeeded");
+      const syncKey = walletSyncKey(agentId);
+      resolveFeatureSync(syncKey);
+      return { tx: full, persisted: true };
     }
-    // Also update sync badge if it's being tracked
-    const syncKey = walletSyncKey(agentId);
-    resolveFeatureSync(syncKey);
-    return { tx: full, persisted: true };
+
+    console.error("[agentWallet] anon-client fallback upsert juga gagal:", anonErr.message);
+    // Return the original server error (more informative)
+    return { tx: full, persisted: false, error: serverError };
+
   } catch (e) {
-    console.warn("[agentWallet] async upsert exception:", e);
-    return { tx: full, persisted: false };
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[agentWallet] credit-wallet-tx exception:", e);
+    return { tx: full, persisted: false, error: msg };
   }
 }
 
