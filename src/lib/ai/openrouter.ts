@@ -591,7 +591,7 @@ Sebelum menulis apapun, tentukan tipe format catatan ini:
 ✗ JANGAN menambah informasi yang tidak ada di teks asli
 ✗ JANGAN mengubah angka, fakta, nama, atau makna
 ✗ JANGAN menulis kata pengantar ("Berikut catatan...", "Saya telah merapikan...")
-✗ JANGAN bungkus output dalam blok kode (``` atau \`\`\`markdown)
+✗ JANGAN bungkus output dalam blok kode (triple-backtick / \`\`\`markdown)
 ✗ JANGAN ubah teks Arab — salin persis
 
 ━━━ SPASI & VISUAL ━━━
