@@ -800,7 +800,10 @@ function TemplateCard({
         </p>
 
         {/* Body preview — visible like a note */}
-        <div className="text-[12px] leading-relaxed text-slate-500 whitespace-pre-wrap break-words line-clamp-4">
+        <div className={cn(
+          "text-[12px] leading-relaxed text-slate-500 whitespace-pre-wrap break-words",
+          !expanded && "line-clamp-4",
+        )}>
           {previewText}
         </div>
 

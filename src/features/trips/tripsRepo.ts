@@ -128,8 +128,11 @@ const tripToRow = (t: Trip, agencyId?: string) => ({
   id: t.id, name: t.name, destination: t.destination,
   start_date: t.startDate, end_date: t.endDate, emoji: t.emoji,
   cover_image: t.coverImage ?? null,
-  quota_pax: t.quotaPax ?? null,
-  price_per_pax: t.pricePerPax ?? null,
+  // quota_pax & price_per_pax are optional columns — only include them when
+  // the value is explicitly set so INSERT/UPDATE doesn't fail with 42703
+  // if the column hasn't been added to the table yet.
+  ...(t.quotaPax !== undefined ? { quota_pax: t.quotaPax } : {}),
+  ...(t.pricePerPax !== undefined ? { price_per_pax: t.pricePerPax } : {}),
   created_at: t.createdAt,
   ...(agencyId ? { agency_id: agencyId } : {}),
 });
@@ -203,7 +206,7 @@ export async function listTrips(): Promise<Trip[]> {
     try {
       const { data, error } = await supabase!
         .from("trips")
-        .select("id,name,destination,start_date,end_date,emoji,cover_image,quota_pax,price_per_pax,created_at")
+        .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
       const trips = (data ?? []).map(tripFromRow);
