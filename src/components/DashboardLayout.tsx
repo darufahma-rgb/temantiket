@@ -185,12 +185,12 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               />
               <span className="text-[11px] font-semibold tabular-nums leading-none truncate" style={{ color: "hsl(var(--foreground))" }}>
                 <span style={{ color: "hsl(var(--muted-foreground))", fontSize: "8.5px", fontWeight: 700, letterSpacing: "0.06em" }}>USD </span>
-                <span className="font-extrabold" style={{ color: "#0ea5e9" }}>{rates.USD ? `${(rates.USD / 1000).toFixed(1)}k` : "—"}</span>
+                <span className="font-extrabold" style={{ color: "#4361EE" }}>{rates.USD ? `${(rates.USD / 1000).toFixed(1)}k` : "—"}</span>
                 {rates.SAR && (
                   <>
                     <span style={{ margin: "0 4px", opacity: 0.2 }}>·</span>
                     <span style={{ color: "hsl(var(--muted-foreground))", fontSize: "8.5px", fontWeight: 700, letterSpacing: "0.06em" }}>SAR </span>
-                    <span className="font-extrabold" style={{ color: "#0ea5e9" }}>{rates.SAR.toLocaleString("id-ID")}</span>
+                    <span className="font-extrabold" style={{ color: "#4361EE" }}>{rates.SAR.toLocaleString("id-ID")}</span>
                   </>
                 )}
               </span>
@@ -264,8 +264,8 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: rateMode === "manual" ? "#1a44d4" : "#10b981", boxShadow: rateMode === "manual" ? "0 0 4px #1a44d4" : "0 0 4px #10b981" }} />
                 <span className="text-[11px] font-semibold text-[hsl(var(--muted-foreground))]" style={{ fontVariantNumeric: "tabular-nums" }}>
                   <span className="hidden sm:inline">USD </span>
-                  <span className="text-sky-500 font-bold">Rp{rates.USD ? (rates.USD >= 10000 ? `${(rates.USD / 1000).toFixed(1)}k` : rates.USD.toLocaleString("id-ID")) : "—"}</span>
-                  <span className="hidden lg:inline"><span className="mx-1.5 opacity-30">·</span>SAR <span className="text-sky-500 font-bold">Rp{rates.SAR?.toLocaleString("id-ID") ?? "—"}</span></span>
+                  <span className="font-bold" style={{ color: "#4361EE" }}>Rp{rates.USD ? (rates.USD >= 10000 ? `${(rates.USD / 1000).toFixed(1)}k` : rates.USD.toLocaleString("id-ID")) : "—"}</span>
+                  <span className="hidden lg:inline"><span className="mx-1.5 opacity-30">·</span>SAR <span className="font-bold" style={{ color: "#4361EE" }}>Rp{rates.SAR?.toLocaleString("id-ID") ?? "—"}</span></span>
                 </span>
                 <RefreshCw className={cn("h-3 w-3 shrink-0", ratesLoading && "animate-spin")} style={{ color: "hsl(var(--muted-foreground))" }} strokeWidth={2} />
               </button>
