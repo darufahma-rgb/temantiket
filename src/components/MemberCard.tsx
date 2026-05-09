@@ -53,6 +53,8 @@ interface Props {
   memberIndex: number;
   /** Semua order milik client. Sisi belakang akan otomatis di-stamp. */
   orders: MemberCardOrder[];
+  /** Bonus stamp dari referral — ditambahkan ke grid setelah order stamps. */
+  referralStamps?: number;
   /** Kalau ada → tombol "Share to WhatsApp" muncul. */
   publicUrl?: string;
   /** Sembunyiin tombol Download/Share/Flip-button (mode read-only utk publik kalau perlu). */
@@ -61,7 +63,7 @@ interface Props {
 
 const SUCCESS_STATUSES = new Set(["Confirmed", "Paid", "Completed"]);
 
-type StampKind = "flight" | "voa" | "transit_dubai" | "transit_saudi" | "student";
+type StampKind = "flight" | "voa" | "transit_dubai" | "transit_saudi" | "student" | "referral";
 
 function stampKindFor(o: MemberCardOrder): StampKind {
   // Cek transitType override (dari RPC publik atau metadata.transitType).
@@ -127,6 +129,15 @@ function PassportIcon({ className }: { className?: string }) {
   );
 }
 
+function HandshakeIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4"/>
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+    </svg>
+  );
+}
+
 function StampIcon({ kind, className }: { kind: StampKind; className?: string }) {
   switch (kind) {
     case "flight":         return <PlaneIcon className={className} />;
@@ -134,6 +145,7 @@ function StampIcon({ kind, className }: { kind: StampKind; className?: string })
     case "transit_dubai":  return <BurjIcon className={className} />;
     case "transit_saudi":  return <KaabahIcon className={className} />;
     case "student":        return <PassportIcon className={className} />;
+    case "referral":       return <HandshakeIcon className={className} />;
   }
 }
 
@@ -279,7 +291,7 @@ const CardBack = ({
 
 // ── Main component ─────────────────────────────────────────────────────────
 export default function MemberCard({
-  client, memberIndex, orders, publicUrl, readOnly = false,
+  client, memberIndex, orders, referralStamps = 0, publicUrl, readOnly = false,
 }: Props) {
   const [flipped, setFlipped] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -295,12 +307,16 @@ export default function MemberCard({
   );
 
   const stamps = useMemo(() => {
-    return orders
+    const orderStamps = orders
       .filter((o) => SUCCESS_STATUSES.has(o.status))
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      .slice(0, 16)
       .map((o) => ({ kind: stampKindFor(o), date: fmtStampDate(o.createdAt) }));
-  }, [orders]);
+    const referralSlots = Array.from({ length: referralStamps }, () => ({
+      kind: "referral" as StampKind,
+      date: "Referral",
+    }));
+    return [...orderStamps, ...referralSlots].slice(0, 16);
+  }, [orders, referralStamps]);
 
   /** Render kedua sisi → array { suffix, dataUrl, blob, file }. */
   async function renderBothFaces() {

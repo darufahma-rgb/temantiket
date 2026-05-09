@@ -33,6 +33,8 @@ export interface Client {
   /** ID klien lain yg mereferensikan klien ini.
    *  Saat order klien ini sukses, referrer dapat +1 referral_stamp otomatis via trigger DB. */
   referredByClientId?: string | null;
+  /** Jumlah bonus stamp dari referral — diincrement otomatis via trigger DB. */
+  referralStamps?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -70,6 +72,7 @@ const fromRow = (r: Record<string, unknown>): Client => ({
   legacyJamaahId: (r.legacy_jamaah_id as string) ?? undefined,
   createdByAgent: (r.created_by_agent as string) ?? null,
   referredByClientId: (r.referred_by_client_id as string) ?? null,
+  referralStamps: Number(r.referral_stamps ?? 0),
   createdAt: String(r.created_at ?? new Date().toISOString()),
   updatedAt: String(r.updated_at ?? r.created_at ?? new Date().toISOString()),
 });
@@ -139,7 +142,7 @@ export async function listClients(): Promise<Client[]> {
       const { data, error } = await withTimeout(
         supabase!
           .from("clients")
-          .select("id,name,phone,email,birth_date,birth_place,passport_number,passport_expiry,passport_issue_date,passport_issuing_office,gender,notes,legacy_jamaah_id,created_by_agent,referred_by_client_id,created_at,updated_at")
+          .select("id,name,phone,email,birth_date,birth_place,passport_number,passport_expiry,passport_issue_date,passport_issuing_office,gender,notes,legacy_jamaah_id,created_by_agent,referred_by_client_id,referral_stamps,created_at,updated_at")
           .order("created_at", { ascending: false }),
         10000,
       );

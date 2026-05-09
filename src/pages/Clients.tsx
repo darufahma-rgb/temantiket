@@ -282,13 +282,13 @@ function ClientDetailInner({ id }: { id: string }) {
             <span className="text-base">🪪</span>
             <h2 className="text-sm font-semibold">Member Card</h2>
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-100 text-sky-700">
-              {clientOrders.filter((o) => ["Confirmed","Paid","Completed"].includes(o.status)).length} stamp
+              {clientOrders.filter((o) => ["Confirmed","Paid","Completed"].includes(o.status)).length + (client.referralStamps ?? 0)} stamp
             </span>
           </div>
           <span className="text-[10px] text-muted-foreground">Klik Download di kartu untuk export PNG</span>
         </div>
         <div className="p-4 md:p-5">
-          <MemberCard client={client} memberIndex={memberIndex} orders={clientOrders} publicUrl={buildPublicMemberUrl(buildMemberSlug(client.name, memberIndex))} />
+          <MemberCard client={client} memberIndex={memberIndex} orders={clientOrders} referralStamps={client.referralStamps ?? 0} publicUrl={buildPublicMemberUrl(buildMemberSlug(client.name, memberIndex))} />
           <p className="mt-3 text-[11px] text-muted-foreground">
             Link publik klien:{" "}
             <a href={buildPublicMemberUrl(buildMemberSlug(client.name, memberIndex))} target="_blank" rel="noreferrer" className="font-mono text-sky-600 hover:underline break-all">
