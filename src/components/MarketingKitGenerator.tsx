@@ -56,8 +56,18 @@ const CATEGORIES = [
     key: "follow-up-agen",
     label: "Follow Up Agen",
     Icon: Users,
-    prompt: "follow-up dan motivasi agen",
-    context: "Tulis pesan khusus untuk agen atau mitra Temantiket. Fokus pada follow-up prospek, reminder harian, sales script, closing prompt, broadcast motivasi, dan instruksi operasional. Bahasa semangat, praktis, dan action-oriented. Hindari gaya caption publik — ini untuk konsumsi internal agen.",
+    prompt: "pesan follow-up agen kepada customer tiket Masisir dan visa Mesir",
+    context: `Tulis pesan follow-up yang dikirimkan AGEN kepada CUSTOMER — bukan untuk konsumsi internal.
+
+Target customer yang difollow-up adalah salah satu dari dua segmen berikut (pilih berdasarkan detail yang diisi user, atau tulis versi yang mencakup keduanya):
+
+1. CUSTOMER TIKET MASISIR — calon penumpang mahasiswa Indonesia di Mesir (atau mau berangkat ke Mesir) yang butuh tiket pesawat Indonesia–Mesir. Mereka peduli pada: harga terjangkau, bagasi ekstra, transit nyaman, kepastian booking, dan layanan cepat. Kekhawatiran utama: tiket tiba-tiba sold out, harga naik mendadak, atau masalah dokumen.
+
+2. CUSTOMER VISA MESIR — calon mahasiswa atau wisatawan yang sedang mengurus visa pelajar Mesir (Masisir) atau Visa on Arrival Mesir. Mereka peduli pada: kelengkapan berkas, waktu proses, jaminan kelulusan, dan pendampingan admin. Kekhawatiran utama: berkas salah, proses lama, atau tidak ada guidance yang jelas.
+
+Format pesan: seperti chat WhatsApp personal dari agen ke customer — hangat, informatif, tidak terlalu panjang, dan ada satu CTA yang jelas (tanya/kirim berkas/konfirmasi). Jangan pakai format caption publik atau broadcast. Awali dengan sapaan personal ("Halo Kak/Bro/Sis" diperbolehkan). Panjang ideal: 300–500 karakter (singkat, bisa dibaca langsung di notif WA).
+
+OVERRIDE ATURAN SISTEM: Untuk kategori Follow Up Agen ini, ABAIKAN aturan "DILARANG mulai dengan Halo" dan aturan panjang 600–900 karakter. Gunakan aturan format di atas (300–500 karakter, sapaan personal diperbolehkan). Ini bukan caption publik — ini pesan WA agen ke customer.`,
   },
   {
     key: "broadcast-info",
@@ -360,21 +370,28 @@ export function CaptionGenerator() {
               </div>
             </Section>
 
-            {/* Detail Paket */}
-            <Section label="Detail Paket (opsional)" icon={AlignLeft}>
+            {/* Detail Paket / Konteks Follow Up */}
+            <Section
+              label={cat.key === "follow-up-agen" ? "Konteks Follow Up (opsional)" : "Detail Paket (opsional)"}
+              icon={AlignLeft}
+            >
               <textarea
                 value={packageDetail}
                 onChange={(e) => setPackageDetail(e.target.value)}
                 placeholder={
-                  "Contoh:\nPaket Umrah 12 hari, berangkat 15 Maret 2025\n" +
-                  "Hotel bintang 4, Makkah & Madinah walking distance\n" +
-                  "Harga mulai Rp 28 juta/orang, kuota terbatas 40 seat"
+                  cat.key === "follow-up-agen"
+                    ? "Contoh:\nCustomer tanya tiket Jakarta–Cairo transit Qatar bulan Juli\nSudah chat 2 hari lalu, belum ada konfirmasi lanjut\nHarga sekitar 8–10 juta, bagasi 30kg"
+                    : "Contoh:\nPaket Umrah 12 hari, berangkat 15 Maret 2025\n" +
+                      "Hotel bintang 4, Makkah & Madinah walking distance\n" +
+                      "Harga mulai Rp 28 juta/orang, kuota terbatas 40 seat"
                 }
                 rows={4}
                 className="w-full rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-3 text-[13px] text-foreground placeholder-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 focus:border-[#1a44d4]/50 transition-all"
               />
               <p className="text-[10.5px] text-muted-foreground mt-1.5">
-                Semakin detail info paket, semakin relevan caption yang dihasilkan AI.
+                {cat.key === "follow-up-agen"
+                  ? "Isi konteks customer (kebutuhan tiket/visa, riwayat chat, dsb.) agar pesan follow-up lebih personal."
+                  : "Semakin detail info paket, semakin relevan caption yang dihasilkan AI."}
               </p>
             </Section>
           </motion.div>
