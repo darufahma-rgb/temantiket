@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Loader2, AlertCircle, Sparkles, MessageCircle, History,
-  Share2, Users, Trophy, Gift, Crown,
+  Share2, Users, Trophy, Gift, Crown, Copy, Check,
 } from "lucide-react";
 import MemberCard from "@/components/MemberCard";
 import { OrderProgressTracker, ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
 import { lookupMemberCard, type PublicMemberCard, type PublicMemberStamp } from "@/features/portal/memberCardRepo";
-import { buildPublicMemberUrl, normalizePhoneForWa } from "@/lib/memberSlug";
+import { buildPublicMemberUrl, buildReferralUrl, normalizePhoneForWa } from "@/lib/memberSlug";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
 
 /**
@@ -56,7 +56,11 @@ function fmtDateLong(iso: string): string {
 
 export default function PublicMemberCardPage() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const refSlug = searchParams.get("ref"); // slug referrer — ada kalau dibuka dari link referral
+  const isReferralView = !!refSlug && refSlug !== slug; // buka dari link orang lain
   const [data, setData] = useState<PublicMemberCard | null>(null);
+  const [refData, setRefData] = useState<PublicMemberCard | null>(null); // data referrer
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<"not_found" | "invalid_slug" | "network" | null>(null);
   const [referralCopied, setReferralCopied] = useState(false);
@@ -65,15 +69,19 @@ export default function PublicMemberCardPage() {
     let cancelled = false;
     (async () => {
       if (!slug) { setErr("invalid_slug"); setLoading(false); return; }
-      setLoading(true); setErr(null); setData(null);
-      const res = await lookupMemberCard(slug);
+      setLoading(true); setErr(null); setData(null); setRefData(null);
+      const [res, refRes] = await Promise.all([
+        lookupMemberCard(slug),
+        isReferralView && refSlug ? lookupMemberCard(refSlug) : Promise.resolve(null),
+      ]);
       if (cancelled) return;
       if (res.ok) setData(res.data);
       else setErr(res.error);
+      if (refRes && refRes.ok) setRefData(refRes.data);
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [slug]);
+  }, [slug, refSlug, isReferralView]);
 
   useEffect(() => {
     const prev = document.title;
@@ -97,27 +105,41 @@ export default function PublicMemberCardPage() {
 
   const isGoldMember = totalStamps >= AGENT_THRESHOLD;
 
-  // "Pesan Tiket Lagi" WA URL
+  // Referral URL yang dishare (embed ?ref=slug biar admin bisa lacak)
+  const referralUrl = useMemo(() => buildReferralUrl(slug ?? ""), [slug]);
+
+  // "Pesan Tiket Lagi" WA — dua versi: pemilik kartu vs teman yang datang dari link referral
   const ctaText = useMemo(() => {
+    if (isReferralView && refData) {
+      // Teman yang datang dari link referral — nyebutin nama referrer
+      const refName = refData.client.name?.trim().split(/\s+/).slice(0, 2).join(" ") || "teman";
+      const refId = `TMNTKT${String(refData.client.memberIndex ?? 0).padStart(4, "0")}`;
+      return (
+        `Halo Admin Temantiket! 👋\n\n` +
+        `Saya tertarik order tiket/visa nih. Dapat info dari *${refName}* (${refId}).\n\n` +
+        `Bisa bantu cek opsi yang tersedia? Terima kasih! ✈️`
+      );
+    }
+    // Pemilik kartu sendiri
     const name = data?.client.name?.trim().split(/\s+/)[0] || "Sahabat";
     const memberId = `TMNTKT${String(data?.client.memberIndex ?? 0).padStart(4, "0")}`;
-    return `Halo Admin Temantiket, gue ${name} (${memberId}). Mau pesan tiket/visa lagi nih, bisa bantu cek opsinya?`;
-  }, [data]);
+    return `Halo Admin Temantiket, saya ${name} (${memberId}). Mau pesan tiket/visa lagi nih, bisa bantu cek opsinya? ✈️`;
+  }, [data, refData, isReferralView]);
   const ctaUrl = useMemo(() => {
     const encoded = encodeURIComponent(ctaText);
     return adminWa ? `https://wa.me/${adminWa}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
   }, [adminWa, ctaText]);
 
-  // "Ajak Teman" referral share text
+  // "Ajak Teman" referral share text — link sudah embed ?ref=slug
   const referralText = useMemo(() => {
     const name = data?.client.name?.trim().split(/\s+/)[0] || "Aku";
     return (
       `✈️ ${name} ngajak kamu gabung Temantiket!\n\n` +
-      `Temantiket — travel agency terpercaya buat tiket umrah, pesawat & visa. ` +
-      `Cek kartu member gue di sini:\n${publicUrl}\n\n` +
-      `Daftar & order lewat Temantiket, kita sama-sama dapet reward! 🎁`
+      `Temantiket — travel agency terpercaya buat tiket umrah, pesawat & visa.\n\n` +
+      `Cek kartu member gue & daftar via link ini:\n${referralUrl}\n\n` +
+      `Kalau kamu order lewat Temantiket, sebut nama gue ke admin ya — kita sama-sama dapet reward! 🎁`
     );
-  }, [data, publicUrl]);
+  }, [data, referralUrl]);
   const referralWaUrl = useMemo(() => {
     return `https://wa.me/?text=${encodeURIComponent(referralText)}`;
   }, [referralText]);
@@ -138,14 +160,14 @@ export default function PublicMemberCardPage() {
     return adminWa ? `https://wa.me/${adminWa}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
   }, [adminWa, agentText]);
 
-  // Copy referral link
+  // Copy referral link (dengan ?ref=slug)
   const handleCopyReferral = async () => {
     try {
-      await navigator.clipboard.writeText(publicUrl);
+      await navigator.clipboard.writeText(referralUrl);
       setReferralCopied(true);
       setTimeout(() => setReferralCopied(false), 2500);
     } catch {
-      /* silently fail — user can manually copy the URL */
+      /* silently fail */
     }
   };
 
@@ -214,6 +236,27 @@ export default function PublicMemberCardPage() {
             transition={{ duration: 0.4 }}
             className="space-y-5"
           >
+            {/* Banner referral — tampil kalau buka dari link orang lain */}
+            {isReferralView && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 px-4 py-3.5 flex items-start gap-3"
+              >
+                <span className="text-xl shrink-0 mt-0.5">🤝</span>
+                <div>
+                  <p className="text-[13px] font-bold text-emerald-900">
+                    {refData
+                      ? `Kamu dibawa oleh ${refData.client.name.trim().split(/\s+/).slice(0, 2).join(" ")}!`
+                      : "Kamu dibuka dari link referral!"}
+                  </p>
+                  <p className="text-[12px] text-emerald-800 mt-0.5 leading-relaxed">
+                    Kalau kamu order lewat Temantiket, sebut nama referrer ke admin — dia bakal dapat bonus stamp reward. 🎁
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
             {/* Salam header */}
             <div className="text-center">
               <p className="text-[11px] uppercase tracking-wider text-sky-700/70 font-semibold">
@@ -271,37 +314,43 @@ export default function PublicMemberCardPage() {
               </p>
             </div>
 
-            {/* ── Fase 17: Ajak Teman ──────────────────────────────── */}
-            <div className="rounded-2xl bg-white border border-sky-100 shadow-sm p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-sky-600" />
-                <h2 className="text-sm font-bold text-sky-900">Ajak Teman, Dapat Reward!</h2>
+            {/* ── Ajak Teman — hanya tampil kalau bukan referral view ── */}
+            {!isReferralView && (
+              <div className="rounded-2xl bg-white border border-sky-100 shadow-sm p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-sky-600" />
+                  <h2 className="text-sm font-bold text-sky-900">Ajak Teman, Dapat Reward!</h2>
+                </div>
+                <p className="text-[12.5px] text-sky-800 leading-relaxed">
+                  Share link referral lo ke teman. Kalau mereka order lewat Temantiket &{" "}
+                  <strong>sebut nama lo ke admin</strong>, lo dapet <strong>+1 bonus stamp referral</strong>. 🎁
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  <a
+                    href={referralWaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#1eb858] text-white text-[13px] font-bold py-2.5 rounded-xl transition-colors shadow-sm"
+                  >
+                    <Share2 className="h-3.5 w-3.5" /> Ajak via WhatsApp
+                  </a>
+                  <button
+                    type="button"
+                    onClick={handleCopyReferral}
+                    className="flex items-center gap-1.5 bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 text-[13px] font-semibold py-2.5 px-3 rounded-xl transition-colors"
+                  >
+                    {referralCopied ? (
+                      <><Check className="h-3.5 w-3.5 text-emerald-600" /> Tersalin!</>
+                    ) : (
+                      <><Copy className="h-3.5 w-3.5" /> Salin Link</>
+                    )}
+                  </button>
+                </div>
+                <p className="text-[10.5px] text-muted-foreground font-mono break-all bg-sky-50 rounded-lg px-2 py-1.5 border border-sky-100">
+                  {referralUrl}
+                </p>
               </div>
-              <p className="text-[12.5px] text-sky-800 leading-relaxed">
-                Share link member card lo ke teman. Kalau mereka order lewat Temantiket,{" "}
-                <strong>lo dapet +1 bonus stamp referral</strong> dari admin. 🎁
-              </p>
-              <div className="flex gap-2 flex-wrap">
-                <a
-                  href={referralWaUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#1eb858] text-white text-[13px] font-bold py-2.5 rounded-xl transition-colors shadow-sm"
-                >
-                  <Share2 className="h-3.5 w-3.5" /> Ajak via WhatsApp
-                </a>
-                <button
-                  type="button"
-                  onClick={handleCopyReferral}
-                  className="flex items-center gap-1.5 bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 text-[13px] font-semibold py-2.5 px-3 rounded-xl transition-colors"
-                >
-                  {referralCopied ? "✓ Tersalin!" : "Salin Link"}
-                </button>
-              </div>
-              <p className="text-[10.5px] text-muted-foreground font-mono break-all bg-sky-50 rounded-lg px-2 py-1.5 border border-sky-100">
-                {publicUrl}
-              </p>
-            </div>
+            )}
 
             {/* ── Fase 17: Mau jadi Agen? (Gold Member only) ───────── */}
             {isGoldMember && (
@@ -420,7 +469,7 @@ export default function PublicMemberCardPage() {
               )}
             </section>
 
-            {/* CTA — Pesan Tiket/Visa Lagi */}
+            {/* CTA — Pesan Tiket/Visa (label berbeda tergantung konteks) */}
             <a
               href={ctaUrl}
               target="_blank"
@@ -428,9 +477,11 @@ export default function PublicMemberCardPage() {
               className="block w-full rounded-2xl px-5 py-4 bg-[#25D366] hover:bg-[#1eb858] text-white text-center font-bold shadow-md transition-colors"
             >
               <MessageCircle className="h-5 w-5 inline-block -mt-0.5 mr-2" />
-              Pesan Tiket/Visa Lagi
+              {isReferralView ? "Hubungi Admin & Sebutkan Referrer" : "Pesan Tiket/Visa Lagi"}
               <p className="text-[11px] opacity-90 font-medium mt-0.5">
-                Chat langsung ke admin Temantiket via WhatsApp
+                {isReferralView && refData
+                  ? `Template WA sudah menyebut nama ${refData.client.name.trim().split(/\s+/)[0]} otomatis`
+                  : "Chat langsung ke admin Temantiket via WhatsApp"}
               </p>
             </a>
 

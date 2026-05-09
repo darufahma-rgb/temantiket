@@ -25,6 +25,12 @@ export function buildPublicMemberUrl(slug: string): string {
   return `${window.location.origin}/m/${slug}`;
 }
 
+/** URL referral — sama dengan public URL tapi ada ?ref=slug untuk tracking. */
+export function buildReferralUrl(slug: string): string {
+  if (typeof window === "undefined") return `/m/${slug}?ref=${slug}`;
+  return `${window.location.origin}/m/${slug}?ref=${slug}`;
+}
+
 /** Normalisasi nomor HP Indonesia ke format wa.me (62xxxx, tanpa +). */
 export function normalizePhoneForWa(phone?: string | null): string {
   if (!phone) return "";
