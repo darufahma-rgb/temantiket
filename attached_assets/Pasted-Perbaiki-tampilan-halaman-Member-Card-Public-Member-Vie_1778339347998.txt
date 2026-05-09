@@ -1,0 +1,126 @@
+Perbaiki tampilan halaman Member Card / Public Member View Temantiket secara menyeluruh, terutama bagian background, poster terbaru, dan mobile scroll.
+
+MASALAH YANG TERLIHAT:
+
+1. Background halaman terlihat seperti “kepotong” / warnanya tidak full menyambung.
+2. Ada area abu-abu / putih yang terlihat tidak konsisten di bagian bawah halaman.
+3. Panel “Info Terbaru / Poster Temantiket New 2026” terlalu kecil.
+4. Poster kurang dominan dan kurang enak dilihat.
+5. Di mode mobile halaman tidak bisa discroll dengan normal.
+6. Beberapa section kemungkinan overflow atau height-nya terkunci.
+
+YANG HARUS DIPERBAIKI:
+
+1. Background halaman
+
+* Pastikan background utama full dari atas sampai bawah.
+* Jangan ada warna yang kepotong di tengah halaman.
+* Gunakan wrapper utama dengan:
+
+```css
+min-height: 100vh;
+background: ...;
+```
+
+* Hindari section dalam yang punya background berbeda tanpa sengaja.
+* Pastikan footer tidak membuat blok warna aneh di bawah.
+
+2. Layout utama
+
+* Jangan gunakan fixed height pada container utama.
+* Ganti height seperti:
+
+```css
+height: 100vh;
+```
+
+menjadi:
+
+```css
+min-height: 100vh;
+```
+
+3. Mobile scroll
+
+* Pastikan body, html, dan root bisa scroll.
+* Hapus atau perbaiki:
+
+```css
+overflow: hidden;
+height: 100vh;
+position: fixed;
+```
+
+jika dipakai di parent halaman.
+
+* Gunakan:
+
+```css
+overflow-y: auto;
+```
+
+pada halaman utama.
+
+* Di mobile, semua content harus bisa discroll sampai footer.
+
+4. Panel Info Terbaru / Poster
+
+* Buat panel poster lebih besar dan lebih premium.
+* Di desktop, poster card bisa dibuat lebih lebar dan tinggi.
+* Gunakan aspect ratio yang konsisten, misalnya:
+
+```css
+aspect-ratio: 16 / 9;
+```
+
+atau:
+
+```css
+aspect-ratio: 4 / 3;
+```
+
+* Jangan crop poster terlalu agresif.
+* Gunakan:
+
+```css
+object-fit: cover;
+```
+
+atau jika poster perlu terlihat full:
+
+```css
+object-fit: contain;
+```
+
+sesuaikan agar tampilannya rapi.
+
+5. Responsive mobile
+
+* Di mobile, poster harus tampil full width.
+* Beri margin dan padding yang nyaman.
+* Jangan sampai card keluar layar.
+* Gunakan grid responsive:
+
+```css
+grid-template-columns: 1fr;
+```
+
+untuk mobile.
+
+6. Perbaiki semua area terkait
+
+* Cek seluruh halaman Member Card View.
+* Cek wrapper, footer, poster section, progress section, dan card layout.
+* Pastikan tidak ada container yang menyebabkan background terpotong.
+* Pastikan tidak ada z-index / absolute positioning yang bikin layout rusak.
+* Pastikan halaman enak dilihat di desktop dan mobile.
+
+EXPECTED RESULT:
+
+* Background halaman full rapi dari atas sampai bawah.
+* Tidak ada area warna yang terlihat kepotong.
+* Poster terbaru tampil lebih besar dan jelas.
+* Panel Info Terbaru lebih premium.
+* Mobile bisa discroll normal.
+* Semua section responsive dan tidak overflow.
+* Tampilan desktop dan HP sama-sama rapi.

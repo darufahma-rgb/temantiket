@@ -1,0 +1,75 @@
+Perbaiki fitur upload gambar belakang Kartu Staff Digital agar tersimpan permanen dan muncul di semua device.
+
+MASALAH:
+Saat admin/staff upload gambar belakang kartu dari desktop, gambar berhasil tampil di desktop. Tapi ketika dibuka dari HP atau device lain, gambar hilang / tidak muncul.
+
+KEMUNGKINAN PENYEBAB:
+
+* Gambar hanya disimpan di local state / localStorage / blob URL / temporary preview.
+* URL gambar tidak disimpan ke database.
+* File tidak diupload ke Supabase Storage / cloud storage.
+* Mobile tidak bisa mengakses path lokal dari desktop.
+
+YANG HARUS DIPERBAIKI:
+
+1. Saat user klik “Ganti Gambar Belakang Kartu” dan upload file:
+
+   * file harus diupload ke Supabase Storage
+   * gunakan bucket khusus, misalnya:
+
+     * `staff-cards`
+     * atau `staff-card-backgrounds`
+
+2. Setelah upload berhasil:
+
+   * ambil public URL / signed URL dari file tersebut
+   * simpan URL tersebut ke database staff/user profile
+
+Contoh field database:
+
+```ts
+staff_card_back_image_url
+```
+
+atau kalau pakai metadata:
+
+```ts
+metadata.staffCardBackImageUrl
+```
+
+3. Saat halaman Kartu Staff Digital dibuka:
+
+   * jangan ambil gambar dari localStorage/blob URL
+   * ambil gambar dari URL yang tersimpan di database
+   * render image dari URL tersebut
+
+4. Pastikan URL bisa diakses lintas device:
+
+   * jika bucket public, gunakan public URL
+   * jika bucket private, generate signed URL saat load page
+
+5. Setelah upload dari desktop:
+
+   * buka dari HP harus tetap muncul
+   * refresh halaman tetap muncul
+   * logout/login tetap muncul
+   * device lain tetap muncul
+
+6. Saat upload gambar baru:
+
+   * replace gambar lama di database
+   * optional: hapus file lama dari storage agar tidak numpuk
+
+7. Tambahkan loading/error state:
+
+   * loading saat upload
+   * error jika upload gagal
+   * fallback jika gambar belum ada
+
+EXPECTED RESULT:
+
+* Gambar belakang kartu staff tersimpan permanen
+* Tidak hilang saat dibuka dari HP
+* Tidak hilang setelah refresh
+* Tidak bergantung pada device/browser yang upload
+* Semua device membaca gambar dari database/storage yang sama
