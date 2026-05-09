@@ -819,11 +819,11 @@ export default function Reports() {
                 {leaderboard.map((row, i) => {
                   const medals = ["🥇", "🥈", "🥉"];
                   return (
-                    <tr key={row.agentId} className="border-b last:border-b-0 hover:bg-muted/40">
+                    <tr key={row.agentId} className="border-b last:border-b-0 hover:bg-sky-50/60 cursor-pointer transition-colors" onClick={() => navigate(`/agents/${row.agentId}`)} title="Buka profil mitra">
                       <td className="py-2 px-1 text-muted-foreground">
                         {i < 3 ? medals[i] : i + 1}
                       </td>
-                      <td className="py-2 px-1 font-medium truncate max-w-[180px]">
+                      <td className="py-2 px-1 font-medium truncate max-w-[180px] text-sky-700 hover:underline">
                         {row.name}
                       </td>
                       <td className="py-2 px-1 text-right">{row.orders}</td>
@@ -938,9 +938,9 @@ export default function Reports() {
                     : "text-red-600";
                   const profitColor = row.profit >= 0 ? "text-emerald-700" : "text-red-600";
                   return (
-                    <tr key={row.id} className="border-b last:border-b-0 hover:bg-blue-50/40 transition-colors">
+                    <tr key={row.id} className="border-b last:border-b-0 hover:bg-blue-50/60 cursor-pointer transition-colors" onClick={() => navigate(`/orders/detail/${row.id}`)} title="Buka detail order">
                       <td className="py-2 px-2 text-muted-foreground font-mono">{i + 1}</td>
-                      <td className="py-2 px-2 font-semibold max-w-[180px] truncate" title={row.title}>
+                      <td className="py-2 px-2 font-semibold max-w-[180px] truncate text-sky-700" title={row.title}>
                         {row.title}
                       </td>
                       <td className="py-2 px-2 text-right text-muted-foreground whitespace-nowrap">
@@ -1078,7 +1078,7 @@ export default function Reports() {
                         // Baris debit komisi agen — styling orange/amber
                         const balColor = e.runningBalance >= 0 ? "text-emerald-700 font-bold" : "text-red-600 font-bold";
                         return (
-                          <tr key={e.orderId} className="border-b last:border-b-0 bg-orange-50/60 hover:bg-orange-50">
+                          <tr key={e.orderId} className="border-b last:border-b-0 bg-orange-50/60 hover:bg-orange-100 cursor-pointer transition-colors" onClick={() => navigate(`/orders/detail/${e.orderId}`)} title="Buka detail order">
                             <td className="py-1.5 px-2 text-muted-foreground">—</td>
                             <td className="py-1.5 px-2 whitespace-nowrap text-muted-foreground">{fmtDate(e.paidAt)}</td>
                             <td className="py-1.5 px-2 max-w-[120px] truncate text-orange-700/70" title={e.clientName}>{e.clientName}</td>
@@ -1102,7 +1102,7 @@ export default function Reports() {
                         // Baris debit biaya operasional VOA — styling ungu
                         const balColor = e.runningBalance >= 0 ? "text-emerald-700 font-bold" : "text-red-600 font-bold";
                         return (
-                          <tr key={e.orderId} className="border-b last:border-b-0 bg-purple-50/60 hover:bg-purple-50">
+                          <tr key={e.orderId} className="border-b last:border-b-0 bg-purple-50/60 hover:bg-purple-100 cursor-pointer transition-colors" onClick={() => navigate(`/orders/detail/${e.orderId}`)} title="Buka detail order">
                             <td className="py-1.5 px-2 text-muted-foreground">—</td>
                             <td className="py-1.5 px-2 whitespace-nowrap text-muted-foreground">{fmtDate(e.paidAt)}</td>
                             <td className="py-1.5 px-2 max-w-[120px] truncate text-purple-700/70" title={e.clientName}>{e.clientName}</td>
@@ -1128,7 +1128,7 @@ export default function Reports() {
                       // Count only non-commission, non-voaOpex entries for the # column
                       const orderCount = ledgerEntries.slice(i).filter((x) => !x.isCommission && !x.isVoaOpex).length;
                       return (
-                        <tr key={e.orderId} className="border-b last:border-b-0 hover:bg-muted/30">
+                        <tr key={e.orderId} className="border-b last:border-b-0 hover:bg-blue-50/50 cursor-pointer transition-colors" onClick={() => navigate(`/orders/detail/${e.orderId}`)} title="Buka detail order">
                           <td className="py-2 px-2 text-muted-foreground">{orderCount}</td>
                           <td className="py-2 px-2 whitespace-nowrap text-muted-foreground">{fmtDate(e.paidAt)}</td>
                           <td className="py-2 px-2 max-w-[120px] truncate" title={e.clientName}>{e.clientName}</td>

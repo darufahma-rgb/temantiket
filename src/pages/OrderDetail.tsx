@@ -352,19 +352,33 @@ export default function OrderDetail() {
           </Field>
         )}
         {order.createdByAgent && currentUser?.role !== "staff" && (
-          <Field label="Fee Komisi Agen (IDR)">
-            <Input
-              type="number"
-              value={String(Number(((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>).agentFee ?? 0))}
-              onChange={(e) => setDraft({
-                ...draft,
-                metadata: {
-                  ...((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>),
-                  agentFee: Number(e.target.value) || 0,
-                },
-              })}
-            />
-          </Field>
+          <div className="space-y-1">
+            <Field label="Fee Komisi Agen (IDR)">
+              <Input
+                type="number"
+                value={String(Number(((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>).agentFee ?? 0))}
+                onChange={(e) => setDraft({
+                  ...draft,
+                  metadata: {
+                    ...((draft.metadata ?? order.metadata ?? {}) as Record<string, unknown>),
+                    agentFee: Number(e.target.value) || 0,
+                  },
+                })}
+              />
+            </Field>
+            {(() => {
+              const ag = members.find((m) => m.userId === order.createdByAgent);
+              if (!ag) return null;
+              return (
+                <div className="text-[11px] text-muted-foreground flex items-center gap-1 pl-0.5">
+                  Agen penjual:
+                  <Link to={`/agents/${order.createdByAgent}`} className="text-sky-600 hover:underline font-semibold flex items-center gap-0.5 ml-0.5">
+                    {ag.displayName} <ExternalLink className="h-2.5 w-2.5" />
+                  </Link>
+                </div>
+              );
+            })()}
+          </div>
         )}
         {currentUser?.role !== "staff" && (
           <Field label="Klien">
@@ -417,7 +431,16 @@ export default function OrderDetail() {
           )}
           {order.jamaahId && (
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Jamaah lama:</span> <span className="font-mono text-xs">{order.jamaahId}</span>
+              {order.tripId ? (
+                <Link to={`/trips/${order.tripId}/jamaah/${order.jamaahId}`} className="flex items-center gap-2 hover:underline text-sky-700">
+                  <ExternalLink className="h-3.5 w-3.5" /> Profil Jamaah
+                </Link>
+              ) : (
+                <>
+                  <span className="text-muted-foreground">Jamaah:</span>
+                  <span className="font-mono text-xs">{order.jamaahId}</span>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -583,13 +606,25 @@ export default function OrderDetail() {
                 )}
                 {agentFee > 0 && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Fee Agen Penjual</span>
+                    <button
+                      className="text-muted-foreground hover:text-sky-700 hover:underline transition-colors flex items-center gap-1 text-left"
+                      onClick={() => order.createdByAgent && navigate(`/agents/${order.createdByAgent}`)}
+                      title="Buka profil agen"
+                    >
+                      Fee Agen Penjual <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+                    </button>
                     <span className="font-mono text-orange-600">−{fmtIDR(agentFee)}</span>
                   </div>
                 )}
                 {pelaksanaFee > 0 && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Fee Pelaksana Visa</span>
+                    <button
+                      className="text-muted-foreground hover:text-violet-700 hover:underline transition-colors flex items-center gap-1 text-left"
+                      onClick={() => { const pid = meta.pelaksanaId as string | undefined; if (pid) navigate(`/staff/${pid}`); }}
+                      title="Buka profil pelaksana"
+                    >
+                      Fee Pelaksana Visa <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+                    </button>
                     <span className="font-mono text-violet-600">−{fmtIDR(pelaksanaFee)}</span>
                   </div>
                 )}

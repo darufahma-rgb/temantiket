@@ -10,11 +10,12 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Users, CheckCircle2, AlertTriangle, ChevronRight, ChevronLeft,
   Loader2, MessageSquare, Wallet, UserCheck, X,
-  BadgeDollarSign, Edit2,
+  BadgeDollarSign, Edit2, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,7 @@ interface Props {
 }
 
 export function VisaEntryPanel({ order, onMetaChange }: Props) {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const listMembers = useAuthStore((s) => s.listMembers);
   const { patchOrder } = useOrdersStore();
@@ -225,10 +227,15 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
           <div className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2.5 space-y-1">
             <p className="text-[10px] font-bold uppercase tracking-wide text-sky-700">Agen Penjual</p>
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <p className="text-[12px] font-semibold text-sky-900">
+              <button
+                className="text-[12px] font-semibold text-sky-900 hover:text-sky-600 hover:underline flex items-center gap-1 text-left"
+                onClick={() => navigate(`/agents/${order.createdByAgent}`)}
+                title="Buka profil agen"
+              >
                 {allMembers.find((m) => m.userId === order.createdByAgent)?.displayName
                   ?? order.createdByAgent?.slice(0, 8) ?? "—"}
-              </p>
+                <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+              </button>
               {!isStaff && (
                 <span className="text-[11px] font-mono font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">
                   Fee Agen: {fmtIDR(Number((meta.agentFee as number | null) ?? 0))}
@@ -276,9 +283,17 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
               {assigning && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
             </div>
             {assignedPelaksana && (
-              <div className="flex items-center gap-1.5 text-[11px] text-indigo-700 font-medium">
-                <UserCheck className="h-3.5 w-3.5" />
-                Ditugaskan ke: <span className="font-bold">{assignedPelaksana.displayName}</span>
+              <div className="flex items-center gap-1.5 text-[11px] text-indigo-700 font-medium flex-wrap">
+                <UserCheck className="h-3.5 w-3.5 shrink-0" />
+                Ditugaskan ke:
+                <button
+                  className="font-bold hover:underline hover:text-indigo-900 flex items-center gap-0.5"
+                  onClick={() => pelaksanaId && navigate(`/staff/${pelaksanaId}`)}
+                  title="Buka profil pelaksana"
+                >
+                  {assignedPelaksana.displayName}
+                  <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+                </button>
                 <span className="text-[10px] text-muted-foreground">({roleLabel[assignedPelaksana.role] ?? assignedPelaksana.role})</span>
               </div>
             )}

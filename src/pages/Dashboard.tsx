@@ -446,7 +446,7 @@ function RightPanel({ trips, totalJamaah }: { trips: Trip[]; totalJamaah: number
                 const countDown = daysUntil(trip.startDate);
                 const isPast = countDown === "Selesai";
                 return (
-                  <div key={trip.id} className="flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-2.5">
+                  <div key={trip.id} onClick={() => navigate(`/trips/${trip.id}`)} className="flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-2.5 cursor-pointer hover:border-primary/30 hover:bg-accent/40 transition-colors">
                     <div className="h-10 w-10 rounded-xl shrink-0 flex items-center justify-center text-lg md:text-2xl overflow-hidden"
                       style={{ background: `${from}22` }}>
                       {trip.coverImage ? (
@@ -480,12 +480,13 @@ function RightPanel({ trips, totalJamaah }: { trips: Trip[]; totalJamaah: number
           <h3 className="text-[13px] font-semibold text-[hsl(var(--foreground))] mb-3">Transportasi</h3>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { icon: Plane, label: "Pesawat" },
-              { icon: Bus, label: "Bus" },
-              { icon: Train, label: "Kereta" },
+              { icon: Plane, label: "Pesawat", path: "/orders/flight" },
+              { icon: Bus,   label: "Bus",     path: "/orders" },
+              { icon: Train, label: "Kereta",  path: "/orders" },
             ].map((t) => (
               <button key={t.label}
-                className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-[hsl(var(--border))] hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-smooth group">
+                onClick={() => navigate(t.path)}
+                className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-[hsl(var(--border))] hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-smooth group active:scale-95">
                 <t.icon strokeWidth={1.5} className="h-5 w-5" />
                 <span className="text-[10px] text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))]">{t.label}</span>
               </button>
@@ -1097,12 +1098,12 @@ export default function Dashboard() {
                   {formatTodayFull(locale)}
                 </p>
                 {nearestDeparture ? (
-                  <div className="flex items-center gap-2 mt-3 w-fit px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10" style={{ background: "rgba(255,255,255,0.09)" }}>
+                  <button onClick={() => navigate("/packages")} className="flex items-center gap-2 mt-3 w-fit px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 hover:border-white/25 hover:bg-white/15 transition-colors active:opacity-80" style={{ background: "rgba(255,255,255,0.09)" }}>
                     <Plane strokeWidth={2} className="h-3.5 w-3.5 text-sky-400 shrink-0" />
                     <span className="text-[11px] text-sky-200/80">{t.dash_nearest_departure}</span>
                     <strong className="text-[11px] text-white truncate max-w-[180px] font-bold">{nearestDeparture.name}</strong>
                     <span className="text-[11px] text-sky-300 shrink-0 font-semibold">· {daysUntil(nearestDeparture.departureDate!)}</span>
-                  </div>
+                  </button>
                 ) : (
                   <p className="text-[11px] text-sky-300/60 mt-2 italic">{t.dash_no_schedule}</p>
                 )}
@@ -1160,7 +1161,7 @@ export default function Dashboard() {
           animate="visible"
         >
           {[
-            { icon: Plane,       label: t.dash_total_trip,   value: trips.length, onClick: () => {} },
+            { icon: Plane,       label: t.dash_total_trip,   value: trips.length, onClick: () => setTab("all") },
             { icon: TrendingUp,  label: t.dash_active_trip,  value: activeTrips,  onClick: () => setTab("upcoming") },
             { icon: CheckCircle, label: t.dash_done_trip,    value: doneTrips,    onClick: () => setTab("done") },
             { icon: Users,       label: t.dash_total_jamaah, value: totalJamaah,  onClick: () => navigate("/progress") },
