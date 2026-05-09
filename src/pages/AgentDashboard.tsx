@@ -14,6 +14,7 @@ import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/a
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, ORDER_STATUSES, type OrderStatus } from "@/features/orders/ordersRepo";
 import { revenueIDR, profitIDR, fmtIDR } from "@/lib/profit";
 import { AgentTierProgress } from "@/components/AgentTierProgress";
+import { AgentCard } from "@/components/AgentCard";
 import { RewardCatalog } from "@/components/RewardCatalog";
 import { AgentMissionWidget } from "@/features/missions/AgentMissionWidget";
 import { listMySubmissions, sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
@@ -323,6 +324,26 @@ export default function AgentDashboard() {
           </motion.div>
         ))}
       </div>
+
+      {/* ── Kartu Agen Digital ─────────────────────────────────────────── */}
+      {user && (
+        <motion.div custom={3.5} variants={fadeUp} initial="hidden" animate="visible">
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100">
+              <p className="text-sm font-semibold text-slate-800">Kartu Agen Digital</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">ID card resmi lo sebagai Mitra Temantiket</p>
+            </div>
+            <div className="p-5 flex justify-center">
+              <AgentCard
+                displayName={user.displayName}
+                agentId={user.id}
+                since={null}
+                agencyName={user.agencyName}
+              />
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* ── Fee Komisi + Portfolio ──────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">

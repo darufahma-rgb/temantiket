@@ -36,6 +36,7 @@ function firstThreeWords(name: string): string {
 }
 
 const FONT = "'Sk-Modernist', 'Inter', system-ui, sans-serif";
+const FONT_REGULAR = "'Sk-Modernist', 'Inter', system-ui, sans-serif";
 
 /* ── Main Component ─────────────────────────────────────────────────────── */
 export interface AgentCardProps {
@@ -125,13 +126,13 @@ export function AgentCard({ displayName, agentId, since, className }: AgentCardP
           {/* Agent name (max 3 words) */}
           <div style={{
             fontSize: "34px",
-            fontWeight: 800,
+            fontWeight: 400,
             color: "white",
             lineHeight: 1.08,
             letterSpacing: "-0.01em",
             maxWidth: "52%",
             wordBreak: "break-word",
-            fontFamily: FONT,
+            fontFamily: FONT_REGULAR,
           }}>
             {shortName}
           </div>
