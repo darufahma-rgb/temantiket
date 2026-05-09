@@ -11,12 +11,24 @@ export interface PublicMemberStamp {
   processStep?: number;
 }
 
+/** Detail satu referral stamp — nama member yg datang via referral + info ordernya */
+export interface ReferralDetail {
+  /** Nama klien yang menggunakan referral link ini */
+  name: string;
+  /** Tipe order pertama klien tersebut (e.g. "visa_voa", "umrah") */
+  orderType?: string;
+  /** Tanggal klien bergabung / order pertama */
+  createdAt: string;
+}
+
 export interface PublicMemberCard {
   client: {
     name: string;
     createdAt: string;
     memberIndex: number;
     referralStamps: number;
+    /** Detail per-referral stamp — mungkin kosong jika RLS memblokir query anon */
+    referralDetails?: ReferralDetail[];
   };
   orders: PublicMemberStamp[];
 }
@@ -51,7 +63,7 @@ export async function lookupMemberCard(slug: string): Promise<PublicMemberLookup
 
     const card = obj as unknown as PublicMemberCard;
 
-    // ── Secondary enrichment: try to get processStep per order ──────────────
+    // ── Secondary enrichment: processStep per order + referral details ───────
     // Parse member index from slug (format: "{name-parts}-{4-digit-number}")
     try {
       const indexMatch = cleaned.match(/-(\d{4})$/);
@@ -66,12 +78,23 @@ export async function lookupMemberCard(slug: string): Promise<PublicMemberLookup
 
         const clientId = (clientRows ?? [])[0]?.id as string | undefined;
         if (clientId) {
-          const { data: orderRows } = await supabase!
-            .from("orders")
-            .select("type, metadata, created_at")
-            .eq("client_id", clientId)
-            .in("status", ["Confirmed", "Paid", "Completed"]);
+          // Run order enrichment + referral detail query in parallel
+          const [orderResult, referralResult] = await Promise.all([
+            supabase!
+              .from("orders")
+              .select("type, metadata, created_at")
+              .eq("client_id", clientId)
+              .in("status", ["Confirmed", "Paid", "Completed"]),
+            // Find all clients referred by this member
+            supabase!
+              .from("clients")
+              .select("id, name, created_at")
+              .eq("referred_by_client_id", clientId)
+              .order("created_at", { ascending: true })
+              .limit(50),
+          ]);
 
+          const orderRows = orderResult.data;
           if (orderRows && orderRows.length > 0) {
             // Match stamps to orders by type + nearest date
             card.orders = card.orders.map((stamp) => {
@@ -87,10 +110,36 @@ export async function lookupMemberCard(slug: string): Promise<PublicMemberLookup
               };
             });
           }
+
+          // Enrich referral details — for each referred client, try to find their first order type
+          const referralClients = (referralResult.data ?? []) as Array<{id: string; name: string; created_at: string}>;
+          if (referralClients.length > 0) {
+            // Fetch first completed/paid order per referred client in one query
+            const referredIds = referralClients.map((c) => c.id);
+            const { data: refOrders } = await supabase!
+              .from("orders")
+              .select("client_id, type, created_at")
+              .in("client_id", referredIds)
+              .in("status", ["Confirmed", "Paid", "Completed"])
+              .order("created_at", { ascending: true });
+
+            const firstOrderByClient: Record<string, string> = {};
+            for (const o of (refOrders ?? []) as Array<{client_id: string; type: string; created_at: string}>) {
+              if (!firstOrderByClient[o.client_id]) {
+                firstOrderByClient[o.client_id] = o.type;
+              }
+            }
+
+            card.client.referralDetails = referralClients.map((c) => ({
+              name:      c.name as string,
+              orderType: firstOrderByClient[c.id],
+              createdAt: c.created_at as string,
+            }));
+          }
         }
       }
     } catch {
-      // Secondary query failed (likely RLS blocking anon) — continue without processStep
+      // Secondary query failed (likely RLS blocking anon) — continue without processStep/referralDetails
     }
 
     return { ok: true, data: card };

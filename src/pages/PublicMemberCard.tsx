@@ -9,12 +9,24 @@ import {
 } from "lucide-react";
 import MemberCard from "@/components/MemberCard";
 import { OrderProgressTracker, ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
-import { lookupMemberCard, type PublicMemberCard, type PublicMemberStamp } from "@/features/portal/memberCardRepo";
+import { lookupMemberCard, type PublicMemberCard, type PublicMemberStamp, type ReferralDetail } from "@/features/portal/memberCardRepo";
 import { fetchPublicPromoPosters, type PromoPost } from "@/lib/promoPostersSettings";
 import { buildPublicMemberUrl, buildReferralUrl, normalizePhoneForWa } from "@/lib/memberSlug";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
 
 const AGENT_THRESHOLD = 8;
+
+// ── Reward milestones — 8 baris × 2 stamp per baris = 16 stamp total ─────────
+const REWARD_MILESTONES = [
+  { row: 1, stamps: 2,  emoji: "⭐", label: "Selamat Datang",         desc: "Priority response WhatsApp & sambutan eksklusif member baru",       color: "blue"   },
+  { row: 2, stamps: 4,  emoji: "🎟️", label: "Diskon 5%",              desc: "Voucher diskon 5% untuk order berikutnya (berlaku 3 bulan)",         color: "violet" },
+  { row: 3, stamps: 6,  emoji: "📋", label: "Konsultasi Gratis",       desc: "Sesi konsultasi dokumen perjalanan & visa gratis via WhatsApp",      color: "sky"    },
+  { row: 4, stamps: 8,  emoji: "💰", label: "Cashback Rp 100.000",     desc: "Voucher cashback Rp 100.000 untuk paket umrah atau tiket pesawat",   color: "emerald"},
+  { row: 5, stamps: 10, emoji: "🎒", label: "Bonus Upgrade Layanan",   desc: "Gratis upgrade layanan atau bonus bagasi 1 koper untuk 1 paket",     color: "amber"  },
+  { row: 6, stamps: 12, emoji: "🎁", label: "Merchandise Eksklusif",   desc: "Paket merchandise resmi Temantiket dikirim ke rumah Anda",           color: "orange" },
+  { row: 7, stamps: 14, emoji: "✨", label: "Diskon 10% Spesial",      desc: "Diskon 10% untuk 1 paket pilihan — umrah, tiket, atau visa",         color: "rose"   },
+  { row: 8, stamps: 16, emoji: "👑", label: "VIP Grand Reward",        desc: "Hadiah utama eksklusif + free upgrade paket Umrah Premium pilihan",  color: "amber"  },
+] as const;
 
 const TYPE_LABEL: Record<string, string> = {
   umrah:        "Umrah Transit Saudi",
@@ -594,19 +606,112 @@ export default function PublicMemberCardPage() {
                     </div>
                     <span className="text-[13px] font-bold text-blue-600">{totalStamps} / 16</span>
                   </div>
-                  <div className="h-3 rounded-full bg-blue-50 border border-blue-100 overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${stampProgress}%` }}
-                      transition={{ duration: 0.9, ease: "easeOut", delay: 0.3 }}
-                    />
+                  {/* 8-row progress bars */}
+                  <div className="flex gap-1">
+                    {REWARD_MILESTONES.map((m) => {
+                      const rowDone = totalStamps >= m.stamps;
+                      const rowPrev = m.row === 1 ? 0 : REWARD_MILESTONES[m.row - 2].stamps;
+                      const rowStampsIn = Math.max(0, Math.min(2, totalStamps - rowPrev));
+                      const rowPct = rowDone ? 100 : (rowStampsIn / 2) * 100;
+                      return (
+                        <div key={m.row} className="flex-1 flex flex-col gap-0.5 items-center">
+                          <div className="w-full h-2 rounded-full bg-blue-50 border border-blue-100 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-700 ${rowDone ? "bg-gradient-to-r from-blue-500 to-blue-400" : "bg-blue-300"}`}
+                              style={{ width: `${rowPct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <p className="text-[11.5px] text-gray-500 leading-relaxed">
-                    {totalStamps >= 16
-                      ? "🎉 Stamp penuh! Hubungi admin untuk klaim reward spesial."
-                      : `${16 - totalStamps} stamp lagi untuk reward spesial dari Temantiket ✈️`}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] text-gray-400">
+                      Baris {Math.floor(totalStamps / 2)}/8 selesai
+                    </p>
+                    <p className="text-[11px] text-blue-500 font-semibold">
+                      {totalStamps >= 16
+                        ? "🎉 Full card! Klaim reward VIP"
+                        : `${16 - totalStamps} stamp lagi`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* ── Hadiah Member Point ─────────────────────────────────── */}
+                <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <h2 className="text-[13px] font-bold text-gray-900 flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-md bg-amber-100 flex items-center justify-center">
+                        <Gift className="h-3.5 w-3.5 text-amber-600" />
+                      </div>
+                      Hadiah Member Point
+                    </h2>
+                    <span className="text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                      {Math.floor(totalStamps / 2)}/8 baris
+                    </span>
+                  </div>
+                  <ul className="divide-y divide-gray-50">
+                    {REWARD_MILESTONES.map((m) => {
+                      const unlocked = totalStamps >= m.stamps;
+                      const current  = totalStamps >= (m.row === 1 ? 0 : REWARD_MILESTONES[m.row - 2].stamps) && !unlocked;
+                      return (
+                        <li
+                          key={m.row}
+                          className={`flex items-start gap-3 px-4 py-3 transition-colors ${
+                            unlocked
+                              ? "bg-emerald-50/50"
+                              : current
+                              ? "bg-blue-50/40"
+                              : ""
+                          }`}
+                        >
+                          {/* Row badge */}
+                          <div className={`shrink-0 h-9 w-9 rounded-xl flex flex-col items-center justify-center text-center border ${
+                            unlocked
+                              ? "bg-emerald-100 border-emerald-200"
+                              : current
+                              ? "bg-blue-100 border-blue-200"
+                              : "bg-gray-50 border-gray-200"
+                          }`}>
+                            <span className="text-base leading-none">{m.emoji}</span>
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className={`text-[12.5px] font-bold leading-tight ${unlocked ? "text-emerald-800" : current ? "text-blue-800" : "text-gray-500"}`}>
+                                {m.label}
+                              </p>
+                              {m.row === 8 && (
+                                <span className="text-[9px] font-black uppercase tracking-wider bg-amber-400 text-white px-1.5 py-0.5 rounded">VIP</span>
+                              )}
+                            </div>
+                            <p className={`text-[10.5px] mt-0.5 leading-relaxed ${unlocked ? "text-emerald-700" : "text-gray-400"}`}>
+                              {m.desc}
+                            </p>
+                          </div>
+
+                          {/* Status */}
+                          <div className="shrink-0 flex flex-col items-end gap-1">
+                            <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border ${
+                              unlocked
+                                ? "bg-emerald-100 text-emerald-700 border-emerald-300"
+                                : current
+                                ? "bg-blue-100 text-blue-600 border-blue-200"
+                                : "bg-gray-100 text-gray-400 border-gray-200"
+                            }`}>
+                              {unlocked ? "✓ Diraih" : current ? "Dalam proses" : `${m.stamps} stamp`}
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="px-4 py-3 bg-gradient-to-r from-amber-50 to-yellow-50 border-t border-amber-100">
+                    <p className="text-[10.5px] text-amber-700 leading-relaxed">
+                      💡 Setiap 2 stamp = 1 baris selesai. Klaim hadiah langsung via WhatsApp ke admin Temantiket setelah baris terpenuhi.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Ajak Teman */}
@@ -722,20 +827,33 @@ export default function PublicMemberCardPage() {
                       })}
 
                       {(data.client.referralStamps ?? 0) > 0 &&
-                        Array.from({ length: data.client.referralStamps }).map((_, i) => (
-                          <li key={`ref-${i}`} className="px-4 py-3.5 flex items-center gap-3 bg-emerald-50/40">
-                            <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200 text-xl flex items-center justify-center shrink-0">
-                              🎁
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[13px] font-semibold text-gray-900">Bonus Referral</p>
-                              <p className="text-[10.5px] text-gray-400 mt-0.5">Teman berhasil order via referral</p>
-                            </div>
-                            <span className="text-[9.5px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              +1 stamp
-                            </span>
-                          </li>
-                        ))
+                        Array.from({ length: data.client.referralStamps }).map((_, i) => {
+                          const detail: ReferralDetail | undefined = (data.client.referralDetails ?? [])[i];
+                          const firstName = detail?.name?.trim().split(/\s+/).slice(0, 2).join(" ");
+                          const orderLabel = detail?.orderType ? (TYPE_LABEL[detail.orderType] ?? detail.orderType) : null;
+                          return (
+                            <li key={`ref-${i}`} className="px-4 py-3.5 flex items-center gap-3 bg-emerald-50/40">
+                              <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200 text-xl flex items-center justify-center shrink-0">
+                                🎁
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-semibold text-gray-900 truncate">
+                                  {firstName
+                                    ? `Referral dari ${firstName}`
+                                    : "Bonus Referral"}
+                                </p>
+                                <p className="text-[10.5px] text-gray-400 mt-0.5 truncate">
+                                  {detail
+                                    ? [orderLabel, fmtDateLong(detail.createdAt)].filter(Boolean).join(" · ")
+                                    : "Teman berhasil order via referral"}
+                                </p>
+                              </div>
+                              <span className="text-[9.5px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                +1 stamp
+                              </span>
+                            </li>
+                          );
+                        })
                       }
                     </ul>
                   )}
