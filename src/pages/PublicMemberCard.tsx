@@ -17,48 +17,17 @@ import { loadIghAdminSettings } from "@/lib/ighSettings";
 const AGENT_THRESHOLD = 8;
 const AGENT_RECRUIT_WA = "6281311506025";
 
-/**
- * Pastikan URL selalu punya protokol https:// di depannya.
- * Jika user menyimpan "instagram.com/foo" tanpa protokol,
- * browser akan menafsirkan sebagai path relatif → 404.
- * Fungsi ini menambahkan https:// otomatis jika belum ada.
- */
 function ensureExternalUrl(url: string): string {
   if (!url) return "";
   if (/^https?:\/\//i.test(url)) return url;
   return `https://${url}`;
 }
 
-// ── Reward milestones — 4 baris × 4 stamp per baris = 16 stamp total ─────────
 const REWARD_MILESTONES = [
-  {
-    row: 1, stamps: 4,
-    emoji: "🎫",
-    label: "Voucher Diskon Rp100.000",
-    desc:  "Potongan harga Rp100.000 untuk order berikutnya — berlaku untuk paket umrah, tiket pesawat, maupun visa.",
-    color: "blue",
-  },
-  {
-    row: 2, stamps: 8,
-    emoji: "🎁",
-    label: "Merchandise Resmi Temantiket",
-    desc:  "Paket merchandise eksklusif branded Temantiket dikirim langsung ke alamat Anda sebagai apresiasi loyalitas.",
-    color: "violet",
-  },
-  {
-    row: 3, stamps: 12,
-    emoji: "💸",
-    label: "Voucher Diskon Rp300.000",
-    desc:  "Voucher diskon besar Rp300.000 untuk 1 paket pilihan — umrah, tiket pesawat, atau pengurusan visa.",
-    color: "emerald",
-  },
-  {
-    row: 4, stamps: 16,
-    emoji: "✈️",
-    label: "VIP Grand Reward — Pengalaman Transit Qatar",
-    desc:  "Akses lounge premium & pengalaman jalan-jalan eksklusif saat transit di Qatar bersama Temantiket. Termasuk city tour & airport lounge. Syarat & ketentuan berlaku.",
-    color: "amber",
-  },
+  { row: 1, stamps: 4,  emoji: "🎫", label: "Voucher Diskon Rp100.000",          desc: "Potongan harga Rp100.000 untuk order berikutnya — umrah, tiket, atau visa.", color: "blue"   },
+  { row: 2, stamps: 8,  emoji: "🎁", label: "Merchandise Resmi Temantiket",       desc: "Paket merchandise eksklusif branded Temantiket dikirim ke alamat Anda.",     color: "violet" },
+  { row: 3, stamps: 12, emoji: "💸", label: "Voucher Diskon Rp300.000",           desc: "Voucher diskon besar untuk 1 paket pilihan — umrah, tiket, atau visa.",      color: "emerald"},
+  { row: 4, stamps: 16, emoji: "✈️", label: "VIP Grand Reward — Transit Qatar",   desc: "Akses lounge premium & city tour eksklusif saat transit di Qatar. Syarat & ketentuan berlaku.", color: "amber" },
 ] as const;
 
 const TYPE_LABEL: Record<string, string> = {
@@ -67,12 +36,8 @@ const TYPE_LABEL: Record<string, string> = {
   visa_voa:     "Visa on Arrival",
   visa_student: "Visa Pelajar / Entry",
 };
-
 const TYPE_EMOJI: Record<string, string> = {
-  umrah:        "🕋",
-  flight:       "✈️",
-  visa_voa:     "🔺",
-  visa_student: "📘",
+  umrah: "🕋", flight: "✈️", visa_voa: "🔺", visa_student: "📘",
 };
 
 function stampLabel(stamp: PublicMemberStamp): string {
@@ -84,20 +49,16 @@ function stampEmoji(stamp: PublicMemberStamp): string {
   if (stamp.transitType === "dubai") return "🏙️";
   return TYPE_EMOJI[stamp.type] ?? "•";
 }
-
 function fmtDateLong(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
-  } catch { return iso; }
+  try { return new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }); }
+  catch { return iso; }
 }
-
 function fmtDateShort(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("id-ID", { month: "short", year: "numeric" });
-  } catch { return iso; }
+  try { return new Date(iso).toLocaleDateString("id-ID", { month: "short", year: "numeric" }); }
+  catch { return iso; }
 }
 
-// ── Poster Carousel ─────────────────────────────────────────────────────────
+// ── Poster Carousel ──────────────────────────────────────────────────────────
 function PromoCarousel({ posters }: { posters: PromoPost[] }) {
   const [active, setActive] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -126,108 +87,62 @@ function PromoCarousel({ posters }: { posters: PromoPost[] }) {
   if (posters.length === 0) return null;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Label + dots */}
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5 text-blue-500" />
-          <span className="text-[11px] font-bold uppercase tracking-widest text-blue-600">
-            Info Terbaru
-          </span>
-        </div>
+      <div className="flex items-center justify-between px-0.5">
         <div className="flex items-center gap-1.5">
+          <Sparkles className="h-3 w-3 text-blue-500" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Info Terbaru</span>
+        </div>
+        <div className="flex items-center gap-1">
           {posters.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => scrollTo(i)}
-              className={`rounded-full transition-all duration-300 ${
-                i === active ? "w-5 h-2 bg-blue-500" : "w-2 h-2 bg-blue-200"
-              }`}
+            <button key={i} onClick={() => scrollTo(i)}
+              className={`rounded-full transition-all duration-300 ${i === active ? "w-4 h-1.5 bg-blue-500" : "w-1.5 h-1.5 bg-blue-200"}`}
             />
           ))}
         </div>
       </div>
 
-      {/* Compact poster cards — 2 visible on mobile, 3 on md+ */}
+      {/* Poster cards scroll */}
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-1"
+        className="flex gap-2 overflow-x-auto no-scrollbar snap-x snap-mandatory"
         onScroll={(e) => {
           const el   = e.currentTarget;
           const card = el.children[0] as HTMLElement | undefined;
-          const w    = card ? card.offsetWidth + 12 : el.offsetWidth;
-          const idx  = Math.round(el.scrollLeft / w);
-          setActive(Math.min(idx, posters.length - 1));
+          const w    = card ? card.offsetWidth + 8 : el.offsetWidth;
+          setActive(Math.min(Math.round(el.scrollLeft / w), posters.length - 1));
         }}
       >
         {posters.map((post) => (
-          <div
-            key={post.id}
-            /* ~47% wide on mobile shows 2 cards + peek; ~30% on md shows 3 */
-            className="flex-none w-[47%] sm:w-[30%] snap-start"
-          >
+          <div key={post.id} className="flex-none w-[48%] snap-start">
             {post.imageUrl ? (
-              <div className="group flex flex-col rounded-2xl overflow-hidden shadow-sm border border-gray-100 bg-white hover:shadow-md transition-shadow">
-                {/* Poster image — fixed 4:5 portrait ratio */}
+              <div className="group flex flex-col rounded-xl overflow-hidden shadow-sm border border-gray-100 bg-white hover:shadow-md transition-shadow">
                 <div className="relative w-full overflow-hidden" style={{ aspectRatio: "4 / 5" }}>
-                  <img
-                    src={post.imageUrl}
-                    alt={post.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
+                  <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" loading="lazy" />
                 </div>
-                {/* Caption below image */}
                 {(post.title || post.caption || post.ctaUrl) && (
-                  <div className="px-3 py-2.5 space-y-1.5">
-                    {post.title && (
-                      <p className="text-gray-900 font-bold text-[12px] leading-snug line-clamp-2">
-                        {post.title}
-                      </p>
-                    )}
-                    {post.caption && (
-                      <p className="text-gray-400 text-[10.5px] leading-relaxed line-clamp-2">
-                        {post.caption}
-                      </p>
-                    )}
+                  <div className="px-2 py-2 space-y-1">
+                    {post.title && <p className="text-gray-900 font-bold text-[11px] leading-snug line-clamp-2">{post.title}</p>}
+                    {post.caption && <p className="text-gray-400 text-[9.5px] leading-relaxed line-clamp-2">{post.caption}</p>}
                     {post.ctaUrl && (
-                      <a
-                        href={ensureExternalUrl(post.ctaUrl)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 text-[10.5px] font-semibold transition-colors"
-                      >
-                        {post.ctaLabel || "Selengkapnya"} <ExternalLink className="h-2.5 w-2.5" />
+                      <a href={ensureExternalUrl(post.ctaUrl)} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 text-[9.5px] font-semibold">
+                        {post.ctaLabel || "Selengkapnya"} <ExternalLink className="h-2 w-2" />
                       </a>
                     )}
                   </div>
                 )}
               </div>
             ) : (
-              /* Text-only card — same compact size */
-              <div
-                className="flex flex-col rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 shadow-sm overflow-hidden"
-                style={{ aspectRatio: "4 / 5" }}
-              >
-                <div className="flex-1 flex flex-col justify-center px-4 py-4 space-y-2">
-                  {post.title && (
-                    <p className="text-gray-900 font-extrabold text-[13px] leading-snug line-clamp-3">
-                      {post.title}
-                    </p>
-                  )}
-                  {post.caption && (
-                    <p className="text-gray-500 text-[10.5px] leading-relaxed line-clamp-3">
-                      {post.caption}
-                    </p>
-                  )}
+              <div className="flex flex-col rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 shadow-sm overflow-hidden" style={{ aspectRatio: "4 / 5" }}>
+                <div className="flex-1 flex flex-col justify-center px-3 py-3 space-y-1.5">
+                  {post.title && <p className="text-gray-900 font-extrabold text-[11.5px] leading-snug line-clamp-3">{post.title}</p>}
+                  {post.caption && <p className="text-gray-500 text-[9.5px] leading-relaxed line-clamp-3">{post.caption}</p>}
                   {post.ctaUrl && (
-                    <a
-                      href={ensureExternalUrl(post.ctaUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-1 self-start inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      {post.ctaLabel || "Selengkapnya"} <ExternalLink className="h-2.5 w-2.5" />
+                    <a href={ensureExternalUrl(post.ctaUrl)} target="_blank" rel="noopener noreferrer"
+                      className="mt-1 self-start inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-bold px-2.5 py-1 rounded-lg">
+                      {post.ctaLabel || "Selengkapnya"} <ExternalLink className="h-2 w-2" />
                     </a>
                   )}
                 </div>
@@ -237,25 +152,16 @@ function PromoCarousel({ posters }: { posters: PromoPost[] }) {
         ))}
       </div>
 
-      {/* Prev / Next — only shown when more than 2 posters */}
       {posters.length > 2 && (
-        <div className="flex items-center justify-center gap-3">
-          <button
-            onClick={() => scrollTo(active - 1)}
-            disabled={active === 0}
-            className="h-8 w-8 rounded-full bg-white border border-gray-200 hover:bg-gray-50 shadow-sm flex items-center justify-center disabled:opacity-30 transition-all"
-          >
-            <ChevronLeft className="h-4 w-4 text-gray-600" />
+        <div className="flex items-center justify-center gap-2">
+          <button onClick={() => scrollTo(active - 1)} disabled={active === 0}
+            className="h-6 w-6 rounded-full bg-white border border-gray-200 hover:bg-gray-50 shadow-sm flex items-center justify-center disabled:opacity-30 transition-all">
+            <ChevronLeft className="h-3 w-3 text-gray-600" />
           </button>
-          <span className="text-[11px] text-gray-400 font-mono tabular-nums">
-            {active + 1} / {posters.length}
-          </span>
-          <button
-            onClick={() => scrollTo(active + 1)}
-            disabled={active === posters.length - 1}
-            className="h-8 w-8 rounded-full bg-white border border-gray-200 hover:bg-gray-50 shadow-sm flex items-center justify-center disabled:opacity-30 transition-all"
-          >
-            <ChevronRight className="h-4 w-4 text-gray-600" />
+          <span className="text-[10px] text-gray-400 font-mono tabular-nums">{active + 1} / {posters.length}</span>
+          <button onClick={() => scrollTo(active + 1)} disabled={active === posters.length - 1}
+            className="h-6 w-6 rounded-full bg-white border border-gray-200 hover:bg-gray-50 shadow-sm flex items-center justify-center disabled:opacity-30 transition-all">
+            <ChevronRight className="h-3 w-3 text-gray-600" />
           </button>
         </div>
       )}
@@ -265,18 +171,18 @@ function PromoCarousel({ posters }: { posters: PromoPost[] }) {
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function PublicMemberCardPage() {
-  const { slug }         = useParams<{ slug: string }>();
-  const [searchParams]   = useSearchParams();
-  const refSlug          = searchParams.get("ref");
-  const isReferralView   = !!refSlug && refSlug !== slug;
+  const { slug }       = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const refSlug        = searchParams.get("ref");
+  const isReferralView = !!refSlug && refSlug !== slug;
 
-  const [data,          setData]          = useState<PublicMemberCard | null>(null);
-  const [refData,       setRefData]       = useState<PublicMemberCard | null>(null);
-  const [posters,       setPosters]       = useState<PromoPost[]>([]);
-  const [loading,       setLoading]       = useState(true);
-  const [err,           setErr]           = useState<"not_found" | "invalid_slug" | "network" | null>(null);
-  const [referralCopied,  setReferralCopied]  = useState(false);
-  const [showAllHistory,  setShowAllHistory]  = useState(false);
+  const [data,           setData]           = useState<PublicMemberCard | null>(null);
+  const [refData,        setRefData]        = useState<PublicMemberCard | null>(null);
+  const [posters,        setPosters]        = useState<PromoPost[]>([]);
+  const [loading,        setLoading]        = useState(true);
+  const [err,            setErr]            = useState<"not_found" | "invalid_slug" | "network" | null>(null);
+  const [referralCopied, setReferralCopied] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -289,8 +195,7 @@ export default function PublicMemberCardPage() {
         fetchPublicPromoPosters(slug),
       ]);
       if (cancelled) return;
-      if (res.ok) setData(res.data);
-      else setErr(res.error);
+      if (res.ok) setData(res.data); else setErr(res.error);
       if (refRes && refRes.ok) setRefData(refRes.data);
       setPosters(posterData);
       setLoading(false);
@@ -324,11 +229,7 @@ export default function PublicMemberCardPage() {
     if (isReferralView && refData) {
       const refName = refData.client.name?.trim().split(/\s+/).slice(0, 2).join(" ") || "teman";
       const refId   = `TMNTKT${String(refData.client.memberIndex ?? 0).padStart(4, "0")}`;
-      return (
-        `Halo Admin Temantiket! 👋\n\n` +
-        `Saya tertarik order tiket/visa nih. Dapat info dari *${refName}* (${refId}).\n\n` +
-        `Bisa bantu cek opsi yang tersedia? Terima kasih! ✈️`
-      );
+      return `Halo Admin Temantiket! 👋\n\nSaya tertarik order tiket/visa nih. Dapat info dari *${refName}* (${refId}).\n\nBisa bantu cek opsi yang tersedia? Terima kasih! ✈️`;
     }
     const name = data?.client.name?.trim().split(/\s+/)[0] || "Sahabat";
     return `Halo Admin Temantiket, saya ${name} (${memberIdStr}). Mau pesan tiket/visa lagi nih, bisa bantu cek opsinya? ✈️`;
@@ -341,27 +242,14 @@ export default function PublicMemberCardPage() {
 
   const referralText = useMemo(() => {
     const name = data?.client.name?.trim().split(/\s+/)[0] || "Aku";
-    return (
-      `✈️ ${name} ngajak kamu gabung Temantiket!\n\n` +
-      `Temantiket — travel agency terpercaya buat tiket umrah, pesawat & visa.\n\n` +
-      `Cek kartu member & daftar via link ini:\n${referralUrl}\n\n` +
-      `Kalau kamu order lewat Temantiket, sebut nama gue ke admin ya — kita sama-sama dapet reward! 🎁`
-    );
+    return `✈️ ${name} ngajak kamu gabung Temantiket!\n\nTemantiket — travel agency terpercaya buat tiket umrah, pesawat & visa.\n\nCek kartu member & daftar via link ini:\n${referralUrl}\n\nKalau kamu order lewat Temantiket, sebut nama gue ke admin ya — kita sama-sama dapet reward! 🎁`;
   }, [data, referralUrl]);
 
-  const referralWaUrl = useMemo(
-    () => `https://wa.me/?text=${encodeURIComponent(referralText)}`,
-    [referralText],
-  );
+  const referralWaUrl = useMemo(() => `https://wa.me/?text=${encodeURIComponent(referralText)}`, [referralText]);
 
   const agentText = useMemo(() => {
     const name = data?.client.name?.trim() || "Saya";
-    return (
-      `Halo Admin Temantiket! 👋\n\n` +
-      `Saya ${name} (Member ${memberIdStr}) tertarik untuk bergabung sebagai Agen Temantiket.\n\n` +
-      `Sudah ${totalStamps} transaksi & kepercayaan penuh dengan layanan Temantiket. ` +
-      `Bisa share info syarat & benefit jadi agen? Terima kasih! ✈️`
-    );
+    return `Halo Admin Temantiket! 👋\n\nSaya ${name} (Member ${memberIdStr}) tertarik untuk bergabung sebagai Agen Temantiket.\n\nSudah ${totalStamps} transaksi & kepercayaan penuh dengan layanan Temantiket. Bisa share info syarat & benefit jadi agen? Terima kasih! ✈️`;
   }, [data, totalStamps, memberIdStr]);
 
   const agentWaUrl = useMemo(() => {
@@ -379,128 +267,87 @@ export default function PublicMemberCardPage() {
 
   const history = useMemo(() => {
     if (!data) return [];
-    return [...data.orders].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    return [...data.orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [data]);
 
-  const stampProgress = Math.min(100, (totalStamps / 16) * 100);
+  const totalHistoryItems = history.length + (data?.client.referralStamps ?? 0);
 
   return (
-    /*
-     * Root wrapper:
-     * - min-h-screen ensures the gradient background always fills the viewport,
-     *   even on short pages — no "cut-off" gray/white areas.
-     * - overflow-y: auto (via overflow-auto) lets the page scroll normally on
-     *   every device without being blocked by a parent with overflow: hidden.
-     */
-    <div
-      className="min-h-screen overflow-x-hidden"
-      style={{ background: "linear-gradient(165deg, #f0f6ff 0%, #f8fafc 45%, #ffffff 100%)" }}
-    >
+    <div className="min-h-screen overflow-x-hidden" style={{ background: "linear-gradient(165deg, #f0f6ff 0%, #f8fafc 45%, #ffffff 100%)" }}>
 
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+      {/* ── Header ── */}
       <header className="sticky top-0 z-30 border-b border-white/80 bg-white/90 backdrop-blur-md shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <img
-              src="/logo-igh-tour-maskable.png"
-              alt="Temantiket"
-              className="h-7 w-7 rounded-lg object-cover shrink-0"
-            />
-            <span className="text-[15px] font-extrabold tracking-tight text-blue-600 leading-none">
-              temantiket
-            </span>
+            <img src="/logo-igh-tour-maskable.png" alt="Temantiket" className="h-6 w-6 rounded-lg object-cover shrink-0" />
+            <span className="text-[14px] font-extrabold tracking-tight text-blue-600 leading-none">temantiket</span>
           </Link>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/leaderboard"
-              className="flex items-center gap-1.5 text-[12px] text-blue-600 hover:text-blue-700 font-semibold transition-colors"
-            >
-              <Trophy className="h-3.5 w-3.5" /> Leaderboard
+          <div className="flex items-center gap-2.5">
+            <Link to="/leaderboard" className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-700 font-semibold transition-colors">
+              <Trophy className="h-3 w-3" /> Leaderboard
             </Link>
             <span className="text-gray-200">|</span>
-            <span className="text-[12px] text-gray-400 flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5" /> Member
+            <span className="text-[11px] text-gray-400 flex items-center gap-1">
+              <Sparkles className="h-3 w-3" /> Member
             </span>
           </div>
         </div>
       </header>
 
-      {/* ── Main scrollable area ─────────────────────────────────────────── */}
-      <main className="max-w-5xl mx-auto w-full px-4 py-4 pb-8">
+      {/* ── Main ── */}
+      <main className="max-w-5xl mx-auto w-full px-3 py-3 pb-10">
 
         {/* Loading */}
         <AnimatePresence>
           {loading && (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center py-40 text-blue-500"
-            >
+            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center py-32 text-blue-500">
               <div className="relative">
-                <div className="h-14 w-14 rounded-full border-2 border-blue-100 flex items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                <div className="h-11 w-11 rounded-full border-2 border-blue-100 flex items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
                 </div>
                 <div className="absolute inset-0 rounded-full border border-blue-200 animate-ping opacity-60" />
               </div>
-              <p className="text-[13px] text-gray-400 mt-5 tracking-wide">Memuat kartu member…</p>
+              <p className="text-[11px] text-gray-400 mt-4 tracking-wide">Memuat kartu member…</p>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Error */}
         {!loading && err && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-md mx-auto mt-16 rounded-3xl border border-red-100 bg-white px-6 py-10 text-center shadow-sm"
-          >
-            <div className="h-14 w-14 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="h-7 w-7 text-red-400" />
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="max-w-sm mx-auto mt-12 rounded-2xl border border-red-100 bg-white px-5 py-8 text-center shadow-sm">
+            <div className="h-11 w-11 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-3">
+              <AlertCircle className="h-5 w-5 text-red-400" />
             </div>
-            <h2 className="text-[16px] font-bold text-red-700">
-              {err === "not_found"    && "Kartu Member Tidak Ditemukan"}
+            <h2 className="text-[14px] font-bold text-red-700">
+              {err === "not_found" && "Kartu Member Tidak Ditemukan"}
               {err === "invalid_slug" && "Format Link Tidak Valid"}
-              {err === "network"      && "Gagal Terhubung"}
+              {err === "network" && "Gagal Terhubung"}
             </h2>
-            <p className="text-[12px] text-gray-500 mt-2 leading-relaxed max-w-[280px] mx-auto">
-              {err === "not_found"    && "Link ini mungkin sudah berubah atau salah ketik. Minta link terbaru ke admin Temantiket."}
+            <p className="text-[11px] text-gray-500 mt-2 leading-relaxed max-w-[250px] mx-auto">
+              {err === "not_found" && "Link ini mungkin sudah berubah. Minta link terbaru ke admin Temantiket."}
               {err === "invalid_slug" && "Format harus /m/nama-0000, contoh /m/danang-0010."}
-              {err === "network"      && "Server sibuk. Coba refresh beberapa saat lagi."}
+              {err === "network" && "Server sibuk. Coba refresh beberapa saat lagi."}
             </p>
           </motion.div>
         )}
 
-        {/* ── Content ─────────────────────────────────────────────────────── */}
+        {/* ── Content ── */}
         {!loading && !err && data && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-4"
-          >
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }} className="space-y-3">
+
             {/* Referral Banner */}
             {isReferralView && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 flex items-center gap-2.5"
-              >
-                <div className="h-7 w-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0 text-base">
-                  🤝
-                </div>
+              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 flex items-center gap-2">
+                <div className="h-6 w-6 rounded-md bg-emerald-100 flex items-center justify-center shrink-0 text-sm">🤝</div>
                 <div>
-                  <p className="text-[12px] font-bold text-emerald-800">
-                    {refData
-                      ? `Kamu dibawa oleh ${refData.client.name.trim().split(/\s+/).slice(0, 2).join(" ")}!`
-                      : "Kamu dibuka dari link referral!"}
+                  <p className="text-[11px] font-bold text-emerald-800">
+                    {refData ? `Kamu dibawa oleh ${refData.client.name.trim().split(/\s+/).slice(0, 2).join(" ")}!` : "Kamu dibuka dari link referral!"}
                   </p>
-                  <p className="text-[10.5px] text-emerald-600 leading-snug">
-                    Order lewat Temantiket & sebut nama referrer ke admin — dapat bonus stamp 🎁
-                  </p>
+                  <p className="text-[9.5px] text-emerald-600">Order lewat Temantiket & sebut nama referrer — dapat bonus stamp 🎁</p>
                 </div>
               </motion.div>
             )}
@@ -508,140 +355,120 @@ export default function PublicMemberCardPage() {
             {/* Page Header */}
             <div className="flex items-center justify-between gap-2">
               <div>
-                <div className="inline-flex items-center gap-1 bg-blue-600/10 border border-blue-200 text-blue-600 text-[9.5px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mb-1">
+                <div className="inline-flex items-center gap-1 bg-blue-600/10 border border-blue-200 text-blue-600 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full mb-0.5">
                   <Sparkles className="h-2 w-2" /> Temantiket Member
                 </div>
-                <h1 className="text-[19px] md:text-[22px] font-black text-gray-900 tracking-tight leading-tight">
-                  {data.client.name}
-                </h1>
-                <p className="text-[11px] text-gray-400">
-                  {memberIdStr} · Bergabung {fmtDateShort(data.client.createdAt)}
-                </p>
+                <h1 className="text-[17px] md:text-[20px] font-black text-gray-900 tracking-tight leading-tight">{data.client.name}</h1>
+                <p className="text-[10px] text-gray-400">{memberIdStr} · Bergabung {fmtDateShort(data.client.createdAt)}</p>
               </div>
-              <a
-                href={ctaUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 bg-[#25D366] hover:bg-[#1eb858] text-white text-[12px] font-bold px-4 py-2 rounded-xl transition-colors shadow shadow-green-200 shrink-0"
-              >
-                <MessageCircle className="h-3.5 w-3.5" />
+              <a href={ctaUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 bg-[#25D366] hover:bg-[#1eb858] text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors shadow shadow-green-200 shrink-0">
+                <MessageCircle className="h-3 w-3" />
                 {isReferralView ? "Hubungi Admin" : "Pesan Sekarang"}
               </a>
             </div>
 
-            {/* ── Promo Poster — FULL WIDTH, prominent ──────────────────── */}
-            {posters.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.08 }}
-                className="rounded-2xl border border-blue-100 bg-white shadow-sm overflow-hidden"
-              >
-                <div className="px-3 pt-3 pb-2">
-                  <PromoCarousel posters={posters} />
-                </div>
-              </motion.div>
-            )}
+            {/* ── 2-col grid: left = poster+card, right = all info ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-[244px_1fr] gap-3">
 
-            {/* ── Main Grid ─────────────────────────────────────────────── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* LEFT: Poster (desktop) + Member Card + badges + Gold CTA */}
+              <div className="space-y-3">
 
-              {/* LEFT: Member Card + badges + Gold CTA */}
-              <div className="lg:col-span-1 space-y-4">
+                {/* Poster — desktop only */}
+                {posters.length > 0 && (
+                  <div className="hidden lg:block rounded-xl border border-blue-100 bg-white shadow-sm p-2.5">
+                    <PromoCarousel posters={posters} />
+                  </div>
+                )}
 
-                {/* Card */}
-                <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+                {/* Member Card */}
+                <div className="rounded-xl border border-gray-100 bg-white p-2 shadow-sm">
                   <MemberCard
                     client={{ name: data.client.name, createdAt: data.client.createdAt }}
                     memberIndex={data.client.memberIndex}
-                    orders={data.orders.map((o) => ({
-                      type: o.type, status: o.status, createdAt: o.createdAt, transitType: o.transitType,
-                    }))}
+                    orders={data.orders.map((o) => ({ type: o.type, status: o.status, createdAt: o.createdAt, transitType: o.transitType }))}
                     readOnly
                   />
-                  <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+                  <div className="flex items-center justify-center gap-1.5 mt-1.5 flex-wrap">
                     {(data.client.referralStamps ?? 0) > 0 && (
-                      <div className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10.5px] font-semibold px-2.5 py-1 rounded-full">
-                        <Gift className="h-2.5 w-2.5" /> +{data.client.referralStamps} referral
+                      <div className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9.5px] font-semibold px-2 py-0.5 rounded-full">
+                        <Gift className="h-2 w-2" /> +{data.client.referralStamps} referral
                       </div>
                     )}
                     {totalStamps >= 16 && (
-                      <div className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-[10.5px] font-semibold px-2.5 py-1 rounded-full">
-                        <Crown className="h-2.5 w-2.5" /> Full Card! 🎉
+                      <div className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-[9.5px] font-semibold px-2 py-0.5 rounded-full">
+                        <Crown className="h-2 w-2" /> Full Card! 🎉
                       </div>
                     )}
                     {isGoldMember && totalStamps < 16 && (
-                      <div className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-[10.5px] font-semibold px-2.5 py-1 rounded-full">
-                        <Crown className="h-2.5 w-2.5" /> Gold Member
+                      <div className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-[9.5px] font-semibold px-2 py-0.5 rounded-full">
+                        <Crown className="h-2 w-2" /> Gold Member
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Gold Member / Agent CTA */}
+                {/* Gold Member CTA */}
                 {isGoldMember && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.97 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 p-3 space-y-2"
-                  >
+                  <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
+                    className="rounded-lg border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 p-2.5 space-y-2">
                     <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
-                        <Crown className="h-4 w-4 text-amber-600" />
+                      <div className="h-7 w-7 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                        <Crown className="h-3.5 w-3.5 text-amber-600" />
                       </div>
                       <div>
-                        <p className="text-[12px] font-bold text-amber-900">Gold Member 🏅</p>
-                        <p className="text-[10px] text-amber-600">{totalStamps} transaksi — pelanggan terbaik</p>
+                        <p className="text-[11px] font-bold text-amber-900">Gold Member 🏅</p>
+                        <p className="text-[9.5px] text-amber-600">{totalStamps} transaksi — pelanggan terbaik</p>
                       </div>
                     </div>
-                    <p className="text-[11px] text-amber-800 leading-relaxed">
-                      Naik level jadi <strong>Agen Resmi Temantiket</strong> — komisi, akses eksklusif & lebih banyak benefit!
-                    </p>
-                    <a
-                      href={agentWaUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-1.5 w-full bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-bold py-2 rounded-lg transition-colors shadow shadow-amber-200"
-                    >
-                      <Crown className="h-3.5 w-3.5" /> Daftar Jadi Agen
+                    <p className="text-[10px] text-amber-800 leading-relaxed">Naik level jadi <strong>Agen Resmi Temantiket</strong> — komisi & akses eksklusif!</p>
+                    <a href={agentWaUrl} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 w-full bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors">
+                      <Crown className="h-3 w-3" /> Daftar Jadi Agen
                     </a>
                   </motion.div>
                 )}
               </div>
 
-              {/* RIGHT: Stats + Progress + Referral + History */}
-              <div className="lg:col-span-2 space-y-4">
+              {/* RIGHT: Poster (mobile) + Stats + Progress + Rewards + Referral + Agent + History */}
+              <div className="space-y-3">
 
-                {/* Stat Cards */}
-                <div className="grid grid-cols-3 gap-3">
+                {/* Poster — mobile only */}
+                {posters.length > 0 && (
+                  <div className="lg:hidden rounded-xl border border-blue-100 bg-white shadow-sm p-2.5">
+                    <PromoCarousel posters={posters} />
+                  </div>
+                )}
+
+                {/* Stat chips — 3 compact cards */}
+                <div className="grid grid-cols-3 gap-2">
                   {[
-                    { icon: Hash,       label: "Member ID",   value: memberIdStr,                      accent: "bg-blue-50 border-blue-100",   iconColor: "text-blue-600",   iconBg: "bg-blue-100" },
-                    { icon: Star,       label: "Total Stamp", value: `${totalStamps}/16`,              accent: "bg-amber-50 border-amber-100", iconColor: "text-amber-600",  iconBg: "bg-amber-100" },
-                    { icon: Calendar,   label: "Bergabung",   value: fmtDateShort(data.client.createdAt), accent: "bg-violet-50 border-violet-100",iconColor: "text-violet-600", iconBg: "bg-violet-100" },
+                    { icon: Hash,     label: "Member ID",   value: memberIdStr,                         accent: "bg-blue-50 border-blue-100",    iconColor: "text-blue-600",   iconBg: "bg-blue-100"   },
+                    { icon: Star,     label: "Total Stamp", value: `${totalStamps}/16`,                 accent: "bg-amber-50 border-amber-100",  iconColor: "text-amber-600",  iconBg: "bg-amber-100"  },
+                    { icon: Calendar, label: "Bergabung",   value: fmtDateShort(data.client.createdAt), accent: "bg-violet-50 border-violet-100", iconColor: "text-violet-600", iconBg: "bg-violet-100" },
                   ].map(({ icon: Icon, label, value, accent, iconColor, iconBg }) => (
-                    <div key={label} className={`rounded-2xl border p-3.5 bg-white ${accent}`}>
-                      <div className={`h-8 w-8 rounded-lg ${iconBg} flex items-center justify-center mb-2`}>
-                        <Icon className={`h-4 w-4 ${iconColor}`} />
+                    <div key={label} className={`rounded-xl border p-2.5 bg-white ${accent}`}>
+                      <div className={`h-6 w-6 rounded-md ${iconBg} flex items-center justify-center mb-1.5`}>
+                        <Icon className={`h-3 w-3 ${iconColor}`} />
                       </div>
-                      <p className="text-[13px] font-bold text-gray-900 leading-tight truncate">{value}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5 font-medium">{label}</p>
+                      <p className="text-[11.5px] font-bold text-gray-900 leading-tight truncate">{value}</p>
+                      <p className="text-[9px] text-gray-400 mt-0.5 font-medium">{label}</p>
                     </div>
                   ))}
                 </div>
 
-                {/* Progress */}
-                <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
+                {/* Progress Stamp */}
+                <div className="rounded-xl border border-gray-100 bg-white px-3 py-2.5 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-lg bg-blue-100 flex items-center justify-center">
-                        <TrendingUp className="h-3.5 w-3.5 text-blue-600" />
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-5 w-5 rounded-md bg-blue-100 flex items-center justify-center">
+                        <TrendingUp className="h-2.5 w-2.5 text-blue-600" />
                       </div>
-                      <span className="text-[13px] font-bold text-gray-900">Progress Stamp</span>
+                      <span className="text-[12px] font-bold text-gray-900">Progress Stamp</span>
                     </div>
-                    <span className="text-[13px] font-bold text-blue-600">{totalStamps} / 16</span>
+                    <span className="text-[12px] font-bold text-blue-600">{totalStamps} / 16</span>
                   </div>
-                  {/* 4-row progress bars — setiap bar = 1 baris (4 stamp) */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
                     {REWARD_MILESTONES.map((m) => {
                       const rowDone = totalStamps >= m.stamps;
                       const rowPrev = m.row === 1 ? 0 : REWARD_MILESTONES[m.row - 2].stamps;
@@ -649,50 +476,33 @@ export default function PublicMemberCardPage() {
                       const rowPct = rowDone ? 100 : (rowStampsIn / 4) * 100;
                       const isVip = m.row === 4;
                       return (
-                        <div key={m.row} className="flex-1 flex flex-col gap-1 items-center">
-                          <div className={`w-full h-2.5 rounded-full overflow-hidden border ${isVip ? "bg-amber-50 border-amber-200" : "bg-blue-50 border-blue-100"}`}>
-                            <div
-                              className={`h-full rounded-full transition-all duration-700 ${
-                                rowDone
-                                  ? isVip
-                                    ? "bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500"
-                                    : "bg-gradient-to-r from-blue-500 to-blue-400"
-                                  : isVip
-                                  ? "bg-amber-200"
-                                  : "bg-blue-300"
-                              }`}
-                              style={{ width: `${rowPct}%` }}
-                            />
+                        <div key={m.row} className="flex-1 flex flex-col gap-0.5 items-center">
+                          <div className={`w-full h-2 rounded-full overflow-hidden ${isVip ? "bg-amber-100" : "bg-blue-100"}`}>
+                            <div className={`h-full rounded-full transition-all duration-700 ${
+                              rowDone ? (isVip ? "bg-gradient-to-r from-amber-400 to-amber-500" : "bg-blue-500")
+                                      : (isVip ? "bg-amber-200" : "bg-blue-300")
+                            }`} style={{ width: `${rowPct}%` }} />
                           </div>
-                          <span className="text-[8.5px] font-semibold text-center leading-none" style={{ color: isVip ? "#b45309" : "#6b7280" }}>
-                            {m.emoji}
-                          </span>
+                          <span className="text-[8px] leading-none">{m.emoji}</span>
                         </div>
                       );
                     })}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-[11px] text-gray-400">
-                      Baris {Math.min(4, Math.floor(totalStamps / 4))}/4 selesai
-                    </p>
-                    <p className="text-[11px] text-blue-500 font-semibold">
-                      {totalStamps >= 16
-                        ? "🎉 Full card! Klaim reward VIP Qatar"
-                        : `${16 - totalStamps} stamp lagi menuju Qatar ✈️`}
-                    </p>
-                  </div>
+                  <p className="text-[10px] text-blue-500 font-semibold text-right">
+                    {totalStamps >= 16 ? "🎉 Full card! Klaim reward VIP Qatar" : `${16 - totalStamps} stamp lagi menuju Qatar ✈️`}
+                  </p>
                 </div>
 
-                {/* ── Hadiah Member Point ─────────────────────────────────── */}
-                <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-                  <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <h2 className="text-[13px] font-bold text-gray-900 flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-md bg-amber-100 flex items-center justify-center">
-                        <Gift className="h-3.5 w-3.5 text-amber-600" />
+                {/* Hadiah Member Point */}
+                <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+                  <div className="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
+                    <h2 className="text-[12px] font-bold text-gray-900 flex items-center gap-1.5">
+                      <div className="h-5 w-5 rounded-md bg-amber-100 flex items-center justify-center">
+                        <Gift className="h-2.5 w-2.5 text-amber-600" />
                       </div>
                       Hadiah Member Point
                     </h2>
-                    <span className="text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                    <span className="text-[9.5px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
                       {Math.min(4, Math.floor(totalStamps / 4))}/4 baris
                     </span>
                   </div>
@@ -702,408 +512,277 @@ export default function PublicMemberCardPage() {
                       const current  = totalStamps >= (m.row === 1 ? 0 : REWARD_MILESTONES[m.row - 2].stamps) && !unlocked;
                       const isVip    = m.row === 4;
 
-                      /* ── VIP Grand Reward — full-width premium card ─────── */
                       if (isVip) {
                         return (
                           <li key={m.row} className="overflow-hidden">
-                            <div
-                              className={`relative px-4 py-4 transition-all ${
-                                unlocked
-                                  ? "bg-gradient-to-br from-amber-400 via-yellow-300 to-amber-500"
-                                  : current
-                                  ? "bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 border-t-2 border-amber-300"
-                                  : "bg-gradient-to-br from-gray-50 to-slate-50"
-                              }`}
-                            >
-                              {/* shimmer overlay when unlocked */}
-                              {unlocked && (
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
-                              )}
-
-                              <div className="flex items-start gap-3">
-                                {/* Big icon */}
-                                <div className={`shrink-0 h-12 w-12 rounded-2xl flex items-center justify-center text-2xl border-2 shadow-sm ${
-                                  unlocked
-                                    ? "bg-white/30 border-white/50"
-                                    : current
-                                    ? "bg-amber-100 border-amber-300"
-                                    : "bg-gray-100 border-gray-200"
-                                }`}>
-                                  ✈️
-                                </div>
-
+                            <div className={`relative px-3 py-2.5 transition-all ${
+                              unlocked ? "bg-gradient-to-br from-amber-400 via-yellow-300 to-amber-500"
+                                : current ? "bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 border-t border-amber-200"
+                                : "bg-gray-50"
+                            }`}>
+                              {unlocked && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />}
+                              <div className="flex items-center gap-2.5">
+                                <div className={`shrink-0 h-9 w-9 rounded-xl flex items-center justify-center text-lg border ${
+                                  unlocked ? "bg-white/30 border-white/50" : current ? "bg-amber-100 border-amber-300" : "bg-gray-100 border-gray-200"
+                                }`}>✈️</div>
                                 <div className="flex-1 min-w-0">
-                                  {/* Badges row */}
-                                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                                      unlocked
-                                        ? "bg-white/40 text-amber-900"
-                                        : "bg-amber-400 text-white"
-                                    }`}>
-                                      👑 VIP EXCLUSIVE
-                                    </span>
-                                    <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
-                                      unlocked
-                                        ? "bg-white/30 text-amber-900"
-                                        : "bg-orange-100 text-orange-700 border border-orange-200"
-                                    }`}>
-                                      Full Card
-                                    </span>
+                                  <div className="flex items-center gap-1 mb-0.5 flex-wrap">
+                                    <span className={`text-[8.5px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full ${
+                                      unlocked ? "bg-white/40 text-amber-900" : "bg-amber-400 text-white"
+                                    }`}>👑 VIP</span>
                                   </div>
-
-                                  {/* Title */}
-                                  <p className={`text-[13.5px] font-black leading-snug ${
+                                  <p className={`text-[11.5px] font-black leading-tight ${
                                     unlocked ? "text-amber-950" : current ? "text-amber-900" : "text-gray-500"
-                                  }`}>
-                                    {m.label}
-                                  </p>
-
-                                  {/* Desc */}
-                                  <p className={`text-[10.5px] mt-1 leading-relaxed ${
-                                    unlocked ? "text-amber-900" : current ? "text-amber-700" : "text-gray-400"
-                                  }`}>
-                                    {m.desc}
-                                  </p>
-
-                                  {/* Highlight pills */}
+                                  }`}>{m.label}</p>
                                   {(current || unlocked) && (
-                                    <div className="flex flex-wrap gap-1.5 mt-2">
-                                      {["🛫 Airport Lounge", "🌆 City Tour Qatar", "🏨 Transit Eksklusif"].map((tag) => (
-                                        <span
-                                          key={tag}
-                                          className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full border ${
-                                            unlocked
-                                              ? "bg-white/30 border-white/40 text-amber-950"
-                                              : "bg-amber-50 border-amber-200 text-amber-800"
-                                          }`}
-                                        >
-                                          {tag}
-                                        </span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {["🛫 Lounge", "🌆 City Tour", "🏨 Transit"].map((tag) => (
+                                        <span key={tag} className={`text-[8.5px] font-semibold px-1.5 py-0.5 rounded-full border ${
+                                          unlocked ? "bg-white/30 border-white/40 text-amber-950" : "bg-amber-50 border-amber-200 text-amber-800"
+                                        }`}>{tag}</span>
                                       ))}
                                     </div>
                                   )}
                                 </div>
-
-                                {/* Status chip */}
-                                <div className="shrink-0">
-                                  <span className={`text-[9.5px] font-bold px-2.5 py-1 rounded-full border block text-center ${
-                                    unlocked
-                                      ? "bg-white/40 text-amber-950 border-white/50"
-                                      : current
-                                      ? "bg-amber-100 text-amber-700 border-amber-300"
-                                      : "bg-gray-100 text-gray-400 border-gray-200"
-                                  }`}>
-                                    {unlocked ? "✓ Diraih!" : current ? "Hampir!" : "16 stamp"}
-                                  </span>
-                                </div>
+                                <span className={`text-[8.5px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                                  unlocked ? "bg-white/40 text-amber-950 border-white/50"
+                                    : current ? "bg-amber-100 text-amber-700 border-amber-300"
+                                    : "bg-gray-100 text-gray-400 border-gray-200"
+                                }`}>{unlocked ? "✓ Diraih!" : current ? "Hampir!" : "16 stamp"}</span>
                               </div>
                             </div>
                           </li>
                         );
                       }
 
-                      /* ── Regular reward row ─────────────────────────────── */
                       return (
-                        <li
-                          key={m.row}
-                          className={`flex items-start gap-3 px-4 py-3.5 transition-colors ${
-                            unlocked ? "bg-emerald-50/50" : current ? "bg-blue-50/40" : ""
-                          }`}
-                        >
-                          {/* Icon badge */}
-                          <div className={`shrink-0 h-10 w-10 rounded-xl flex items-center justify-center text-center border ${
-                            unlocked
-                              ? "bg-emerald-100 border-emerald-200"
-                              : current
-                              ? "bg-blue-100 border-blue-200"
+                        <li key={m.row} className={`flex items-center gap-2.5 px-3 py-2.5 transition-colors ${
+                          unlocked ? "bg-emerald-50/50" : current ? "bg-blue-50/40" : ""
+                        }`}>
+                          <div className={`shrink-0 h-8 w-8 rounded-lg flex items-center justify-center border ${
+                            unlocked ? "bg-emerald-100 border-emerald-200"
+                              : current ? "bg-blue-100 border-blue-200"
                               : "bg-gray-50 border-gray-200"
                           }`}>
-                            <span className="text-xl leading-none">{m.emoji}</span>
+                            <span className="text-base leading-none">{m.emoji}</span>
                           </div>
-
-                          {/* Info */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className={`text-[12.5px] font-bold leading-tight ${
-                                unlocked ? "text-emerald-800" : current ? "text-blue-800" : "text-gray-500"
-                              }`}>
-                                {m.label}
+                            <p className={`text-[11px] font-bold leading-tight truncate ${
+                              unlocked ? "text-emerald-800" : current ? "text-blue-800" : "text-gray-500"
+                            }`}>{m.label}</p>
+                            {(unlocked || current) && (
+                              <p className={`text-[9.5px] mt-0.5 leading-snug line-clamp-1 ${unlocked ? "text-emerald-600" : "text-gray-400"}`}>
+                                {m.desc}
                               </p>
-                            </div>
-                            <p className={`text-[10.5px] mt-0.5 leading-relaxed ${
-                              unlocked ? "text-emerald-700" : "text-gray-400"
-                            }`}>
-                              {m.desc}
-                            </p>
+                            )}
                           </div>
-
-                          {/* Status */}
-                          <div className="shrink-0">
-                            <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border block text-center ${
-                              unlocked
-                                ? "bg-emerald-100 text-emerald-700 border-emerald-300"
-                                : current
-                                ? "bg-blue-100 text-blue-600 border-blue-200"
-                                : "bg-gray-100 text-gray-400 border-gray-200"
-                            }`}>
-                              {unlocked ? "✓ Diraih" : current ? "Dalam proses" : `${m.stamps} stamp`}
-                            </span>
-                          </div>
+                          <span className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${
+                            unlocked ? "bg-emerald-100 text-emerald-700 border-emerald-300"
+                              : current ? "bg-blue-100 text-blue-600 border-blue-200"
+                              : "bg-gray-100 text-gray-400 border-gray-200"
+                          }`}>{unlocked ? "✓ Diraih" : current ? "Dalam proses" : `${m.stamps} ✦`}</span>
                         </li>
                       );
                     })}
                   </ul>
-                  <div className="px-4 py-3 bg-gradient-to-r from-amber-50 to-yellow-50 border-t border-amber-100">
-                    <p className="text-[10.5px] text-amber-700 leading-relaxed">
-                      💡 Setiap 4 stamp = 1 baris selesai. Klaim hadiah via WhatsApp ke admin Temantiket setelah baris terpenuhi. Grand Reward Qatar menanti di baris ke-4!
+                  <div className="px-3 py-2 bg-amber-50 border-t border-amber-100">
+                    <p className="text-[9.5px] text-amber-700 leading-relaxed">
+                      💡 Setiap 4 stamp = 1 baris selesai. Klaim via WhatsApp ke admin. Grand Reward Qatar di baris ke-4!
                     </p>
                   </div>
                 </div>
 
-                {/* Ajak Teman */}
+                {/* Referral + Agent CTA — side by side on md+ */}
                 {!isReferralView && (
-                  <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-lg bg-blue-100 flex items-center justify-center">
-                        <Users className="h-3.5 w-3.5 text-blue-600" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+                    {/* Ajak Teman */}
+                    <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm space-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-5 w-5 rounded-md bg-blue-100 flex items-center justify-center">
+                          <Users className="h-2.5 w-2.5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h2 className="text-[11.5px] font-bold text-gray-900 leading-tight">Ajak Teman, Dapat Reward!</h2>
+                          <p className="text-[9.5px] text-gray-400">Referral → teman order → kamu +1 stamp</p>
+                        </div>
                       </div>
-                      <div>
-                        <h2 className="text-[13px] font-bold text-gray-900">Ajak Teman, Dapat Reward!</h2>
-                        <p className="text-[10.5px] text-gray-400">Share link referral → teman order → kamu +1 stamp</p>
+                      <div className="flex gap-1.5">
+                        <a href={referralWaUrl} target="_blank" rel="noopener noreferrer"
+                          className="flex-1 flex items-center justify-center gap-1 bg-[#25D366] hover:bg-[#1eb858] text-white text-[11px] font-bold py-2 rounded-lg transition-colors">
+                          <Share2 className="h-3 w-3" /> Ajak via WA
+                        </a>
+                        <button type="button" onClick={handleCopyReferral}
+                          className="flex items-center gap-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 text-[10.5px] font-semibold py-2 px-2.5 rounded-lg transition-colors">
+                          {referralCopied ? <><Check className="h-3 w-3 text-emerald-500" /> Tersalin</> : <><Copy className="h-3 w-3" /> Salin</>}
+                        </button>
                       </div>
+                      <p className="text-[8.5px] text-gray-400 font-mono break-all bg-gray-50 rounded-md px-2 py-1 border border-gray-100 leading-relaxed">
+                        {referralUrl}
+                      </p>
                     </div>
-                    <div className="flex gap-2">
-                      <a
-                        href={referralWaUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#1eb858] text-white text-[12.5px] font-bold py-2.5 rounded-xl transition-colors shadow shadow-green-100"
-                      >
-                        <Share2 className="h-3.5 w-3.5" /> Ajak via WhatsApp
-                      </a>
-                      <button
-                        type="button"
-                        onClick={handleCopyReferral}
-                        className="flex items-center gap-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 text-[12px] font-semibold py-2.5 px-3 rounded-xl transition-colors"
-                      >
-                        {referralCopied
-                          ? <><Check className="h-3.5 w-3.5 text-emerald-500" /> Tersalin!</>
-                          : <><Copy className="h-3.5 w-3.5" /> Salin</>}
-                      </button>
-                    </div>
-                    <p className="text-[9.5px] text-gray-400 font-mono break-all bg-gray-50 rounded-lg px-2.5 py-1.5 border border-gray-100">
-                      {referralUrl}
-                    </p>
+
+                    {/* Gabung Jadi Agen */}
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                      className="rounded-xl overflow-hidden shadow-sm"
+                      style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 55%, #312e81 100%)" }}>
+                      <div className="h-0.5 w-full bg-gradient-to-r from-blue-300 via-indigo-300 to-violet-400 opacity-60" />
+                      <div className="p-3 space-y-2.5">
+                        <div className="flex items-start gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0 border border-white/20">
+                            <Briefcase className="h-4 w-4 text-white" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-white font-black text-[12.5px] leading-tight">Jadi Agen Temantiket</p>
+                              <span className="text-[8px] font-black uppercase tracking-wider bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full">Partner Resmi</span>
+                            </div>
+                            <p className="text-blue-200 text-[10px] mt-0.5 leading-snug">
+                              {totalStamps > 0 ? `${totalStamps} transaksi — saatnya hasilkan komisi!` : "Hasilkan penghasilan jadi partner travel."}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {[
+                            { icon: DollarSign, label: "Komisi per Order" },
+                            { icon: Users,      label: "Bonus Referral"   },
+                            { icon: Zap,        label: "Poin & Misi"      },
+                            { icon: TrendingUp, label: "Dashboard Agent"  },
+                          ].map(({ icon: Icon, label }) => (
+                            <div key={label} className="flex items-center gap-1.5 bg-white/10 rounded-lg px-2 py-1.5 border border-white/10">
+                              <Icon className="h-2.5 w-2.5 text-blue-300 shrink-0" />
+                              <p className="text-white text-[9.5px] font-semibold leading-tight">{label}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {["Tanpa modal", "Leaderboard", "Support admin"].map((t) => (
+                            <div key={t} className="flex items-center gap-0.5">
+                              <BadgeCheck className="h-2.5 w-2.5 text-emerald-400 shrink-0" />
+                              <span className="text-[9px] text-blue-200">{t}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <a href={`https://wa.me/${AGENT_RECRUIT_WA}?text=${encodeURIComponent(
+                            `Halo Admin Temantiket! 👋\n\nSaya ${data.client.name.trim()} (Member ${memberIdStr}) tertarik bergabung sebagai Agen Temantiket.\n\nSudah ${totalStamps} transaksi. Bisa share info syarat & benefit jadi agen? Terima kasih! ✈️`
+                          )}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-1.5 w-full bg-white hover:bg-blue-50 text-blue-900 text-[11.5px] font-black py-2 rounded-lg transition-colors shadow-md shadow-blue-900/20">
+                          <Briefcase className="h-3.5 w-3.5" />
+                          Mulai Jadi Partner
+                          <ExternalLink className="h-3 w-3 opacity-60" />
+                        </a>
+                      </div>
+                    </motion.div>
                   </div>
                 )}
 
-                {/* ── Gabung Jadi Agen ─────────────────────────────────── */}
-                {!isReferralView && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 }}
-                    className="rounded-2xl overflow-hidden shadow-sm"
-                    style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 55%, #312e81 100%)" }}
-                  >
-                    {/* Top accent bar */}
-                    <div className="h-0.5 w-full bg-gradient-to-r from-blue-300 via-indigo-300 to-violet-400 opacity-60" />
-
-                    <div className="p-5 space-y-4">
-                      {/* Header */}
-                      <div className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0 border border-white/20">
-                          <Briefcase className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-white font-black text-[15px] leading-tight">
-                              Gabung Jadi Agen Temantiket
-                            </p>
-                            <span className="text-[9px] font-black uppercase tracking-wider bg-amber-400 text-amber-900 px-2 py-0.5 rounded-full">
-                              Partner Resmi
-                            </span>
-                          </div>
-                          <p className="text-blue-200 text-[11.5px] mt-0.5 leading-relaxed">
-                            {totalStamps > 0
-                              ? `Sudah ${totalStamps} transaksi bersama kami — saatnya hasilkan komisi dari setiap perjalanan.`
-                              : "Hasilkan penghasilan tambahan dengan menjadi partner perjalanan terpercaya."}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* 4 Benefit pills */}
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { icon: DollarSign, label: "Komisi per Order",    desc: "Dapatkan fee setiap order berhasil"        },
-                          { icon: Users,      label: "Bonus Referral",       desc: "Tambah stamp setiap ajak member baru"     },
-                          { icon: Zap,        label: "Sistem Poin & Misi",   desc: "Misi mingguan + konversi poin jadi cash"  },
-                          { icon: TrendingUp, label: "Dashboard Agent",      desc: "Pantau komisi, order & performa realtime" },
-                        ].map(({ icon: Icon, label, desc }) => (
-                          <div key={label} className="flex items-start gap-2.5 bg-white/10 hover:bg-white/15 transition-colors rounded-xl px-3 py-2.5 border border-white/10">
-                            <div className="h-6 w-6 rounded-lg bg-white/15 flex items-center justify-center shrink-0 mt-0.5">
-                              <Icon className="h-3 w-3 text-blue-200" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-white text-[11px] font-bold leading-tight">{label}</p>
-                              <p className="text-blue-300 text-[10px] leading-relaxed mt-0.5">{desc}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Trust row */}
-                      <div className="flex items-center gap-3 flex-wrap">
-                        {[
-                          { icon: BadgeCheck, text: "Tanpa modal awal" },
-                          { icon: BadgeCheck, text: "Leaderboard agen" },
-                          { icon: BadgeCheck, text: "Support penuh admin" },
-                        ].map(({ icon: Icon, text }) => (
-                          <div key={text} className="flex items-center gap-1">
-                            <Icon className="h-3 w-3 text-emerald-400 shrink-0" />
-                            <span className="text-[10.5px] text-blue-200">{text}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* CTA */}
-                      <a
-                        href={`https://wa.me/${AGENT_RECRUIT_WA}?text=${encodeURIComponent(
-                          `Halo Admin Temantiket! 👋\n\nSaya ${data.client.name.trim()} (Member ${memberIdStr}) tertarik untuk bergabung sebagai Agen Temantiket.\n\nSudah ${totalStamps} transaksi bersama Temantiket dan ingin mulai menghasilkan komisi. Bisa tolong share info syarat & benefit jadi agen? Terima kasih! ✈️`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full bg-white hover:bg-blue-50 text-blue-900 text-[13.5px] font-black py-3 rounded-xl transition-colors shadow-lg shadow-blue-900/30"
-                      >
-                        <Briefcase className="h-4 w-4" />
-                        Mulai Jadi Partner Temantiket
-                        <ExternalLink className="h-3.5 w-3.5 opacity-60" />
-                      </a>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Riwayat Transaksi */}
-                <section className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-                  <header className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <h2 className="text-[13px] font-bold text-gray-900 flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-md bg-blue-100 flex items-center justify-center">
-                        <History className="h-3.5 w-3.5 text-blue-600" />
+                {/* Riwayat Transaksi — compact + collapsible */}
+                <section className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+                  <header className="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
+                    <h2 className="text-[12px] font-bold text-gray-900 flex items-center gap-1.5">
+                      <div className="h-5 w-5 rounded-md bg-blue-100 flex items-center justify-center">
+                        <History className="h-2.5 w-2.5 text-blue-600" />
                       </div>
                       Riwayat Transaksi
                     </h2>
                     <div className="flex items-center gap-1.5">
                       {(data.client.referralStamps ?? 0) > 0 && (
-                        <span className="text-[9.5px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                        <span className="text-[8.5px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
                           +{data.client.referralStamps} ref
                         </span>
                       )}
-                      <span className="text-[11px] text-gray-400 font-mono tabular-nums">
-                        {data.orders.length}/16
-                      </span>
+                      <span className="text-[10px] text-gray-400 font-mono tabular-nums">{data.orders.length}/16</span>
                     </div>
                   </header>
 
                   {history.length === 0 ? (
-                    <div className="px-4 py-12 text-center">
-                      <div className="h-14 w-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mx-auto mb-3">
-                        <span className="text-2xl">✈️</span>
-                      </div>
-                      <p className="text-[13px] font-semibold text-gray-600">Belum ada stamp.</p>
-                      <p className="text-[11px] text-gray-400 mt-1">Pesan paket pertama untuk mulai koleksi!</p>
+                    <div className="px-3 py-8 text-center">
+                      <span className="text-2xl">✈️</span>
+                      <p className="text-[12px] font-semibold text-gray-600 mt-2">Belum ada stamp.</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Pesan paket pertama untuk mulai koleksi!</p>
                     </div>
                   ) : (
-                    <ul className="divide-y divide-gray-50">
-                      {history.map((stamp, i) => {
-                        const steps       = ORDER_PROCESS_STEPS[stamp.type];
-                        const processStep = stamp.processStep ?? 0;
-                        const hasProgress = steps && (processStep > 0 || stamp.status === "Completed");
-                        return (
-                          <li key={i} className="px-4 py-3.5 space-y-2.5">
-                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-xl bg-blue-50 border border-blue-100 text-xl flex items-center justify-center shrink-0">
-                                {stampEmoji(stamp)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-semibold text-gray-900 truncate">
-                                  {stampLabel(stamp)}
-                                </p>
-                                <p className="text-[10.5px] text-gray-400 mt-0.5">
-                                  {fmtDateLong(stamp.createdAt)}
-                                </p>
-                              </div>
-                              <span className={`text-[9.5px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg shrink-0 ${
-                                stamp.status === "Completed"
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                  : stamp.status === "Paid"
-                                  ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                  : "bg-amber-50 text-amber-700 border border-amber-200"
-                              }`}>
-                                {stamp.status}
-                              </span>
-                            </div>
-                            {hasProgress && steps && (
-                              <div className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
-                                <p className="text-[9.5px] font-bold uppercase tracking-widest text-gray-400 mb-2">
-                                  📍 Progress Proses
-                                </p>
-                                <OrderProgressTracker
-                                  type={stamp.type}
-                                  currentStep={stamp.status === "Completed" ? steps.length - 1 : processStep}
-                                  readOnly
-                                />
-                              </div>
-                            )}
-                          </li>
-                        );
-                      })}
-
-                      {(data.client.referralStamps ?? 0) > 0 &&
-                        Array.from({ length: data.client.referralStamps }).map((_, i) => {
-                          const detail: ReferralDetail | undefined = (data.client.referralDetails ?? [])[i];
-                          const firstName = detail?.name?.trim().split(/\s+/).slice(0, 2).join(" ");
-                          const orderLabel = detail?.orderType ? (TYPE_LABEL[detail.orderType] ?? detail.orderType) : null;
+                    <>
+                      <ul className="divide-y divide-gray-50">
+                        {(showAllHistory ? history : history.slice(0, 3)).map((stamp, i) => {
+                          const steps       = ORDER_PROCESS_STEPS[stamp.type];
+                          const processStep = stamp.processStep ?? 0;
+                          const hasProgress = steps && (processStep > 0 || stamp.status === "Completed");
                           return (
-                            <li key={`ref-${i}`} className="px-4 py-3.5 flex items-center gap-3 bg-emerald-50/40">
-                              <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200 text-xl flex items-center justify-center shrink-0">
-                                🎁
+                            <li key={i} className="px-3 py-2.5 space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-lg bg-blue-50 border border-blue-100 text-base flex items-center justify-center shrink-0">
+                                  {stampEmoji(stamp)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[11.5px] font-semibold text-gray-900 truncate leading-tight">{stampLabel(stamp)}</p>
+                                  <p className="text-[9.5px] text-gray-400">{fmtDateLong(stamp.createdAt)}</p>
+                                </div>
+                                <span className={`text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md shrink-0 border ${
+                                  stamp.status === "Completed" ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : stamp.status === "Paid" ? "bg-blue-50 text-blue-700 border-blue-200"
+                                    : "bg-amber-50 text-amber-700 border-amber-200"
+                                }`}>{stamp.status}</span>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-semibold text-gray-900 truncate">
-                                  {firstName
-                                    ? `Referral dari ${firstName}`
-                                    : "Bonus Referral"}
-                                </p>
-                                <p className="text-[10.5px] text-gray-400 mt-0.5 truncate">
-                                  {detail
-                                    ? [orderLabel, fmtDateLong(detail.createdAt)].filter(Boolean).join(" · ")
-                                    : "Teman berhasil order via referral"}
-                                </p>
-                              </div>
-                              <span className="text-[9.5px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                                +1 stamp
-                              </span>
+                              {hasProgress && steps && showAllHistory && (
+                                <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2">
+                                  <p className="text-[8.5px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">📍 Progress Proses</p>
+                                  <OrderProgressTracker
+                                    type={stamp.type}
+                                    currentStep={stamp.status === "Completed" ? steps.length - 1 : processStep}
+                                    readOnly
+                                  />
+                                </div>
+                              )}
                             </li>
                           );
-                        })
-                      }
-                    </ul>
+                        })}
+
+                        {showAllHistory && (data.client.referralStamps ?? 0) > 0 &&
+                          Array.from({ length: data.client.referralStamps }).map((_, i) => {
+                            const detail: ReferralDetail | undefined = (data.client.referralDetails ?? [])[i];
+                            const firstName = detail?.name?.trim().split(/\s+/).slice(0, 2).join(" ");
+                            const orderLabel = detail?.orderType ? (TYPE_LABEL[detail.orderType] ?? detail.orderType) : null;
+                            return (
+                              <li key={`ref-${i}`} className="px-3 py-2.5 flex items-center gap-2 bg-emerald-50/40">
+                                <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-200 text-base flex items-center justify-center shrink-0">🎁</div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[11.5px] font-semibold text-gray-900 truncate leading-tight">
+                                    {firstName ? `Referral dari ${firstName}` : "Bonus Referral"}
+                                  </p>
+                                  <p className="text-[9.5px] text-gray-400 truncate">
+                                    {detail ? [orderLabel, fmtDateLong(detail.createdAt)].filter(Boolean).join(" · ") : "Teman berhasil order via referral"}
+                                  </p>
+                                </div>
+                                <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">+1 stamp</span>
+                              </li>
+                            );
+                          })
+                        }
+                      </ul>
+
+                      {totalHistoryItems > 3 && (
+                        <button type="button" onClick={() => setShowAllHistory((v) => !v)}
+                          className="w-full flex items-center justify-center gap-1.5 py-2 text-[10.5px] font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors border-t border-gray-100">
+                          {showAllHistory
+                            ? <><ChevronRight className="h-3 w-3 -rotate-90" /> Sembunyikan</>
+                            : <><ChevronRight className="h-3 w-3 rotate-90" /> Lihat Semua ({totalHistoryItems} transaksi)</>}
+                        </button>
+                      )}
+                    </>
                   )}
                 </section>
               </div>
             </div>
 
             {/* Bottom URL watermark */}
-            <p className="text-center text-[10px] text-gray-300 pt-2 font-mono break-all">
-              {publicUrl}
-            </p>
+            <p className="text-center text-[9.5px] text-gray-300 pt-1 font-mono break-all">{publicUrl}</p>
           </motion.div>
         )}
       </main>
 
-      {/* ── Footer ──────────────────────────────────────────────────────────
-          Background matches the page gradient — no jarring color block. */}
-      <footer className="border-t border-gray-100/60 px-4 py-5 text-center text-[10px] text-gray-400">
+      <footer className="border-t border-gray-100/60 px-4 py-3 text-center text-[9.5px] text-gray-400">
         © Temantiket — Member Card View · Read-Only · Data ditampilkan terbatas.
       </footer>
     </div>
