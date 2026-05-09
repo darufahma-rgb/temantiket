@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Gift, Lock, Check, Hourglass, X as XIcon, Zap, ShoppingBag,
-  Banknote, Wifi, Shirt, Flame, Star, Package,
+  Banknote, Wifi, Shirt, Flame, Star,
 } from "lucide-react";
 import type { RewardKey } from "@/features/rewards/rewardsRepo";
 import { motion } from "framer-motion";
@@ -160,11 +160,12 @@ export function RewardCatalog({
       </div>
 
       {/* Catalog grid */}
-      <div className="p-3 md:p-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      <div className="p-3 md:p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         {REWARD_CATALOG.map((reward, i) => {
           const reason = lockReason(reward);
           const locked = reason !== null;
           const tierMeta = TIERS.find((t) => t.key === reward.minTier)!;
+          const RewardIco = REWARD_ICON[reward.key] ?? CATEGORY_ICON[reward.category];
 
           return (
             <motion.div
@@ -173,43 +174,38 @@ export function RewardCatalog({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
               className={cn(
-                "rounded-xl border p-3 transition-all",
+                "rounded-xl border flex flex-col transition-all",
                 locked
                   ? "bg-slate-50/70 border-slate-100 opacity-80"
                   : "bg-white border-blue-100 hover:border-blue-300 hover:shadow-md shadow-sm",
               )}
             >
-              <div className="flex items-start gap-2.5">
-                {(() => {
-                  const RewardIco = REWARD_ICON[reward.key] ?? CATEGORY_ICON[reward.category];
-                  return (
-                    <div className={cn(
-                      "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
-                      locked ? "bg-slate-100 text-slate-400" : CATEGORY_COLOR[reward.category],
-                    )}>
-                      <RewardIco className="h-5 w-5 stroke-[1.5]" />
-                    </div>
-                  );
-                })()}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-1">
-                    <p className="text-[12px] font-bold text-slate-700 leading-tight">{reward.label}</p>
-                    <span className={cn(
-                      "shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full",
-                      locked ? "bg-slate-100 text-slate-400" : CATEGORY_COLOR[reward.category],
-                    )}>
-                      {CATEGORY_LABEL[reward.category]}
-                    </span>
+              {/* Card top content */}
+              <div className="p-3 flex-1">
+                {/* Icon + category badge row */}
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className={cn(
+                    "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
+                    locked ? "bg-slate-100 text-slate-400" : CATEGORY_COLOR[reward.category],
+                  )}>
+                    <RewardIco className="h-5 w-5 stroke-[1.5]" />
                   </div>
-                  <p className="text-[10.5px] text-slate-400 mt-0.5 line-clamp-2 leading-snug">
-                    {reward.description}
-                  </p>
+                  <span className={cn(
+                    "text-[9px] font-bold px-2 py-0.5 rounded-full",
+                    locked ? "bg-slate-100 text-slate-400" : CATEGORY_COLOR[reward.category],
+                  )}>
+                    {CATEGORY_LABEL[reward.category]}
+                  </span>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between mt-2.5 gap-2">
-                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                  {/* Poin cost */}
+                {/* Title + description */}
+                <p className="text-[13px] font-bold text-slate-700 leading-snug mb-1">{reward.label}</p>
+                <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed mb-3">
+                  {reward.description}
+                </p>
+
+                {/* Badges row */}
+                <div className="flex flex-wrap items-center gap-1.5">
                   <span className={cn(
                     "text-[10.5px] font-mono font-extrabold px-2 py-0.5 rounded-full border",
                     remaining >= reward.costPoints
@@ -218,13 +214,11 @@ export function RewardCatalog({
                   )}>
                     ⭐ {reward.costPoints}
                   </span>
-                  {/* Tier badge */}
                   {reward.minTier !== "bronze" && (
                     <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                       {tierMeta.emoji} {tierMeta.label}+
                     </span>
                   )}
-                  {/* Min order badge */}
                   {reward.minCompletedOrders > 1 && (
                     <span className={cn(
                       "text-[9.5px] font-bold px-1.5 py-0.5 rounded-full border",
@@ -236,27 +230,30 @@ export function RewardCatalog({
                     </span>
                   )}
                 </div>
+              </div>
 
+              {/* Large button at bottom */}
+              <div className="px-3 pb-3">
                 <Button
-                  size="sm"
+                  size="lg"
                   variant={locked ? "outline" : "default"}
                   disabled={locked}
                   onClick={() => setConfirmTarget(reward)}
                   className={cn(
-                    "shrink-0 h-7 px-2.5 text-[11px] rounded-lg",
-                    !locked && "bg-blue-600 hover:bg-blue-700 text-white border-0",
-                    locked && "border-slate-200 text-slate-400",
+                    "w-full h-11 text-[13px] font-bold rounded-xl transition-all",
+                    !locked && "bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md border-0",
+                    locked && "border-slate-200 text-slate-400 bg-slate-50/50",
                   )}
                 >
                   {locked ? (
                     <>
-                      <Lock className="h-3 w-3 mr-1 stroke-[1.75]" />
-                      {reason!.length > 16 ? reason!.slice(0, 15) + "…" : reason}
+                      <Lock className="h-3.5 w-3.5 mr-2 stroke-[2]" />
+                      {reason}
                     </>
                   ) : (
                     <>
-                      <Zap className="h-3 w-3 mr-1 stroke-[1.75]" />
-                      Tukar
+                      <Zap className="h-4 w-4 mr-2 stroke-[2] fill-current opacity-80" />
+                      Tukar Poin
                     </>
                   )}
                 </Button>
