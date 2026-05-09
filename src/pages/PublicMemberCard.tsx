@@ -56,25 +56,22 @@ function fmtDateShort(iso: string): string {
 function PromoCarousel({ posters }: { posters: PromoPost[] }) {
   const [active, setActive] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const autoRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoRef   = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const scrollTo = (idx: number) => {
     const clamped = Math.max(0, Math.min(idx, posters.length - 1));
     setActive(clamped);
-    scrollRef.current?.children[clamped]?.scrollIntoView({
-      behavior: "smooth", block: "nearest", inline: "center",
-    });
+    const el = scrollRef.current?.children[clamped] as HTMLElement | undefined;
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
   };
 
-  // Auto-advance every 5 s
   useEffect(() => {
     if (posters.length <= 1) return;
     autoRef.current = setInterval(() => {
       setActive((prev) => {
         const next = (prev + 1) % posters.length;
-        scrollRef.current?.children[next]?.scrollIntoView({
-          behavior: "smooth", block: "nearest", inline: "center",
-        });
+        const el = scrollRef.current?.children[next] as HTMLElement | undefined;
+        el?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
         return next;
       });
     }, 5000);
@@ -106,35 +103,45 @@ function PromoCarousel({ posters }: { posters: PromoPost[] }) {
         </div>
       </div>
 
-      {/* Slides */}
+      {/* Compact poster cards — 2 visible on mobile, 3 on md+ */}
       <div
         ref={scrollRef}
-        className="flex overflow-x-auto no-scrollbar snap-x snap-mandatory"
+        className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-1"
         onScroll={(e) => {
-          const el = e.currentTarget;
-          const idx = Math.round(el.scrollLeft / el.offsetWidth);
+          const el   = e.currentTarget;
+          const card = el.children[0] as HTMLElement | undefined;
+          const w    = card ? card.offsetWidth + 12 : el.offsetWidth;
+          const idx  = Math.round(el.scrollLeft / w);
           setActive(Math.min(idx, posters.length - 1));
         }}
       >
         {posters.map((post) => (
-          <div key={post.id} className="flex-none w-full snap-center">
+          <div
+            key={post.id}
+            /* ~47% wide on mobile shows 2 cards + peek; ~30% on md shows 3 */
+            className="flex-none w-[47%] sm:w-[30%] snap-start"
+          >
             {post.imageUrl ? (
-              <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-md">
-                <img
-                  src={post.imageUrl}
-                  alt={post.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-                {(post.title || post.caption) && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent flex flex-col justify-end p-5">
+              <div className="group flex flex-col rounded-2xl overflow-hidden shadow-sm border border-gray-100 bg-white hover:shadow-md transition-shadow">
+                {/* Poster image — fixed 4:5 portrait ratio */}
+                <div className="relative w-full overflow-hidden" style={{ aspectRatio: "4 / 5" }}>
+                  <img
+                    src={post.imageUrl}
+                    alt={post.title}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                {/* Caption below image */}
+                {(post.title || post.caption || post.ctaUrl) && (
+                  <div className="px-3 py-2.5 space-y-1.5">
                     {post.title && (
-                      <p className="text-white font-extrabold text-[15px] md:text-[17px] leading-snug drop-shadow-sm">
+                      <p className="text-gray-900 font-bold text-[12px] leading-snug line-clamp-2">
                         {post.title}
                       </p>
                     )}
                     {post.caption && (
-                      <p className="text-white/85 text-[12px] mt-1 leading-relaxed drop-shadow-sm">
+                      <p className="text-gray-400 text-[10.5px] leading-relaxed line-clamp-2">
                         {post.caption}
                       </p>
                     )}
@@ -143,40 +150,50 @@ function PromoCarousel({ posters }: { posters: PromoPost[] }) {
                         href={post.ctaUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-3 self-start inline-flex items-center gap-1.5 bg-white hover:bg-blue-50 text-blue-900 text-[12px] font-bold px-4 py-1.5 rounded-full transition-colors shadow"
+                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 text-[10.5px] font-semibold transition-colors"
                       >
-                        {post.ctaLabel || "Selengkapnya"} <ExternalLink className="h-3 w-3" />
+                        {post.ctaLabel || "Selengkapnya"} <ExternalLink className="h-2.5 w-2.5" />
                       </a>
                     )}
                   </div>
                 )}
               </div>
             ) : (
-              <div className="w-full rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 p-6 shadow-sm">
-                {post.title && (
-                  <p className="text-gray-900 font-extrabold text-[16px] leading-snug">{post.title}</p>
-                )}
-                {post.caption && (
-                  <p className="text-gray-500 text-[13px] mt-2 leading-relaxed">{post.caption}</p>
-                )}
-                {post.ctaUrl && (
-                  <a
-                    href={post.ctaUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[12px] font-bold px-4 py-2 rounded-xl transition-colors"
-                  >
-                    {post.ctaLabel || "Selengkapnya"} <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
+              /* Text-only card — same compact size */
+              <div
+                className="flex flex-col rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 shadow-sm overflow-hidden"
+                style={{ aspectRatio: "4 / 5" }}
+              >
+                <div className="flex-1 flex flex-col justify-center px-4 py-4 space-y-2">
+                  {post.title && (
+                    <p className="text-gray-900 font-extrabold text-[13px] leading-snug line-clamp-3">
+                      {post.title}
+                    </p>
+                  )}
+                  {post.caption && (
+                    <p className="text-gray-500 text-[10.5px] leading-relaxed line-clamp-3">
+                      {post.caption}
+                    </p>
+                  )}
+                  {post.ctaUrl && (
+                    <a
+                      href={post.ctaUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 self-start inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      {post.ctaLabel || "Selengkapnya"} <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                  )}
+                </div>
               </div>
             )}
           </div>
         ))}
       </div>
 
-      {/* Prev / Next */}
-      {posters.length > 1 && (
+      {/* Prev / Next — only shown when more than 2 posters */}
+      {posters.length > 2 && (
         <div className="flex items-center justify-center gap-3">
           <button
             onClick={() => scrollTo(active - 1)}
@@ -339,13 +356,15 @@ export default function PublicMemberCardPage() {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-30 border-b border-white/80 bg-white/90 backdrop-blur-md shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link to="/">
+          <Link to="/" className="flex items-center gap-2">
             <img
-              src="/temantiket-logo.png"
+              src="/logo-igh-tour-maskable.png"
               alt="Temantiket"
-              className="h-8 w-auto object-contain"
-              style={{ filter: "invert(1)" }}
+              className="h-7 w-7 rounded-lg object-cover shrink-0"
             />
+            <span className="text-[15px] font-extrabold tracking-tight text-blue-600 leading-none">
+              temantiket
+            </span>
           </Link>
           <div className="flex items-center gap-3">
             <Link
