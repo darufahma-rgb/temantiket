@@ -89,7 +89,7 @@ const OWNER_SECTIONS: SectionDef[] = [
       { title: "Visa Tracker",        url: "/visa-tracker",        icon: Landmark },
       { title: "Manajemen Agen",      url: "/agent-center",        icon: BookUser },
       { title: "Leaderboard",         url: "/agent/leaderboard",   icon: Trophy },
-      { title: "Pantau Kinerja Staff", url: "/staff-performance",  icon: Activity, ownerOnly: true },
+      { title: "Manajemen Staff",      url: "/staff-performance",  icon: Activity, ownerOnly: true },
     ],
   },
   {
