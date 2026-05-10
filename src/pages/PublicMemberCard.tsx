@@ -9,6 +9,7 @@ import {
   Ticket, Shirt, Banknote, Plane, type LucideIcon,
 } from "lucide-react";
 import MemberCard from "@/components/MemberCard";
+import { BrandLogo } from "@/components/BrandLogo";
 import { OrderProgressTracker, ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
 import { lookupMemberCard, type PublicMemberCard, type PublicMemberStamp, type ReferralDetail } from "@/features/portal/memberCardRepo";
 import { fetchPublicPromoPosters, type PromoPost } from "@/lib/promoPostersSettings";
@@ -292,9 +293,8 @@ export default function PublicMemberCardPage() {
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 border-b border-white/80 bg-white/90 backdrop-blur-md shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 min-w-0">
-            <img src="/logo-igh-tour-maskable.png" alt="Temantiket" className="h-7 w-7 rounded-lg object-cover shrink-0" />
-            <span className="text-sm font-extrabold tracking-tight text-blue-600 leading-none">temantiket</span>
+          <Link to="/" className="flex items-center shrink-0 hover:opacity-80 transition-opacity">
+            <BrandLogo />
           </Link>
           <div className="flex items-center gap-3 shrink-0">
             <Link to="/leaderboard" className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-semibold transition-colors">

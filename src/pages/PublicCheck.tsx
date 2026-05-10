@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { BrandLogo } from "@/components/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Calendar, MapPin, CheckCircle2, AlertCircle, Loader2, ArrowRight, Wallet } from "lucide-react";
@@ -57,9 +58,8 @@ export default function PublicCheck() {
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-cyan-50 to-blue-50 flex flex-col">
       {/* Header */}
       <header className="px-4 py-4 flex items-center justify-between border-b border-sky-100/60 bg-white/70 backdrop-blur">
-        <Link to="/" className="flex items-center gap-2">
-          <img src="/temantiket-icon.svg" alt="Temantiket" className="h-7 w-7 object-contain icon-adaptive" />
-          <span className="text-sm font-bold text-sky-700">Temantiket</span>
+        <Link to="/" className="flex items-center shrink-0 hover:opacity-80 transition-opacity">
+          <BrandLogo />
         </Link>
         <span className="text-[11px] text-[hsl(var(--muted-foreground))]">Cek Status Booking</span>
       </header>

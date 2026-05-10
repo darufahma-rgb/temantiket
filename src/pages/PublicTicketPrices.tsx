@@ -10,6 +10,8 @@
  * - Mobile-first, WhatsApp-friendly UI
  */
 import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { BrandLogo } from "@/components/BrandLogo";
 import {
   Plane, MessageCircle, Clock, RefreshCw, Loader2,
   Search, SlidersHorizontal, X, ArrowUpDown, ChevronDown,
@@ -961,18 +963,9 @@ export default function PublicTicketPrices() {
       {/* ── Header ── */}
       <header className="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img
-              src="/temantiket-icon.svg"
-              alt="Temantiket"
-              className="h-7 w-7 object-contain icon-adaptive"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-            <div>
-              <p className="text-[13px] font-extrabold text-slate-900 leading-none">Temantiket</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Daftar Harga Tiket Penerbangan</p>
-            </div>
-          </div>
+          <Link to="/" className="flex items-center shrink-0 hover:opacity-80 transition-opacity">
+            <BrandLogo subtitle="Daftar Harga Tiket Penerbangan" />
+          </Link>
           {waNumber && (
             <a
               href={whatsappUrl(waNumber)}

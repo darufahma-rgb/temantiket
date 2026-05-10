@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
+import { BrandLogo } from "@/components/BrandLogo";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy, Loader2, AlertCircle, Sparkles, Star, Gift,
@@ -424,17 +425,8 @@ export default function PublicLeaderboard() {
       <header className={`sticky top-0 z-30 bg-white/90 backdrop-blur-md transition-shadow duration-200 ${scrolled ? "shadow-md" : "border-b border-slate-100"}`}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 shrink-0">
-            <img
-              src="/temantiket-icon.svg"
-              alt="Temantiket"
-              className="h-7 w-7 object-contain"
-            />
-            <img
-              src="/temantiket-logo-blue.png"
-              alt="Temantiket"
-              className="h-5 object-contain hidden sm:block"
-            />
+          <Link to="/" className="flex items-center shrink-0 hover:opacity-80 transition-opacity">
+            <BrandLogo />
           </Link>
 
           {/* Nav links */}
