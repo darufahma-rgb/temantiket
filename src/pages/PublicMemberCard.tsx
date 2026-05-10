@@ -67,7 +67,7 @@ function fmtDateShort(iso: string): string {
 }
 
 // ── Poster Carousel ──────────────────────────────────────────────────────────
-function PromoCarousel({ posters, compact = false }: { posters: PromoPost[]; compact?: boolean }) {
+function PromoCarousel({ posters }: { posters: PromoPost[] }) {
   const [active, setActive] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoRef   = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -94,69 +94,64 @@ function PromoCarousel({ posters, compact = false }: { posters: PromoPost[]; com
 
   if (posters.length === 0) return null;
 
-  // compact = mobile mode: narrower cards, shorter images
-  const cardW    = compact ? "w-[38%] min-w-[120px]" : "w-[48%]";
-  const imgRatio = compact ? "3 / 4" : "4 / 5";
-  const imgMaxH  = compact ? "max-h-[140px]" : "";
-
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-3">
       {/* Label + dots */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <Sparkles className="h-2.5 w-2.5 text-blue-500" />
-          <span className="text-[9.5px] font-bold uppercase tracking-widest text-blue-600">Info Terbaru</span>
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="h-3.5 w-3.5 text-blue-500" />
+          <span className="text-xs font-bold uppercase tracking-widest text-blue-600">Info Terbaru</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {posters.map((_, i) => (
             <button key={i} onClick={() => scrollTo(i)}
-              className={`rounded-full transition-all duration-300 ${i === active ? "w-3.5 h-1.5 bg-blue-500" : "w-1.5 h-1.5 bg-blue-200"}`}
+              className={`rounded-full transition-all duration-300 ${i === active ? "w-5 h-2 bg-blue-500" : "w-2 h-2 bg-blue-200"}`}
             />
           ))}
         </div>
       </div>
 
-      {/* Cards */}
+      {/* Cards — horizontal scroll, 2 visible */}
       <div
         ref={scrollRef}
-        className="flex gap-2 overflow-x-auto no-scrollbar snap-x snap-mandatory"
+        className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory"
         style={{ WebkitOverflowScrolling: "touch" }}
         onScroll={(e) => {
           const el   = e.currentTarget;
           const card = el.children[0] as HTMLElement | undefined;
-          const w    = card ? card.offsetWidth + 8 : el.offsetWidth;
+          const w    = card ? card.offsetWidth + 12 : el.offsetWidth;
           setActive(Math.min(Math.round(el.scrollLeft / w), posters.length - 1));
         }}
       >
         {posters.map((post) => (
-          <div key={post.id} className={`flex-none ${cardW} snap-start`}>
+          <div key={post.id} className="flex-none w-[48%] min-w-[140px] snap-start">
             {post.imageUrl ? (
-              <div className="group flex flex-col rounded-xl overflow-hidden shadow-sm border border-gray-100 bg-white">
-                <div className={`relative w-full overflow-hidden ${imgMaxH}`} style={{ aspectRatio: imgRatio }}>
+              <div className="flex flex-col rounded-2xl overflow-hidden shadow border border-gray-100 bg-white">
+                <div className="relative w-full overflow-hidden" style={{ aspectRatio: "4 / 5" }}>
                   <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" loading="lazy" />
                 </div>
                 {(post.title || post.ctaUrl) && (
-                  <div className="px-2 py-1.5 space-y-0.5">
-                    {post.title && <p className="text-gray-900 font-bold text-[10px] leading-snug line-clamp-2">{post.title}</p>}
+                  <div className="px-3 py-2.5 space-y-1">
+                    {post.title && <p className="text-gray-900 font-bold text-xs leading-snug line-clamp-2">{post.title}</p>}
                     {post.ctaUrl && (
                       <a href={ensureExternalUrl(post.ctaUrl)} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-0.5 text-blue-600 text-[9px] font-semibold">
-                        {post.ctaLabel || "Selengkapnya"} <ExternalLink className="h-2 w-2" />
+                        className="inline-flex items-center gap-1 text-blue-600 text-[11px] font-semibold">
+                        {post.ctaLabel || "Selengkapnya"} <ExternalLink className="h-2.5 w-2.5" />
                       </a>
                     )}
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex flex-col rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 shadow-sm overflow-hidden"
-                style={{ aspectRatio: imgRatio }}>
-                <div className="flex-1 flex flex-col justify-center px-2.5 py-2.5 space-y-1">
-                  {post.title && <p className="text-gray-900 font-extrabold text-[10.5px] leading-snug line-clamp-3">{post.title}</p>}
-                  {post.caption && <p className="text-gray-500 text-[9px] leading-relaxed line-clamp-2">{post.caption}</p>}
+              <div className="flex flex-col rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 shadow overflow-hidden"
+                style={{ aspectRatio: "4 / 5" }}>
+                <div className="flex-1 flex flex-col justify-center px-3.5 py-3.5 space-y-2">
+                  {post.title && <p className="text-gray-900 font-extrabold text-sm leading-snug line-clamp-3">{post.title}</p>}
+                  {post.caption && <p className="text-gray-500 text-xs leading-relaxed line-clamp-2">{post.caption}</p>}
                   {post.ctaUrl && (
                     <a href={ensureExternalUrl(post.ctaUrl)} target="_blank" rel="noopener noreferrer"
-                      className="self-start inline-flex items-center gap-0.5 bg-blue-600 text-white text-[9px] font-bold px-2 py-1 rounded-lg">
-                      {post.ctaLabel || "Lihat"} <ExternalLink className="h-1.5 w-1.5" />
+                      className="self-start inline-flex items-center gap-1 bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg">
+                      {post.ctaLabel || "Lihat"} <ExternalLink className="h-2.5 w-2.5" />
                     </a>
                   )}
                 </div>
@@ -166,16 +161,16 @@ function PromoCarousel({ posters, compact = false }: { posters: PromoPost[]; com
         ))}
       </div>
 
-      {posters.length > 2 && !compact && (
-        <div className="flex items-center justify-center gap-2">
+      {posters.length > 2 && (
+        <div className="flex items-center justify-center gap-3">
           <button onClick={() => scrollTo(active - 1)} disabled={active === 0}
-            className="h-6 w-6 rounded-full bg-white border border-gray-200 hover:bg-gray-50 shadow-sm flex items-center justify-center disabled:opacity-30 transition-all">
-            <ChevronLeft className="h-3 w-3 text-gray-600" />
+            className="h-8 w-8 rounded-full bg-white border border-gray-200 hover:bg-gray-50 shadow-sm flex items-center justify-center disabled:opacity-30 transition-all">
+            <ChevronLeft className="h-4 w-4 text-gray-600" />
           </button>
-          <span className="text-[9.5px] text-gray-400 font-mono tabular-nums">{active + 1} / {posters.length}</span>
+          <span className="text-xs text-gray-400 font-mono tabular-nums">{active + 1} / {posters.length}</span>
           <button onClick={() => scrollTo(active + 1)} disabled={active === posters.length - 1}
-            className="h-6 w-6 rounded-full bg-white border border-gray-200 hover:bg-gray-50 shadow-sm flex items-center justify-center disabled:opacity-30 transition-all">
-            <ChevronRight className="h-3 w-3 text-gray-600" />
+            className="h-8 w-8 rounded-full bg-white border border-gray-200 hover:bg-gray-50 shadow-sm flex items-center justify-center disabled:opacity-30 transition-all">
+            <ChevronRight className="h-4 w-4 text-gray-600" />
           </button>
         </div>
       )}
@@ -292,42 +287,42 @@ export default function PublicMemberCardPage() {
   );
 
   return (
-    <div className="min-h-screen overflow-x-hidden w-full" style={{ background: "linear-gradient(165deg, #f0f6ff 0%, #f8fafc 45%, #ffffff 100%)" }}>
+    <div className="min-h-screen overflow-x-hidden w-full" style={{ background: "linear-gradient(165deg, #eef4ff 0%, #f5f8ff 40%, #ffffff 100%)" }}>
 
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 border-b border-white/80 bg-white/90 backdrop-blur-md shadow-sm">
-        <div className="max-w-5xl mx-auto px-3 sm:px-4 py-2 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-1.5 min-w-0">
-            <img src="/logo-igh-tour-maskable.png" alt="Temantiket" className="h-6 w-6 rounded-lg object-cover shrink-0" />
-            <span className="text-[13px] font-extrabold tracking-tight text-blue-600 leading-none">temantiket</span>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2 min-w-0">
+            <img src="/logo-igh-tour-maskable.png" alt="Temantiket" className="h-7 w-7 rounded-lg object-cover shrink-0" />
+            <span className="text-sm font-extrabold tracking-tight text-blue-600 leading-none">temantiket</span>
           </Link>
-          <div className="flex items-center gap-2 shrink-0">
-            <Link to="/leaderboard" className="flex items-center gap-1 text-[10.5px] text-blue-600 hover:text-blue-700 font-semibold transition-colors">
-              <Trophy className="h-3 w-3" /> Leaderboard
+          <div className="flex items-center gap-3 shrink-0">
+            <Link to="/leaderboard" className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-semibold transition-colors">
+              <Trophy className="h-4 w-4" /> Leaderboard
             </Link>
-            <span className="text-gray-200 text-xs">|</span>
-            <span className="text-[10.5px] text-gray-400 flex items-center gap-0.5">
-              <Sparkles className="h-2.5 w-2.5" /> Member
+            <span className="text-gray-200 text-sm">|</span>
+            <span className="text-sm text-gray-400 flex items-center gap-1">
+              <Sparkles className="h-3.5 w-3.5" /> Member
             </span>
           </div>
         </div>
       </header>
 
       {/* ── Main ── */}
-      <main className="max-w-5xl mx-auto w-full px-2.5 sm:px-3 py-2.5 pb-10 overflow-x-hidden">
+      <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 pb-16 overflow-x-hidden">
 
         {/* Loading */}
         <AnimatePresence>
           {loading && (
             <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center py-28 text-blue-500">
+              className="flex flex-col items-center justify-center py-40 text-blue-500">
               <div className="relative">
-                <div className="h-10 w-10 rounded-full border-2 border-blue-100 flex items-center justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                <div className="h-14 w-14 rounded-full border-2 border-blue-100 flex items-center justify-center">
+                  <Loader2 className="h-7 w-7 animate-spin text-blue-500" />
                 </div>
-                <div className="absolute inset-0 rounded-full border border-blue-200 animate-ping opacity-60" />
+                <div className="absolute inset-0 rounded-full border border-blue-200 animate-ping opacity-50" />
               </div>
-              <p className="text-[10.5px] text-gray-400 mt-3 tracking-wide">Memuat kartu member…</p>
+              <p className="text-sm text-gray-400 mt-4 tracking-wide">Memuat kartu member…</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -335,16 +330,16 @@ export default function PublicMemberCardPage() {
         {/* Error */}
         {!loading && err && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="max-w-xs mx-auto mt-10 rounded-2xl border border-red-100 bg-white px-4 py-7 text-center shadow-sm">
-            <div className="h-10 w-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-2.5">
-              <AlertCircle className="h-5 w-5 text-red-400" />
+            className="max-w-sm mx-auto mt-16 rounded-3xl border border-red-100 bg-white px-6 py-10 text-center shadow-md">
+            <div className="h-14 w-14 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="h-7 w-7 text-red-400" />
             </div>
-            <h2 className="text-[13px] font-bold text-red-700">
+            <h2 className="text-base font-bold text-red-700">
               {err === "not_found" && "Kartu Member Tidak Ditemukan"}
               {err === "invalid_slug" && "Format Link Tidak Valid"}
               {err === "network" && "Gagal Terhubung"}
             </h2>
-            <p className="text-[10.5px] text-gray-500 mt-1.5 leading-relaxed">
+            <p className="text-sm text-gray-500 mt-2 leading-relaxed">
               {err === "not_found" && "Link mungkin sudah berubah. Minta link terbaru ke admin Temantiket."}
               {err === "invalid_slug" && "Format: /m/nama-0000, contoh /m/danang-0010."}
               {err === "network" && "Server sibuk. Coba refresh beberapa saat lagi."}
@@ -354,168 +349,176 @@ export default function PublicMemberCardPage() {
 
         {/* ── Content ── */}
         {!loading && !err && data && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }} className="space-y-2.5">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }} className="space-y-5">
 
             {/* Referral Banner */}
             {isReferralView && (
-              <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                className="rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-2 flex items-center gap-2">
-                <div className="h-6 w-6 rounded-md bg-emerald-100 flex items-center justify-center shrink-0 text-sm">🤝</div>
+              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3.5 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 text-xl">🤝</div>
                 <div className="min-w-0">
-                  <p className="text-[10.5px] font-bold text-emerald-800 leading-tight">
+                  <p className="text-sm font-bold text-emerald-800 leading-tight">
                     {refData ? `Kamu dibawa oleh ${refData.client.name.trim().split(/\s+/).slice(0, 2).join(" ")}!` : "Kamu dibuka dari link referral!"}
                   </p>
-                  <p className="text-[9px] text-emerald-600 leading-snug">Order lewat Temantiket & sebut nama referrer — dapat bonus stamp 🎁</p>
+                  <p className="text-xs text-emerald-600 mt-0.5">Order lewat Temantiket & sebut nama referrer — dapat bonus stamp 🎁</p>
                 </div>
               </motion.div>
             )}
 
-            {/* Page Header */}
-            <div className="flex items-center justify-between gap-2">
+            {/* ── Page Identity Header ── */}
+            <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <div className="inline-flex items-center gap-1 bg-blue-600/10 border border-blue-200 text-blue-600 text-[8.5px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full mb-0.5">
-                  <Sparkles className="h-2 w-2" /> Temantiket Member
+                <div className="inline-flex items-center gap-1.5 bg-blue-600/10 border border-blue-200 text-blue-600 text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full mb-2">
+                  <Sparkles className="h-3 w-3" /> Temantiket Member
                 </div>
-                <h1 className="text-[16px] sm:text-[19px] font-black text-gray-900 tracking-tight leading-tight truncate">{data.client.name}</h1>
-                <p className="text-[9.5px] text-gray-400">{memberIdStr} · Bergabung {fmtDateShort(data.client.createdAt)}</p>
+                <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight truncate">{data.client.name}</h1>
+                <p className="text-sm text-gray-400 mt-1">{memberIdStr} · Bergabung {fmtDateShort(data.client.createdAt)}</p>
               </div>
               <a href={ctaUrl} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 bg-[#25D366] hover:bg-[#1eb858] text-white text-[10.5px] font-bold px-2.5 py-2 rounded-lg transition-colors shadow shadow-green-200 shrink-0 min-h-[38px]">
-                <MessageCircle className="h-3 w-3 shrink-0" />
+                className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1eb858] text-white text-sm font-bold px-4 py-3 rounded-xl transition-colors shadow-md shadow-green-200 shrink-0">
+                <MessageCircle className="h-4 w-4 shrink-0" />
                 <span className="whitespace-nowrap">{isReferralView ? "Hubungi Admin" : "Pesan Sekarang"}</span>
               </a>
             </div>
 
-            {/* ── Desktop: 2-col grid. Mobile: flat single col ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-2.5 lg:gap-3 items-start">
+            {/* ── 2-Column Desktop Layout ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] xl:grid-cols-[340px_1fr] gap-5 lg:gap-6 items-start">
 
-              {/* ── LEFT COLUMN (desktop only: poster + card + gold CTA) ── */}
-              <div className="hidden lg:flex flex-col gap-3">
+              {/* ═══════════════════════════════════════
+                  LEFT COLUMN — Desktop sidebar
+                  (Poster + MemberCard + Gold CTA)
+              ═══════════════════════════════════════ */}
+              <div className="hidden lg:flex flex-col gap-5">
 
-                {/* Poster — desktop */}
+                {/* Promo Poster carousel — desktop */}
                 {posters.length > 0 && (
-                  <div className="rounded-xl border border-blue-100 bg-white shadow-sm p-2.5">
+                  <div className="rounded-2xl border border-blue-100 bg-white shadow-sm p-4">
                     <PromoCarousel posters={posters} />
                   </div>
                 )}
 
                 {/* Member Card — desktop */}
-                <div className="rounded-xl border border-gray-100 bg-white p-2 shadow-sm">
+                <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
                   <MemberCard
                     client={{ name: data.client.name, createdAt: data.client.createdAt }}
                     memberIndex={data.client.memberIndex}
                     orders={data.orders.map((o) => ({ type: o.type, status: o.status, createdAt: o.createdAt, transitType: o.transitType }))}
                     readOnly
                   />
-                  <div className="flex items-center justify-center gap-1.5 mt-1.5 flex-wrap">
+                  {/* Member badges */}
+                  <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
                     {(data.client.referralStamps ?? 0) > 0 && (
-                      <div className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9.5px] font-semibold px-2 py-0.5 rounded-full">
-                        <Gift className="h-2 w-2" /> +{data.client.referralStamps} referral
+                      <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                        <Gift className="h-3 w-3" /> +{data.client.referralStamps} referral
                       </div>
                     )}
                     {totalStamps >= 16 && (
-                      <div className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-[9.5px] font-semibold px-2 py-0.5 rounded-full">
-                        <Crown className="h-2 w-2" /> Full Card! 🎉
+                      <div className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                        <Crown className="h-3 w-3" /> Full Card! 🎉
                       </div>
                     )}
                     {isGoldMember && totalStamps < 16 && (
-                      <div className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-[9.5px] font-semibold px-2 py-0.5 rounded-full">
-                        <Crown className="h-2 w-2" /> Gold Member
+                      <div className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                        <Crown className="h-3 w-3" /> Gold Member
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Gold CTA — desktop */}
+                {/* Gold Member / Agent CTA — desktop sidebar */}
                 {isGoldMember && (
-                  <div className="rounded-lg border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 p-2.5 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
-                        <Crown className="h-3.5 w-3.5 text-amber-600" />
+                  <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 p-5 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-11 w-11 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                        <Crown className="h-5 w-5 text-amber-600" />
                       </div>
                       <div>
-                        <p className="text-[11px] font-bold text-amber-900">Gold Member 🏅</p>
-                        <p className="text-[9.5px] text-amber-600">{totalStamps} transaksi — pelanggan terbaik</p>
+                        <p className="text-sm font-bold text-amber-900">Gold Member 🏅</p>
+                        <p className="text-xs text-amber-600">{totalStamps} transaksi — pelanggan terbaik</p>
                       </div>
                     </div>
-                    <p className="text-[10px] text-amber-800 leading-relaxed">Naik level jadi <strong>Agen Resmi Temantiket</strong> — komisi & akses eksklusif!</p>
+                    <p className="text-sm text-amber-800 leading-relaxed">Naik level jadi <strong>Agen Resmi Temantiket</strong> — komisi & akses eksklusif!</p>
                     <a href={agentWaUrl} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-1.5 w-full bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold py-2 rounded-lg transition-colors min-h-[38px]">
-                      <Crown className="h-3 w-3" /> Daftar Jadi Agen
+                      className="flex items-center justify-center gap-2 w-full bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold py-3 rounded-xl transition-colors">
+                      <Crown className="h-4 w-4" /> Daftar Jadi Agen
                     </a>
                   </div>
                 )}
               </div>
 
-              {/* ── RIGHT COLUMN (all content; on mobile = single col) ── */}
-              <div className="flex flex-col gap-2.5">
+              {/* ═══════════════════════════════════════
+                  RIGHT COLUMN — Main content
+                  (Stats + Progress + Rewards + Referral + History)
+                  On mobile = full-width single column
+              ═══════════════════════════════════════ */}
+              <div className="flex flex-col gap-5">
 
-                {/* ① Member Card — mobile only (hidden on desktop, shown in left col) */}
-                <div className="lg:hidden rounded-xl border border-gray-100 bg-white p-2 shadow-sm">
+                {/* ① Member Card — mobile only */}
+                <div className="lg:hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
                   <MemberCard
                     client={{ name: data.client.name, createdAt: data.client.createdAt }}
                     memberIndex={data.client.memberIndex}
                     orders={data.orders.map((o) => ({ type: o.type, status: o.status, createdAt: o.createdAt, transitType: o.transitType }))}
                     readOnly
                   />
-                  {/* Badges */}
-                  <div className="flex items-center justify-center gap-1.5 mt-1.5 flex-wrap">
+                  <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
                     {(data.client.referralStamps ?? 0) > 0 && (
-                      <div className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
-                        <Gift className="h-2 w-2" /> +{data.client.referralStamps} referral
+                      <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                        <Gift className="h-3 w-3" /> +{data.client.referralStamps} referral
                       </div>
                     )}
                     {totalStamps >= 16 && (
-                      <div className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
-                        <Crown className="h-2 w-2" /> Full Card! 🎉
+                      <div className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                        <Crown className="h-3 w-3" /> Full Card! 🎉
                       </div>
                     )}
                     {isGoldMember && totalStamps < 16 && (
-                      <div className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
-                        <Crown className="h-2 w-2" /> Gold Member
+                      <div className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                        <Crown className="h-3 w-3" /> Gold Member
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* ② Promo Poster — mobile compact slider */}
+                {/* ② Promo Poster — mobile only */}
                 {posters.length > 0 && (
-                  <div className="lg:hidden rounded-xl border border-blue-100 bg-white shadow-sm p-2">
-                    <PromoCarousel posters={posters} compact />
+                  <div className="lg:hidden rounded-2xl border border-blue-100 bg-white shadow-sm p-4">
+                    <PromoCarousel posters={posters} />
                   </div>
                 )}
 
                 {/* ③ Stat chips — 3-col */}
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                <div className="grid grid-cols-3 gap-3">
                   {[
                     { icon: Hash,     label: "Member ID",   value: memberIdStr,                         accent: "bg-blue-50 border-blue-100",    iconColor: "text-blue-600",   iconBg: "bg-blue-100"   },
                     { icon: Star,     label: "Total Stamp", value: `${totalStamps}/16`,                 accent: "bg-amber-50 border-amber-100",  iconColor: "text-amber-600",  iconBg: "bg-amber-100"  },
                     { icon: Calendar, label: "Bergabung",   value: fmtDateShort(data.client.createdAt), accent: "bg-violet-50 border-violet-100", iconColor: "text-violet-600", iconBg: "bg-violet-100" },
                   ].map(({ icon: Icon, label, value, accent, iconColor, iconBg }) => (
-                    <div key={label} className={`rounded-xl border p-2 sm:p-2.5 bg-white ${accent} min-w-0`}>
-                      <div className={`h-5 w-5 sm:h-6 sm:w-6 rounded-md ${iconBg} flex items-center justify-center mb-1 sm:mb-1.5`}>
-                        <Icon className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${iconColor}`} />
+                    <div key={label} className={`rounded-2xl border p-3.5 sm:p-4 bg-white ${accent} min-w-0`}>
+                      <div className={`h-9 w-9 rounded-xl ${iconBg} flex items-center justify-center mb-3`}>
+                        <Icon className={`h-4 w-4 ${iconColor}`} />
                       </div>
-                      <p className="text-[10.5px] sm:text-[11.5px] font-bold text-gray-900 leading-tight truncate">{value}</p>
-                      <p className="text-[8.5px] sm:text-[9px] text-gray-400 mt-0.5 font-medium">{label}</p>
+                      <p className="text-sm sm:text-base font-bold text-gray-900 leading-tight truncate">{value}</p>
+                      <p className="text-xs text-gray-400 mt-1 font-medium">{label}</p>
                     </div>
                   ))}
                 </div>
 
                 {/* ④ Progress Stamp */}
-                <div className="rounded-xl border border-gray-100 bg-white px-2.5 sm:px-3 py-2.5 shadow-sm space-y-2">
+                <div className="rounded-2xl border border-gray-100 bg-white px-5 py-5 shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-5 w-5 rounded-md bg-blue-100 flex items-center justify-center shrink-0">
-                        <TrendingUp className="h-2.5 w-2.5 text-blue-600" />
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                        <TrendingUp className="h-4.5 w-4.5 text-blue-600" />
                       </div>
-                      <span className="text-[11.5px] font-bold text-gray-900">Progress Stamp</span>
+                      <span className="text-base font-bold text-gray-900">Progress Stamp</span>
                     </div>
-                    <span className="text-[11.5px] font-bold text-blue-600">{totalStamps} / 16</span>
+                    <span className="text-base font-bold text-blue-600">{totalStamps} / 16</span>
                   </div>
+
                   {/* 4 progress bars */}
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-2">
                     {REWARD_MILESTONES.map((m) => {
                       const rowDone = totalStamps >= m.stamps;
                       const rowPrev = m.row === 1 ? 0 : REWARD_MILESTONES[m.row - 2].stamps;
@@ -523,52 +526,49 @@ export default function PublicMemberCardPage() {
                       const rowPct = rowDone ? 100 : (rowStampsIn / 4) * 100;
                       const isVip = m.row === 4;
                       return (
-                        <div key={m.row} className="flex-1 flex flex-col gap-0.5 items-center min-w-0">
-                          <div className={`w-full h-2 rounded-full overflow-hidden ${isVip ? "bg-amber-100" : "bg-blue-100"}`}>
+                        <div key={m.row} className="flex-1 flex flex-col gap-1.5 items-center min-w-0">
+                          <div className={`w-full h-3 rounded-full overflow-hidden ${isVip ? "bg-amber-100" : "bg-blue-100"}`}>
                             <div className={`h-full rounded-full transition-all duration-700 ${
                               rowDone ? (isVip ? "bg-gradient-to-r from-amber-400 to-amber-500" : "bg-blue-500")
                                       : (isVip ? "bg-amber-200" : "bg-blue-300")
                             }`} style={{ width: `${rowPct}%` }} />
                           </div>
-                          <span className="text-[7.5px] leading-none">{m.emoji}</span>
+                          <span className="text-sm">{m.emoji}</span>
                         </div>
                       );
                     })}
                   </div>
-                  <p className="text-[9.5px] sm:text-[10px] text-blue-500 font-semibold text-right">
+                  <p className="text-sm text-blue-500 font-semibold text-right">
                     {totalStamps >= 16 ? "🎉 Full card! Klaim reward VIP Qatar" : `${16 - totalStamps} stamp lagi menuju Qatar ✈️`}
                   </p>
                 </div>
 
                 {/* ⑤ Hadiah Member Point — collapsible */}
-                <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-                  {/* Header — always visible, tap to toggle */}
+                <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
                   <button
                     type="button"
                     onClick={() => setShowRewards(v => !v)}
-                    className="w-full px-2.5 sm:px-3 py-2 flex items-center justify-between gap-2 hover:bg-gray-50 transition-colors"
+                    className="w-full px-5 py-4 flex items-center justify-between gap-3 hover:bg-gray-50 transition-colors"
                   >
-                    <h2 className="text-[11.5px] font-bold text-gray-900 flex items-center gap-1.5">
-                      <div className="h-5 w-5 rounded-md bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
-                        <Gift className="h-2.5 w-2.5 text-blue-500 stroke-[1.75]" />
+                    <h2 className="text-base font-bold text-gray-900 flex items-center gap-2.5">
+                      <div className="h-9 w-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
+                        <Gift className="h-4 w-4 text-blue-500" />
                       </div>
                       Hadiah Member Point
                     </h2>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {/* Quick status summary — always visible */}
-                      <span className="text-[9px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
                         {unlockedRewardCount > 0 ? `${unlockedRewardCount} diraih` : `${Math.min(4, Math.floor(totalStamps / 4))}/4 baris`}
                       </span>
                       {currentReward && !showRewards && (
-                        <span className="hidden sm:inline text-[9px] text-blue-600 font-semibold bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full">
+                        <span className="hidden sm:inline text-xs text-blue-600 font-semibold bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">
                           Berikut: {currentReward.emoji} {currentReward.stamps} stamp
                         </span>
                       )}
-                      <ChevronDown className={`h-3.5 w-3.5 text-gray-400 transition-transform duration-200 ${showRewards ? "rotate-180" : ""}`} />
+                      <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${showRewards ? "rotate-180" : ""}`} />
                     </div>
                   </button>
 
-                  {/* Collapsible body */}
                   <AnimatePresence initial={false}>
                     {showRewards && (
                       <motion.div
@@ -589,38 +589,38 @@ export default function PublicMemberCardPage() {
                               if (isVip) {
                                 return (
                                   <li key={m.row} className="overflow-hidden">
-                                    <div className={`relative px-2.5 py-2.5 transition-all ${
+                                    <div className={`relative px-5 py-4 transition-all ${
                                       unlocked ? "bg-gradient-to-br from-amber-400 via-yellow-300 to-amber-500"
                                         : current ? "bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50"
                                         : "bg-gray-50"
                                     }`}>
                                       {unlocked && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />}
-                                      <div className="flex items-center gap-2">
-                                        <div className={`shrink-0 h-8 w-8 rounded-xl flex items-center justify-center border ${
+                                      <div className="flex items-center gap-3">
+                                        <div className={`shrink-0 h-10 w-10 rounded-xl flex items-center justify-center border ${
                                           unlocked ? "bg-white/30 border-white/50" : current ? "bg-blue-100 border-blue-300" : "bg-blue-50 border-blue-200"
                                         }`}>
-                                          <Plane className={`h-4 w-4 stroke-[1.5] ${unlocked ? "text-white" : "text-blue-500"}`} />
+                                          <Plane className={`h-5 w-5 stroke-[1.5] ${unlocked ? "text-white" : "text-blue-500"}`} />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-1 mb-0.5">
-                                            <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full ${
+                                          <div className="flex items-center gap-1.5 mb-1">
+                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
                                               unlocked ? "bg-white/40 text-amber-900" : "bg-amber-400 text-white"
                                             }`}>👑 VIP</span>
                                           </div>
-                                          <p className={`text-[10.5px] font-black leading-tight ${
+                                          <p className={`text-sm font-black leading-tight ${
                                             unlocked ? "text-amber-950" : current ? "text-amber-900" : "text-gray-500"
                                           }`}>{m.label}</p>
                                           {(current || unlocked) && (
-                                            <div className="flex flex-wrap gap-1 mt-1">
+                                            <div className="flex flex-wrap gap-1.5 mt-1.5">
                                               {["🛫 Lounge", "🌆 City Tour", "🏨 Transit"].map((tag) => (
-                                                <span key={tag} className={`text-[8px] font-semibold px-1.5 py-0.5 rounded-full border ${
+                                                <span key={tag} className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
                                                   unlocked ? "bg-white/30 border-white/40 text-amber-950" : "bg-amber-50 border-amber-200 text-amber-800"
                                                 }`}>{tag}</span>
                                               ))}
                                             </div>
                                           )}
                                         </div>
-                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${
+                                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 ${
                                           unlocked ? "bg-white/40 text-amber-950 border-white/50"
                                             : current ? "bg-amber-100 text-amber-700 border-amber-300"
                                             : "bg-gray-100 text-gray-400 border-gray-200"
@@ -632,30 +632,30 @@ export default function PublicMemberCardPage() {
                               }
 
                               return (
-                                <li key={m.row} className={`flex items-center gap-2 px-2.5 py-2 transition-colors ${
+                                <li key={m.row} className={`flex items-center gap-3 px-5 py-4 transition-colors ${
                                   unlocked ? "bg-emerald-50/50" : current ? "bg-blue-50/40" : ""
                                 }`}>
                                   {(() => {
                                     const RowIcon = REWARD_ROW_ICON[m.row];
                                     return (
-                                      <div className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center border ${
+                                      <div className={`shrink-0 h-10 w-10 rounded-xl flex items-center justify-center border ${
                                         unlocked ? "bg-blue-100 border-blue-200"
                                           : current ? "bg-blue-100 border-blue-200"
                                           : "bg-blue-50 border-blue-200"
                                       }`}>
-                                        <RowIcon className={`h-3.5 w-3.5 stroke-[1.5] ${unlocked ? "text-blue-600" : current ? "text-blue-500" : "text-blue-400"}`} />
+                                        <RowIcon className={`h-5 w-5 stroke-[1.5] ${unlocked ? "text-blue-600" : current ? "text-blue-500" : "text-blue-400"}`} />
                                       </div>
                                     );
                                   })()}
                                   <div className="flex-1 min-w-0">
-                                    <p className={`text-[10.5px] font-bold leading-tight truncate ${
+                                    <p className={`text-sm font-bold leading-tight truncate ${
                                       unlocked ? "text-emerald-800" : current ? "text-blue-800" : "text-gray-500"
                                     }`}>{m.label}</p>
                                     {(unlocked || current) && (
-                                      <p className={`text-[9px] mt-0.5 leading-snug line-clamp-1 ${unlocked ? "text-emerald-600" : "text-gray-400"}`}>{m.desc}</p>
+                                      <p className={`text-xs mt-0.5 leading-snug line-clamp-1 ${unlocked ? "text-emerald-600" : "text-gray-400"}`}>{m.desc}</p>
                                     )}
                                   </div>
-                                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 whitespace-nowrap ${
+                                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 whitespace-nowrap ${
                                     unlocked ? "bg-emerald-100 text-emerald-700 border-emerald-300"
                                       : current ? "bg-blue-100 text-blue-600 border-blue-200"
                                       : "bg-gray-100 text-gray-400 border-gray-200"
@@ -664,8 +664,8 @@ export default function PublicMemberCardPage() {
                               );
                             })}
                           </ul>
-                          <div className="px-2.5 py-2 bg-amber-50 border-t border-amber-100">
-                            <p className="text-[9px] text-amber-700 leading-relaxed">
+                          <div className="px-5 py-3.5 bg-amber-50 border-t border-amber-100">
+                            <p className="text-xs text-amber-700 leading-relaxed">
                               💡 Setiap 4 stamp = 1 baris. Klaim via WhatsApp ke admin. Grand Reward Qatar di baris ke-4!
                             </p>
                           </div>
@@ -677,90 +677,90 @@ export default function PublicMemberCardPage() {
 
                 {/* ⑥ Gold Member CTA — mobile only */}
                 {isGoldMember && (
-                  <div className="lg:hidden rounded-lg border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 px-3 py-2.5 flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
-                      <Crown className="h-4 w-4 text-amber-600" />
+                  <div className="lg:hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 px-5 py-4 flex items-center gap-4">
+                    <div className="h-11 w-11 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                      <Crown className="h-5 w-5 text-amber-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-bold text-amber-900 leading-tight">Gold Member 🏅 — {totalStamps} transaksi</p>
-                      <p className="text-[9px] text-amber-700 leading-snug">Upgrade jadi Agen Resmi & dapat komisi!</p>
+                      <p className="text-sm font-bold text-amber-900 leading-tight">Gold Member 🏅 — {totalStamps} transaksi</p>
+                      <p className="text-xs text-amber-700 mt-0.5">Upgrade jadi Agen Resmi & dapat komisi!</p>
                     </div>
                     <a href={agentWaUrl} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-1 bg-amber-500 hover:bg-amber-600 text-white text-[9.5px] font-bold px-2.5 py-1.5 rounded-lg transition-colors shrink-0 whitespace-nowrap min-h-[34px]">
-                      <Crown className="h-2.5 w-2.5" /> Daftar
+                      className="flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors shrink-0 whitespace-nowrap">
+                      <Crown className="h-3.5 w-3.5" /> Daftar
                     </a>
                   </div>
                 )}
 
                 {/* ⑦ Referral + Agent CTA */}
                 {!isReferralView && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                     {/* Ajak Teman */}
-                    <div className="rounded-xl border border-gray-100 bg-white p-2.5 shadow-sm space-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-5 w-5 rounded-md bg-blue-100 flex items-center justify-center shrink-0">
-                          <Users className="h-2.5 w-2.5 text-blue-600" />
+                    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                          <Users className="h-4 w-4 text-blue-600" />
                         </div>
                         <div className="min-w-0">
-                          <h2 className="text-[11px] font-bold text-gray-900 leading-tight">Ajak Teman, Dapat Reward!</h2>
-                          <p className="text-[9px] text-gray-400">Referral → teman order → kamu +1 stamp</p>
+                          <h2 className="text-sm font-bold text-gray-900 leading-tight">Ajak Teman, Dapat Reward!</h2>
+                          <p className="text-xs text-gray-400 mt-0.5">Referral → teman order → kamu +1 stamp</p>
                         </div>
                       </div>
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-2">
                         <a href={referralWaUrl} target="_blank" rel="noopener noreferrer"
-                          className="flex-1 flex items-center justify-center gap-1 bg-[#25D366] hover:bg-[#1eb858] text-white text-[11px] font-bold py-2.5 rounded-lg transition-colors min-h-[42px]">
-                          <Share2 className="h-3 w-3 shrink-0" /> Ajak via WA
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#1eb858] text-white text-sm font-bold py-3 rounded-xl transition-colors">
+                          <Share2 className="h-4 w-4 shrink-0" /> Ajak via WA
                         </a>
                         <button type="button" onClick={handleCopyReferral}
-                          className="flex items-center gap-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 text-[10px] font-semibold py-2.5 px-3 rounded-lg transition-colors min-h-[42px] shrink-0">
-                          {referralCopied ? <><Check className="h-3 w-3 text-emerald-500" /> Tersalin</> : <><Copy className="h-3 w-3" /> Salin</>}
+                          className="flex items-center gap-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 text-sm font-semibold py-3 px-4 rounded-xl transition-colors shrink-0">
+                          {referralCopied ? <><Check className="h-4 w-4 text-emerald-500" /> Tersalin</> : <><Copy className="h-4 w-4" /> Salin</>}
                         </button>
                       </div>
-                      <p className="text-[8px] text-gray-400 font-mono break-all bg-gray-50 rounded-md px-1.5 py-1 border border-gray-100 leading-relaxed select-all">
+                      <p className="text-xs text-gray-400 font-mono break-all bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 leading-relaxed select-all">
                         {referralUrl}
                       </p>
                     </div>
 
                     {/* Gabung Jadi Agen */}
-                    <div className="rounded-xl overflow-hidden shadow-sm"
+                    <div className="rounded-2xl overflow-hidden shadow-sm"
                       style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 55%, #312e81 100%)" }}>
-                      <div className="h-0.5 w-full bg-gradient-to-r from-blue-300 via-indigo-300 to-violet-400 opacity-60" />
-                      <div className="p-2.5 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-lg bg-white/15 flex items-center justify-center shrink-0 border border-white/20">
-                            <Briefcase className="h-3.5 w-3.5 text-white" />
+                      <div className="h-1 w-full bg-gradient-to-r from-blue-300 via-indigo-300 to-violet-400 opacity-60" />
+                      <div className="p-5 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0 border border-white/20">
+                            <Briefcase className="h-5 w-5 text-white" />
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="text-white font-black text-[11.5px] leading-tight">Jadi Agen Temantiket</p>
-                              <span className="text-[7.5px] font-black uppercase tracking-wider bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full whitespace-nowrap">Partner Resmi</span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-white font-black text-sm leading-tight">Jadi Agen Temantiket</p>
+                              <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-amber-900 px-2 py-0.5 rounded-full whitespace-nowrap">Partner Resmi</span>
                             </div>
-                            <p className="text-blue-200 text-[9.5px] mt-0.5 leading-snug">
+                            <p className="text-blue-200 text-xs mt-0.5 leading-snug">
                               {totalStamps > 0 ? `${totalStamps} transaksi — saatnya hasilkan komisi!` : "Hasilkan penghasilan jadi partner travel."}
                             </p>
                           </div>
                         </div>
                         {/* Benefit pills — 2×2 */}
-                        <div className="grid grid-cols-2 gap-1 sm:gap-1.5">
+                        <div className="grid grid-cols-2 gap-2">
                           {[
                             { icon: DollarSign, label: "Komisi per Order" },
                             { icon: Users,      label: "Bonus Referral"   },
                             { icon: Zap,        label: "Poin & Misi"      },
                             { icon: TrendingUp, label: "Dashboard Agent"  },
                           ].map(({ icon: Icon, label }) => (
-                            <div key={label} className="flex items-center gap-1.5 bg-white/10 rounded-lg px-1.5 py-1 border border-white/10">
-                              <Icon className="h-2.5 w-2.5 text-blue-300 shrink-0" />
-                              <p className="text-white text-[9px] font-semibold leading-tight">{label}</p>
+                            <div key={label} className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2 border border-white/10">
+                              <Icon className="h-3.5 w-3.5 text-blue-300 shrink-0" />
+                              <p className="text-white text-xs font-semibold leading-tight">{label}</p>
                             </div>
                           ))}
                         </div>
                         {/* Trust pills */}
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-3 flex-wrap">
                           {["Tanpa modal", "Leaderboard", "Support penuh"].map((t) => (
-                            <div key={t} className="flex items-center gap-0.5">
-                              <BadgeCheck className="h-2.5 w-2.5 text-emerald-400 shrink-0" />
-                              <span className="text-[8.5px] text-blue-200">{t}</span>
+                            <div key={t} className="flex items-center gap-1">
+                              <BadgeCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                              <span className="text-xs text-blue-200">{t}</span>
                             </div>
                           ))}
                         </div>
@@ -768,40 +768,40 @@ export default function PublicMemberCardPage() {
                             `Halo Admin Temantiket! 👋\n\nSaya ${data.client.name.trim()} (Member ${memberIdStr}) tertarik bergabung sebagai Agen Temantiket.\n\nSudah ${totalStamps} transaksi. Bisa share info syarat & benefit jadi agen? Terima kasih! ✈️`
                           )}`}
                           target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-1.5 w-full bg-white hover:bg-blue-50 text-blue-900 text-[11px] font-black py-2.5 rounded-lg transition-colors shadow-md shadow-blue-900/20 min-h-[42px]">
-                          <Briefcase className="h-3.5 w-3.5 shrink-0" />
+                          className="flex items-center justify-center gap-2 w-full bg-white hover:bg-blue-50 text-blue-900 text-sm font-black py-3 rounded-xl transition-colors shadow-md shadow-blue-900/20">
+                          <Briefcase className="h-4 w-4 shrink-0" />
                           Mulai Jadi Partner
-                          <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+                          <ExternalLink className="h-3 w-3 opacity-60" />
                         </a>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* ⑧ Riwayat Transaksi — collapsible */}
-                <section className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-                  <header className="px-2.5 sm:px-3 py-2 border-b border-gray-100 flex items-center justify-between">
-                    <h2 className="text-[11.5px] font-bold text-gray-900 flex items-center gap-1.5">
-                      <div className="h-5 w-5 rounded-md bg-blue-100 flex items-center justify-center shrink-0">
-                        <History className="h-2.5 w-2.5 text-blue-600" />
+                {/* ⑧ Riwayat Transaksi */}
+                <section className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+                  <header className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h2 className="text-base font-bold text-gray-900 flex items-center gap-2.5">
+                      <div className="h-9 w-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                        <History className="h-4 w-4 text-blue-600" />
                       </div>
                       Riwayat Transaksi
                     </h2>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       {(data.client.referralStamps ?? 0) > 0 && (
-                        <span className="text-[8px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                        <span className="text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
                           +{data.client.referralStamps} ref
                         </span>
                       )}
-                      <span className="text-[9.5px] text-gray-400 font-mono tabular-nums">{data.orders.length}/16</span>
+                      <span className="text-sm text-gray-400 font-mono tabular-nums">{data.orders.length}/16</span>
                     </div>
                   </header>
 
                   {history.length === 0 ? (
-                    <div className="px-3 py-7 text-center">
-                      <span className="text-2xl">✈️</span>
-                      <p className="text-[11.5px] font-semibold text-gray-600 mt-2">Belum ada stamp.</p>
-                      <p className="text-[9.5px] text-gray-400 mt-0.5">Pesan paket pertama untuk mulai koleksi!</p>
+                    <div className="px-5 py-12 text-center">
+                      <span className="text-4xl">✈️</span>
+                      <p className="text-sm font-semibold text-gray-600 mt-3">Belum ada stamp.</p>
+                      <p className="text-xs text-gray-400 mt-1">Pesan paket pertama untuk mulai koleksi!</p>
                     </div>
                   ) : (
                     <>
@@ -811,24 +811,24 @@ export default function PublicMemberCardPage() {
                           const processStep = stamp.processStep ?? 0;
                           const hasProgress = steps && (processStep > 0 || stamp.status === "Completed");
                           return (
-                            <li key={i} className="px-2.5 sm:px-3 py-2 space-y-1.5">
-                              <div className="flex items-center gap-2">
-                                <div className="h-8 w-8 rounded-lg bg-blue-50 border border-blue-100 text-base flex items-center justify-center shrink-0">
+                            <li key={i} className="px-5 py-4 space-y-3">
+                              <div className="flex items-center gap-3">
+                                <div className="h-11 w-11 rounded-xl bg-blue-50 border border-blue-100 text-xl flex items-center justify-center shrink-0">
                                   {stampEmoji(stamp)}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[11px] font-semibold text-gray-900 truncate leading-tight">{stampLabel(stamp)}</p>
-                                  <p className="text-[9px] text-gray-400">{fmtDateLong(stamp.createdAt)}</p>
+                                  <p className="text-sm font-semibold text-gray-900 truncate leading-tight">{stampLabel(stamp)}</p>
+                                  <p className="text-xs text-gray-400 mt-0.5">{fmtDateLong(stamp.createdAt)}</p>
                                 </div>
-                                <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md shrink-0 border whitespace-nowrap ${
+                                <span className={`text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-lg shrink-0 border whitespace-nowrap ${
                                   stamp.status === "Completed" ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                     : stamp.status === "Paid" ? "bg-blue-50 text-blue-700 border-blue-200"
                                     : "bg-amber-50 text-amber-700 border-amber-200"
                                 }`}>{stamp.status}</span>
                               </div>
                               {hasProgress && steps && showAllHistory && (
-                                <div className="rounded-lg bg-gray-50 border border-gray-100 px-2 py-1.5">
-                                  <p className="text-[8px] font-bold uppercase tracking-widest text-gray-400 mb-1">📍 Progress Proses</p>
+                                <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
+                                  <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">📍 Progress Proses</p>
                                   <OrderProgressTracker
                                     type={stamp.type}
                                     currentStep={stamp.status === "Completed" ? steps.length - 1 : processStep}
@@ -846,17 +846,17 @@ export default function PublicMemberCardPage() {
                             const firstName = detail?.name?.trim().split(/\s+/).slice(0, 2).join(" ");
                             const orderLabel = detail?.orderType ? (TYPE_LABEL[detail.orderType] ?? detail.orderType) : null;
                             return (
-                              <li key={`ref-${i}`} className="px-2.5 sm:px-3 py-2 flex items-center gap-2 bg-emerald-50/40">
-                                <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-200 text-base flex items-center justify-center shrink-0">🎁</div>
+                              <li key={`ref-${i}`} className="px-5 py-4 flex items-center gap-3 bg-emerald-50/40">
+                                <div className="h-11 w-11 rounded-xl bg-emerald-50 border border-emerald-200 text-xl flex items-center justify-center shrink-0">🎁</div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[11px] font-semibold text-gray-900 truncate leading-tight">
+                                  <p className="text-sm font-semibold text-gray-900 truncate leading-tight">
                                     {firstName ? `Referral dari ${firstName}` : "Bonus Referral"}
                                   </p>
-                                  <p className="text-[9px] text-gray-400 truncate">
+                                  <p className="text-xs text-gray-400 truncate mt-0.5">
                                     {detail ? [orderLabel, fmtDateLong(detail.createdAt)].filter(Boolean).join(" · ") : "Teman berhasil order via referral"}
                                   </p>
                                 </div>
-                                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 whitespace-nowrap">+1 stamp</span>
+                                <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 whitespace-nowrap">+1 stamp</span>
                               </li>
                             );
                           })
@@ -865,27 +865,36 @@ export default function PublicMemberCardPage() {
 
                       {totalHistoryItems > 3 && (
                         <button type="button" onClick={() => setShowAllHistory(v => !v)}
-                          className="w-full flex items-center justify-center gap-1.5 py-2.5 text-[10.5px] font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors border-t border-gray-100 min-h-[40px]">
+                          className="w-full flex items-center justify-center gap-2 py-4 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors border-t border-gray-100">
                           {showAllHistory
-                            ? <><ChevronDown className="h-3 w-3 rotate-180" /> Sembunyikan</>
-                            : <><ChevronDown className="h-3 w-3" /> Lihat Semua ({totalHistoryItems} transaksi)</>}
+                            ? <><ChevronDown className="h-4 w-4 rotate-180" /> Sembunyikan</>
+                            : <><ChevronDown className="h-4 w-4" /> Lihat semua {totalHistoryItems} transaksi</>
+                          }
                         </button>
                       )}
                     </>
                   )}
                 </section>
-              </div>
-            </div>
 
-            {/* Bottom watermark */}
-            <p className="text-center text-[8.5px] text-gray-300 pt-0.5 font-mono break-all leading-relaxed">{publicUrl}</p>
+                {/* ── Footer ── */}
+                <div className="text-center pt-2 pb-4 space-y-1">
+                  <div className="flex items-center justify-center gap-2">
+                    <img src="/logo-igh-tour-maskable.png" alt="Temantiket" className="h-5 w-5 rounded-md object-cover" />
+                    <span className="text-sm font-bold text-blue-600">temantiket</span>
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    mudah, cepat, amanah ·{" "}
+                    <a href={ctaUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 font-medium">
+                      Hubungi Admin
+                    </a>
+                  </p>
+                </div>
+
+              </div>{/* end right column */}
+            </div>{/* end 2-col grid */}
           </motion.div>
         )}
       </main>
-
-      <footer className="border-t border-gray-100/60 px-3 py-2.5 text-center text-[9px] text-gray-400">
-        © Temantiket — Member Card View · Read-Only · Data ditampilkan terbatas.
-      </footer>
     </div>
   );
 }
