@@ -1,0 +1,115 @@
+Perbaiki total sinkronisasi “Akumulasi Fee Komisi Agen” karena saat ini fee agent lapangan/pelaksana belum masuk dan menyebabkan data komisi agent tidak konsisten antar halaman. Audit seluruh flow komisi mulai dari order dibuat, agent dipilih, agent lapangan ditugaskan, order completed, fee dicatat, wallet bertambah, analytics dihitung, sampai tampil di halaman pengaturan akumulasi fee agent.
+
+Masalah utama saat ini:
+
+* Fee agent lapangan tidak muncul di “Akumulasi Fee Komisi Agen”
+* Total akumulasi agent tidak sinkron dengan profile agent
+* Dashboard owner, wallet agent, dan analytics berbeda angka
+* Order yang memakai agent lapangan tidak tercatat sebagai sumber komisi
+* Status “0 order dengan fee” masih muncul walaupun agent sudah ditugaskan di order
+
+Perbaiki seluruh backend dan frontend agar flow fee benar-benar realtime dan sinkron penuh.
+
+LOGIKA YANG BENAR:
+
+1. Saat owner/staff memilih “Agent Lapangan”
+
+   * simpan `field_agent_id`
+   * simpan `field_agent_fee`
+   * simpan `field_agent_transport`
+   * simpan `field_agent_operational_cost`
+
+2. Saat order status berubah menjadi `COMPLETED`
+   sistem otomatis:
+
+   * membuat ledger komisi agent
+   * membuat riwayat payout agent
+   * menambahkan total komisi agent
+   * menambahkan total order agent
+   * menambahkan poin agent (+20)
+   * update leaderboard agent
+   * update wallet/earning agent
+   * update analytics owner
+
+3. Akumulasi fee agent harus menghitung:
+
+   * fee referral agent
+   * fee closing agent
+   * fee agent lapangan/pelaksana
+   * bonus agent
+   * manual adjustment
+
+4. Di halaman “Akumulasi Fee Komisi Agen” tampilkan breakdown:
+
+   * Dari Closing
+   * Dari Referral
+   * Dari Agent Lapangan
+   * Bonus
+   * Manual dibayar
+   * Pending payout
+   * Sudah dibayar
+   * Total lifetime earning
+
+5. Tambahkan detail:
+
+   * jumlah order contributing
+   * order terakhir
+   * tanggal payout terakhir
+   * status payout
+   * riwayat payout agent
+
+6. Jika agent menjadi pelaksana lapangan:
+
+   * otomatis masuk ke profile agent
+   * otomatis masuk ke dashboard agent
+   * otomatis masuk ke total komisi
+   * otomatis masuk ke leaderboard
+   * otomatis masuk ke laporan owner
+
+7. Tambahkan sistem ledger/audit:
+   tabel seperti:
+
+   * `agent_commission_ledger`
+   * `agent_payout_history`
+   * `agent_point_ledger`
+
+Setiap perubahan wajib tercatat:
+
+* source order
+* tipe fee
+* nominal
+* timestamp
+* siapa yang assign
+* status payout
+
+8. Tambahkan proteksi:
+
+   * jangan double insert fee
+   * gunakan unique transaction key
+   * jangan hitung order draft/cancelled
+   * rollback jika transaksi gagal
+
+9. UI/UX:
+
+   * realtime update
+   * loading skeleton
+   * badge “pending payout”
+   * badge “paid”
+   * tombol kirim WA otomatis berisi rincian fee agent
+   * format rupiah konsisten
+   * responsive mobile
+
+10. Pastikan semua halaman sinkron:
+
+* Dashboard Owner
+* Profile Agent
+* Akumulasi Fee
+* Leaderboard Agent
+* Wallet Agent
+* Analytics
+* Staff Performance Center
+* Riwayat Order
+* Laporan Keuangan
+
+Target akhir:
+Begitu agent ditugaskan dan order selesai, seluruh fee agent langsung tercatat otomatis di semua sistem tanpa mismatch angka sedikit pun.
