@@ -143,3 +143,22 @@ export function netProfitIDR(order: Order, egpRate = EGP_TO_IDR): number {
     - kurirOpCost(order)
   );
 }
+
+/**
+ * Breakdown setiap komponen pemotongan profit untuk keperluan tooltip / audit.
+ * Gunakan ini di halaman laporan agar tabel bisa menampilkan rincian setiap biaya
+ * dengan angka yang persis sama dengan profitIDR / netProfitIDR.
+ *
+ * CATATAN: agentFee di sini selalu dibaca dari meta.agentFee (trust metadata).
+ * Jika Reports page perlu validasi role, lakukan override nilai agentFee dari luar.
+ */
+export function profitBreakdown(order: Order, egpRate = EGP_TO_IDR, overrideAgentFee?: number) {
+  const gross    = profitIDR(order, egpRate);       // revenue - cost in IDR
+  const agentFee = overrideAgentFee !== undefined ? overrideAgentFee : agentFeeFromMeta(order);
+  const pelFee   = pelaksanaFeeFromMeta(order);
+  const voaOp    = voaOpCost(order);
+  const kurirOp  = kurirOpCost(order);
+  const net      = gross - agentFee - pelFee - voaOp - kurirOp;
+  const hasDeductions = agentFee > 0 || pelFee > 0 || voaOp > 0 || kurirOp > 0;
+  return { gross, agentFee, pelFee, voaOp, kurirOp, net, hasDeductions };
+}

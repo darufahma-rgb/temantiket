@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   TrendingUp, TrendingDown, Wallet, Receipt, ShieldCheck, Filter,
   Crown, ArrowDown, Users, Trophy, Handshake, Building2,
-  BarChart3, ArrowUpDown, ChevronUp, ChevronDown, Search, FileDown,
+  BarChart3, ArrowUpDown, ChevronUp, ChevronDown, Search, FileDown, Info,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, Legend,
@@ -22,7 +22,7 @@ import {
 } from "@/features/orders/ordersRepo";
 import {
   profitIDR, revenueIDR, costIDR, fmtIDR, voaOpCost, kurirOpCost,
-  agentFeeFromMeta, pelaksanaFeeFromMeta,
+  agentFeeFromMeta, pelaksanaFeeFromMeta, profitBreakdown,
 } from "@/lib/profit";
 import { useRatesStore } from "@/store/ratesStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
@@ -333,18 +333,35 @@ export default function Reports() {
   const byOrder = useMemo(() => {
     return filtered.map((o) => {
       const revenue = revenueIDR(o, egpRate);
-      const cost = costIDR(o, egpRate);
-      // Coba ambil opex dari metadata.internalProfit (order baru via "Jadikan Order")
+      const cost    = costIDR(o, egpRate);
+
+      // Biaya internal dari "Jadikan Order" (sudah termasuk di costPrice, dipindah ke opex)
       const meta = o.metadata as Record<string, unknown> | null;
       const ip = (meta?.internalProfit ?? null) as { opexIDR?: number } | null;
       const internalOpex = ip?.opexIDR ? Number(ip.opexIDR) : 0;
-      // Untuk VOA: tambahkan biaya operasional lapangan ke opex
-      // Untuk semua order: tambahkan biaya kurir setoran ke opex
+
+      // Komponen opex/fee — masing-masing dihitung terpisah untuk tooltip
       const voaOpexIDR = voaOpCost(o);
       const kurirIDR   = kurirOpCost(o);
-      const opex = internalOpex + voaOpexIDR + kurirIDR;
+      const pelFee     = pelaksanaFeeFromMeta(o);
+
+      // Fee agen: hanya dipotong jika createdByAgent mengarah ke member berole "agent"
+      // (sama persis dengan agencyProfit callback — agar angka sinkron)
+      const member   = o.createdByAgent ? memberById.get(o.createdByAgent) : undefined;
+      const agentFee = (member?.role === "agent") ? agentFeeFromMeta(o) : 0;
+
+      // modal = modal murni (costPrice dikurangi internalOpex yg dipindah ke biaya)
       const modal = Math.max(0, cost - internalOpex);
+
+      // biaya = SEMUA deductions selain modal → Revenue − Modal − Biaya = Profit ✓
+      const biaya = internalOpex + voaOpexIDR + kurirIDR + agentFee + pelFee;
+
+      // profit = agencyProfit (canonical net profit)
       const profit = agencyProfit(o);
+
+      // Gross = revenue - cost (sebelum fee/opex) — untuk tooltip saja
+      const grossProfit = profitBreakdown(o, egpRate, agentFee).gross;
+
       const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
       return {
         id: o.id,
@@ -353,12 +370,20 @@ export default function Reports() {
         type: o.type,
         revenue,
         modal,
-        opex,
+        biaya,       // total deductions (renamed from opex)
         profit,
         margin,
+        // Per-komponen untuk tooltip breakdown
+        grossProfit,
+        agentFee,
+        pelFee,
+        voaOpexIDR,
+        kurirIDR,
+        internalOpex,
+        agentName: agentFee > 0 ? (member?.displayName ?? "Agen") : null,
       };
     });
-  }, [filtered, egpRate, agencyProfit]);
+  }, [filtered, egpRate, agencyProfit, memberById]);
 
   const byOrderFiltered = useMemo(() => {
     const q = pkgSearch.trim().toLowerCase();
@@ -368,7 +393,7 @@ export default function Reports() {
       if (sortCol === "date") diff = new Date(a.date).getTime() - new Date(b.date).getTime();
       else if (sortCol === "revenue") diff = a.revenue - b.revenue;
       else if (sortCol === "modal") diff = a.modal - b.modal;
-      else if (sortCol === "opex") diff = a.opex - b.opex;
+      else if (sortCol === "opex") diff = a.biaya - b.biaya;
       else if (sortCol === "profit") diff = a.profit - b.profit;
       else if (sortCol === "margin") diff = a.margin - b.margin;
       return sortDir === "desc" ? -diff : diff;
@@ -895,8 +920,15 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="overflow-x-auto -mx-1">
-          <table className="w-full text-[12px] min-w-[680px]">
+        {/* Legend biaya */}
+        <div className="flex flex-wrap gap-2 mb-3 text-[10.5px] text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-rose-400" />Modal = HPP murni</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-amber-400" />Biaya = semua deductions (fee agen + pelaksana + VOA + kurir)</span>
+          <span className="flex items-center gap-1"><Info className="h-3 w-3 text-blue-500" />Hover kolom Profit untuk detail</span>
+        </div>
+
+        <div className="overflow-x-auto -mx-1" style={{ overflowY: "visible" }}>
+          <table className="w-full text-[12px] min-w-[700px]" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
             <thead>
               <tr className="text-muted-foreground border-b">
                 <th className="text-left font-semibold py-2 px-2">#</th>
@@ -924,13 +956,13 @@ export default function Reports() {
                   className="text-right font-semibold py-2 px-2 cursor-pointer select-none hover:text-foreground transition-colors"
                   onClick={() => toggleSort("opex")}
                 >
-                  Opex <SortIcon col="opex" />
+                  Biaya <SortIcon col="opex" />
                 </th>
                 <th
                   className="text-right font-semibold py-2 px-2 cursor-pointer select-none hover:text-foreground transition-colors"
                   onClick={() => toggleSort("profit")}
                 >
-                  Profit <SortIcon col="profit" />
+                  Profit Bersih <SortIcon col="profit" />
                 </th>
                 <th
                   className="text-right font-semibold py-2 px-2 cursor-pointer select-none hover:text-foreground transition-colors"
@@ -955,8 +987,14 @@ export default function Reports() {
                     : row.margin >= 0 ? "text-amber-700"
                     : "text-red-600";
                   const profitColor = row.profit >= 0 ? "text-emerald-700" : "text-red-600";
+                  const hasDeductions = row.agentFee > 0 || row.pelFee > 0 || row.voaOpexIDR > 0 || row.kurirIDR > 0 || row.internalOpex > 0;
                   return (
-                    <tr key={row.id} className="border-b last:border-b-0 hover:bg-blue-50/60 cursor-pointer transition-colors" onClick={() => navigate(`/orders/detail/${row.id}`)} title="Buka detail order">
+                    <tr
+                      key={row.id}
+                      className="border-b last:border-b-0 hover:bg-blue-50/60 cursor-pointer transition-colors"
+                      onClick={() => navigate(`/orders/detail/${row.id}`)}
+                      title="Buka detail order"
+                    >
                       <td className="py-2 px-2 text-muted-foreground font-mono">{i + 1}</td>
                       <td className="py-2 px-2 font-semibold max-w-[180px] truncate text-sky-700" title={row.title}>
                         {row.title}
@@ -976,10 +1014,123 @@ export default function Reports() {
                         </span>
                       </td>
                       <td className="py-2 px-2 text-right font-mono">{fmtIDR(row.revenue)}</td>
-                      <td className="py-2 px-2 text-right font-mono text-rose-700">{row.modal > 0 ? fmtIDR(row.modal) : <span className="text-muted-foreground">—</span>}</td>
-                      <td className="py-2 px-2 text-right font-mono text-amber-700">{row.opex > 0 ? fmtIDR(row.opex) : <span className="text-muted-foreground">—</span>}</td>
-                      <td className={`py-2 px-2 text-right font-mono font-bold ${profitColor}`}>
-                        {row.profit >= 0 ? "+" : ""}{fmtIDR(row.profit)}
+                      <td className="py-2 px-2 text-right font-mono text-rose-700">
+                        {row.modal > 0 ? fmtIDR(row.modal) : <span className="text-muted-foreground">—</span>}
+                      </td>
+                      {/* Biaya column — tooltip on hover shows breakdown */}
+                      <td
+                        className="py-2 px-2 text-right font-mono text-amber-700"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {row.biaya > 0 ? (
+                          <span className="relative group/biaya inline-block">
+                            {fmtIDR(row.biaya)}
+                            {/* Breakdown tooltip */}
+                            <span className="pointer-events-none absolute right-0 bottom-full mb-1.5 z-50 hidden group-hover/biaya:flex flex-col w-52 rounded-xl border border-amber-200 bg-white shadow-2xl p-2.5 text-[10.5px] text-left gap-0.5" style={{ whiteSpace: "nowrap" }}>
+                              <span className="font-bold text-foreground mb-1 border-b pb-1 text-[11px]">Rincian Biaya</span>
+                              {row.internalOpex > 0 && (
+                                <span className="flex justify-between gap-3 text-slate-600">
+                                  <span>Biaya Internal</span>
+                                  <span className="font-mono">{fmtIDR(row.internalOpex)}</span>
+                                </span>
+                              )}
+                              {row.agentFee > 0 && (
+                                <span className="flex justify-between gap-3 text-orange-700">
+                                  <span>💸 Fee Agen{row.agentName ? ` (${row.agentName})` : ""}</span>
+                                  <span className="font-mono">{fmtIDR(row.agentFee)}</span>
+                                </span>
+                              )}
+                              {row.pelFee > 0 && (
+                                <span className="flex justify-between gap-3 text-violet-700">
+                                  <span>📋 Fee Pelaksana</span>
+                                  <span className="font-mono">{fmtIDR(row.pelFee)}</span>
+                                </span>
+                              )}
+                              {row.voaOpexIDR > 0 && (
+                                <span className="flex justify-between gap-3 text-purple-700">
+                                  <span>🛂 Biaya VOA</span>
+                                  <span className="font-mono">{fmtIDR(row.voaOpexIDR)}</span>
+                                </span>
+                              )}
+                              {row.kurirIDR > 0 && (
+                                <span className="flex justify-between gap-3 text-amber-700">
+                                  <span>🚴 Biaya Kurir</span>
+                                  <span className="font-mono">{fmtIDR(row.kurirIDR)}</span>
+                                </span>
+                              )}
+                              <span className="flex justify-between gap-3 font-bold text-amber-800 border-t pt-1 mt-0.5">
+                                <span>Total Biaya</span>
+                                <span className="font-mono">{fmtIDR(row.biaya)}</span>
+                              </span>
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      {/* Profit Bersih — tooltip shows full P&L breakdown */}
+                      <td
+                        className={`py-2 px-2 text-right font-mono font-bold ${profitColor}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="relative group/profit inline-block">
+                          <span className="flex items-center justify-end gap-1">
+                            {row.profit >= 0 ? "+" : ""}{fmtIDR(row.profit)}
+                            {hasDeductions && (
+                              <Info className="h-3 w-3 opacity-40 group-hover/profit:opacity-100 transition-opacity shrink-0" />
+                            )}
+                          </span>
+                          {/* Full P&L breakdown tooltip */}
+                          <span className="pointer-events-none absolute right-0 bottom-full mb-1.5 z-50 hidden group-hover/profit:flex flex-col w-56 rounded-xl border border-blue-200 bg-white shadow-2xl p-2.5 text-[10.5px] text-left gap-0.5" style={{ whiteSpace: "nowrap" }}>
+                            <span className="font-bold text-foreground mb-1 border-b pb-1 text-[11px]">Breakdown Profit Bersih</span>
+                            <span className="flex justify-between gap-3 text-sky-700">
+                              <span>Revenue</span>
+                              <span className="font-mono">{fmtIDR(row.revenue)}</span>
+                            </span>
+                            <span className="flex justify-between gap-3 text-rose-700">
+                              <span>− Modal (HPP)</span>
+                              <span className="font-mono">{fmtIDR(row.modal)}</span>
+                            </span>
+                            {row.internalOpex > 0 && (
+                              <span className="flex justify-between gap-3 text-slate-600">
+                                <span>− Biaya Internal</span>
+                                <span className="font-mono">{fmtIDR(row.internalOpex)}</span>
+                              </span>
+                            )}
+                            <span className="flex justify-between gap-3 font-semibold text-slate-700 border-t pt-1 mt-0.5">
+                              <span>= Gross Profit</span>
+                              <span className="font-mono">{fmtIDR(row.grossProfit)}</span>
+                            </span>
+                            {row.agentFee > 0 && (
+                              <span className="flex justify-between gap-3 text-orange-700">
+                                <span>− Fee Agen{row.agentName ? ` (${row.agentName})` : ""}</span>
+                                <span className="font-mono">{fmtIDR(row.agentFee)}</span>
+                              </span>
+                            )}
+                            {row.pelFee > 0 && (
+                              <span className="flex justify-between gap-3 text-violet-700">
+                                <span>− Fee Pelaksana</span>
+                                <span className="font-mono">{fmtIDR(row.pelFee)}</span>
+                              </span>
+                            )}
+                            {row.voaOpexIDR > 0 && (
+                              <span className="flex justify-between gap-3 text-purple-700">
+                                <span>− Biaya VOA</span>
+                                <span className="font-mono">{fmtIDR(row.voaOpexIDR)}</span>
+                              </span>
+                            )}
+                            {row.kurirIDR > 0 && (
+                              <span className="flex justify-between gap-3 text-amber-700">
+                                <span>− Biaya Kurir</span>
+                                <span className="font-mono">{fmtIDR(row.kurirIDR)}</span>
+                              </span>
+                            )}
+                            <span className={`flex justify-between gap-3 font-bold border-t pt-1 mt-0.5 ${row.profit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                              <span>= Profit Bersih</span>
+                              <span className="font-mono">{fmtIDR(row.profit)}</span>
+                            </span>
+                          </span>
+                        </span>
                       </td>
                       <td className={`py-2 px-2 text-right font-bold ${marginColor}`}>
                         {row.margin !== 0 ? (
@@ -1012,7 +1163,7 @@ export default function Reports() {
                     {fmtIDR(byOrderFiltered.reduce((s, r) => s + r.modal, 0))}
                   </td>
                   <td className="py-2.5 px-2 text-right font-mono text-amber-700">
-                    {fmtIDR(byOrderFiltered.reduce((s, r) => s + r.opex, 0))}
+                    {fmtIDR(byOrderFiltered.reduce((s, r) => s + r.biaya, 0))}
                   </td>
                   <td className="py-2.5 px-2 text-right font-mono text-emerald-700">
                     {(() => {
