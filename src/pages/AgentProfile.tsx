@@ -172,14 +172,26 @@ export default function AgentProfile() {
     const salesPaid = myOrders
       .filter((o) => o.status === "Paid" || o.status === "Completed")
       .reduce((s, o) => s + agentFeeFromMeta(o), 0);
-    // VOA field fees + kurir fees credited to wallet
+    // Field commission fees credited to wallet (VOA lapangan + pelaksana visa + kurir)
     const voaFieldTotal = walletTxs
-      .filter((t) => t.type === "voa_agent_fee" || t.type === "kurir_fee")
+      .filter((t) => t.type === "voa_agent_fee" || t.type === "kurir_fee" || t.type === "pelaksana_fee")
       .reduce((s, t) => s + t.amountIDR, 0);
     const total = salesTotal + voaFieldTotal;
     const paid  = salesPaid  + voaFieldTotal; // wallet credits are always "paid"
     return { total, paid, pending: salesTotal - salesPaid, salesTotal, voaFieldTotal };
   }, [myOrders, walletTxs]);
+
+  const fieldCommTxs = useMemo(
+    () => [...walletTxs]
+      .filter((t) => t.type === "voa_agent_fee" || t.type === "pelaksana_fee" || t.type === "kurir_fee")
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [walletTxs],
+  );
+
+  const payoutTxs = useMemo(
+    () => walletTxs.filter((t) => t.type === "payout"),
+    [walletTxs],
+  );
 
   const portfolio = useMemo(() => {
     const types: OrderType[] = ["umrah", "flight", "visa_voa", "visa_student"];
@@ -436,16 +448,16 @@ export default function AgentProfile() {
             </div>
           </div>
 
-          {/* VOA field fee row — only shown when there's a field fee */}
+          {/* Field commission row — VOA / Pelaksana Visa / Kurir */}
           {feeStats.voaFieldTotal > 0 && (
             <div className="rounded-xl bg-purple-50 border border-purple-100 p-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="text-base">🛂</span>
+                <span className="text-base">🗂️</span>
                 <div>
                   <div className="text-[10px] text-purple-700 font-semibold uppercase tracking-wide">
-                    Fee Agent Lapangan VOA
+                    Fee Komisi Lapangan
                   </div>
-                  <div className="text-[10px] text-muted-foreground">dikreditkan ke wallet saat order Completed</div>
+                  <div className="text-[10px] text-muted-foreground">VOA / Pelaksana Visa / Kurir · dikreditkan ke wallet</div>
                 </div>
               </div>
               <div className="text-sm font-extrabold font-mono text-purple-700 shrink-0">
@@ -464,6 +476,66 @@ export default function AgentProfile() {
           )}
         </div>
       </div>
+
+      {/* ── Komisi Lapangan ── */}
+      {fieldCommTxs.length > 0 && (() => {
+        const FIELD_CFG: Record<string, { emoji: string; label: string; badgeCls: string; amtCls: string }> = {
+          voa_agent_fee: { emoji: "🛂", label: "Agent Lapangan VOA", badgeCls: "bg-indigo-100 text-indigo-700", amtCls: "text-indigo-700" },
+          pelaksana_fee: { emoji: "🎓", label: "Pelaksana Visa",      badgeCls: "bg-purple-100 text-purple-700", amtCls: "text-purple-700" },
+          kurir_fee:     { emoji: "🚗", label: "Kurir Setoran",       badgeCls: "bg-amber-100 text-amber-700",   amtCls: "text-amber-700" },
+        };
+        return (
+          <div className="rounded-2xl border bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🗂️</span>
+                <div>
+                  <p className="text-sm font-semibold">Komisi Lapangan</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Riwayat penugasan lapangan lo: VOA · Pelaksana Visa · Kurir
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                {fieldCommTxs.length} tugas
+              </span>
+            </div>
+            <div className="divide-y">
+              {fieldCommTxs.map((tx) => {
+                const cfg = FIELD_CFG[tx.type] ?? FIELD_CFG.voa_agent_fee;
+                const fmtTxDate = (() => {
+                  try {
+                    return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(tx.createdAt));
+                  } catch { return tx.createdAt.slice(0, 10); }
+                })();
+                const isPaidOut = payoutTxs.some((pt) => pt.createdAt > tx.createdAt);
+                return (
+                  <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="h-9 w-9 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-base shrink-0">
+                      {cfg.emoji}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-semibold truncate text-foreground">{tx.description}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${cfg.badgeCls}`}>
+                          {cfg.label}
+                        </span>
+                        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${isPaidOut ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500"}`}>
+                          {isPaidOut ? "Sudah Dicairkan" : "Belum Dicairkan"}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{fmtTxDate}</span>
+                      </div>
+                    </div>
+                    <p className={`text-[13px] font-extrabold font-mono shrink-0 ${cfg.amtCls}`}>
+                      +{fmtIDR(tx.amountIDR)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Portofolio Produk ── */}
       <div className="rounded-2xl border bg-white overflow-hidden">

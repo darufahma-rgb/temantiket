@@ -502,11 +502,21 @@ export default function AgentProfileOwnerView() {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [walletTxs],
   );
-  const voaFieldTxs = useMemo(
+  /** Semua jenis komisi lapangan: VOA field agent + pelaksana visa + kurir setoran. */
+  const fieldCommTxs = useMemo(
     () => [...walletTxs]
-      .filter((t) => t.type === "voa_agent_fee")
+      .filter((t) => t.type === "voa_agent_fee" || t.type === "pelaksana_fee" || t.type === "kurir_fee")
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [walletTxs],
+  );
+  const voaFieldTxs = useMemo(
+    () => fieldCommTxs.filter((t) => t.type === "voa_agent_fee"),
+    [fieldCommTxs],
+  );
+  /** Total semua fee lapangan (VOA + pelaksana + kurir). */
+  const totalFieldFee = useMemo(
+    () => fieldCommTxs.reduce((s, t) => s + t.amountIDR, 0),
+    [fieldCommTxs],
   );
   const totalVoaFieldFee = useMemo(
     () => voaFieldTxs.reduce((s, t) => s + t.amountIDR, 0),
@@ -946,7 +956,7 @@ export default function AgentProfileOwnerView() {
                 {[
                   { icon: ShoppingBag, label: "Total Order",  value: String(agentOrders.length),            sub: `${agentOrders.filter((o) => o.status === "Completed").length} selesai`, color: "text-violet-600", bg: "bg-violet-50 border-violet-100" },
                   { icon: Users,       label: "Total Klien",  value: String(agentClients.length),           sub: "klien aktif",                        color: "text-sky-600",    bg: "bg-sky-50 border-sky-100" },
-                  { icon: TrendingUp,  label: "Total Komisi", value: fmtIDR(feeStats.total + totalVoaFieldFee), sub: "fee agen + lapangan VOA",                  color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
+                  { icon: TrendingUp,  label: "Total Komisi", value: fmtIDR(feeStats.total + totalFieldFee), sub: "komisi sales + lapangan",                  color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
                   { icon: Trophy,      label: "Total Poin",   value: totalPoints.toLocaleString("id-ID"),   sub: `Tier ${tier.label}`,                  color: "text-amber-600",  bg: "bg-amber-50 border-amber-100" },
                 ].map((s) => (
                   <div key={s.label} className={`rounded-2xl border p-3 ${s.bg}`}>
@@ -1030,8 +1040,8 @@ export default function AgentProfileOwnerView() {
                 </div>
                 <div className="p-4 space-y-3">
                   <div className="text-center py-1">
-                    <div className="text-xl md:text-3xl font-extrabold font-mono">{fmtIDR(feeStats.total + totalVoaFieldFee)}</div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">total akumulasi (komisi + lapangan VOA)</div>
+                    <div className="text-xl md:text-3xl font-extrabold font-mono">{fmtIDR(feeStats.total + totalFieldFee)}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">total akumulasi (komisi sales + lapangan)</div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 flex items-start gap-2">
@@ -1051,19 +1061,19 @@ export default function AgentProfileOwnerView() {
                       </div>
                     </div>
                   </div>
-                  {totalVoaFieldFee > 0 && (
+                  {totalFieldFee > 0 && (
                     <div className="rounded-xl bg-purple-50 border border-purple-100 p-3 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-base">🛂</span>
+                        <span className="text-base">🗂️</span>
                         <div>
-                          <div className="text-[10px] text-purple-700 font-semibold uppercase tracking-wide">Fee Lapangan VOA</div>
-                          <div className="text-[10px] text-muted-foreground">dikreditkan ke wallet</div>
+                          <div className="text-[10px] text-purple-700 font-semibold uppercase tracking-wide">Fee Komisi Lapangan</div>
+                          <div className="text-[10px] text-muted-foreground">VOA / Pelaksana Visa / Kurir · dikreditkan ke wallet</div>
                         </div>
                       </div>
-                      <div className="text-sm font-extrabold font-mono text-purple-700">{fmtIDR(totalVoaFieldFee)}</div>
+                      <div className="text-sm font-extrabold font-mono text-purple-700">{fmtIDR(totalFieldFee)}</div>
                     </div>
                   )}
-                  {(feeStats.total === 0 && totalVoaFieldFee === 0) && (
+                  {(feeStats.total === 0 && totalFieldFee === 0) && (
                     <p className="text-center text-[11px] text-muted-foreground italic py-1">
                       Belum ada fee. Agen belum memiliki order dengan fee komisi.
                     </p>
@@ -1431,14 +1441,14 @@ export default function AgentProfileOwnerView() {
                   <p className="text-base font-extrabold font-mono text-emerald-800">{fmtIDR(totalCommissionCredited)}</p>
                   <p className="text-[10px] text-emerald-600 mt-0.5">{orderBonusTxs.length} order selesai</p>
                 </div>
-                {totalVoaFieldFee > 0 ? (
+                {totalFieldFee > 0 ? (
                   <div className="rounded-2xl border border-purple-100 bg-purple-50 p-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-purple-700">Fee Lapangan VOA</span>
-                      <span className="text-sm">🛂</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-purple-700">Fee Komisi Lapangan</span>
+                      <span className="text-sm">🗂️</span>
                     </div>
-                    <p className="text-base font-extrabold font-mono text-purple-800">{fmtIDR(totalVoaFieldFee)}</p>
-                    <p className="text-[10px] text-purple-600 mt-0.5">{voaFieldTxs.length} penugasan</p>
+                    <p className="text-base font-extrabold font-mono text-purple-800">{fmtIDR(totalFieldFee)}</p>
+                    <p className="text-[10px] text-purple-600 mt-0.5">{fieldCommTxs.length} penugasan lapangan</p>
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-orange-100 bg-orange-50 p-3">
@@ -1463,8 +1473,8 @@ export default function AgentProfileOwnerView() {
                   </p>
                 </div>
               </div>
-              {/* Jika ada fee lapangan, tampilkan baris pencairan di bawah summary strip */}
-              {totalVoaFieldFee > 0 && (
+              {/* Pencairan row — tampil jika ada field fee DAN ada payout */}
+              {totalFieldFee > 0 && payoutTxs.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="rounded-2xl border border-orange-100 bg-orange-50 p-3">
                     <div className="flex items-center justify-between mb-1">
@@ -1554,54 +1564,100 @@ export default function AgentProfileOwnerView() {
                 )}
               </div>
 
-              {/* VOA pelaksana fee history */}
-              {voaFieldTxs.length > 0 && (
-                <div className="rounded-2xl border bg-white overflow-hidden">
-                  <div className="px-4 py-3 border-b flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-lg bg-purple-100 flex items-center justify-center">
-                        <span className="text-sm">🛂</span>
+              {/* ── Komisi Lapangan — unified section (VOA + Pelaksana + Kurir) ── */}
+              {fieldCommTxs.length > 0 && (() => {
+                const FIELD_CFG: Record<string, { emoji: string; label: string; badgeCls: string; rowHover: string; amtCls: string }> = {
+                  voa_agent_fee:  { emoji: "🛂", label: "Agent Lapangan VOA",  badgeCls: "bg-indigo-100 text-indigo-700",  rowHover: "hover:bg-indigo-50/40",  amtCls: "text-indigo-700" },
+                  pelaksana_fee:  { emoji: "🎓", label: "Pelaksana Visa",       badgeCls: "bg-purple-100 text-purple-700",  rowHover: "hover:bg-purple-50/40",  amtCls: "text-purple-700" },
+                  kurir_fee:      { emoji: "🚗", label: "Kurir Setoran",        badgeCls: "bg-amber-100 text-amber-700",    rowHover: "hover:bg-amber-50/40",   amtCls: "text-amber-700" },
+                };
+                const statusCfg: Record<string, { cls: string; label: string }> = {
+                  Completed:  { cls: "bg-emerald-100 text-emerald-700", label: "Selesai" },
+                  Paid:       { cls: "bg-sky-100 text-sky-700",         label: "Lunas" },
+                  Pending:    { cls: "bg-amber-100 text-amber-700",     label: "Proses" },
+                  Cancelled:  { cls: "bg-red-100 text-red-600",         label: "Batal" },
+                };
+                return (
+                  <div className="rounded-2xl border bg-white overflow-hidden">
+                    <div className="px-4 py-3 border-b flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-lg bg-purple-100 flex items-center justify-center text-sm shrink-0">
+                          🗂️
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">Komisi Lapangan</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            Riwayat tugas lapangan: VOA · Pelaksana Visa · Kurir
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold">Riwayat Fee Lapangan VOA</p>
-                        <p className="text-[10px] text-muted-foreground">Fee operasional saat bertugas sebagai agent lapangan di bandara</p>
-                      </div>
+                      <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                        {fieldCommTxs.length} penugasan
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
-                      {voaFieldTxs.length} penugasan
-                    </span>
-                  </div>
-                  <div className="divide-y">
-                    {voaFieldTxs.map((tx) => {
-                      const idMatch = tx.description.match(/#([a-f0-9]{8})/i);
-                      const shortId = idMatch?.[1] ?? null;
-                      return (
-                        <div key={tx.id} className="flex items-center gap-3 px-4 py-3 hover:bg-purple-50/40 transition-colors">
-                          <div className="h-8 w-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 text-sm">
-                            🛂
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[11px] text-muted-foreground truncate">{tx.description}</p>
-                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              <span className="text-[10px] text-muted-foreground">{fmtDateTime(tx.createdAt)}</span>
+                    <div className="divide-y">
+                      {fieldCommTxs.map((tx) => {
+                        const cfg = FIELD_CFG[tx.type] ?? FIELD_CFG.voa_agent_fee;
+                        const idMatch = tx.description.match(/#([a-f0-9-]{8,36})/i);
+                        const shortId = idMatch?.[1] ?? null;
+                        const linkedOrder = shortId
+                          ? orders.find((o) => o.id.startsWith(shortId) || o.id === shortId)
+                          : null;
+                        const clientName = linkedOrder?.clientId
+                          ? clientMap.get(linkedOrder.clientId)?.name
+                          : null;
+                        const orderStatus = linkedOrder?.status ?? null;
+                        const statusStyle = orderStatus ? (statusCfg[orderStatus] ?? { cls: "bg-muted text-muted-foreground", label: orderStatus }) : null;
+                        const isPaidOut = payoutTxs.some(
+                          (pt) => pt.createdAt > tx.createdAt
+                        );
+                        return (
+                          <div
+                            key={tx.id}
+                            className={`flex items-center gap-3 px-4 py-3 transition-colors ${cfg.rowHover} cursor-pointer`}
+                            onClick={() => linkedOrder && navigate(`/orders/detail/${linkedOrder.id}`)}
+                            title={linkedOrder ? `Buka detail order #${linkedOrder.id.slice(0, 8)}` : undefined}
+                          >
+                            <div className="h-9 w-9 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 text-base">
+                              {cfg.emoji}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {clientName && (
+                                <p className="text-[12px] font-bold text-foreground truncate">{clientName}</p>
+                              )}
+                              <p className="text-[11px] text-muted-foreground truncate">{tx.description}</p>
+                              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${cfg.badgeCls}`}>
+                                  {cfg.label}
+                                </span>
+                                {statusStyle && (
+                                  <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${statusStyle.cls}`}>
+                                    {statusStyle.label}
+                                  </span>
+                                )}
+                                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${isPaidOut ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500"}`}>
+                                  {isPaidOut ? "Sudah Dicairkan" : "Belum Dicairkan"}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">{fmtDateTime(tx.createdAt)}</span>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className={`text-[13px] font-extrabold font-mono ${cfg.amtCls}`}>
+                                +{fmtIDR(tx.amountIDR)}
+                              </p>
                               {shortId && (
-                                <span className="text-[9px] font-mono bg-purple-100 px-1.5 py-0.5 rounded text-purple-700">
+                                <span className="text-[9px] font-mono text-muted-foreground">
                                   #{shortId}
                                 </span>
                               )}
                             </div>
                           </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-[13px] font-extrabold font-mono text-purple-700">
-                              +{fmtIDR(tx.amountIDR)}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Payout history (secondary) */}
               {payoutTxs.length > 0 && (
