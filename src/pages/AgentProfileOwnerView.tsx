@@ -32,7 +32,7 @@ import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
 import {
-  listAgentPoints, sumPointsByAgent, type AgentPoint,
+  listAgentPointsWithOrders, sumPointsByAgent, type AgentPoint, REASON_LABEL,
 } from "@/features/agentPoints/agentPointsRepo";
 import {
   listMissions, listMySubmissions, reviewSubmission,
@@ -331,7 +331,7 @@ export default function AgentProfileOwnerView() {
       try {
         const [members, pts, ms, subs, allS] = await Promise.all([
           listMembers(),
-          listAgentPoints(),
+          listAgentPointsWithOrders(),
           listMissions(agencyId),
           listMySubmissions(agencyId, agentId),
           fetchOrders().then(() => null),
@@ -637,7 +637,7 @@ export default function AgentProfileOwnerView() {
         });
         if (pointsRes.ok) {
           // Refresh points display
-          const fresh = await listAgentPoints();
+          const fresh = await listAgentPointsWithOrders();
           setAllPoints(fresh);
           toast.success(feeAmount > 0 ? `Order selesai! Komisi dicatat: ${fmtIDR(feeAmount)}` : "Order ditandai Selesai.", {
             description: `+20 poin diberikan ke agen 🎉`,
@@ -1137,6 +1137,82 @@ export default function AgentProfileOwnerView() {
                   </div>
                 </div>
               </div>
+
+              {/* Riwayat Poin Agent */}
+              {(() => {
+                const agentPtHistory = allPoints
+                  .filter((p) => p.agentId === agentId)
+                  .slice(0, 15);
+                return (
+                  <div className="rounded-2xl border bg-white overflow-hidden">
+                    <div className="px-4 py-3 border-b flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-amber-500" />
+                        <div>
+                          <p className="text-sm font-semibold">Riwayat Poin</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Log poin dari setiap order selesai
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-100 rounded-full px-3 py-1">
+                        <Star className="h-3 w-3 text-amber-400" />
+                        <span className="text-[12px] font-extrabold text-amber-700 font-mono">
+                          {totalPoints.toLocaleString("id-ID")}
+                        </span>
+                        <span className="text-[10px] text-amber-500">poin</span>
+                      </div>
+                    </div>
+                    {agentPtHistory.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-8 px-4 text-center">
+                        <Star className="h-8 w-8 text-muted-foreground/20 stroke-[1.25]" />
+                        <p className="text-[11px] text-muted-foreground italic">
+                          Belum ada poin. Selesaikan order agen ini untuk memberikan 20 poin pertama.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {agentPtHistory.map((pt) => {
+                          const typeEmoji = pt.orderType
+                            ? ({ umrah: "🕌", flight: "✈️", visa_voa: "🛂", visa_student: "🎓" }[pt.orderType] ?? "📦")
+                            : "⭐";
+                          const reasonText = REASON_LABEL[pt.reason] ?? pt.reason;
+                          const dateStr = (() => {
+                            try {
+                              return new Intl.DateTimeFormat("id-ID", {
+                                day: "numeric", month: "short", year: "numeric",
+                              }).format(new Date(pt.awardedAt));
+                            } catch { return pt.awardedAt.slice(0, 10); }
+                          })();
+                          return (
+                            <div key={pt.id} className="flex items-center gap-3 px-4 py-2.5">
+                              <div className="h-8 w-8 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-sm shrink-0">
+                                {typeEmoji}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[12px] font-semibold truncate">
+                                  {pt.orderTitle ?? reasonText}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                  {reasonText} · {dateStr}
+                                </p>
+                              </div>
+                              <span className="shrink-0 bg-amber-50 border border-amber-200 text-amber-700 rounded-full px-2 py-0.5 text-[11px] font-extrabold font-mono">
+                                +{pt.points}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {allPoints.filter((p) => p.agentId === agentId).length > 15 && (
+                          <div className="px-4 py-2 text-center text-[10px] text-muted-foreground italic">
+                            Menampilkan 15 riwayat terbaru
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Klien Terbaru */}
               {agentClients.length > 0 && (

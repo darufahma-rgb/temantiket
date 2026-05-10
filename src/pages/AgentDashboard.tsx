@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
-import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
+import {
+  listAgentPointsWithOrders, sumPointsByAgent, type AgentPoint, REASON_LABEL,
+} from "@/features/agentPoints/agentPointsRepo";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, ORDER_STATUSES, type OrderStatus } from "@/features/orders/ordersRepo";
 import { revenueIDR, fmtIDR, agentFeeFromMeta } from "@/lib/profit";
 import { pullWalletTxs, walletBalance, type WalletTransaction } from "@/lib/agentWallet";
@@ -57,7 +59,7 @@ export default function AgentDashboard() {
     if (clients.length === 0) void fetchClients();
     void (async () => {
       setLoadingPoints(true);
-      const p = await listAgentPoints();
+      const p = await listAgentPointsWithOrders();
       setPoints(p);
       if (user?.agencyId && user?.id) {
         const ms = await listMySubmissions(user.agencyId, user.id);
@@ -501,6 +503,66 @@ export default function AgentDashboard() {
         </div>
         <ChevronRight className="h-5 w-5 shrink-0 text-white/50 group-hover:translate-x-1 group-hover:text-white transition-all stroke-[1.75]" />
       </motion.a>
+
+      {/* ── Riwayat Poin ────────────────────────────────────────────────── */}
+      {(() => {
+        const myPtHistory = points.filter((p) => p.agentId === user?.id).slice(0, 5);
+        if (myPtHistory.length === 0) return null;
+        return (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.38 }}
+            className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden"
+          >
+            <div className="px-4 py-3.5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <Star className="h-3.5 w-3.5 text-amber-500 stroke-[1.75]" />
+                </div>
+                <h2 className="text-[12.5px] font-bold text-slate-700">Riwayat Poin</h2>
+              </div>
+              <button
+                className="flex items-center gap-0.5 text-[10.5px] text-amber-600 font-semibold hover:text-amber-800 transition-colors"
+                onClick={() => navigate("/agent/profile")}
+              >
+                Lihat semua <ArrowUpRight className="h-3 w-3 stroke-[2]" />
+              </button>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {myPtHistory.map((pt) => {
+                const typeEmoji = pt.orderType
+                  ? ({ umrah: "🕌", flight: "✈️", visa_voa: "🛂", visa_student: "🎓" }[pt.orderType] ?? "📦")
+                  : "⭐";
+                const reasonText = REASON_LABEL[pt.reason] ?? "Poin Diberikan";
+                const dateStr = (() => {
+                  try {
+                    return new Intl.DateTimeFormat("id-ID", {
+                      day: "numeric", month: "short",
+                    }).format(new Date(pt.awardedAt));
+                  } catch { return pt.awardedAt.slice(0, 10); }
+                })();
+                return (
+                  <div key={pt.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="h-8 w-8 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-sm shrink-0">
+                      {typeEmoji}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11.5px] font-semibold text-slate-800 truncate">
+                        {pt.orderTitle ?? reasonText}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{reasonText} · {dateStr}</p>
+                    </div>
+                    <span className="shrink-0 bg-amber-50 border border-amber-200 text-amber-700 rounded-full px-2 py-0.5 text-[11px] font-extrabold font-mono">
+                      +{pt.points}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        );
+      })()}
 
       {/* ── Riwayat Order ───────────────────────────────────────────────── */}
       <motion.div

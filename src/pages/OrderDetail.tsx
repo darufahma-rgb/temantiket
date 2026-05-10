@@ -34,24 +34,49 @@ import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import { supabase } from "@/lib/supabase";
 import { VisaEntryPanel } from "@/components/VisaEntryPanel";
 
-async function awardCommissionPoints(agencyId: string, agentId: string, orderId: string) {
+/** Award 20 poin ke agent penjual saat order → Completed (idempotent via upsert). */
+async function awardOrderCompletionPoints(agentId: string, orderId: string) {
   try {
     const session = (await supabase?.auth.getSession())?.data.session;
     const token = session?.access_token;
-    const res = await fetch("/api/award-commission-points", {
+    if (!token) return;
+    const res = await fetch("/api/award-completion-points", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ agencyId, agentId, orderId }),
+      body: JSON.stringify({ agentId, orderId }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      console.warn("[award-commission-points] gagal:", j?.error ?? res.status);
+      console.warn("[award-order-points] gagal:", j?.error ?? res.status);
     }
   } catch (e) {
-    console.warn("[award-commission-points] exception:", e);
+    console.warn("[award-order-points] exception:", e);
+  }
+}
+
+/** Cabut poin jika order diubah kembali dari Completed ke status lain. */
+async function revokeOrderPoints(orderId: string) {
+  try {
+    const session = (await supabase?.auth.getSession())?.data.session;
+    const token = session?.access_token;
+    if (!token) return;
+    const res = await fetch("/api/revoke-order-points", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ orderId }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      console.warn("[revoke-order-points] gagal:", j?.error ?? res.status);
+    }
+  } catch (e) {
+    console.warn("[revoke-order-points] exception:", e);
   }
 }
 
@@ -345,7 +370,6 @@ export default function OrderDetail() {
         );
         if (persisted) {
           flagsPatch.agentFeeCredited = true;
-          void awardCommissionPoints(order.agencyId, agentCommId!, order.id);
           toast.success(`Komisi agen dicatat: ${fmtIDR(agentFeeAmount)} · +20 poin`, {
             description: `Order "${order.title || orderLabel}" selesai — wallet & poin agen diperbarui.`,
             duration: 5000,
@@ -358,6 +382,23 @@ export default function OrderDetail() {
             duration: 10000,
           });
         }
+      }
+
+      // ── Points: award/revoke 20 pts ke agent penjual ───────────────────────
+      // Selalu award saat order → Completed untuk agent penjual valid,
+      // tanpa bergantung pada apakah ada komisi/fee (idempotent via upsert).
+      if (willBeCompleted && !!agentCommId) {
+        void awardOrderCompletionPoints(agentCommId!, order.id);
+        // Hanya tampilkan toast tambahan jika agent tidak punya fee (shouldCreditAgent sudah tampilkan)
+        if (!shouldCreditAgent && order.status !== "Completed") {
+          toast.success(`Order selesai · +20 poin diberikan ke agen`, { duration: 3500 });
+        }
+      }
+
+      // Cabut poin jika order dikembalikan dari Completed ke status lain
+      if (order.status === "Completed" && newStatus !== "Completed" && !!agentCommId) {
+        void revokeOrderPoints(order.id);
+        toast.info("Poin agen dicabut karena order dikembalikan dari Completed.", { duration: 4000 });
       }
 
       // Pelaksana lapangan visa_student — otomatis dikreditkan saat Completed.

@@ -4,13 +4,15 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Trophy, Users, ShoppingBag, TrendingUp,
   Wallet, CheckCircle, Clock, UserCircle, ExternalLink,
-  Camera, RefreshCw, Loader2, Zap,
+  Camera, RefreshCw, Loader2, Zap, Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
-import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
+import {
+  listAgentPointsWithOrders, sumPointsByAgent, type AgentPoint, REASON_LABEL,
+} from "@/features/agentPoints/agentPointsRepo";
 import { listMySubmissions, sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
 import { onMissionsChanged } from "@/lib/supabaseRealtime";
 import type { MissionSubmission } from "@/features/missions/types";
@@ -53,7 +55,7 @@ export default function AgentProfile() {
     void (async () => {
       setLoading(true);
       const [p, txs] = await Promise.all([
-        listAgentPoints(),
+        listAgentPointsWithOrders(),
         user?.id ? pullWalletTxs(user.id) : Promise.resolve([]),
       ]);
       setPoints(p);
@@ -521,6 +523,85 @@ export default function AgentProfile() {
           </div>
         </div>
       </div>
+
+      {/* ── Riwayat Poin ── */}
+      {(() => {
+        const myPointHistory = points
+          .filter((p) => p.agentId === user?.id)
+          .slice(0, 20);
+        return (
+          <div className="rounded-2xl border bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-amber-500" />
+                <div>
+                  <p className="text-sm font-semibold">Riwayat Poin</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Poin diperoleh dari order &amp; misi yang selesai
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-100 rounded-full px-3 py-1">
+                <Star className="h-3 w-3 text-amber-400" />
+                <span className="text-[12px] font-extrabold text-amber-700 font-mono">
+                  {loading ? "…" : myPoints}
+                </span>
+                <span className="text-[10px] text-amber-500">poin total</span>
+              </div>
+            </div>
+
+            {myPointHistory.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-8 px-4 text-center">
+                <Star className="h-8 w-8 text-muted-foreground/20 stroke-[1.25]" />
+                <p className="text-[11px] text-muted-foreground italic">
+                  Belum ada poin tercatat. Buat order dan tunggu owner selesaikan — otomatis dapat 20 poin!
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {myPointHistory.map((pt) => {
+                  const typeEmoji = pt.orderType
+                    ? ({ umrah: "🕌", flight: "✈️", visa_voa: "🛂", visa_student: "🎓" }[pt.orderType] ?? "📦")
+                    : "⭐";
+                  const reasonText = REASON_LABEL[pt.reason] ?? pt.reason;
+                  const dateStr = (() => {
+                    try {
+                      return new Intl.DateTimeFormat("id-ID", {
+                        day: "numeric", month: "short", year: "numeric",
+                      }).format(new Date(pt.awardedAt));
+                    } catch { return pt.awardedAt.slice(0, 10); }
+                  })();
+                  return (
+                    <div key={pt.id} className="flex items-center gap-3 px-4 py-3">
+                      <div className="h-9 w-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-base shrink-0">
+                        {typeEmoji}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-semibold truncate">
+                          {pt.orderTitle ?? reasonText}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {reasonText} · {dateStr}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span className="inline-flex items-center gap-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-full px-2 py-0.5 text-[11px] font-extrabold font-mono">
+                          +{pt.points}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {points.filter((p) => p.agentId === user?.id).length > 20 && (
+                  <div className="px-4 py-2 text-center text-[10px] text-muted-foreground italic">
+                    Menampilkan 20 riwayat terbaru
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Klien Terbaru ── */}
       {myClients.length > 0 && (

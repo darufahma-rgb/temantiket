@@ -352,12 +352,24 @@ app.post('/api/award-completion-points', async (req, res) => {
       10000, 'DB timeout — cek koneksi Supabase'
     );
     if (memberErr || !callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
-    if (callerMembership.role !== 'owner') return err(res, 403, 'Hanya owner yang bisa award poin');
+    if (!['owner', 'staff'].includes(callerMembership.role)) {
+      return err(res, 403, 'Hanya owner atau staff yang bisa award poin');
+    }
 
     const { orderId, agentId } = req.body || {};
     if (!orderId || !agentId) return err(res, 400, 'orderId dan agentId diperlukan');
 
     const agencyId = callerMembership.agency_id;
+
+    // Validasi: agentId harus role "agent" di agency ini
+    const { data: targetMember, error: targetErr } = await withTimeout(
+      admin.from('agency_members').select('role').eq('user_id', agentId).eq('agency_id', agencyId).maybeSingle(),
+      8000, 'DB timeout saat verifikasi agen'
+    );
+    if (targetErr || !targetMember) return err(res, 404, 'Agen tidak ditemukan di agency ini');
+    if (targetMember.role !== 'agent') {
+      return ok(res, { ok: true, awarded: 0, reason: 'not_agent', role: targetMember.role });
+    }
 
     const { error: upsertErr } = await withTimeout(
       admin.from('agent_points').upsert(
@@ -369,6 +381,52 @@ app.post('/api/award-completion-points', async (req, res) => {
     if (upsertErr) return err(res, 500, upsertErr.message);
 
     return ok(res, { ok: true, points: 20 });
+  } catch (e) {
+    return err(res, 500, e.message);
+  }
+});
+
+/* ──────────────────────────────────────────────
+   POST /api/revoke-order-points
+   Cabut poin agen jika order dikembalikan dari status Completed.
+   Hanya owner/staff yang bisa. Menggunakan service role untuk DELETE.
+────────────────────────────────────────────── */
+app.post('/api/revoke-order-points', async (req, res) => {
+  try {
+    if (!SERVICE_ROLE_KEY) {
+      return err(res, 503, 'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi');
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return err(res, 401, 'Missing Authorization header');
+
+    const caller = await getCallerUser(authHeader).catch(() => null);
+    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
+
+    const admin = makeAdminClient();
+
+    const { data: callerMembership, error: memberErr } = await withTimeout(
+      admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle(),
+      10000, 'DB timeout'
+    );
+    if (memberErr || !callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
+    if (!['owner', 'staff'].includes(callerMembership.role)) {
+      return err(res, 403, 'Hanya owner atau staff yang bisa revoke poin');
+    }
+
+    const { orderId } = req.body || {};
+    if (!orderId) return err(res, 400, 'orderId diperlukan');
+
+    const { error: delErr } = await withTimeout(
+      admin.from('agent_points')
+        .delete()
+        .eq('order_id', orderId)
+        .eq('agency_id', callerMembership.agency_id),
+      10000, 'DB timeout saat revoke poin'
+    );
+    if (delErr) return err(res, 500, delErr.message);
+
+    return ok(res, { ok: true, revoked: orderId });
   } catch (e) {
     return err(res, 500, e.message);
   }
