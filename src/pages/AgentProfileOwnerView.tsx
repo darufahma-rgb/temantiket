@@ -318,6 +318,7 @@ export default function AgentProfileOwnerView() {
   const [isSaving, setIsSaving] = useState(false);
   const [walletTxs, setWalletTxs] = useState<WalletTransaction[]>([]);
   const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
   const isOwner = user?.role === "owner";
   const canEdit = isOwner || user?.id === agentId;
 
@@ -581,6 +582,43 @@ export default function AgentProfileOwnerView() {
       toast.error(`Gagal menyimpan: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleBackfillFees() {
+    if (!agentId || !isOwner) return;
+    setBackfilling(true);
+    try {
+      const { data: sess } = await supabase!.auth.getSession();
+      const token = sess?.session?.access_token;
+      const res = await fetch("/api/backfill-field-fees", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ agentId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error("Gagal sinkronkan fee.", { description: json?.message ?? res.statusText });
+        return;
+      }
+      const { credited = 0, skipped = 0, errors = 0 } = json as { credited: number; skipped: number; errors: number };
+      if (credited === 0 && errors === 0) {
+        toast.success("Semua fee sudah tersinkronkan.", { description: `${skipped} entri sudah tercatat sebelumnya.` });
+      } else {
+        toast.success(`Sinkronisasi selesai: ${credited} fee dikreditkan.`, {
+          description: errors > 0 ? `${errors} gagal, ${skipped} sudah ada.` : `${skipped} sudah ada sebelumnya.`,
+          duration: 6000,
+        });
+      }
+      // Refresh wallet transactions so the UI reflects new credits
+      void pullWalletTxs(agentId).then(setWalletTxs);
+    } catch (e) {
+      toast.error("Error sinkronisasi fee.", { description: e instanceof Error ? e.message : "Coba lagi." });
+    } finally {
+      setBackfilling(false);
     }
   }
 
@@ -1689,6 +1727,35 @@ export default function AgentProfileOwnerView() {
                         </div>
                       ))}
                   </div>
+                </div>
+              )}
+
+              {/* Sinkronkan Fee — backfill uncredited field fees */}
+              {isOwner && (
+                <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4 space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <div className="h-7 w-7 rounded-lg bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <RefreshCw className="h-3.5 w-3.5 text-violet-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-violet-900">Sinkronkan Fee Lapangan</p>
+                      <p className="text-[11px] text-violet-700 mt-0.5">
+                        Kredit otomatis semua fee VOA / pelaksana / kurir yang belum masuk wallet.
+                        Aman dijalankan berkali-kali — sudah idempoten.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => void handleBackfillFees()}
+                    disabled={backfilling}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-violet-300 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 transition-colors py-2.5 text-[12px] font-bold text-white"
+                  >
+                    {backfilling ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Menyinkronkan…</>
+                    ) : (
+                      <><RefreshCw className="h-3.5 w-3.5" /> Sinkronkan Fee Sekarang</>
+                    )}
+                  </button>
                 </div>
               )}
 

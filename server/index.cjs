@@ -1577,6 +1577,149 @@ app.get('/api/health-check', async (req, res) => {
 /* ──────────────────────────────────────────────
    Serve static frontend in production
 ────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────
+   POST /api/backfill-field-fees
+   Backfill wallet transactions for already-Completed orders whose field-agent
+   fees (VOA / pelaksana / kurir) were never written to the wallet ledger.
+   Idempotent: uses deterministic tx IDs so re-running is always safe.
+   Caller must be owner or staff of the agency.
+   Body: { agentId? }  — optional, filter to one agent only.
+────────────────────────────────────────────── */
+app.post('/api/backfill-field-fees', async (req, res) => {
+  try {
+    if (!SERVICE_ROLE_KEY) {
+      return err(res, 503, 'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server.');
+    }
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return err(res, 401, 'Missing Authorization header');
+
+    const caller = await getCallerUser(authHeader, 8000).catch(() => null);
+    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
+
+    const admin = makeAdminClient();
+
+    const { data: membership, error: memErr } = await withTimeout(
+      admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle(),
+      8000, 'DB timeout saat verifikasi membership'
+    );
+    if (memErr || !membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
+    if (membership.role === 'agent') return err(res, 403, 'Hanya owner/staff yang dapat melakukan backfill fee');
+
+    const agencyId = membership.agency_id;
+    const { agentId: filterAgentId } = req.body ?? {};
+
+    // Fetch all Completed orders for this agency
+    const { data: orders, error: ordersErr } = await withTimeout(
+      admin.from('orders')
+        .select('id, type, status, metadata')
+        .eq('agency_id', agencyId)
+        .eq('status', 'Completed'),
+      20000, 'Timeout saat fetch orders untuk backfill'
+    );
+    if (ordersErr) return err(res, 500, `Gagal fetch orders: ${ordersErr.message}`);
+
+    const results = { credited: 0, skipped: 0, errors: 0 };
+    const now = new Date().toISOString();
+
+    for (const order of (orders ?? [])) {
+      const meta = order.metadata ?? {};
+
+      // ── VOA field agent fee ──
+      const voaAgentId  = meta.voaFieldAgentId;
+      const voaFee      = Number(meta.voaAgentFee ?? 0);
+      if (voaAgentId && voaFee > 0) {
+        if (meta.voaFeeCredited) {
+          results.skipped++;
+        } else if (!filterAgentId || filterAgentId === voaAgentId) {
+          const txId = `voa-${order.id}`;
+          const { error: txErr } = await admin.from('agent_wallet_transactions').upsert({
+            id:           txId,
+            agency_id:    agencyId,
+            agent_id:     voaAgentId,
+            type:         'voa_agent_fee',
+            points_delta: 0,
+            amount_idr:   voaFee,
+            description:  `Fee lapangan VOA — order #${String(order.id).slice(0, 8)}`,
+            created_by:   caller.id,
+            created_at:   now,
+          }, { onConflict: 'id' });
+          if (txErr) {
+            console.error(`[backfill] VOA tx error order ${order.id}:`, txErr.message);
+            results.errors++;
+          } else {
+            await admin.from('orders').update({ metadata: { ...meta, voaFeeCredited: true } }).eq('id', order.id);
+            results.credited++;
+          }
+        }
+      }
+
+      // ── Pelaksana visa_student fee ──
+      const pelaksanaId = meta.pelaksanaId;
+      const pelFee      = Number(meta.pelaksanaFee ?? (order.type === 'visa_student' && pelaksanaId ? 200000 : 0));
+      if (order.type === 'visa_student' && pelaksanaId && pelFee > 0) {
+        if (meta.pelaksanaFeeCredited) {
+          results.skipped++;
+        } else if (!filterAgentId || filterAgentId === pelaksanaId) {
+          const txId = `pelaksana-${order.id}`;
+          const { error: txErr } = await admin.from('agent_wallet_transactions').upsert({
+            id:           txId,
+            agency_id:    agencyId,
+            agent_id:     pelaksanaId,
+            type:         'pelaksana_fee',
+            points_delta: 0,
+            amount_idr:   pelFee,
+            description:  `Fee pelaksana visa student — order #${String(order.id).slice(0, 8)}`,
+            created_by:   caller.id,
+            created_at:   now,
+          }, { onConflict: 'id' });
+          if (txErr) {
+            console.error(`[backfill] pelaksana tx error order ${order.id}:`, txErr.message);
+            results.errors++;
+          } else {
+            await admin.from('orders').update({ metadata: { ...meta, pelaksanaFeeCredited: true } }).eq('id', order.id);
+            results.credited++;
+          }
+        }
+      }
+
+      // ── Kurir setoran fee ──
+      const kurirAgentId = meta.kurirAgentId;
+      const kurirFee     = Number(meta.kurirFee ?? 0);
+      if (kurirAgentId && kurirFee > 0) {
+        if (meta.kurirFeeCredited) {
+          results.skipped++;
+        } else if (!filterAgentId || filterAgentId === kurirAgentId) {
+          const txId = `kurir-${order.id}`;
+          const { error: txErr } = await admin.from('agent_wallet_transactions').upsert({
+            id:           txId,
+            agency_id:    agencyId,
+            agent_id:     kurirAgentId,
+            type:         'kurir_fee',
+            points_delta: 0,
+            amount_idr:   kurirFee,
+            description:  `Fee kurir setoran — order #${String(order.id).slice(0, 8)}`,
+            created_by:   caller.id,
+            created_at:   now,
+          }, { onConflict: 'id' });
+          if (txErr) {
+            console.error(`[backfill] kurir tx error order ${order.id}:`, txErr.message);
+            results.errors++;
+          } else {
+            await admin.from('orders').update({ metadata: { ...meta, kurirFeeCredited: true } }).eq('id', order.id);
+            results.credited++;
+          }
+        }
+      }
+    }
+
+    console.log(`[backfill-field-fees] done: credited=${results.credited} skipped=${results.skipped} errors=${results.errors}`);
+    return ok(res, { ok: true, ...results });
+  } catch (e) {
+    console.error('[backfill-field-fees] exception:', e);
+    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
+  }
+});
+
 const isProd = process.env.NODE_ENV === 'production';
 if (isProd) {
   const staticDir = __dirname;

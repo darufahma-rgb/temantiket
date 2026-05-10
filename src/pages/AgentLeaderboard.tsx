@@ -176,15 +176,44 @@ export default function AgentLeaderboard() {
       stats.set(o.createdByAgent, cur);
     }
     for (const o of periodOrders) {
-      if (o.type !== "visa_voa") continue;
-      const meta        = (o.metadata ?? {}) as Record<string, unknown>;
-      const fieldAgentId = meta.voaFieldAgentId as string | undefined;
-      if (!fieldAgentId || !agentIds.has(fieldAgentId)) continue;
-      const voaFee = Number(meta.voaAgentFee ?? 0);
-      if (voaFee <= 0) continue;
-      const cur = stats.get(fieldAgentId) ?? { revenue: 0, orders: 0, commission: 0 };
-      cur.commission += voaFee;
-      stats.set(fieldAgentId, cur);
+      const meta = (o.metadata ?? {}) as Record<string, unknown>;
+
+      // VOA field agent fee
+      if (o.type === "visa_voa") {
+        const fieldAgentId = meta.voaFieldAgentId as string | undefined;
+        if (fieldAgentId && agentIds.has(fieldAgentId)) {
+          const voaFee = Number(meta.voaAgentFee ?? 0);
+          if (voaFee > 0) {
+            const cur = stats.get(fieldAgentId) ?? { revenue: 0, orders: 0, commission: 0 };
+            cur.commission += voaFee;
+            stats.set(fieldAgentId, cur);
+          }
+        }
+      }
+
+      // Pelaksana visa_student fee
+      if (o.type === "visa_student") {
+        const pelaksanaId = meta.pelaksanaId as string | undefined;
+        if (pelaksanaId && agentIds.has(pelaksanaId)) {
+          const pelFee = Number(meta.pelaksanaFee ?? 200_000);
+          if (pelFee > 0) {
+            const cur = stats.get(pelaksanaId) ?? { revenue: 0, orders: 0, commission: 0 };
+            cur.commission += pelFee;
+            stats.set(pelaksanaId, cur);
+          }
+        }
+      }
+
+      // Kurir setoran fee (any order type)
+      const kurirAgentId = meta.kurirAgentId as string | undefined;
+      if (kurirAgentId && agentIds.has(kurirAgentId)) {
+        const kurirFee = Number(meta.kurirFee ?? 0);
+        if (kurirFee > 0) {
+          const cur = stats.get(kurirAgentId) ?? { revenue: 0, orders: 0, commission: 0 };
+          cur.commission += kurirFee;
+          stats.set(kurirAgentId, cur);
+        }
+      }
     }
     for (const a of agentMembers) {
       if (!stats.has(a.userId)) stats.set(a.userId, { revenue: 0, orders: 0, commission: 0 });
