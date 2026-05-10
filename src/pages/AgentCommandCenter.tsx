@@ -28,8 +28,7 @@ import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/a
 import { listSubmissions, sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
 import type { MissionSubmission } from "@/features/missions/types";
 import { getTierInfo, TIERS } from "@/features/agentPoints/agentTiers";
-import { profitIDR, revenueIDR, fmtIDR, agentFeeFromMeta } from "@/lib/profit";
-import { getCommissionForOrderType, loadProductCommissions } from "@/lib/productCommissions";
+import { profitIDR, revenueIDR, fmtIDR, agentFeeFromMeta, netProfitIDR } from "@/lib/profit";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { MissionCreatorSection } from "@/features/missions/MissionCreatorSection";
@@ -378,6 +377,7 @@ interface AgentRow extends MemberInfo {
   clientCount: number;
   totalRevenue: number;
   totalProfit: number;
+  netAgencyProfit: number;
   commissionOwed: number;
   color: string;
 }
@@ -576,6 +576,8 @@ export default function AgentCommandCenter() {
     const completedList    = agentOrders.filter((o) => o.status === "Completed");
     const totalRevenue     = agentOrders.reduce((s, o) => s + revenueIDR(o), 0);
     const totalProfit      = completedList.reduce((s, o) => s + Math.max(0, profitIDR(o)), 0);
+    // netAgencyProfit = net profit setelah semua fee/opex (formula canonical netProfitIDR)
+    const netAgencyProfit  = completedList.reduce((s, o) => s + netProfitIDR(o), 0);
     // Hitung fee dari semua order (kecuali Cancelled) — baca dari meta.agentFee per order.
     const billableOrders   = agentOrders.filter((o) => o.status !== "Cancelled");
     const commissionOwed   = billableOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0);
@@ -585,7 +587,7 @@ export default function AgentCommandCenter() {
       completedOrders: completedList.length,
       completedOrdersList: completedList,
       clientCount: clientCountByAgent.get(a.userId) ?? 0,
-      totalRevenue, totalProfit, commissionOwed,
+      totalRevenue, totalProfit, netAgencyProfit, commissionOwed,
       color: AGENT_COLORS[idx % AGENT_COLORS.length],
     };
   }).sort((a, b) => b.totalPoints - a.totalPoints), [agentMembers, pointsByAgent, ordersByAgent, clientCountByAgent]);
@@ -1013,10 +1015,10 @@ export default function AgentCommandCenter() {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
                       {[
-                        { label: "Total Revenue", value: fmtIDR(agent.totalRevenue),   color: "text-sky-700" },
-                        { label: "Total Profit",  value: fmtIDR(agent.totalProfit),    color: "text-emerald-700" },
-                        { label: "Fee Komisi", value: fmtIDR(agent.commissionOwed), color: "text-orange-700" },
-                        { label: "Net Agency",    value: fmtIDR(agent.totalProfit - agent.commissionOwed), color: "text-blue-700" },
+                        { label: "Total Revenue",    value: fmtIDR(agent.totalRevenue),      color: "text-sky-700" },
+                        { label: "Profit Kotor",     value: fmtIDR(agent.totalProfit),       color: "text-emerald-700" },
+                        { label: "Fee Komisi",       value: fmtIDR(agent.commissionOwed),    color: "text-orange-700" },
+                        { label: "Net Agency",       value: fmtIDR(agent.netAgencyProfit),   color: "text-blue-700" },
                       ].map((r) => (
                         <div key={r.label} className="rounded-xl bg-white border p-3">
                           <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">{r.label}</p>
@@ -1126,8 +1128,8 @@ export default function AgentCommandCenter() {
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
                     <strong className="text-foreground">Catatan:</strong>{" "}
-                    Komisi = Profit × Komisi% · hanya dari order <strong>Completed</strong> dengan profit positif.
-                    Edit komisi via ikon ✏️ di tabel. Poin misi dihitung dari misi yang disetujui admin.
+                    Fee Komisi dibaca dari metadata per order (bukan rate global). Net Agency = profit bersih setelah semua biaya (agentFee + VOA + kurir + pelaksana).
+                    Poin misi dihitung dari misi yang disetujui admin.
                   </div>
                   <button onClick={() => navigate("/reports")}
                     className="shrink-0 flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors whitespace-nowrap">

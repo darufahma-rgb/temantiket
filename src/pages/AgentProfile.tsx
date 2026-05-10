@@ -16,7 +16,7 @@ import { onMissionsChanged } from "@/lib/supabaseRealtime";
 import type { MissionSubmission } from "@/features/missions/types";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, type OrderType } from "@/features/orders/ordersRepo";
-import { fmtIDR } from "@/lib/profit";
+import { fmtIDR, agentFeeFromMeta } from "@/lib/profit";
 import { pullWalletTxs, walletBalance, type WalletTransaction } from "@/lib/agentWallet";
 import { uploadAvatar, savePhotoUrl, loadPhotoUrl } from "@/lib/avatarStorage";
 import { uploadCardBack, saveCardBackUrl, loadCardBackUrl } from "@/lib/cardBackStorage";
@@ -165,11 +165,11 @@ export default function AgentProfile() {
   );
   const feeStats = useMemo(() => {
     const salesTotal = myOrders.reduce(
-      (s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0,
+      (s, o) => s + agentFeeFromMeta(o), 0,
     );
     const salesPaid = myOrders
       .filter((o) => o.status === "Paid" || o.status === "Completed")
-      .reduce((s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
+      .reduce((s, o) => s + agentFeeFromMeta(o), 0);
     // VOA field fees + kurir fees credited to wallet
     const voaFieldTotal = walletTxs
       .filter((t) => t.type === "voa_agent_fee" || t.type === "kurir_fee")

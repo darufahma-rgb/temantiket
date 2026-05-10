@@ -40,16 +40,15 @@ import {
 import type { DailyMission, MissionSubmission, MissionStatus } from "@/features/missions/types";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
-import { fmtIDR } from "@/lib/profit";
+import { fmtIDR, agentFeeFromMeta } from "@/lib/profit";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { uploadAvatar, savePhotoUrl } from "@/lib/avatarStorage";
 import { uploadCardBack, saveCardBackUrl, loadCardBackUrl } from "@/lib/cardBackStorage";
 import { supabase } from "@/lib/supabase";
 import {
-  pullWalletTxs, walletBalance, addWalletTx, type WalletTransaction,
+  pullWalletTxs, walletBalance, addWalletTxAsync, type WalletTransaction,
 } from "@/lib/agentWallet";
-import { getCommissionForOrderType } from "@/lib/productCommissions";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI, type OrderType } from "@/features/orders/ordersRepo";
 import { AgentCard } from "@/components/AgentCard";
 
@@ -447,22 +446,15 @@ export default function AgentProfileOwnerView() {
   }, [allAgentsPts, agentId]);
 
   const totalKomisi = useMemo(
-    () => agentOrders.reduce((s, o) => {
-      const stored = Number((o.metadata as Record<string, unknown>).agentFee ?? -1);
-      return s + (stored >= 0 ? stored : getCommissionForOrderType(
-        o.type as "umrah" | "flight" | "visa_voa" | "visa_student",
-      ));
-    }, 0),
+    () => agentOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0),
     [agentOrders],
   );
 
   const feeStats = useMemo(() => {
-    const total = agentOrders.reduce(
-      (s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0,
-    );
+    const total = agentOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0);
     const paid = agentOrders
       .filter((o) => o.status === "Paid" || o.status === "Completed")
-      .reduce((s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
+      .reduce((s, o) => s + agentFeeFromMeta(o), 0);
     return { total, paid, pending: total - paid };
   }, [agentOrders]);
 
@@ -608,21 +600,27 @@ export default function AgentProfileOwnerView() {
       if (!order) return;
       await patchOrder(orderId, { status: "Completed" });
 
-      const storedFee = Number((order.metadata as Record<string, unknown>).agentFee ?? -1);
-      const feeAmount = storedFee >= 0 ? storedFee : getCommissionForOrderType(order.type);
+      const feeAmount = agentFeeFromMeta(order);
 
       if (feeAmount > 0) {
         const orderLabel = ORDER_TYPE_LABEL[order.type];
         const orderId8 = order.id.slice(0, 8);
         const clientName = clientMap.get(order.clientId ?? "")?.name;
-        addWalletTx(agentId, {
+        const { persisted, error: walletErr } = await addWalletTxAsync(
           agentId,
-          type: "order_bonus",
-          pointsDelta: 0,
-          amountIDR: feeAmount,
-          description: `Komisi order ${orderLabel} #${orderId8}${clientName ? ` — ${clientName}` : order.title ? ` — ${order.title}` : ""}`,
-          createdBy: ownerId,
-        });
+          {
+            agentId,
+            type: "order_bonus",
+            pointsDelta: 0,
+            amountIDR: feeAmount,
+            description: `Komisi order ${orderLabel} #${orderId8}${clientName ? ` — ${clientName}` : order.title ? ` — ${order.title}` : ""}`,
+            createdBy: ownerId,
+          },
+          `agent-${order.id}`,
+        );
+        if (!persisted) {
+          console.warn("[AgentProfileOwnerView] wallet credit gagal:", walletErr);
+        }
       }
 
       // Award 20 poin ke agen via server endpoint (perlu service role key)
@@ -1318,7 +1316,7 @@ export default function AgentProfileOwnerView() {
                             </div>
                             <div className="text-right shrink-0">
                               <p className="text-[13px] font-extrabold font-mono text-orange-700">
-                                +{fmtIDR(getCommissionForOrderType(o.type as "umrah" | "flight" | "visa_voa" | "visa_student"))}
+                                +{fmtIDR(agentFeeFromMeta(o))}
                               </p>
                             </div>
                           </div>

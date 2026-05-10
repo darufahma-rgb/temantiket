@@ -12,7 +12,7 @@ import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, ORDER_STATUSES, type OrderStatus } from "@/features/orders/ordersRepo";
-import { revenueIDR, fmtIDR } from "@/lib/profit";
+import { revenueIDR, fmtIDR, agentFeeFromMeta } from "@/lib/profit";
 import { pullWalletTxs, walletBalance, type WalletTransaction } from "@/lib/agentWallet";
 import { AgentTierProgress } from "@/components/AgentTierProgress";
 import { AgentCard } from "@/components/AgentCard";
@@ -132,11 +132,11 @@ export default function AgentDashboard() {
   const feeStats = useMemo(() => {
     // Sales commission from orders I created (agentFee)
     const salesTotal = myOrders.reduce(
-      (s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0,
+      (s, o) => s + agentFeeFromMeta(o), 0,
     );
     const salesPaid = myOrders
       .filter((o) => o.status === "Paid" || o.status === "Completed")
-      .reduce((s, o) => s + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
+      .reduce((s, o) => s + agentFeeFromMeta(o), 0);
 
     // Field agent fees from wallet (voa_agent_fee = agent lapangan VOA, kurir_fee = courier)
     const walletBal  = walletBalance(walletTxs);
@@ -580,7 +580,7 @@ export default function AgentDashboard() {
                       <div className="text-[10.5px] font-mono font-bold text-slate-700">{fmtIDR(revenueIDR(o))}</div>
                       <div className={`text-[9px] font-mono ${o.status === "Completed" ? "text-blue-600 font-bold" : "text-slate-300"}`}>
                         {o.status === "Completed"
-                          ? (Number((o.metadata as Record<string, unknown>)?.agentFee ?? 0) > 0 ? "+30 pts" : "+10 pts")
+                          ? (agentFeeFromMeta(o) > 0 ? "+30 pts" : "+10 pts")
                           : "—"}
                       </div>
                     </div>
@@ -626,7 +626,7 @@ export default function AgentDashboard() {
                           </td>
                           <td className={`py-3 px-1 text-right font-mono font-bold ${earned ? "text-blue-600" : "text-slate-200"}`}>
                             {earned
-                              ? (Number((o.metadata as Record<string, unknown>)?.agentFee ?? 0) > 0 ? "+30" : "+10")
+                              ? (agentFeeFromMeta(o) > 0 ? "+30" : "+10")
                               : "—"}
                           </td>
                         </tr>

@@ -18,8 +18,7 @@ import { onAgentPointsChanged } from "@/lib/supabaseRealtime";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { AgentTierBadge } from "@/components/AgentTierProgress";
 import type { AgentTier } from "@/features/agentPoints/agentTiers";
-import { revenueIDR, fmtIDR } from "@/lib/profit";
-import { getCommissionForOrderType } from "@/lib/productCommissions";
+import { revenueIDR, fmtIDR, agentFeeFromMeta } from "@/lib/profit";
 import { cn } from "@/lib/utils";
 
 type RangeKey = "this_month" | "last_month" | "this_year" | "all";
@@ -176,10 +175,7 @@ export default function AgentLeaderboard() {
       const cur = stats.get(o.createdByAgent) ?? { revenue: 0, orders: 0, commission: 0 };
       cur.revenue += revenueIDR(o);
       cur.orders  += 1;
-      const storedFee = Number((o.metadata as Record<string, unknown>).agentFee ?? -1);
-      cur.commission += storedFee >= 0
-        ? storedFee
-        : getCommissionForOrderType(o.type as "umrah" | "flight" | "visa_voa" | "visa_student");
+      cur.commission += agentFeeFromMeta(o);
       stats.set(o.createdByAgent, cur);
     }
     for (const a of agentMembers) {

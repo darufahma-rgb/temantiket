@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CloudSyncBadge } from "@/components/CloudSyncBadge";
 import { loadProductCommissions as loadProdComm, saveProductCommissions as saveProdComm, pullProductCommissions, type ProductCommissions } from "@/lib/productCommissions";
+import { agentFeeFromMeta } from "@/lib/profit";
 import {
   loadAgentPhones, saveAgentPhone, recordFeePayment, loadFeePayments, openWaMessage,
   pullFeePayments, pullAgentPhones, FEE_PAYMENT_SYNC_KEY,
@@ -1512,11 +1513,11 @@ export default function Settings() {
                   <div className="divide-y divide-[hsl(var(--border))]">
                     {agentMembers.map((agent) => {
                       const agentOrders = orders.filter((o) => o.createdByAgent === agent.userId);
-                      const totalFee = agentOrders.reduce((sum, o) => sum + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
+                      const totalFee = agentOrders.reduce((sum, o) => sum + agentFeeFromMeta(o), 0);
                       const derivedPaid = agentOrders
                         .filter((o) => o.status === "Paid" || o.status === "Completed")
-                        .reduce((sum, o) => sum + (Number((o.metadata as Record<string, unknown>).agentFee) || 0), 0);
-                      const orderCount = agentOrders.filter((o) => Number((o.metadata as Record<string, unknown>).agentFee) > 0).length;
+                        .reduce((sum, o) => sum + agentFeeFromMeta(o), 0);
+                      const orderCount = agentOrders.filter((o) => agentFeeFromMeta(o) > 0).length;
                       const manuallyPaid = feePayments.filter((p) => p.agentId === agent.userId).reduce((s, p) => s + p.amount, 0);
                       const lastPayment = feePayments.filter((p) => p.agentId === agent.userId)[0];
                       const savedPhone = agentPhones[agent.userId] ?? "";

@@ -10,11 +10,7 @@ import {
   sumPointsByAgent,
   type AgentPoint,
 } from "@/features/agentPoints/agentPointsRepo";
-import { revenueIDR, fmtIDR } from "@/lib/profit";
-import {
-  getCommissionForOrderType,
-  loadProductCommissions,
-} from "@/lib/productCommissions";
+import { revenueIDR, fmtIDR, agentFeeFromMeta } from "@/lib/profit";
 
 /**
  * MitraLeaderboardCard — Top-3 mitra preview untuk Admin Dashboard.
@@ -68,7 +64,6 @@ export function MitraLeaderboardCard() {
   const top3 = useMemo(() => {
     const lifetimePoints = sumPointsByAgent(points);
     const memberById = new Map(members.map((m) => [m.userId, m]));
-    const productCommissions = loadProductCommissions();
     const agentIds = new Set(agentMembers.map((a) => a.userId));
     const stats = new Map<
       string,
@@ -83,10 +78,7 @@ export function MitraLeaderboardCard() {
       const cur = stats.get(o.createdByAgent) ?? { revenue: 0, commission: 0, orders: 0 };
       // Gunakan revenueIDR (total penjualan) — tidak bergantung pada HPP/costPrice
       cur.revenue += revenueIDR(o);
-      // Komisi = gunakan agentFee yang tersimpan di metadata jika ada,
-      // fallback ke flat default rate agar data lama tetap tampil.
-      const storedFee = Number((o.metadata as Record<string, unknown>).agentFee ?? -1);
-      cur.commission += storedFee >= 0 ? storedFee : getCommissionForOrderType(o.type, productCommissions);
+      cur.commission += agentFeeFromMeta(o);
       cur.orders += 1;
       stats.set(o.createdByAgent, cur);
     }
