@@ -190,41 +190,50 @@ export default function Reports() {
     let directNetProfit = 0;
     let directRevenue = 0;
     let directCount = 0;
-    let agentGrossProfit = 0; // gross profit (revenue - modal) dari order via agent
+    let agentGrossProfit = 0;    // gross profit (revenue - modal) dari order via agent
+    let agentModal = 0;           // total modal HPP dari order via agent
     let agentRevenue = 0;
     let agentCount = 0;
-    let totalCommission = 0;  // total meta.agentFee dari order via agent
-    let totalAgentOpex = 0;   // voaOpCost + kurirOpCost + pelaksanaFee untuk order via agent
+    let totalCommission = 0;     // meta.agentFee — komisi agen penjual
+    // Opex dipecah agar tidak ada biaya tersembunyi di breakdown card:
+    let totalFieldFee = 0;       // fee lapangan: voaAgentFee (field agent) + pelaksanaFee (visa_student)
+    let totalTransportOpex = 0;  // biaya transport/ops: (voaTransportFee + voaOtherFee) + kurirOpCost
 
     for (const o of filtered) {
       const gross = profitIDR(o, egpRate);
       const r = revenueIDR(o, egpRate);
-      const opex = voaOpCost(o) + kurirOpCost(o);
-      const pelFee = pelaksanaFeeFromMeta(o);
+      const c = costIDR(o, egpRate);
+      const meta = (o.metadata ?? {}) as Record<string, unknown>;
+      // Pisahkan voaOpCost: voaAgentFee (fee ke orang) vs transport/other (non-personal)
+      const voaFieldFeeAmt  = o.type === "visa_voa" ? Number(meta.voaAgentFee ?? 0) : 0;
+      const voaTransportAmt = voaOpCost(o) - voaFieldFeeAmt;  // voaTransportFee + voaOtherFee
+      const kurirAmt        = kurirOpCost(o);
+      const pelFee          = pelaksanaFeeFromMeta(o);
       // Cek apakah createdByAgent mengarah ke member berole "agent".
       // Owner/staff yang di-set sebagai "Closing Ref" TIDAK dihitung Via Agent.
       const member = o.createdByAgent ? memberById.get(o.createdByAgent) : undefined;
       const isAgentOrder = o.createdByAgent != null && member?.role === "agent";
       if (isAgentOrder) {
-        agentGrossProfit += gross;
-        agentRevenue += r;
-        agentCount += 1;
-        // Baca fee aktual dari metadata — bukan rate global
-        totalCommission += agentFeeFromMeta(o);
-        totalAgentOpex += opex + pelFee;
+        agentGrossProfit   += gross;
+        agentRevenue       += r;
+        agentModal         += c;
+        agentCount         += 1;
+        totalCommission    += agentFeeFromMeta(o);         // komisi agen penjual
+        totalFieldFee      += voaFieldFeeAmt + pelFee;    // fee lapangan + pelaksana
+        totalTransportOpex += voaTransportAmt + kurirAmt; // transport + kurir
       } else {
-        // Direct order: net = gross - opex - pelaksanaFee (agentFee selalu 0)
-        directNetProfit += gross - opex - pelFee;
-        directRevenue += r;
-        directCount += 1;
+        // Direct order: net = gross - semua opex (agentFee selalu 0)
+        directNetProfit += gross - pelFee - voaFieldFeeAmt - voaTransportAmt - kurirAmt;
+        directRevenue   += r;
+        directCount     += 1;
       }
     }
-    const agentNetForAgency = agentGrossProfit - totalCommission - totalAgentOpex;
-    const netAgencyProfit = directNetProfit + agentNetForAgency;
+    const agentNetForAgency = agentGrossProfit - totalCommission - totalFieldFee - totalTransportOpex;
+    const netAgencyProfit   = directNetProfit + agentNetForAgency;
     return {
       directProfit: directNetProfit, directRevenue, directCount,
-      agentProfit: agentGrossProfit, agentRevenue, agentCount,
-      totalCommission, agentNetForAgency, netAgencyProfit,
+      agentGrossProfit, agentRevenue, agentModal, agentCount,
+      totalCommission, totalFieldFee, totalTransportOpex, agentNetForAgency, netAgencyProfit,
     };
   }, [filtered, memberById, egpRate]);
 
@@ -641,7 +650,7 @@ export default function Reports() {
         variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } } }}
       >
         <SummaryCard
-          label="Total Profit"
+          label="Net Profit Agency"
           value={fmtIDR(split.netAgencyProfit)}
           icon={split.netAgencyProfit >= 0 ? TrendingUp : TrendingDown}
           tone={split.netAgencyProfit >= 0 ? "emerald" : "red"}
@@ -682,14 +691,45 @@ export default function Reports() {
           icon={Handshake}
           label="Via Mitra (agent)"
           accent="from-orange-50 to-white border-orange-100"
-          profit={split.agentProfit}
+          profit={split.agentNetForAgency}
           revenue={split.agentRevenue}
           count={split.agentCount}
           extra={
-            <div className="text-[10.5px] text-muted-foreground mt-1">
-              Komisi dibayar: <span className="font-mono font-semibold text-orange-700">−{fmtIDR(split.totalCommission)}</span>
-              <br />
-              Net buat agency: <span className="font-mono font-bold text-emerald-700">{fmtIDR(split.agentNetForAgency)}</span>
+            <div className="space-y-0.5 mt-1.5 pt-1.5 border-t border-orange-200 text-[10.5px]">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Revenue</span>
+                <span className="font-mono">{fmtIDR(split.agentRevenue)}</span>
+              </div>
+              <div className="flex items-center justify-between text-rose-700">
+                <span>− Modal (HPP)</span>
+                <span className="font-mono">{fmtIDR(split.agentModal)}</span>
+              </div>
+              <div className="flex items-center justify-between font-semibold text-slate-700 border-b border-orange-100 pb-0.5 mb-0.5">
+                <span>= Gross Profit</span>
+                <span className="font-mono">{fmtIDR(split.agentGrossProfit)}</span>
+              </div>
+              {split.totalCommission > 0 && (
+                <div className="flex items-center justify-between text-orange-700">
+                  <span>− Komisi Agent</span>
+                  <span className="font-mono">{fmtIDR(split.totalCommission)}</span>
+                </div>
+              )}
+              {split.totalFieldFee > 0 && (
+                <div className="flex items-center justify-between text-purple-700">
+                  <span>− Fee Lapangan/Pelaksana</span>
+                  <span className="font-mono">{fmtIDR(split.totalFieldFee)}</span>
+                </div>
+              )}
+              {split.totalTransportOpex > 0 && (
+                <div className="flex items-center justify-between text-amber-700">
+                  <span>− Biaya Transport/Ops</span>
+                  <span className="font-mono">{fmtIDR(split.totalTransportOpex)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between font-bold text-emerald-700 border-t border-orange-200 pt-0.5">
+                <span>= Net Profit Agency</span>
+                <span className="font-mono">{fmtIDR(split.agentNetForAgency)}</span>
+              </div>
             </div>
           }
         />
@@ -702,7 +742,7 @@ export default function Reports() {
           count={totals.count}
           extra={
             <div className="text-[10.5px] text-muted-foreground mt-1">
-              = Direct + (Agent Profit − Komisi)
+              = Net Direct + Net Via Mitra
             </div>
           }
           highlight
@@ -725,7 +765,7 @@ export default function Reports() {
           {/* Pie chart: profit by type */}
           <Card className="p-4 lg:col-span-1">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-[13px] font-semibold">Profit per Kategori</h2>
+              <h2 className="text-[13px] font-semibold">Net Profit Agency per Kategori</h2>
               <span className="text-[10.5px] text-muted-foreground">IDR</span>
             </div>
             {pieData.length === 0 ? (
@@ -821,7 +861,7 @@ export default function Reports() {
                     <th className="text-left font-semibold py-2 px-1">Klien</th>
                     <th className="text-right font-semibold py-2 px-1">Order</th>
                     <th className="text-right font-semibold py-2 px-1">Revenue</th>
-                    <th className="text-right font-semibold py-2 px-1">Profit</th>
+                    <th className="text-right font-semibold py-2 px-1">Net Profit</th>
                   </tr>
                 </thead>
                 <tbody>
