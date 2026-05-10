@@ -309,7 +309,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
 
   const roleColor =
     user?.role === "owner" ? "#f59e0b" :
-    user?.role === "staff" ? "#0ea5e9" : "#10b981";
+    user?.role === "staff" ? "#1a44d4" : "#10b981";
 
   const sidebarContent = (
     <div

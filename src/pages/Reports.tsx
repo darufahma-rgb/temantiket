@@ -1466,7 +1466,7 @@ export default function Reports() {
         Profit Bersih = Harga Jual − Modal − Fee Agen Penjual − Fee Pelaksana − Biaya Operasional VOA − Biaya Kurir.
         Semua fee dibaca dari data order masing-masing (bukan rate global) agar angka konsisten di semua halaman.
         Order EGP (visa Mesir) di-konversi ke IDR pakai kurs <span className="font-mono">1 EGP ≈ Rp {egpRate}</span>.
-        Poin di-award otomatis: 10 poin saat Completed, +20 poin bonus jika order via agen.
+        Poin di-award otomatis: +10 poin saat order Completed; +20 poin bonus jika order via agen (total +30 poin dengan komisi).
       </div>
 
       </div>{/* end shared content */}

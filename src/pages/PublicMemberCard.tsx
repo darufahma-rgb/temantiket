@@ -879,8 +879,8 @@ export default function PublicMemberCardPage() {
                 {/* ── Footer ── */}
                 <div className="text-center pt-2 pb-4 space-y-1">
                   <div className="flex items-center justify-center gap-2">
-                    <img src="/logo-igh-tour-maskable.png" alt="Temantiket" className="h-5 w-5 rounded-md object-cover" />
-                    <span className="text-sm font-bold text-blue-600">temantiket</span>
+                    <img src="/temantiket-icon.svg" alt="Temantiket" className="h-5 w-5 object-contain" />
+                    <span className="text-sm font-bold text-blue-700">Temantiket</span>
                   </div>
                   <p className="text-xs text-gray-400">
                     mudah, cepat, amanah ·{" "}

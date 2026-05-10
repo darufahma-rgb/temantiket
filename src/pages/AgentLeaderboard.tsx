@@ -545,7 +545,9 @@ export default function AgentLeaderboard() {
               <p className="text-[11.5px] text-slate-500 leading-relaxed">
                 Daftarkan klien baru, bantu mereka order, dan pastikan order naik ke status{" "}
                 <span className="font-semibold text-slate-700">Completed</span>.
-                Tiap order Completed = +10 poin; +20 poin bonus jika ada komisi.
+                Tiap order Completed = <span className="font-semibold text-slate-700">+10 poin</span>;
+                jika ada komisi sales, dapat bonus <span className="font-semibold text-slate-700">+20 poin</span> —
+                total <span className="font-semibold text-slate-700">+30 poin</span> sekaligus.
                 Top performer dapat reward bulanan dari admin.
               </p>
             </div>
