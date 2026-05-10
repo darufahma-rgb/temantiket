@@ -412,16 +412,22 @@ export default function Notes() {
     localStorage.setItem("rapihkan.tone",   rapihkanTone);
     localStorage.setItem("rapihkan.format", rapihkanFormat);
     setFormatting(id);
+    const toastId = toast.loading("Sedang memproses catatan dengan AI…");
+    console.log(`[Rapihkan] → tone="${rapihkanTone}" format="${rapihkanFormat}" contentLength=${content.length}`);
     try {
-      let formatted = content;
-      try {
-        const aiResult = await cleanAndStructureNote(content, rapihkanTone, rapihkanFormat);
-        formatted = aiResult || smartFormat(content);
-      } catch {
-        formatted = smartFormat(content);
+      const aiResult = await cleanAndStructureNote(content, rapihkanTone, rapihkanFormat);
+      if (!aiResult || !aiResult.trim()) {
+        throw new Error("AI tidak mengembalikan hasil — coba lagi atau ganti model AI.");
       }
+      console.log(`[Rapihkan] ✓ AI sukses — resultLength=${aiResult.trim().length}`);
+      toast.dismiss(toastId);
       setPreviewMode("rendered");
-      setRapihkanPreview({ id, original: content, formatted });
+      setRapihkanPreview({ id, original: content, formatted: aiResult.trim() });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[Rapihkan] ✗ AI gagal:`, err);
+      toast.dismiss(toastId);
+      toast.error(`Rapihkan gagal: ${msg}`, { duration: 6000 });
     } finally {
       setFormatting(null);
     }
@@ -430,25 +436,39 @@ export default function Notes() {
   const applyRapihkan = () => {
     if (!rapihkanPreview) return;
     const { id, formatted } = rapihkanPreview;
+    const updatedAt = Date.now();
+
     if (id === "new") {
       setNewContent(formatted);
     } else if (id === editingId) {
+      // Update the textarea so user sees the formatted content immediately.
       setEditContent(formatted);
-    } else {
-      const updatedAt = Date.now();
-      let rapihNote: Note | undefined;
-      setNotes((prev) =>
-        prev.map((n) => {
-          if (n.id !== id) return n;
-          rapihNote = { ...n, content: formatted, updatedAt };
-          return rapihNote;
-        })
-      );
-      if (expandedNote?.id === id)
-        setExpandedNote((prev) => (prev ? { ...prev, content: formatted } : prev));
-      if (rapihNote) {
-        void upsertNote(rapihNote as NoteCloud).catch(() => undefined);
+      // Also persist to notes[] + cloud so the change survives if the edit form is closed.
+      const currentNote = notes.find((n) => n.id === id);
+      if (currentNote) {
+        const rapihNote: Note = { ...currentNote, content: formatted, updatedAt };
+        setNotes((prev) => prev.map((n) => (n.id !== id ? n : rapihNote)));
+        void upsertNote(rapihNote as NoteCloud).catch((e: unknown) => {
+          console.error("[Rapihkan] cloud sync gagal:", e);
+          toast.error(`Gagal sync ke cloud: ${e instanceof Error ? e.message : String(e)}`);
+        });
       }
+    } else {
+      // Standard case: note is not being edited. Compute updated note from current state.
+      const currentNote = notes.find((n) => n.id === id);
+      if (!currentNote) {
+        toast.error("Catatan tidak ditemukan — coba refresh halaman.");
+        setRapihkanPreview(null);
+        return;
+      }
+      const rapihNote: Note = { ...currentNote, content: formatted, updatedAt };
+      setNotes((prev) => prev.map((n) => (n.id !== id ? n : rapihNote)));
+      if (expandedNote?.id === id)
+        setExpandedNote((prev) => (prev ? { ...prev, content: formatted, updatedAt } : prev));
+      void upsertNote(rapihNote as NoteCloud).catch((e: unknown) => {
+        console.error("[Rapihkan] cloud sync gagal:", e);
+        toast.error(`Gagal sync ke cloud: ${e instanceof Error ? e.message : String(e)}`);
+      });
     }
     toast.success("Catatan dirapihkan!");
     setRapihkanPreview(null);
