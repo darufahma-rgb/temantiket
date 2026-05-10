@@ -1,0 +1,101 @@
+Perbaiki total tampilan halaman “Leaderboard Klien Publik” agar konsisten dengan identitas visual utama Temantiket. Saat ini background halaman terpotong, layout terlihat broken, navbar belum memakai logo resmi Temantiket, dan nuansa visual terlalu gelap serta tidak menyatu dengan halaman lain.
+
+Lakukan redesign ringan tanpa menghilangkan data leaderboard yang sudah ada.
+
+Perubahan wajib:
+
+1. Background halaman:
+
+* Ubah background utama menjadi putih / off-white natural seperti halaman utama Temantiket
+* Hapus gradient gelap penuh
+* Hapus efek background yang terpotong
+* Pastikan seluruh section memiliki tinggi yang konsisten
+* Jangan ada area putih kosong mendadak atau clipping layout
+* Tambahkan subtle shadow dan border elegan pada card
+
+2. Navbar:
+
+* Ganti icon/navbar logo menjadi logo resmi Temantiket
+* Samakan style navbar dengan halaman publik utama
+* Sticky top navbar
+* Tambahkan blur transparan halus saat scroll
+* Rapikan spacing menu kanan
+
+3. Leaderboard card:
+
+* Jadikan lebih elegan dan clean
+* Kurangi efek glow berlebihan
+* Gunakan warna:
+
+  * putih
+  * navy soft
+  * biru Temantiket
+  * gold halus untuk ranking top 3
+* Gunakan rounded modern
+* Shadow lembut
+* Hover animation ringan
+
+4. Ranking list:
+
+* Tinggi row konsisten
+* Avatar sejajar
+* Progress bar lebih tipis dan modern
+* Tier badge lebih clean
+* Stamp number lebih menonjol
+* Tambahkan highlight halus untuk top 3
+* Pastikan responsive mobile/tablet
+
+5. Layout:
+
+* Jangan ada object kepotong
+* Pastikan semua section center dan max-width konsisten
+* Gunakan container modern seperti halaman dashboard Temantiket lain
+* Spacing antar section harus lega dan rapi
+* Jangan terlalu padat
+
+6. Section “Cara Naik Ranking”:
+
+* Jadikan card horizontal elegan
+* Icon lebih kecil dan clean
+* Typography lebih modern
+* Tambahkan CTA:
+
+  * “Mulai Kumpulkan Stamp”
+  * atau “Pesan Layanan Sekarang”
+
+7. Search & filter:
+
+* Rapikan search bar
+* Gunakan style premium minimal
+* Tambahkan placeholder:
+  “Cari nama member atau ID…”
+* Filter “Bulan Ini / Lifetime” dibuat seperti segmented control modern
+
+8. Mobile optimization:
+
+* Table berubah jadi stacked card di mobile
+* Navbar compact
+* Tidak boleh overflow horizontal
+* Semua progress bar tetap terbaca
+* Ranking top 3 tetap menarik di mobile
+
+9. Konsistensi branding:
+
+* Samakan font, spacing, radius, dan warna dengan halaman utama Temantiket
+* Jangan terlalu gaming/neon
+* Fokus ke:
+
+  * premium
+  * travel
+  * modern startup
+  * clean airline-style UI
+
+10. Tambahkan subtle animation:
+
+* smooth fade
+* hover scale kecil
+* progress bar animate
+* loading skeleton modern
+
+Target akhir:
+Leaderboard publik terlihat seperti halaman premium startup/travel modern yang ringan, elegan, putih bersih, konsisten dengan branding Temantiket, dan nyaman dibuka di desktop maupun HP tanpa layout rusak atau background terpotong.
