@@ -906,6 +906,114 @@ export default function PublicLeaderboard() {
           </div>
         </section>
 
+        {/* ── Gabung Jadi Agen ────────────────────────────────────────────── */}
+        <section className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
+        {/* Header strip */}
+        <div className="bg-gradient-to-r from-violet-600/30 via-purple-600/20 to-indigo-600/30 border-b border-white/10 px-6 md:px-8 py-4 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-violet-500/20 border border-violet-400/30 flex items-center justify-center shrink-0">
+            <span className="text-lg">🤝</span>
+          </div>
+          <div>
+            <h2 className="text-[15px] font-extrabold text-white">Gabung Jadi Agen Temantiket</h2>
+            <p className="text-[11px] text-white/50 mt-0.5">Bantu orang bepergian, kamu yang untung — dapatkan komisi & naik level agen</p>
+          </div>
+        </div>
+
+        <div className="p-6 md:p-8 grid md:grid-cols-2 gap-8">
+          {/* Left: Benefit + Syarat */}
+          <div className="space-y-5">
+            {/* Keuntungan */}
+            <div>
+              <p className="text-[11px] font-bold text-white/40 uppercase tracking-wider mb-3">Keuntungan Agen</p>
+              <div className="space-y-2">
+                {[
+                  { icon: "💰", text: "Komisi tetap per order — langsung dihitung sistem" },
+                  { icon: "🏆", text: "Sistem tier Bronze → Silver → Gold → Platinum berdasarkan poin aktif" },
+                  { icon: "📱", text: "Marketing Kit & template promo eksklusif dari Temantiket" },
+                  { icon: "🎯", text: "Bonus poin dari misi khusus & challenge bulanan" },
+                  { icon: "📊", text: "Dashboard agen: pantau komisi, klien, & performa order" },
+                ].map((b) => (
+                  <div key={b.text} className="flex items-start gap-2.5 text-white/70">
+                    <span className="shrink-0 text-base mt-0.5">{b.icon}</span>
+                    <span className="text-[12.5px] leading-snug">{b.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Syarat dasar */}
+            <div>
+              <p className="text-[11px] font-bold text-white/40 uppercase tracking-wider mb-3">Syarat Dasar</p>
+              <div className="space-y-1.5">
+                {[
+                  "Memiliki akun Temantiket yang terverifikasi",
+                  "Aktif WhatsApp & responsif terhadap pesan",
+                  "Menjaga profesionalisme dengan customer",
+                  "Mengikuti ketentuan & kebijakan Temantiket",
+                ].map((s) => (
+                  <div key={s} className="flex items-start gap-2 text-white/60">
+                    <span className="text-emerald-400 shrink-0 text-xs mt-0.5">✓</span>
+                    <span className="text-[12px] leading-snug">{s}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Tier strip + CTA */}
+          <div className="space-y-5">
+            {/* Tier progression */}
+            <div>
+              <p className="text-[11px] font-bold text-white/40 uppercase tracking-wider mb-3">Sistem Level Agen</p>
+              <div className="space-y-2">
+                {[
+                  { emoji: "🥉", tier: "C — Bronze",   pts: "0 poin",    desc: "Komisi standar, akses marketing kit dasar",      bg: "from-sky-500/15 to-sky-600/5 border-sky-500/20",   text: "text-sky-300" },
+                  { emoji: "🥈", tier: "B — Silver",   pts: "100 poin",  desc: "Bonus komisi +1%, prioritas respons admin",       bg: "from-slate-400/15 to-slate-500/5 border-slate-400/20", text: "text-slate-300" },
+                  { emoji: "🥇", tier: "A — Gold",     pts: "500 poin",  desc: "Bonus komisi +2%, template promo eksklusif",      bg: "from-amber-400/15 to-yellow-500/5 border-amber-400/20", text: "text-amber-300" },
+                  { emoji: "💎", tier: "S — Platinum", pts: "1.500 poin",desc: "Bonus komisi +3%, undangan event tahunan",        bg: "from-violet-500/15 to-purple-600/5 border-violet-500/20", text: "text-violet-300" },
+                ].map((t) => (
+                  <div key={t.tier} className={`flex items-center gap-3 rounded-xl border bg-gradient-to-r ${t.bg} px-3 py-2.5`}>
+                    <span className="text-lg shrink-0">{t.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[12.5px] font-bold ${t.text}`}>{t.tier}</span>
+                        <span className="text-[9.5px] font-mono text-white/30">≥ {t.pts}</span>
+                      </div>
+                      <p className="text-[10.5px] text-white/40 leading-snug mt-0.5">{t.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10.5px] text-white/30 mt-2 flex items-center gap-1">
+                <span>⚠️</span> Tier di-reset setiap 6 bulan jika poin tidak aktif
+              </p>
+            </div>
+
+            {/* CTA buttons */}
+            <div className="space-y-2.5 pt-1">
+              <a
+                href={`${waBase}?text=${encodeURIComponent("Halo Temantiket! Saya tertarik untuk mendaftar sebagai agen. Bagaimana cara bergabungnya? 🤝")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 text-white font-bold text-[13px] px-5 py-3 rounded-2xl shadow-lg transition-all"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Daftar Jadi Agen — Chat Admin
+              </a>
+              <a
+                href={`${waBase}?text=${encodeURIComponent("Halo Temantiket! Saya ingin tahu lebih lanjut tentang program agen dan ketentuan fee-nya. 📋")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 bg-white/10 border border-white/20 hover:bg-white/15 text-white/80 font-semibold text-[13px] px-5 py-3 rounded-2xl transition-all"
+              >
+                <Share2 className="h-4 w-4" />
+                Tanya Ketentuan & Fee
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       </main>
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}

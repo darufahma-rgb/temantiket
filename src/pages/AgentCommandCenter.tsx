@@ -6,6 +6,7 @@ import {
   FileBarChart, UserPlus, Mail, Lock, Percent, Loader2, Search, Eye,
   ShoppingBag, UserCheck, ChevronRight, ClipboardList, Phone, MessageCircle,
   ToggleLeft, StickyNote, CheckCircle2, Star, Globe, LayoutGrid, Info,
+  BookOpen, PencilLine, Save, Plus, Trash2, BadgeCheck, AlertCircle,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
@@ -33,6 +34,12 @@ import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { MissionCreatorSection } from "@/features/missions/MissionCreatorSection";
 import { AgentWalletCard } from "@/components/AgentWalletCard";
+import {
+  pullAgentFeeItems, pushAgentFeeItems,
+  pullAgentRules, pushAgentRules,
+  fmtFeeIDR, DEFAULT_FEE_ITEMS, DEFAULT_RULES,
+  type AgentFeeItem, type AgentRules,
+} from "@/lib/agentKetentuan";
 
 const M = { fontFamily: "'Manrope', sans-serif" };
 
@@ -473,7 +480,7 @@ function AgentProfileDialog({
 }
 
 // ── Main Unified Page ──────────────────────────────────────────────────────────
-type TabKey = "direktori" | "analytics" | "misi";
+type TabKey = "direktori" | "analytics" | "misi" | "ketentuan";
 
 export default function AgentCommandCenter() {
   const navigate   = useNavigate();
@@ -485,9 +492,10 @@ export default function AgentCommandCenter() {
 
   const isOwner = user?.role === "owner";
   const isStaff = user?.role === "staff";
+  const isAgent = user?.role === "agent";
 
-  // ── Tab state ──
-  const [tab, setTab] = useState<TabKey>("direktori");
+  // ── Tab state — agents land directly on "ketentuan" ──
+  const [tab, setTab] = useState<TabKey>(isAgent ? "ketentuan" : "direktori");
 
   // ── Data ──
   const [members, setMembers]       = useState<MemberInfo[]>([]);
@@ -506,6 +514,14 @@ export default function AgentCommandCenter() {
   type SortKey = "name" | "points" | "orders" | "commission" | "clients";
   const [sortKey, setSortKey]       = useState<SortKey>("points");
   const [sortDir, setSortDir]       = useState<"asc" | "desc">("desc");
+
+  // ── Ketentuan & Fee state ──
+  const [feeItems, setFeeItems]         = useState<AgentFeeItem[]>(DEFAULT_FEE_ITEMS);
+  const [rules, setRules]               = useState<AgentRules>(DEFAULT_RULES);
+  const [editFee, setEditFee]           = useState(false);
+  const [savingFee, setSavingFee]       = useState(false);
+  const [ketentuanLoading, setKetentuanLoading] = useState(true);
+  const [editFeeItems, setEditFeeItems] = useState<AgentFeeItem[]>(DEFAULT_FEE_ITEMS);
 
   // Handle incoming location state (e.g. focusAgent from old links)
   useEffect(() => {
@@ -536,6 +552,19 @@ export default function AgentCommandCenter() {
       setLoading(false);
     }
   };
+
+  // ── Load fee & rules (once on mount) ──────────────────────────────────────────
+  useEffect(() => {
+    setKetentuanLoading(true);
+    Promise.all([pullAgentFeeItems(), pullAgentRules()])
+      .then(([items, r]) => {
+        setFeeItems(items);
+        setEditFeeItems(items);
+        setRules(r);
+      })
+      .catch((e) => console.warn("[agent-center] ketentuan load failed:", e))
+      .finally(() => setKetentuanLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -684,8 +713,47 @@ export default function AgentCommandCenter() {
     setExpandedAgent(agent.userId);
   }
 
-  // Access guard
-  if (!isOwner && !isStaff) {
+  // ── Fee save handler ──────────────────────────────────────────────────────────
+  async function saveFeeChanges() {
+    setSavingFee(true);
+    try {
+      await pushAgentFeeItems(editFeeItems);
+      setFeeItems(editFeeItems);
+      setEditFee(false);
+      toast.success("Fee agent berhasil disimpan!");
+    } catch (e) {
+      toast.error("Gagal menyimpan fee: " + (e as Error).message);
+    } finally {
+      setSavingFee(false);
+    }
+  }
+
+  function cancelEditFee() {
+    setEditFeeItems(feeItems);
+    setEditFee(false);
+  }
+
+  function updateFeeItem(id: string, field: keyof AgentFeeItem, value: string | number) {
+    setEditFeeItems((prev) =>
+      prev.map((item) => item.id === id ? { ...item, [field]: value } : item)
+    );
+  }
+
+  function removeFeeItem(id: string) {
+    setEditFeeItems((prev) => prev.filter((item) => item.id !== id));
+  }
+
+  function addFeeItem() {
+    const newItem: AgentFeeItem = {
+      id: `custom-${Date.now()}`,
+      label: "Layanan Baru",
+      amount: 0,
+    };
+    setEditFeeItems((prev) => [...prev, newItem]);
+  }
+
+  // Access guard — agents CAN access for Ketentuan tab only
+  if (!isOwner && !isStaff && !isAgent) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-muted-foreground">
         <Users className="h-10 w-10 opacity-30" />
@@ -694,11 +762,16 @@ export default function AgentCommandCenter() {
     );
   }
 
-  const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
-    { key: "direktori", label: "Direktori",  icon: Users },
-    { key: "analytics", label: "Analytics",  icon: BarChart3 },
-    { key: "misi",      label: "Misi & Wallet", icon: Target },
+  // Tabs visible per role
+  const ALL_TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
+    { key: "direktori",  label: "Direktori",     icon: Users },
+    { key: "analytics",  label: "Analytics",     icon: BarChart3 },
+    { key: "misi",       label: "Misi & Wallet", icon: Target },
+    { key: "ketentuan",  label: "Ketentuan & Fee", icon: BookOpen },
   ];
+  const TABS = isAgent
+    ? ALL_TABS.filter((t) => t.key === "ketentuan")
+    : ALL_TABS;
 
   return (
     <motion.div
@@ -1184,6 +1257,282 @@ export default function AgentCommandCenter() {
               <p className="text-[12px] text-muted-foreground mt-1">Pastikan akun sudah terhubung ke agency.</p>
             </Card>
           )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          TAB: KETENTUAN & FEE
+      ══════════════════════════════════════════════════════════════════════════ */}
+      {tab === "ketentuan" && (
+        <div className="space-y-6">
+          {/* ── Heading for agents ── */}
+          {isAgent && (
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 flex items-center gap-3">
+              <BadgeCheck className="h-5 w-5 text-blue-600 shrink-0" />
+              <p className="text-[12.5px] text-blue-800 font-medium leading-snug">
+                Ini adalah panduan resmi agen Temantiket — ketentuan, sistem level, pelayanan wajib, dan daftar fee terbaru yang berlaku untuk kamu.
+              </p>
+            </div>
+          )}
+
+          {/* ══ SECTION 1: Update Fee Agent ══ */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-amber-600" />
+                    Update Fee Agent 2026
+                  </CardTitle>
+                  <CardDescription className="mt-0.5">
+                    Berlaku sejak {rules.lastUpdated}
+                    {" · "}
+                    <span className="text-amber-600 font-medium">Semua nominal dalam IDR</span>
+                  </CardDescription>
+                </div>
+                {isOwner && !editFee && (
+                  <Button
+                    variant="outline" size="sm"
+                    className="shrink-0 h-8 text-[12px] border-amber-200 text-amber-700 hover:bg-amber-50"
+                    onClick={() => { setEditFeeItems(feeItems); setEditFee(true); }}
+                  >
+                    <PencilLine className="h-3.5 w-3.5 mr-1.5" /> Edit Fee
+                  </Button>
+                )}
+                {isOwner && editFee && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline" size="sm"
+                      className="h-8 text-[12px] border-slate-200 text-slate-600"
+                      onClick={cancelEditFee} disabled={savingFee}
+                    >
+                      <X className="h-3.5 w-3.5 mr-1" /> Batal
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-8 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={saveFeeChanges} disabled={savingFee}
+                    >
+                      {savingFee
+                        ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Menyimpan…</>
+                        : <><Save className="h-3.5 w-3.5 mr-1" /> Simpan</>
+                      }
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {ketentuanLoading ? (
+                <div className="flex items-center gap-2 py-6 justify-center text-muted-foreground text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Memuat data fee…
+                </div>
+              ) : (
+                <>
+                  {/* Fee table */}
+                  <div className="overflow-x-auto rounded-xl border border-border/60">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/30">
+                          <th className="px-4 py-2.5 text-left text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">Layanan</th>
+                          <th className="px-4 py-2.5 text-right text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">Fee (IDR)</th>
+                          <th className="px-4 py-2.5 text-left text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">Keterangan</th>
+                          {editFee && <th className="px-3 py-2.5 w-10" />}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40">
+                        {(editFee ? editFeeItems : feeItems).map((item) => (
+                          <tr key={item.id} className="hover:bg-muted/20 transition-colors">
+                            <td className="px-4 py-3">
+                              {editFee ? (
+                                <Input
+                                  value={item.label}
+                                  onChange={(e) => updateFeeItem(item.id, "label", e.target.value)}
+                                  className="h-7 text-[12.5px] max-w-[180px]"
+                                />
+                              ) : (
+                                <span className="font-medium text-[13px]">{item.label}</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {editFee ? (
+                                <Input
+                                  type="number"
+                                  value={item.amount}
+                                  onChange={(e) => updateFeeItem(item.id, "amount", Number(e.target.value))}
+                                  className="h-7 text-[12.5px] text-right w-32 ml-auto font-mono"
+                                />
+                              ) : (
+                                <span className="font-mono font-bold text-[13px] text-amber-700">
+                                  {fmtFeeIDR(item.amount)}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              {editFee ? (
+                                <Input
+                                  value={item.note ?? ""}
+                                  placeholder="opsional…"
+                                  onChange={(e) => updateFeeItem(item.id, "note", e.target.value)}
+                                  className="h-7 text-[12px] max-w-[140px]"
+                                />
+                              ) : (
+                                <span className="text-[11.5px] text-muted-foreground">{item.note ?? "—"}</span>
+                              )}
+                            </td>
+                            {editFee && (
+                              <td className="px-3 py-3">
+                                <button
+                                  onClick={() => removeFeeItem(item.id)}
+                                  className="text-red-400 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-50"
+                                  title="Hapus baris"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Add row button (edit mode only) */}
+                  {editFee && (
+                    <Button
+                      variant="outline" size="sm"
+                      className="w-full h-8 text-[12px] border-dashed border-slate-300 text-slate-500 hover:border-amber-300 hover:text-amber-700 hover:bg-amber-50"
+                      onClick={addFeeItem}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1.5" /> Tambah Layanan
+                    </Button>
+                  )}
+
+                  {/* Fee notes */}
+                  <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 space-y-1.5">
+                    <p className="text-[10.5px] font-bold text-amber-800 uppercase tracking-wide flex items-center gap-1.5">
+                      <AlertCircle className="h-3.5 w-3.5" /> Catatan Penting
+                    </p>
+                    {rules.feeNotes.map((note, i) => (
+                      <p key={i} className="text-[12px] text-amber-900 leading-relaxed flex items-start gap-2">
+                        <span className="text-amber-500 shrink-0 mt-0.5">•</span>
+                        {note}
+                      </p>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ══ SECTION 2: Ketentuan Agen ══ */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-blue-600" />
+                Ketentuan Agen Temantiket
+              </CardTitle>
+              <CardDescription>
+                Panduan resmi untuk seluruh mitra agen — harap dibaca dan dipahami
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-7">
+
+              {/* ── Syarat Wajib ── */}
+              <div>
+                <h3 className="text-[12px] font-bold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <Check className="h-4 w-4 text-emerald-600" /> Syarat Wajib Agen
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {rules.requirementItems.map((item, i) => (
+                    <div key={i} className="flex items-start gap-2.5 bg-emerald-50/60 border border-emerald-100 rounded-xl px-3 py-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <span className="text-[12.5px] text-emerald-900 leading-snug">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Sistem Level Agen ── */}
+              <div>
+                <h3 className="text-[12px] font-bold text-foreground uppercase tracking-wide mb-1 flex items-center gap-2">
+                  <Crown className="h-4 w-4 text-amber-600" /> Sistem Level Agen
+                </h3>
+                <p className="text-[11.5px] text-muted-foreground mb-3">
+                  Level naik berdasarkan total poin yang dikumpulkan dari order dan misi. Tier di-reset setiap{" "}
+                  <strong className="text-foreground">{rules.tierResetMonths} bulan</strong> jika poin tidak aktif.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  {TIERS.map((tier, idx) => {
+                    const letterLabel = ["C Basic", "B Silver", "A Gold", "S Platinum"][idx];
+                    const tierGradients = [
+                      "from-sky-100 to-sky-50 border-sky-200",
+                      "from-slate-100 to-slate-50 border-slate-200",
+                      "from-yellow-100 to-amber-50 border-yellow-200",
+                      "from-purple-100 to-violet-50 border-purple-200",
+                    ];
+                    const tierTextColors = [
+                      "text-sky-800", "text-slate-700", "text-amber-800", "text-purple-800",
+                    ];
+                    const tierBadgeBg = [
+                      "bg-sky-600", "bg-slate-500", "bg-amber-500", "bg-purple-600",
+                    ];
+                    return (
+                      <div key={tier.key} className={`rounded-2xl border bg-gradient-to-br ${tierGradients[idx]} p-4 space-y-2.5`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xl">{tier.emoji}</span>
+                          <span className={`text-[9px] font-extrabold text-white px-2 py-0.5 rounded-full ${tierBadgeBg[idx]}`}>
+                            TIER {letterLabel.split(" ")[0]}
+                          </span>
+                        </div>
+                        <div>
+                          <p className={`font-extrabold text-[14px] ${tierTextColors[idx]}`}>{tier.label}</p>
+                          <p className={`text-[10.5px] font-bold opacity-70 ${tierTextColors[idx]}`}>
+                            ≥ {tier.minPoints.toLocaleString("id-ID")} poin
+                          </p>
+                        </div>
+                        <ul className="space-y-1">
+                          {tier.perks.map((perk, j) => (
+                            <li key={j} className={`text-[11px] leading-snug flex items-start gap-1.5 ${tierTextColors[idx]}`}>
+                              <Star className="h-2.5 w-2.5 shrink-0 mt-0.5 opacity-70" />
+                              {perk}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Pelayanan Wajib ── */}
+              <div>
+                <h3 className="text-[12px] font-bold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4 text-blue-600" /> Standar Pelayanan ke Customer
+                </h3>
+                <div className="space-y-2">
+                  {rules.serviceItems.map((item, i) => (
+                    <div key={i} className="flex items-start gap-3 bg-blue-50/50 border border-blue-100 rounded-xl px-3 py-2.5">
+                      <span className="shrink-0 h-5 w-5 rounded-full bg-blue-600 text-white text-[9px] font-extrabold flex items-center justify-center mt-0.5">
+                        {i + 1}
+                      </span>
+                      <span className="text-[12.5px] text-blue-900 leading-snug">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Footer note ── */}
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-start gap-3">
+                <Info className="h-4 w-4 text-slate-500 shrink-0 mt-0.5" />
+                <p className="text-[11.5px] text-slate-600 leading-relaxed">
+                  Ketentuan ini bersifat mengikat bagi seluruh agen/mitra Temantiket. Pelanggaran terhadap ketentuan dapat mengakibatkan penangguhan atau pencabutan status agen.
+                  Ketentuan dapat diperbarui sewaktu-waktu — cek halaman ini secara berkala.
+                </p>
+              </div>
+
+            </CardContent>
+          </Card>
         </div>
       )}
 

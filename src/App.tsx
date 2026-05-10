@@ -299,7 +299,7 @@ function AnimatedRoutes() {
           path="/agent-center"
           element={
             <RequireAuth>
-              <RequireRole roles={["owner"]}>
+              <RequireRole roles={["owner", "staff", "agent"]}>
                 <DashboardLayout><AgentCommandCenter /></DashboardLayout>
               </RequireRole>
             </RequireAuth>
