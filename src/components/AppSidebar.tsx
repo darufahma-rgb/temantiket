@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Calculator, Package, LogOut, Settings,
   StickyNote, FileSpreadsheet, Users, ShoppingBag,
   MessageSquare, Sparkles, Ticket,
-  Command, Trophy, BookUser, Megaphone, BarChart3, Landmark, Wallet,
+  Command, Trophy, BookUser, Megaphone, BarChart3, Landmark, Wallet, Activity,
 } from "lucide-react";
 
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -86,9 +86,10 @@ const OWNER_SECTIONS: SectionDef[] = [
     key: "manajemen",
     label: "Manajemen",
     items: [
-      { title: "Visa Tracker",   url: "/visa-tracker",      icon: Landmark },
-      { title: "Manajemen Agen", url: "/agent-center",      icon: BookUser },
-      { title: "Leaderboard",    url: "/agent/leaderboard", icon: Trophy },
+      { title: "Visa Tracker",        url: "/visa-tracker",        icon: Landmark },
+      { title: "Manajemen Agen",      url: "/agent-center",        icon: BookUser },
+      { title: "Leaderboard",         url: "/agent/leaderboard",   icon: Trophy },
+      { title: "Pantau Kinerja Staff", url: "/staff-performance",  icon: Activity, ownerOnly: true },
     ],
   },
   {

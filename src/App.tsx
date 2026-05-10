@@ -58,6 +58,7 @@ import StaffVisaDashboard from "./pages/StaffVisaDashboard";
 import StaffDashboardPage from "./pages/StaffDashboardPage";
 import StaffCommissionPage from "./pages/StaffCommissionPage";
 import StaffProfile from "./pages/StaffProfile";
+import StaffPerformanceCenter from "./pages/StaffPerformanceCenter";
 import OwnerVisaTrackerPage from "./pages/OwnerVisaTrackerPage";
 import StaffProfileOwnerView from "./pages/StaffProfileOwnerView";
 
@@ -324,6 +325,7 @@ function AnimatedRoutes() {
         <Route path="/staff/visa" element={<RequireAuth><RequireRole roles={["staff"]}><DashboardLayout><StaffVisaDashboard /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/staff/commission" element={<RequireAuth><RequireRole roles={["staff"]}><DashboardLayout><StaffCommissionPage /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/staff/profile" element={<RequireAuth><RequireRole roles={["staff"]}><DashboardLayout><StaffProfile /></DashboardLayout></RequireRole></RequireAuth>} />
+        <Route path="/staff-performance" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><StaffPerformanceCenter /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route
           path="/staff/:staffId"
           element={

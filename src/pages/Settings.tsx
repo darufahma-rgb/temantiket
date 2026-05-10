@@ -195,9 +195,8 @@ export default function Settings() {
   const [newMemberRole, setNewMemberRole] = useState<"staff" | "agent">("staff");
   const [newMemberCommission, setNewMemberCommission] = useState<number>(10);
   const [invitingMember, setInvitingMember] = useState(false);
-  // commissionDraft per-userId — utk inline edit di list anggota.
-  const [commissionDraft, setCommissionDraft] = useState<Record<string, string>>({});
   const setMemberCommission = useAuthStore((s) => s.setMemberCommission);
+  void setMemberCommission; // kept for potential future use
   const isOnline = usePresenceStore((s) => s.isOnline);
 
   // ── Orders (untuk akumulasi fee agen) ────────────────────────────────────
@@ -1351,21 +1350,16 @@ export default function Settings() {
                   <p className="px-4 py-6 text-center text-xs text-[hsl(var(--muted-foreground))]">Belum ada anggota lain.</p>
                 )}
                 {members.map((m) => {
-                  const draft = commissionDraft[m.userId];
-                  const isAgentRow = m.role === "agent";
                   const isStaffRow = m.role === "staff";
                   const online = isOnline(m.userId);
                   return (
                     <div key={m.userId} className="flex items-center justify-between px-4 py-3 gap-3 flex-wrap">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          {/* Online presence dot */}
                           <span
                             className={cn(
                               "shrink-0 inline-block w-2 h-2 rounded-full",
-                              online
-                                ? "bg-emerald-500 shadow-[0_0_5px_#10b981]"
-                                : "bg-gray-300",
+                              online ? "bg-emerald-500 shadow-[0_0_5px_#10b981]" : "bg-gray-300",
                             )}
                             title={online ? "Sedang online" : "Offline"}
                           />
@@ -1383,9 +1377,9 @@ export default function Settings() {
                               : m.role === "agent" ? "bg-orange-100 text-orange-700"
                               : "bg-blue-100 text-blue-700"
                           )}>{m.role}</span>
-                          {isAgentRow && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700">
-                              komisi {m.commissionPct}%
+                          {m.role === "agent" && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-700">
+                              fee flat
                             </span>
                           )}
                         </div>
@@ -1400,39 +1394,6 @@ export default function Settings() {
                           >
                             🪪 Kartu Staff
                           </Button>
-                        )}
-                        {isOwner && isAgentRow && (
-                          <>
-                            <Input
-                              type="number" min={0} max={100} step={0.5}
-                              value={draft ?? String(m.commissionPct)}
-                              onChange={(e) => setCommissionDraft((p) => ({ ...p, [m.userId]: e.target.value }))}
-                              className="h-8 w-20 text-[12px] font-mono"
-                              title="Komisi %"
-                            />
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 px-2 text-[11px]"
-                              disabled={draft === undefined || Number(draft) === m.commissionPct}
-                              onClick={async () => {
-                                const v = Number(draft);
-                                if (!Number.isFinite(v) || v < 0 || v > 100) {
-                                  toast.error("Komisi harus 0-100%."); return;
-                                }
-                                try {
-                                  await setMemberCommission(m.userId, v);
-                                  setMembers(await listMembers());
-                                  setCommissionDraft((p) => { const c = { ...p }; delete c[m.userId]; return c; });
-                                  toast.success(`Komisi ${m.displayName} → ${v}%`);
-                                } catch (e: any) {
-                                  toast.error(`Gagal: ${e?.message ?? "unknown"}`);
-                                }
-                              }}
-                            >
-                              <Save className="h-3 w-3" />
-                            </Button>
-                          </>
                         )}
                         {isOwner && m.role !== "owner" && m.userId !== user?.id && (
                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-50 hover:text-red-500"
