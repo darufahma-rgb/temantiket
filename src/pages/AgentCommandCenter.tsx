@@ -569,6 +569,21 @@ export default function AgentCommandCenter() {
     return m;
   }, [orders]);
 
+  // Map agentId → VOA orders where that agent is assigned as field agent (metadata.voaFieldAgentId)
+  const voaFieldOrdersByAgent = useMemo(() => {
+    const m = new Map<string, typeof orders>();
+    for (const o of orders) {
+      if (o.type !== "visa_voa") continue;
+      const meta = (o.metadata ?? {}) as Record<string, unknown>;
+      const fieldAgentId = meta.voaFieldAgentId as string | undefined;
+      if (!fieldAgentId) continue;
+      const cur = m.get(fieldAgentId) ?? [];
+      cur.push(o);
+      m.set(fieldAgentId, cur);
+    }
+    return m;
+  }, [orders]);
+
   const agentRows: AgentRow[] = useMemo(() => agentMembers.map((a, idx) => {
     const totalPoints      = pointsByAgent.get(a.userId) ?? 0;
     const tierInfo         = getTierInfo(totalPoints);
@@ -580,7 +595,13 @@ export default function AgentCommandCenter() {
     const netAgencyProfit  = completedList.reduce((s, o) => s + netProfitIDR(o), 0);
     // Hitung fee dari semua order (kecuali Cancelled) — baca dari meta.agentFee per order.
     const billableOrders   = agentOrders.filter((o) => o.status !== "Cancelled");
-    const commissionOwed   = billableOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0);
+    const salesCommission  = billableOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0);
+    // Tambahkan fee lapangan VOA: order2 di mana agen ini adalah voaFieldAgentId
+    const voaFieldOrders   = voaFieldOrdersByAgent.get(a.userId) ?? [];
+    const voaFieldCommission = voaFieldOrders
+      .filter((o) => o.status !== "Cancelled")
+      .reduce((s, o) => s + Number(((o.metadata ?? {}) as Record<string, unknown>).voaAgentFee ?? 0), 0);
+    const commissionOwed   = salesCommission + voaFieldCommission;
     return {
       ...a, totalPoints, tierInfo,
       totalOrders: agentOrders.length,
@@ -590,7 +611,7 @@ export default function AgentCommandCenter() {
       totalRevenue, totalProfit, netAgencyProfit, commissionOwed,
       color: AGENT_COLORS[idx % AGENT_COLORS.length],
     };
-  }).sort((a, b) => b.totalPoints - a.totalPoints), [agentMembers, pointsByAgent, ordersByAgent, clientCountByAgent]);
+  }).sort((a, b) => b.totalPoints - a.totalPoints), [agentMembers, pointsByAgent, ordersByAgent, voaFieldOrdersByAgent, clientCountByAgent]);
 
   // Filtered for directory search
   const filteredRows = useMemo(() => {

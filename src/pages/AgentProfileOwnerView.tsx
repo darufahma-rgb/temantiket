@@ -445,11 +445,6 @@ export default function AgentProfileOwnerView() {
     return idx >= 0 ? idx + 1 : null;
   }, [allAgentsPts, agentId]);
 
-  const totalKomisi = useMemo(
-    () => agentOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0),
-    [agentOrders],
-  );
-
   const feeStats = useMemo(() => {
     const total = agentOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0);
     const paid = agentOrders
@@ -507,15 +502,15 @@ export default function AgentProfileOwnerView() {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [walletTxs],
   );
-  const pelaksanaTxs = useMemo(
+  const voaFieldTxs = useMemo(
     () => [...walletTxs]
       .filter((t) => t.type === "voa_agent_fee")
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [walletTxs],
   );
-  const totalPelaksanaFee = useMemo(
-    () => pelaksanaTxs.reduce((s, t) => s + t.amountIDR, 0),
-    [pelaksanaTxs],
+  const totalVoaFieldFee = useMemo(
+    () => voaFieldTxs.reduce((s, t) => s + t.amountIDR, 0),
+    [voaFieldTxs],
   );
   const walletBal = useMemo(() => walletBalance(walletTxs), [walletTxs]);
   const totalCommissionCredited = useMemo(
@@ -951,7 +946,7 @@ export default function AgentProfileOwnerView() {
                 {[
                   { icon: ShoppingBag, label: "Total Order",  value: String(agentOrders.length),            sub: `${agentOrders.filter((o) => o.status === "Completed").length} selesai`, color: "text-violet-600", bg: "bg-violet-50 border-violet-100" },
                   { icon: Users,       label: "Total Klien",  value: String(agentClients.length),           sub: "klien aktif",                        color: "text-sky-600",    bg: "bg-sky-50 border-sky-100" },
-                  { icon: TrendingUp,  label: "Total Komisi", value: fmtIDR((feeStats.total || totalKomisi) + totalPelaksanaFee), sub: "fee agen + lapangan VOA",                  color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
+                  { icon: TrendingUp,  label: "Total Komisi", value: fmtIDR(feeStats.total + totalVoaFieldFee), sub: "fee agen + lapangan VOA",                  color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
                   { icon: Trophy,      label: "Total Poin",   value: totalPoints.toLocaleString("id-ID"),   sub: `Tier ${tier.label}`,                  color: "text-amber-600",  bg: "bg-amber-50 border-amber-100" },
                 ].map((s) => (
                   <div key={s.label} className={`rounded-2xl border p-3 ${s.bg}`}>
@@ -1035,7 +1030,7 @@ export default function AgentProfileOwnerView() {
                 </div>
                 <div className="p-4 space-y-3">
                   <div className="text-center py-1">
-                    <div className="text-xl md:text-3xl font-extrabold font-mono">{fmtIDR((feeStats.total || totalKomisi) + totalPelaksanaFee)}</div>
+                    <div className="text-xl md:text-3xl font-extrabold font-mono">{fmtIDR(feeStats.total + totalVoaFieldFee)}</div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">total akumulasi (komisi + lapangan VOA)</div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -1056,7 +1051,7 @@ export default function AgentProfileOwnerView() {
                       </div>
                     </div>
                   </div>
-                  {totalPelaksanaFee > 0 && (
+                  {totalVoaFieldFee > 0 && (
                     <div className="rounded-xl bg-purple-50 border border-purple-100 p-3 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-base">🛂</span>
@@ -1065,10 +1060,10 @@ export default function AgentProfileOwnerView() {
                           <div className="text-[10px] text-muted-foreground">dikreditkan ke wallet</div>
                         </div>
                       </div>
-                      <div className="text-sm font-extrabold font-mono text-purple-700">{fmtIDR(totalPelaksanaFee)}</div>
+                      <div className="text-sm font-extrabold font-mono text-purple-700">{fmtIDR(totalVoaFieldFee)}</div>
                     </div>
                   )}
-                  {(feeStats.total === 0 && totalKomisi === 0 && totalPelaksanaFee === 0) && (
+                  {(feeStats.total === 0 && totalVoaFieldFee === 0) && (
                     <p className="text-center text-[11px] text-muted-foreground italic py-1">
                       Belum ada fee. Agen belum memiliki order dengan fee komisi.
                     </p>
@@ -1436,14 +1431,14 @@ export default function AgentProfileOwnerView() {
                   <p className="text-base font-extrabold font-mono text-emerald-800">{fmtIDR(totalCommissionCredited)}</p>
                   <p className="text-[10px] text-emerald-600 mt-0.5">{orderBonusTxs.length} order selesai</p>
                 </div>
-                {totalPelaksanaFee > 0 ? (
+                {totalVoaFieldFee > 0 ? (
                   <div className="rounded-2xl border border-purple-100 bg-purple-50 p-3">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-semibold uppercase tracking-wide text-purple-700">Fee Lapangan VOA</span>
                       <span className="text-sm">🛂</span>
                     </div>
-                    <p className="text-base font-extrabold font-mono text-purple-800">{fmtIDR(totalPelaksanaFee)}</p>
-                    <p className="text-[10px] text-purple-600 mt-0.5">{pelaksanaTxs.length} penugasan</p>
+                    <p className="text-base font-extrabold font-mono text-purple-800">{fmtIDR(totalVoaFieldFee)}</p>
+                    <p className="text-[10px] text-purple-600 mt-0.5">{voaFieldTxs.length} penugasan</p>
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-orange-100 bg-orange-50 p-3">
@@ -1469,7 +1464,7 @@ export default function AgentProfileOwnerView() {
                 </div>
               </div>
               {/* Jika ada fee lapangan, tampilkan baris pencairan di bawah summary strip */}
-              {totalPelaksanaFee > 0 && (
+              {totalVoaFieldFee > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="rounded-2xl border border-orange-100 bg-orange-50 p-3">
                     <div className="flex items-center justify-between mb-1">
@@ -1560,7 +1555,7 @@ export default function AgentProfileOwnerView() {
               </div>
 
               {/* VOA pelaksana fee history */}
-              {pelaksanaTxs.length > 0 && (
+              {voaFieldTxs.length > 0 && (
                 <div className="rounded-2xl border bg-white overflow-hidden">
                   <div className="px-4 py-3 border-b flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -1573,11 +1568,11 @@ export default function AgentProfileOwnerView() {
                       </div>
                     </div>
                     <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
-                      {pelaksanaTxs.length} penugasan
+                      {voaFieldTxs.length} penugasan
                     </span>
                   </div>
                   <div className="divide-y">
-                    {pelaksanaTxs.map((tx) => {
+                    {voaFieldTxs.map((tx) => {
                       const idMatch = tx.description.match(/#([a-f0-9]{8})/i);
                       const shortId = idMatch?.[1] ?? null;
                       return (

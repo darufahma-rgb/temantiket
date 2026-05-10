@@ -293,6 +293,20 @@ export default function Reports() {
       cur.commission += agentFeeFromMeta(o);
       m.set(o.createdByAgent, cur);
     }
+    // Tambahkan fee lapangan VOA: agen yg bertugas sebagai voaFieldAgentId pada order visa_voa
+    for (const o of filtered) {
+      if (o.type !== "visa_voa") continue;
+      const meta = (o.metadata ?? {}) as Record<string, unknown>;
+      const fieldAgentId = meta.voaFieldAgentId as string | undefined;
+      if (!fieldAgentId) continue;
+      const fieldMember = memberById.get(fieldAgentId);
+      if (!fieldMember || fieldMember.role !== "agent") continue;
+      const voaFee = Number(meta.voaAgentFee ?? 0);
+      if (voaFee <= 0) continue;
+      const cur = m.get(fieldAgentId) ?? { profit: 0, orders: 0, revenue: 0, commission: 0 };
+      cur.commission += voaFee;
+      m.set(fieldAgentId, cur);
+    }
     // Pastikan semua agent muncul (walau gak ada order di periode).
     for (const a of agentMembers) {
       if (!m.has(a.userId)) m.set(a.userId, { profit: 0, orders: 0, revenue: 0, commission: 0 });
