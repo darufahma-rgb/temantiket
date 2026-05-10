@@ -56,7 +56,7 @@ export default function StaffProfileOwnerView() {
   // Load card back image once we know the staff member + agency
   useEffect(() => {
     if (!staffId || !currentUser?.agencyId) return;
-    void loadCardBackUrl(staffId, currentUser.agencyId).then((url) => {
+    void loadCardBackUrl(staffId, currentUser.agencyId, "staff").then((url) => {
       if (url) setCardBackUrl(url);
     });
   }, [staffId, currentUser?.agencyId]);
@@ -65,7 +65,7 @@ export default function StaffProfileOwnerView() {
     if (!staffId || !currentUser?.agencyId || !file.type.startsWith("image/")) return;
     setCardBackUploading(true);
     try {
-      const url = await uploadCardBack(staffId, file, currentUser.agencyId);
+      const url = await uploadCardBack(staffId, file, currentUser.agencyId, "staff");
       await saveCardBackUrl(staffId, currentUser.agencyId, url);
       setCardBackUrl(url);
       toast.success(`Gambar belakang kartu ${staff?.displayName ?? "staff"} diperbarui!`);

@@ -119,14 +119,14 @@ export default function AgentProfile() {
 
   useEffect(() => {
     if (!user?.id || !user?.agencyId) return;
-    void loadCardBackUrl(user.id, user.agencyId).then((url) => { if (url) setCardBackUrl(url); });
+    void loadCardBackUrl(user.id, user.agencyId, "agent").then((url) => { if (url) setCardBackUrl(url); });
   }, [user?.id, user?.agencyId]);
 
   const handleCardBackFile = async (file: File) => {
     if (!user?.id || !user?.agencyId || !file.type.startsWith("image/")) return;
     setCardBackUploading(true);
     try {
-      const url = await uploadCardBack(user.id, file, user.agencyId);
+      const url = await uploadCardBack(user.id, file, user.agencyId, "agent");
       await saveCardBackUrl(user.id, user.agencyId, url);
       setCardBackUrl(url);
       const { toast } = await import("sonner");

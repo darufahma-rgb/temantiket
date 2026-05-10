@@ -96,7 +96,7 @@ export default function StaffProfile() {
 
     // Load card back image
     if (user?.id && user?.agencyId) {
-      void loadCardBackUrl(user.id, user.agencyId).then((url) => {
+      void loadCardBackUrl(user.id, user.agencyId, "staff").then((url) => {
         if (url) setCardBackUrl(url);
       });
     }
@@ -106,7 +106,7 @@ export default function StaffProfile() {
     if (!user?.id || !user?.agencyId || !file.type.startsWith("image/")) return;
     setCardBackUploading(true);
     try {
-      const url = await uploadCardBack(user.id, file, user.agencyId);
+      const url = await uploadCardBack(user.id, file, user.agencyId, "staff");
       await saveCardBackUrl(user.id, user.agencyId, url);
       setCardBackUrl(url);
       const { toast } = await import("sonner");

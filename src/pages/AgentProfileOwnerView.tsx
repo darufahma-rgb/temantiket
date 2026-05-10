@@ -383,7 +383,7 @@ export default function AgentProfileOwnerView() {
   // Load card back image for this agent
   useEffect(() => {
     if (!agentId || !agencyId) return;
-    void loadCardBackUrl(agentId, agencyId).then((url) => {
+    void loadCardBackUrl(agentId, agencyId, "agent").then((url) => {
       if (url) setCardBackUrl(url);
     });
   }, [agentId, agencyId]);
@@ -392,7 +392,7 @@ export default function AgentProfileOwnerView() {
     if (!agentId || !agencyId || !file.type.startsWith("image/")) return;
     setCardBackUploading(true);
     try {
-      const url = await uploadCardBack(agentId, file, agencyId);
+      const url = await uploadCardBack(agentId, file, agencyId, "agent");
       await saveCardBackUrl(agentId, agencyId, url);
       setCardBackUrl(url);
       toast.success(`Gambar belakang kartu ${agent?.displayName ?? "agen"} diperbarui!`);

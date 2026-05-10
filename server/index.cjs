@@ -1400,10 +1400,11 @@ app.post('/api/card-back-signed-url', async (req, res) => {
     console.log(`${ROUTE} caller validated — caller.id=${caller.id}`);
 
     // ── Validate request body ─────────────────────────────────────────────────
-    const { targetUserId, agencyId } = req.body ?? {};
+    const { targetUserId, agencyId, role } = req.body ?? {};
     if (!targetUserId || !agencyId) {
       return err(res, 400, 'targetUserId dan agencyId wajib diisi');
     }
+    const safeRole = ['agent', 'staff', 'owner'].includes(role) ? role : 'agent';
 
     const admin = makeAdminClient();
 
@@ -1449,9 +1450,32 @@ app.post('/api/card-back-signed-url', async (req, res) => {
       );
     }
 
+    // ── Auto-create bucket if missing ─────────────────────────────────────────
+    const SIGNED_BUCKET = 'card-backs';
+    try {
+      const { error: bucketErr } = await withTimeout(
+        admin.storage.createBucket(SIGNED_BUCKET, {
+          public: true,
+          fileSizeLimit: 10485760,
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+        }),
+        8000, 'Timeout saat membuat bucket'
+      );
+      if (bucketErr) {
+        const msg = bucketErr.message ?? '';
+        if (!msg.toLowerCase().includes('already exist') && !msg.toLowerCase().includes('duplicate')) {
+          console.warn(`${ROUTE} createBucket warning:`, msg);
+        }
+      } else {
+        console.log(`${ROUTE} bucket '${SIGNED_BUCKET}' created`);
+      }
+    } catch (bucketEx) {
+      console.warn(`${ROUTE} createBucket exception (continuing):`, bucketEx?.message ?? bucketEx);
+    }
+
     // ── Create signed upload URL (service-role bypasses storage RLS) ──────────
-    const storagePath = `${targetUserId}/card-back.jpg`;
-    console.log(`${ROUTE} creating signed upload URL — bucket=card-backs path=${storagePath}`);
+    const storagePath = `${safeRole}/${targetUserId}/card-back.jpg`;
+    console.log(`${ROUTE} creating signed upload URL — bucket=${SIGNED_BUCKET} path=${storagePath} role=${safeRole}`);
 
     const { data: signedData, error: signedErr } = await withTimeout(
       admin.storage.from('card-backs').createSignedUploadUrl(storagePath, { upsert: true }),
@@ -1473,11 +1497,12 @@ app.post('/api/card-back-signed-url', async (req, res) => {
       return err(res, 500, `Gagal membuat upload URL: ${detail}`);
     }
 
-    console.log(`${ROUTE} signed upload URL created — path=${signedData.path}`);
+    console.log(`${ROUTE} signed upload URL created — path=${signedData.path} storagePath=${storagePath}`);
     return ok(res, {
-      signedUrl: signedData.signedUrl,
-      token:     signedData.token,
-      path:      signedData.path,
+      signedUrl:   signedData.signedUrl,
+      token:       signedData.token,
+      path:        signedData.path,
+      storagePath,
     });
 
   } catch (e) {
@@ -1530,11 +1555,11 @@ app.post('/api/save-card-back-url', async (req, res) => {
     console.log(`${ROUTE} caller validated — caller.id=${caller.id}`);
 
     // ── 3. Validate request body ────────────────────────────────────────────
-    const { targetUserId, agencyId } = req.body ?? {};
+    const { targetUserId, agencyId, storagePath: clientStoragePath } = req.body ?? {};
     if (!targetUserId || !agencyId) {
       return err(res, 400, 'targetUserId dan agencyId wajib diisi');
     }
-    console.log(`${ROUTE} table=agency_members targetUserId=${targetUserId} agencyId=${agencyId}`);
+    console.log(`${ROUTE} table=agency_members targetUserId=${targetUserId} agencyId=${agencyId} storagePath=${clientStoragePath ?? 'auto'}`);
 
     const admin = makeAdminClient();
 
@@ -1588,9 +1613,9 @@ app.post('/api/save-card-back-url', async (req, res) => {
     console.log(`${ROUTE} target row confirmed — user_id=${targetMembership.user_id}`);
 
     // ── 7. Build canonical Storage URL ────────────────────────────────────
-    // Path di bucket: card-backs/{targetUserId}/card-back.jpg
-    // Canonical public URL: {SUPABASE_URL}/storage/v1/object/public/card-backs/{path}
-    const storagePath  = `${targetUserId}/card-back.jpg`;
+    // If client provided storagePath (new flow), use it directly.
+    // Otherwise fall back to legacy path for backward compatibility.
+    const storagePath  = clientStoragePath || `${targetUserId}/card-back.jpg`;
     const canonicalUrl = `${SUPABASE_URL}/storage/v1/object/public/card-backs/${storagePath}`;
     console.log(`${ROUTE} table=agency_members column=card_back_image_url storageUrl=${canonicalUrl}`);
 
