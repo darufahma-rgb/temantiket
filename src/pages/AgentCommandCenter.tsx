@@ -28,7 +28,7 @@ import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/a
 import { listSubmissions, sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
 import type { MissionSubmission } from "@/features/missions/types";
 import { getTierInfo, TIERS } from "@/features/agentPoints/agentTiers";
-import { profitIDR, revenueIDR, fmtIDR } from "@/lib/profit";
+import { profitIDR, revenueIDR, fmtIDR, agentFeeFromMeta } from "@/lib/profit";
 import { getCommissionForOrderType, loadProductCommissions } from "@/lib/productCommissions";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -576,12 +576,9 @@ export default function AgentCommandCenter() {
     const completedList    = agentOrders.filter((o) => o.status === "Completed");
     const totalRevenue     = agentOrders.reduce((s, o) => s + revenueIDR(o), 0);
     const totalProfit      = completedList.reduce((s, o) => s + Math.max(0, profitIDR(o)), 0);
-    const pc               = loadProductCommissions();
-    // Hitung fee dari semua order (kecuali Cancelled) — bukan hanya Completed.
+    // Hitung fee dari semua order (kecuali Cancelled) — baca dari meta.agentFee per order.
     const billableOrders   = agentOrders.filter((o) => o.status !== "Cancelled");
-    const commissionOwed   = billableOrders.reduce((s, o) => s + getCommissionForOrderType(
-      o.type as "umrah" | "flight" | "visa_voa" | "visa_student", pc,
-    ), 0);
+    const commissionOwed   = billableOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0);
     return {
       ...a, totalPoints, tierInfo,
       totalOrders: agentOrders.length,
@@ -1042,7 +1039,7 @@ export default function AgentCommandCenter() {
                           ) : completedList.map((o) => {
                             const rev  = revenueIDR(o);
                             const prof = Math.max(0, profitIDR(o));
-                            const com  = getCommissionForOrderType(o.type as "umrah" | "flight" | "visa_voa" | "visa_student", loadProductCommissions());
+                            const com  = agentFeeFromMeta(o);
                             return (
                               <tr key={o.id} className="border-b last:border-b-0 hover:bg-white/60">
                                 <td className="py-1.5 px-2 font-medium max-w-[200px] truncate">{o.title || "—"}</td>

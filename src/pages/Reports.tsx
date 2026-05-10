@@ -22,11 +22,12 @@ import {
 } from "@/features/orders/ordersRepo";
 import {
   profitIDR, revenueIDR, costIDR, fmtIDR, voaOpCost, kurirOpCost,
+  agentFeeFromMeta, pelaksanaFeeFromMeta,
 } from "@/lib/profit";
 import { useRatesStore } from "@/store/ratesStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
 import { buildLedgerEntries, ledgerSummary } from "@/lib/ledgerSync";
-import { loadProductCommissions, pullProductCommissions, getCommissionForOrderType, type ProductCommissions } from "@/lib/productCommissions";
+import { loadProductCommissions, pullProductCommissions, type ProductCommissions } from "@/lib/productCommissions";
 
 type RangeKey = "this_month" | "last_month" | "this_year" | "all";
 type AgentFilter = "all" | "direct" | string; // string = agent userId
@@ -139,18 +140,28 @@ export default function Reports() {
     });
   }, [orders, from, to, agentFilter]);
 
-  // Helper: gross profit dikurangi komisi agen + biaya VOA + biaya kurir → profit bersih agency.
+  /**
+   * Profit bersih agency per order — RUMUS TUNGGAL yang dipakai di semua section.
+   *
+   * = Gross Profit − Fee Agen Penjual − Fee Pelaksana − Biaya VOA − Biaya Kurir
+   *
+   * Fee Agen: dibaca dari meta.agentFee (per-order actual, bukan rate global).
+   * Divalidasi: hanya dipotong jika createdByAgent mengarah ke member role "agent".
+   * Direct order (owner/staff closing ref) → agentFee = 0.
+   *
+   * Fee Pelaksana: dibaca dari meta.pelaksanaFee (visa_student + pelaksanaId).
+   */
   const agencyProfit = useCallback(
     (o: Order): number => {
       const gross = profitIDR(o, egpRate);
+      // Validasi: agentFee hanya dipotong jika createdByAgent adalah member role "agent"
       const member = o.createdByAgent ? memberById.get(o.createdByAgent) : undefined;
-      const salesComm = (member && member.role === "agent")
-        ? getCommissionForOrderType(o.type as "umrah" | "flight" | "visa_voa" | "visa_student", productCommissions)
-        : 0;
+      const agentFee = (member?.role === "agent") ? agentFeeFromMeta(o) : 0;
+      const pelFee = pelaksanaFeeFromMeta(o);
       const opex = voaOpCost(o) + kurirOpCost(o);
-      return gross - salesComm - opex;
+      return gross - agentFee - pelFee - opex;
     },
-    [egpRate, memberById, productCommissions],
+    [egpRate, memberById],
   );
 
   // Total aggregations
@@ -171,46 +182,51 @@ export default function Reports() {
   // Penting: createdByAgent bisa berisi userId owner/staff (dari field
   // "Closing/Referensi Dari" di form klien) — hanya hitung sebagai "Via Agent"
   // jika member tersebut benar-benar berperan agent (role === "agent").
+  //
+  // KONSISTENSI: agentFee dibaca dari meta.agentFee (per-order actual),
+  // bukan dari getCommissionForOrderType (rate global). pelaksanaFee ikut
+  // diperhitungkan di kedua bucket.
   const split = useMemo(() => {
-    let directProfit = 0;
+    let directNetProfit = 0;
     let directRevenue = 0;
     let directCount = 0;
-    let agentProfit = 0;     // gross profit dari order via agent
+    let agentGrossProfit = 0; // gross profit (revenue - modal) dari order via agent
     let agentRevenue = 0;
     let agentCount = 0;
-    let totalCommission = 0; // total komisi yg dikeluarin agency
+    let totalCommission = 0;  // total meta.agentFee dari order via agent
+    let totalAgentOpex = 0;   // voaOpCost + kurirOpCost + pelaksanaFee untuk order via agent
 
     for (const o of filtered) {
-      const p = profitIDR(o, egpRate);
+      const gross = profitIDR(o, egpRate);
       const r = revenueIDR(o, egpRate);
-      const opex = voaOpCost(o as Parameters<typeof voaOpCost>[0]) + kurirOpCost(o);
+      const opex = voaOpCost(o) + kurirOpCost(o);
+      const pelFee = pelaksanaFeeFromMeta(o);
       // Cek apakah createdByAgent mengarah ke member berole "agent".
       // Owner/staff yang di-set sebagai "Closing Ref" TIDAK dihitung Via Agent.
       const member = o.createdByAgent ? memberById.get(o.createdByAgent) : undefined;
       const isAgentOrder = o.createdByAgent != null && member?.role === "agent";
       if (isAgentOrder) {
-        agentProfit += p - opex;
+        agentGrossProfit += gross;
         agentRevenue += r;
         agentCount += 1;
-        // Komisi = nominal flat per jenis produk (bukan % dari profit).
-        totalCommission += getCommissionForOrderType(
-          o.type as "umrah" | "flight" | "visa_voa" | "visa_student",
-          productCommissions,
-        );
+        // Baca fee aktual dari metadata — bukan rate global
+        totalCommission += agentFeeFromMeta(o);
+        totalAgentOpex += opex + pelFee;
       } else {
-        directProfit += p - opex;
+        // Direct order: net = gross - opex - pelaksanaFee (agentFee selalu 0)
+        directNetProfit += gross - opex - pelFee;
         directRevenue += r;
         directCount += 1;
       }
     }
-    const agentNetForAgency = agentProfit - totalCommission;
-    const netAgencyProfit = directProfit + agentNetForAgency;
+    const agentNetForAgency = agentGrossProfit - totalCommission - totalAgentOpex;
+    const netAgencyProfit = directNetProfit + agentNetForAgency;
     return {
-      directProfit, directRevenue, directCount,
-      agentProfit, agentRevenue, agentCount,
+      directProfit: directNetProfit, directRevenue, directCount,
+      agentProfit: agentGrossProfit, agentRevenue, agentCount,
       totalCommission, agentNetForAgency, netAgencyProfit,
     };
-  }, [filtered, memberById, egpRate, productCommissions]);
+  }, [filtered, memberById, egpRate]);
 
   // Profit per type (utk pie chart) — pakai agency profit (sudah dikurangi komisi agen).
   const byType = useMemo(() => {
@@ -269,14 +285,12 @@ export default function Reports() {
       const member = memberById.get(o.createdByAgent);
       if (!member || member.role !== "agent") continue;
       const cur = m.get(o.createdByAgent) ?? { profit: 0, orders: 0, revenue: 0, commission: 0 };
-      cur.profit += profitIDR(o, egpRate);
+      // Profit bersih = gross profit - semua biaya (konsisten dengan agencyProfit)
+      cur.profit += agencyProfit(o);
       cur.revenue += revenueIDR(o, egpRate);
       cur.orders += 1;
-      // Komisi = nominal flat per jenis produk (bukan % dari profit).
-      cur.commission += getCommissionForOrderType(
-        o.type as "umrah" | "flight" | "visa_voa" | "visa_student",
-        productCommissions,
-      );
+      // Komisi aktual dari metadata order (bukan rate global)
+      cur.commission += agentFeeFromMeta(o);
       m.set(o.createdByAgent, cur);
     }
     // Pastikan semua agent muncul (walau gak ada order di periode).
@@ -301,7 +315,7 @@ export default function Reports() {
       if (b.profit !== a.profit) return b.profit - a.profit;
       return b.lifetimePoints - a.lifetimePoints;
     });
-  }, [filtered, agentMembers, memberById, points, egpRate, productCommissions]);
+  }, [filtered, agentMembers, memberById, points, egpRate, agencyProfit]);
 
   const pieData = byType
     .filter((x) => x.profit > 0)
@@ -1031,7 +1045,7 @@ export default function Reports() {
               { label: "Total Revenue",    value: fmtIDR(ledgerStats.totalRevenue),    tone: "sky",     sub: null },
               { label: "Total Modal",      value: fmtIDR(ledgerStats.totalCost),       tone: "amber",   sub: null },
               { label: "Gross Profit",     value: fmtIDR(ledgerStats.totalProfit),     tone: ledgerStats.totalProfit >= 0 ? "emerald" : "red", sub: `${ledgerStats.count} transaksi lunas` },
-              { label: "Fee Komisi Agen",  value: `−${fmtIDR(ledgerStats.totalCommission)}`, tone: "orange",  sub: `Net: ${fmtIDR(ledgerStats.netProfit)}` },
+              { label: "Fee & Biaya Ops",  value: `−${fmtIDR(ledgerStats.totalCommission + ledgerStats.totalVoaOpex + ledgerStats.totalKurirOpex + ledgerStats.totalPelaksana)}`, tone: "orange",  sub: `Net: ${fmtIDR(ledgerStats.netProfit)}` },
             ].map((r) => (
               <div key={r.label} className={`rounded-2xl border bg-gradient-to-br p-3 md:p-4 ${
                 r.tone === "sky"     ? "from-sky-50 to-white border-sky-100 text-sky-700" :
@@ -1150,11 +1164,35 @@ export default function Reports() {
                           </tr>
                         );
                       }
+                      if (e.isPelaksanaFee) {
+                        // Baris debit fee pelaksana visa student — styling violet
+                        const balColor = e.runningBalance >= 0 ? "text-emerald-700 font-bold" : "text-red-600 font-bold";
+                        return (
+                          <tr key={e.orderId} className="border-b last:border-b-0 bg-violet-50/60 hover:bg-violet-100 cursor-pointer transition-colors" onClick={() => navigate(`/orders/detail/${e.orderId.replace("pelaksana_fee_", "")}`)} title="Buka detail order">
+                            <td className="py-1.5 px-2 text-muted-foreground">—</td>
+                            <td className="py-1.5 px-2 whitespace-nowrap text-muted-foreground">{fmtDate(e.paidAt)}</td>
+                            <td className="py-1.5 px-2 max-w-[120px] truncate text-violet-700/70" title={e.clientName}>{e.clientName}</td>
+                            <td className="py-1.5 px-2 max-w-[200px] truncate text-violet-700 font-semibold" title={e.orderTitle}>
+                              <span className="mr-1">📋</span>
+                              {e.orderTitle}
+                            </td>
+                            <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">—</td>
+                            <td className="py-1.5 px-2 text-right font-mono text-violet-700 font-semibold">−{fmtIDR(e.costIDR)}</td>
+                            <td className="py-1.5 px-2 text-right font-mono font-semibold text-violet-700">
+                              −{fmtIDR(Math.abs(e.profitIDR))}
+                            </td>
+                            <td className="py-1.5 px-2 text-right text-muted-foreground">—</td>
+                            <td className={`py-1.5 px-2 text-right font-mono ${balColor}`}>
+                              {fmtIDR(e.runningBalance)}
+                            </td>
+                          </tr>
+                        );
+                      }
                       const profitColor = e.profitIDR >= 0 ? "text-emerald-700" : "text-red-600";
                       const balColor    = e.runningBalance >= 0 ? "text-emerald-700 font-bold" : "text-red-600 font-bold";
                       const marginColor = e.marginPct >= 20 ? "text-emerald-700" : e.marginPct >= 10 ? "text-sky-700" : e.marginPct >= 0 ? "text-amber-700" : "text-red-600";
-                      // Count only non-commission, non-voaOpex, non-kurirOpex entries for the # column
-                      const orderCount = ledgerEntries.slice(i).filter((x) => !x.isCommission && !x.isVoaOpex && !x.isKurirOpex).length;
+                      // Count only non-debit entries for the # column
+                      const orderCount = ledgerEntries.slice(i).filter((x) => !x.isCommission && !x.isVoaOpex && !x.isKurirOpex && !x.isPelaksanaFee).length;
                       return (
                         <tr key={e.orderId} className="border-b last:border-b-0 hover:bg-blue-50/50 cursor-pointer transition-colors" onClick={() => navigate(`/orders/detail/${e.orderId}`)} title="Buka detail order">
                           <td className="py-2 px-2 text-muted-foreground">{orderCount}</td>
@@ -1186,6 +1224,7 @@ export default function Reports() {
                         {ledgerEntries.filter(e => e.isCommission).length > 0 && ` · ${ledgerEntries.filter(e => e.isCommission).length} komisi 💸`}
                         {ledgerEntries.filter(e => e.isVoaOpex).length > 0 && ` · ${ledgerEntries.filter(e => e.isVoaOpex).length} opex VOA 🛂`}
                         {ledgerEntries.filter(e => e.isKurirOpex).length > 0 && ` · ${ledgerEntries.filter(e => e.isKurirOpex).length} kurir 🚴`}
+                        {ledgerEntries.filter(e => e.isPelaksanaFee).length > 0 && ` · ${ledgerEntries.filter(e => e.isPelaksanaFee).length} pelaksana 📋`}
                         )
                       </td>
                       <td className="py-2.5 px-2 text-right font-mono text-sky-700">{fmtIDR(ledgerStats.totalRevenue)}</td>
@@ -1206,9 +1245,10 @@ export default function Reports() {
               <p className="mt-3 text-[10.5px] text-muted-foreground">
                 * Revenue & profit di-konversi ke IDR menggunakan kurs yang di-snapshot saat order pertama kali berstatus Paid.
                 Order lama yang belum punya snapshot menggunakan kurs live saat ini (1 EGP ≈ Rp {egpRate}).
-                Baris 💸 = pengeluaran fee komisi agen (otomatis dari Pengaturan → Tim).
-                Baris 🛂 = biaya operasional VOA (fee agent lapangan + transport + lainnya), diinput di detail order VOA.
-                Baris 🚴 = biaya kurir setoran uang tunai (fee kurir + ongkos transport + lainnya), diinput di panel Biaya Kurir pada detail order manapun.
+                Baris 💸 = fee komisi agen penjual (dibaca dari data order, bukan rate global).
+                Baris 🛂 = biaya operasional VOA (fee agent lapangan + transport + lainnya).
+                Baris 🚴 = biaya kurir setoran uang tunai (fee kurir + ongkos transport + lainnya).
+                Baris 📋 = fee pelaksana visa student (dibaca dari data order).
               </p>
             </Card>
           )}
@@ -1217,11 +1257,11 @@ export default function Reports() {
 
       {/* Footer note */}
       <div className="rounded-xl border bg-muted/30 p-3 text-[10.5px] text-muted-foreground leading-relaxed">
-        <strong className="text-foreground">Catatan:</strong> Profit = Harga Jual − Harga Modal.
+        <strong className="text-foreground">Catatan:</strong>{" "}
+        Profit Bersih = Harga Jual − Modal − Fee Agen Penjual − Fee Pelaksana − Biaya Operasional VOA − Biaya Kurir.
+        Semua fee dibaca dari data order masing-masing (bukan rate global) agar angka konsisten di semua halaman.
         Order EGP (visa Mesir) di-konversi ke IDR pakai kurs <span className="font-mono">1 EGP ≈ Rp {egpRate}</span>.
-        Fee komisi mitra dihitung berdasarkan <em>fee flat per jenis produk</em> (bukan persentase profit).
-        Atur nominal fee per produk di <strong>Pengaturan → Fee Produk</strong>. Poin di-award otomatis: 10 poin saat Completed, +20 poin bonus jika dapat komisi
-        per order yg statusnya berubah ke <strong>Completed</strong>.
+        Poin di-award otomatis: 10 poin saat Completed, +20 poin bonus jika order via agen.
       </div>
 
       </div>{/* end shared content */}

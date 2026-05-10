@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useRatesStore } from "@/store/ratesStore";
-import { profitIDR, revenueIDR, fmtIDR } from "@/lib/profit";
+import { netProfitIDR, revenueIDR, fmtIDR } from "@/lib/profit";
 import { MissionConfetti } from "@/components/MissionConfetti";
 import { cn } from "@/lib/utils";
 
@@ -105,7 +105,7 @@ export function CeoDailyQuest() {
     const todayOrders = orders.filter(
       (o) => o.createdAt && o.createdAt.startsWith(todayStr)
     );
-    const profit = todayOrders.reduce((sum, o) => sum + profitIDR(o, egpRate), 0);
+    const profit = todayOrders.reduce((sum, o) => sum + netProfitIDR(o, egpRate), 0);
     const revenue = todayOrders.reduce((sum, o) => sum + revenueIDR(o, egpRate), 0);
     const count = todayOrders.length;
     return { profit, revenue, count };

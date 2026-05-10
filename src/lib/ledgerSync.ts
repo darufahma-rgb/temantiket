@@ -8,7 +8,7 @@
  */
 
 import type { Order } from "@/features/orders/ordersRepo";
-import { getCommissionForOrderType, type ProductCommissions } from "./productCommissions";
+import type { ProductCommissions } from "./productCommissions";
 import { voaOpCost, kurirOpCost } from "./profit";
 
 export interface LedgerEntry {
@@ -36,6 +36,8 @@ export interface LedgerEntry {
   isVoaOpex?: boolean;
   /** True kalau ini entri biaya kurir setoran uang (debit). */
   isKurirOpex?: boolean;
+  /** True kalau ini entri fee pelaksana visa student (debit). */
+  isPelaksanaFee?: boolean;
   /** UID agen — hanya terisi kalau isCommission = true. */
   agentId?: string;
   /** Nama agen — hanya terisi kalau isCommission = true. */
@@ -84,9 +86,15 @@ export function buildRateSnapshotPatch(
  * Build ledger entries from all Paid/Completed orders, sorted by paidAt desc.
  * Includes running balance (profit cumulative, oldest → newest then reversed).
  *
- * Kalau `memberById` di-pass, entri komisi agen (debit) otomatis ditambahkan
- * setelah tiap order yang dibawa agen — sehingga Buku Besar mencerminkan
- * pengeluaran fee komisi yang sebenarnya.
+ * Setiap order menghasilkan entri utama (revenue + gross profit), lalu
+ * baris-baris debit terpisah untuk setiap biaya yang memotong profit bersih:
+ *   - Komisi agen penjual (meta.agentFee) — hanya jika role === "agent"
+ *   - Biaya operasional VOA (voaAgentFee + voaTransportFee + voaOtherFee)
+ *   - Biaya kurir setoran uang (kurirFee + kurirTransportFee + kurirOtherFee)
+ *   - Fee pelaksana visa student (meta.pelaksanaFee) — hanya jika ada pelaksanaId
+ *
+ * PENTING: Semua biaya di atas dibaca dari metadata order (bukan dari
+ * pengaturan global productCommissions) agar konsisten dengan OrderDetail.
  */
 export function buildLedgerEntries(
   orders: Order[],
@@ -94,7 +102,7 @@ export function buildLedgerEntries(
   fallbackEgpRate = DEFAULT_EGP,
   fallbackSarRate = DEFAULT_SAR,
   memberById?: Map<string, AgentCommissionInfo>,
-  productCommissions?: ProductCommissions,
+  _productCommissions?: ProductCommissions, // kept for API compat, unused
 ): LedgerEntry[] {
   const entries: LedgerEntry[] = [];
 
@@ -112,6 +120,7 @@ export function buildLedgerEntries(
     const costIDR = toIDR(cost, o.currency, egpRate, sarRate);
     const profIDR = revIDR - costIDR;
 
+    // ── Entri utama order (gross profit) ──────────────────────────────────
     entries.push({
       orderId:          o.id,
       orderTitle:       o.title ?? o.type,
@@ -133,8 +142,6 @@ export function buildLedgerEntries(
     });
 
     // ── Entri biaya operasional VOA ────────────────────────────────────────
-    // Untuk order visa_voa, tambahkan baris debit biaya operasional lapangan
-    // (agent lapangan, transport, dll) tepat setelah baris order.
     if (o.type === "visa_voa") {
       const opexIDR = voaOpCost(o); // always IDR
       if (opexIDR > 0) {
@@ -162,8 +169,6 @@ export function buildLedgerEntries(
     }
 
     // ── Entri biaya kurir setoran uang ─────────────────────────────────────
-    // Berlaku untuk SEMUA jenis order yang memiliki biaya kurir di metadata.
-    // Dicatat sebagai biaya operasional (bukan komisi), motong profit bersih.
     {
       const kurirIDR = kurirOpCost(o); // always IDR
       if (kurirIDR > 0) {
@@ -190,16 +195,44 @@ export function buildLedgerEntries(
       }
     }
 
-    // ── Entri komisi agen ──────────────────────────────────────────────────
-    // Kalau order dibawa oleh agen (role === "agent"), tambahkan baris debit
-    // fee nominal per-produk tepat setelah baris order ini (paidAt sama).
+    // ── Entri fee pelaksana visa student ──────────────────────────────────
+    // Dibaca dari meta.pelaksanaFee (per-order) — selalu IDR.
+    // Hanya muncul jika visa_student DAN pelaksanaId ada.
+    if (o.type === "visa_student" && meta.pelaksanaId) {
+      const pelFeeIDR = Number(meta.pelaksanaFee ?? 200_000);
+      if (pelFeeIDR > 0) {
+        entries.push({
+          orderId:         `pelaksana_fee_${o.id}`,
+          orderTitle:      `Fee Pelaksana Visa · ${o.title ?? o.id.slice(0, 8)}`,
+          orderType:       o.type,
+          clientName:      o.clientId ? (clientNameById.get(o.clientId) ?? "—") : "—",
+          clientId:        o.clientId,
+          paidAt,
+          revenue:         0,
+          cost:            pelFeeIDR,
+          profit:          -pelFeeIDR,
+          currency:        "IDR",
+          egpRateSnapshot: egpRate,
+          sarRateSnapshot: sarRate,
+          revenueIDR:      0,
+          costIDR:         pelFeeIDR,
+          profitIDR:       -pelFeeIDR,
+          marginPct:       0,
+          runningBalance:  0,
+          isPelaksanaFee:  true,
+        });
+      }
+    }
+
+    // ── Entri komisi agen penjual ──────────────────────────────────────────
+    // Dibaca dari meta.agentFee (per-order actual, bukan rate global).
+    // Hanya muncul jika createdByAgent ada DAN member berole "agent".
+    // Ini memastikan direct orders (owner/staff closing ref) tidak kena debit komisi.
     if (memberById && o.createdByAgent) {
       const member = memberById.get(o.createdByAgent);
       if (member && member.role === "agent") {
-        const commissionIDR = getCommissionForOrderType(
-          o.type as "umrah" | "flight" | "visa_voa" | "visa_student",
-          productCommissions,
-        );
+        // Baca fee aktual dari order metadata — bukan global product commission
+        const commissionIDR = Number(meta.agentFee ?? 0);
         if (commissionIDR > 0) {
           entries.push({
             orderId:         `commission_${o.id}`,
@@ -230,8 +263,6 @@ export function buildLedgerEntries(
   }
 
   // Sort ascending by paidAt so running balance is chronological.
-  // Komisi entry punya paidAt sama dengan order-nya; .sort() stabil di V8
-  // jadi komisi selalu muncul tepat setelah order-nya.
   entries.sort((a, b) => a.paidAt.localeCompare(b.paidAt));
 
   // Compute running balance
@@ -248,12 +279,13 @@ export function buildLedgerEntries(
 
 /** Summary stats from ledger entries. */
 export function ledgerSummary(entries: LedgerEntry[]) {
-  let totalRevenue  = 0;
-  let totalCost     = 0;
-  let totalProfit   = 0;
+  let totalRevenue    = 0;
+  let totalCost       = 0;
+  let totalProfit     = 0;
   let totalCommission = 0;
-  let totalVoaOpex  = 0;
-  let totalKurirOpex = 0;
+  let totalVoaOpex    = 0;
+  let totalKurirOpex  = 0;
+  let totalPelaksana  = 0;
   for (const e of entries) {
     if (e.isCommission) {
       totalCommission += Math.abs(e.profitIDR);
@@ -261,13 +293,15 @@ export function ledgerSummary(entries: LedgerEntry[]) {
       totalVoaOpex += Math.abs(e.profitIDR);
     } else if (e.isKurirOpex) {
       totalKurirOpex += Math.abs(e.profitIDR);
+    } else if (e.isPelaksanaFee) {
+      totalPelaksana += Math.abs(e.profitIDR);
     } else {
       totalRevenue += e.revenueIDR;
       totalCost    += e.costIDR;
       totalProfit  += e.profitIDR;
     }
   }
-  const netProfit = totalProfit - totalCommission - totalVoaOpex - totalKurirOpex;
+  const netProfit = totalProfit - totalCommission - totalVoaOpex - totalKurirOpex - totalPelaksana;
   return {
     totalRevenue,
     totalCost,
@@ -275,8 +309,9 @@ export function ledgerSummary(entries: LedgerEntry[]) {
     totalCommission,
     totalVoaOpex,
     totalKurirOpex,
+    totalPelaksana,
     netProfit,
-    count: entries.filter((e) => !e.isCommission && !e.isVoaOpex && !e.isKurirOpex).length,
+    count: entries.filter((e) => !e.isCommission && !e.isVoaOpex && !e.isKurirOpex && !e.isPelaksanaFee).length,
     avgMargin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
   };
 }

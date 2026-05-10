@@ -27,7 +27,7 @@ export function effectiveCostPrice(order: Order): number {
   return 0;
 }
 
-/** profit = totalPrice - effectiveCostPrice (currency-native, blm di-normalize). */
+/** Gross profit = totalPrice - effectiveCostPrice (currency-native, blm di-normalize). */
 export function rawProfit(order: Order): number {
   return Number(order.totalPrice ?? 0) - effectiveCostPrice(order);
 }
@@ -43,6 +43,7 @@ export function toIDR(amount: number, currency: string, egpRate = EGP_TO_IDR): n
   return Math.round(amount);
 }
 
+/** Gross profit dalam IDR (revenue - modal, belum dikurangi fee/opex apapun). */
 export function profitIDR(order: Order, egpRate = EGP_TO_IDR): number {
   return toIDR(rawProfit(order), order.currency, egpRate);
 }
@@ -57,6 +58,30 @@ export function costIDR(order: Order, egpRate = EGP_TO_IDR): number {
 
 export const fmtIDR = (v: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);
+
+/**
+ * Fee agen penjual dari metadata order (IDR).
+ * Dibaca langsung dari meta.agentFee — nilai ini hanya terisi saat order
+ * dibuat via agen berole "agent" (divalidasi di OrderDetail saat save).
+ * Direct order (owner/admin) → meta.agentFee absent/0 → return 0.
+ */
+export function agentFeeFromMeta(order: Order): number {
+  if (!order.createdByAgent) return 0;
+  const meta = (order.metadata ?? {}) as Record<string, unknown>;
+  return Number(meta.agentFee ?? 0);
+}
+
+/**
+ * Fee pelaksana visa student dari metadata order (IDR).
+ * Hanya berlaku untuk visa_student yang sudah punya pelaksanaId di metadata.
+ * Default 200.000 jika pelaksanaFee belum di-set secara eksplisit.
+ */
+export function pelaksanaFeeFromMeta(order: Order): number {
+  if (order.type !== "visa_student") return 0;
+  const meta = (order.metadata ?? {}) as Record<string, unknown>;
+  if (!meta.pelaksanaId) return 0;
+  return Number(meta.pelaksanaFee ?? 200_000);
+}
 
 /**
  * Total biaya operasional lapangan VOA.
@@ -89,9 +114,32 @@ export function kurirOpCost(order: Order): number {
 }
 
 /**
- * Profit bersih setelah dipotong semua biaya: costPrice + voaOpCost + kurirOpCost.
- * Selalu dalam IDR (sudah di-normalize via toIDR).
+ * ══════════════════════════════════════════════════════════════════════════════
+ * RUMUS PROFIT BERSIH — SATU-SATUNYA SUMBER KEBENARAN
+ * ══════════════════════════════════════════════════════════════════════════════
+ *
+ * Profit Bersih = Pendapatan Kotor − Modal − Fee Agen Penjual − Fee Pelaksana
+ *                − Biaya Operasional VOA − Biaya Kurir
+ *
+ * Semua halaman (OrderDetail, Reports, Ledger, Dashboard) wajib pakai fungsi
+ * ini agar angka profit tidak berbeda-beda antar halaman.
+ *
+ * Catatan validasi:
+ * - agentFeeFromMeta: hanya non-0 jika createdByAgent ada di metadata
+ *   (divalidasi saat save di OrderDetail — direct order tidak punya agentFee)
+ * - pelaksanaFeeFromMeta: hanya non-0 jika visa_student + pelaksanaId ada
+ * - voaOpCost: hanya non-0 untuk visa_voa
+ * - kurirOpCost: berlaku semua jenis order
+ *
+ * @param order   - order object dari ordersRepo
+ * @param egpRate - kurs EGP→IDR live (default EGP_TO_IDR = 515)
  */
 export function netProfitIDR(order: Order, egpRate = EGP_TO_IDR): number {
-  return profitIDR(order, egpRate) - voaOpCost(order) - kurirOpCost(order);
+  return (
+    profitIDR(order, egpRate)
+    - agentFeeFromMeta(order)
+    - pelaksanaFeeFromMeta(order)
+    - voaOpCost(order)
+    - kurirOpCost(order)
+  );
 }

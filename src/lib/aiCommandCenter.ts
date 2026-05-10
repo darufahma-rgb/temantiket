@@ -18,7 +18,7 @@ import { listOrders, getOrder } from "@/features/orders/ordersRepo";
 import { listMissions, createMission } from "@/features/missions/missionsRepo";
 import { listAgentPoints, sumPointsByAgent } from "@/features/agentPoints/agentPointsRepo";
 import { extractItinerary } from "@/lib/itineraryAI";
-import { fmtIDR, profitIDR, revenueIDR } from "@/lib/profit";
+import { fmtIDR, netProfitIDR, revenueIDR } from "@/lib/profit";
 import { useRatesStore } from "@/store/ratesStore";
 import { useAuthStore } from "@/store/authStore";
 import { nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
@@ -368,7 +368,7 @@ async function executeTool(
         ]);
         const completedOrders = orders.filter((o) => o.status === "Completed");
         const totalRevIDR = completedOrders.reduce((s, o) => s + revenueIDR(o, egpRate), 0);
-        const totalProfitIDR = completedOrders.reduce((s, o) => s + profitIDR(o, egpRate), 0);
+        const totalProfitIDR = completedOrders.reduce((s, o) => s + netProfitIDR(o, egpRate), 0);
         const activeMissions = missions.filter(
           (m) => new Date(m.deadline) > new Date(),
         );
