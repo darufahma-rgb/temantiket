@@ -591,31 +591,65 @@ export default function AgentProfileOwnerView() {
     try {
       const { data: sess } = await supabase!.auth.getSession();
       const token = sess?.session?.access_token;
+      if (!token) {
+        toast.error("Sesi tidak aktif.", { description: "Login ulang lalu coba lagi." });
+        return;
+      }
+
       const res = await fetch("/api/backfill-field-fees", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ agentId }),
       });
-      const json = await res.json().catch(() => ({}));
+
+      const json = await res.json().catch(() => ({})) as {
+        ok?: boolean;
+        credited?: number;
+        skipped?: number;
+        errors?: number;
+        errorSample?: string | null;
+        error?: string;
+        message?: string;
+      };
+
+      console.log("[handleBackfillFees] response:", res.status, json);
+
       if (!res.ok) {
-        toast.error("Gagal sinkronkan fee.", { description: json?.message ?? res.statusText });
+        const detail = json?.error ?? json?.message ?? (res.statusText ? res.statusText : `HTTP ${res.status}`);
+        console.error("[handleBackfillFees] server error:", res.status, json);
+        toast.error(`Gagal sinkronkan fee (${res.status}).`, { description: detail, duration: 12000 });
         return;
       }
-      const { credited = 0, skipped = 0, errors = 0 } = json as { credited: number; skipped: number; errors: number };
-      if (credited === 0 && errors === 0) {
-        toast.success("Semua fee sudah tersinkronkan.", { description: `${skipped} entri sudah tercatat sebelumnya.` });
+
+      const { credited = 0, skipped = 0, errors = 0, errorSample } = json;
+
+      if (errors > 0 && credited === 0) {
+        // All attempts failed
+        toast.error(`${errors} fee gagal dikreditkan.`, {
+          description: errorSample ?? "Periksa console browser untuk detail error.",
+          duration: 12000,
+        });
+      } else if (errors === 0 && credited === 0) {
+        // Nothing to do
+        toast.success("Semua fee sudah tersinkronkan.", {
+          description: skipped > 0 ? `${skipped} entri sudah tercatat sebelumnya.` : "Tidak ada fee lapangan valid pada order Completed.",
+        });
       } else {
-        toast.success(`Sinkronisasi selesai: ${credited} fee dikreditkan.`, {
-          description: errors > 0 ? `${errors} gagal, ${skipped} sudah ada.` : `${skipped} sudah ada sebelumnya.`,
-          duration: 6000,
+        // At least some credited
+        toast.success(`Sinkronisasi selesai: ${credited} fee dikreditkan!`, {
+          description: errors > 0
+            ? `${errors} gagal${errorSample ? ` — ${errorSample.slice(0, 120)}` : ""}, ${skipped} sudah ada.`
+            : `${skipped} sudah ada sebelumnya.`,
+          duration: 8000,
         });
       }
-      // Refresh wallet transactions so the UI reflects new credits
+      // Refresh wallet transactions so the UI reflects new credits immediately
       void pullWalletTxs(agentId).then(setWalletTxs);
     } catch (e) {
+      console.error("[handleBackfillFees] exception:", e);
       toast.error("Error sinkronisasi fee.", { description: e instanceof Error ? e.message : "Coba lagi." });
     } finally {
       setBackfilling(false);

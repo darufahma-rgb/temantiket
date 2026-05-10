@@ -1782,16 +1782,26 @@ app.get('/api/health-check', async (req, res) => {
 /* ──────────────────────────────────────────────
    POST /api/backfill-field-fees
    Backfill wallet transactions for already-Completed orders whose field-agent
-   fees (VOA / pelaksana / kurir) were never written to the wallet ledger.
-   Idempotent: uses deterministic tx IDs so re-running is always safe.
+   fees (VOA / pelaksana / kurir / executor / operational) were never written
+   to the wallet ledger.
+   Idempotent: uses deterministic tx IDs (prefix-orderId) — safe to re-run.
    Caller must be owner or staff of the agency.
    Body: { agentId? }  — optional, filter to one agent only.
+   Returns: { ok, credited, skipped, errors, errorSample? }
 ────────────────────────────────────────────── */
 app.post('/api/backfill-field-fees', async (req, res) => {
+  const ROUTE = '[backfill-field-fees]';
   try {
     if (!SERVICE_ROLE_KEY) {
-      return err(res, 503, 'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server.');
+      return err(res, 503,
+        'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. ' +
+        'Tambahkan di Replit Secrets lalu restart server.'
+      );
     }
+    if (!SUPABASE_URL) {
+      return err(res, 503, 'VITE_SUPABASE_URL belum dikonfigurasi di server.');
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader) return err(res, 401, 'Missing Authorization header');
 
@@ -1804,13 +1814,39 @@ app.post('/api/backfill-field-fees', async (req, res) => {
       admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle(),
       8000, 'DB timeout saat verifikasi membership'
     );
-    if (memErr || !membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
-    if (membership.role === 'agent') return err(res, 403, 'Hanya owner/staff yang dapat melakukan backfill fee');
+    if (memErr) {
+      console.error(`${ROUTE} membership lookup error:`, memErr.message);
+      return err(res, 500, `DB error saat verifikasi membership: ${memErr.message}`);
+    }
+    if (!membership) {
+      return err(res, 403, `Caller ${caller.id} tidak terdaftar di agency manapun`);
+    }
+    if (membership.role === 'agent') {
+      return err(res, 403, 'Hanya owner/staff yang dapat melakukan backfill fee');
+    }
 
     const agencyId = membership.agency_id;
     const { agentId: filterAgentId } = req.body ?? {};
+    console.log(`${ROUTE} caller=${caller.id} agency=${agencyId} filter=${filterAgentId ?? 'semua'}`);
 
-    // Fetch all Completed orders for this agency
+    // ── Preflight: verify agent_wallet_transactions table is accessible ───────
+    const { error: preflightErr } = await withTimeout(
+      admin.from('agent_wallet_transactions').select('id').limit(1),
+      6000, 'Timeout saat preflight check agent_wallet_transactions'
+    );
+    if (preflightErr) {
+      const isNotFound = preflightErr.code === '42P01' ||
+                         (preflightErr.message ?? '').includes('does not exist') ||
+                         (preflightErr.message ?? '').includes('relation');
+      const fix = isNotFound
+        ? 'Tabel agent_wallet_transactions belum ada. Jalankan supabase/migrations/2026_05_04_cloud_sync_tables.sql di Supabase SQL Editor.'
+        : `Tabel agent_wallet_transactions tidak dapat diakses: ${preflightErr.message}`;
+      console.error(`${ROUTE} preflight FAILED (code=${preflightErr.code}):`, preflightErr.message);
+      return err(res, 500, fix);
+    }
+    console.log(`${ROUTE} preflight OK`);
+
+    // ── Fetch all Completed orders for this agency ────────────────────────────
     const { data: orders, error: ordersErr } = await withTimeout(
       admin.from('orders')
         .select('id, type, status, metadata')
@@ -1818,106 +1854,194 @@ app.post('/api/backfill-field-fees', async (req, res) => {
         .eq('status', 'Completed'),
       20000, 'Timeout saat fetch orders untuk backfill'
     );
-    if (ordersErr) return err(res, 500, `Gagal fetch orders: ${ordersErr.message}`);
+    if (ordersErr) {
+      console.error(`${ROUTE} orders fetch error:`, ordersErr.message);
+      return err(res, 500, `Gagal fetch orders: ${ordersErr.message}`);
+    }
+    console.log(`${ROUTE} fetched ${(orders ?? []).length} Completed orders`);
 
     const results = { credited: 0, skipped: 0, errors: 0 };
+    const errorSamples = [];
     const now = new Date().toISOString();
+
+    /** Classify and collect an error; detect CHECK constraint violations. */
+    function collectErr(label, txErr) {
+      results.errors++;
+      const msg = txErr?.message ?? String(txErr);
+      const isConstraint =
+        msg.includes('violates check constraint') ||
+        msg.includes('_type_check') ||
+        txErr?.code === '23514';
+      const detail = isConstraint
+        ? `CHECK constraint violation untuk type — jalankan supabase/wallet-sync-fix.sql di Supabase SQL Editor`
+        : msg;
+      console.error(`${ROUTE} tx error [${label}]:`, detail);
+      if (errorSamples.length < 5) errorSamples.push(`[${label}] ${detail}`);
+    }
+
+    /** Upsert one wallet tx; returns true on success. */
+    async function upsertTx(txId, agentId, type, amountIdr, description) {
+      const { error: txErr } = await admin.from('agent_wallet_transactions').upsert(
+        {
+          id:           txId,
+          agency_id:    agencyId,
+          agent_id:     agentId,
+          type,
+          points_delta: 0,
+          amount_idr:   amountIdr,
+          description,
+          created_by:   caller.id,
+          created_at:   now,
+        },
+        { onConflict: 'id' }
+      );
+      return txErr ? txErr : null;
+    }
 
     for (const order of (orders ?? [])) {
       const meta = order.metadata ?? {};
+      const oid8 = String(order.id).slice(0, 8);
 
-      // ── VOA field agent fee ──
-      const voaAgentId  = meta.voaFieldAgentId;
-      const voaFee      = Number(meta.voaAgentFee ?? 0);
+      // ── 1. VOA field agent fee (voaFieldAgentId + voaAgentFee) ────────────
+      const voaAgentId = meta.voaFieldAgentId;
+      const voaFee     = Number(meta.voaAgentFee ?? 0);
       if (voaAgentId && voaFee > 0) {
         if (meta.voaFeeCredited) {
           results.skipped++;
         } else if (!filterAgentId || filterAgentId === voaAgentId) {
-          const txId = `voa-${order.id}`;
-          const { error: txErr } = await admin.from('agent_wallet_transactions').upsert({
-            id:           txId,
-            agency_id:    agencyId,
-            agent_id:     voaAgentId,
-            type:         'voa_agent_fee',
-            points_delta: 0,
-            amount_idr:   voaFee,
-            description:  `Fee lapangan VOA — order #${String(order.id).slice(0, 8)}`,
-            created_by:   caller.id,
-            created_at:   now,
-          }, { onConflict: 'id' });
+          const txErr = await upsertTx(
+            `voa-${order.id}`, voaAgentId, 'voa_agent_fee', voaFee,
+            `Fee Agent Lapangan VOA — order #${oid8}`
+          );
           if (txErr) {
-            console.error(`[backfill] VOA tx error order ${order.id}:`, txErr.message);
-            results.errors++;
+            collectErr(`VOA #${oid8}`, txErr);
           } else {
-            await admin.from('orders').update({ metadata: { ...meta, voaFeeCredited: true } }).eq('id', order.id);
+            await admin.from('orders')
+              .update({ metadata: { ...meta, voaFeeCredited: true } })
+              .eq('id', order.id);
             results.credited++;
           }
         }
       }
 
-      // ── Pelaksana visa_student fee ──
+      // ── 2. Generic field agent fee (fieldAgentId + fieldAgentFee) ─────────
+      const fieldAgentId = meta.fieldAgentId;
+      const fieldFee     = Number(meta.fieldAgentFee ?? 0);
+      if (fieldAgentId && fieldFee > 0) {
+        if (meta.fieldFeeCredited) {
+          results.skipped++;
+        } else if (!filterAgentId || filterAgentId === fieldAgentId) {
+          const txErr = await upsertTx(
+            `field-${order.id}`, fieldAgentId, 'voa_agent_fee', fieldFee,
+            `Fee Agent Lapangan — order #${oid8}`
+          );
+          if (txErr) {
+            collectErr(`field #${oid8}`, txErr);
+          } else {
+            await admin.from('orders')
+              .update({ metadata: { ...meta, fieldFeeCredited: true } })
+              .eq('id', order.id);
+            results.credited++;
+          }
+        }
+      }
+
+      // ── 3. Visa executor fee (visaExecutorId + executorFee) ───────────────
+      const executorId  = meta.visaExecutorId;
+      const executorFee = Number(meta.executorFee ?? 0);
+      if (executorId && executorFee > 0) {
+        if (meta.executorFeeCredited) {
+          results.skipped++;
+        } else if (!filterAgentId || filterAgentId === executorId) {
+          const txErr = await upsertTx(
+            `executor-${order.id}`, executorId, 'pelaksana_fee', executorFee,
+            `Fee Pelaksana Visa — order #${oid8}`
+          );
+          if (txErr) {
+            collectErr(`executor #${oid8}`, txErr);
+          } else {
+            await admin.from('orders')
+              .update({ metadata: { ...meta, executorFeeCredited: true } })
+              .eq('id', order.id);
+            results.credited++;
+          }
+        }
+      }
+
+      // ── 4. Operational agent fee (assignedOperationalAgentId + operationalAgentFee)
+      const opAgentId = meta.assignedOperationalAgentId;
+      const opFee     = Number(meta.operationalAgentFee ?? 0);
+      if (opAgentId && opFee > 0) {
+        if (meta.operationalFeeCredited) {
+          results.skipped++;
+        } else if (!filterAgentId || filterAgentId === opAgentId) {
+          const txErr = await upsertTx(
+            `op-${order.id}`, opAgentId, 'voa_agent_fee', opFee,
+            `Fee Agent Operasional — order #${oid8}`
+          );
+          if (txErr) {
+            collectErr(`op #${oid8}`, txErr);
+          } else {
+            await admin.from('orders')
+              .update({ metadata: { ...meta, operationalFeeCredited: true } })
+              .eq('id', order.id);
+            results.credited++;
+          }
+        }
+      }
+
+      // ── 5. Pelaksana visa_student fee (pelaksanaId + pelaksanaFee) ────────
       const pelaksanaId = meta.pelaksanaId;
       const pelFee      = Number(meta.pelaksanaFee ?? (order.type === 'visa_student' && pelaksanaId ? 200000 : 0));
       if (order.type === 'visa_student' && pelaksanaId && pelFee > 0) {
         if (meta.pelaksanaFeeCredited) {
           results.skipped++;
         } else if (!filterAgentId || filterAgentId === pelaksanaId) {
-          const txId = `pelaksana-${order.id}`;
-          const { error: txErr } = await admin.from('agent_wallet_transactions').upsert({
-            id:           txId,
-            agency_id:    agencyId,
-            agent_id:     pelaksanaId,
-            type:         'pelaksana_fee',
-            points_delta: 0,
-            amount_idr:   pelFee,
-            description:  `Fee pelaksana visa student — order #${String(order.id).slice(0, 8)}`,
-            created_by:   caller.id,
-            created_at:   now,
-          }, { onConflict: 'id' });
+          const txErr = await upsertTx(
+            `pelaksana-${order.id}`, pelaksanaId, 'pelaksana_fee', pelFee,
+            `Fee Pelaksana Visa Student — order #${oid8}`
+          );
           if (txErr) {
-            console.error(`[backfill] pelaksana tx error order ${order.id}:`, txErr.message);
-            results.errors++;
+            collectErr(`pelaksana #${oid8}`, txErr);
           } else {
-            await admin.from('orders').update({ metadata: { ...meta, pelaksanaFeeCredited: true } }).eq('id', order.id);
+            await admin.from('orders')
+              .update({ metadata: { ...meta, pelaksanaFeeCredited: true } })
+              .eq('id', order.id);
             results.credited++;
           }
         }
       }
 
-      // ── Kurir setoran fee ──
+      // ── 6. Kurir setoran fee (kurirAgentId + kurirFee) ────────────────────
       const kurirAgentId = meta.kurirAgentId;
       const kurirFee     = Number(meta.kurirFee ?? 0);
       if (kurirAgentId && kurirFee > 0) {
         if (meta.kurirFeeCredited) {
           results.skipped++;
         } else if (!filterAgentId || filterAgentId === kurirAgentId) {
-          const txId = `kurir-${order.id}`;
-          const { error: txErr } = await admin.from('agent_wallet_transactions').upsert({
-            id:           txId,
-            agency_id:    agencyId,
-            agent_id:     kurirAgentId,
-            type:         'kurir_fee',
-            points_delta: 0,
-            amount_idr:   kurirFee,
-            description:  `Fee kurir setoran — order #${String(order.id).slice(0, 8)}`,
-            created_by:   caller.id,
-            created_at:   now,
-          }, { onConflict: 'id' });
+          const txErr = await upsertTx(
+            `kurir-${order.id}`, kurirAgentId, 'kurir_fee', kurirFee,
+            `Fee Kurir Setoran — order #${oid8}`
+          );
           if (txErr) {
-            console.error(`[backfill] kurir tx error order ${order.id}:`, txErr.message);
-            results.errors++;
+            collectErr(`kurir #${oid8}`, txErr);
           } else {
-            await admin.from('orders').update({ metadata: { ...meta, kurirFeeCredited: true } }).eq('id', order.id);
+            await admin.from('orders')
+              .update({ metadata: { ...meta, kurirFeeCredited: true } })
+              .eq('id', order.id);
             results.credited++;
           }
         }
       }
     }
 
-    console.log(`[backfill-field-fees] done: credited=${results.credited} skipped=${results.skipped} errors=${results.errors}`);
-    return ok(res, { ok: true, ...results });
+    const errorSample = errorSamples.length > 0 ? errorSamples[0] : null;
+    console.log(`${ROUTE} DONE — credited=${results.credited} skipped=${results.skipped} errors=${results.errors}`);
+    if (errorSamples.length > 0) console.error(`${ROUTE} error samples:`, errorSamples);
+    return ok(res, { ok: true, ...results, errorSample });
+
   } catch (e) {
-    console.error('[backfill-field-fees] exception:', e);
+    console.error(`${ROUTE} unhandled exception:`, e);
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }
 });
