@@ -261,7 +261,7 @@ export default function AgentLeaderboard() {
           scrolled ? "shadow-md" : "border-b border-slate-100",
         )}
       >
-        <div className="flex items-center gap-3 px-4 py-3 max-w-5xl mx-auto">
+        <div className="flex items-center gap-3 px-4 py-3 max-w-[1400px] mx-auto">
           <Button
             variant="ghost"
             size="sm"
@@ -305,7 +305,7 @@ export default function AgentLeaderboard() {
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 pb-16 space-y-5 pt-5">
+      <div className="max-w-[1400px] mx-auto px-4 pb-16 space-y-5 pt-5">
 
         {/* ── Podium ── */}
         {loading ? (

@@ -42,7 +42,7 @@ export default function StaffCommissionPage() {
   const creditedOrders = feeByOrder.filter((f) => f.credited);
 
   return (
-    <div className="pb-8 md:p-6 max-w-5xl md:mx-auto space-y-4 md:space-y-5">
+    <div className="pb-8 md:p-6 max-w-[1400px] md:mx-auto space-y-4 md:space-y-5">
 
       {/* ── Page Header ── */}
       <motion.div

@@ -82,7 +82,7 @@ export default function StaffDashboardPage() {
   ];
 
   return (
-    <div className="pb-8 md:p-6 max-w-5xl md:mx-auto space-y-4 md:space-y-5">
+    <div className="pb-8 md:p-6 max-w-[1400px] md:mx-auto space-y-4 md:space-y-5">
 
       {/* ── Header ── */}
       <motion.div

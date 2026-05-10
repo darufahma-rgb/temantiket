@@ -527,7 +527,7 @@ export default function Notes() {
     }).format(new Date(ts));
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4 md:space-y-5 px-1 pb-10">
+    <div className="max-w-[1400px] mx-auto space-y-4 md:space-y-5 px-4 sm:px-6 pb-10">
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">

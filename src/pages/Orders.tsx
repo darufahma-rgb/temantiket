@@ -353,7 +353,7 @@ export default function Orders() {
            DESKTOP LAYOUT  (hidden md:block)
       ══════════════════════════════════════════════════════════ */}
       <motion.div
-        className="hidden md:block p-4 md:p-6 max-w-6xl mx-auto space-y-5"
+        className="hidden md:block p-4 md:p-6 max-w-[1400px] mx-auto space-y-5"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
@@ -366,8 +366,8 @@ export default function Orders() {
               </Button>
             )}
             <div>
-              <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-                {typeFilter ? <span className="text-2xl">{ORDER_TYPE_EMOJI[typeFilter]}</span> : <ShoppingBag className="h-5 w-5" />}
+              <h1 className="text-2xl md:text-[30px] font-bold flex items-center gap-2 leading-tight">
+                {typeFilter ? <span className="text-3xl">{ORDER_TYPE_EMOJI[typeFilter]}</span> : <ShoppingBag className="h-7 w-7" />}
                 {heading}
               </h1>
               {clientIdParam && clientNameById.get(clientIdParam) && (
@@ -395,8 +395,8 @@ export default function Orders() {
         </div>
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari judul / klien / status…" className="pl-9 h-10" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari judul / klien / status…" className="pl-10 h-11 text-sm" />
         </div>
 
         {loadingOrders && orders.length === 0 ? (
@@ -489,7 +489,7 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition ${
+      className={`px-4 py-2 rounded-full text-sm font-semibold border transition ${
         active
           ? "bg-primary text-primary-foreground border-transparent"
           : "bg-white text-muted-foreground border-border hover:bg-secondary"

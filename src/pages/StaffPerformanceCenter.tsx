@@ -286,51 +286,44 @@ export default function StaffPerformanceCenter() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-1 pb-12 space-y-5">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-12 space-y-6">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between gap-3 pt-1">
-        <div className="flex items-center gap-2.5">
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-xl hover:bg-slate-100 transition-colors text-muted-foreground">
-            <ArrowLeft className="h-4 w-4" />
+      <div className="flex items-center justify-between gap-4 pt-2">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)}
+            className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-muted-foreground shrink-0">
+            <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <Activity className="h-5 w-5 text-sky-500" strokeWidth={1.8} />
+            <h1 className="text-[28px] sm:text-[32px] font-bold flex items-center gap-3 tracking-tight leading-tight">
+              <Activity className="h-8 w-8 text-sky-500 shrink-0" strokeWidth={1.8} />
               Pantau Kinerja Staff
             </h1>
-            <p className="text-[11px] text-muted-foreground">{staffMembers.length} staff internal · data realtime</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{staffMembers.length} staff internal · data realtime</p>
           </div>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => void handleRefresh()}
-          disabled={refreshing}
-          className="h-8 gap-1.5 text-[12px]"
-        >
-          <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+        <Button variant="outline" onClick={() => void handleRefresh()} disabled={refreshing}
+          className="h-10 gap-2 text-sm px-4 shrink-0">
+          <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
           Refresh
         </Button>
       </div>
 
       {/* ── Period filter + sort ── */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2.5 flex-wrap">
         <div className="flex items-center rounded-xl border border-slate-200 overflow-hidden bg-white shrink-0">
           {PERIOD_OPTIONS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPeriod(p.id)}
+            <button key={p.id} onClick={() => setPeriod(p.id)}
               className={cn(
-                "px-3 py-1.5 text-[11px] font-semibold transition-colors border-r border-slate-200 last:border-r-0",
+                "px-3.5 py-2 text-[13px] font-semibold transition-colors border-r border-slate-200 last:border-r-0",
                 period === p.id ? "bg-sky-500 text-white" : "text-slate-500 hover:bg-slate-50",
-              )}
-            >
+              )}>
               {p.label}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <Filter className="h-3 w-3" />
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Filter className="h-3.5 w-3.5" />
           Urutkan:
         </div>
         {([
@@ -339,34 +332,31 @@ export default function StaffPerformanceCenter() {
           { id: "active" as const, label: "Aktif" },
           { id: "name" as const, label: "Nama" },
         ]).map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setSortBy(s.id)}
+          <button key={s.id} onClick={() => setSortBy(s.id)}
             className={cn(
-              "px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors",
+              "px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors",
               sortBy === s.id ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200",
-            )}
-          >
+            )}>
             {s.label}
           </button>
         ))}
       </div>
 
       {/* ── Summary KPI strip ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { label: "Total Penugasan", value: summary.total, icon: Briefcase, color: "text-sky-600", bg: "bg-sky-50" },
-          { label: "Order Selesai",   value: summary.completed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Order Aktif",     value: summary.active, icon: CircleDot, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "Total Fee Staff", value: fmtIDR(summary.totalFee), icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50" },
+          { label: "Total Penugasan", value: summary.total,              icon: Briefcase,    color: "text-sky-600",     bg: "bg-sky-50",    border: "border-sky-100" },
+          { label: "Order Selesai",   value: summary.completed,          icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+          { label: "Order Aktif",     value: summary.active,             icon: CircleDot,    color: "text-blue-600",    bg: "bg-blue-50",   border: "border-blue-100" },
+          { label: "Total Fee Staff", value: fmtIDR(summary.totalFee),   icon: TrendingUp,   color: "text-purple-600",  bg: "bg-purple-50", border: "border-purple-100" },
         ].map((kpi) => (
-          <div key={kpi.label} className="rounded-2xl border bg-white p-4 flex items-center gap-3">
-            <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center shrink-0", kpi.bg)}>
-              <kpi.icon className={cn("h-4.5 w-4.5", kpi.color)} strokeWidth={1.8} />
+          <div key={kpi.label} className={cn("rounded-2xl border bg-white p-4 sm:p-5 flex items-center gap-4 shadow-sm", kpi.border)}>
+            <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shrink-0", kpi.bg)}>
+              <kpi.icon className={cn("h-6 w-6", kpi.color)} strokeWidth={1.8} />
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground font-medium">{kpi.label}</p>
-              <p className="text-[16px] font-extrabold font-mono">{kpi.value}</p>
+              <p className="text-xs text-muted-foreground font-medium">{kpi.label}</p>
+              <p className="text-[22px] font-extrabold font-mono leading-tight mt-0.5">{kpi.value}</p>
             </div>
           </div>
         ))}
@@ -374,9 +364,9 @@ export default function StaffPerformanceCenter() {
 
       {/* ── Alert strip ── */}
       {summary.alertCount > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center gap-3">
-          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-          <p className="text-[12px] font-semibold text-amber-700">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+          <p className="text-sm font-semibold text-amber-700">
             {summary.alertCount} alert aktif — cek detail staff di bawah.
           </p>
         </div>
@@ -384,40 +374,37 @@ export default function StaffPerformanceCenter() {
 
       {/* ── Empty state ── */}
       {staffMembers.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
-          <Users className="h-10 w-10 opacity-30" />
-          <p className="text-sm font-medium">Belum ada staff internal.</p>
-          <p className="text-[11px]">Undang staff dari halaman Pengaturan.</p>
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
+          <Users className="h-14 w-14 opacity-25" />
+          <p className="text-base font-medium">Belum ada staff internal.</p>
+          <p className="text-sm">Undang staff dari halaman Pengaturan.</p>
         </div>
       )}
 
       {/* ── Staff cards ── */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <AnimatePresence initial={false}>
           {sorted.map((m, idx) => {
             const online = isOnline(m.staff.userId);
             const isExpanded = expandedId === m.staff.userId;
 
             return (
-              <motion.div
-                key={m.staff.userId}
+              <motion.div key={m.staff.userId}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.04 }}
-                className="rounded-2xl border bg-white overflow-hidden shadow-sm"
+                className="rounded-2xl border bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow"
               >
                 {/* ── Card header ── */}
-                <div
-                  className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-slate-50/60 transition-colors"
-                  onClick={() => setExpandedId(isExpanded ? null : m.staff.userId)}
-                >
+                <div className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-slate-50/60 transition-colors"
+                  onClick={() => setExpandedId(isExpanded ? null : m.staff.userId)}>
                   {/* Avatar */}
                   <div className="relative shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white font-bold text-[14px]">
+                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white font-bold text-[22px]">
                       {(m.staff.displayName || m.staff.email).slice(0, 1).toUpperCase()}
                     </div>
                     <span className={cn(
-                      "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white",
+                      "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white",
                       online ? "bg-emerald-500" : "bg-slate-300",
                     )} />
                   </div>
@@ -425,27 +412,27 @@ export default function StaffPerformanceCenter() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-[13px] font-bold truncate">{m.staff.displayName || m.staff.email}</p>
+                      <p className="text-[15px] font-bold truncate">{m.staff.displayName || m.staff.email}</p>
                       {online && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold shrink-0">
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold shrink-0">
                           online
                         </span>
                       )}
                       {m.badge && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 font-bold shrink-0">
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 font-bold shrink-0">
                           {m.badge}
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <p className="text-[13px] text-muted-foreground mt-1">
                       {m.staff.email} · aktif {fmtRelative(m.lastActive)}
                     </p>
                     {/* Alert badges */}
                     {m.alerts.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {m.alerts.map((a, i) => (
-                          <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold flex items-center gap-0.5">
-                            <AlertTriangle className="h-2.5 w-2.5" /> {a}
+                          <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" /> {a}
                           </span>
                         ))}
                       </div>
@@ -453,24 +440,24 @@ export default function StaffPerformanceCenter() {
                   </div>
 
                   {/* Stats chips */}
-                  <div className="hidden sm:flex items-center gap-2 shrink-0">
+                  <div className="hidden sm:flex items-center gap-5 shrink-0">
                     <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground">Selesai</p>
-                      <p className="text-[15px] font-extrabold text-emerald-600">{m.completed}</p>
+                      <p className="text-[11px] text-muted-foreground font-medium">Selesai</p>
+                      <p className="text-[22px] font-extrabold text-emerald-600 leading-tight">{m.completed}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground">Aktif</p>
-                      <p className="text-[15px] font-extrabold text-sky-600">{m.active}</p>
+                      <p className="text-[11px] text-muted-foreground font-medium">Aktif</p>
+                      <p className="text-[22px] font-extrabold text-sky-600 leading-tight">{m.active}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground">Fee</p>
-                      <p className="text-[12px] font-bold text-purple-600 font-mono">{fmtIDR(m.totalFee)}</p>
+                    <div className="text-right min-w-[90px]">
+                      <p className="text-[11px] text-muted-foreground font-medium">Total Fee</p>
+                      <p className="text-[13px] font-bold text-purple-600 font-mono">{fmtIDR(m.totalFee)}</p>
                     </div>
                   </div>
 
                   {/* Expand toggle */}
-                  <div className="shrink-0 text-muted-foreground">
-                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  <div className="shrink-0 text-muted-foreground p-1">
+                    {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                   </div>
                 </div>
 
@@ -489,41 +476,41 @@ export default function StaffPerformanceCenter() {
                         {/* ── KPI row ── */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-100">
                           {[
-                            { label: "Total Penugasan", value: m.total, color: "text-foreground" },
-                            { label: "Selesai", value: m.completed, color: "text-emerald-600" },
-                            { label: "Aktif",   value: m.active,    color: "text-sky-600" },
-                            { label: "Batal",   value: m.cancelled, color: "text-red-500" },
+                            { label: "Total Penugasan", value: m.total,     color: "text-foreground" },
+                            { label: "Selesai",         value: m.completed, color: "text-emerald-600" },
+                            { label: "Aktif",           value: m.active,    color: "text-sky-600" },
+                            { label: "Dibatalkan",      value: m.cancelled, color: "text-red-500" },
                           ].map((k) => (
-                            <div key={k.label} className="bg-white px-4 py-3 text-center">
-                              <p className="text-[10px] text-muted-foreground">{k.label}</p>
-                              <p className={cn("text-[18px] font-extrabold", k.color)}>{k.value}</p>
+                            <div key={k.label} className="bg-white px-5 py-4 text-center">
+                              <p className="text-xs text-muted-foreground font-medium">{k.label}</p>
+                              <p className={cn("text-[28px] font-extrabold leading-tight mt-0.5", k.color)}>{k.value}</p>
                             </div>
                           ))}
                         </div>
 
                         {/* ── Fee breakdown ── */}
-                        <div className="px-4 py-3 grid grid-cols-3 gap-3">
-                          <div className="rounded-xl bg-purple-50 border border-purple-100 p-3">
-                            <p className="text-[10px] text-purple-600 font-semibold uppercase tracking-wide">Total Fee</p>
-                            <p className="text-[13px] font-extrabold font-mono text-purple-700 mt-0.5">{fmtIDR(m.totalFee)}</p>
+                        <div className="px-5 py-4 grid grid-cols-3 gap-3">
+                          <div className="rounded-xl bg-purple-50 border border-purple-100 p-3.5">
+                            <p className="text-[11px] text-purple-600 font-semibold uppercase tracking-wide">Total Fee</p>
+                            <p className="text-[14px] font-extrabold font-mono text-purple-700 mt-1">{fmtIDR(m.totalFee)}</p>
                           </div>
-                          <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
-                            <p className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wide">Sudah Cair</p>
-                            <p className="text-[13px] font-extrabold font-mono text-emerald-700 mt-0.5">{fmtIDR(m.feeCredited)}</p>
+                          <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3.5">
+                            <p className="text-[11px] text-emerald-600 font-semibold uppercase tracking-wide">Sudah Cair</p>
+                            <p className="text-[14px] font-extrabold font-mono text-emerald-700 mt-1">{fmtIDR(m.feeCredited)}</p>
                           </div>
-                          <div className="rounded-xl bg-amber-50 border border-amber-100 p-3">
-                            <p className="text-[10px] text-amber-600 font-semibold uppercase tracking-wide">Belum Cair</p>
-                            <p className="text-[13px] font-extrabold font-mono text-amber-700 mt-0.5">{fmtIDR(m.feePending)}</p>
+                          <div className="rounded-xl bg-amber-50 border border-amber-100 p-3.5">
+                            <p className="text-[11px] text-amber-600 font-semibold uppercase tracking-wide">Belum Cair</p>
+                            <p className="text-[14px] font-extrabold font-mono text-amber-700 mt-1">{fmtIDR(m.feePending)}</p>
                           </div>
                         </div>
 
                         {/* ── Progress bar & stats ── */}
-                        <div className="px-4 py-3 space-y-2">
-                          <div className="flex items-center justify-between text-[11px]">
+                        <div className="px-5 py-4 space-y-3">
+                          <div className="flex items-center justify-between text-sm">
                             <span className="font-semibold text-muted-foreground">Tingkat Penyelesaian</span>
-                            <span className="font-bold text-emerald-600">{Math.round(m.completionRate)}%</span>
+                            <span className="font-bold text-emerald-600 text-base">{Math.round(m.completionRate)}%</span>
                           </div>
-                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${m.completionRate}%` }}
@@ -537,9 +524,11 @@ export default function StaffPerformanceCenter() {
                             />
                           </div>
                           <div className="flex items-center gap-3 flex-wrap pt-1">
-                            <span className="text-[10px] text-muted-foreground">Kontribusi profit: <strong className="text-foreground">{fmtIDR(m.profitContribution)}</strong></span>
+                            <span className="text-sm text-muted-foreground">
+                              Kontribusi profit: <strong className="text-foreground">{fmtIDR(m.profitContribution)}</strong>
+                            </span>
                             {Object.entries(m.byType).map(([type, count]) => (
-                              <span key={type} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">
+                              <span key={type} className="text-[12px] bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-semibold">
                                 {TYPE_LABEL[type] ?? type}: {count}
                               </span>
                             ))}
@@ -548,35 +537,33 @@ export default function StaffPerformanceCenter() {
 
                         {/* ── Recent orders ── */}
                         {m.recentOrders.length > 0 && (
-                          <div className="px-4 py-3">
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
-                              <Clock className="h-3 w-3" /> Riwayat Penugasan Terbaru
+                          <div className="px-5 py-4">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5" /> Riwayat Penugasan Terbaru
                             </p>
-                            <div className="space-y-1.5">
+                            <div className="space-y-2">
                               {m.recentOrders.map((o) => {
                                 const client = o.clientId ? clientMap.get(o.clientId) : null;
                                 const sc = STATUS_CFG[o.status] ?? { cls: "bg-slate-100 text-slate-500", label: o.status };
                                 return (
-                                  <div
-                                    key={o.id}
-                                    className="flex items-center gap-2.5 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2 cursor-pointer hover:bg-sky-50 hover:border-sky-100 transition-colors group"
-                                    onClick={() => navigate(`/orders/detail/${o.id}`)}
-                                  >
+                                  <div key={o.id}
+                                    className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 cursor-pointer hover:bg-sky-50 hover:border-sky-100 transition-colors group"
+                                    onClick={() => navigate(`/orders/detail/${o.id}`)}>
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-[12px] font-semibold truncate">
+                                      <p className="text-[13px] font-semibold truncate">
                                         {client?.name ?? o.title ?? `Order #${o.id.slice(0, 8)}`}
                                       </p>
-                                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                        <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-medium">
+                                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                        <span className="text-[11px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-medium">
                                           {TYPE_LABEL[o.type] ?? o.type}
                                         </span>
-                                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-semibold", sc.cls)}>
+                                        <span className={cn("text-[11px] px-2 py-0.5 rounded-full font-semibold", sc.cls)}>
                                           {sc.label}
                                         </span>
-                                        <span className="text-[10px] text-muted-foreground">{fmtRelative(o.updatedAt)}</span>
+                                        <span className="text-[12px] text-muted-foreground">{fmtRelative(o.updatedAt)}</span>
                                       </div>
                                     </div>
-                                    <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                    <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                                   </div>
                                 );
                               })}
@@ -585,16 +572,13 @@ export default function StaffPerformanceCenter() {
                         )}
 
                         {/* ── Footer actions ── */}
-                        <div className="px-4 py-3 bg-slate-50/60 flex items-center justify-between gap-2 flex-wrap">
-                          <p className="text-[10px] text-muted-foreground">
+                        <div className="px-5 py-4 bg-slate-50/60 flex items-center justify-between gap-3 flex-wrap">
+                          <p className="text-sm text-muted-foreground">
                             Bergabung {fmtDate(m.staff.createdAt)} · {m.total} total penugasan
                           </p>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2.5 text-[11px] border-blue-200 text-blue-700 hover:bg-blue-50"
-                            onClick={() => navigate(`/staff/${m.staff.userId}`)}
-                          >
+                          <Button variant="outline"
+                            className="h-9 px-4 text-sm border-blue-200 text-blue-700 hover:bg-blue-50"
+                            onClick={() => navigate(`/staff/${m.staff.userId}`)}>
                             🪪 Kartu Staff
                           </Button>
                         </div>

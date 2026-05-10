@@ -222,7 +222,7 @@ export default function OwnerVisaTrackerPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-6">
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between">

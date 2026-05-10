@@ -819,7 +819,7 @@ export default function ItineraryGenerator() {
   const hasApiKey = true;
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-5">
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-5">
 
       {/* Header */}
       <div>

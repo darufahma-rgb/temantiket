@@ -220,7 +220,7 @@ export default function ExportCenter() {
 
   return (
     <motion.div
-      className="container mx-auto p-4 sm:p-6 max-w-4xl space-y-8"
+      className="container mx-auto p-4 sm:p-6 max-w-[1400px] space-y-8"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}

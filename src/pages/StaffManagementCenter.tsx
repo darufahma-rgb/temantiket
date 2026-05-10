@@ -942,58 +942,62 @@ export default function StaffManagementCenter() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <RefreshCw className="h-6 w-6 animate-spin text-blue-400" />
-          <p className="text-sm font-medium">Memuat Manajemen Staff…</p>
+        <div className="flex flex-col items-center gap-4 text-muted-foreground">
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-400" />
+          <p className="text-base font-medium">Memuat Manajemen Staff…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-1 pb-16 space-y-5">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-16 space-y-6">
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-3 pt-1">
-        <div className="flex items-center gap-2.5">
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-xl hover:bg-slate-100 transition-colors text-muted-foreground">
-            <ArrowLeft className="h-4 w-4" />
+      <div className="flex items-center justify-between gap-4 pt-2">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)}
+            className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-muted-foreground shrink-0">
+            <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2 tracking-tight">
-              <div className="h-7 w-7 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-sm">
-                <Settings2 className="h-4 w-4 text-white" strokeWidth={1.8} />
+            <h1 className="text-[28px] sm:text-[32px] font-bold flex items-center gap-3 tracking-tight leading-tight">
+              <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-md shrink-0">
+                <Settings2 className="h-5 w-5 text-white" strokeWidth={1.8} />
               </div>
               Manajemen Staff
             </h1>
-            <p className="text-[11px] text-muted-foreground">{staffMembers.length} staff aktif · kontrol operasional realtime</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {staffMembers.length} staff aktif · kontrol operasional realtime
+            </p>
           </div>
         </div>
-        <Button size="sm" variant="outline" onClick={() => void handleRefresh()} disabled={refreshing} className="h-8 gap-1.5 text-[12px]">
-          <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+        <Button variant="outline" onClick={() => void handleRefresh()} disabled={refreshing}
+          className="h-10 gap-2 text-sm px-4 shrink-0">
+          <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
           Refresh
         </Button>
       </div>
 
       {/* ── KPI SUMMARY BAR ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { label: "Total Staff",      value: summary.totalStaff,   icon: Users,        color: "text-blue-600",    bg: "bg-blue-50",    border: "border-blue-100" },
-          { label: "Sedang Online",    value: summary.onlineCount,  icon: UserCheck,    color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-          { label: "Order Hari Ini",   value: summary.ordersToday,  icon: Briefcase,    color: "text-sky-600",     bg: "bg-sky-50",     border: "border-sky-100" },
-          { label: "Order Aktif",      value: summary.totalActive,  icon: CircleDot,    color: "text-blue-600",    bg: "bg-blue-50",    border: "border-blue-100" },
-          { label: "Fee (30 Hari)",    value: fmtIDR(summary.totalFeeMonth), icon: Wallet, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100" },
-          { label: "Completion Rate",  value: `${summary.completionRate}%`, icon: Target, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-          { label: "Task Pending",     value: summary.pendingTasks, icon: ClipboardList, color: "text-amber-600",  bg: "bg-amber-50",   border: "border-amber-100" },
-          { label: "Staff dgn Alert",  value: summary.alertCount,   icon: AlertTriangle, color: "text-red-500",    bg: "bg-red-50",     border: "border-red-100" },
+          { label: "Total Staff",     value: summary.totalStaff,            icon: Users,         color: "text-blue-600",    bg: "bg-blue-50",    border: "border-blue-100" },
+          { label: "Sedang Online",   value: summary.onlineCount,           icon: UserCheck,     color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+          { label: "Order Hari Ini",  value: summary.ordersToday,           icon: Briefcase,     color: "text-sky-600",     bg: "bg-sky-50",     border: "border-sky-100" },
+          { label: "Order Aktif",     value: summary.totalActive,           icon: CircleDot,     color: "text-blue-600",    bg: "bg-blue-50",    border: "border-blue-100" },
+          { label: "Fee 30 Hari",     value: fmtIDR(summary.totalFeeMonth), icon: Wallet,        color: "text-purple-600",  bg: "bg-purple-50",  border: "border-purple-100" },
+          { label: "Completion Rate", value: `${summary.completionRate}%`,  icon: Target,        color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+          { label: "Task Pending",    value: summary.pendingTasks,          icon: ClipboardList, color: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-100" },
+          { label: "Staff dgn Alert", value: summary.alertCount,            icon: AlertTriangle, color: "text-red-500",     bg: "bg-red-50",     border: "border-red-100" },
         ].map((kpi) => (
-          <div key={kpi.label} className={cn("rounded-2xl border p-3.5 flex items-center gap-3 bg-white", kpi.border)}>
-            <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center shrink-0", kpi.bg)}>
-              <kpi.icon className={cn("h-4.5 w-4.5", kpi.color)} strokeWidth={1.8} />
+          <div key={kpi.label} className={cn("rounded-2xl border p-4 sm:p-5 flex items-center gap-4 bg-white shadow-sm", kpi.border)}>
+            <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shrink-0", kpi.bg)}>
+              <kpi.icon className={cn("h-6 w-6", kpi.color)} strokeWidth={1.8} />
             </div>
             <div className="min-w-0">
-              <p className="text-[9.5px] font-semibold text-muted-foreground leading-tight">{kpi.label}</p>
-              <p className="text-[15px] font-extrabold font-mono leading-tight mt-0.5">{kpi.value}</p>
+              <p className="text-xs font-semibold text-muted-foreground leading-tight">{kpi.label}</p>
+              <p className="text-[22px] font-extrabold font-mono leading-tight mt-0.5">{kpi.value}</p>
             </div>
           </div>
         ))}
@@ -1002,40 +1006,45 @@ export default function StaffManagementCenter() {
       {/* ── ALERT STRIP ─────────────────────────────────────────────────────── */}
       {summary.alertCount > 0 && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center gap-3">
-          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-          <p className="text-[12px] font-semibold text-amber-700">
+          className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+          <p className="text-sm font-semibold text-amber-700">
             {summary.alertCount} alert aktif — cek detail staff di bawah atau gunakan filter "Alert".
           </p>
         </motion.div>
       )}
 
       {/* ── FILTER BAR ─────────────────────────────────────────────────────── */}
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input className="pl-8 h-9 text-[12px]" placeholder="Cari nama atau email staff…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-muted-foreground" />
+          <Input
+            className="pl-10 h-11 text-sm"
+            placeholder="Cari nama atau email staff…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
         {/* Filters row */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
           {/* Period */}
           <div className="flex items-center rounded-xl border border-slate-200 overflow-hidden bg-white shrink-0">
             {PERIOD_OPTS.map((p) => (
               <button key={p.id} onClick={() => setPeriod(p.id)}
-                className={cn("px-2.5 py-1.5 text-[10.5px] font-semibold transition-colors border-r border-slate-200 last:border-r-0",
+                className={cn("px-3.5 py-2 text-[13px] font-semibold transition-colors border-r border-slate-200 last:border-r-0",
                   period === p.id ? "bg-blue-500 text-white" : "text-slate-500 hover:bg-slate-50")}>
                 {p.label}
               </button>
             ))}
           </div>
 
-          {/* Filter */}
-          <div className="flex items-center gap-1 flex-wrap">
+          {/* Status filter */}
+          <div className="flex items-center gap-1.5 flex-wrap">
             {FILTER_OPTS.map((f) => (
               <button key={f.id} onClick={() => setFilterBy(f.id)}
-                className={cn("px-2.5 py-1.5 rounded-xl text-[10.5px] font-semibold transition-colors border",
+                className={cn("px-3.5 py-2 rounded-xl text-[13px] font-semibold transition-colors border",
                   filterBy === f.id ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300")}>
                 {f.label}
               </button>
@@ -1043,14 +1052,14 @@ export default function StaffManagementCenter() {
           </div>
 
           {/* Sort */}
-          <div className="flex items-center gap-1 ml-auto">
-            <Filter className="h-3 w-3 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-1.5 ml-auto">
+            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             {([
               { id: "completed" as SortKey, label: "Selesai" }, { id: "rate" as SortKey, label: "Rate" },
               { id: "fee" as SortKey, label: "Fee" }, { id: "active" as SortKey, label: "Aktif" },
             ]).map((s) => (
               <button key={s.id} onClick={() => setSortBy(s.id)}
-                className={cn("px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors",
+                className={cn("px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors",
                   sortBy === s.id ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}>
                 {s.label}
               </button>
@@ -1061,17 +1070,19 @@ export default function StaffManagementCenter() {
 
       {/* ── EMPTY STATE ────────────────────────────────────────────────────── */}
       {staffMembers.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
-          <Users className="h-10 w-10 opacity-30" />
-          <p className="text-sm font-semibold">Belum ada staff internal.</p>
-          <p className="text-[11px]">Undang staff dari Pengaturan → Tim.</p>
-          <Button size="sm" variant="outline" onClick={() => navigate("/settings")}>Buka Pengaturan</Button>
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
+          <Users className="h-14 w-14 opacity-25" />
+          <p className="text-base font-semibold">Belum ada staff internal.</p>
+          <p className="text-sm">Undang staff dari Pengaturan → Tim.</p>
+          <Button variant="outline" onClick={() => navigate("/settings")} className="mt-1">
+            Buka Pengaturan
+          </Button>
         </div>
       )}
 
       {/* ── STAFF CARDS ────────────────────────────────────────────────────── */}
       <AnimatePresence initial={false}>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {displayed.map((m, idx) => {
             const online = isOnline(m.staff.userId);
             const isExpanded = expandedId === m.staff.userId;
@@ -1083,97 +1094,107 @@ export default function StaffManagementCenter() {
                 className="rounded-2xl border bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
 
                 {/* ── Card Header ── */}
-                <div className="flex items-center gap-3 px-4 py-3.5">
+                <div className="flex items-center gap-4 px-5 py-4">
                   {/* Avatar */}
-                  <div className="relative shrink-0 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : m.staff.userId)}>
-                    <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-700 flex items-center justify-center text-white font-bold text-[16px] shadow-sm">
+                  <div className="relative shrink-0 cursor-pointer"
+                    onClick={() => setExpandedId(isExpanded ? null : m.staff.userId)}>
+                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-700 flex items-center justify-center text-white font-bold text-[22px] shadow-sm">
                       {(m.staff.displayName || m.staff.email).slice(0, 1).toUpperCase()}
                     </div>
-                    <span className={cn("absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white",
+                    <span className={cn("absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white",
                       online ? "bg-emerald-500" : "bg-slate-300")} />
                   </div>
 
                   {/* Info */}
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : m.staff.userId)}>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="text-[13px] font-bold">{m.staff.displayName || m.staff.email}</p>
-                      {online && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold shrink-0">online</span>}
+                  <div className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => setExpandedId(isExpanded ? null : m.staff.userId)}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-[15px] font-bold">{m.staff.displayName || m.staff.email}</p>
+                      {online && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold shrink-0">
+                          online
+                        </span>
+                      )}
                       {m.badges.slice(0, 2).map((b) => (
-                        <span key={b} className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-bold shrink-0">{b}</span>
+                        <span key={b} className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-bold shrink-0">
+                          {b}
+                        </span>
                       ))}
                       {m.alerts.length > 0 && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-bold flex items-center gap-0.5 shrink-0">
-                          <AlertTriangle className="h-2.5 w-2.5" /> {m.alerts.length}
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold flex items-center gap-1 shrink-0">
+                          <AlertTriangle className="h-3 w-3" /> {m.alerts.length} alert
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{m.staff.email} · {m.lastActive ? `aktif ${fmtRelative(m.lastActive)}` : "belum aktif"}</p>
+                    <p className="text-[13px] text-muted-foreground mt-1 truncate">
+                      {m.staff.email} · {m.lastActive ? `aktif ${fmtRelative(m.lastActive)}` : "belum aktif"}
+                    </p>
                   </div>
 
                   {/* Stats chips — desktop */}
-                  <div className="hidden sm:flex items-center gap-3 shrink-0">
+                  <div className="hidden sm:flex items-center gap-5 shrink-0">
                     <div className="text-right">
-                      <p className="text-[9px] text-muted-foreground">Selesai</p>
-                      <p className="text-[16px] font-extrabold text-emerald-600">{m.completed}</p>
+                      <p className="text-[11px] text-muted-foreground font-medium">Selesai</p>
+                      <p className="text-[22px] font-extrabold text-emerald-600 leading-tight">{m.completed}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[9px] text-muted-foreground">Aktif</p>
-                      <p className="text-[16px] font-extrabold text-blue-500">{m.active}</p>
+                      <p className="text-[11px] text-muted-foreground font-medium">Aktif</p>
+                      <p className="text-[22px] font-extrabold text-blue-500 leading-tight">{m.active}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[9px] text-muted-foreground">Rate</p>
-                      <p className="text-[14px] font-extrabold">{Math.round(m.completionRate)}%</p>
+                      <p className="text-[11px] text-muted-foreground font-medium">Rate</p>
+                      <p className="text-[18px] font-extrabold leading-tight">{Math.round(m.completionRate)}%</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-[9px] text-muted-foreground">Fee</p>
-                      <p className="text-[11px] font-bold text-purple-600 font-mono">{fmtIDR(m.totalFee)}</p>
+                    <div className="text-right min-w-[90px]">
+                      <p className="text-[11px] text-muted-foreground font-medium">Total Fee</p>
+                      <p className="text-[13px] font-bold text-purple-600 font-mono">{fmtIDR(m.totalFee)}</p>
                     </div>
                   </div>
 
                   {/* Expand toggle */}
-                  <button className="p-1.5 rounded-xl hover:bg-slate-100 transition-colors text-muted-foreground shrink-0"
+                  <button className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-muted-foreground shrink-0"
                     onClick={() => setExpandedId(isExpanded ? null : m.staff.userId)}>
-                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                   </button>
                 </div>
 
                 {/* ── Quick Actions ── */}
-                <div className="px-4 pb-3 flex items-center gap-1.5 flex-wrap border-t border-slate-50 pt-2.5">
+                <div className="px-5 pb-4 flex items-center gap-2 flex-wrap border-t border-slate-100 pt-3">
                   <button onClick={() => { setTaskTargetId(m.staff.userId); }}
-                    className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors border border-blue-100">
-                    <ClipboardList className="h-3 w-3" /> Tugas
+                    className="flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors border border-blue-100">
+                    <ClipboardList className="h-3.5 w-3.5" /> Tugas
                     {tasks.filter(t => t.assigned_to === m.staff.userId && t.status !== "selesai").length > 0 && (
-                      <span className="h-4 w-4 rounded-full bg-blue-500 text-white text-[8px] font-bold flex items-center justify-center">
+                      <span className="h-5 w-5 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">
                         {tasks.filter(t => t.assigned_to === m.staff.userId && t.status !== "selesai").length}
                       </span>
                     )}
                   </button>
                   <button onClick={() => setReminderTargetId(m.staff.userId)}
-                    className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors border border-amber-100">
-                    <Bell className="h-3 w-3" /> Reminder
+                    className="flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors border border-amber-100">
+                    <Bell className="h-3.5 w-3.5" /> Reminder
                   </button>
                   {m.extra.whatsapp_number && (
                     <button onClick={() => window.open(`https://wa.me/${cleanWa(m.extra.whatsapp_number!)}`, "_blank")}
-                      className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-100">
-                      <MessageCircle className="h-3 w-3" /> WA
+                      className="flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-100">
+                      <MessageCircle className="h-3.5 w-3.5" /> WA
                     </button>
                   )}
                   <button onClick={() => navigate(`/staff/${m.staff.userId}`)}
-                    className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors border border-slate-200">
-                    <BadgeCheck className="h-3 w-3" /> Kartu
+                    className="flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors border border-slate-200">
+                    <BadgeCheck className="h-3.5 w-3.5" /> Kartu
                   </button>
                   <button onClick={() => setNoteTargetId(m.staff.userId)}
-                    className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors border border-purple-100">
-                    <StickyNote className="h-3 w-3" /> Catatan
+                    className="flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors border border-purple-100">
+                    <StickyNote className="h-3.5 w-3.5" /> Catatan
                     {notes.filter(n => n.target_user_id === m.staff.userId).length > 0 && (
-                      <span className="h-4 w-4 rounded-full bg-purple-500 text-white text-[8px] font-bold flex items-center justify-center">
+                      <span className="h-5 w-5 rounded-full bg-purple-500 text-white text-[10px] font-bold flex items-center justify-center">
                         {notes.filter(n => n.target_user_id === m.staff.userId).length}
                       </span>
                     )}
                   </button>
                   <button onClick={() => setDrawerStaffId(m.staff.userId)}
-                    className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-xl bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors border border-sky-100 ml-auto">
-                    <Eye className="h-3 w-3" /> Detail
+                    className="flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors border border-sky-100 ml-auto">
+                    <Eye className="h-3.5 w-3.5" /> Detail Lengkap
                   </button>
                 </div>
 
@@ -1186,27 +1207,27 @@ export default function StaffManagementCenter() {
                         {/* KPI grid */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-100">
                           {[
-                            { label: "Total", value: m.total, color: "text-foreground" },
-                            { label: "Selesai", value: m.completed, color: "text-emerald-600" },
-                            { label: "Aktif", value: m.active, color: "text-blue-600" },
-                            { label: "Batal", value: m.cancelled, color: "text-red-500" },
+                            { label: "Total Penugasan", value: m.total,     color: "text-foreground" },
+                            { label: "Selesai",         value: m.completed, color: "text-emerald-600" },
+                            { label: "Aktif",           value: m.active,    color: "text-blue-600" },
+                            { label: "Dibatalkan",      value: m.cancelled, color: "text-red-500" },
                           ].map((k) => (
-                            <div key={k.label} className="bg-white px-4 py-3 text-center">
-                              <p className="text-[10px] text-muted-foreground">{k.label}</p>
-                              <p className={cn("text-[20px] font-extrabold", k.color)}>{k.value}</p>
+                            <div key={k.label} className="bg-white px-5 py-4 text-center">
+                              <p className="text-xs text-muted-foreground font-medium">{k.label}</p>
+                              <p className={cn("text-[28px] font-extrabold leading-tight mt-0.5", k.color)}>{k.value}</p>
                             </div>
                           ))}
                         </div>
 
                         {/* Progress + Fee */}
-                        <div className="px-4 py-3 space-y-3">
+                        <div className="px-5 py-4 space-y-4">
                           {/* Completion rate bar */}
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between text-[11px]">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
                               <span className="font-semibold text-muted-foreground">Tingkat Penyelesaian</span>
-                              <span className="font-bold text-emerald-600">{Math.round(m.completionRate)}%</span>
+                              <span className="font-bold text-emerald-600 text-base">{Math.round(m.completionRate)}%</span>
                             </div>
-                            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                            <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
                               <motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600"
                                 initial={{ width: 0 }} animate={{ width: `${Math.min(100, m.completionRate)}%` }}
                                 transition={{ delay: 0.1, duration: 0.5 }} />
@@ -1214,26 +1235,26 @@ export default function StaffManagementCenter() {
                           </div>
 
                           {/* Fee breakdown */}
-                          <div className="grid grid-cols-3 gap-2">
+                          <div className="grid grid-cols-3 gap-3">
                             {[
-                              { label: "Total Fee", val: m.totalFee, cls: "bg-purple-50 border-purple-100 text-purple-700" },
-                              { label: "Sudah Cair", val: m.feeCredited, cls: "bg-emerald-50 border-emerald-100 text-emerald-700" },
-                              { label: "Belum Cair", val: m.feePending, cls: "bg-amber-50 border-amber-100 text-amber-700" },
+                              { label: "Total Fee",    val: m.totalFee,     cls: "bg-purple-50 border-purple-100 text-purple-700" },
+                              { label: "Sudah Cair",   val: m.feeCredited,  cls: "bg-emerald-50 border-emerald-100 text-emerald-700" },
+                              { label: "Belum Cair",   val: m.feePending,   cls: "bg-amber-50 border-amber-100 text-amber-700" },
                             ].map((f) => (
-                              <div key={f.label} className={cn("rounded-xl border p-2.5", f.cls)}>
-                                <p className="text-[9px] font-semibold uppercase tracking-wide opacity-70">{f.label}</p>
-                                <p className="text-[11px] font-extrabold font-mono mt-0.5">{fmtIDR(f.val)}</p>
+                              <div key={f.label} className={cn("rounded-xl border p-3.5", f.cls)}>
+                                <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">{f.label}</p>
+                                <p className="text-[13px] font-extrabold font-mono mt-1">{fmtIDR(f.val)}</p>
                               </div>
                             ))}
                           </div>
 
                           {/* Order type breakdown */}
                           {Object.keys(m.byType).length > 0 && (
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-2">
                               {Object.entries(m.byType).map(([type, count]) => (
-                                <div key={type} className="rounded-lg border bg-slate-50 px-2.5 py-1 flex items-center gap-1.5">
-                                  <span className="text-[10px] text-muted-foreground">{TYPE_LABEL[type] ?? type}</span>
-                                  <span className="text-[12px] font-extrabold">{count}</span>
+                                <div key={type} className="rounded-xl border bg-slate-50 px-3.5 py-2 flex items-center gap-2">
+                                  <span className="text-[13px] text-muted-foreground font-medium">{TYPE_LABEL[type] ?? type}</span>
+                                  <span className="text-[16px] font-extrabold">{count}</span>
                                 </div>
                               ))}
                             </div>
@@ -1242,23 +1263,29 @@ export default function StaffManagementCenter() {
 
                         {/* Recent orders */}
                         {m.recentOrders.length > 0 && (
-                          <div className="px-4 pb-4 space-y-1.5">
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Order Terbaru</p>
+                          <div className="px-5 pb-5 space-y-2">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Order Terbaru</p>
                             {m.recentOrders.slice(0, 4).map((o) => {
                               const client = clientMap.get(o.clientId ?? "");
                               const sc = STATUS_CFG[o.status] ?? { cls: "bg-slate-100 text-slate-500", label: o.status };
                               return (
                                 <button key={o.id} onClick={() => navigate(`/orders/detail/${o.id}`)}
-                                  className="w-full text-left flex items-center gap-2.5 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2 hover:bg-sky-50 hover:border-sky-100 transition-colors group">
+                                  className="w-full text-left flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 hover:bg-sky-50 hover:border-sky-100 transition-colors group">
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] font-semibold truncate">{client?.name ?? o.title ?? `#${o.id.slice(0, 8)}`}</p>
-                                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                                      <span className="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-medium">{TYPE_LABEL[o.type] ?? o.type}</span>
-                                      <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-semibold", sc.cls)}>{sc.label}</span>
-                                      <span className="text-[9px] text-muted-foreground">{fmtRelative(o.updatedAt)}</span>
+                                    <p className="text-[13px] font-semibold truncate">
+                                      {client?.name ?? o.title ?? `#${o.id.slice(0, 8)}`}
+                                    </p>
+                                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                      <span className="text-[11px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-medium">
+                                        {TYPE_LABEL[o.type] ?? o.type}
+                                      </span>
+                                      <span className={cn("text-[11px] px-2 py-0.5 rounded-full font-semibold", sc.cls)}>
+                                        {sc.label}
+                                      </span>
+                                      <span className="text-[12px] text-muted-foreground">{fmtRelative(o.updatedAt)}</span>
                                     </div>
                                   </div>
-                                  <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                  <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                                 </button>
                               );
                             })}
@@ -1267,10 +1294,10 @@ export default function StaffManagementCenter() {
 
                         {/* Alerts */}
                         {m.alerts.length > 0 && (
-                          <div className="mx-4 mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 space-y-1">
+                          <div className="mx-5 mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 space-y-1.5">
                             {m.alerts.map((a, i) => (
-                              <p key={i} className="text-[11px] text-amber-700 flex items-center gap-1.5">
-                                <AlertTriangle className="h-3 w-3 shrink-0" /> {a}
+                              <p key={i} className="text-sm text-amber-700 flex items-center gap-2">
+                                <AlertTriangle className="h-4 w-4 shrink-0" /> {a}
                               </p>
                             ))}
                           </div>
@@ -1287,15 +1314,15 @@ export default function StaffManagementCenter() {
 
       {/* ── BADGE LEGEND ───────────────────────────────────────────────────── */}
       {staffMembers.length > 0 && (
-        <div className="rounded-2xl border bg-gradient-to-br from-slate-50 to-blue-50 p-4">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Badge Internal Temantiket
+        <div className="rounded-2xl border bg-gradient-to-br from-slate-50 to-blue-50 p-5 sm:p-6">
+          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-amber-500" /> Badge Internal Temantiket
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {BADGE_DEFS.map((b) => (
-              <div key={b.key} className="rounded-xl bg-white border p-2.5">
-                <p className="text-[12px] font-bold">{b.emoji} {b.label}</p>
-                <p className="text-[9px] text-muted-foreground mt-0.5">{
+              <div key={b.key} className="rounded-xl bg-white border p-3.5">
+                <p className="text-[14px] font-bold">{b.emoji} {b.label}</p>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-snug">{
                   b.key === "top_executor"   ? "≥90% rate & ≥5 selesai" :
                   b.key === "closing_master" ? "≥10 order selesai" :
                   b.key === "problem_solver" ? "Aktif tanpa order terbengkalai" :
