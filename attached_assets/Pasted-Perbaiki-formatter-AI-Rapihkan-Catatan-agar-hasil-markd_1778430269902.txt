@@ -1,0 +1,167 @@
+Perbaiki formatter AI “Rapihkan Catatan” agar hasil markdown terlihat natural, manusiawi, mudah dibaca, dan memiliki hirarki visual yang jelas.
+
+MASALAH SAAT INI:
+- hasil terlalu dempet
+- tidak ada spacing antar section
+- heading dan isi menyatu
+- semua font weight terasa sama
+- markdown kurang proper
+- hasil terasa seperti robot/template
+- line break berantakan
+- readability buruk
+
+==================================================
+FORMAT HASIL YANG DIINGINKAN
+==================================================
+
+WAJIB gunakan struktur markdown yang rapi seperti manusia menulis catatan profesional.
+
+Contoh format BENAR:
+
+## PROSEDUR AKTIVASI IMEI
+
+_By Temantiket_
+
+---
+
+### 📌 Tahap 1 — Keluar dari Imigrasi
+
+Setelah keluar dari imigrasi di bandara Soetta, lanjutkan ke area kedatangan.
+
+### 📌 Tahap 2 — Terima HP
+
+Terima HP yang akan didaftarkan dari orang yang menitipkan.
+
+### 📌 Tahap 3 — Masuk Area Bea Cukai
+
+Masuk ke area Bea Cukai dengan membawa:
+
+- HP
+- Paspor
+- Boarding pass
+
+Kamu masuk sendiri, jadi tidak perlu khawatir.
+
+==================================================
+ATURAN SPACING
+==================================================
+
+WAJIB:
+
+- beri 1 baris kosong setelah heading
+- beri 1 baris kosong sebelum section baru
+- beri 1 baris kosong antara judul dan paragraf
+- bullet list harus rapi
+- jangan ada paragraf nempel langsung setelah heading
+- jangan semua jadi bold
+- gunakan whitespace yang nyaman dibaca
+
+==================================================
+FONT HIERARCHY
+==================================================
+
+Pastikan renderer markdown menghasilkan hierarchy visual:
+
+- H1/H2/H3 lebih tebal
+- subjudul medium
+- isi normal
+- italic dipakai natural
+- bold hanya untuk emphasis penting
+
+JANGAN semua text terasa bold.
+
+==================================================
+DIKSI & GAYA BAHASA
+==================================================
+
+AI wajib rewrite agar terdengar seperti manusia profesional.
+
+JANGAN:
+- terlalu kaku
+- terlalu robotik
+- terlalu formal AI
+- repetitif
+- monoton
+
+Gunakan:
+- bahasa natural
+- komunikatif
+- ringan dibaca
+- tetap profesional
+- lebih manusiawi
+
+Contoh:
+SALAH:
+"Masuk ke area Bea Cukai dengan membawa HP."
+
+BENAR:
+"Masuk ke area Bea Cukai sambil membawa HP, paspor, dan boarding pass."
+
+==================================================
+SMART FORMATTING
+==================================================
+
+AI harus otomatis mendeteksi:
+- langkah/prosedur
+- heading
+- poin penting
+- nomor urut
+- checklist
+- alamat
+- nomor kontak
+- CTA
+- warning/info
+
+Lalu format otomatis menjadi markdown yang proper.
+
+==================================================
+OUTPUT MODES
+==================================================
+
+Tambahkan style output:
+
+- Professional
+- Santai
+- Marketing
+- SOP Operasional
+- Customer Friendly
+- WhatsApp Friendly
+
+Tetapi semua tetap berbasis markdown clean.
+
+==================================================
+MARKDOWN CLEANUP
+==================================================
+
+Pastikan hasil markdown:
+- valid
+- clean
+- tidak double symbol
+- tidak rusak
+- tidak nested aneh
+- tidak ada bullet kosong
+- tidak ada line break random
+
+==================================================
+RENDER IMPROVEMENT
+==================================================
+
+Perbaiki markdown renderer preview agar:
+- spacing tampil benar
+- heading terlihat jelas
+- bullet list rapi
+- quote/code tidak rusak
+- typography nyaman dibaca
+- line-height proper
+- mobile responsive
+
+==================================================
+FINAL RESULT
+==================================================
+
+Hasil akhir harus terasa seperti:
+- ditulis admin manusia profesional
+- clean seperti Notion
+- nyaman seperti Medium
+- modern seperti Slack docs
+- mudah di-copy ke WhatsApp/Instagram/Telegram

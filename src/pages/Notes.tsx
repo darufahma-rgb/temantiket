@@ -1374,8 +1374,8 @@ export default function Notes() {
                 </div>
                 <div className="overflow-y-auto flex-1 bg-white">
                   {previewMode === "rendered" ? (
-                    <div className="p-4">
-                      <MarkdownContent content={rapihkanPreview.formatted} />
+                    <div className="p-5 pb-8">
+                      <MarkdownContent content={rapihkanPreview.formatted} size="md" prose={true} />
                     </div>
                   ) : (
                     <pre className="p-4 text-[11.5px] leading-relaxed text-slate-700 whitespace-pre-wrap font-mono bg-slate-50/80 min-h-full">

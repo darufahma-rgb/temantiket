@@ -1,0 +1,18 @@
+Perbaiki total sinkronisasi fee agent lapangan untuk semua agent, terutama kasus Fairuz yang sudah pernah ditugaskan sebagai agent lapangan tetapi fee Rp200.000 belum masuk ke Akumulasi Fee Komisi Agen. Audit seluruh order yang memiliki agent lapangan/pelaksana seperti `voaFieldAgentId`, `fieldAgentId`, `visaExecutorId`, `assignedOperationalAgentId`, atau field sejenis, lalu pastikan fee terkait seperti `voaAgentFee`, `fieldAgentFee`, `executorFee`, atau `operationalAgentFee` masuk ke ledger komisi agent yang benar saat order status `Completed`.
+
+Jangan hanya membaca komisi dari agent sales/closing. Akumulasi Fee Komisi Agen wajib menghitung semua sumber fee agent: fee closing, fee referral, fee agent lapangan VOA, fee pelaksana visa, bonus, dan manual adjustment. Untuk setiap order completed yang memiliki agent lapangan valid, buat atau perbaiki record di `commission_ledger` / `wallet_ledger` dengan source jelas seperti “Fee Agent Lapangan VOA”, nominal fee yang benar, `agent_id` agent yang ditugaskan, `order_id`, status payout, dan timestamp. Gunakan unique key `order_id + agent_id + source/type` agar tidak double-credit.
+
+Tambahkan proses backfill/migration untuk order lama yang sudah Completed dan sudah memiliki metadata agent lapangan tetapi fee-nya belum pernah tercatat di ledger. Contoh: jika Fairuz ada di `voaFieldAgentId` dengan `voaAgentFee = 200000`, maka sistem harus membuat ledger Rp200.000 untuk Fairuz dan menampilkannya di Akumulasi Fee, Profile Agent, Wallet, Riwayat Komisi, Manajemen Agen, Leaderboard, Analytics, dan Laporan Keuangan.
+
+Pastikan UI Akumulasi Fee Komisi Agen menampilkan breakdown yang jelas per agent:
+
+* Dari Closing/Sales
+* Dari Referral
+* Dari Agent Lapangan/VOA
+* Dari Pelaksana Visa
+* Bonus/Manual
+* Pending payout
+* Sudah dikreditkan
+* Total akumulasi
+
+Jangan masukkan ongkos transport/operational cost ke wallet agent kecuali memang field tersebut ditandai sebagai fee agent. Transport dan biaya operasional lain hanya mengurangi profit owner. Setelah fix, semua agent yang pernah atau akan ditugaskan sebagai agent lapangan otomatis menerima fee yang benar dan seluruh halaman menampilkan angka yang sama tanpa mismatch.

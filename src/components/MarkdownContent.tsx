@@ -66,7 +66,7 @@ export function MarkdownContent({
   className,
 }: MarkdownContentProps) {
   const s = SIZE[size];
-  const gap = prose ? "space-y-3" : "space-y-1.5";
+  const gap = prose ? "space-y-4" : "space-y-2";
 
   return (
     <div className={cn("min-w-0 break-words", gap, className)}>
@@ -75,39 +75,39 @@ export function MarkdownContent({
         components={{
           /* ── Headings ─────────────────────────────────────── */
           h1: ({ children }) => (
-            <h1 className={cn(s.h1, "text-foreground leading-snug mt-4 mb-1 first:mt-0 border-b border-border pb-1")}>
+            <h1 className={cn(s.h1, "text-foreground leading-snug mt-6 mb-3 first:mt-0 border-b border-border pb-2")}>
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className={cn(s.h2, "text-foreground leading-snug mt-3.5 mb-1 first:mt-0")}>
+            <h2 className={cn(s.h2, "text-foreground leading-snug mt-6 mb-3 first:mt-0")}>
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className={cn(s.h3, "text-foreground/90 leading-snug mt-3 mb-0.5 first:mt-0")}>
+            <h3 className={cn(s.h3, "text-foreground/90 leading-snug mt-5 mb-2 first:mt-0")}>
               {children}
             </h3>
           ),
           h4: ({ children }) => (
-            <h4 className={cn(s.h4, "text-foreground/80 leading-snug mt-2 mb-0.5 first:mt-0")}>
+            <h4 className={cn(s.h4, "text-foreground/80 leading-snug mt-4 mb-1.5 first:mt-0")}>
               {children}
             </h4>
           ),
 
           /* ── Paragraph ────────────────────────────────────── */
           p: ({ children }) => (
-            <p className={cn(s.p, "leading-relaxed text-foreground/85 last:mb-0")}>
+            <p className={cn(s.p, "leading-[1.75] text-foreground/85 last:mb-0")}>
               {children}
             </p>
           ),
 
           /* ── Lists ────────────────────────────────────────── */
           ul: ({ children }) => (
-            <ul className="pl-1 space-y-0.5">{children}</ul>
+            <ul className="pl-1 space-y-1.5 my-1">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="pl-4 list-decimal space-y-0.5 marker:text-muted-foreground">{children}</ol>
+            <ol className="pl-5 list-decimal space-y-1.5 my-1 marker:text-muted-foreground">{children}</ol>
           ),
           li: ({ children, ...props }) => {
             const isOrdered = (props as Record<string, unknown>).ordered === true
@@ -116,11 +116,11 @@ export function MarkdownContent({
                 : false;
             return (
               <li className={cn(
-                s.li, "leading-relaxed text-foreground/85",
-                !isOrdered && "flex gap-2 items-start list-none",
+                s.li, "leading-[1.7] text-foreground/85",
+                !isOrdered && "flex gap-2.5 items-start list-none",
               )}>
                 {!isOrdered && (
-                  <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-primary/40 shrink-0" />
+                  <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-primary/50 shrink-0" />
                 )}
                 <span className="flex-1 min-w-0">{children}</span>
               </li>
@@ -132,7 +132,7 @@ export function MarkdownContent({
             <strong className="font-semibold text-foreground">{children}</strong>
           ),
           em: ({ children }) => (
-            <em className="italic text-foreground/70">{children}</em>
+            <em className="italic text-foreground/65">{children}</em>
           ),
           del: ({ children }) => (
             <del className="line-through text-muted-foreground">{children}</del>
@@ -142,7 +142,7 @@ export function MarkdownContent({
           blockquote: ({ children }) => (
             <blockquote className={cn(
               s.blockquote,
-              "border-l-[3px] border-primary/30 pl-3 italic text-muted-foreground my-1 rounded-r-sm bg-muted/20 py-1",
+              "border-l-[3px] border-primary/40 pl-4 text-foreground/70 my-3 rounded-r-md bg-muted/25 py-2.5 font-medium",
             )}>
               {children}
             </blockquote>
@@ -153,7 +153,7 @@ export function MarkdownContent({
             const isBlock = cls?.includes("language-");
             if (isBlock) {
               return (
-                <pre className="bg-muted/50 border border-border rounded-lg px-3 py-2.5 overflow-x-auto my-1.5">
+                <pre className="bg-muted/50 border border-border rounded-lg px-4 py-3 overflow-x-auto my-3">
                   <code className={cn(s.code, "font-mono text-foreground/80 leading-relaxed", cls)}>
                     {children}
                   </code>
@@ -171,11 +171,11 @@ export function MarkdownContent({
           },
 
           /* ── HR ───────────────────────────────────────────── */
-          hr: () => <hr className="border-border/60 my-2" />,
+          hr: () => <hr className="border-border/50 my-5" />,
 
           /* ── Table (GFM) ──────────────────────────────────── */
           table: ({ children }) => (
-            <div className="overflow-x-auto my-1.5 rounded-lg border border-border">
+            <div className="overflow-x-auto my-3 rounded-lg border border-border">
               <table className="w-full text-[11.5px] border-collapse">{children}</table>
             </div>
           ),
@@ -186,7 +186,7 @@ export function MarkdownContent({
             <th className="px-3 py-2 text-left border-b border-border font-semibold">{children}</th>
           ),
           td: ({ children }) => (
-            <td className="px-3 py-1.5 border-b border-border/40 text-foreground/80">{children}</td>
+            <td className="px-3 py-2 border-b border-border/40 text-foreground/80">{children}</td>
           ),
 
           /* ── Links ────────────────────────────────────────── */
@@ -206,7 +206,7 @@ export function MarkdownContent({
             <img
               src={src}
               alt={alt}
-              className="rounded-lg max-w-full h-auto border border-border/40 my-1"
+              className="rounded-lg max-w-full h-auto border border-border/40 my-2"
               loading="lazy"
             />
           ),

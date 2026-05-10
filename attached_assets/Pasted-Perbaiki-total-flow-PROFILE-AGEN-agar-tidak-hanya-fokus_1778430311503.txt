@@ -1,0 +1,200 @@
+Perbaiki total flow PROFILE AGEN agar tidak hanya fokus ke penjualan produk, tetapi juga otomatis menghitung dan menampilkan penghasilan dari tugas lapangan (VOA / operasional / handling bandara).
+
+MASALAH SAAT INI:
+- profile agent hanya membaca komisi sales/order
+- fee agent lapangan tidak masuk
+- VOA operational fee tidak sinkron
+- total komisi jadi salah
+- dashboard agent tidak merepresentasikan performa nyata agent lapangan
+
+==================================================
+TARGET FLOW BARU
+==================================================
+
+Profile agent HARUS menjadi pusat seluruh aktivitas agent, termasuk:
+
+1. penjualan produk
+2. komisi referral
+3. fee operasional lapangan
+4. VOA handling
+5. pickup/jemput
+6. tugas airport
+7. task-based earning
+8. bonus mission
+9. poin agent
+
+==================================================
+YANG WAJIB DITAMPILKAN DI PROFILE AGEN
+==================================================
+
+Tambahkan section baru:
+
+### PENDAPATAN LAPANGAN
+Berisi:
+- total fee VOA
+- total handling airport
+- total operational fee
+- total tugas lapangan selesai
+- riwayat tugas
+- total penghasilan lapangan bulan ini
+- lifetime fee lapangan
+
+==================================================
+KARTU SUMMARY BARU
+==================================================
+
+Tambahkan card:
+
+- Total Fee Lapangan
+- Total Tugas Bandara
+- Penghasilan Bulan Ini
+- Lifetime Fee
+- Last Task Completed
+
+==================================================
+LOGIC YANG WAJIB DIPERBAIKI
+==================================================
+
+Saat order memiliki:
+- assigned_operational_agent_id
+ATAU
+- field agent_lapangan
+ATAU
+- voa_handler_id
+
+maka otomatis:
+
+1. fee masuk ke agent tersebut
+2. tercatat di wallet
+3. tercatat di profile agent
+4. masuk leaderboard agent
+5. masuk analytics
+6. masuk payout calculation
+7. masuk akumulasi komisi
+8. masuk riwayat aktivitas agent
+
+==================================================
+SUMBER DATA
+==================================================
+
+Audit semua table terkait:
+- orders
+- operational_assignments
+- commission_ledger
+- agent_wallet
+- transactions
+- task_history
+- voa_operations
+- payout_history
+
+Gabungkan seluruh sumber income agent.
+
+==================================================
+TOTAL KOMISI PROFILE
+==================================================
+
+Saat ini:
+TOTAL KOMISI = hanya komisi sales
+
+UBAH MENJADI:
+
+TOTAL KOMISI =
+komisi sales
++ fee VOA
++ fee operasional
++ handling airport
++ referral bonus
++ mission reward
+
+==================================================
+TAB BARU DI PROFILE AGEN
+==================================================
+
+Tambahkan tab:
+
+### Aktivitas Lapangan
+
+Isi:
+- tanggal tugas
+- nama customer
+- jenis tugas
+- lokasi
+- fee didapat
+- status pembayaran
+- order terkait
+- catatan operasional
+
+==================================================
+LEADERBOARD
+==================================================
+
+Leaderboard agent harus menghitung:
+- sales
+- operational contribution
+- task contribution
+- VOA handling
+- referral
+- poin
+
+Bukan cuma closing order.
+
+==================================================
+REALTIME SYNC
+==================================================
+
+Saat admin assign agent lapangan:
+- profile agent update realtime
+- wallet update realtime
+- komisi update realtime
+- analytics update realtime
+
+Tanpa perlu refresh manual.
+
+==================================================
+UI/UX
+==================================================
+
+Design:
+- clean
+- elegant
+- informatif
+- profesional
+- tetap ringan
+
+Gunakan:
+- card soft
+- icon operasional
+- warna netral
+- hierarchy jelas
+
+==================================================
+FINAL VALIDATION
+==================================================
+
+Pastikan:
+
+Jika agent:
+- tidak pernah jualan
+- tapi aktif tugas VOA
+
+maka profile tetap menunjukkan:
+- pendapatan
+- aktivitas
+- ranking
+- performa
+- total tugas
+
+Karena agent lapangan juga bagian penting bisnis.
+
+==================================================
+SETELAH SELESAI
+==================================================
+
+Berikan laporan:
+- flow lama
+- akar masalah
+- kenapa fee tidak masuk
+- file yang diperbaiki
+- query yang diperbaiki
+- source data yang digabung
+- hasil final sinkronisasi
