@@ -15,6 +15,7 @@ import { useRatesStore } from "@/store/ratesStore";
 import { useAuthStore } from "@/store/authStore";
 import { useSyncStatusStore, type SyncStatus } from "@/store/syncStatusStore";
 import { usePresenceStore } from "@/store/presenceStore";
+import { NotificationBell } from "./NotificationBell";
 
 const SYNC_DOT: Record<SyncStatus, { color: string; glow: string; label: string }> = {
   ok:      { color: "#10b981", glow: "0 0 5px #10b981", label: "Tersinkron" },
@@ -227,6 +228,9 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
               <Search strokeWidth={1.75} className="h-[15px] w-[15px]" style={{ color: "hsl(var(--muted-foreground))" }} />
             </button>
 
+            {/* Notification Bell — mobile */}
+            <NotificationBell mobileMode />
+
             {/* Avatar — 32×32 tap area, 27px circular avatar, sync dot */}
             <button
               onClick={() => navigate("/settings")}
@@ -299,9 +303,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 <span className="hidden lg:block text-[10px] font-semibold text-[hsl(var(--muted-foreground))] leading-none">{syncInfo.label}</span>
               </div>
 
-              <button className="keep-icon-bg hidden sm:flex relative h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-[hsl(var(--secondary))] shrink-0" style={{ border: "1px solid hsl(var(--border))" }} title="Notifikasi">
-                <Bell className="h-4 w-4" style={{ color: "hsl(var(--muted-foreground))" }} strokeWidth={1.8} />
-              </button>
+              <NotificationBell />
 
               <button onClick={() => navigate("/settings")} className="flex items-center gap-2 h-9 pl-1.5 pr-1.5 md:pl-2 md:pr-3 rounded-xl transition-colors hover:bg-[hsl(var(--secondary))] shrink-0" style={{ border: "1px solid hsl(var(--border))" }}>
                 <div className="h-6 w-6 rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}>

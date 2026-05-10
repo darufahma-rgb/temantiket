@@ -41,6 +41,7 @@ import {
 import { useRatesStore } from "@/store/ratesStore";
 import { listRecentAuditLogs, describeChange, type AuditLog } from "@/features/audit/auditRepo";
 import { useAuthStore, type LoginEvent, type MemberInfo } from "@/store/authStore";
+import { useNotificationStore, type NotifSettings } from "@/store/notificationStore";
 import { usePresenceStore } from "@/store/presenceStore";
 import { migrateBase64ToStorage, type MigrateProgress } from "@/lib/migrateBase64ToStorage";
 import { useRegionalStore } from "@/store/regionalStore";
@@ -99,6 +100,14 @@ export default function Settings() {
   const t = useT();
   const [tab, setTab] = useState("profile");
   const currentSessionUser = useAuthStore((s) => s.user);
+  const notifStore = useNotificationStore();
+
+  const [bcastTitle,    setBcastTitle]    = useState("");
+  const [bcastMsg,      setBcastMsg]      = useState("");
+  const [bcastTarget,   setBcastTarget]   = useState<"all_agents" | "all_staff" | "all" | string>("all_agents");
+  const [bcastPriority, setBcastPriority] = useState<"normal" | "important" | "urgent">("normal");
+  const [bcastSending,  setBcastSending]  = useState(false);
+  const [bcastMembers,  setBcastMembers]  = useState<MemberInfo[]>([]);
 
   const isStaffUser = currentSessionUser?.role === "staff";
   const ALL_TABS = [
@@ -140,6 +149,23 @@ export default function Settings() {
     twoFactor: false,
     loginAlert: true,
   });
+
+  // ── Load notification settings from DB on mount ───────────────────────────
+  useEffect(() => {
+    if (!currentSessionUser?.id) return;
+    void notifStore.fetchSettings(currentSessionUser.id).then((s) => {
+      setNotif({
+        tripReminder: s.trip_reminder,
+        newMessage:   s.new_message,
+        paymentAlert: s.payment_confirmation,
+        weeklyReport: s.weekly_report,
+        marketing:    s.promo_info,
+      });
+    });
+    if (currentSessionUser.role === "owner") {
+      void listMembers().then(setBcastMembers);
+    }
+  }, [currentSessionUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [appearance, setAppearance] = useState<AppearanceSettings>(() => loadAppearanceSettings());
   const [bannerTheme, setBannerTheme] = useState<BannerTheme>(() => loadBannerTheme());
@@ -756,23 +782,161 @@ export default function Settings() {
         )}
 
         {tab === "notifications" && (
-          <div className="space-y-2 max-w-xl">
+          <div className="space-y-3 max-w-xl">
             <SectionHeader title="Notifikasi" desc="Atur kapan dan bagaimana Anda menerima notifikasi" />
-            {[
-              { key: "tripReminder" as const, label: "Pengingat Trip",          desc: "Notifikasi H-7 dan H-1 sebelum keberangkatan" },
-              { key: "newMessage"   as const, label: "Pesan Baru",              desc: "Notifikasi saat ada pesan masuk dari jamaah" },
-              { key: "paymentAlert" as const, label: "Konfirmasi Pembayaran",   desc: "Notifikasi pembayaran DP dan pelunasan" },
-              { key: "weeklyReport" as const, label: "Laporan Mingguan",        desc: "Ringkasan aktivitas dikirim setiap Senin pagi" },
-              { key: "marketing"    as const, label: "Info & Promosi",          desc: "Penawaran dan pembaruan produk dari TravelHub" },
-            ].map((item) => (
+            {([
+              { key: "tripReminder" as const, label: "Pengingat Trip",        desc: "Notifikasi H-7, H-3, dan H-1 sebelum keberangkatan",    sk: "trip_reminder"        as keyof NotifSettings },
+              { key: "newMessage"   as const, label: "Pesan Baru",            desc: "Notifikasi saat ada pesan masuk atau assignment baru",   sk: "new_message"          as keyof NotifSettings },
+              { key: "paymentAlert" as const, label: "Konfirmasi Pembayaran", desc: "Notifikasi DP masuk, pelunasan, dan status pembayaran",   sk: "payment_confirmation" as keyof NotifSettings },
+              { key: "weeklyReport" as const, label: "Laporan Mingguan",      desc: "Ringkasan performa & fee — dikirim setiap Senin pagi",   sk: "weekly_report"        as keyof NotifSettings },
+              { key: "marketing"    as const, label: "Info & Promosi",        desc: "Pengumuman owner, promo baru, update SOP, dan sistem",   sk: "promo_info"           as keyof NotifSettings },
+            ] as const).map((item) => (
               <ToggleRow
                 key={item.key}
                 label={item.label}
                 desc={item.desc}
                 checked={notif[item.key]}
-                onChange={(v) => setNotif((n) => ({ ...n, [item.key]: v }))}
+                onChange={(v) => {
+                  setNotif((n) => ({ ...n, [item.key]: v }));
+                  if (currentSessionUser?.id && currentSessionUser?.agencyId) {
+                    void notifStore.saveSettings(
+                      currentSessionUser.id,
+                      currentSessionUser.agencyId,
+                      { [item.sk]: v }
+                    );
+                  }
+                  toast.success(v ? `${item.label} diaktifkan.` : `${item.label} dinonaktifkan.`);
+                }}
               />
             ))}
+
+            {/* ── Owner Broadcast Panel ─────────────────────────────────── */}
+            {currentSessionUser?.role === "owner" && (
+              <div className="mt-2 rounded-2xl border border-dashed border-indigo-200 overflow-hidden">
+                {/* Header */}
+                <div className="px-4 py-3 bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100 flex items-center gap-2.5">
+                  <Megaphone className="h-4 w-4 text-indigo-600 shrink-0" strokeWidth={2} />
+                  <div>
+                    <p className="text-[12.5px] font-bold text-indigo-900">Kirim Notifikasi ke Agen &amp; Staff</p>
+                    <p className="text-[10px] text-indigo-500 mt-0.5">Broadcast realtime — notif langsung muncul di lonceng penerima.</p>
+                  </div>
+                </div>
+
+                <div className="px-4 py-4 space-y-3 bg-white">
+                  {/* Target + Priority */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide">Tujuan</label>
+                      <Select value={bcastTarget} onValueChange={(v) => setBcastTarget(v)}>
+                        <SelectTrigger className="h-8 text-[12px] mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all_agents">Semua Agen</SelectItem>
+                          <SelectItem value="all_staff">Semua Staff</SelectItem>
+                          <SelectItem value="all">Semua Member</SelectItem>
+                          {bcastMembers.filter((m) => m.role !== "owner").map((m) => (
+                            <SelectItem key={m.userId} value={m.userId}>
+                              {m.displayName} ({m.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide">Prioritas</label>
+                      <Select value={bcastPriority} onValueChange={(v) => setBcastPriority(v as typeof bcastPriority)}>
+                        <SelectTrigger className="h-8 text-[12px] mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="normal">Normal</SelectItem>
+                          <SelectItem value="important">⚠ Penting</SelectItem>
+                          <SelectItem value="urgent">🔴 URGENT</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <div>
+                    <label className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide">Judul Notifikasi</label>
+                    <Input
+                      className="h-8 text-[12px] mt-1"
+                      placeholder="cth: Perubahan Jadwal Keberangkatan"
+                      value={bcastTitle}
+                      onChange={(e) => setBcastTitle(e.target.value)}
+                      maxLength={80}
+                    />
+                  </div>
+
+                  {/* Message */}
+                  <div>
+                    <label className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide">Pesan</label>
+                    <textarea
+                      className="w-full mt-1 px-3 py-2 rounded-xl text-[12px] resize-none outline-none transition-all"
+                      style={{
+                        border: "1px solid hsl(var(--border))",
+                        background: "hsl(var(--secondary))",
+                        color: "hsl(var(--foreground))",
+                        minHeight: 80,
+                      }}
+                      placeholder="Isi pesan yang akan diterima agen / staff secara realtime…"
+                      value={bcastMsg}
+                      onChange={(e) => setBcastMsg(e.target.value)}
+                      maxLength={300}
+                    />
+                    <p className="text-[9.5px] text-muted-foreground text-right -mt-0.5">{bcastMsg.length}/300</p>
+                  </div>
+
+                  {/* Send */}
+                  <Button
+                    disabled={bcastSending || !bcastTitle.trim() || !bcastMsg.trim()}
+                    onClick={async () => {
+                      if (!currentSessionUser?.id || !currentSessionUser?.agencyId) return;
+                      setBcastSending(true);
+                      try {
+                        let targetIds: string[] = [];
+                        const nonOwners = bcastMembers.filter((m) => m.role !== "owner");
+                        if (bcastTarget === "all_agents") {
+                          targetIds = nonOwners.filter((m) => m.role === "agent").map((m) => m.userId);
+                        } else if (bcastTarget === "all_staff") {
+                          targetIds = nonOwners.filter((m) => m.role === "staff").map((m) => m.userId);
+                        } else if (bcastTarget === "all") {
+                          targetIds = nonOwners.map((m) => m.userId);
+                        } else {
+                          targetIds = [bcastTarget];
+                        }
+                        if (targetIds.length === 0) {
+                          toast.error("Tidak ada penerima yang ditemukan.");
+                          return;
+                        }
+                        const count = await notifStore.sendBroadcast({
+                          agencyId:  currentSessionUser.agencyId,
+                          senderId:  currentSessionUser.id,
+                          targetIds,
+                          title:     bcastTitle.trim(),
+                          message:   bcastMsg.trim(),
+                          category:  "broadcast",
+                          priority:  bcastPriority,
+                        });
+                        toast.success(`Notifikasi berhasil dikirim ke ${count} penerima.`);
+                        setBcastTitle("");
+                        setBcastMsg("");
+                      } catch (e: unknown) {
+                        toast.error(`Gagal mengirim: ${e instanceof Error ? e.message : String(e)}`);
+                      } finally {
+                        setBcastSending(false);
+                      }
+                    }}
+                    className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-white text-[12.5px] font-semibold gap-2"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    {bcastSending ? "Mengirim…" : "Kirim Notifikasi"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
