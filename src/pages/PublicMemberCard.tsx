@@ -6,6 +6,7 @@ import {
   Share2, Users, Trophy, Gift, Crown, Copy, Check,
   ChevronLeft, ChevronRight, ChevronDown, Sparkles, ExternalLink,
   Star, Calendar, Hash, TrendingUp, Briefcase, Zap, BadgeCheck, DollarSign,
+  Ticket, Shirt, Banknote, Plane, type LucideIcon,
 } from "lucide-react";
 import MemberCard from "@/components/MemberCard";
 import { OrderProgressTracker, ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
@@ -29,6 +30,13 @@ const REWARD_MILESTONES = [
   { row: 3, stamps: 12, emoji: "💸", label: "Voucher Diskon Rp300.000",         desc: "Voucher diskon besar untuk 1 paket pilihan — umrah, tiket, atau visa.",      color: "emerald"},
   { row: 4, stamps: 16, emoji: "✈️", label: "VIP Grand Reward — Transit Qatar", desc: "Akses lounge premium & city tour eksklusif saat transit di Qatar. Syarat & ketentuan berlaku.", color: "amber" },
 ] as const;
+
+const REWARD_ROW_ICON: Record<number, LucideIcon> = {
+  1: Ticket,
+  2: Shirt,
+  3: Banknote,
+  4: Plane,
+};
 
 const TYPE_LABEL: Record<string, string> = {
   umrah:        "Umrah Transit Saudi",
@@ -541,8 +549,8 @@ export default function PublicMemberCardPage() {
                     className="w-full px-2.5 sm:px-3 py-2 flex items-center justify-between gap-2 hover:bg-gray-50 transition-colors"
                   >
                     <h2 className="text-[11.5px] font-bold text-gray-900 flex items-center gap-1.5">
-                      <div className="h-5 w-5 rounded-md bg-amber-100 flex items-center justify-center shrink-0">
-                        <Gift className="h-2.5 w-2.5 text-amber-600" />
+                      <div className="h-5 w-5 rounded-md bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
+                        <Gift className="h-2.5 w-2.5 text-blue-500 stroke-[1.75]" />
                       </div>
                       Hadiah Member Point
                     </h2>
@@ -588,9 +596,11 @@ export default function PublicMemberCardPage() {
                                     }`}>
                                       {unlocked && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />}
                                       <div className="flex items-center gap-2">
-                                        <div className={`shrink-0 h-8 w-8 rounded-xl flex items-center justify-center text-base border ${
-                                          unlocked ? "bg-white/30 border-white/50" : current ? "bg-amber-100 border-amber-300" : "bg-gray-100 border-gray-200"
-                                        }`}>✈️</div>
+                                        <div className={`shrink-0 h-8 w-8 rounded-xl flex items-center justify-center border ${
+                                          unlocked ? "bg-white/30 border-white/50" : current ? "bg-blue-100 border-blue-300" : "bg-blue-50 border-blue-200"
+                                        }`}>
+                                          <Plane className={`h-4 w-4 stroke-[1.5] ${unlocked ? "text-white" : "text-blue-500"}`} />
+                                        </div>
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-1 mb-0.5">
                                             <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full ${
@@ -625,13 +635,18 @@ export default function PublicMemberCardPage() {
                                 <li key={m.row} className={`flex items-center gap-2 px-2.5 py-2 transition-colors ${
                                   unlocked ? "bg-emerald-50/50" : current ? "bg-blue-50/40" : ""
                                 }`}>
-                                  <div className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center border ${
-                                    unlocked ? "bg-emerald-100 border-emerald-200"
-                                      : current ? "bg-blue-100 border-blue-200"
-                                      : "bg-gray-50 border-gray-200"
-                                  }`}>
-                                    <span className="text-sm leading-none">{m.emoji}</span>
-                                  </div>
+                                  {(() => {
+                                    const RowIcon = REWARD_ROW_ICON[m.row];
+                                    return (
+                                      <div className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center border ${
+                                        unlocked ? "bg-blue-100 border-blue-200"
+                                          : current ? "bg-blue-100 border-blue-200"
+                                          : "bg-blue-50 border-blue-200"
+                                      }`}>
+                                        <RowIcon className={`h-3.5 w-3.5 stroke-[1.5] ${unlocked ? "text-blue-600" : current ? "text-blue-500" : "text-blue-400"}`} />
+                                      </div>
+                                    );
+                                  })()}
                                   <div className="flex-1 min-w-0">
                                     <p className={`text-[10.5px] font-bold leading-tight truncate ${
                                       unlocked ? "text-emerald-800" : current ? "text-blue-800" : "text-gray-500"
