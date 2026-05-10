@@ -1,0 +1,138 @@
+Redesign total halaman “Leaderboard Mitra” Temantiket agar tampil jauh lebih clean, modern, premium, dan konsisten dengan branding Temantiket. Saat ini tampilannya terlalu gelap, banyak background hitam/navy pekat, terasa berat, dan tidak elegan. Hapus konsep dark-heavy card seperti sekarang dan ubah menjadi desain putih bersih dengan nuansa startup/travel modern yang ringan dan profesional.
+
+Fokus utama:
+
+* putih bersih
+* elegan
+* minimal
+* premium
+* modern airline/travel dashboard
+* bukan gaming/neon style
+
+Perubahan wajib:
+
+1. Background halaman:
+
+* Ubah seluruh background utama menjadi:
+
+  * putih
+  * off-white soft
+  * abu muda sangat halus
+* Hapus background hitam/navy besar
+* Hapus glow berlebihan
+* Hapus efek gradient gelap pekat
+* Gunakan section putih dengan shadow lembut
+
+2. Top 3 leaderboard:
+
+* Tetap pertahankan ranking top 3
+* Tapi redesign total card menjadi clean premium
+* Gunakan:
+
+  * putih
+  * gold soft (#F6E7B0)
+  * silver soft
+  * bronze soft
+* Card lebih tipis & modern
+* Tambahkan:
+
+  * subtle shadow
+  * smooth hover
+  * border halus
+* Jangan terlalu ramai
+
+3. Layout top 3:
+
+* Posisi center lebih dominan
+* Card ranking #1 sedikit lebih tinggi
+* Avatar clean circular modern
+* Crown icon lebih kecil dan elegan
+* Typography lebih rapih
+* Progress info dibuat minimal
+
+4. Statistik kecil:
+   Ubah “Most Active”, “Top Komisi”, “Top Poin” menjadi:
+
+* mini insight cards modern
+* putih bersih
+* icon soft
+* border tipis
+* hover ringan
+* spacing lega
+
+5. Full ranking:
+
+* Jadikan bentuk table/card hybrid modern
+* Row putih
+* Border abu soft
+* Hover highlight biru sangat halus
+* Avatar kecil clean
+* Rank badge lebih elegan
+* Jangan terlalu banyak warna mencolok
+
+6. Typography:
+
+* Gunakan hierarchy yang jelas
+* Judul bold modern
+* Secondary text abu soft
+* Angka poin/profit lebih menonjol
+* Kurangi penggunaan uppercase berlebihan
+
+7. Navbar/header:
+
+* Samakan dengan halaman publik Temantiket terbaru
+* Logo resmi Temantiket
+* Background putih
+* Sticky clean navbar
+* Blur ringan saat scroll
+
+8. Filter bulan:
+
+* Ubah jadi segmented/select modern
+* Border soft
+* Rounded premium
+* Compact
+
+9. Mobile optimization:
+
+* Card top 3 jadi vertical stack
+* Statistik mini responsive
+* Ranking table jadi compact cards
+* Tidak boleh overflow horizontal
+* Tetap clean di layar HP
+
+10. Visual style:
+    Hindari:
+
+* background hitam pekat
+* glow neon
+* gradient terlalu kuat
+* shadow kasar
+* warna terlalu gaming
+
+Fokus ke:
+
+* Apple-like spacing
+* Linear style
+* Stripe/Notion simplicity
+* modern SaaS/travel dashboard
+
+11. Tambahkan subtle animation:
+
+* fade in
+* hover scale kecil
+* smooth transition
+* loading skeleton clean
+
+12. Konsistensi data:
+    Pastikan redesign tidak merusak:
+
+* ranking logic
+* poin
+* lifetime
+* total order
+* badge tier
+* analytics
+
+Target akhir:
+Leaderboard Mitra terlihat seperti dashboard startup/travel premium modern — putih bersih, ringan, elegan, profesional, nyaman dilihat lama, dan konsisten dengan identitas visual Temantiket.

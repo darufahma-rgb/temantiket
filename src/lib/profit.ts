@@ -114,6 +114,16 @@ export function kurirOpCost(order: Order): number {
 }
 
 /**
+ * Fee agent lapangan (VOA field agent) dari metadata order (IDR).
+ * Hanya berlaku untuk order yang menyimpan voaFieldAgentId dan voaAgentFee.
+ */
+export function voaAgentFeeFromMeta(order: Order): number {
+  const meta = (order.metadata ?? {}) as Record<string, unknown>;
+  if (!meta.voaFieldAgentId) return 0;
+  return Number(meta.voaAgentFee ?? 0);
+}
+
+/**
  * ══════════════════════════════════════════════════════════════════════════════
  * RUMUS PROFIT BERSIH — SATU-SATUNYA SUMBER KEBENARAN
  * ══════════════════════════════════════════════════════════════════════════════

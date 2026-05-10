@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { CloudSyncBadge } from "@/components/CloudSyncBadge";
 import { loadProductCommissions as loadProdComm, saveProductCommissions as saveProdComm, pullProductCommissions, type ProductCommissions } from "@/lib/productCommissions";
-import { agentFeeFromMeta } from "@/lib/profit";
+import { agentFeeFromMeta, voaAgentFeeFromMeta } from "@/lib/profit";
 import {
   loadAgentPhones, saveAgentPhone, recordFeePayment, loadFeePayments, openWaMessage,
   pullFeePayments, pullAgentPhones, FEE_PAYMENT_SYNC_KEY,
   type FeePaymentRecord,
 } from "@/lib/agentFeePayments";
+import { pullWalletTxs, type WalletTransaction } from "@/lib/agentWallet";
 import { AnimatePresence, motion } from "framer-motion";
 import { User, Bell, Shield, Palette, Globe, Save, Camera, TrendingUp, RefreshCw, Users, Plus, Trash2, Radio, PencilLine, KeyRound, Clock, CheckCircle2, Lock, History, FileEdit, FileX, FilePlus, Activity, XCircle, AlertCircle, Database, Cloud, HardDrive, UserCheck, MessageCircle, Instagram, FileText, Phone, Send, ChevronDown, ChevronUp, Megaphone, Image, ExternalLink, GripVertical, Eye, EyeOff, Link } from "lucide-react";
 import { InvoiceTemplateUploader } from "@/components/InvoiceTemplateUploader";
@@ -210,6 +211,9 @@ export default function Settings() {
   const [waNote, setWaNote] = useState("");
   const [waPhone, setWaPhone] = useState("");
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+  // ── Wallet transactions per agent (authoritative credited source) ──────────
+  const [agentWalletMap, setAgentWalletMap] = useState<Map<string, WalletTransaction[]>>(new Map());
+  const [walletLoading, setWalletLoading] = useState(false);
 
   // ── Komisi per produk ────────────────────────────────────────────────────
   const [productCommissions, setProductCommissions] = useState(() => loadProdComm());
@@ -281,7 +285,25 @@ export default function Settings() {
 
   useEffect(() => {
     if (tab === "agents") {
-      listMembers().then(setMembers).catch((e) => toast.error(`Gagal load member: ${e.message}`));
+      listMembers().then(async (allMembers) => {
+        setMembers(allMembers);
+        // Pull wallet txs for all agents — authoritative credited fee source
+        const agentMs = allMembers.filter((m) => m.role === "agent");
+        if (agentMs.length > 0) {
+          setWalletLoading(true);
+          try {
+            const entries = await Promise.all(
+              agentMs.map(async (m) => {
+                const txs = await pullWalletTxs(m.userId);
+                return [m.userId, txs] as [string, WalletTransaction[]];
+              }),
+            );
+            setAgentWalletMap(new Map(entries));
+          } finally {
+            setWalletLoading(false);
+          }
+        }
+      }).catch((e) => toast.error(`Gagal load member: ${e.message}`));
       if (orders.length === 0) void fetchOrders();
       // Pull from cloud to ensure latest data
       void pullFeePayments().then(setFeePayments);
@@ -1465,62 +1487,183 @@ export default function Settings() {
 
               return (
                 <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[hsl(var(--border))]">
-                    <p className="text-sm font-semibold">Akumulasi Fee Komisi Agen</p>
-                    <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">
-                      Total fee per agen · simpan nomor WA & kirim notifikasi langsung ke WhatsApp mereka.
-                    </p>
+                  <div className="px-4 py-3 border-b border-[hsl(var(--border))] flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold">Akumulasi Fee Komisi Agen</p>
+                      <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">
+                        Total fee per agen (closing + lapangan + bonus) · simpan nomor WA & kirim notifikasi.
+                      </p>
+                    </div>
+                    {walletLoading && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground shrink-0">
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                        Memuat…
+                      </div>
+                    )}
                   </div>
                   <div className="divide-y divide-[hsl(var(--border))]">
                     {agentMembers.map((agent) => {
-                      const agentOrders = orders.filter((o) => o.createdByAgent === agent.userId);
-                      const totalFee = agentOrders.reduce((sum, o) => sum + agentFeeFromMeta(o), 0);
-                      const derivedPaid = agentOrders
-                        .filter((o) => o.status === "Paid" || o.status === "Completed")
-                        .reduce((sum, o) => sum + agentFeeFromMeta(o), 0);
-                      const orderCount = agentOrders.filter((o) => agentFeeFromMeta(o) > 0).length;
+                      // ── Wallet txs (authoritative credited source) ──────────
+                      const walletTxs = agentWalletMap.get(agent.userId) ?? [];
+                      const closingFee  = walletTxs.filter((t) => t.type === "order_bonus" && t.amountIDR > 0).reduce((s, t) => s + t.amountIDR, 0);
+                      const fieldFee    = walletTxs.filter((t) => t.type === "voa_agent_fee" && t.amountIDR > 0).reduce((s, t) => s + t.amountIDR, 0);
+                      const pelFee      = walletTxs.filter((t) => t.type === "pelaksana_fee" && t.amountIDR > 0).reduce((s, t) => s + t.amountIDR, 0);
+                      const kurirFee    = walletTxs.filter((t) => t.type === "kurir_fee" && t.amountIDR > 0).reduce((s, t) => s + t.amountIDR, 0);
+                      const missionFee  = walletTxs.filter((t) => (t.type === "mission_conversion" || t.type === "mission_fee") && t.amountIDR > 0).reduce((s, t) => s + t.amountIDR, 0);
+                      const bonusFee    = walletTxs.filter((t) => t.type === "adjustment" && t.amountIDR > 0).reduce((s, t) => s + t.amountIDR, 0);
+                      const totalPayout = walletTxs.filter((t) => t.amountIDR < 0).reduce((s, t) => s + Math.abs(t.amountIDR), 0);
+                      const totalCredited = closingFee + fieldFee + pelFee + kurirFee + missionFee + bonusFee;
+
+                      // ── Pending (assigned but order not yet Completed) ──────
+                      const salesPendingOrders = orders.filter((o) => {
+                        const meta = (o.metadata ?? {}) as Record<string, unknown>;
+                        return o.createdByAgent === agent.userId
+                          && agentFeeFromMeta(o) > 0
+                          && !meta.agentFeeCredited
+                          && o.status !== "Completed";
+                      });
+                      const salesPending = salesPendingOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0);
+
+                      const fieldPendingOrders = orders.filter((o) => {
+                        const meta = (o.metadata ?? {}) as Record<string, unknown>;
+                        return meta.voaFieldAgentId === agent.userId
+                          && voaAgentFeeFromMeta(o) > 0
+                          && !meta.voaFeeCredited
+                          && o.status !== "Completed";
+                      });
+                      const fieldPending = fieldPendingOrders.reduce((s, o) => s + voaAgentFeeFromMeta(o), 0);
+
+                      const totalPending = salesPending + fieldPending;
+
+                      // ── Totals ──────────────────────────────────────────────
+                      const totalAccumulated = totalCredited + totalPending;
+                      const netBalance = totalCredited - totalPayout;
+
+                      // ── Credited order count (all fee types from wallet) ────
+                      const creditedOrderCount = new Set(
+                        walletTxs
+                          .filter((t) => ["order_bonus", "voa_agent_fee", "pelaksana_fee", "kurir_fee"].includes(t.type) && t.amountIDR > 0)
+                          .map((t) => t.description)
+                      ).size;
+                      const pendingOrderCount = salesPendingOrders.length + fieldPendingOrders.length;
+                      const orderCount = creditedOrderCount + pendingOrderCount;
+
                       const manuallyPaid = feePayments.filter((p) => p.agentId === agent.userId).reduce((s, p) => s + p.amount, 0);
                       const lastPayment = feePayments.filter((p) => p.agentId === agent.userId)[0];
+                      const lastWalletTx = walletTxs.find((t) => t.amountIDR > 0);
                       const savedPhone = agentPhones[agent.userId] ?? "";
                       const isExpanded = expandedAgent === agent.userId;
 
                       return (
-                        <div key={agent.userId} className="px-4 py-3 space-y-2.5">
-                          {/* Row header */}
+                        <div key={agent.userId} className="px-4 py-4 space-y-3">
+                          {/* ── Row header ── */}
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold truncate">{agent.displayName || agent.email}</p>
-                              <p className="text-[10px] text-muted-foreground">{orderCount} order dengan fee</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {orderCount} order dengan fee
+                                {pendingOrderCount > 0 && (
+                                  <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px] font-semibold">
+                                    {pendingOrderCount} pending
+                                  </span>
+                                )}
+                              </p>
                               {lastPayment && (
                                 <p className="text-[10px] text-emerald-600 mt-0.5">
                                   ✓ Terakhir bayar {fmtRp(lastPayment.amount)} · {new Date(lastPayment.paidAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
                                 </p>
                               )}
+                              {!lastPayment && lastWalletTx && (
+                                <p className="text-[10px] text-blue-600 mt-0.5">
+                                  Terakhir dikreditkan: {new Date(lastWalletTx.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                                </p>
+                              )}
                             </div>
                             <div className="text-right shrink-0">
-                              <p className="text-[15px] font-extrabold font-mono text-foreground">{fmtRp(totalFee)}</p>
+                              <p className="text-[15px] font-extrabold font-mono text-foreground">{fmtRp(totalAccumulated)}</p>
                               <p className="text-[10px] text-muted-foreground">total akumulasi</p>
                             </div>
                           </div>
 
-                          {/* Breakdown */}
-                          {totalFee > 0 && (
-                            <div className="flex gap-2">
-                              <div className="flex-1 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2">
-                                <p className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wide">Dari Order Selesai</p>
-                                <p className="text-[13px] font-bold font-mono text-emerald-700 mt-0.5">{fmtRp(derivedPaid)}</p>
+                          {/* ── Breakdown grid ── */}
+                          {totalAccumulated > 0 && (
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {closingFee > 0 && (
+                                <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2">
+                                  <p className="text-[9px] text-emerald-700 font-bold uppercase tracking-wide">Dari Closing</p>
+                                  <p className="text-[12px] font-bold font-mono text-emerald-700 mt-0.5">{fmtRp(closingFee)}</p>
+                                </div>
+                              )}
+                              {fieldFee > 0 && (
+                                <div className="rounded-xl bg-indigo-50 border border-indigo-100 px-3 py-2">
+                                  <p className="text-[9px] text-indigo-700 font-bold uppercase tracking-wide">Agent Lapangan</p>
+                                  <p className="text-[12px] font-bold font-mono text-indigo-700 mt-0.5">{fmtRp(fieldFee)}</p>
+                                </div>
+                              )}
+                              {pelFee > 0 && (
+                                <div className="rounded-xl bg-purple-50 border border-purple-100 px-3 py-2">
+                                  <p className="text-[9px] text-purple-700 font-bold uppercase tracking-wide">Pelaksana</p>
+                                  <p className="text-[12px] font-bold font-mono text-purple-700 mt-0.5">{fmtRp(pelFee)}</p>
+                                </div>
+                              )}
+                              {kurirFee > 0 && (
+                                <div className="rounded-xl bg-cyan-50 border border-cyan-100 px-3 py-2">
+                                  <p className="text-[9px] text-cyan-700 font-bold uppercase tracking-wide">Kurir</p>
+                                  <p className="text-[12px] font-bold font-mono text-cyan-700 mt-0.5">{fmtRp(kurirFee)}</p>
+                                </div>
+                              )}
+                              {missionFee > 0 && (
+                                <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2">
+                                  <p className="text-[9px] text-blue-700 font-bold uppercase tracking-wide">Misi/Poin</p>
+                                  <p className="text-[12px] font-bold font-mono text-blue-700 mt-0.5">{fmtRp(missionFee)}</p>
+                                </div>
+                              )}
+                              {bonusFee > 0 && (
+                                <div className="rounded-xl bg-yellow-50 border border-yellow-100 px-3 py-2">
+                                  <p className="text-[9px] text-yellow-700 font-bold uppercase tracking-wide">Bonus/Adj</p>
+                                  <p className="text-[12px] font-bold font-mono text-yellow-700 mt-0.5">{fmtRp(bonusFee)}</p>
+                                </div>
+                              )}
+                              {totalPending > 0 && (
+                                <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+                                  <p className="text-[9px] text-amber-700 font-bold uppercase tracking-wide">Pending Payout</p>
+                                  <p className="text-[12px] font-bold font-mono text-amber-700 mt-0.5">{fmtRp(totalPending)}</p>
+                                </div>
+                              )}
+                              {manuallyPaid > 0 && (
+                                <div className="rounded-xl bg-rose-50 border border-rose-100 px-3 py-2">
+                                  <p className="text-[9px] text-rose-700 font-bold uppercase tracking-wide">Manual Dibayar</p>
+                                  <p className="text-[12px] font-bold font-mono text-rose-700 mt-0.5">{fmtRp(manuallyPaid)}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* ── Status summary bar ── */}
+                          {totalAccumulated > 0 && (
+                            <div className="flex items-center gap-3 rounded-xl bg-slate-50 border px-3 py-2 text-[10px]">
+                              <div className="flex-1">
+                                <span className="text-slate-500">Sudah dikreditkan: </span>
+                                <span className="font-bold font-mono text-emerald-700">{fmtRp(totalCredited)}</span>
                               </div>
-                              <div className="flex-1 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2">
-                                <p className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide">Manual Dibayar</p>
-                                <p className="text-[13px] font-bold font-mono text-amber-700 mt-0.5">{fmtRp(manuallyPaid)}</p>
+                              {totalPayout > 0 && (
+                                <div className="flex-1">
+                                  <span className="text-slate-500">Dicairkan: </span>
+                                  <span className="font-bold font-mono text-red-600">{fmtRp(totalPayout)}</span>
+                                </div>
+                              )}
+                              <div className="flex-1 text-right">
+                                <span className="text-slate-500">Saldo wallet: </span>
+                                <span className={`font-bold font-mono ${netBalance >= 0 ? "text-blue-700" : "text-red-600"}`}>{fmtRp(netBalance)}</span>
                               </div>
                             </div>
                           )}
-                          {totalFee === 0 && (
+
+                          {totalAccumulated === 0 && (
                             <p className="text-[11px] text-muted-foreground italic">Belum ada order dengan fee komisi.</p>
                           )}
 
-                          {/* WA Number + Kirim Notif */}
+                          {/* ── WA Number + Kirim Notif ── */}
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
                               <div className="flex items-center gap-1.5 flex-1 min-w-0">
@@ -1539,12 +1682,13 @@ export default function Settings() {
                               </div>
                               <Button
                                 size="sm"
-                                disabled={!savedPhone || totalFee === 0}
+                                disabled={!savedPhone || totalAccumulated === 0}
                                 className="h-8 px-3 bg-green-600 hover:bg-green-700 text-white text-[11px] shrink-0 gap-1.5"
                                 onClick={() => {
                                   setWaDialogAgent(agent);
                                   setWaPhone(savedPhone);
-                                  setWaAmount(String(totalFee - manuallyPaid > 0 ? totalFee - manuallyPaid : totalFee));
+                                  const unpaid = totalAccumulated - manuallyPaid - totalPayout;
+                                  setWaAmount(String(unpaid > 0 ? unpaid : totalAccumulated));
                                   setWaNote("");
                                 }}
                               >
@@ -1553,22 +1697,53 @@ export default function Settings() {
                               </Button>
                             </div>
 
-                            {/* Riwayat pembayaran toggle */}
-                            {feePayments.filter((p) => p.agentId === agent.userId).length > 0 && (
+                            {/* Riwayat wallet txs + pembayaran toggle */}
+                            {(walletTxs.length > 0 || feePayments.filter((p) => p.agentId === agent.userId).length > 0) && (
                               <button
                                 onClick={() => setExpandedAgent(isExpanded ? null : agent.userId)}
                                 className="flex items-center gap-1 text-[10.5px] text-muted-foreground hover:text-foreground transition-colors"
                               >
                                 {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                {isExpanded ? "Sembunyikan" : "Lihat"} riwayat pembayaran ({feePayments.filter((p) => p.agentId === agent.userId).length})
+                                {isExpanded ? "Sembunyikan" : "Lihat"} riwayat ({walletTxs.length} wallet tx · {feePayments.filter((p) => p.agentId === agent.userId).length} pembayaran)
                               </button>
                             )}
                             {isExpanded && (
-                              <div className="rounded-xl border bg-muted/30 divide-y text-[11px]">
+                              <div className="rounded-xl border bg-muted/30 divide-y text-[11px] max-h-64 overflow-y-auto">
+                                {walletTxs.filter((t) => t.amountIDR > 0).map((t) => {
+                                  const typeLabel: Record<string, string> = {
+                                    order_bonus:       "Closing",
+                                    voa_agent_fee:     "Agent Lapangan",
+                                    pelaksana_fee:     "Pelaksana",
+                                    kurir_fee:         "Kurir",
+                                    mission_conversion:"Misi",
+                                    mission_fee:       "Misi",
+                                    adjustment:        "Bonus",
+                                  };
+                                  const typeColor: Record<string, string> = {
+                                    order_bonus:   "text-emerald-700",
+                                    voa_agent_fee: "text-indigo-700",
+                                    pelaksana_fee: "text-purple-700",
+                                    kurir_fee:     "text-cyan-700",
+                                    adjustment:    "text-yellow-700",
+                                  };
+                                  return (
+                                    <div key={t.id} className="flex items-center justify-between px-3 py-2 gap-2">
+                                      <div className="min-w-0 flex-1">
+                                        <span className={`font-mono font-semibold ${typeColor[t.type] ?? "text-slate-700"}`}>{fmtRp(t.amountIDR)}</span>
+                                        <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full">{typeLabel[t.type] ?? t.type}</span>
+                                        <p className="text-muted-foreground truncate mt-0.5">{t.description}</p>
+                                      </div>
+                                      <span className="text-muted-foreground shrink-0">
+                                        {new Date(t.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                                 {feePayments.filter((p) => p.agentId === agent.userId).map((p) => (
-                                  <div key={p.id} className="flex items-center justify-between px-3 py-2 gap-2">
+                                  <div key={p.id} className="flex items-center justify-between px-3 py-2 gap-2 bg-rose-50/40">
                                     <div>
-                                      <span className="font-mono font-semibold text-emerald-700">{fmtRp(p.amount)}</span>
+                                      <span className="font-mono font-semibold text-rose-700">{fmtRp(p.amount)}</span>
+                                      <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-full">Manual</span>
                                       {p.note && <span className="text-muted-foreground ml-1.5">— {p.note}</span>}
                                     </div>
                                     <span className="text-muted-foreground shrink-0">
