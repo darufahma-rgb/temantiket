@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, MapPin, Calendar as CalendarIcon, Trash2, Plane, Camera, Calculator, Users, CheckCircle, TrendingUp, ArrowRight, FileBarChart, Bus, Train, AlertCircle, Clock, Star, ChevronRight, Wallet, RefreshCw, ShoppingBag, Search, Package, Sparkles, SlidersHorizontal } from "lucide-react";
+import { Plus, MapPin, Calendar as CalendarIcon, Trash2, Plane, Camera, Calculator, Users, CheckCircle, TrendingUp, ArrowRight, FileBarChart, Bus, Train, AlertCircle, Clock, Star, ChevronRight, Wallet, RefreshCw, ShoppingBag, Package, Sparkles, SlidersHorizontal } from "lucide-react";
 import { useTripsStore, type Trip } from "@/store/tripsStore";
 import { listAllAgencyJamaah, countAllAgencyJamaah } from "@/features/trips/tripsRepo";
 import { listAllAgencyPayments, sumPaid, type Payment } from "@/features/payments/paymentsRepo";
@@ -826,28 +826,6 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
-
-          {/* ── Search bar — hidden on mobile (use header search icon instead) ── */}
-          <button
-            onClick={() => navigate("/clients")}
-            className="w-full flex items-center gap-2.5 h-11 px-3.5 rounded-2xl text-left active:scale-[0.99] transition-all shadow-sm"
-            style={{
-              display: "none",
-              background: "hsl(var(--secondary))",
-              border: "1px solid hsl(var(--border))",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-            }}
-          >
-            <div className="h-7 w-7 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}>
-              <Search className="h-3.5 w-3.5 text-white" />
-            </div>
-            <span className="flex-1 text-[12px] text-[hsl(var(--muted-foreground))]">
-              Cari klien, trip, order…
-            </span>
-            <kbd className="hidden xs:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-mono text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border))] bg-[hsl(var(--background))] opacity-70">
-              ⌘K
-            </kbd>
-          </button>
 
           {/* ── Hero card ── */}
           <div

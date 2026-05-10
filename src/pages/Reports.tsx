@@ -122,8 +122,10 @@ export default function Reports() {
   const ledgerStats = useMemo(() => ledgerSummary(ledgerEntries), [ledgerEntries]);
 
   // Filter orders by date range + agent attribution.
+  // Order Cancelled selalu dikeluarkan dari kalkulasi finansial.
   const filtered = useMemo(() => {
     return orders.filter((o) => {
+      if (o.status === "Cancelled") return false;
       const t = new Date(o.createdAt).getTime();
       if (from && t < from.getTime()) return false;
       if (to && t >= to.getTime()) return false;

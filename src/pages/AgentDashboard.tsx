@@ -12,7 +12,7 @@ import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, ORDER_STATUSES, type OrderStatus } from "@/features/orders/ordersRepo";
-import { revenueIDR, profitIDR, fmtIDR } from "@/lib/profit";
+import { revenueIDR, fmtIDR } from "@/lib/profit";
 import { pullWalletTxs, walletBalance, type WalletTransaction } from "@/lib/agentWallet";
 import { AgentTierProgress } from "@/components/AgentTierProgress";
 import { AgentCard } from "@/components/AgentCard";
@@ -117,17 +117,12 @@ export default function AgentDashboard() {
 
   const stats = useMemo(() => {
     const completed = myOrders.filter((o) => o.status === "Completed");
-    let totalGrossProfit = 0;
-    for (const o of completed) totalGrossProfit += profitIDR(o);
-    const commission = (user?.commissionPct ?? 0) / 100;
     return {
       totalClients: myClients.length,
       totalOrders: myOrders.length,
       completedOrders: completed.length,
-      myEarnings: Math.round(totalGrossProfit * commission),
-      commissionPct: user?.commissionPct ?? 0,
     };
-  }, [myOrders, myClients, user?.commissionPct]);
+  }, [myOrders, myClients]);
 
   const recent = useMemo(
     () => [...myOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 12),

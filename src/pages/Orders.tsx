@@ -90,7 +90,7 @@ export default function Orders() {
     return out;
   }, [orders, typeFilter, clientIdParam, q, clientNameById]);
 
-  const totalRevenue = useMemo(() => orders.reduce((s, o) => s + (o.totalPrice ?? 0), 0), [orders]);
+  const totalRevenue = useMemo(() => orders.filter(o => o.status !== "Cancelled").reduce((s, o) => s + (o.totalPrice ?? 0), 0), [orders]);
   const draftCount   = useMemo(() => orders.filter(o => o.status === "Draft").length, [orders]);
   const doneCount    = useMemo(() => orders.filter(o => ["Done", "Paid", "Completed"].includes(o.status)).length, [orders]);
 
@@ -104,6 +104,7 @@ export default function Orders() {
     Paid:      "bg-emerald-100 text-emerald-700",
     Done:      "bg-purple-100 text-purple-700",
     Completed: "bg-purple-100 text-purple-700",
+    Cancelled: "bg-red-100 text-red-600",
   };
 
   return (
