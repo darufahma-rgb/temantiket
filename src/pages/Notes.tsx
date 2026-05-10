@@ -2,6 +2,10 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Plus, Trash2, Edit3, Check, X, Sparkles, StickyNote, Copy, ClipboardCheck,
   Pin, PinOff, Search, Maximize2, Hash, AlignLeft,
+  Briefcase, MessageCircle, Megaphone, Zap, ClipboardList, Feather, Send,
+  List, CheckSquare, HelpCircle, LayoutGrid, Bell, AlignJustify, Plane,
+  FileText, Eye, Code, RotateCcw,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -154,6 +158,32 @@ function wordCount(text: string): number {
   return text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
 }
 
+// ── AI Rapihkan: Tone & Format options ──────────────────────────────────────
+interface RapihkanOption { id: string; label: string; icon: LucideIcon; desc: string }
+
+const TONES: RapihkanOption[] = [
+  { id: "profesional", label: "Profesional Formal",    icon: Briefcase,    desc: "Formal & resmi" },
+  { id: "friendly",    label: "Friendly WhatsApp",     icon: MessageCircle,desc: "Santai & akrab" },
+  { id: "persuasif",   label: "Persuasif Marketing",   icon: Megaphone,    desc: "CTA & benefit" },
+  { id: "padat",       label: "Singkat & Padat",       icon: Zap,          desc: "Esensial saja" },
+  { id: "admin",       label: "Admin Operasional",     icon: ClipboardList,desc: "Actionable & clear" },
+  { id: "elegant",     label: "Elegant Clean Notes",   icon: Feather,      desc: "Minimalis Notion-style" },
+  { id: "broadcast",   label: "Broadcast Telegram/WA", icon: Send,         desc: "Header + CTA" },
+];
+
+const FORMATS: RapihkanOption[] = [
+  { id: "bullet",       label: "Bullet List",          icon: List,         desc: "Daftar poin" },
+  { id: "checklist",    label: "Checklist",            icon: CheckSquare,  desc: "- [ ] item" },
+  { id: "numbered",     label: "Numbered Steps",       icon: Hash,         desc: "1. 2. 3." },
+  { id: "faq",          label: "FAQ Format",           icon: HelpCircle,   desc: "Q & A" },
+  { id: "card",         label: "Card Sections",        icon: LayoutGrid,   desc: "Section + ---" },
+  { id: "announcement", label: "Announcement Style",   icon: Bell,         desc: "📢 Header + body" },
+  { id: "paragraph",    label: "Simple Paragraph",     icon: AlignLeft,    desc: "Narasi mengalir" },
+  { id: "compact",      label: "Compact Notes",        icon: AlignJustify, desc: "label: nilai" },
+  { id: "travel",       label: "Travel/Visa Template", icon: Plane,        desc: "Syarat, biaya, kirim" },
+  { id: "client",       label: "Client Instruction",   icon: FileText,     desc: "Panduan klien" },
+];
+
 export default function Notes() {
   const t = useT();
   const [notes, setNotes] = useState<Note[]>(() => loadNotes());
@@ -178,6 +208,11 @@ export default function Notes() {
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [expandedNote, setExpandedNote] = useState<Note | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  // ── Rapihkan AI formatter state ──────────────────────────────────────────
+  const [rapihkanConfig, setRapihkanConfig] = useState<{ id: string; content: string } | null>(null);
+  const [rapihkanTone,   setRapihkanTone]   = useState<string>(() => localStorage.getItem("rapihkan.tone")   ?? "profesional");
+  const [rapihkanFormat, setRapihkanFormat] = useState<string>(() => localStorage.getItem("rapihkan.format") ?? "bullet");
+  const [previewMode,    setPreviewMode]    = useState<"rendered" | "raw">("rendered");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Gate: jangan push ke cloud sampai initial pull selesai. Tanpa ini,
   // first effect run akan kirim local empty + delete semua note di cloud.
@@ -364,16 +399,28 @@ export default function Notes() {
     }, 0);
   };
 
-  const handleRapihkan = async (id: string, content: string) => {
+  // Step 1: open tone+format picker
+  const openRapihkanPicker = (id: string, content: string) => {
+    setRapihkanConfig({ id, content });
+  };
+
+  // Step 2: generate (called from picker confirm button)
+  const generateRapihkan = async () => {
+    if (!rapihkanConfig) return;
+    const { id, content } = rapihkanConfig;
+    setRapihkanConfig(null);
+    localStorage.setItem("rapihkan.tone",   rapihkanTone);
+    localStorage.setItem("rapihkan.format", rapihkanFormat);
     setFormatting(id);
     try {
       let formatted = content;
       try {
-        const aiResult = await cleanAndStructureNote(content);
+        const aiResult = await cleanAndStructureNote(content, rapihkanTone, rapihkanFormat);
         formatted = aiResult || smartFormat(content);
       } catch {
         formatted = smartFormat(content);
       }
+      setPreviewMode("rendered");
       setRapihkanPreview({ id, original: content, formatted });
     } finally {
       setFormatting(null);
@@ -405,6 +452,18 @@ export default function Notes() {
     }
     toast.success("Catatan dirapihkan!");
     setRapihkanPreview(null);
+  };
+
+  const copyFormattedMarkdown = () => {
+    if (!rapihkanPreview) return;
+    navigator.clipboard.writeText(rapihkanPreview.formatted);
+    toast.success("Raw Markdown disalin!");
+  };
+
+  const restoreOriginal = () => {
+    if (!rapihkanPreview) return;
+    setRapihkanPreview({ ...rapihkanPreview, formatted: rapihkanPreview.original });
+    toast.info("Dikembalikan ke teks asli.");
   };
 
   const copyNote = (note: Note) => {
@@ -519,7 +578,7 @@ export default function Notes() {
                   <button
                     type="button"
                     title="Rapihkan dengan AI"
-                    onClick={() => handleRapihkan("new", newContent)}
+                    onClick={() => openRapihkanPicker("new", newContent)}
                     disabled={formatting === "new"}
                     className="absolute right-2 top-2 p-1 rounded-lg text-sky-400 hover:text-sky-600 hover:bg-sky-100 transition-colors"
                   >
@@ -767,7 +826,7 @@ export default function Notes() {
                         type="button"
                         title="Rapihkan"
                         onClick={() =>
-                          handleRapihkan(note.id, editContent)
+                          openRapihkanPicker(note.id, editContent)
                         }
                         disabled={formatting === note.id}
                         className="absolute right-2 top-2 p-1 rounded-lg text-sky-400 hover:text-sky-600 hover:bg-sky-100 transition-colors"
@@ -903,7 +962,7 @@ export default function Notes() {
                       {note.content.trim() && (
                         <button
                           type="button"
-                          onClick={() => handleRapihkan(note.id, note.content)}
+                          onClick={() => openRapihkanPicker(note.id, note.content)}
                           disabled={formatting === note.id}
                           title={t.notes_clean}
                           className="flex items-center gap-0.5 text-[10px] text-sky-400 hover:text-sky-600 font-medium transition-colors px-1 py-0.5 rounded"
@@ -1082,7 +1141,7 @@ export default function Notes() {
                   {expandedNote.content.trim() && (
                     <button
                       onClick={() =>
-                        handleRapihkan(expandedNote.id, expandedNote.content)
+                        openRapihkanPicker(expandedNote.id, expandedNote.content)
                       }
                       disabled={formatting === expandedNote.id}
                       className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-600 font-medium transition-colors"
@@ -1113,68 +1172,245 @@ export default function Notes() {
         )}
       </AnimatePresence>
 
-      {/* ── Rapihkan Preview Modal ────────────────────────────────────────── */}
+      {/* ── Rapihkan Picker Modal (Step 1: Tone + Format) ─────────────────── */}
+      <Dialog
+        open={!!rapihkanConfig}
+        onOpenChange={(open) => { if (!open) setRapihkanConfig(null); }}
+      >
+        <DialogContent className="max-w-lg w-full p-0 overflow-hidden">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b border-slate-100">
+            <DialogTitle className="flex items-center gap-2 text-[15px]">
+              <Sparkles className="h-4 w-4 text-sky-500 shrink-0" />
+              Rapihkan dengan AI
+            </DialogTitle>
+            <p className="text-[12px] text-muted-foreground mt-0.5">
+              Pilih gaya penulisan dan format output — AI akan memformat ulang catatan menjadi Markdown profesional.
+            </p>
+          </DialogHeader>
+
+          <div className="overflow-y-auto max-h-[65vh]">
+            {/* ── Tone section ── */}
+            <div className="px-5 pt-4 pb-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2.5 flex items-center gap-1.5">
+                <MessageCircle className="h-3 w-3" />
+                Tone Penulisan
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {TONES.map((tone) => {
+                  const active = rapihkanTone === tone.id;
+                  return (
+                    <button
+                      key={tone.id}
+                      onClick={() => setRapihkanTone(tone.id)}
+                      className={cn(
+                        "flex items-start gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all",
+                        active
+                          ? "border-sky-400 bg-sky-50 shadow-sm"
+                          : "border-slate-200 hover:border-sky-200 hover:bg-sky-50/40"
+                      )}
+                    >
+                      <tone.icon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", active ? "text-sky-500" : "text-slate-400")} />
+                      <span className="flex flex-col gap-0 min-w-0">
+                        <span className={cn("text-[12px] font-medium leading-tight", active ? "text-sky-700" : "text-slate-700")}>{tone.label}</span>
+                        <span className="text-[10px] text-slate-400 leading-tight mt-0.5">{tone.desc}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Format section ── */}
+            <div className="px-5 pt-3 pb-4 border-t border-slate-100">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2.5 flex items-center gap-1.5">
+                <LayoutGrid className="h-3 w-3" />
+                Format Layout Markdown
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {FORMATS.map((fmt) => {
+                  const active = rapihkanFormat === fmt.id;
+                  return (
+                    <button
+                      key={fmt.id}
+                      onClick={() => setRapihkanFormat(fmt.id)}
+                      className={cn(
+                        "flex items-start gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all",
+                        active
+                          ? "border-purple-400 bg-purple-50 shadow-sm"
+                          : "border-slate-200 hover:border-purple-200 hover:bg-purple-50/40"
+                      )}
+                    >
+                      <fmt.icon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", active ? "text-purple-500" : "text-slate-400")} />
+                      <span className="flex flex-col gap-0 min-w-0">
+                        <span className={cn("text-[12px] font-medium leading-tight", active ? "text-purple-700" : "text-slate-700")}>{fmt.label}</span>
+                        <span className="text-[10px] text-slate-400 leading-tight mt-0.5">{fmt.desc}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="px-5 py-3 border-t border-slate-100 flex flex-row justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setRapihkanConfig(null)}>
+              <X className="h-3.5 w-3.5 mr-1.5" />
+              Batal
+            </Button>
+            <Button
+              size="sm"
+              className="bg-sky-500 hover:bg-sky-600 text-white"
+              onClick={() => void generateRapihkan()}
+            >
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              Rapihkan Sekarang
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Rapihkan Preview Modal (Step 2: Review & Apply) ───────────────── */}
       <Dialog
         open={!!rapihkanPreview}
         onOpenChange={(open) => { if (!open) setRapihkanPreview(null); }}
       >
         <DialogContent className="max-w-3xl w-full p-0 overflow-hidden">
-          <DialogHeader className="px-5 pt-5 pb-3 border-b border-slate-100">
-            <DialogTitle className="flex items-center gap-2 text-[15px]">
+          <DialogHeader className="px-5 pt-4 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-sky-500 shrink-0" />
-              Pratinjau Rapihkan
-            </DialogTitle>
-            <p className="text-[12px] text-muted-foreground mt-0.5">
-              Bandingkan teks asli dengan hasil AI sebelum diterapkan.
-            </p>
+              <DialogTitle className="text-[15px] flex-1">Pratinjau Rapihkan</DialogTitle>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+              {(() => {
+                const tone = TONES.find(t => t.id === rapihkanTone);
+                return tone ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 bg-sky-100 text-sky-700 rounded-full font-semibold">
+                    <tone.icon className="h-2.5 w-2.5" />
+                    {tone.label}
+                  </span>
+                ) : null;
+              })()}
+              {(() => {
+                const fmt = FORMATS.find(f => f.id === rapihkanFormat);
+                return fmt ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-semibold">
+                    <fmt.icon className="h-2.5 w-2.5" />
+                    {fmt.label}
+                  </span>
+                ) : null;
+              })()}
+              <span className="text-[10px] text-muted-foreground ml-auto">Terapkan atau batalkan perubahan.</span>
+            </div>
           </DialogHeader>
 
           {rapihkanPreview && (
-            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100 max-h-[58vh]">
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100" style={{ maxHeight: "56vh" }}>
               {/* Left — Original */}
-              <div className="flex flex-col">
+              <div className="flex flex-col min-h-0">
                 <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 shrink-0">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                     Teks Asli
                   </span>
                 </div>
-                <div className="overflow-y-auto p-4 text-[12.5px] leading-relaxed text-slate-500 whitespace-pre-wrap font-mono bg-slate-50/60 flex-1">
+                <div className="overflow-y-auto p-4 text-[12px] leading-relaxed text-slate-500 whitespace-pre-wrap font-mono bg-slate-50/60 flex-1">
                   {rapihkanPreview.original}
                 </div>
               </div>
 
-              {/* Right — AI Result */}
-              <div className="flex flex-col">
-                <div className="px-4 py-2 bg-sky-50/60 border-b border-sky-100 shrink-0 flex items-center gap-1.5">
+              {/* Right — AI Result with view toggle */}
+              <div className="flex flex-col min-h-0">
+                <div className="px-3 py-2 bg-sky-50/60 border-b border-sky-100 shrink-0 flex items-center gap-1.5">
                   <Sparkles className="h-3 w-3 text-sky-400 shrink-0" />
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-sky-500">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-sky-500 flex-1">
                     Hasil AI
                   </span>
+                  {/* View mode toggle */}
+                  <div className="flex items-center bg-white border border-sky-200 rounded-lg overflow-hidden shrink-0">
+                    <button
+                      onClick={() => setPreviewMode("rendered")}
+                      className={cn(
+                        "flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors",
+                        previewMode === "rendered"
+                          ? "bg-sky-100 text-sky-700"
+                          : "text-slate-400 hover:bg-slate-50"
+                      )}
+                    >
+                      <Eye className="h-2.5 w-2.5" />
+                      Preview
+                    </button>
+                    <button
+                      onClick={() => setPreviewMode("raw")}
+                      className={cn(
+                        "flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors",
+                        previewMode === "raw"
+                          ? "bg-sky-100 text-sky-700"
+                          : "text-slate-400 hover:bg-slate-50"
+                      )}
+                    >
+                      <Code className="h-2.5 w-2.5" />
+                      Raw
+                    </button>
+                  </div>
                 </div>
-                <div className="overflow-y-auto p-4 flex-1 bg-white">
-                  <MarkdownContent content={rapihkanPreview.formatted} />
+                <div className="overflow-y-auto flex-1 bg-white">
+                  {previewMode === "rendered" ? (
+                    <div className="p-4">
+                      <MarkdownContent content={rapihkanPreview.formatted} />
+                    </div>
+                  ) : (
+                    <pre className="p-4 text-[11.5px] leading-relaxed text-slate-700 whitespace-pre-wrap font-mono bg-slate-50/80 min-h-full">
+                      {rapihkanPreview.formatted}
+                    </pre>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
-          <DialogFooter className="px-5 py-3 border-t border-slate-100 flex flex-row justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setRapihkanPreview(null)}
-            >
-              <X className="h-3.5 w-3.5 mr-1.5" />
-              Batalkan
-            </Button>
-            <Button
-              size="sm"
-              className="bg-sky-500 hover:bg-sky-600 text-white"
-              onClick={applyRapihkan}
-            >
-              <Check className="h-3.5 w-3.5 mr-1.5" />
-              Terapkan
-            </Button>
+          <DialogFooter className="px-5 py-3 border-t border-slate-100">
+            <div className="flex items-center justify-between gap-2 w-full flex-wrap">
+              {/* Left: destructive actions */}
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={restoreOriginal}
+                  className="text-slate-500 hover:text-slate-700 text-[12px]"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                  Balik Asli
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyFormattedMarkdown}
+                  className="text-[12px]"
+                >
+                  <Copy className="h-3.5 w-3.5 mr-1.5" />
+                  Salin MD
+                </Button>
+              </div>
+              {/* Right: primary actions */}
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRapihkanPreview(null)}
+                  className="text-[12px]"
+                >
+                  <X className="h-3.5 w-3.5 mr-1.5" />
+                  Batalkan
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-sky-500 hover:bg-sky-600 text-white text-[12px]"
+                  onClick={applyRapihkan}
+                >
+                  <Check className="h-3.5 w-3.5 mr-1.5" />
+                  Terapkan
+                </Button>
+              </div>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

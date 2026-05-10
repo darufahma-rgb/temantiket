@@ -654,31 +654,72 @@ Hubungi **Temantiket** untuk informasi pengiriman dan konfirmasi dokumen.
 Tulis langsung hasil akhirnya — tidak ada penjelasan, tidak ada kata pembuka, tidak ada blok kode.`;
 
 
+// ── Rapihkan: Tone & Format instruction maps ─────────────────────────────────
+
+const RAPIKAN_TONE_INSTRUCTIONS: Record<string, string> = {
+  profesional: "Gunakan bahasa Indonesia formal dan profesional. Hindari singkatan kasual dan emoji berlebihan. Nada resmi dan elegan.",
+  friendly:    "Bahasa santai, hangat, dan akrab ala pesan WhatsApp. Boleh emoji secukupnya. Nada percakapan yang ramah.",
+  persuasif:   "Gaya persuasif marketing. Highlight manfaat utama, gunakan kalimat ajakan (CTA), buat pembaca termotivasi bertindak.",
+  padat:       "Singkat dan padat. Hapus kata yang tidak perlu. Hanya informasi esensial. Maksimal efisiensi kata.",
+  admin:       "Gaya admin operasional: jelas, to-the-point, actionable. Format laporan atau instruksi yang mudah dijalankan.",
+  elegant:     "Minimalis dan bersih. Tanpa dekorasi berlebihan. Clean Notion-style. Typography sederhana, spacing konsisten.",
+  broadcast:   "Format siaran Telegram atau WhatsApp Channel. Header tegas di atas, isi terstruktur, penutup dengan CTA atau info kontak.",
+};
+
+const RAPIKAN_FORMAT_INSTRUCTIONS: Record<string, string> = {
+  bullet:       "Gunakan bullet list (- item) sebagai struktur utama. Kelompokkan poin serupa di bawah heading.",
+  checklist:    "Ubah semua item menjadi checklist markdown (- [ ] item). Cocok untuk syarat, dokumen, atau daftar tugas.",
+  numbered:     "Gunakan numbered steps (1. 2. 3.) untuk urutan prosedur. Tambahkan ## heading per tahap jika ada.",
+  faq:          "Format FAQ: **Q:** pertanyaan diikuti **A:** jawaban. Cocok untuk info layanan dan panduan.",
+  card:         "Bagi konten menjadi section card dengan ## heading yang jelas dan --- pemisah antar section.",
+  announcement: "Format pengumuman: 📢 **HEADER** tegas di atas, isi terstruktur di tengah, penutup dengan CTA atau info kontak.",
+  paragraph:    "Tulis dalam paragraf narasi yang mengalir. Minimal bullet, lebih banyak kalimat utuh dan kohesif.",
+  compact:      "Format compact: satu item per baris dengan label: nilai. Minimal baris kosong, ringkas dan efisien.",
+  travel:       "Template Travel/Visa: ## PERSYARATAN → ### Dokumen → ### Biaya → ### Alamat Kirim → ### Kontak.",
+  client:       "Instruksi klien: langkah demi langkah yang jelas (1. 2. 3.), catatan penting **bold**, mudah diikuti orang awam.",
+};
+
 /**
  * cleanAndStructureNote — rapikan & format teks catatan mentah menjadi Markdown bersih.
  * Dipakai di fitur "Rapikan" di halaman Catatan.
+ *
+ * @param tone   - Gaya penulisan: "profesional" | "friendly" | "persuasif" | dll.
+ * @param format - Format layout: "bullet" | "checklist" | "numbered" | dll.
  */
-export async function cleanAndStructureNote(text: string): Promise<string> {
+export async function cleanAndStructureNote(
+  text: string,
+  tone = "profesional",
+  format = "bullet"
+): Promise<string> {
   const model = useAIOverrideStore.getState().getModel("notes", OR_MODELS.NOTES_WRITER);
+  const toneInstr = RAPIKAN_TONE_INSTRUCTIONS[tone]    ?? RAPIKAN_TONE_INSTRUCTIONS.profesional;
+  const fmtInstr  = RAPIKAN_FORMAT_INSTRUCTIONS[format] ?? RAPIKAN_FORMAT_INSTRUCTIONS.bullet;
 
-  // Heuristic: detect likely format so AI can confirm/use as hint
+  // Heuristic: detect likely content type for additional AI context
   const t = text.trim();
-  const hasTahap   = /\btahap\b|\blangkah\b|\bstep\b/i.test(t);
-  const hasBullets = /^[-•*]\s/m.test(t) || (t.match(/\n/g) ?? []).length > 3;
+  const hasTahap    = /\btahap\b|\blangkah\b|\bstep\b/i.test(t);
+  const hasBullets  = /^[-•*]\s/m.test(t) || (t.match(/\n/g) ?? []).length > 3;
   const hasSections = /:\s*\n|:\s{2,}/.test(t) || /\b(syarat|biaya|layanan|kontak|alamat|harga|dokumen)\b/i.test(t);
 
-  const formatHint = hasTahap
+  const contentHint = hasTahap
     ? "Format A (prosedur bertahap)"
     : hasSections
-    ? "Format C (info terstruktur campuran dengan beberapa kelompok)"
+    ? "Format C (info terstruktur campuran)"
     : hasBullets
     ? "Format B (daftar murni)"
-    : "Format D atau E (paragraf/narasi atau campuran)";
+    : "Format D (paragraf/narasi)";
 
   return callAIOpenRouter({
     model,
     systemPrompt: RAPIKAN_SYSTEM_PROMPT,
-    prompt: `Rapikan catatan berikut menjadi Markdown yang bersih dan terstruktur. Jangan hilangkan informasi apapun. Deteksi format awal: ${formatHint} — konfirmasi atau koreksi sendiri jika perlu.\n\nCATATAN:\n${t}`,
+    prompt: `Rapikan catatan berikut menjadi Markdown yang bersih dan terstruktur. Jangan hilangkan informasi apapun.
+
+TONE PENULISAN: ${toneInstr}
+FORMAT LAYOUT: ${fmtInstr}
+DETEKSI KONTEN AWAL: ${contentHint}
+
+CATATAN:
+${t}`,
     temperature: 0.2,
     maxTokens: 3000,
   });
