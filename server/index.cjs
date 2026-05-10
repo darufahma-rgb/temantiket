@@ -1197,7 +1197,169 @@ app.post('/api/award-commission-points', async (req, res) => {
 });
 
 /* ──────────────────────────────────────────────
+   POST /api/upload-card-back
+   Upload gambar belakang kartu langsung ke Storage menggunakan service-role key.
+   - Auto-creates bucket 'card-backs' jika belum ada
+   - Uploads image buffer (dari base64) via admin client — tidak butuh storage RLS
+   - Updates agency_members.card_back_image_url via admin client — tidak butuh DB RLS
+   - Single round-trip: tidak ada signed URL dance
+
+   Authorization: Bearer <access_token>
+   Body: { targetUserId, agencyId, imageBase64 }  (imageBase64 = data URL from FileReader)
+   Returns: { ok: true, url: "<canonical public URL>" }
+────────────────────────────────────────────── */
+app.post('/api/upload-card-back', async (req, res) => {
+  const ROUTE = '[upload-card-back]';
+  try {
+    if (!SERVICE_ROLE_KEY) {
+      return err(res, 503, 'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. Tambahkan di Secrets Replit lalu restart server.');
+    }
+    if (!SUPABASE_URL) {
+      return err(res, 503, 'VITE_SUPABASE_URL belum dikonfigurasi di server.');
+    }
+
+    // ── Auth ─────────────────────────────────────────────────────────────────
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return err(res, 401, 'Missing Authorization header');
+    const caller = await getCallerUser(authHeader, 8000).catch(() => null);
+    if (!caller) return err(res, 401, 'Sesi tidak valid atau expired — silakan login ulang.');
+    console.log(`${ROUTE} caller validated — caller.id=${caller.id}`);
+
+    // ── Validate body ─────────────────────────────────────────────────────────
+    const { targetUserId, agencyId, imageBase64 } = req.body ?? {};
+    if (!targetUserId || !agencyId || !imageBase64) {
+      return err(res, 400, 'targetUserId, agencyId, dan imageBase64 wajib diisi');
+    }
+    if (typeof imageBase64 !== 'string' || !imageBase64.startsWith('data:image/')) {
+      return err(res, 400, 'imageBase64 harus berupa data URL (data:image/...)');
+    }
+
+    const admin = makeAdminClient();
+
+    // ── Verify caller is member of the agency ─────────────────────────────────
+    const { data: callerMembership, error: memErr } = await withTimeout(
+      admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).eq('agency_id', agencyId).maybeSingle(),
+      8000, 'DB timeout saat verifikasi membership'
+    );
+    if (memErr || !callerMembership) {
+      console.error(`${ROUTE} membership error:`, memErr?.message);
+      return err(res, 403, 'Tidak terdaftar di agency yang diminta');
+    }
+
+    // ── Role guard ────────────────────────────────────────────────────────────
+    if (callerMembership.role !== 'owner' && targetUserId !== caller.id) {
+      return err(res, 403, 'Hanya owner yang bisa upload gambar kartu member lain');
+    }
+
+    // ── Verify target user exists ─────────────────────────────────────────────
+    const { data: targetRow, error: targetErr } = await withTimeout(
+      admin.from('agency_members').select('user_id').eq('user_id', targetUserId).eq('agency_id', agencyId).maybeSingle(),
+      8000, 'DB timeout saat verifikasi target user'
+    );
+    if (targetErr || !targetRow) {
+      console.error(`${ROUTE} target lookup:`, targetErr?.message);
+      return err(res, 404, `User ${targetUserId} tidak ditemukan di agency ini. Pastikan targetUserId adalah Supabase auth UUID.`);
+    }
+
+    // ── Auto-create bucket if missing ────────────────────────────────────────
+    const BUCKET = 'card-backs';
+    try {
+      const { error: bucketErr } = await withTimeout(
+        admin.storage.createBucket(BUCKET, {
+          public: true,
+          fileSizeLimit: 10485760,
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+        }),
+        8000, 'Timeout saat membuat bucket'
+      );
+      if (bucketErr) {
+        const msg = bucketErr.message ?? '';
+        const alreadyExists = msg.toLowerCase().includes('already exist') || msg.toLowerCase().includes('duplicate');
+        if (!alreadyExists) {
+          console.warn(`${ROUTE} createBucket warning (continuing):`, msg);
+        } else {
+          console.log(`${ROUTE} bucket already exists — OK`);
+        }
+      } else {
+        console.log(`${ROUTE} bucket '${BUCKET}' created`);
+      }
+    } catch (bucketEx) {
+      console.warn(`${ROUTE} createBucket exception (continuing):`, bucketEx?.message ?? bucketEx);
+    }
+
+    // ── Decode base64 image ────────────────────────────────────────────────────
+    // Strip the data URL prefix: "data:image/jpeg;base64,/9j/4AA..."
+    const commaIdx = imageBase64.indexOf(',');
+    if (commaIdx === -1) return err(res, 400, 'imageBase64 format tidak valid — koma tidak ditemukan');
+    const base64Data = imageBase64.slice(commaIdx + 1);
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+    if (imageBuffer.length === 0) return err(res, 400, 'Gambar kosong setelah decode base64');
+    console.log(`${ROUTE} image decoded — byteLength=${imageBuffer.length}`);
+
+    // ── Upload to Storage via admin client (bypasses all storage RLS) ─────────
+    const storagePath = `${targetUserId}/card-back.jpg`;
+    console.log(`${ROUTE} uploading to storage — bucket=${BUCKET} path=${storagePath}`);
+    const { error: uploadErr } = await withTimeout(
+      admin.storage.from(BUCKET).upload(storagePath, imageBuffer, {
+        contentType: 'image/jpeg',
+        upsert: true,
+      }),
+      25000, 'Storage upload timeout'
+    );
+    if (uploadErr) {
+      console.error(`${ROUTE} storage upload error:`, uploadErr.message);
+      return err(res, 500, `Storage upload gagal: ${uploadErr.message}`);
+    }
+    console.log(`${ROUTE} storage upload OK`);
+
+    // ── Build canonical public URL ─────────────────────────────────────────────
+    const canonicalUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${storagePath}`;
+
+    // ── Update agency_members.card_back_image_url via admin (bypasses DB RLS) ─
+    console.log(`${ROUTE} updating DB — table=agency_members user_id=${targetUserId}`);
+    const { data: updateData, error: updateErr } = await withTimeout(
+      admin.from('agency_members')
+        .update({ card_back_image_url: canonicalUrl })
+        .eq('user_id', targetUserId)
+        .eq('agency_id', agencyId)
+        .select('user_id, card_back_image_url'),
+      12000, 'DB timeout saat update card_back_image_url'
+    );
+    if (updateErr) {
+      const isColMissing = updateErr.code === '42703' || (updateErr.message ?? '').toLowerCase().includes('column');
+      console.error(`${ROUTE} DB update error code=${updateErr.code}:`, updateErr.message);
+      if (isColMissing) {
+        return err(res, 500,
+          'Kolom card_back_image_url belum ada di tabel agency_members. ' +
+          'Jalankan SQL berikut di Supabase SQL Editor:\n' +
+          'ALTER TABLE public.agency_members ADD COLUMN IF NOT EXISTS card_back_image_url TEXT;'
+        );
+      }
+      return err(res, 500, `DB update gagal: ${updateErr.message}`);
+    }
+    if (!updateData || updateData.length === 0) {
+      console.error(`${ROUTE} 0 rows updated — kemungkinan kolom card_back_image_url belum ada`);
+      return err(res, 500,
+        'Gambar terupload tapi database tidak diperbarui (0 baris). ' +
+        'Kemungkinan kolom card_back_image_url belum ada. Jalankan di Supabase SQL Editor:\n' +
+        'ALTER TABLE public.agency_members ADD COLUMN IF NOT EXISTS card_back_image_url TEXT;'
+      );
+    }
+
+    const savedRow = updateData[0];
+    console.log(`${ROUTE} SUCCESS — user_id=${savedRow.user_id} url=${savedRow.card_back_image_url}`);
+    return ok(res, { ok: true, url: savedRow.card_back_image_url ?? canonicalUrl });
+
+  } catch (e) {
+    console.error(`${ROUTE} unhandled exception:`, e);
+    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
+  }
+});
+
+/* ──────────────────────────────────────────────
    POST /api/card-back-signed-url
+   DEPRECATED — kept for backward compatibility only.
+   New flow uses /api/upload-card-back (server-side upload, no signed URL needed).
    Buat Supabase Storage signed upload URL untuk card-backs/{targetUserId}/card-back.jpg
    menggunakan service-role key (bypass storage RLS policy).
 
