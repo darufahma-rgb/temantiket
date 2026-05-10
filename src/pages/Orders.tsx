@@ -14,6 +14,8 @@ import {
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore, type Client } from "@/store/clientsStore";
 import { useAuthStore } from "@/store/authStore";
+import { useRatesStore } from "@/store/ratesStore";
+import { revenueIDR } from "@/lib/profit";
 import { getCommissionForOrderType, loadProductCommissions } from "@/lib/productCommissions";
 import {
   ORDER_TYPES, ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI,
@@ -29,6 +31,12 @@ function fmtIDRShort(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}Jt`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}Rb`;
   return String(n);
+}
+
+/** Tampilkan harga order sesuai mata uang aslinya (EGP atau IDR). */
+function fmtOrderPrice(totalPrice: number, currency: string): string {
+  if (currency === "EGP") return `EGP ${totalPrice.toLocaleString("en")}`;
+  return fmtIDR(totalPrice);
 }
 
 // Mata uang default per tipe order — visa Mesir dijual dalam EGP, sisanya IDR.
@@ -90,7 +98,11 @@ export default function Orders() {
     return out;
   }, [orders, typeFilter, clientIdParam, q, clientNameById]);
 
-  const totalRevenue = useMemo(() => orders.filter(o => o.status !== "Cancelled").reduce((s, o) => s + (o.totalPrice ?? 0), 0), [orders]);
+  const egpRate = useRatesStore((s) => s.rates.EGP ?? 515);
+  const totalRevenue = useMemo(
+    () => orders.filter(o => o.status !== "Cancelled").reduce((s, o) => s + revenueIDR(o, egpRate), 0),
+    [orders, egpRate],
+  );
   const draftCount   = useMemo(() => orders.filter(o => o.status === "Draft").length, [orders]);
   const doneCount    = useMemo(() => orders.filter(o => ["Done", "Paid", "Completed"].includes(o.status)).length, [orders]);
 
@@ -326,7 +338,7 @@ export default function Orders() {
                           <AlertTriangle className="h-2.5 w-2.5" />HPP belum diisi
                         </span>
                       )}
-                      <span className="text-[11.5px] font-extrabold text-[hsl(var(--foreground))] tabular-nums">{fmtIDR(o.totalPrice)}</span>
+                      <span className="text-[11.5px] font-extrabold text-[hsl(var(--foreground))] tabular-nums">{fmtOrderPrice(o.totalPrice, o.currency)}</span>
                     </div>
                     <ChevronRight className="h-4 w-4 text-[hsl(var(--muted-foreground))]/50 shrink-0 -ml-1" />
                   </motion.button>
@@ -443,7 +455,7 @@ export default function Orders() {
                         <AlertTriangle className="h-3 w-3" />HPP belum diisi
                       </span>
                     )}
-                    <span className="text-sm font-mono font-semibold">{fmtIDR(o.totalPrice)}</span>
+                    <span className="text-sm font-mono font-semibold">{fmtOrderPrice(o.totalPrice, o.currency)}</span>
                   </div>
                 </Link>
               </motion.div>
@@ -747,10 +759,14 @@ function NewOrderDialog({
             </div>
           )}
 
-          {/* Profit preview — fee agen hanya dipotong kalau user berperan agent */}
+          {/* Profit preview — fee agen hanya dipotong kalau user berperan agent.
+              CATATAN: profit & harga dalam mata uang asli order (EGP atau IDR).
+              Fee agen selalu IDR — untuk EGP orders, fee ditampilkan terpisah tanpa dikurangkan. */}
           {(Number(totalPrice) > 0 || Number(costPrice) > 0) && (() => {
             const profit = (Number(totalPrice) || 0) - (Number(costPrice) || 0);
-            const fee = isAgent ? (Number(agentFee) || 0) : 0;
+            const feeIDR = isAgent ? (Number(agentFee) || 0) : 0;
+            // Hanya kurangkan fee dari profit jika sama-sama IDR
+            const fee = (currency === "IDR") ? feeIDR : 0;
             const net = profit - fee;
             const positive = profit >= 0;
             const netPositive = net >= 0;
@@ -766,15 +782,18 @@ function NewOrderDialog({
                     {positive ? "+" : ""}{currencySymbol} {Math.abs(profit).toLocaleString("id-ID")}
                   </span>
                 </div>
-                {isAgent && fee > 0 && (
+                {isAgent && feeIDR > 0 && (
                   <div className={`rounded-xl border px-3 py-2 flex items-center justify-between gap-2 ${
                     netPositive ? "bg-sky-50 border-sky-200" : "bg-red-50 border-red-200"
                   }`}>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Net (− fee agen)
+                      {currency === "IDR" ? `Net (− fee agen)` : `Fee Agen (IDR, terpisah)`}
                     </span>
-                    <span className={`text-[14px] font-extrabold font-mono ${netPositive ? "text-sky-700" : "text-red-600"}`}>
-                      {netPositive ? "+" : ""}{currencySymbol} {Math.abs(net).toLocaleString("id-ID")}
+                    <span className={`text-[14px] font-extrabold font-mono ${currency === "IDR" ? (netPositive ? "text-sky-700" : "text-red-600") : "text-orange-700"}`}>
+                      {currency === "IDR"
+                        ? `${netPositive ? "+" : ""}${currencySymbol} ${Math.abs(net).toLocaleString("id-ID")}`
+                        : `Rp ${feeIDR.toLocaleString("id-ID")}`
+                      }
                     </span>
                   </div>
                 )}

@@ -9,7 +9,7 @@
 
 import type { Order } from "@/features/orders/ordersRepo";
 import type { ProductCommissions } from "./productCommissions";
-import { voaOpCost, kurirOpCost } from "./profit";
+import { voaOpCost, kurirOpCost, agentFeeFromMeta } from "./profit";
 
 export interface LedgerEntry {
   orderId: string;
@@ -225,14 +225,14 @@ export function buildLedgerEntries(
     }
 
     // ── Entri komisi agen penjual ──────────────────────────────────────────
-    // Dibaca dari meta.agentFee (per-order actual, bukan rate global).
+    // Dibaca via agentFeeFromMeta() — satu-satunya sumber kebenaran fee agen.
     // Hanya muncul jika createdByAgent ada DAN member berole "agent".
     // Ini memastikan direct orders (owner/staff closing ref) tidak kena debit komisi.
     if (memberById && o.createdByAgent) {
       const member = memberById.get(o.createdByAgent);
       if (member && member.role === "agent") {
-        // Baca fee aktual dari order metadata — bukan global product commission
-        const commissionIDR = Number(meta.agentFee ?? 0);
+        // agentFeeFromMeta() = canonical helper, konsisten dengan Reports/Ledger/Wallet
+        const commissionIDR = agentFeeFromMeta(o);
         if (commissionIDR > 0) {
           entries.push({
             orderId:         `commission_${o.id}`,

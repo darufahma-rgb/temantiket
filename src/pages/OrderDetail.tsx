@@ -234,6 +234,14 @@ export default function OrderDetail() {
       const agentFeeAmount = agentCommId
         ? (agentFeeStored >= 0 ? agentFeeStored : getCommissionForOrderType(order.type))
         : 0;
+
+      // BUG FIX: jika agentFee belum ada di metadata (agentFeeStored < 0) tapi kita
+      // resolve ke global rate, persist ke metaPatch SEKARANG agar ledger & Reports
+      // membaca nilai yang sama dengan yang dikreditkan ke wallet.
+      if (agentCommId && agentFeeStored < 0 && agentFeeAmount > 0) {
+        metaPatch = { ...metaPatch, agentFee: agentFeeAmount };
+      }
+
       const shouldCreditAgent = willBeCompleted && !!agentCommId &&
         agentFeeAmount > 0 && !metaPatch.agentFeeCredited;
 

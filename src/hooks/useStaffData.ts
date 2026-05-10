@@ -45,7 +45,10 @@ export function useStaffData() {
   );
 
   const walletBal = useMemo(() => {
-    const pelaksanaTxs = walletTxs.filter((t) => t.type === "pelaksana_fee" || t.type === "payout");
+    // Sertakan mission_fee (konversi poin misi ke IDR) agar balance staff lengkap.
+    const pelaksanaTxs = walletTxs.filter(
+      (t) => t.type === "pelaksana_fee" || t.type === "mission_fee" || t.type === "payout",
+    );
     return walletBalance(pelaksanaTxs);
   }, [walletTxs]);
 

@@ -977,6 +977,13 @@ app.post('/api/credit-wallet-tx', async (req, res) => {
       return err(res, 403, 'Agency ID tidak sesuai dengan akun yang login');
     }
 
+    // Role guard: agent hanya boleh kredit wallet sendiri (bukan wallet orang lain).
+    // Owner dan staff boleh kredit wallet siapapun di agency yang sama.
+    if (membership.role === 'agent' && agentId !== caller.id) {
+      console.error(`[credit-wallet-tx] agent ${caller.id} mencoba kredit wallet ${agentId}`);
+      return err(res, 403, 'Agen hanya bisa mengkreditkan wallet sendiri');
+    }
+
     // Upsert — idempotent on tx id
     const { error: upsertErr } = await withTimeout(
       admin.from('agent_wallet_transactions').upsert(
@@ -1047,21 +1054,26 @@ app.post('/api/award-commission-points', async (req, res) => {
       return ok(res, { awarded: 0, reason: 'not_agent', role: memberRow.role });
     }
 
+    // Gunakan upsert (bukan insert) dengan onConflict 'order_id' agar idempoten —
+    // pemanggilan ganda untuk order yang sama tidak menyebabkan poin double-credit.
     const { error: insertErr } = await withTimeout(
-      adminClient.from('agent_points').insert({
-        agency_id:  agencyId,
-        agent_id:   agentId,
-        order_id:   orderId,
-        points:     20,
-        reason:     'commission_received',
-        awarded_at: new Date().toISOString(),
-      }),
+      adminClient.from('agent_points').upsert(
+        {
+          agency_id:  agencyId,
+          agent_id:   agentId,
+          order_id:   orderId,
+          points:     20,
+          reason:     'commission_received',
+          awarded_at: new Date().toISOString(),
+        },
+        { onConflict: 'order_id' }
+      ),
       10000,
       'Timeout saat award commission points'
     );
 
     if (insertErr) {
-      console.warn('[award-commission-points] insert gagal:', insertErr.message);
+      console.warn('[award-commission-points] upsert gagal:', insertErr.message);
       return err(res, 500, insertErr.message);
     }
 
