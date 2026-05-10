@@ -1197,6 +1197,134 @@ app.post('/api/award-commission-points', async (req, res) => {
 });
 
 /* ──────────────────────────────────────────────
+   POST /api/card-back-signed-url
+   Buat Supabase Storage signed upload URL untuk card-backs/{targetUserId}/card-back.jpg
+   menggunakan service-role key (bypass storage RLS policy).
+
+   Mengapa diperlukan:
+   - Storage bucket 'card-backs' mungkin tidak punya INSERT policy untuk anon/auth user.
+   - Dengan signed upload URL dari service-role, client bisa upload langsung ke Storage
+     tanpa perlu storage RLS policy sama sekali.
+   - Permission check tetap dilakukan di sini (caller harus member agency + role guard).
+
+   Authorization: Bearer <access_token>
+   Body: { targetUserId, agencyId }
+   Returns: { signedUrl, token, path }
+────────────────────────────────────────────── */
+app.post('/api/card-back-signed-url', async (req, res) => {
+  const ROUTE = '[card-back-signed-url]';
+  try {
+    if (!SERVICE_ROLE_KEY) {
+      return err(res, 503,
+        'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. ' +
+        'Tambahkan di Secrets Replit lalu restart server.'
+      );
+    }
+    if (!SUPABASE_URL) {
+      return err(res, 503, 'VITE_SUPABASE_URL belum dikonfigurasi di server.');
+    }
+
+    // ── Auth ─────────────────────────────────────────────────────────────────
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return err(res, 401, 'Missing Authorization header');
+
+    const caller = await getCallerUser(authHeader, 8000).catch(() => null);
+    if (!caller) {
+      return err(res, 401,
+        'Sesi tidak valid atau expired — silakan login ulang. ' +
+        'Pastikan SUPABASE_SERVICE_ROLE_KEY dan VITE_SUPABASE_URL dari project Supabase yang sama.'
+      );
+    }
+    console.log(`${ROUTE} caller validated — caller.id=${caller.id}`);
+
+    // ── Validate request body ─────────────────────────────────────────────────
+    const { targetUserId, agencyId } = req.body ?? {};
+    if (!targetUserId || !agencyId) {
+      return err(res, 400, 'targetUserId dan agencyId wajib diisi');
+    }
+
+    const admin = makeAdminClient();
+
+    // ── Verify caller is member of the agency ─────────────────────────────────
+    const { data: callerMembership, error: memErr } = await withTimeout(
+      admin.from('agency_members')
+        .select('agency_id, role')
+        .eq('user_id', caller.id)
+        .eq('agency_id', agencyId)
+        .maybeSingle(),
+      8000, 'DB timeout saat verifikasi membership'
+    );
+    if (memErr) {
+      console.error(`${ROUTE} membership lookup error:`, memErr.message);
+      return err(res, 500, `DB error (membership): ${memErr.message}`);
+    }
+    if (!callerMembership) {
+      return err(res, 403, 'Tidak terdaftar di agency yang diminta');
+    }
+
+    // ── Role guard ────────────────────────────────────────────────────────────
+    if (callerMembership.role !== 'owner' && targetUserId !== caller.id) {
+      return err(res, 403, 'Hanya owner yang bisa upload gambar kartu member lain');
+    }
+
+    // ── Verify target user exists in this agency ──────────────────────────────
+    const { data: targetRow, error: targetErr } = await withTimeout(
+      admin.from('agency_members')
+        .select('user_id')
+        .eq('user_id', targetUserId)
+        .eq('agency_id', agencyId)
+        .maybeSingle(),
+      8000, 'DB timeout saat verifikasi target user'
+    );
+    if (targetErr) {
+      console.error(`${ROUTE} target lookup error:`, targetErr.message);
+      return err(res, 500, `DB error (target): ${targetErr.message}`);
+    }
+    if (!targetRow) {
+      return err(res, 404,
+        `User ${targetUserId} tidak ditemukan di agency ini. ` +
+        'Pastikan targetUserId adalah Supabase auth UUID dari tabel agency_members.'
+      );
+    }
+
+    // ── Create signed upload URL (service-role bypasses storage RLS) ──────────
+    const storagePath = `${targetUserId}/card-back.jpg`;
+    console.log(`${ROUTE} creating signed upload URL — bucket=card-backs path=${storagePath}`);
+
+    const { data: signedData, error: signedErr } = await withTimeout(
+      admin.storage.from('card-backs').createSignedUploadUrl(storagePath, { upsert: true }),
+      8000, 'Storage timeout saat membuat signed upload URL'
+    );
+
+    if (signedErr || !signedData) {
+      console.error(`${ROUTE} createSignedUploadUrl FAILED:`, signedErr?.message);
+      // Provide actionable error message
+      const isNoPolicy = signedErr?.message?.includes('row-level security') ||
+                         signedErr?.message?.includes('policy');
+      const isMissing  = signedErr?.message?.toLowerCase().includes('not found') ||
+                         signedErr?.message?.toLowerCase().includes('bucket');
+      const detail = isMissing
+        ? "Bucket 'card-backs' belum dibuat di Supabase Storage dashboard."
+        : isNoPolicy
+          ? "Storage policy untuk bucket 'card-backs' belum dikonfigurasi."
+          : signedErr?.message ?? 'Unknown error';
+      return err(res, 500, `Gagal membuat upload URL: ${detail}`);
+    }
+
+    console.log(`${ROUTE} signed upload URL created — path=${signedData.path}`);
+    return ok(res, {
+      signedUrl: signedData.signedUrl,
+      token:     signedData.token,
+      path:      signedData.path,
+    });
+
+  } catch (e) {
+    console.error(`${ROUTE} unhandled exception:`, e);
+    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
+  }
+});
+
+/* ──────────────────────────────────────────────
    POST /api/save-card-back-url
    Simpan card_back_image_url ke agency_members menggunakan service-role key
    sehingga RLS tidak memblokir staff/agent yang update milik sendiri.

@@ -108,7 +108,7 @@ export default function AgentProfile() {
     if (!user?.id || !user?.agencyId || !file.type.startsWith("image/")) return;
     setCardBackUploading(true);
     try {
-      const url = await uploadCardBack(user.id, file);
+      const url = await uploadCardBack(user.id, file, user.agencyId);
       await saveCardBackUrl(user.id, user.agencyId, url);
       setCardBackUrl(url);
       const { toast } = await import("sonner");

@@ -19,7 +19,6 @@
  * so RLS on agency_members never blocks staff/agent from updating their own row.
  */
 import { supabase } from "@/lib/supabase";
-import { assertHealthy } from "@/lib/healthCheck";
 
 const BUCKET = "card-backs";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 7; // 7 days in seconds
@@ -79,55 +78,138 @@ async function buildSignedUrl(userId: string): Promise<string | null> {
 }
 
 /**
- * Upload gambar belakang kartu ke Supabase Storage.
+ * Upload gambar belakang kartu ke Supabase Storage via server-signed upload URL.
+ *
+ * Mengapa signed URL (bukan upload langsung dari anon/auth client):
+ *   Storage bucket 'card-backs' mungkin tidak punya INSERT policy untuk user biasa.
+ *   Dengan meminta signed upload URL dari server (service-role key), upload bisa
+ *   dilakukan client-side langsung ke Supabase Storage tanpa storage RLS blocking.
+ *
  * Returns a signed URL (7 days) for immediate cross-device display.
- * The canonical public URL (no cache-buster) is what gets stored in the DB
- * via saveCardBackUrl — loadCardBackUrl regenerates signed URLs on read.
+ * The canonical public URL (no cache-buster) is what gets stored in DB via saveCardBackUrl.
+ *
+ * @param userId    - Supabase auth UUID pemilik kartu (bukan route slug)
+ * @param file      - File gambar yang akan diupload
+ * @param agencyId  - UUID agency (untuk permission check di server)
  */
-export async function uploadCardBack(userId: string, file: File): Promise<string> {
+export async function uploadCardBack(userId: string, file: File, agencyId: string): Promise<string> {
   if (!supabase) throw new Error("Supabase belum dikonfigurasi.");
   if (!file.type.startsWith("image/")) throw new Error("File harus berupa gambar.");
   if (file.size > 10 * 1024 * 1024) throw new Error("Ukuran maksimum 10 MB.");
 
-  // Validate server-side Supabase config before attempting upload
-  await assertHealthy("Upload Gambar Kartu");
-
-  console.log(`[cardBackStorage] uploadCardBack — userId=${userId} size=${file.size} type=${file.type}`);
-
-  const blob = await resizeToBlob(file, 1600, 2000, 0.92);
-  const path = `${userId}/card-back.jpg`;
-
-  console.log(`[cardBackStorage] uploading to storage — bucket=${BUCKET} path=${path} blobSize=${blob.size}`);
-
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, blob, { contentType: "image/jpeg", upsert: true });
-
-  if (uploadError) {
-    console.error("[cardBackStorage] storage upload error:", uploadError);
-    if (
-      uploadError.message.includes("Bucket not found") ||
-      uploadError.message.includes("bucket") ||
-      uploadError.message.includes("does not exist")
-    ) {
-      throw new Error(
-        `Bucket Storage 'card-backs' belum dibuat. Jalankan file supabase/card-back-image-migration.sql di Supabase SQL Editor terlebih dahulu.`,
-      );
-    }
-    throw new Error(`Upload gagal: ${uploadError.message}`);
+  if (!userId || userId.length < 10) {
+    throw new Error(`userId tidak valid: "${userId}". Harus berupa Supabase auth UUID.`);
+  }
+  if (!agencyId || agencyId.length < 10) {
+    throw new Error(`agencyId tidak valid: "${agencyId}". Harus berupa UUID agency.`);
   }
 
-  console.log("[cardBackStorage] storage upload OK — generating signed URL");
+  console.log(`[cardBackStorage] uploadCardBack — userId=${userId} agencyId=${agencyId} size=${file.size} type=${file.type}`);
 
-  // Try to get a signed URL for immediate display (cross-device safe)
+  // ── 1. Get a fresh access token ────────────────────────────────────────────
+  const { data: sessData } = await supabase.auth.getSession();
+  const session = sessData.session;
+  if (!session?.access_token) {
+    throw new Error("Sesi tidak valid — silakan login ulang sebelum upload.");
+  }
+  let accessToken = session.access_token;
+
+  // Refresh token proactively if near expiry (prevents 401 on slow upload)
+  const nowSec    = Math.floor(Date.now() / 1000);
+  const expiresAt = session.expires_at ?? 0;
+  if (expiresAt && expiresAt - nowSec < 60) {
+    try {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      if (refreshed.session?.access_token) {
+        accessToken = refreshed.session.access_token;
+        console.log("[cardBackStorage] session refreshed before upload");
+      }
+    } catch {
+      // ignore — use current token
+    }
+  }
+
+  // ── 2. Resize image client-side ────────────────────────────────────────────
+  console.log("[cardBackStorage] resizing image…");
+  const blob = await resizeToBlob(file, 1600, 2000, 0.92);
+  console.log(`[cardBackStorage] resize done — blobSize=${blob.size}`);
+
+  // ── 3. Get signed upload URL from server (service-role, bypasses storage RLS) ─
+  console.log("[cardBackStorage] requesting signed upload URL from server…");
+  const urlController = new AbortController();
+  const urlTimer = setTimeout(() => urlController.abort(), 15_000);
+  let signedUrl: string, uploadToken: string, uploadPath: string;
+  try {
+    const urlRes = await fetch("/api/card-back-signed-url", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ targetUserId: userId, agencyId }),
+      signal: urlController.signal,
+    });
+
+    const text = await urlRes.text();
+    let json: { signedUrl?: string; token?: string; path?: string; error?: string } = {};
+    try { json = text ? JSON.parse(text) : {}; } catch { /* empty */ }
+
+    if (!urlRes.ok) {
+      const serverMsg = json.error ?? text.slice(0, 400);
+      console.error(`[cardBackStorage] signed URL request failed ${urlRes.status}:`, serverMsg);
+      throw new Error(`Gagal mempersiapkan upload: ${serverMsg}`);
+    }
+
+    if (!json.signedUrl || !json.token || !json.path) {
+      throw new Error("Server tidak mengembalikan signed upload URL yang valid.");
+    }
+
+    signedUrl   = json.signedUrl;
+    uploadToken = json.token;
+    uploadPath  = json.path;
+    console.log(`[cardBackStorage] signed upload URL received — path=${uploadPath}`);
+  } finally {
+    clearTimeout(urlTimer);
+  }
+
+  // ── 4. Upload to Storage using signed URL (no RLS check) ───────────────────
+  console.log(`[cardBackStorage] uploading via signed URL — bucket=${BUCKET} path=${uploadPath}`);
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .uploadToSignedUrl(uploadPath, uploadToken, blob, {
+      contentType: "image/jpeg",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error("[cardBackStorage] uploadToSignedUrl error:", uploadError);
+    const msg = uploadError.message ?? String(uploadError);
+    // Bucket existence check
+    if (
+      msg.toLowerCase().includes("not found") ||
+      msg.toLowerCase().includes("bucket") ||
+      msg.includes("The page could not be found") ||
+      msg.includes("does not exist")
+    ) {
+      throw new Error(
+        "Bucket Storage 'card-backs' belum dibuat atau sudah dihapus. " +
+        "Jalankan supabase/card-back-image-migration.sql di Supabase SQL Editor terlebih dahulu.",
+      );
+    }
+    throw new Error(`Upload Storage gagal: ${msg}`);
+  }
+
+  console.log("[cardBackStorage] storage upload OK — generating signed display URL");
+
+  // ── 5. Return a signed URL for immediate display (cross-device safe) ────────
   const signed = await buildSignedUrl(userId);
   if (signed) {
-    console.log("[cardBackStorage] signed URL ready");
+    console.log("[cardBackStorage] signed display URL ready");
     return signed;
   }
 
-  // Fallback: public URL (works if bucket is set to public in Supabase)
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  // Fallback: public URL (works if bucket is public)
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(uploadPath);
   console.log("[cardBackStorage] using public URL fallback:", data.publicUrl);
   return `${data.publicUrl}?t=${Date.now()}`;
 }

@@ -65,7 +65,7 @@ export default function StaffProfileOwnerView() {
     if (!staffId || !currentUser?.agencyId || !file.type.startsWith("image/")) return;
     setCardBackUploading(true);
     try {
-      const url = await uploadCardBack(staffId, file);
+      const url = await uploadCardBack(staffId, file, currentUser.agencyId);
       await saveCardBackUrl(staffId, currentUser.agencyId, url);
       setCardBackUrl(url);
       toast.success(`Gambar belakang kartu ${staff?.displayName ?? "staff"} diperbarui!`);

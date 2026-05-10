@@ -391,7 +391,7 @@ export default function AgentProfileOwnerView() {
     if (!agentId || !agencyId || !file.type.startsWith("image/")) return;
     setCardBackUploading(true);
     try {
-      const url = await uploadCardBack(agentId, file);
+      const url = await uploadCardBack(agentId, file, agencyId);
       await saveCardBackUrl(agentId, agencyId, url);
       setCardBackUrl(url);
       toast.success(`Gambar belakang kartu ${agent?.displayName ?? "agen"} diperbarui!`);
