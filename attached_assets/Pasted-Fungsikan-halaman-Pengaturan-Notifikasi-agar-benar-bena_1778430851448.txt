@@ -1,0 +1,206 @@
+Fungsikan halaman “Pengaturan > Notifikasi” agar benar-benar bekerja sebagai sistem notifikasi internal untuk seluruh agen Temantiket.
+
+Saat owner mengaktifkan atau mengubah pengaturan notifikasi, sistem harus bisa mengirim notifikasi realtime ke halaman agent/mitra terkait.
+
+==================================================
+KONSEP UTAMA
+==================================================
+
+Saat ini toggle notifikasi hanya UI visual.
+Saya ingin semuanya benar-benar aktif dan sinkron dengan sistem agent.
+
+==================================================
+YANG HARUS DIBUAT
+==================================================
+
+Buat sistem notifikasi internal realtime berbasis database + UI.
+
+Notifikasi harus muncul:
+- di dashboard agent
+- navbar agent
+- icon lonceng
+- popup toast
+- panel notifikasi
+- realtime tanpa refresh
+
+==================================================
+TIPE NOTIFIKASI
+==================================================
+
+Aktifkan semua toggle berikut:
+
+1. Pengingat Trip
+- kirim H-7
+- kirim H-3
+- kirim H-1
+- muncul otomatis ke agent terkait
+
+2. Pesan Baru
+- notif saat ada customer chat baru
+- notif saat owner mention agent
+- notif saat ada assignment baru
+
+3. Konfirmasi Pembayaran
+- notif DP masuk
+- notif pelunasan
+- notif pembayaran gagal
+- notif pembayaran pending
+
+4. Laporan Mingguan
+- kirim summary performa agent
+- order selesai
+- pending
+- total fee
+- poin leaderboard
+
+5. Info & Promosi
+- pengumuman owner
+- promo baru
+- update SOP
+- update sistem
+- info maintenance
+
+==================================================
+FLOW OWNER → AGENT
+==================================================
+
+Saat owner:
+- aktifkan toggle
+- kirim pengumuman
+- assign tugas
+- update status
+- edit order
+- reminder staff
+
+Maka otomatis:
+- insert ke database notifications
+- agent terkait langsung menerima notif realtime
+
+==================================================
+DATABASE
+==================================================
+
+Buat tabel jika belum ada:
+
+notifications
+- id
+- user_id
+- title
+- message
+- type
+- category
+- is_read
+- action_url
+- created_at
+
+notification_settings
+- id
+- user_id
+- trip_reminder
+- new_message
+- payment_confirmation
+- weekly_report
+- promo_info
+
+==================================================
+REALTIME
+==================================================
+
+Gunakan:
+- Supabase realtime listener
+atau websocket internal
+
+Notif harus muncul realtime TANPA refresh.
+
+==================================================
+UI AGENT
+==================================================
+
+Tambahkan icon lonceng di navbar agent.
+
+Saat diklik:
+- dropdown notif modern
+- unread badge count
+- mark as read
+- open detail
+- clear notification
+
+==================================================
+TOAST NOTIFICATION
+==================================================
+
+Saat notif masuk:
+munculkan toast kecil modern di kanan atas.
+
+Contoh:
+- “Order baru ditugaskan”
+- “Customer mengirim pesan”
+- “DP customer berhasil”
+- “Reminder trip H-1”
+
+==================================================
+OWNER BROADCAST
+==================================================
+
+Owner bisa:
+- kirim notif ke semua agent
+- kirim ke role tertentu
+- kirim ke staff tertentu
+
+==================================================
+NOTIFICATION PRIORITY
+==================================================
+
+Tambahkan:
+- normal
+- important
+- urgent
+
+Notif urgent:
+- warna merah/orange
+- sticky sampai dibuka
+
+==================================================
+SMART REMINDER
+==================================================
+
+Tambahkan automation:
+- trip reminder otomatis
+- overdue task reminder
+- pending payment reminder
+- inactive agent reminder
+
+==================================================
+MOBILE EXPERIENCE
+==================================================
+
+Notif harus nyaman di HP:
+- smooth
+- responsive
+- ringan
+
+==================================================
+VISUAL STYLE
+==================================================
+
+Gunakan style:
+- clean
+- modern SaaS
+- elegant
+- soft shadow
+- white background
+- subtle animation
+
+==================================================
+FINAL RESULT
+==================================================
+
+Saya ingin sistem notifikasi ini terasa seperti:
+- Slack
+- Linear
+- Discord internal
+- modern CRM
+
+BUKAN sekadar toggle dummy.
+
+Semua toggle HARUS benar-benar bekerja dan sinkron ke dashboard agent realtime.

@@ -1,0 +1,151 @@
+Perbaiki sistem “Server Health (backend)” agar kompatibel dengan deployment Vercel, bukan hanya Replit.
+
+Saat ini status FAIL muncul karena sistem memaksa membaca:
+SUPABASE_SERVICE_ROLE_KEY dari Replit Secrets.
+
+Padahal project production saya menggunakan:
+- Vercel Environment Variables
+- BUKAN Replit Secrets
+
+==================================================
+MASALAH
+==================================================
+
+Saat membuka halaman Status, muncul error:
+
+“SUPABASE_SERVICE_ROLE_KEY tidak ada di Replit Secrets”
+
+dan:
+“Server mengembalikan respons tidak valid (HTTP 404)”
+
+Padahal aplikasi production berjalan di Vercel.
+
+==================================================
+YANG HARUS DIPERBAIKI
+==================================================
+
+Jangan hardcode atau asumsi environment hanya dari Replit.
+
+Health check harus:
+- mendeteksi environment aktif
+- support Vercel
+- support local
+- optional support Replit
+
+==================================================
+UPDATE SISTEM HEALTH CHECK
+==================================================
+
+Ubah flow menjadi:
+
+1. cek process.env
+2. cek environment provider
+3. tampilkan provider aktif:
+   - Vercel
+   - Replit
+   - Localhost
+
+==================================================
+JIKA DI VERCEL
+==================================================
+
+Gunakan:
+- process.env.SUPABASE_URL
+- process.env.SUPABASE_ANON_KEY
+- process.env.SUPABASE_SERVICE_ROLE_KEY
+
+TANPA menyebut:
+“Replit Secrets”
+
+==================================================
+JIKA ENV ADA
+==================================================
+
+Status harus:
+✅ OK
+
+Contoh:
+“Supabase service role terdeteksi di Vercel Environment Variables”
+
+==================================================
+JIKA ENV TIDAK ADA
+==================================================
+
+Baru tampilkan:
+❌ Missing environment variable
+
+Dengan detail:
+- nama variable
+- environment aktif
+
+==================================================
+PERBAIKI /api/health-check
+==================================================
+
+Endpoint sekarang return 404.
+
+Perbaiki agar:
+- benar-benar exist
+- accessible di Vercel
+- return JSON valid
+- bukan page HTML
+
+==================================================
+EXPECTED RESPONSE
+==================================================
+
+{
+  "ok": true,
+  "provider": "vercel",
+  "supabase": {
+    "url": true,
+    "anon": true,
+    "service_role": true
+  },
+  "database": "connected",
+  "storage": "connected"
+}
+
+==================================================
+UI STATUS PAGE
+==================================================
+
+Update UI:
+
+❌ Hapus:
+“Replit Secrets”
+
+✅ Ganti dengan:
+“Environment Variables”
+
+==================================================
+TAMPILKAN INFO INI
+==================================================
+
+- Deployment Provider
+- Environment aktif
+- API status
+- Database status
+- Storage status
+- Auth status
+- Realtime status
+
+==================================================
+TAMPILAN
+==================================================
+
+Gunakan:
+- clean SaaS diagnostic style
+- white background
+- green success card
+- orange warning
+- red fail
+
+==================================================
+IMPORTANT
+==================================================
+
+Jangan anggap Replit sebagai environment utama.
+Production saya berjalan di Vercel.
+
+Sistem harus provider-agnostic dan otomatis mendeteksi environment aktif.

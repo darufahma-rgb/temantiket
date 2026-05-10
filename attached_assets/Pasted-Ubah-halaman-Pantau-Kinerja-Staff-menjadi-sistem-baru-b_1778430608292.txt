@@ -1,0 +1,333 @@
+Ubah halaman “Pantau Kinerja Staff” menjadi sistem baru bernama:
+
+# MANAJEMEN STAFF
+
+Halaman ini bukan cuma monitoring pasif, tapi harus menjadi pusat kontrol owner untuk mengelola seluruh staff Temantiket secara realtime, interaktif, profesional, dan operasional.
+
+==================================================
+KONSEP UTAMA
+==================================================
+
+Owner harus bisa:
+
+- memantau staff
+- memberi tugas
+- melihat progress
+- edit pekerjaan staff
+- kirim reminder
+- cek performa
+- cek histori kerja
+- cek fee
+- cek aktivitas realtime
+- buka kartu staff
+- buka dokumen kerja
+- komunikasi cepat
+- kontrol operasional
+
+Halaman ini harus terasa seperti:
+- admin operations center
+- lightweight CRM internal
+- task management system
+- internal airline operations dashboard
+
+==================================================
+GANTI TOTAL LAYOUT LAMA
+==================================================
+
+Jangan pakai layout lama yang terlalu kosong.
+
+Buat layout baru:
+- modern
+- informatif
+- interaktif
+- clean
+- elegan
+- ringan
+- banyak actionable control
+- tetap simpel
+
+Background putih natural seperti halaman lain.
+
+==================================================
+TOP SUMMARY BAR
+==================================================
+
+Tambahkan top summary:
+
+- Total Staff Aktif
+- Sedang Bertugas
+- Order Hari Ini
+- Pending Task
+- Staff Online
+- Total Fee Bulan Ini
+- Completion Rate
+- Response Time
+
+==================================================
+STAFF CARD INTERAKTIF
+==================================================
+
+Setiap staff wajib punya expandable interactive card.
+
+Isi card:
+
+- nama
+- role
+- status online/offline
+- terakhir aktif
+- total tugas
+- tugas aktif
+- tugas selesai
+- total fee
+- rating internal
+- badge internal
+- completion rate
+- average response time
+
+==================================================
+OWNER ACTIONS
+==================================================
+
+Owner HARUS bisa langsung:
+
+### QUICK ACTION
+- Assign Tugas
+- Kirim Reminder
+- Chat WhatsApp
+- Lihat Kartu Staff
+- Edit Data
+- Suspend Staff
+- Reset Tugas
+- Upload Catatan
+- Tambah Bonus
+- Tambah Fee
+- Lihat Riwayat
+
+==================================================
+TASK MANAGEMENT
+==================================================
+
+Tambahkan task management realtime.
+
+Owner bisa:
+- membuat task
+- assign ke staff
+- set deadline
+- set prioritas
+- tambah catatan
+- upload file
+- revisi tugas
+- mark urgent
+
+==================================================
+STATUS TASK
+==================================================
+
+Gunakan status:
+
+- Pending
+- Diproses
+- Menunggu Customer
+- Revisi
+- Selesai
+- Bermasalah
+- Overdue
+
+==================================================
+EDIT BERKAS STAFF
+==================================================
+
+Owner bisa membuka dan mengedit langsung:
+
+- caption
+- dokumen
+- note operasional
+- task note
+- itinerary
+- file customer
+- draft WA
+- visa note
+
+Buat editor modal modern.
+
+==================================================
+REMINDER SYSTEM
+==================================================
+
+Owner bisa kirim reminder cepat:
+
+- WhatsApp
+- internal notification
+- popup task alert
+
+Preset:
+- “Segera follow up customer”
+- “Deadline hari ini”
+- “Mohon update progress”
+- “Dokumen belum lengkap”
+- “Harap respon customer”
+
+==================================================
+LIVE ACTIVITY FEED
+==================================================
+
+Tambahkan realtime activity timeline:
+
+Contoh:
+- Nauval menyelesaikan task VOA
+- Fairuz upload dokumen
+- Staff edit itinerary
+- Reminder dikirim
+- Customer dibalas
+- Order selesai
+
+==================================================
+STAFF PROFILE DRAWER
+==================================================
+
+Saat klik staff:
+buka side drawer/detail panel.
+
+Isi:
+- foto/profile
+- kartu staff digital
+- histori tugas
+- histori fee
+- histori aktivitas
+- badge
+- performa bulanan
+- order yang ditangani
+- customer handled
+- dokumen terakhir
+
+==================================================
+BADGE INTERNAL
+==================================================
+
+Badge otomatis:
+
+- Top Executor
+- Fast Response
+- Problem Solver
+- Closing Master
+- Customer Favorite
+- Airport Specialist
+- Visa Specialist
+- Most Reliable
+
+==================================================
+OWNER NOTES
+==================================================
+
+Owner bisa menulis note internal khusus staff.
+
+Contoh:
+- “bagus handling customer”
+- “slow response”
+- “cocok untuk tugas airport”
+- “butuh training”
+
+PRIVATE, tidak terlihat staff.
+
+==================================================
+FILE & DOCUMENT CENTER
+==================================================
+
+Tambahkan:
+- upload dokumen kerja
+- upload SOP
+- upload template
+- upload task file
+
+Per staff.
+
+==================================================
+PERFORMANCE ANALYTICS
+==================================================
+
+Tambahkan analytics:
+
+- completion rate
+- overdue task
+- active hours
+- average completion time
+- fee generated
+- task type handled
+- productivity graph
+
+==================================================
+FILTER & SEARCH
+==================================================
+
+Owner bisa filter:
+- role
+- online/offline
+- active task
+- top performer
+- problematic
+- airport staff
+- visa staff
+
+==================================================
+MOBILE RESPONSIVE
+==================================================
+
+WAJIB responsive dan nyaman dipakai HP.
+
+==================================================
+REALTIME
+==================================================
+
+Semua update:
+- realtime
+- tanpa refresh
+- sinkron database
+- live activity
+
+==================================================
+DATABASE FLOW
+==================================================
+
+Tambahkan struktur jika belum ada:
+
+- staff_tasks
+- staff_activity_logs
+- staff_internal_notes
+- staff_notifications
+- staff_badges
+- staff_performance_metrics
+
+==================================================
+UI STYLE
+==================================================
+
+Gunakan:
+- clean white background
+- soft card
+- elegant spacing
+- subtle shadow
+- premium modern SaaS style
+- informative but not crowded
+
+Inspirasi:
+- Linear
+- Notion
+- Slack admin
+- ClickUp
+- Stripe dashboard
+
+==================================================
+FINAL RESULT
+==================================================
+
+Halaman ini harus membuat owner:
+- mudah mengontrol operasional
+- mudah memantau staff
+- cepat mengambil keputusan
+- mudah memberi reminder
+- mudah cek progress
+- mudah evaluasi staff
+
+Dan terasa seperti:
+“real internal management system”
+BUKAN sekadar halaman statistik biasa.

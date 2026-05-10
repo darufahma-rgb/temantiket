@@ -5,6 +5,8 @@ import {
   ArrowLeft, Trophy, Users, ShoppingBag, TrendingUp,
   Wallet, CheckCircle, Clock, UserCircle, ExternalLink,
   Camera, RefreshCw, Loader2, Zap, Star,
+  MapPin, Truck, GraduationCap, Activity, Calendar,
+  Banknote, ClipboardList, CheckCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
@@ -19,29 +21,53 @@ import type { MissionSubmission } from "@/features/missions/types";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, type OrderType } from "@/features/orders/ordersRepo";
 import { fmtIDR, agentFeeFromMeta } from "@/lib/profit";
-import { pullWalletTxs, walletBalance, type WalletTransaction } from "@/lib/agentWallet";
+import { pullWalletTxs, type WalletTransaction } from "@/lib/agentWallet";
 import { uploadAvatar, savePhotoUrl, loadPhotoUrl } from "@/lib/avatarStorage";
 import { uploadCardBack, saveCardBackUrl, loadCardBackUrl } from "@/lib/cardBackStorage";
 import { supabase } from "@/lib/supabase";
 import { AgentCard } from "@/components/AgentCard";
+import { cn } from "@/lib/utils";
+
+// ── Field task type config ────────────────────────────────────────────────────
+type FieldTaskType = "voa" | "pelaksana" | "kurir";
+
+interface FieldTask {
+  orderId:    string;
+  orderTitle: string;
+  orderType:  string;
+  taskType:   FieldTaskType;
+  fee:        number;
+  credited:   boolean;
+  clientName: string;
+  date:       string;
+}
+
+const FIELD_CFG: Record<FieldTaskType, {
+  emoji: string; label: string; shortLabel: string;
+  badgeCls: string; amtCls: string; iconCls: string; bgCls: string;
+}> = {
+  voa:       { emoji: "🛂", label: "Agent Lapangan VOA",  shortLabel: "VOA",       badgeCls: "bg-indigo-100 text-indigo-700", amtCls: "text-indigo-700", iconCls: "text-indigo-500", bgCls: "bg-indigo-50 border-indigo-100" },
+  pelaksana: { emoji: "🎓", label: "Pelaksana Visa",      shortLabel: "Pelaksana", badgeCls: "bg-purple-100 text-purple-700", amtCls: "text-purple-700", iconCls: "text-purple-500", bgCls: "bg-purple-50 border-purple-100" },
+  kurir:     { emoji: "🚗", label: "Kurir Setoran",       shortLabel: "Kurir",     badgeCls: "bg-amber-100 text-amber-700",   amtCls: "text-amber-700",  iconCls: "text-amber-500",  bgCls: "bg-amber-50 border-amber-100"   },
+};
 
 export default function AgentProfile() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const { orders, fetchOrders } = useOrdersStore();
   const { clients, fetchClients } = useClientsStore();
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef    = useRef<HTMLInputElement>(null);
   const cardBackInputRef = useRef<HTMLInputElement>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [photoUploading, setPhotoUploading] = useState(false);
-  const [cardBackUrl, setCardBackUrl] = useState<string | null>(null);
+  const [photoUrl,          setPhotoUrl]          = useState<string | null>(null);
+  const [photoUploading,    setPhotoUploading]    = useState(false);
+  const [cardBackUrl,       setCardBackUrl]       = useState<string | null>(null);
   const [cardBackUploading, setCardBackUploading] = useState(false);
-  const [joinedAt, setJoinedAt] = useState<string | null>(null);
+  const [joinedAt,          setJoinedAt]          = useState<string | null>(null);
 
-  const [points, setPoints] = useState<AgentPoint[]>([]);
+  const [points,      setPoints]      = useState<AgentPoint[]>([]);
   const [missionSubs, setMissionSubs] = useState<MissionSubmission[]>([]);
-  const [walletTxs, setWalletTxs] = useState<WalletTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [walletTxs,   setWalletTxs]   = useState<WalletTransaction[]>([]);
+  const [loading,     setLoading]     = useState(true);
 
   const refreshMissions = useCallback(async () => {
     if (!user?.agencyId || !user?.id) return;
@@ -63,7 +89,6 @@ export default function AgentProfile() {
       await refreshMissions();
       setLoading(false);
     })();
-    // Fetch agent join date from agency_members
     if (user?.id && user?.agencyId && supabase) {
       void supabase
         .from("agency_members")
@@ -77,13 +102,11 @@ export default function AgentProfile() {
     }
   }, [fetchOrders, fetchClients, clients.length, user?.agencyId, user?.id, refreshMissions]);
 
-  // Realtime: auto-refresh mission points when admin approves / rejects
   useEffect(() => {
     const unsub = onMissionsChanged(() => { void refreshMissions(); });
     return unsub;
   }, [refreshMissions]);
 
-  // Load photo from Supabase (with localStorage fallback)
   useEffect(() => {
     if (!user?.id) return;
     const localKey = `igh.profile.photo.${user.id}`;
@@ -91,17 +114,12 @@ export default function AgentProfile() {
       const local = localStorage.getItem(localKey);
       if (local) setPhotoUrl(local);
     } catch { /* ignore */ }
-    void loadPhotoUrl(user.id).then((url) => {
-      if (url) setPhotoUrl(url);
-    });
+    void loadPhotoUrl(user.id).then((url) => { if (url) setPhotoUrl(url); });
   }, [user?.id]);
 
-  // Load card back image
   useEffect(() => {
     if (!user?.id || !user?.agencyId) return;
-    void loadCardBackUrl(user.id, user.agencyId).then((url) => {
-      if (url) setCardBackUrl(url);
-    });
+    void loadCardBackUrl(user.id, user.agencyId).then((url) => { if (url) setCardBackUrl(url); });
   }, [user?.id, user?.agencyId]);
 
   const handleCardBackFile = async (file: File) => {
@@ -122,14 +140,12 @@ export default function AgentProfile() {
   };
 
   const handlePhotoFile = async (file: File) => {
-    if (!user?.id) return;
-    if (!file.type.startsWith("image/")) { return; }
+    if (!user?.id || !file.type.startsWith("image/")) return;
     setPhotoUploading(true);
     try {
       const url = await uploadAvatar(user.id, file);
       await savePhotoUrl(user.id, url);
       setPhotoUrl(url);
-      // Update localStorage cache too
       try { localStorage.setItem(`igh.profile.photo.${user.id}`, url); } catch { /* ignore */ }
       const { toast } = await import("sonner");
       toast.success("Foto profil diperbarui!");
@@ -141,6 +157,7 @@ export default function AgentProfile() {
     }
   };
 
+  // ── Sales orders (created by this agent) ─────────────────────────────────
   const myOrders = useMemo(
     () => orders.filter((o) => o.createdByAgent === user?.id),
     [orders, user?.id],
@@ -149,9 +166,106 @@ export default function AgentProfile() {
     () => clients.filter((c) => c.createdByAgent === user?.id),
     [clients, user?.id],
   );
+  const clientMap = useMemo(
+    () => new Map(clients.map((c) => [c.id, c])),
+    [clients],
+  );
+
+  // ── Field task orders: orders where agent is assigned as field worker ────
+  // Covers: VOA agent lapangan, pelaksana visa pelajar, kurir setoran
+  const fieldTaskOrders = useMemo((): FieldTask[] => {
+    if (!user?.id) return [];
+    const uid = user.id;
+    const result: FieldTask[] = [];
+
+    for (const o of orders) {
+      const meta = (o.metadata ?? {}) as Record<string, unknown>;
+
+      if (meta.voaFieldAgentId === uid) {
+        result.push({
+          orderId:    o.id,
+          orderTitle: o.title ?? "Order VOA",
+          orderType:  o.type,
+          taskType:   "voa",
+          fee:        Number(meta.voaAgentFee ?? 0),
+          credited:   !!(meta.voaFeeCredited as boolean | undefined),
+          clientName: clientMap.get((o as Record<string, unknown>).clientId as string ?? "")?.name
+                      ?? (meta.clientName as string | undefined)
+                      ?? "—",
+          date:       String(o.createdAt ?? ""),
+        });
+      } else if (meta.pelaksanaId === uid) {
+        result.push({
+          orderId:    o.id,
+          orderTitle: o.title ?? "Visa Pelajar",
+          orderType:  o.type,
+          taskType:   "pelaksana",
+          fee:        Number(meta.pelaksanaFee ?? 200_000),
+          credited:   !!(meta.pelaksanaFeeCredited as boolean | undefined),
+          clientName: clientMap.get((o as Record<string, unknown>).clientId as string ?? "")?.name
+                      ?? (meta.clientName as string | undefined)
+                      ?? "—",
+          date:       String(o.createdAt ?? ""),
+        });
+      } else if (meta.kurirAgentId === uid) {
+        result.push({
+          orderId:    o.id,
+          orderTitle: o.title ?? "Kurir Setoran",
+          orderType:  o.type,
+          taskType:   "kurir",
+          fee:        Number(meta.kurirFee ?? 0),
+          credited:   !!(meta.kurirFeeCredited as boolean | undefined),
+          clientName: clientMap.get((o as Record<string, unknown>).clientId as string ?? "")?.name
+                      ?? (meta.clientName as string | undefined)
+                      ?? "—",
+          date:       String(o.createdAt ?? ""),
+        });
+      }
+    }
+
+    return result.sort((a, b) => b.date.localeCompare(a.date));
+  }, [orders, user?.id, clientMap]);
+
+  // ── Field stats: aggregated breakdown of field task earnings ──────────────
+  const fieldStats = useMemo(() => {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear  = now.getFullYear();
+
+    let totalFee     = 0;
+    let pendingFee   = 0;
+    let monthlyFee   = 0;
+    let voaCount     = 0;
+    let pelaksanaCount = 0;
+    let kurirCount   = 0;
+    let lastTaskDate: string | null = null;
+
+    for (const t of fieldTaskOrders) {
+      totalFee += t.fee;
+      if (!t.credited) pendingFee += t.fee;
+
+      const d = new Date(t.date);
+      if (!isNaN(d.getTime()) && d.getFullYear() === thisYear && d.getMonth() === thisMonth) {
+        monthlyFee += t.fee;
+      }
+
+      if (!lastTaskDate || t.date > lastTaskDate) lastTaskDate = t.date;
+      if (t.taskType === "voa")       voaCount++;
+      else if (t.taskType === "pelaksana") pelaksanaCount++;
+      else if (t.taskType === "kurir")     kurirCount++;
+    }
+
+    return {
+      totalFee, pendingFee, monthlyFee,
+      paidFee: totalFee - pendingFee,
+      totalTasks: fieldTaskOrders.length,
+      voaCount, pelaksanaCount, kurirCount,
+      lastTaskDate,
+    };
+  }, [fieldTaskOrders]);
 
   const myPoints = useMemo(() => {
-    const orderPts = user?.id ? (sumPointsByAgent(points).get(user.id) ?? 0) : 0;
+    const orderPts   = user?.id ? (sumPointsByAgent(points).get(user.id)          ?? 0) : 0;
     const missionPts = user?.id ? (sumMissionPointsByAgent(missionSubs).get(user.id) ?? 0) : 0;
     return orderPts + missionPts;
   }, [points, missionSubs, user?.id]);
@@ -165,31 +279,50 @@ export default function AgentProfile() {
     () => myOrders.filter((o) => o.status === "Completed"),
     [myOrders],
   );
+
+  // ── Fee stats: sales + field combined — single source of truth ────────────
+  //
+  // salesTotal   = komisi dari order yang agent buat (agentFee di metadata)
+  // fieldTotal   = semua fee lapangan dari penugasan (credited + pending)
+  // fieldPending = fee lapangan yang belum dikreditkan ke wallet
+  // total        = total akumulasi semua pendapatan agent (sales + lapangan)
+  // pending      = yang belum cair: sales belum Completed + lapangan belum dikreditkan
   const feeStats = useMemo(() => {
-    const salesTotal = myOrders.reduce(
-      (s, o) => s + agentFeeFromMeta(o), 0,
-    );
-    const salesPaid = myOrders
+    const salesTotal = myOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0);
+    const salesPaid  = myOrders
       .filter((o) => o.status === "Paid" || o.status === "Completed")
       .reduce((s, o) => s + agentFeeFromMeta(o), 0);
-    // Field commission fees credited to wallet (VOA lapangan + pelaksana visa + kurir)
+    const salesPending = salesTotal - salesPaid;
+
+    const { totalFee: fieldTotal, paidFee: fieldPaid, pendingFee: fieldPending } = fieldStats;
+
+    // voaFieldTotal (wallet-based) — kept for backward-compat display
     const voaFieldTotal = walletTxs
       .filter((t) => t.type === "voa_agent_fee" || t.type === "kurir_fee" || t.type === "pelaksana_fee")
       .reduce((s, t) => s + t.amountIDR, 0);
-    const total = salesTotal + voaFieldTotal;
-    const paid  = salesPaid  + voaFieldTotal; // wallet credits are always "paid"
-    return { total, paid, pending: salesTotal - salesPaid, salesTotal, voaFieldTotal };
-  }, [myOrders, walletTxs]);
 
+    const total   = salesTotal + fieldTotal;
+    const paid    = salesPaid  + fieldPaid;
+    const pending = salesPending + fieldPending;
+
+    return {
+      total, paid, pending,
+      salesTotal, salesPaid, salesPending,
+      fieldTotal, fieldPaid, fieldPending,
+      voaFieldTotal,
+    };
+  }, [myOrders, walletTxs, fieldStats]);
+
+  const payoutTxs = useMemo(
+    () => walletTxs.filter((t) => t.type === "payout"),
+    [walletTxs],
+  );
+
+  // fieldCommTxs: wallet-based history (for payout correlation)
   const fieldCommTxs = useMemo(
     () => [...walletTxs]
       .filter((t) => t.type === "voa_agent_fee" || t.type === "pelaksana_fee" || t.type === "kurir_fee")
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [walletTxs],
-  );
-
-  const payoutTxs = useMemo(
-    () => walletTxs.filter((t) => t.type === "payout"),
     [walletTxs],
   );
 
@@ -216,6 +349,21 @@ export default function AgentProfile() {
     return months.map((m) => ({ ...m, pct: m.count / max }));
   }, [myOrders]);
 
+  // Helpers
+  const fmtDate = (iso: string) => {
+    try {
+      return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(iso));
+    } catch { return iso.slice(0, 10); }
+  };
+  const fmtMonthYear = (iso: string) => {
+    try {
+      return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(new Date(iso));
+    } catch { return iso.slice(0, 7); }
+  };
+
+  const hasAnyActivity = myOrders.length > 0 || fieldTaskOrders.length > 0 || fieldCommTxs.length > 0;
+  const hasFieldActivity = fieldTaskOrders.length > 0 || fieldCommTxs.length > 0;
+
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
       <button
@@ -233,7 +381,6 @@ export default function AgentProfile() {
         className={`rounded-3xl bg-gradient-to-br ${tier.gradient} p-5 md:p-6 text-white shadow-lg`}
       >
         <div className="flex items-start gap-4">
-          {/* Avatar with upload overlay */}
           <button
             type="button"
             onClick={() => photoInputRef.current?.click()}
@@ -279,6 +426,11 @@ export default function AgentProfile() {
               <span className="text-[11px] opacity-80">
                 {loading ? "…" : myPoints.toLocaleString("id-ID")} poin
               </span>
+              {hasFieldActivity && (
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/15 backdrop-blur flex items-center gap-1">
+                  <MapPin className="h-2.5 w-2.5" /> Agent Lapangan
+                </span>
+              )}
             </div>
             <h1 className="text-xl font-extrabold mt-1 leading-tight">{user?.displayName ?? "Mitra"}</h1>
             <p className="text-[12px] opacity-90 truncate">{user?.email}</p>
@@ -311,7 +463,6 @@ export default function AgentProfile() {
           ))}
         </div>
 
-        {/* Action buttons — full-width 2-col grid */}
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button
             onClick={() => navigate("/settings")}
@@ -330,13 +481,33 @@ export default function AgentProfile() {
         </div>
       </motion.div>
 
-      {/* ── Stats Grid ── */}
+      {/* ── Stats Grid (4 cards) ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { icon: ShoppingBag, label: "Total Order",   value: String(myOrders.length),             sub: `${completedOrders.length} selesai`,  color: "text-violet-600", bg: "bg-violet-50 border-violet-100" },
-          { icon: Users,       label: "Total Klien",   value: String(myClients.length),             sub: "klien aktif",                        color: "text-sky-600",    bg: "bg-sky-50 border-sky-100" },
-          { icon: TrendingUp,  label: "Total Komisi",   value: fmtIDR(feeStats.total),               sub: "akumulasi fee komisi",               color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
-          { icon: Trophy,      label: "Total Poin",    value: loading ? "…" : String(myPoints),     sub: `Tier ${tier.label}`,                 color: "text-amber-600",  bg: "bg-amber-50 border-amber-100" },
+          {
+            icon: ShoppingBag, label: "Total Order",
+            value: String(myOrders.length),
+            sub: `${completedOrders.length} selesai`,
+            color: "text-violet-600", bg: "bg-violet-50 border-violet-100",
+          },
+          {
+            icon: Users, label: "Total Klien",
+            value: String(myClients.length),
+            sub: "klien aktif",
+            color: "text-sky-600", bg: "bg-sky-50 border-sky-100",
+          },
+          {
+            icon: TrendingUp, label: "Total Komisi",
+            value: fmtIDR(feeStats.total),
+            sub: "sales + lapangan",
+            color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100",
+          },
+          {
+            icon: Trophy, label: "Total Poin",
+            value: loading ? "…" : String(myPoints),
+            sub: `Tier ${tier.label}`,
+            color: "text-amber-600", bg: "bg-amber-50 border-amber-100",
+          },
         ].map((s) => (
           <div key={s.label} className={`rounded-2xl border p-3 ${s.bg}`}>
             <div className="flex items-center justify-between mb-1.5">
@@ -349,6 +520,94 @@ export default function AgentProfile() {
         ))}
       </div>
 
+      {/* ── Pendapatan Lapangan — summary cards (shown when agent has field activity) ── */}
+      {hasFieldActivity && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.05 }}
+          className="rounded-2xl border border-indigo-100 bg-white overflow-hidden"
+        >
+          <div className="px-4 py-3 border-b border-indigo-100 bg-indigo-50 flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-indigo-500 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-indigo-900">Pendapatan Lapangan</p>
+              <p className="text-[11px] text-indigo-600/70">Fee dari tugas VOA · Pelaksana Visa · Kurir Setoran</p>
+            </div>
+          </div>
+
+          {/* 2×2 summary card grid */}
+          <div className="grid grid-cols-2 gap-px bg-slate-100">
+            {[
+              {
+                icon: Banknote,
+                label: "Total Fee Lapangan",
+                value: fmtIDR(fieldStats.totalFee),
+                sub: `${fieldStats.totalTasks} penugasan`,
+                cls: "text-indigo-700",
+              },
+              {
+                icon: ClipboardList,
+                label: "Tugas Selesai",
+                value: String(fieldTaskOrders.filter((t) => t.credited).length),
+                sub: `dari ${fieldStats.totalTasks} total`,
+                cls: "text-emerald-600",
+              },
+              {
+                icon: Calendar,
+                label: "Penghasilan Bulan Ini",
+                value: fmtIDR(fieldStats.monthlyFee),
+                sub: fieldStats.lastTaskDate ? fmtMonthYear(new Date().toISOString()) : "—",
+                cls: "text-sky-700",
+              },
+              {
+                icon: Activity,
+                label: "Terakhir Bertugas",
+                value: fieldStats.lastTaskDate ? fmtDate(fieldStats.lastTaskDate) : "—",
+                sub: fieldStats.lastTaskDate ? "tugas terbaru" : "belum ada",
+                cls: "text-slate-700",
+              },
+            ].map((card) => (
+              <div key={card.label} className="bg-white p-3 flex items-start gap-2">
+                <card.icon className={cn("h-4 w-4 shrink-0 mt-0.5", card.cls)} />
+                <div className="min-w-0">
+                  <div className="text-[10px] text-muted-foreground font-medium leading-tight">{card.label}</div>
+                  <div className={cn("text-sm font-extrabold font-mono mt-0.5", card.cls)}>{card.value}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">{card.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Breakdown by type */}
+          <div className="px-4 py-3 border-t border-indigo-100 grid grid-cols-3 gap-2">
+            {([
+              { key: "voa",       count: fieldStats.voaCount,       Icon: MapPin,       label: "VOA",       cls: "text-indigo-600 bg-indigo-50" },
+              { key: "pelaksana", count: fieldStats.pelaksanaCount, Icon: GraduationCap, label: "Pelaksana", cls: "text-purple-600 bg-purple-50" },
+              { key: "kurir",     count: fieldStats.kurirCount,     Icon: Truck,         label: "Kurir",     cls: "text-amber-600 bg-amber-50"   },
+            ] as const).map(({ key, count, Icon, label, cls }) => (
+              <div key={key} className={cn("rounded-xl p-2.5 flex items-center gap-2 border", cls, "border-transparent")}>
+                <Icon className={cn("h-3.5 w-3.5 shrink-0", cls.split(" ")[0])} />
+                <div>
+                  <div className="text-[11px] font-extrabold font-mono">{count}</div>
+                  <div className="text-[9px] text-muted-foreground">{label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pending fee alert */}
+          {fieldStats.pendingFee > 0 && (
+            <div className="px-4 py-2.5 border-t border-amber-100 bg-amber-50 flex items-center gap-2">
+              <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+              <p className="text-[11px] text-amber-700">
+                <span className="font-semibold">{fmtIDR(fieldStats.pendingFee)}</span> fee lapangan belum dikreditkan ke wallet — akan cair saat admin selesaikan order.
+              </p>
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* ── Agent Card ── */}
       {user?.id && (
         <motion.div
@@ -357,11 +616,9 @@ export default function AgentProfile() {
           transition={{ duration: 0.35, delay: 0.08 }}
           className="rounded-2xl border border-slate-100 bg-white overflow-hidden"
         >
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-800">Kartu Agen Digital</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">ID card resmi lo sebagai Mitra Temantiket</p>
-            </div>
+          <div className="px-4 py-3 border-b border-slate-100">
+            <p className="text-sm font-semibold text-slate-800">Kartu Agen Digital</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">ID card resmi lo sebagai Mitra Temantiket</p>
           </div>
           <div className="p-5 flex flex-col items-center gap-4">
             <AgentCard
@@ -371,7 +628,6 @@ export default function AgentProfile() {
               agencyName={user.agencyName}
               backImageUrl={cardBackUrl}
             />
-            {/* Upload gambar belakang kartu */}
             <div className="w-full max-w-[320px]">
               <input
                 ref={cardBackInputRef}
@@ -390,15 +646,9 @@ export default function AgentProfile() {
                 className="w-full flex items-center justify-center gap-2 h-9 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-500 text-[12px] font-semibold transition-all disabled:opacity-60 active:scale-[0.98]"
               >
                 {cardBackUploading ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Mengupload…
-                  </>
+                  <><Loader2 className="h-3.5 w-3.5 animate-spin" />Mengupload…</>
                 ) : (
-                  <>
-                    <Camera className="h-3.5 w-3.5" />
-                    {cardBackUrl ? "Ganti Gambar Belakang Kartu" : "Upload Gambar Belakang Kartu"}
-                  </>
+                  <><Camera className="h-3.5 w-3.5" />{cardBackUrl ? "Ganti Gambar Belakang Kartu" : "Upload Gambar Belakang Kartu"}</>
                 )}
               </button>
               {cardBackUrl && (
@@ -417,137 +667,196 @@ export default function AgentProfile() {
           <Wallet className="h-4 w-4 text-blue-500" />
           <div>
             <p className="text-sm font-semibold">Akumulasi Fee Komisi</p>
-            <p className="text-[11px] text-muted-foreground">Total fee yang sudah lo kumpulkan dari semua order</p>
+            <p className="text-[11px] text-muted-foreground">
+              Total fee dari semua aktivitas — sales & lapangan
+            </p>
           </div>
         </div>
         <div className="p-4 space-y-3">
           <div className="text-center py-1">
             <div className="text-xl md:text-3xl font-extrabold font-mono">{fmtIDR(feeStats.total)}</div>
             <div className="text-[11px] text-muted-foreground mt-0.5">
-              total akumulasi · sales{feeStats.voaFieldTotal > 0 ? " + lapangan VOA" : ""}
+              total akumulasi · sales{feeStats.fieldTotal > 0 ? " + lapangan" : ""}
             </div>
           </div>
 
-          {/* Breakdown: sales komisi vs VOA field */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Breakdown 3 cols */}
+          <div className={cn("grid gap-2", feeStats.fieldTotal > 0 ? "grid-cols-3" : "grid-cols-2")}>
             <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 flex items-start gap-2">
               <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
               <div>
                 <div className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wide">Komisi Sales</div>
                 <div className="text-sm font-bold font-mono text-emerald-700">{fmtIDR(feeStats.salesTotal)}</div>
-                <div className="text-[10px] text-muted-foreground">dari order yang lo buat</div>
+                <div className="text-[10px] text-muted-foreground">dari order dibuat</div>
               </div>
             </div>
+            {feeStats.fieldTotal > 0 && (
+              <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 flex items-start gap-2">
+                <MapPin className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-[10px] text-indigo-700 font-semibold uppercase tracking-wide">Fee Lapangan</div>
+                  <div className="text-sm font-bold font-mono text-indigo-700">{fmtIDR(feeStats.fieldTotal)}</div>
+                  <div className="text-[10px] text-muted-foreground">VOA · visa · kurir</div>
+                </div>
+              </div>
+            )}
             <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 flex items-start gap-2">
               <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <div className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide">Belum Cair</div>
                 <div className="text-sm font-bold font-mono text-amber-700">{fmtIDR(feeStats.pending)}</div>
-                <div className="text-[10px] text-muted-foreground">order belum Completed</div>
+                <div className="text-[10px] text-muted-foreground">pending semua sumber</div>
               </div>
             </div>
           </div>
 
-          {/* Field commission row — VOA / Pelaksana Visa / Kurir */}
-          {feeStats.voaFieldTotal > 0 && (
-            <div className="rounded-xl bg-purple-50 border border-purple-100 p-3 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-base">🗂️</span>
-                <div>
-                  <div className="text-[10px] text-purple-700 font-semibold uppercase tracking-wide">
-                    Fee Komisi Lapangan
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">VOA / Pelaksana Visa / Kurir · dikreditkan ke wallet</div>
-                </div>
-              </div>
-              <div className="text-sm font-extrabold font-mono text-purple-700 shrink-0">
-                {fmtIDR(feeStats.voaFieldTotal)}
-              </div>
-            </div>
-          )}
-
-          {feeStats.total === 0 && (
+          {!hasAnyActivity && (
             <div className="flex items-start gap-2 rounded-xl bg-muted/30 p-3">
               <Zap className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Belum ada fee tercatat. Fee komisi akan otomatis muncul saat order yang lo buat di-Completed oleh owner.
+                Belum ada aktivitas tercatat. Fee komisi akan muncul saat ada order penjualan atau saat admin menugaskan lo sebagai agent lapangan.
               </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Komisi Lapangan ── */}
-      {fieldCommTxs.length > 0 && (() => {
-        const FIELD_CFG: Record<string, { emoji: string; label: string; badgeCls: string; amtCls: string }> = {
-          voa_agent_fee: { emoji: "🛂", label: "Agent Lapangan VOA", badgeCls: "bg-indigo-100 text-indigo-700", amtCls: "text-indigo-700" },
-          pelaksana_fee: { emoji: "🎓", label: "Pelaksana Visa",      badgeCls: "bg-purple-100 text-purple-700", amtCls: "text-purple-700" },
-          kurir_fee:     { emoji: "🚗", label: "Kurir Setoran",       badgeCls: "bg-amber-100 text-amber-700",   amtCls: "text-amber-700" },
-        };
-        return (
-          <div className="rounded-2xl border bg-white overflow-hidden">
-            <div className="px-4 py-3 border-b flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-base">🗂️</span>
-                <div>
-                  <p className="text-sm font-semibold">Komisi Lapangan</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    Riwayat penugasan lapangan lo: VOA · Pelaksana Visa · Kurir
-                  </p>
-                </div>
+      {/* ── Aktivitas Lapangan — order-based field task history ─────────────── */}
+      {fieldTaskOrders.length > 0 && (
+        <div className="rounded-2xl border bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-indigo-500" />
+              <div>
+                <p className="text-sm font-semibold">Aktivitas Lapangan</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Riwayat penugasan lapangan — VOA · Pelaksana Visa · Kurir
+                </p>
               </div>
-              <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
-                {fieldCommTxs.length} tugas
-              </span>
             </div>
-            <div className="divide-y">
-              {fieldCommTxs.map((tx) => {
-                const cfg = FIELD_CFG[tx.type] ?? FIELD_CFG.voa_agent_fee;
-                const fmtTxDate = (() => {
-                  try {
-                    return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(tx.createdAt));
-                  } catch { return tx.createdAt.slice(0, 10); }
-                })();
-                const isPaidOut = payoutTxs.some((pt) => pt.createdAt > tx.createdAt);
-                return (
-                  <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className="h-9 w-9 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-base shrink-0">
-                      {cfg.emoji}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold truncate text-foreground">{tx.description}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${cfg.badgeCls}`}>
-                          {cfg.label}
-                        </span>
-                        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${isPaidOut ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500"}`}>
-                          {isPaidOut ? "Sudah Dicairkan" : "Belum Dicairkan"}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">{fmtTxDate}</span>
-                      </div>
-                    </div>
-                    <p className={`text-[13px] font-extrabold font-mono shrink-0 ${cfg.amtCls}`}>
-                      +{fmtIDR(tx.amountIDR)}
-                    </p>
-                  </div>
-                );
-              })}
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">
+                {fieldTaskOrders.length} tugas
+              </span>
+              {fieldStats.pendingFee > 0 && (
+                <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+                  {fieldTaskOrders.filter((t) => !t.credited).length} pending
+                </span>
+              )}
             </div>
           </div>
-        );
-      })()}
+          <div className="divide-y">
+            {fieldTaskOrders.map((task) => {
+              const cfg = FIELD_CFG[task.taskType];
+              const isPaidOut = payoutTxs.some((pt) => pt.createdAt > task.date);
+              return (
+                <div key={`${task.orderId}-${task.taskType}`} className="flex items-start gap-3 px-4 py-3">
+                  <div className={cn(
+                    "h-10 w-10 rounded-xl border flex items-center justify-center text-base shrink-0 mt-0.5",
+                    cfg.bgCls,
+                  )}>
+                    {cfg.emoji}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-semibold truncate text-foreground">
+                      {task.clientName !== "—" ? task.clientName : task.orderTitle}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full", cfg.badgeCls)}>
+                        {cfg.label}
+                      </span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                        {ORDER_TYPE_EMOJI[task.orderType as OrderType] ?? "📦"} {ORDER_TYPE_LABEL[task.orderType as OrderType] ?? task.orderType}
+                      </span>
+                      <span className={cn(
+                        "text-[9px] font-semibold px-1.5 py-0.5 rounded-full",
+                        task.credited
+                          ? (isPaidOut ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700")
+                          : "bg-slate-100 text-slate-500",
+                      )}>
+                        {task.credited ? (isPaidOut ? "Sudah Dicairkan" : "✓ Dikreditkan") : "Belum Dikreditkan"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">{fmtDate(task.date)}</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className={cn("text-[13px] font-extrabold font-mono", cfg.amtCls)}>
+                      +{fmtIDR(task.fee)}
+                    </p>
+                    {!task.credited && (
+                      <p className="text-[9px] text-muted-foreground mt-0.5">pending</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Komisi Lapangan (wallet-based) — hanya tampil jika ada wallet tx ── */}
+      {fieldCommTxs.length > 0 && fieldTaskOrders.length === 0 && (
+        <div className="rounded-2xl border bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🗂️</span>
+              <div>
+                <p className="text-sm font-semibold">Komisi Lapangan (Wallet)</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Riwayat kredit wallet dari penugasan lapangan
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+              {fieldCommTxs.length} kredit
+            </span>
+          </div>
+          <div className="divide-y">
+            {fieldCommTxs.map((tx) => {
+              const typeMap: Record<string, FieldTaskType> = {
+                voa_agent_fee:  "voa",
+                pelaksana_fee:  "pelaksana",
+                kurir_fee:      "kurir",
+              };
+              const taskType = typeMap[tx.type] ?? "voa";
+              const cfg = FIELD_CFG[taskType];
+              const isPaidOut = payoutTxs.some((pt) => pt.createdAt > tx.createdAt);
+              return (
+                <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className={cn("h-9 w-9 rounded-xl border flex items-center justify-center text-base shrink-0", cfg.bgCls)}>
+                    {cfg.emoji}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-semibold truncate text-foreground">{tx.description}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full", cfg.badgeCls)}>
+                        {cfg.label}
+                      </span>
+                      <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded-full", isPaidOut ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700")}>
+                        {isPaidOut ? "Sudah Dicairkan" : "✓ Dikreditkan"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">{fmtDate(tx.createdAt)}</span>
+                    </div>
+                  </div>
+                  <p className={cn("text-[13px] font-extrabold font-mono shrink-0", cfg.amtCls)}>
+                    +{fmtIDR(tx.amountIDR)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Portofolio Produk ── */}
-      <div className="rounded-2xl border bg-white overflow-hidden">
-        <div className="px-4 py-3 border-b">
-          <p className="text-sm font-semibold">Portofolio Produk</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Distribusi order lo berdasarkan tipe produk</p>
-        </div>
-        <div className="p-4 space-y-3">
-          {myOrders.length === 0 ? (
-            <p className="text-center text-[11px] text-muted-foreground py-4 italic">Belum ada order.</p>
-          ) : (
-            portfolio.map(({ type, count, pct }) => (
+      {myOrders.length > 0 && (
+        <div className="rounded-2xl border bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b">
+            <p className="text-sm font-semibold">Portofolio Produk</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Distribusi order lo berdasarkan tipe produk</p>
+          </div>
+          <div className="p-4 space-y-3">
+            {portfolio.map(({ type, count, pct }) => (
               <div key={type}>
                 <div className="flex items-center justify-between text-[12px] mb-1">
                   <span className="font-medium">{ORDER_TYPE_EMOJI[type]} {ORDER_TYPE_LABEL[type]}</span>
@@ -562,39 +871,41 @@ export default function AgentProfile() {
                   />
                 </div>
               </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* ── Performa 6 Bulan ── */}
-      <div className="rounded-2xl border bg-white overflow-hidden">
-        <div className="px-4 py-3 border-b">
-          <p className="text-sm font-semibold">Performa 6 Bulan Terakhir</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Jumlah order yang dibuat per bulan</p>
-        </div>
-        <div className="p-4">
-          <div className="flex items-end gap-2" style={{ height: "96px" }}>
-            {monthly.map((m) => (
-              <div key={`${m.year}-${m.month}`} className="flex-1 flex flex-col items-center gap-1 h-full">
-                <div className="flex-1 w-full flex items-end">
-                  <motion.div
-                    className="w-full rounded-t-md bg-gradient-to-t from-blue-600 to-blue-400"
-                    initial={{ height: 0 }}
-                    animate={{ height: `${Math.max(4, Math.round(m.pct * 100))}%` }}
-                    transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
-                    title={`${m.count} order`}
-                  />
-                </div>
-                {m.count > 0 && (
-                  <span className="text-[9px] font-mono font-bold text-blue-600">{m.count}</span>
-                )}
-                <span className="text-[10px] text-muted-foreground leading-none">{m.label}</span>
-              </div>
             ))}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Performa 6 Bulan ── */}
+      {myOrders.length > 0 && (
+        <div className="rounded-2xl border bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b">
+            <p className="text-sm font-semibold">Performa 6 Bulan Terakhir</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Jumlah order yang dibuat per bulan</p>
+          </div>
+          <div className="p-4">
+            <div className="flex items-end gap-2" style={{ height: "96px" }}>
+              {monthly.map((m) => (
+                <div key={`${m.year}-${m.month}`} className="flex-1 flex flex-col items-center gap-1 h-full">
+                  <div className="flex-1 w-full flex items-end">
+                    <motion.div
+                      className="w-full rounded-t-md bg-gradient-to-t from-blue-600 to-blue-400"
+                      initial={{ height: 0 }}
+                      animate={{ height: `${Math.max(4, Math.round(m.pct * 100))}%` }}
+                      transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
+                      title={`${m.count} order`}
+                    />
+                  </div>
+                  {m.count > 0 && (
+                    <span className="text-[9px] font-mono font-bold text-blue-600">{m.count}</span>
+                  )}
+                  <span className="text-[10px] text-muted-foreground leading-none">{m.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Riwayat Poin ── */}
       {(() => {
@@ -626,7 +937,7 @@ export default function AgentProfile() {
               <div className="flex flex-col items-center gap-2 py-8 px-4 text-center">
                 <Star className="h-8 w-8 text-muted-foreground/20 stroke-[1.25]" />
                 <p className="text-[11px] text-muted-foreground italic">
-                  Belum ada poin tercatat. Buat order dan tunggu owner selesaikan — otomatis dapat 20 poin!
+                  Belum ada poin tercatat. Buat order dan tunggu owner selesaikan, atau selesaikan misi — otomatis dapat poin!
                 </p>
               </div>
             ) : (
@@ -707,6 +1018,17 @@ export default function AgentProfile() {
                 </button>
               ))}
           </div>
+        </div>
+      )}
+
+      {/* ── Field-only agent: no sales but has field activity ── */}
+      {!hasAnyActivity && !loading && (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+          <CheckCheck className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-[13px] font-semibold text-slate-600">Profil aktif & siap bertugas</p>
+          <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+            Belum ada aktivitas tercatat. Fee akan muncul saat admin assign lo ke penugasan lapangan atau saat order penjualan selesai.
+          </p>
         </div>
       )}
 
