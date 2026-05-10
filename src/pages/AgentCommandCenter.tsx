@@ -775,7 +775,7 @@ export default function AgentCommandCenter() {
 
   return (
     <motion.div
-      className="max-w-7xl mx-auto p-4 md:p-6 space-y-5"
+      className="max-w-[1400px] mx-auto p-4 md:p-6 space-y-5"
       style={M}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}

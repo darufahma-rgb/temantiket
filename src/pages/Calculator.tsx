@@ -1199,7 +1199,7 @@ export default function Calculator() {
   }
 
   return (
-    <div className="pwa-compact-form space-y-2.5 md:space-y-5 max-w-5xl mx-auto" style={M}>
+    <div className="pwa-compact-form space-y-2.5 md:space-y-5 max-w-[1400px] mx-auto" style={M}>
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-2 flex-wrap">

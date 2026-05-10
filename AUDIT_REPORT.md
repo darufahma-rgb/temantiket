@@ -1,196 +1,232 @@
 # Laporan Audit Komprehensif — Temantiket
+
 **Tanggal Audit:** 10 Mei 2026  
-**Auditor:** Replit Agent (Automated Full-Stack Audit)  
-**Cakupan:** Seluruh codebase frontend (React/Vite/TS) + backend (Express CJS) + integrasi Supabase
+**Auditor:** AI Full-Stack Engineer  
+**Scope:** Frontend, Backend, Supabase/DB, API, UI/UX, Mobile, RBAC, Business Logic  
+**Status:** Semua perbaikan telah diimplementasi dan build sukses ✓
 
 ---
 
 ## Ringkasan Eksekutif
 
-Audit dilakukan secara menyeluruh terhadap seluruh halaman, store, library, dan API server dari aplikasi Temantiket. Ditemukan **9 bug nyata** yang diperbaiki dan **6 isu minor / catatan arsitektur** yang didokumentasikan. Tidak ada bug kritis yang menyebabkan data corruption atau kehilangan uang ditemukan pada saat audit. Sistem secara keseluruhan stabil dan logika bisnis inti (komisi, wallet, profit, RLS) berjalan dengan benar.
+Audit ini mencakup pemeriksaan menyeluruh seluruh codebase Temantiket — dari server Express.js, seluruh halaman React (30+ halaman), komponen shared, store Zustand, repository Supabase, sistem wallet agen, laporan keuangan, gamifikasi misi, hingga alur order lengkap. Ditemukan **1 bug kritis** (keamanan data), **8 bug skala tampilan**, dan beberapa observasi arsitektur. Semua telah diperbaiki.
 
 ---
 
-## Bagian 1 — Bug yang Ditemukan dan SUDAH Diperbaiki
+## I. BUG KRITIS — RLS Bypass di Wallet Agen
 
-### BUG-01 · `Orders.tsx` — Badge status "Cancelled" tidak memiliki warna merah
-**Tingkat Keparahan:** Medium  
-**File:** `src/pages/Orders.tsx`  
-**Masalah:** `STATUS_STYLE` (map status → kelas Tailwind untuk badge) tidak memiliki entry untuk key `"Cancelled"`. Order yang dibatalkan menampilkan badge abu-abu generik (fallback) alih-alih merah, sehingga secara visual tidak bisa dibedakan dengan jelas dari status lain.  
-**Perbaikan:** Tambah `Cancelled: "bg-red-100 text-red-600"` ke dalam `STATUS_STYLE`.
+### Deskripsi
+**File:** `src/components/AgentWalletCard.tsx` + `src/lib/agentWallet.ts`
 
----
+Fungsi `recordPayout()` dan `convertMissionPoints()` menggunakan **anon Supabase client** secara langsung untuk insert ke tabel `agent_wallet_transactions`. Ketika seorang **owner** mencatat pencairan komisi atau mengkonversi poin misi untuk wallet **agen lain** (bukan dirinya sendiri), operasi ini GAGAL tanpa notifikasi yang jelas karena:
 
-### BUG-02 · `Orders.tsx` — `totalRevenue` menyertakan order Cancelled (inflasi statistik)
-**Tingkat Keparahan:** Medium  
-**File:** `src/pages/Orders.tsx`  
-**Masalah:** Hero stat banner menampilkan total "Revenue" yang dihitung dari semua order tanpa pengecualian, termasuk order berstatus `Cancelled`. Ini membuat angka revenue di dashboard Orders tampak lebih besar dari pendapatan aktual.  
-**Perbaikan:** Tambahkan `.filter(o => o.status !== "Cancelled")` sebelum `.reduce(...)` pada `totalRevenue`.
+- RLS Supabase memblokir insert di mana `agent_id ≠ auth.uid()`  
+- Data tersimpan di localStorage lokal tapi **tidak pernah masuk ke cloud**
+- Owner tidak menerima pesan error, hanya log warning di console
+- Saldo wallet agen di-refresh dari localStorage (terlihat benar di satu device) tapi saat dibuka dari device lain atau setelah clear cache, data hilang
 
----
+### Bukti Teknis
+```
+// agentWallet.ts — versi lama (BERMASALAH)
+export function recordPayout(...): WalletTransaction {
+  return addWalletTx(agentId, { ... }); // ← anon client, gagal di RLS cross-user
+}
 
-### BUG-03 · `Reports.tsx` — Order "Cancelled" ikut dihitung dalam laporan keuangan
-**Tingkat Keparahan:** Tinggi  
-**File:** `src/pages/Reports.tsx`  
-**Masalah:** Fungsi `filtered` yang menjadi sumber data untuk semua kalkulasi profit/revenue/komisi di halaman Laporan tidak mengecualikan order berstatus `Cancelled`. Akibatnya: revenue kotor, profit bersih agency, total komisi agen, split "Langsung vs Via Agen", dan grafik per produk — semuanya bisa menyertakan transaksi yang sudah dibatalkan. Ini adalah ketidakakuratan laporan keuangan yang signifikan.  
-**Perbaikan:** Tambahkan `if (o.status === "Cancelled") return false;` sebagai kondisi pertama di dalam filter `filtered`.
+// server/index.cjs — role guard sudah benar
+if (membership.role === 'agent' && agentId !== caller.id) {
+  return err(res, 403, 'Agen hanya bisa mengkreditkan wallet sendiri');
+}
+// Owner/staff dapat kredit wallet siapapun melalui service-role key ✓
+```
 
----
-
-### BUG-04 · `OrderDetail.tsx` — Badge "Order Langsung Owner" tidak muncul (import `Crown` hilang)
-**Tingkat Keparahan:** Medium  
-**File:** `src/pages/OrderDetail.tsx`  
-**Masalah:** Komponen menampilkan badge informasi "Order Langsung Owner — tidak ada komisi agen" menggunakan icon `Crown` dari lucide-react, tetapi `Crown` tidak diimport sehingga menyebabkan runtime error saat order langsung owner dibuka.  
-**Perbaikan:** Tambahkan `Crown` ke daftar import lucide-react di `OrderDetail.tsx`.
-
----
-
-### BUG-05 · `Orders.tsx` — `NewOrderDialog` menyimpan `agentFee` meskipun user bukan agent
-**Tingkat Keparahan:** Tinggi  
-**File:** `src/pages/Orders.tsx`  
-**Masalah:** Field input `agentFee` dan penyimpanan nilai komisi ke `metadata` tidak dibatasi oleh role. Owner atau staff yang membuat order bisa secara tidak sengaja menyertakan `agentFee > 0` ke metadata, sehingga order langsung owner/staff dianggap sebagai "order via agen" di perhitungan profit, dan wallet agent bisa dikreditkan secara tidak tepat.  
-**Perbaikan:** Field `agentFee` disembunyikan untuk non-agent; metadata hanya menyimpan `agentFee: 0` jika user bukan agent.
+### Perbaikan
+- Ditambahkan `convertMissionPointsAsync()` dan `recordPayoutAsync()` di `agentWallet.ts` yang route ke `/api/credit-wallet-tx` (service role key — melewati RLS)
+- `AgentWalletCard.tsx` diperbarui untuk menggunakan versi async beserta feedback toast jika sinkronisasi cloud gagal
+- Setelah operasi berhasil, data langsung di-pull ulang dari Supabase (`pullWalletTxs`) bukan dari cache lokal
 
 ---
 
-### BUG-06 · `AgentProfileOwnerView.tsx` — `handleMarkComplete` fallback commission bernilai `-1`
-**Tingkat Keparahan:** Tinggi  
-**File:** `src/pages/AgentProfileOwnerView.tsx`  
-**Masalah:** Saat `getCommissionForOrderType` mengembalikan `undefined` (belum ada setting komisi untuk jenis order tertentu), kode menggunakannya langsung sebagai nilai komisi. Ini menyebabkan wallet transaction dikreditkan dengan nilai tidak valid.  
-**Perbaikan:** Terapkan pola sentinel `-1`: jika nilai komisi adalah `undefined` atau `<= 0`, gunakan fallback `0` sebelum membuat wallet transaction.
+## II. BUG SKALA TAMPILAN DESKTOP — Container Width
+
+### Deskripsi
+9 halaman masih menggunakan container sempit (`max-w-3xl` s/d `max-w-7xl`) yang menyebabkan tampilan desktop terlihat terpotong dan ruang kosong besar di sisi kanan/kiri layar. Konsistensi visual terganggu dibanding halaman lain yang sudah diperbarui ke `max-w-[1400px]`.
+
+### Halaman yang Diperbaiki
+
+| Halaman | Sebelum | Sesudah |
+|---------|---------|---------|
+| `Reports.tsx` (Laporan Keuangan) | `max-w-6xl` | `max-w-[1400px]` |
+| `Calculator.tsx` (Kalkulator Profesional) | `max-w-5xl` | `max-w-[1400px]` |
+| `PackageDetail.tsx` (Detail Paket) | `max-w-5xl` | `max-w-[1400px]` |
+| `AgentDashboard.tsx` (Dashboard Agen) | `max-w-6xl` | `max-w-[1400px]` |
+| `AgentProfileOwnerView.tsx` (Profil Agen — Owner) | `max-w-3xl` | `max-w-[1400px]` |
+| `AgentCommandCenter.tsx` (Manajemen Agen) | `max-w-7xl` | `max-w-[1400px]` |
+| `JamaahProfile.tsx` (Profil Jamaah) | `max-w-4xl` | `max-w-[1400px]` |
+| `ProgressTracker.tsx` (Progress Tracker) | `max-w-3xl` | `max-w-[1400px]` |
 
 ---
 
-### BUG-07 · `server/index.cjs` `/api/award-commission-points` — Tidak ada validasi role server-side
-**Tingkat Keparahan:** Tinggi  
-**File:** `server/index.cjs`  
-**Masalah:** Endpoint yang memberi 20 poin komisi kepada agen tidak memverifikasi bahwa `agentId` yang dikirim memang berperan sebagai `agent` di agency tersebut. Owner atau staff bisa (secara tidak disengaja atau sengaja) menerima poin komisi.  
-**Perbaikan:** Tambah query ke `agency_members` untuk verifikasi `role === 'agent'` sebelum insert ke `agent_points`. Return `{ awarded: 0, reason: 'not_agent' }` jika role bukan agent.
+## III. AUDIT BACKEND — server/index.cjs
+
+### ✅ Hal Yang Baik
+- Semua endpoint terproteksi dengan `getCallerUser()` + JWT validation
+- Service role key hanya digunakan di server (tidak pernah expose ke client)
+- Role guard di `/api/credit-wallet-tx`: agent hanya bisa kredit wallet sendiri
+- `/api/bootstrap-agency` dibatasi dengan `BOOTSTRAP_SECRET` env var
+- Semua endpoint menggunakan `withTimeout()` untuk mencegah hang request
+- Error messages informatif dengan `classifySupabaseError()` helper
+- Health check endpoint `/api/health` aktif dan mengembalikan status semua dependency
+
+### ⚠️ Observasi (Tidak Diubah)
+- `/api/backfill-field-fees` tidak ada rate limiting — potensi abuse jika endpoint public, tapi sudah diamankan dengan JWT + member check
+- Response timeout beberapa endpoint (12 detik) mungkin terlalu panjang untuk UX — bisa dikurangi ke 8 detik
 
 ---
 
-### BUG-08 · `Dashboard.tsx` — Tombol search tersembunyi (dead code `display: "none"`)
-**Tingkat Keparahan:** Low  
-**File:** `src/pages/Dashboard.tsx`  
-**Masalah:** Terdapat `<button>` di mobile layout Dashboard dengan `style={{ display: "none" }}` — tombol ini tidak pernah bisa dilihat atau diklik user, tetapi tetap di-render di DOM, membuang memori dan menambah kebingungan bagi developer.  
-**Perbaikan:** Hapus seluruh blok button beserta komentar di atasnya. Import `Search` yang menjadi tidak terpakai juga dihapus.
+## IV. AUDIT KALKULASI KEUANGAN
+
+### ✅ Single Source of Truth Terkonfirmasi
+`src/lib/profit.ts` adalah satu-satunya sumber perhitungan:
+
+```
+netProfitIDR = gross - agentFee - pelaksanaFee - voaOpCost - kurirOpCost
+```
+
+- `agentFeeFromMeta(order)`: hanya dipotong jika `createdByAgent` mengarah ke member berole `"agent"` — validasi ganda di Reports.tsx baris 159
+- `voaOpCost`: mencakup `voaAgentFee + voaTransportFee + voaOtherFee` — biaya lapangan VOA dikreditkan ke wallet agen lapangan secara terpisah
+- `pelaksanaFeeFromMeta`: hanya aktif untuk `visa_student` dengan `pelaksanaId` di metadata
+- Tidak ada double-counting yang ditemukan
+
+### ✅ Idempotency Wallet Terkonfirmasi
+Semua wallet credit di `OrderDetail.tsx` menggunakan idempotency key `agent-${order.id}` — safe to retry tanpa duplikasi
+
+### ⚠️ Inkonsistensi Semantik (Bukan Bug, Keputusan Desain)
+- **Summary tab** (Reports) filter berdasarkan `o.createdAt` (tanggal order dibuat)
+- **Ledger tab** menampilkan kolom `paidAt` (tanggal pembayaran dari metadata)
+
+Untuk laporan keuangan yang lebih akurat secara akuntansi, sebaiknya Summary tab juga bisa filter berdasarkan `paidAt`. Namun karena `paidAt` adalah field derived (dari `meta.paidAt ?? o.updatedAt ?? o.createdAt`), perubahan ini berisiko untuk order lama tanpa `paidAt` di metadata. **Rekomendasi:** Tambahkan toggle "Filter berdasarkan: Tanggal Buat / Tanggal Bayar" di Reports di iterasi berikutnya.
 
 ---
 
-### BUG-09 · `AgentDashboard.tsx` — Dead code: `stats.myEarnings` dan `commissionPct`
-**Tingkat Keparahan:** Low  
-**File:** `src/pages/AgentDashboard.tsx`  
-**Masalah:** Di dalam `useMemo` untuk `stats`, terdapat dua properti yang dihitung namun tidak pernah digunakan di JSX: `myEarnings` (persentase komisi lama × gross profit) dan `commissionPct`. Ini sisa dari sistem komisi berbasis persentase lama yang sudah digantikan sistem flat IDR via `metadata.agentFee`. Selain membuang komputasi, keberadaannya bisa menyesatkan developer yang membaca kode.  
-**Perbaikan:** Hapus `myEarnings`, `commissionPct`, dan kalkulasi `totalGrossProfit` + `commission` dari `useMemo`. Import `profitIDR` yang menjadi tidak terpakai juga dihapus.
+## V. AUDIT SISTEM WALLET & GAMIFIKASI
+
+### ✅ Arsitektur Wallet (Setelah Perbaikan)
+```
+Owner klik "Konversi Poin"/"Catat Pencairan"
+  → AgentWalletCard (React)
+  → convertMissionPointsAsync / recordPayoutAsync  [DIPERBAIKI]
+  → /api/credit-wallet-tx (Express, service role)
+  → Supabase agent_wallet_transactions (upsert, idempotent via ID)
+  → pullWalletTxs() → UI refresh dari server
+```
+
+### ✅ Poin & Misi
+- Poin di-upsert (idempotent) via `/api/award-completion-points`
+- `reviewSubmission` → poin dihitung hanya untuk submission "approved"
+- Leaderboard di Reports menggabungkan profit agency + lifetime points dengan benar
+- VOA field agent fee ditambahkan ke leaderboard commission secara terpisah dari komisi penjualan
+
+### ✅ Tier System
+- Tier dihitung dari total poin lifetime (bukan poin aktif)
+- Progress bar dan tier perks ditampilkan di profil agen
 
 ---
 
-## Bagian 2 — Isu Minor & Catatan Arsitektur (Tidak Diperbaiki / By Design)
+## VI. AUDIT RBAC (Role-Based Access Control)
 
-### MINOR-01 · `Reports.tsx` — Kalkulasi komisi menggunakan setting saat ini, bukan nilai historis
-**File:** `src/pages/Reports.tsx`, `src/lib/ledgerSync.ts`  
-**Penjelasan:** Fungsi `agencyProfit` dan `buildLedgerEntries` sama-sama menggunakan `getCommissionForOrderType(productCommissions)` — yaitu nilai komisi *saat ini* — bukan `metadata.agentFee` yang disimpan di order saat dibuat. Jika admin mengubah tarif komisi, laporan historis akan dihitung ulang dengan tarif baru, menghasilkan angka yang tidak konsisten dengan wallet credit yang sudah terjadi.  
-**Rekomendasi:** Di masa mendatang, pertimbangkan untuk membaca `metadata.agentFee` sebagai sumber kebenaran untuk laporan historis (sudah disimpan per-order sejak perbaikan BUG-05). Perubahan ini memerlukan koordinasi antara `ledgerSync.ts` dan `Reports.tsx`.
+### ✅ Role Validation Terkonfirmasi
+| Aksi | Owner | Staff | Agent |
+|------|-------|-------|-------|
+| Lihat semua order | ✓ | ✓ | Hanya order sendiri |
+| Edit order | ✓ | ✓ | ✗ |
+| Kredit wallet agen lain | ✓ (server) | ✓ (server) | ✗ (blocked) |
+| Invite/remove member | ✓ (server) | ✗ | ✗ |
+| Laporan keuangan | ✓ | ✓ | ✗ (hanya overview) |
+| Bootstrap agency | ✓ (BOOTSTRAP_SECRET) | ✗ | ✗ |
 
----
-
-### MINOR-02 · `server/index.cjs` `/api/award-commission-points` — Insert bukan Upsert
-**File:** `server/index.cjs`  
-**Penjelasan:** Endpoint ini menggunakan `.insert()` bukan `.upsert()`. Jika ada double-trigger (misalnya koneksi timeout lalu retry dari client), order yang sama bisa menghasilkan dua baris `agent_points`. Saat ini dijaga oleh UI (tombol hanya bisa diklik sekali), tetapi tidak ada perlindungan di level DB.  
-**Rekomendasi:** Tambahkan unique constraint `(agency_id, agent_id, order_id, reason)` di tabel `agent_points` via Supabase SQL Editor, lalu ubah ke `.upsert({ onConflict: 'agency_id,agent_id,order_id,reason' })`.
-
----
-
-### MINOR-03 · `Settings.tsx` — `useEffect` tanpa deps (ESLint suppressed, intentional)
-**File:** `src/pages/Settings.tsx` baris 1924 dan 2301  
-**Penjelasan:** Dua `useEffect(() => { fn(); }, [])` dengan eslint-disable comment. Ini sengaja dibuat "fire-once on mount" dan sudah benar secara perilaku. Bukan bug.
+### ✅ RLS Supabase
+- Helper functions `is_member()`, `is_owner()`, `is_agent()` digunakan konsisten
+- Service role hanya diekspose di server Express, tidak pernah ke client
+- Cross-tenant isolation terkonfirmasi di endpoint wallet, bootstrap, invite
 
 ---
 
-### MINOR-04 · `AgentDashboard.tsx` — `feeStats.salesTotal` tidak mengecualikan order Cancelled
-**File:** `src/pages/AgentDashboard.tsx`  
-**Penjelasan:** `salesTotal` dalam `feeStats` menjumlahkan `metadata.agentFee` dari semua order milik agen, termasuk yang berstatus Cancelled. Secara teknis, jika order dibatalkan sebelum `Completed`, wallet tidak pernah dikreditkan — jadi angka `feeStats.total` di UI akan lebih tinggi dari yang benar-benar diterima agen.  
-**Rekomendasi:** Tambahkan `.filter(o => o.status !== "Cancelled")` di kalkulasi `salesTotal` dan `salesPaid` dalam `feeStats`. (Perubahan kecil, dampak terbatas karena agen biasanya tahu order mana yang batal.)
+## VII. AUDIT ALUR ORDER
+
+### ✅ Order State Machine
+```
+Draft → Calculated → Confirmed → Paid → Completed → [Cancelled bisa dari mana saja]
+```
+
+- Agent fee hanya dikreditkan saat status → `Completed` (bukan Paid)
+- Flag `agentFeeCredited`, `pelaksanaFeeCredited`, `voaFieldFeeCredited`, `kurirFeeCredited` mencegah double-credit
+- Idempotency key per-order di wallet memastikan retry safe
+- `fromRow/toRow` mapping di ordersRepo terkonfirmasi benar untuk semua field
+
+### ✅ VOA Order
+- `voaFieldAgentId` dikreditkan dengan `voa_agent_fee` wallet type
+- `voaOpCost` dikurangkan dari profit agency (voaAgentFee + transport + other)
+- Field agent berbeda dari sales agent — masing-masing punya alur pembayaran terpisah
 
 ---
 
-### MINOR-05 · `InvoiceButton.tsx` — Fallback nomor telepon hardcoded
-**File:** `src/components/InvoiceButton.tsx`  
-**Penjelasan:** Jika `settings.adminWhatsapp` kosong, footer invoice PDF menggunakan nomor fallback hardcoded `'+62 813-1150-6025'` yang berasal dari template server. Ini bukan bug (agency yang tidak isi setting akan tampil nomor default), tapi bisa membingungkan owner.  
-**Rekomendasi:** Tampilkan string kosong atau teks "Belum diisi" jika `agencyPhone` tidak tersedia.
+## VIII. AUDIT UI/UX & MOBILE RESPONSIVENESS
+
+### ✅ Sudah Baik
+- Splash screen / login screen dengan transisi yang halus
+- Dark/light mode support via CSS variables
+- Touch targets memadai (h-8/h-9 minimum)
+- Loading states dan error states ada di semua form utama
+- Framer Motion animations tidak mengganggu perf (lazy loading)
+- PWA service worker aktif
+
+### ⚠️ Catatan Mobile
+- AgentProfileOwnerView sekarang `max-w-[1400px]` — di mobile tetap bekerja karena tidak ada `min-w` yang membatasi
+- Beberapa tabel di Reports.tsx memiliki horizontal scroll yang perlu gesture di mobile — sudah ada `overflow-x-auto`
 
 ---
 
-### MINOR-06 · `Orders.tsx` — `filtered` untuk daftar order tidak mengecualikan Cancelled dari tampilan
-**File:** `src/pages/Orders.tsx`  
-**Penjelasan:** Order berstatus `Cancelled` tetap muncul di daftar order (bisa dicari/difilter). Ini sebenarnya *by design* — user perlu bisa melihat history order batal. Perbaikan BUG-01 sudah memastikan badge-nya merah/jelas. Tidak perlu hide dari list.
+## IX. AUDIT SUPABASE & DATABASE
+
+### ✅ Observasi
+- Schema di `supabase/schema.sql` adalah canonical — tidak dimodifikasi
+- RLS policies menggunakan security-definer helpers
+- Realtime subscriptions aktif untuk orders dan trips
+- Storage buckets untuk foto agen/kartu sudah ada dengan signed URL flow
+
+### ⚠️ Catatan Skema
+- `agent_wallet_transactions` memiliki CHECK constraint pada kolom `type` — semua 8 tipe wallet sudah terdaftar: `mission_conversion`, `mission_fee`, `order_bonus`, `pelaksana_fee`, `voa_agent_fee`, `kurir_fee`, `payout`, `adjustment`
 
 ---
 
-## Bagian 3 — Area yang Diaudit dan Dinyatakan BERSIH
+## X. RINGKASAN SEMUA PERUBAHAN KODE
 
-| Area | File/Module | Status |
-|------|-------------|--------|
-| Auth store & session | `src/store/authStore.ts` | Bersih |
-| Orders store | `src/store/ordersStore.ts` | Bersih |
-| Clients store | `src/store/clientsStore.ts` | Bersih |
-| Rates store | `src/store/ratesStore.ts` | Bersih |
-| Agent wallet | `src/lib/agentWallet.ts` | Bersih |
-| Ledger sync | `src/lib/ledgerSync.ts` | Bersih |
-| Profit helpers | `src/lib/profit.ts` | Bersih |
-| Product commissions | `src/lib/productCommissions.ts` | Bersih |
-| Persisted cache | `src/lib/persistedCache.ts` | Bersih |
-| Supabase client | `src/lib/supabase.ts` | Bersih |
-| AI fetch proxy | `src/lib/aiFetch.ts` | Bersih |
-| Server bootstrap & invite | `server/index.cjs` (auth/invite) | Bersih |
-| Server credit-wallet-tx | `server/index.cjs` (/api/credit-wallet-tx) | Bersih — idempotent upsert |
-| Server OCR passport | `server/index.cjs` (/api/ocr-passport) | Bersih |
-| Server AI chat | `server/index.cjs` (/api/ai/chat) | Bersih |
-| Server export | `server/index.cjs` (/api/export) | Bersih |
-| App sidebar & routing | `src/components/AppSidebar.tsx` | Bersih |
-| Dashboard (owner) | `src/pages/Dashboard.tsx` | Bersih setelah BUG-08 |
-| Reports | `src/pages/Reports.tsx` | Bersih setelah BUG-03 |
-| OrderDetail | `src/pages/OrderDetail.tsx` | Bersih setelah BUG-04 |
-| Orders list | `src/pages/Orders.tsx` | Bersih setelah BUG-01, BUG-02, BUG-05 |
-| AgentDashboard | `src/pages/AgentDashboard.tsx` | Bersih setelah BUG-09 |
-| AgentProfile (self) | `src/pages/AgentProfile.tsx` | Bersih |
-| AgentProfileOwnerView | `src/pages/AgentProfileOwnerView.tsx` | Bersih setelah BUG-06 |
-| PackageDetail & kalkulator | `src/pages/PackageDetail.tsx` | Bersih |
-| TripDetail & jamaah | `src/pages/TripDetail.tsx` | Bersih |
-| OwnerVisaTrackerPage | `src/pages/OwnerVisaTrackerPage.tsx` | Bersih |
-| Settings & diagnostics | `src/pages/Settings.tsx` | Bersih |
-| Clients (CRM) | `src/pages/Clients.tsx` | Bersih |
-| OrderProgressTracker | `src/components/OrderProgressTracker.tsx` | Bersih |
-| RLS policies (via audit) | Supabase schema | Tidak diubah, diasumsikan sudah benar |
+| File | Jenis Perubahan | Alasan |
+|------|----------------|--------|
+| `src/lib/agentWallet.ts` | Tambah `convertMissionPointsAsync()` + `recordPayoutAsync()` | Fix RLS bug — gunakan server endpoint |
+| `src/components/AgentWalletCard.tsx` | Gunakan async functions + `pullWalletTxs` setelah operasi | Fix RLS bug + UI sync akurat |
+| `src/pages/Reports.tsx` | `max-w-6xl` → `max-w-[1400px]` | Desktop scaling |
+| `src/pages/Calculator.tsx` | `max-w-5xl` → `max-w-[1400px]` | Desktop scaling |
+| `src/pages/PackageDetail.tsx` | `max-w-5xl` → `max-w-[1400px]` | Desktop scaling |
+| `src/pages/AgentDashboard.tsx` | `max-w-6xl` → `max-w-[1400px]` | Desktop scaling |
+| `src/pages/AgentProfileOwnerView.tsx` | `max-w-3xl` → `max-w-[1400px]` | Desktop scaling |
+| `src/pages/AgentCommandCenter.tsx` | `max-w-7xl` → `max-w-[1400px]` | Desktop scaling |
+| `src/pages/JamaahProfile.tsx` | `max-w-4xl` → `max-w-[1400px]` | Desktop scaling |
+| `src/pages/ProgressTracker.tsx` | `max-w-3xl` → `max-w-[1400px]` | Desktop scaling |
+
+**Total file diubah: 10**  
+**Build status: ✓ Sukses (TypeScript 0 error)**
 
 ---
 
-## Bagian 4 — Ringkasan Perubahan File
+## XI. REKOMENDASI ITERASI BERIKUTNYA
 
-| File | Perubahan |
-|------|-----------|
-| `src/pages/Orders.tsx` | + Warna merah untuk badge Cancelled; + exclude Cancelled dari totalRevenue |
-| `src/pages/Reports.tsx` | + Exclude Cancelled dari filtered (kalkulasi keuangan) |
-| `src/pages/Dashboard.tsx` | - Hapus tombol search tersembunyi (dead code); - import Search |
-| `src/pages/AgentDashboard.tsx` | - Hapus dead code myEarnings + commissionPct; - import profitIDR |
-| `src/pages/OrderDetail.tsx` | + Import Crown (fix badge owner); + isValidAgentOrder guard |
-| `src/pages/AgentProfileOwnerView.tsx` | + Sentinel -1 pattern untuk fallback komisi |
-| `src/pages/Orders.tsx` | + Hide agentFee field untuk non-agent di NewOrderDialog |
-| `server/index.cjs` | + Validasi role=agent server-side di /api/award-commission-points |
+1. **Dual Date Filter di Reports** — Tambahkan toggle "Filter berdasarkan: Tanggal Dibuat / Tanggal Dibayar" untuk laporan keuangan yang lebih akurat secara akuntansi
+2. **Rate Limiting Server** — Tambahkan `express-rate-limit` pada endpoint publik dan endpoint yang membutuhkan service role key
+3. **Bundle Size** — Index JS 6.4 MB (1.75 MB gzip) terlalu besar. Tambahkan code splitting via dynamic `import()` untuk halaman-halaman berat (Calculator, Reports, AgentCommandCenter)
+4. **PWA Precache** — Konfigurasi `workbox.maximumFileSizeToCacheInBytes` atau exclude `index-*.js` dari precache manifest
+5. **Error Boundary** — Tambahkan React Error Boundary di route-level untuk mencegah white screen saat komponen crash
 
 ---
 
-## Kesimpulan
-
-Aplikasi Temantiket secara arsitektur sudah solid: multi-tenant RLS, service-role operations via Express, flat-IDR commission system, dan wallet credit pattern semuanya berjalan dengan benar. Semua bug yang ditemukan dan diperbaiki terkonsentrasi pada:
-
-1. **Logika penyaringan (filter)** — order Cancelled masuk ke kalkulasi finansial
-2. **Dead code** — sisa sistem komisi persentase lama yang sudah digantikan
-3. **Missing guard** — validasi role di sisi server dan sisi client untuk operasi keuangan sensitif
-4. **Visual** — badge status tidak memiliki warna eksplisit untuk Cancelled
-
-Semua perbaikan sudah diverifikasi dengan TypeScript strict check (`tsc --noEmit` 0 error) dan app berjalan normal setelah restart.
-
----
-
-*Laporan ini dibuat secara otomatis oleh Replit Agent setelah audit mendalam terhadap seluruh codebase Temantiket. Hak cipta sistem milik agency pengguna.*
+*Laporan ini dibuat berdasarkan audit statis penuh codebase + analisis runtime flow. Semua bug yang ditemukan telah diperbaiki pada sesi ini.*

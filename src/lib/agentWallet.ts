@@ -285,6 +285,28 @@ export function convertMissionPoints(
   });
 }
 
+/**
+ * Async version of convertMissionPoints — routes through /api/credit-wallet-tx
+ * (service role key) so RLS doesn't block owner→agent writes.
+ */
+export async function convertMissionPointsAsync(
+  agentId:     string,
+  points:      number,
+  convertedBy: string,
+): Promise<{ tx: WalletTransaction; persisted: boolean; error?: string }> {
+  if (points <= 0) throw new Error("Poin harus > 0");
+  const amountIDR = Math.round(points * POINT_TO_IDR_RATE);
+  const fmt = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amountIDR);
+  return addWalletTxAsync(agentId, {
+    agentId,
+    type:        "mission_conversion",
+    pointsDelta: -points,
+    amountIDR,
+    description: `Konversi ${points} poin misi → ${fmt} komisi`,
+    createdBy:   convertedBy,
+  });
+}
+
 export function recordPayout(
   agentId:   string,
   amountIDR: number,
@@ -294,6 +316,28 @@ export function recordPayout(
   if (amountIDR <= 0) throw new Error("Jumlah harus > 0");
   const fmt = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amountIDR);
   return addWalletTx(agentId, {
+    agentId,
+    type:        "payout",
+    pointsDelta: 0,
+    amountIDR:   -amountIDR,
+    description: `Pencairan ${fmt}${notes ? ` — ${notes}` : ""}`,
+    createdBy:   paidBy,
+  });
+}
+
+/**
+ * Async version of recordPayout — routes through /api/credit-wallet-tx
+ * (service role key) so RLS doesn't block owner→agent writes.
+ */
+export async function recordPayoutAsync(
+  agentId:   string,
+  amountIDR: number,
+  paidBy:    string,
+  notes?:    string,
+): Promise<{ tx: WalletTransaction; persisted: boolean; error?: string }> {
+  if (amountIDR <= 0) throw new Error("Jumlah harus > 0");
+  const fmt = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amountIDR);
+  return addWalletTxAsync(agentId, {
     agentId,
     type:        "payout",
     pointsDelta: 0,

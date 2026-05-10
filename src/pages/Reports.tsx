@@ -447,7 +447,7 @@ export default function Reports() {
     : (members.find(m => m.userId === agentFilter)?.displayName ?? "Mitra");
 
   return (
-    <div className="max-w-6xl mx-auto pb-8 md:py-6 md:px-6 md:space-y-5">
+    <div className="max-w-[1400px] mx-auto pb-8 md:py-6 md:px-6 md:space-y-5">
 
       {/* ══════════════════════════════════════════════════════
            MOBILE LAYOUT

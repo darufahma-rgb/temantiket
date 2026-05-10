@@ -175,7 +175,7 @@ export default function AgentDashboard() {
 
   return (
     <>
-    <div className="pb-6 md:p-6 max-w-6xl md:mx-auto space-y-3 md:space-y-5">
+    <div className="pb-6 md:p-6 max-w-[1400px] md:mx-auto space-y-3 md:space-y-5">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <motion.div

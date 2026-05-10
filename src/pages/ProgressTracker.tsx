@@ -304,7 +304,7 @@ export default function ProgressTracker() {
   );
 
   return (
-    <div className="max-w-3xl mx-auto space-y-3 md:space-y-5">
+    <div className="max-w-[1400px] mx-auto space-y-3 md:space-y-5">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
         <h1 className="text-base md:text-2xl font-bold text-[hsl(var(--foreground))] flex items-center gap-2">

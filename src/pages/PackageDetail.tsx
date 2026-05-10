@@ -920,7 +920,7 @@ export default function PackageDetail() {
   const safePax = Math.max(1, calc.pax);
 
   return (
-    <div className="space-y-3 md:space-y-5 max-w-5xl mx-auto" style={M}>
+    <div className="space-y-3 md:space-y-5 max-w-[1400px] mx-auto" style={M}>
 
       {/* ── Header ── */}
       <div className="flex items-start gap-2 md:gap-3">

@@ -780,7 +780,7 @@ export default function AgentProfileOwnerView() {
   const { current: tier, next, pointsToNext, progress } = tierInfo;
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-5">
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-5">
       {/* Back nav */}
       <button
         onClick={() => navigate("/agent-center")}

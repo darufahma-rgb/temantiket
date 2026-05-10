@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "kaTAqlflhiZDNdYQQBiJy"
+uri = "file://AUDIT_REPORT.md"
+type = "text"
+title = "Laporan Audit Komprehensif Temantiket"

@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CloudSyncBadge } from "@/components/CloudSyncBadge";
 import {
-  listWalletTxs, walletBalance, convertMissionPoints, recordPayout,
+  listWalletTxs, walletBalance, convertMissionPointsAsync, recordPayoutAsync,
   pullWalletTxs, walletSyncKey,
   POINT_TO_IDR_RATE, type WalletTransaction,
 } from "@/lib/agentWallet";
@@ -75,8 +75,6 @@ export function AgentWalletCard({ agentId, agentName, missionPoints, reviewedBy 
     void pullWalletTxs(agentId).then(setTxs);
   }, [agentId]);
 
-  const refresh = () => setTxs(listWalletTxs(agentId));
-
   const balance = useMemo(() => walletBalance(txs), [txs]);
 
   // Remaining convertible points = total approved - already converted
@@ -93,12 +91,19 @@ export function AgentWalletCard({ agentId, agentName, missionPoints, reviewedBy 
     }
     setLoading(true);
     try {
-      convertMissionPoints(agentId, availablePoints, reviewedBy);
-      refresh();
-      toast.success(`${availablePoints} poin → ${fmtIDR(availablePoints * POINT_TO_IDR_RATE)} komisi`, {
-        description: `Wallet ${agentName} diperbarui.`,
-        duration: 4000,
-      });
+      const { persisted, error } = await convertMissionPointsAsync(agentId, availablePoints, reviewedBy);
+      const freshTxs = await pullWalletTxs(agentId);
+      setTxs(freshTxs);
+      if (persisted) {
+        toast.success(`${availablePoints} poin → ${fmtIDR(availablePoints * POINT_TO_IDR_RATE)} komisi`, {
+          description: `Wallet ${agentName} diperbarui.`,
+          duration: 4000,
+        });
+      } else {
+        toast.warning(`Konversi dicatat lokal, sinkronisasi cloud gagal: ${error ?? "coba lagi"}`, {
+          duration: 5000,
+        });
+      }
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -115,12 +120,19 @@ export function AgentWalletCard({ agentId, agentName, missionPoints, reviewedBy 
     }
     setLoading(true);
     try {
-      recordPayout(agentId, amount, reviewedBy, payoutNote || undefined);
-      refresh();
+      const { persisted, error } = await recordPayoutAsync(agentId, amount, reviewedBy, payoutNote || undefined);
+      const freshTxs = await pullWalletTxs(agentId);
+      setTxs(freshTxs);
       setPayoutMode(false);
       setPayoutAmount("");
       setPayoutNote("");
-      toast.success(`Pencairan ${fmtIDR(amount)} untuk ${agentName} dicatat.`);
+      if (persisted) {
+        toast.success(`Pencairan ${fmtIDR(amount)} untuk ${agentName} dicatat.`);
+      } else {
+        toast.warning(`Pencairan dicatat lokal, sinkronisasi cloud gagal: ${error ?? "coba lagi"}`, {
+          duration: 5000,
+        });
+      }
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
