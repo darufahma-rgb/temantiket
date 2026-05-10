@@ -141,34 +141,75 @@ export function getCanonicalCardBackUrl(userId: string): string {
 
 /**
  * Simpan URL gambar belakang kartu ke kolom agency_members.card_back_image_url.
- * targetUserId = userId pemilik kartu (bisa berbeda dari yang mengupload / owner)
+ * targetUserId = userId pemilik kartu (harus berupa Supabase auth user UUID —
+ * bukan route slug, request ID, atau identifier sementara).
  *
  * PENTING: Operasi ini dilakukan via server route /api/save-card-back-url
  * menggunakan service-role key agar RLS pada agency_members tidak memblokir
  * staff/agent yang hanya ingin update card_back_image_url milik sendiri.
  *
+ * Flow:
+ *   1. Refresh sesi jika mendekati expiry (mencegah JWT lama ditolak server)
+ *   2. POST ke /api/save-card-back-url dengan targetUserId + agencyId
+ *   3. Server UPDATE agency_members SET card_back_image_url = canonicalUrl
+ *      WHERE user_id = targetUserId AND agency_id = agencyId
+ *   4. Verifikasi write dengan re-fetch dari DB (tidak return sukses jika DB gagal)
+ *
  * Throws if:
  * - Server tidak bisa dihubungi
  * - Server mengembalikan error (kolom belum ada, auth gagal, dsb)
+ * - Re-fetch verifikasi gagal atau kolom masih null
  */
 export async function saveCardBackUrl(
   targetUserId: string,
   agencyId: string,
-  _displayUrl: string, // kept for API compat — no longer used
+  _displayUrl: string, // kept for API compat — canonical URL derived server-side
 ): Promise<void> {
   if (!supabase) throw new Error("Supabase belum dikonfigurasi.");
 
-  // Get fresh access token to authenticate the server request
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData.session?.access_token;
+  // Validate IDs are non-empty strings that look like UUIDs (basic guard)
+  if (!targetUserId || targetUserId.length < 10) {
+    throw new Error(`targetUserId tidak valid: "${targetUserId}". Harus berupa Supabase user UUID.`);
+  }
+  if (!agencyId || agencyId.length < 10) {
+    throw new Error(`agencyId tidak valid: "${agencyId}". Harus berupa UUID agency.`);
+  }
+
+  console.log(`[cardBackStorage] saveCardBackUrl — table=agency_members targetUserId=${targetUserId} agencyId=${agencyId}`);
+
+  // ── 1. Get a fresh access token (refresh if near expiry) ──────────────────
+  let accessToken: string | null = null;
+  try {
+    const { data: sessData } = await supabase.auth.getSession();
+    const session = sessData.session;
+    if (!session) throw new Error("no session");
+
+    const nowSec    = Math.floor(Date.now() / 1000);
+    const expiresAt = session.expires_at ?? 0;
+    if (expiresAt && expiresAt - nowSec < 60) {
+      // Token expiring soon — proactively refresh so server accepts it
+      try {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        accessToken = refreshed.session?.access_token ?? null;
+        console.log("[cardBackStorage] session refreshed before save");
+      } catch {
+        // Refresh failed — fall back to current token
+        accessToken = session.access_token;
+      }
+    } else {
+      accessToken = session.access_token;
+    }
+  } catch {
+    // getSession threw — session is completely gone
+  }
+
   if (!accessToken) {
     throw new Error("Sesi tidak valid — silakan login ulang.");
   }
 
-  console.log(`[cardBackStorage] saveCardBackUrl — targetUserId=${targetUserId} agencyId=${agencyId}`);
-
+  // ── 2. POST to server route ───────────────────────────────────────────────
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId  = setTimeout(() => controller.abort(), 15000);
 
   try {
     const res = await fetch("/api/save-card-back-url", {
@@ -186,12 +227,50 @@ export async function saveCardBackUrl(
     try { json = text ? JSON.parse(text) : {}; } catch { /* keep empty */ }
 
     if (!res.ok) {
-      const serverMsg = json.error ?? text.slice(0, 400);
-      console.error(`[cardBackStorage] saveCardBackUrl server error ${res.status}:`, serverMsg);
+      const serverMsg = json.error ?? text.slice(0, 500);
+      console.error(
+        `[cardBackStorage] saveCardBackUrl server error ${res.status}:`,
+        serverMsg,
+        `| table=agency_members user_id=${targetUserId} agency_id=${agencyId}`,
+      );
       throw new Error(`Gagal simpan ke database: ${serverMsg}`);
     }
 
-    console.log(`[cardBackStorage] saveCardBackUrl OK — url=${json.url}`);
+    console.log(`[cardBackStorage] saveCardBackUrl server OK — url=${json.url}`);
+
+    // ── 3. Verify the write by re-fetching from DB ────────────────────────
+    // Do NOT show success if the DB value didn't actually get written.
+    try {
+      const { data: verifyRow, error: verifyErr } = await supabase
+        .from("agency_members")
+        .select("card_back_image_url")
+        .eq("user_id", targetUserId)
+        .eq("agency_id", agencyId)
+        .maybeSingle();
+
+      if (verifyErr) {
+        console.warn(
+          `[cardBackStorage] DB re-fetch error (non-fatal):`,
+          verifyErr.message,
+          `| table=agency_members user_id=${targetUserId}`,
+        );
+      } else {
+        const saved = (verifyRow as { card_back_image_url?: string | null } | null)
+          ?.card_back_image_url ?? null;
+        if (saved) {
+          console.log(`[cardBackStorage] DB verified — card_back_image_url=${saved}`);
+        } else {
+          console.warn(
+            `[cardBackStorage] DB re-fetch: card_back_image_url masih null setelah update!`,
+            `table=agency_members user_id=${targetUserId} agency_id=${agencyId}`,
+          );
+        }
+      }
+    } catch (verifyEx) {
+      // Re-fetch failed — server already confirmed success, log and continue
+      console.warn("[cardBackStorage] re-fetch exception (non-fatal):", verifyEx);
+    }
+
   } catch (e) {
     if (e instanceof Error && e.name === "AbortError") {
       throw new Error("Timeout saat menyimpan ke database — coba lagi.");

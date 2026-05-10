@@ -80,22 +80,76 @@ function withTimeout(promise, ms, message) {
   ]);
 }
 
-async function getCallerUser(authHeader, timeoutMs = 8000) {
+// Extract raw JWT from "Bearer <token>" or plain token string.
+function extractToken(authHeader) {
   if (!authHeader) return null;
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
-  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-    auth: { persistSession: false },
-    realtime: { transport: ws },
-  });
-  // Race the Supabase auth call against a timeout so it never hangs forever
-  const authCall = userClient.auth.getUser();
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Auth check timed out')), timeoutMs)
-  );
-  const { data, error } = await Promise.race([authCall, timeout]);
-  if (error || !data.user) return null;
-  return data.user;
+  const t = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
+  return t || null;
+}
+
+// Validate a caller JWT using the admin (service-role) client.
+// Using admin.auth.getUser(token) is the correct server-side approach in
+// @supabase/supabase-js v2 — it passes the JWT explicitly, bypassing the
+// (empty) session store that caused "NOT_FOUND sin1::..." errors when the
+// old approach relied on global headers + getUser() with no argument.
+async function getCallerUser(authHeader, timeoutMs = 8000) {
+  if (!authHeader || !SUPABASE_URL || !SERVICE_ROLE_KEY) return null;
+  const token = extractToken(authHeader);
+  if (!token) return null;
+  try {
+    const admin = makeAdminClient();
+    const { data, error } = await Promise.race([
+      admin.auth.getUser(token),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Auth check timed out')), timeoutMs)
+      ),
+    ]);
+    if (error || !data?.user) {
+      console.warn('[getCallerUser] auth.getUser gagal:', error?.message ?? 'user null');
+      return null;
+    }
+    return data.user;
+  } catch (e) {
+    console.warn('[getCallerUser] exception:', e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+// Classify a Supabase DB/storage error and return a human-readable hint.
+function classifySupabaseError(err, context) {
+  if (!err) return null;
+  const msg  = (err.message  ?? '').toLowerCase();
+  const code = (err.code     ?? '').toLowerCase();
+  const hint = (err.hint     ?? '').toLowerCase();
+  const details = (err.details ?? '').toLowerCase();
+
+  // API-gateway 404 — usually means wrong SERVICE_ROLE_KEY (different project)
+  // or the Supabase project is paused / URL is wrong.
+  if (
+    msg.includes('not_found') || msg.includes('not found') ||
+    code === 'not_found' || code === 'pgrst301' ||
+    details.includes('not found') || hint.includes('not found')
+  ) {
+    return (
+      `[${context}] Supabase API returned NOT_FOUND. ` +
+      `Kemungkinan penyebab: (1) SUPABASE_SERVICE_ROLE_KEY bukan dari project yang sama dengan VITE_SUPABASE_URL, ` +
+      `atau (2) project Supabase sedang di-pause. ` +
+      `Cek Secrets Replit — SUPABASE_SERVICE_ROLE_KEY harus dari project ${SUPABASE_URL}.`
+    );
+  }
+
+  // Column missing (migration belum dijalankan)
+  if (
+    msg.includes('card_back_image_url') || msg.includes('column') ||
+    code === '42703' || code === 'pgrst204'
+  ) {
+    return (
+      `[${context}] Kolom card_back_image_url belum ada di tabel agency_members. ` +
+      `Jalankan supabase/card-back-image-migration.sql di Supabase SQL Editor.`
+    );
+  }
+
+  return null;
 }
 
 /* ──────────────────────────────────────────────
@@ -1158,28 +1212,43 @@ app.post('/api/award-commission-points', async (req, res) => {
    - Owner boleh update card_back_image_url siapapun di agency-nya.
 ────────────────────────────────────────────── */
 app.post('/api/save-card-back-url', async (req, res) => {
+  const ROUTE = '[save-card-back-url]';
   try {
+    // ── 1. Prerequisites ───────────────────────────────────────────────────
     if (!SERVICE_ROLE_KEY) {
       return err(res, 503,
         'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. ' +
         'Tambahkan di Secrets Replit lalu restart server.'
       );
     }
+    if (!SUPABASE_URL) {
+      return err(res, 503, 'VITE_SUPABASE_URL belum dikonfigurasi di server.');
+    }
 
+    // ── 2. Auth: validate caller JWT ───────────────────────────────────────
     const authHeader = req.headers.authorization;
     if (!authHeader) return err(res, 401, 'Missing Authorization header');
 
     const caller = await getCallerUser(authHeader, 8000).catch(() => null);
-    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
+    if (!caller) {
+      console.error(`${ROUTE} JWT validation gagal — caller null`);
+      return err(res, 401,
+        'Sesi tidak valid atau expired — silakan login ulang. ' +
+        'Jika masalah berlanjut, pastikan SUPABASE_SERVICE_ROLE_KEY dan VITE_SUPABASE_URL berasal dari project Supabase yang sama.'
+      );
+    }
+    console.log(`${ROUTE} caller validated — caller.id=${caller.id}`);
 
+    // ── 3. Validate request body ────────────────────────────────────────────
     const { targetUserId, agencyId } = req.body ?? {};
     if (!targetUserId || !agencyId) {
       return err(res, 400, 'targetUserId dan agencyId wajib diisi');
     }
+    console.log(`${ROUTE} table=agency_members targetUserId=${targetUserId} agencyId=${agencyId}`);
 
     const admin = makeAdminClient();
 
-    // Verifikasi caller terdaftar di agency yang diminta
+    // ── 4. Verify caller is a member of the requested agency ───────────────
     const { data: callerMembership, error: memErr } = await withTimeout(
       admin.from('agency_members')
         .select('agency_id, role')
@@ -1189,21 +1258,23 @@ app.post('/api/save-card-back-url', async (req, res) => {
       8000, 'DB timeout saat verifikasi membership'
     );
     if (memErr) {
-      console.error('[save-card-back-url] membership lookup error:', memErr.message);
-      return err(res, 500, `DB error: ${memErr.message}`);
+      const hint = classifySupabaseError(memErr, ROUTE + ' membership');
+      console.error(`${ROUTE} membership lookup error — code=${memErr.code} msg=${memErr.message}`, memErr);
+      return err(res, 500, hint ?? `DB error (membership): ${memErr.message}`);
     }
     if (!callerMembership) {
-      console.error(`[save-card-back-url] caller ${caller.id} bukan member di agency ${agencyId}`);
+      console.error(`${ROUTE} caller ${caller.id} bukan member di agency ${agencyId}`);
       return err(res, 403, 'Tidak terdaftar di agency yang diminta');
     }
 
-    // Role guard: agent/staff hanya boleh update milik sendiri
+    // ── 5. Role guard: staff/agent can only update their own card ──────────
     if (callerMembership.role !== 'owner' && targetUserId !== caller.id) {
-      console.error(`[save-card-back-url] ${callerMembership.role} ${caller.id} mencoba update card back milik ${targetUserId}`);
+      console.error(`${ROUTE} role=${callerMembership.role} caller=${caller.id} mencoba update card back milik ${targetUserId}`);
       return err(res, 403, 'Hanya owner yang bisa update gambar kartu member lain');
     }
 
-    // Pastikan targetUserId ada di agency ini
+    // ── 6. Verify target user exists in this agency ────────────────────────
+    // Note: we already checked targetUserId format — now confirm the DB row.
     const { data: targetMembership, error: targetErr } = await withTimeout(
       admin.from('agency_members')
         .select('user_id, card_back_image_url')
@@ -1213,57 +1284,60 @@ app.post('/api/save-card-back-url', async (req, res) => {
       8000, 'DB timeout saat verifikasi target user'
     );
     if (targetErr) {
-      console.error('[save-card-back-url] target lookup error:', targetErr.message);
-      return err(res, 500, `DB error saat cek target: ${targetErr.message}`);
+      const hint = classifySupabaseError(targetErr, ROUTE + ' target');
+      console.error(`${ROUTE} target lookup error — code=${targetErr.code} msg=${targetErr.message}`, targetErr);
+      return err(res, 500, hint ?? `DB error (target): ${targetErr.message}`);
     }
     if (!targetMembership) {
-      console.error(`[save-card-back-url] target ${targetUserId} tidak ditemukan di agency ${agencyId}`);
-      return err(res, 404, 'Target user tidak ditemukan di agency ini');
+      console.error(`${ROUTE} target userId=${targetUserId} tidak ada di agency_members untuk agencyId=${agencyId}`);
+      return err(res, 404,
+        `User dengan ID ${targetUserId} tidak ditemukan di agency ini. ` +
+        `Pastikan ID yang dikirim adalah user_id asli dari tabel agency_members, bukan route slug atau request ID.`
+      );
     }
+    console.log(`${ROUTE} target row confirmed — user_id=${targetMembership.user_id}`);
 
-    // Derive canonical public URL dari storage path
-    if (!SUPABASE_URL) return err(res, 500, 'SUPABASE_URL tidak dikonfigurasi');
-    const storagePath = `${targetUserId}/card-back.jpg`;
-    // Format public URL: {SUPABASE_URL}/storage/v1/object/public/card-backs/{path}
+    // ── 7. Build canonical Storage URL ────────────────────────────────────
+    // Path di bucket: card-backs/{targetUserId}/card-back.jpg
+    // Canonical public URL: {SUPABASE_URL}/storage/v1/object/public/card-backs/{path}
+    const storagePath  = `${targetUserId}/card-back.jpg`;
     const canonicalUrl = `${SUPABASE_URL}/storage/v1/object/public/card-backs/${storagePath}`;
+    console.log(`${ROUTE} table=agency_members column=card_back_image_url storageUrl=${canonicalUrl}`);
 
-    console.log(`[save-card-back-url] updating agency_members — target=${targetUserId} agency=${agencyId}`);
-    console.log(`[save-card-back-url] canonical URL: ${canonicalUrl}`);
-
+    // ── 8. UPDATE agency_members.card_back_image_url ───────────────────────
     const { data: updateData, error: updateErr } = await withTimeout(
       admin.from('agency_members')
         .update({ card_back_image_url: canonicalUrl })
         .eq('user_id', targetUserId)
         .eq('agency_id', agencyId)
-        .select('card_back_image_url'),
+        .select('user_id, card_back_image_url'),
       10000, 'DB timeout saat update card_back_image_url'
     );
 
     if (updateErr) {
-      console.error('[save-card-back-url] update error:', updateErr.message, updateErr);
-      // Column belum ada → minta user jalankan migration
-      if (
-        updateErr.message.includes('card_back_image_url') ||
-        updateErr.message.includes('column') ||
-        updateErr.code === '42703'
-      ) {
-        return err(res, 500,
-          'Kolom card_back_image_url belum ada di tabel agency_members. ' +
-          'Jalankan file supabase/card-back-image-migration.sql di Supabase SQL Editor terlebih dahulu.'
-        );
-      }
-      return err(res, 500, `Gagal update database: ${updateErr.message}`);
+      const hint = classifySupabaseError(updateErr, ROUTE + ' update');
+      console.error(`${ROUTE} UPDATE error — table=agency_members column=card_back_image_url user_id=${targetUserId} code=${updateErr.code} msg=${updateErr.message}`, updateErr);
+      return err(res, 500, hint ?? `Gagal update database: ${updateErr.message}`);
     }
 
+    // 0 rows updated means the WHERE clause matched nothing — row exists (we
+    // verified above) but the UPDATE still returned empty. Most likely the
+    // card_back_image_url column is missing (migration not run yet).
     if (!updateData || updateData.length === 0) {
-      console.error('[save-card-back-url] 0 rows updated — baris tidak ditemukan');
-      return err(res, 500, 'Update berhasil dikirim tapi tidak ada baris yang diupdate. Pastikan migration sudah dijalankan.');
+      console.error(`${ROUTE} 0 rows updated — table=agency_members user_id=${targetUserId} agencyId=${agencyId}. Kolom card_back_image_url mungkin belum ada.`);
+      return err(res, 500,
+        'Database update dikirim tapi 0 baris yang diperbarui. ' +
+        'Kemungkinan kolom card_back_image_url belum ada di tabel agency_members. ' +
+        'Jalankan supabase/card-back-image-migration.sql di Supabase SQL Editor lalu coba lagi.'
+      );
     }
 
-    console.log(`[save-card-back-url] OK — card_back_image_url tersimpan untuk ${targetUserId}`);
-    return ok(res, { ok: true, url: canonicalUrl });
+    const savedRow = updateData[0];
+    console.log(`${ROUTE} SUCCESS — table=agency_members user_id=${savedRow.user_id} card_back_image_url=${savedRow.card_back_image_url}`);
+    return ok(res, { ok: true, url: savedRow.card_back_image_url ?? canonicalUrl });
+
   } catch (e) {
-    console.error('[save-card-back-url] exception:', e);
+    console.error(`${ROUTE} unhandled exception:`, e);
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }
 });
