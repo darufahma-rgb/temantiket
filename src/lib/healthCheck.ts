@@ -2,16 +2,17 @@
  * healthCheck — Frontend utility untuk memvalidasi konfigurasi Supabase sebelum
  * operasi penting (upload file, update database, wallet ledger, sync data).
  *
- * Memanggil GET /api/health-check (Express backend, service-role key tidak diekspos).
+ * Memanggil GET /api/health-check (Express backend di Replit, Vercel serverless di production).
  * Hasil di-cache selama 60 detik sehingga upload berurutan tidak membebani server.
  *
- * Penggunaan:
- *   import { assertHealthy } from "@/lib/healthCheck";
- *   await assertHealthy("Upload Gambar Kartu"); // throws jika gagal
+ * Provider-agnostic: mendukung Vercel, Replit, Local.
  */
+
+export type HealthProvider = "vercel" | "replit" | "local";
 
 export interface HealthCheckResult {
   ok:           boolean;
+  provider?:    HealthProvider;
   serviceRole:  boolean;
   projectUrl:   string | null;
   database:     boolean;
@@ -33,6 +34,14 @@ export function flushHealthCache(): void {
   _cache = null;
 }
 
+/** Human-readable label for the environment provider. */
+export function providerLabel(p?: HealthProvider | string): string {
+  if (p === "vercel")  return "Vercel Environment Variables";
+  if (p === "replit")  return "Replit Secrets";
+  if (p === "local")   return "local .env";
+  return "environment variables";
+}
+
 /**
  * Fetch health status from the backend. Results are cached for 60 s to avoid
  * multiple requests during a sequence of upload/save operations.
@@ -51,9 +60,9 @@ export async function checkHealth(timeoutMs = 12_000): Promise<HealthCheckResult
 
   try {
     const res = await fetch("/api/health-check", {
-      method: "GET",
+      method:  "GET",
       headers: { "Cache-Control": "no-cache" },
-      signal: controller.signal,
+      signal:  controller.signal,
     });
 
     let data: HealthCheckResult;
@@ -62,6 +71,7 @@ export async function checkHealth(timeoutMs = 12_000): Promise<HealthCheckResult
     } catch {
       data = {
         ok:           false,
+        provider:     undefined,
         serviceRole:  false,
         projectUrl:   null,
         database:     false,
@@ -80,6 +90,7 @@ export async function checkHealth(timeoutMs = 12_000): Promise<HealthCheckResult
 
     const failed: HealthCheckResult = {
       ok:           false,
+      provider:     undefined,
       serviceRole:  false,
       projectUrl:   null,
       database:     false,
@@ -106,7 +117,7 @@ export async function assertHealthy(context?: string): Promise<void> {
 
   const label   = context ? `${context}: ` : "";
   const primary = !result.serviceRole
-    ? "SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server"
+    ? `SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di ${providerLabel(result.provider)}`
     : !result.database
       ? "Database tidak bisa diakses — cek konfigurasi Supabase"
       : !result.storage
@@ -139,7 +150,7 @@ export function describeHealth(result: HealthCheckResult): {
   if (!result.serviceRole) {
     return {
       label:  "Service role key tidak ada",
-      detail: "Tambahkan SUPABASE_SERVICE_ROLE_KEY di Replit Secrets",
+      detail: `Tambahkan SUPABASE_SERVICE_ROLE_KEY di ${providerLabel(result.provider)}`,
       level:  "error",
     };
   }

@@ -8,7 +8,7 @@ import {
   type FeePaymentRecord,
 } from "@/lib/agentFeePayments";
 import { pullWalletTxs, type WalletTransaction } from "@/lib/agentWallet";
-import { checkHealth, flushHealthCache } from "@/lib/healthCheck";
+import { checkHealth, flushHealthCache, type HealthCheckResult } from "@/lib/healthCheck";
 import { AnimatePresence, motion } from "framer-motion";
 import { User, Bell, Shield, Palette, Globe, Save, Camera, TrendingUp, RefreshCw, Users, Plus, Trash2, Radio, PencilLine, KeyRound, Clock, CheckCircle2, Lock, History, FileEdit, FileX, FilePlus, Activity, XCircle, AlertCircle, Database, Cloud, HardDrive, UserCheck, MessageCircle, Instagram, FileText, Phone, Send, ChevronDown, ChevronUp, Megaphone, Image, ExternalLink, GripVertical, Eye, EyeOff, Link } from "lucide-react";
 import { InvoiceTemplateUploader } from "@/components/InvoiceTemplateUploader";
@@ -2251,8 +2251,11 @@ function ConnectionHealthPanel() {
             const bucketDetail = missing.length > 0
               ? `Bucket hilang: ${missing.join(", ")}`
               : undefined;
+            const pLabel = h.provider === "vercel" ? "Vercel Environment Variables"
+                         : h.provider === "replit" ? "Replit Secrets"
+                         : "environment variables";
             const primaryErr = !h.serviceRole
-              ? "SUPABASE_SERVICE_ROLE_KEY tidak ada di Replit Secrets"
+              ? `SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di ${pLabel}`
               : !h.database
                 ? "Admin DB tidak bisa diakses (cek service role key & project URL)"
                 : bucketDetail ?? "Storage backend bermasalah";
@@ -2344,7 +2347,7 @@ function ConnectionHealthPanel() {
           <li><b>Agency Member gagal:</b> user belum punya row di tabel <code className="font-mono bg-white px-1 rounded">agency_members</code>.</li>
           <li><b>Database Read gagal:</b> biasanya RLS policy belum di-apply atau env vars salah.</li>
           <li><b>Storage (anon) gagal:</b> bucket belum dibuat atau storage policy salah.</li>
-          <li><b>Server Health gagal:</b> <code className="font-mono bg-white px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> belum ada di Replit Secrets, atau bucket belum dibuat di Supabase Dashboard.</li>
+          <li><b>Server Health gagal:</b> <code className="font-mono bg-white px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> belum dikonfigurasi di environment variables (Vercel / Replit / .env), atau bucket belum dibuat di Supabase Dashboard.</li>
         </ul>
       </div>
     </div>

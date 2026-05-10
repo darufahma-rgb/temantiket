@@ -1634,16 +1634,31 @@ app.post('/api/save-card-back-url', async (req, res) => {
 
 /* ──────────────────────────────────────────────
    GET /api/health-check
+   Provider-agnostic health check: Vercel / Replit / Local.
    Validates Supabase config + DB + storage connectivity.
    Safe to call from frontend — never leaks service-role key.
-   Returns: { ok, serviceRole, projectUrl, database, storage, bucketStatus, errors }
+   Returns: { ok, provider, serviceRole, projectUrl, database, storage, bucketStatus, errors }
 ────────────────────────────────────────────── */
+function detectProvider() {
+  if (process.env.VERCEL || process.env.VERCEL_ENV || process.env.VERCEL_URL) return 'vercel';
+  if (process.env.REPL_ID || process.env.REPLIT_DB_URL || process.env.REPL_SLUG) return 'replit';
+  return 'local';
+}
+function envLabel(provider) {
+  if (provider === 'vercel') return 'Vercel Environment Variables';
+  if (provider === 'replit') return 'Replit Secrets';
+  return 'environment variables';
+}
+
 app.get('/api/health-check', async (req, res) => {
   const ROUTE = '[health-check]';
   const BUCKETS_TO_CHECK = ['jamaah-photos', 'jamaah-docs', 'card-backs', 'pdf-templates'];
+  const provider = detectProvider();
+  const label = envLabel(provider);
 
   const result = {
     ok:           true,
+    provider,
     serviceRole:  false,
     projectUrl:   null,    // VITE_ var — already in frontend bundle, safe to expose
     database:     false,
@@ -1655,20 +1670,20 @@ app.get('/api/health-check', async (req, res) => {
   // ── 1. Environment / config check ────────────────────────────────────────
   if (!SUPABASE_URL) {
     result.ok = false;
-    result.errors.push('VITE_SUPABASE_URL tidak dikonfigurasi. Tambahkan di .replit [userenv.shared] atau Replit Secrets.');
+    result.errors.push(`VITE_SUPABASE_URL tidak dikonfigurasi di ${label}.`);
   } else {
     result.projectUrl = SUPABASE_URL;
   }
 
   if (!SERVICE_ROLE_KEY) {
     result.ok = false;
-    result.errors.push('SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi. Tambahkan di Secrets panel Replit lalu restart server.');
+    result.errors.push(`SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di ${label}.`);
   } else {
     result.serviceRole = true;
   }
 
   if (!result.serviceRole || !result.projectUrl) {
-    console.warn(`${ROUTE} config invalid — skip DB/storage checks`);
+    console.warn(`${ROUTE} config invalid (provider: ${provider}) — skip DB/storage checks`);
     return res.status(503).json(result);
   }
 
