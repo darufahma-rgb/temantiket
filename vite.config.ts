@@ -44,13 +44,13 @@ export default defineConfig(({ mode }) => ({
         type: "module",
         navigateFallback: "index.html",
       },
-      includeAssets: ["favicon.ico", "temantiket-pwa-icon.png", "offline.html"],
+      includeAssets: ["favicon.ico", "temantiket-pwa-icon.png", "offline.html", "pwa-icon-192.png", "pwa-icon-512.png"],
       manifest: {
         name: "Temantiket - Manajemen Umrah & Haji",
         short_name: "Temantiket",
         description: "Aplikasi manajemen trip, jamaah, paket, kalkulasi biaya, dan dokumen untuk Umrah dan Haji.",
         theme_color: "#0ea5e9",
-        background_color: "#f0f9ff",
+        background_color: "#0ea5e9",
         display: "standalone",
         display_override: ["fullscreen", "standalone"],
         orientation: "portrait-primary",
@@ -87,9 +87,11 @@ export default defineConfig(({ mode }) => ({
             type: "image/png",
           },
           {
-            src: "/temantiket-pwa-icon.png",
+            // PWA install icon — dedicated file, dipisah dari favicon/branding lain
+            src: "/pwa-icon-192.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any maskable",
           },
           {
             src: "/temantiket-pwa-icon.png",
@@ -97,15 +99,11 @@ export default defineConfig(({ mode }) => ({
             type: "image/png",
           },
           {
-            src: "/temantiket-pwa-icon.png",
+            // PWA install icon high-res + Android adaptive icon
+            src: "/pwa-icon-512.png",
             sizes: "512x512",
             type: "image/png",
-          },
-          {
-            src: "/temantiket-pwa-icon.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
+            purpose: "any maskable",
           },
         ],
         shortcuts: [
@@ -114,14 +112,14 @@ export default defineConfig(({ mode }) => ({
             short_name: "Kalkulator",
             description: "Hitung biaya paket Umrah & Haji",
             url: "/calculator?source=pwa",
-            icons: [{ src: "/temantiket-pwa-icon.png", sizes: "96x96" }],
+            icons: [{ src: "/pwa-icon-192.png", sizes: "192x192" }],
           },
           {
             name: "Paket Trip",
             short_name: "Paket",
             description: "Kelola paket perjalanan",
             url: "/packages?source=pwa",
-            icons: [{ src: "/temantiket-pwa-icon.png", sizes: "96x96" }],
+            icons: [{ src: "/pwa-icon-192.png", sizes: "192x192" }],
           },
         ],
       },
