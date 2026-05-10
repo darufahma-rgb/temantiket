@@ -5,8 +5,8 @@
  * DB field:     agency_members.card_back_image_url  (stores canonical public URL)
  *
  * Cross-device strategy:
- *   On upload → generate a 7-day signed URL for immediate local display.
- *   On load   → regenerate a fresh 7-day signed URL from the known path.
+ *   On upload → store canonical public URL in DB via server route (bypasses RLS).
+ *   On load   → read URL from DB, then regenerate a fresh 7-day signed URL.
  *   Signed URLs work regardless of whether the bucket is public or private,
  *   so the image is always accessible on every device / browser session.
  *
@@ -14,6 +14,9 @@
  *   1. ALTER TABLE agency_members ADD COLUMN card_back_image_url TEXT;
  *   2. CREATE BUCKET 'card-backs' (public = true recommended, not required).
  *   3. RLS policies for storage.objects on that bucket.
+ *
+ * DB save goes through /api/save-card-back-url (Express + service-role key)
+ * so RLS on agency_members never blocks staff/agent from updating their own row.
  */
 import { supabase } from "@/lib/supabase";
 
@@ -61,11 +64,15 @@ async function buildSignedUrl(userId: string): Promise<string | null> {
     const { data, error } = await supabase.storage
       .from(BUCKET)
       .createSignedUrl(path, SIGNED_URL_TTL);
-    if (error || !data?.signedUrl) return null;
+    if (error || !data?.signedUrl) {
+      console.warn("[cardBackStorage] buildSignedUrl gagal:", error?.message);
+      return null;
+    }
     // Append a short cache-buster so the browser doesn't serve stale images
     // after an upload.
     return `${data.signedUrl}&cb=${Math.floor(Date.now() / 60000)}`; // changes every minute
-  } catch {
+  } catch (e) {
+    console.warn("[cardBackStorage] buildSignedUrl exception:", e);
     return null;
   }
 }
@@ -81,15 +88,24 @@ export async function uploadCardBack(userId: string, file: File): Promise<string
   if (!file.type.startsWith("image/")) throw new Error("File harus berupa gambar.");
   if (file.size > 10 * 1024 * 1024) throw new Error("Ukuran maksimum 10 MB.");
 
+  console.log(`[cardBackStorage] uploadCardBack — userId=${userId} size=${file.size} type=${file.type}`);
+
   const blob = await resizeToBlob(file, 1600, 2000, 0.92);
   const path = `${userId}/card-back.jpg`;
+
+  console.log(`[cardBackStorage] uploading to storage — bucket=${BUCKET} path=${path} blobSize=${blob.size}`);
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
     .upload(path, blob, { contentType: "image/jpeg", upsert: true });
 
   if (uploadError) {
-    if (uploadError.message.includes("Bucket not found") || uploadError.message.includes("bucket")) {
+    console.error("[cardBackStorage] storage upload error:", uploadError);
+    if (
+      uploadError.message.includes("Bucket not found") ||
+      uploadError.message.includes("bucket") ||
+      uploadError.message.includes("does not exist")
+    ) {
       throw new Error(
         `Bucket Storage 'card-backs' belum dibuat. Jalankan file supabase/card-back-image-migration.sql di Supabase SQL Editor terlebih dahulu.`,
       );
@@ -97,18 +113,24 @@ export async function uploadCardBack(userId: string, file: File): Promise<string
     throw new Error(`Upload gagal: ${uploadError.message}`);
   }
 
+  console.log("[cardBackStorage] storage upload OK — generating signed URL");
+
   // Try to get a signed URL for immediate display (cross-device safe)
   const signed = await buildSignedUrl(userId);
-  if (signed) return signed;
+  if (signed) {
+    console.log("[cardBackStorage] signed URL ready");
+    return signed;
+  }
 
   // Fallback: public URL (works if bucket is set to public in Supabase)
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  console.log("[cardBackStorage] using public URL fallback:", data.publicUrl);
   return `${data.publicUrl}?t=${Date.now()}`;
 }
 
 /**
  * Returns the canonical storage URL (no cache-buster) for saving to DB.
- * Call this after uploadCardBack to get a stable reference for persistence.
+ * This is a deterministic URL derived from the storage path.
  */
 export function getCanonicalCardBackUrl(userId: string): string {
   if (!supabase) return "";
@@ -121,51 +143,62 @@ export function getCanonicalCardBackUrl(userId: string): string {
  * Simpan URL gambar belakang kartu ke kolom agency_members.card_back_image_url.
  * targetUserId = userId pemilik kartu (bisa berbeda dari yang mengupload / owner)
  *
- * Stores the CANONICAL public URL (no cache-buster) so we have a stable
- * path reference. Signed URLs are regenerated at load time.
+ * PENTING: Operasi ini dilakukan via server route /api/save-card-back-url
+ * menggunakan service-role key agar RLS pada agency_members tidak memblokir
+ * staff/agent yang hanya ingin update card_back_image_url milik sendiri.
  *
  * Throws if:
- * - Supabase returns an error (column missing, RLS error, network)
- * - UPDATE succeeds but 0 rows were updated (RLS silently blocked it, or
- *   the user/agency combo doesn't exist in agency_members)
+ * - Server tidak bisa dihubungi
+ * - Server mengembalikan error (kolom belum ada, auth gagal, dsb)
  */
 export async function saveCardBackUrl(
   targetUserId: string,
   agencyId: string,
-  _displayUrl: string, // kept for API compat — we derive canonical URL ourselves
+  _displayUrl: string, // kept for API compat — no longer used
 ): Promise<void> {
-  if (!supabase) return;
-  const canonicalUrl = getCanonicalCardBackUrl(targetUserId);
+  if (!supabase) throw new Error("Supabase belum dikonfigurasi.");
 
-  const { data, error } = await supabase
-    .from("agency_members")
-    .update({ card_back_image_url: canonicalUrl })
-    .eq("user_id", targetUserId)
-    .eq("agency_id", agencyId)
-    .select("card_back_image_url");
-
-  if (error) {
-    if (
-      error.message.includes("card_back_image_url") ||
-      error.message.includes("column") ||
-      error.code === "PGRST204" ||
-      error.code === "42703"
-    ) {
-      throw new Error(
-        `Kolom card_back_image_url belum ada di tabel agency_members. ` +
-        `Jalankan file supabase/card-back-image-migration.sql di Supabase SQL Editor terlebih dahulu.`,
-      );
-    }
-    throw new Error(`Gagal simpan URL ke database: ${error.message}`);
+  // Get fresh access token to authenticate the server request
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    throw new Error("Sesi tidak valid — silakan login ulang.");
   }
 
-  // If no rows were returned, the UPDATE was silently blocked (RLS or no matching row)
-  if (!data || data.length === 0) {
-    throw new Error(
-      `URL berhasil diupload ke Storage, tetapi gagal disimpan ke database. ` +
-      `Pastikan kolom card_back_image_url sudah ada (jalankan supabase/card-back-image-migration.sql) ` +
-      `dan RLS policy mengizinkan UPDATE.`,
-    );
+  console.log(`[cardBackStorage] saveCardBackUrl — targetUserId=${targetUserId} agencyId=${agencyId}`);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch("/api/save-card-back-url", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ targetUserId, agencyId }),
+      signal: controller.signal,
+    });
+
+    const text = await res.text();
+    let json: { ok?: boolean; url?: string; error?: string } = {};
+    try { json = text ? JSON.parse(text) : {}; } catch { /* keep empty */ }
+
+    if (!res.ok) {
+      const serverMsg = json.error ?? text.slice(0, 400);
+      console.error(`[cardBackStorage] saveCardBackUrl server error ${res.status}:`, serverMsg);
+      throw new Error(`Gagal simpan ke database: ${serverMsg}`);
+    }
+
+    console.log(`[cardBackStorage] saveCardBackUrl OK — url=${json.url}`);
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("Timeout saat menyimpan ke database — coba lagi.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -189,6 +222,8 @@ export async function loadCardBackUrl(
 ): Promise<string | null> {
   if (!supabase) return null;
   try {
+    console.log(`[cardBackStorage] loadCardBackUrl — userId=${targetUserId} agencyId=${agencyId}`);
+
     // Step 1 — does a card back exist for this user?
     const { data, error } = await supabase
       .from("agency_members")
@@ -197,20 +232,33 @@ export async function loadCardBackUrl(
       .eq("agency_id", agencyId)
       .maybeSingle();
 
-    // Column missing or other DB error → can't load, return null silently
-    if (error) return null;
+    if (error) {
+      console.warn("[cardBackStorage] loadCardBackUrl DB error:", error.message, error.code);
+      return null;
+    }
 
     const stored = (data as { card_back_image_url?: string | null } | null)
       ?.card_back_image_url ?? null;
-    if (!stored) return null; // no image uploaded yet
+
+    if (!stored) {
+      console.log("[cardBackStorage] loadCardBackUrl — no card_back_image_url in DB");
+      return null;
+    }
+
+    console.log("[cardBackStorage] loadCardBackUrl — found stored URL, generating signed URL");
 
     // Step 2 — regenerate fresh signed URL (cross-device, always works)
     const signed = await buildSignedUrl(targetUserId);
-    if (signed) return signed;
+    if (signed) {
+      console.log("[cardBackStorage] loadCardBackUrl — returning signed URL");
+      return signed;
+    }
 
     // Step 3 — fallback to whatever is in the DB (public URL if bucket is public)
+    console.log("[cardBackStorage] loadCardBackUrl — signed URL failed, returning stored public URL");
     return stored;
-  } catch {
+  } catch (e) {
+    console.warn("[cardBackStorage] loadCardBackUrl exception:", e);
     return null;
   }
 }

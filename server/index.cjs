@@ -1143,6 +1143,132 @@ app.post('/api/award-commission-points', async (req, res) => {
 });
 
 /* ──────────────────────────────────────────────
+   POST /api/save-card-back-url
+   Simpan card_back_image_url ke agency_members menggunakan service-role key
+   sehingga RLS tidak memblokir staff/agent yang update milik sendiri.
+
+   Authorization: Bearer <access_token>
+   Body: { targetUserId, agencyId }
+   - targetUserId: UUID pemilik kartu (boleh beda dari caller jika caller = owner)
+   - agencyId: UUID agency
+
+   Rules:
+   - Caller harus authenticated member di agencyId yang sama.
+   - Agent/staff hanya boleh update card_back_image_url milik sendiri.
+   - Owner boleh update card_back_image_url siapapun di agency-nya.
+────────────────────────────────────────────── */
+app.post('/api/save-card-back-url', async (req, res) => {
+  try {
+    if (!SERVICE_ROLE_KEY) {
+      return err(res, 503,
+        'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. ' +
+        'Tambahkan di Secrets Replit lalu restart server.'
+      );
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return err(res, 401, 'Missing Authorization header');
+
+    const caller = await getCallerUser(authHeader, 8000).catch(() => null);
+    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
+
+    const { targetUserId, agencyId } = req.body ?? {};
+    if (!targetUserId || !agencyId) {
+      return err(res, 400, 'targetUserId dan agencyId wajib diisi');
+    }
+
+    const admin = makeAdminClient();
+
+    // Verifikasi caller terdaftar di agency yang diminta
+    const { data: callerMembership, error: memErr } = await withTimeout(
+      admin.from('agency_members')
+        .select('agency_id, role')
+        .eq('user_id', caller.id)
+        .eq('agency_id', agencyId)
+        .maybeSingle(),
+      8000, 'DB timeout saat verifikasi membership'
+    );
+    if (memErr) {
+      console.error('[save-card-back-url] membership lookup error:', memErr.message);
+      return err(res, 500, `DB error: ${memErr.message}`);
+    }
+    if (!callerMembership) {
+      console.error(`[save-card-back-url] caller ${caller.id} bukan member di agency ${agencyId}`);
+      return err(res, 403, 'Tidak terdaftar di agency yang diminta');
+    }
+
+    // Role guard: agent/staff hanya boleh update milik sendiri
+    if (callerMembership.role !== 'owner' && targetUserId !== caller.id) {
+      console.error(`[save-card-back-url] ${callerMembership.role} ${caller.id} mencoba update card back milik ${targetUserId}`);
+      return err(res, 403, 'Hanya owner yang bisa update gambar kartu member lain');
+    }
+
+    // Pastikan targetUserId ada di agency ini
+    const { data: targetMembership, error: targetErr } = await withTimeout(
+      admin.from('agency_members')
+        .select('user_id, card_back_image_url')
+        .eq('user_id', targetUserId)
+        .eq('agency_id', agencyId)
+        .maybeSingle(),
+      8000, 'DB timeout saat verifikasi target user'
+    );
+    if (targetErr) {
+      console.error('[save-card-back-url] target lookup error:', targetErr.message);
+      return err(res, 500, `DB error saat cek target: ${targetErr.message}`);
+    }
+    if (!targetMembership) {
+      console.error(`[save-card-back-url] target ${targetUserId} tidak ditemukan di agency ${agencyId}`);
+      return err(res, 404, 'Target user tidak ditemukan di agency ini');
+    }
+
+    // Derive canonical public URL dari storage path
+    if (!SUPABASE_URL) return err(res, 500, 'SUPABASE_URL tidak dikonfigurasi');
+    const storagePath = `${targetUserId}/card-back.jpg`;
+    // Format public URL: {SUPABASE_URL}/storage/v1/object/public/card-backs/{path}
+    const canonicalUrl = `${SUPABASE_URL}/storage/v1/object/public/card-backs/${storagePath}`;
+
+    console.log(`[save-card-back-url] updating agency_members — target=${targetUserId} agency=${agencyId}`);
+    console.log(`[save-card-back-url] canonical URL: ${canonicalUrl}`);
+
+    const { data: updateData, error: updateErr } = await withTimeout(
+      admin.from('agency_members')
+        .update({ card_back_image_url: canonicalUrl })
+        .eq('user_id', targetUserId)
+        .eq('agency_id', agencyId)
+        .select('card_back_image_url'),
+      10000, 'DB timeout saat update card_back_image_url'
+    );
+
+    if (updateErr) {
+      console.error('[save-card-back-url] update error:', updateErr.message, updateErr);
+      // Column belum ada → minta user jalankan migration
+      if (
+        updateErr.message.includes('card_back_image_url') ||
+        updateErr.message.includes('column') ||
+        updateErr.code === '42703'
+      ) {
+        return err(res, 500,
+          'Kolom card_back_image_url belum ada di tabel agency_members. ' +
+          'Jalankan file supabase/card-back-image-migration.sql di Supabase SQL Editor terlebih dahulu.'
+        );
+      }
+      return err(res, 500, `Gagal update database: ${updateErr.message}`);
+    }
+
+    if (!updateData || updateData.length === 0) {
+      console.error('[save-card-back-url] 0 rows updated — baris tidak ditemukan');
+      return err(res, 500, 'Update berhasil dikirim tapi tidak ada baris yang diupdate. Pastikan migration sudah dijalankan.');
+    }
+
+    console.log(`[save-card-back-url] OK — card_back_image_url tersimpan untuk ${targetUserId}`);
+    return ok(res, { ok: true, url: canonicalUrl });
+  } catch (e) {
+    console.error('[save-card-back-url] exception:', e);
+    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
+  }
+});
+
+/* ──────────────────────────────────────────────
    Serve static frontend in production
 ────────────────────────────────────────────── */
 const isProd = process.env.NODE_ENV === 'production';

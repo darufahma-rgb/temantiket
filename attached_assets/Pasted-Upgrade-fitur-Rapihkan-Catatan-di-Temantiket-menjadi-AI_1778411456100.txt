@@ -1,0 +1,72 @@
+Upgrade fitur **“Rapihkan Catatan”** di Temantiket menjadi AI Markdown Formatter yang jauh lebih pintar, modern, dan fleksibel. Saat user menekan tombol “Rapihkan”, sistem jangan hanya merapikan spacing/bullet sederhana, tetapi wajib memformat ulang isi catatan menjadi struktur Markdown (`.md`) yang bersih, profesional, mudah dibaca, dan konsisten. Semua hasil rapihkan harus tetap berbasis Markdown sebagai source utama/render utama aplikasi.
+
+Tambahkan beberapa pilihan **Tone Penulisan**:
+
+* Profesional Formal
+* Friendly WhatsApp
+* Persuasif Marketing
+* Singkat & Padat
+* Admin Operasional
+* Elegant Clean Notes
+* Broadcast Telegram/WhatsApp
+
+Tambahkan juga pilihan **Format Layout Markdown**:
+
+* Bullet List
+* Checklist
+* Numbered Steps
+* FAQ Format
+* Card Sections
+* Announcement Style
+* Simple Paragraph
+* Compact Notes
+* Travel/Visa Template
+* Client Instruction Format
+
+Sistem AI formatter wajib otomatis:
+
+* memperbaiki struktur heading (`#`, `##`, `###`)
+* merapikan bullet nesting
+* memperbaiki line break
+* menghapus spasi berantakan
+* memperjelas section penting
+* menandai informasi penting dengan bold/italic markdown
+* mendeteksi nomor telepon/alamat/link
+* membuat hasil lebih estetik dan mudah dibaca
+* menjaga isi informasi tetap sama (jangan mengubah makna)
+
+Tambahkan fitur:
+
+* preview hasil markdown realtime
+* switch antara “Raw Markdown” dan “Rendered View”
+* copy markdown
+* undo/restore versi sebelumnya
+* preset template favorit
+* auto-save draft formatter
+
+UI “Rapihkan” harus modern:
+
+* muncul modal pilihan tone + format sebelum generate
+* ada preview side-by-side
+* hasil render markdown harus mirip Notion/Telegram clean style
+* typography rapih
+* spacing konsisten
+* tidak boleh ada bullet/random indent berantakan seperti sekarang
+
+Tambahkan AI cleanup rules:
+
+* jika user paste chat WhatsApp berantakan → otomatis dibentuk jadi section rapih
+* jika user paste syarat visa → otomatis jadi checklist markdown
+* jika user paste broadcast → otomatis jadi template promosi clean
+* jika user paste catatan random → otomatis dibuat heading + grouping topik
+
+Semua hasil akhir harus:
+
+* clean
+* minimalis
+* readable
+* mobile friendly
+* konsisten antar halaman
+* render markdown dengan indah di seluruh aplikasi Temantiket
+
+Jangan gunakan plain text biasa lagi sebagai hasil “Rapihkan”. Semua wajib terstruktur Markdown profesional.
