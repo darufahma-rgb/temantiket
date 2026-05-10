@@ -1030,7 +1030,7 @@ export default function AgentCommandCenter() {
                       <table className="w-full text-[11.5px] min-w-[540px]">
                         <thead>
                           <tr className="text-muted-foreground border-b">
-                            {["Order", "Tanggal", "Revenue", "Profit", "Fee Komisi"].map((h) => (
+                            {["Order", "Tanggal", "Revenue", "Profit Kotor", "Fee Komisi"].map((h) => (
                               <th key={h} className={`font-semibold py-1.5 px-2 ${h === "Order" ? "text-left" : "text-right"}`}>{h}</th>
                             ))}
                           </tr>

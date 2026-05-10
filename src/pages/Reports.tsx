@@ -853,7 +853,7 @@ export default function Reports() {
                   <th className="text-left font-semibold py-2 px-1">Mitra</th>
                   <th className="text-right font-semibold py-2 px-1">Order</th>
                   <th className="text-right font-semibold py-2 px-1">Revenue</th>
-                  <th className="text-right font-semibold py-2 px-1">Gross Profit</th>
+                  <th className="text-right font-semibold py-2 px-1">Profit Bersih</th>
                   <th className="text-right font-semibold py-2 px-1">Komisi</th>
                   <th className="text-right font-semibold py-2 px-1">⭐ Poin</th>
                 </tr>
