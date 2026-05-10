@@ -1,0 +1,77 @@
+Hapus seluruh sistem “komisi %” lama dari website karena sekarang Temantiket menggunakan sistem fee flat per layanan, bukan persentase profit. Audit seluruh frontend, backend, database, analytics, dashboard, dan komponen UI yang masih menampilkan label seperti “komisi 10%”, “profit sharing %”, atau sistem persentase lain. Ganti seluruh flow menjadi fee flat sesuai layanan yang sudah ditentukan owner/admin. Pastikan tidak ada lagi perhitungan berbasis persentase profit di profile agent, leaderboard, analytics, wallet, maupun manajemen agency. Semua komisi agent sekarang berasal dari nominal flat seperti VOA Rp150.000, Tiket Return Rp220.000, dan seterusnya.
+
+Selain itu, buat halaman baru khusus bernama “Staff Performance Center” atau “Pantau Kinerja Staff Temantiket” untuk owner/admin memonitor performa seluruh staff internal Temantiket secara realtime dan profesional.
+
+Halaman ini harus menampilkan:
+
+* Total task/order yang ditangani tiap staff
+* Jumlah order selesai
+* Total profit yang dihasilkan staff
+* Total fee pelaksana yang diterima
+* Average response time
+* Progress order aktif
+* Jumlah revisi/problem order
+* Rating internal staff
+* Last active
+* Online/offline status
+* Timeline aktivitas terbaru
+* Leaderboard staff internal
+* Beban kerja aktif per staff
+* Riwayat penugasan
+* Riwayat perubahan status order
+* Persentase penyelesaian tepat waktu
+
+Tambahkan filter:
+
+* Harian
+* Mingguan
+* Bulanan
+* Semua waktu
+* Berdasarkan staff
+* Berdasarkan jenis layanan
+
+Tambahkan visual analytics:
+
+* Grafik performa staff
+* Grafik order selesai
+* Grafik profit contribution
+* Heatmap aktivitas staff
+* Statistik SLA/respon
+
+Tambahkan badge internal seperti:
+
+* Staff Tercepat
+* Problem Solver
+* Closing Terbanyak
+* Support Terbaik
+* Top Executor
+
+Tambahkan sistem alert:
+
+* Staff overload
+* Order terbengkalai
+* SLA terlambat
+* Staff tidak aktif
+* Order stuck terlalu lama
+
+Pastikan halaman ini:
+
+* Hanya bisa diakses owner/admin
+* Responsive mobile & desktop
+* Premium & modern UI
+* Sinkron realtime dengan database order
+* Semua angka konsisten dengan laporan keuangan dan analytics
+* Tidak ada mismatch data antara dashboard owner dan data order asli
+
+Tambahkan juga halaman detail staff:
+
+* Riwayat semua task
+* Profit contribution
+* Timeline aktivitas
+* Komisi pelaksana
+* Catatan internal owner
+* Statistik performa
+* Progress KPI
+
+Target akhirnya:
+Owner Temantiket bisa memantau seluruh kinerja staff internal secara realtime dalam satu dashboard profesional tanpa harus cek manual order satu per satu.
