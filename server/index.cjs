@@ -1343,6 +1343,110 @@ app.post('/api/save-card-back-url', async (req, res) => {
 });
 
 /* ──────────────────────────────────────────────
+   GET /api/health-check
+   Validates Supabase config + DB + storage connectivity.
+   Safe to call from frontend — never leaks service-role key.
+   Returns: { ok, serviceRole, projectUrl, database, storage, bucketStatus, errors }
+────────────────────────────────────────────── */
+app.get('/api/health-check', async (req, res) => {
+  const ROUTE = '[health-check]';
+  const BUCKETS_TO_CHECK = ['jamaah-photos', 'jamaah-docs', 'card-backs', 'pdf-templates'];
+
+  const result = {
+    ok:           true,
+    serviceRole:  false,
+    projectUrl:   null,    // VITE_ var — already in frontend bundle, safe to expose
+    database:     false,
+    storage:      false,
+    bucketStatus: {},      // { bucketName: 'ok' | 'missing' }
+    errors:       [],
+  };
+
+  // ── 1. Environment / config check ────────────────────────────────────────
+  if (!SUPABASE_URL) {
+    result.ok = false;
+    result.errors.push('VITE_SUPABASE_URL tidak dikonfigurasi. Tambahkan di .replit [userenv.shared] atau Replit Secrets.');
+  } else {
+    result.projectUrl = SUPABASE_URL;
+  }
+
+  if (!SERVICE_ROLE_KEY) {
+    result.ok = false;
+    result.errors.push('SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi. Tambahkan di Secrets panel Replit lalu restart server.');
+  } else {
+    result.serviceRole = true;
+  }
+
+  if (!result.serviceRole || !result.projectUrl) {
+    console.warn(`${ROUTE} config invalid — skip DB/storage checks`);
+    return res.status(503).json(result);
+  }
+
+  // ── 2. Database connectivity check ───────────────────────────────────────
+  try {
+    const admin = makeAdminClient();
+    const { error: dbErr } = await withTimeout(
+      admin.from('agencies').select('id').limit(1),
+      8000,
+      'DB health check timed out setelah 8s — cek koneksi Supabase',
+    );
+    if (dbErr) {
+      result.ok = false;
+      const hint = classifySupabaseError(dbErr, 'health-check/db');
+      result.errors.push(`Database tidak bisa diakses: ${dbErr.message}`);
+      if (hint) result.errors.push(hint);
+      console.error(`${ROUTE} DB check FAILED:`, dbErr.message);
+    } else {
+      result.database = true;
+      console.log(`${ROUTE} DB check OK`);
+    }
+  } catch (e) {
+    result.ok = false;
+    const msg = e instanceof Error ? e.message : String(e);
+    result.errors.push(`Database exception: ${msg}`);
+    console.error(`${ROUTE} DB check exception:`, msg);
+  }
+
+  // ── 3. Storage bucket check ───────────────────────────────────────────────
+  try {
+    const admin = makeAdminClient();
+    const { data: buckets, error: listErr } = await withTimeout(
+      admin.storage.listBuckets(),
+      8000,
+      'Storage health check timed out setelah 8s',
+    );
+    if (listErr) {
+      result.ok = false;
+      result.errors.push(`Storage tidak bisa diakses: ${listErr.message}`);
+      console.error(`${ROUTE} storage list FAILED:`, listErr.message);
+    } else {
+      const bucketIds = new Set((buckets ?? []).map((b) => b.id));
+      let allOk = true;
+      for (const name of BUCKETS_TO_CHECK) {
+        const exists = bucketIds.has(name);
+        result.bucketStatus[name] = exists ? 'ok' : 'missing';
+        if (!exists) {
+          allOk = false;
+          result.errors.push(`Bucket '${name}' tidak ditemukan — buat di Supabase Storage dashboard`);
+          console.warn(`${ROUTE} bucket MISSING: ${name}`);
+        }
+      }
+      result.storage = allOk;
+      if (!allOk) result.ok = false;
+      console.log(`${ROUTE} storage check — buckets: ${JSON.stringify(result.bucketStatus)}`);
+    }
+  } catch (e) {
+    result.ok = false;
+    const msg = e instanceof Error ? e.message : String(e);
+    result.errors.push(`Storage exception: ${msg}`);
+    console.error(`${ROUTE} storage check exception:`, msg);
+  }
+
+  console.log(`${ROUTE} done — ok=${result.ok} db=${result.database} storage=${result.storage} errors=${result.errors.length}`);
+  return res.status(result.ok ? 200 : 503).json(result);
+});
+
+/* ──────────────────────────────────────────────
    Serve static frontend in production
 ────────────────────────────────────────────── */
 const isProd = process.env.NODE_ENV === 'production';

@@ -3,6 +3,7 @@
  * Path convention: `{agency_id}/{file}` (RLS storage policy enforce).
  */
 import { supabase, isSupabaseConfigured } from "./supabase";
+import { assertHealthy } from "@/lib/healthCheck";
 import { requireAgencyId } from "@/store/authStore";
 import { compressIfImage } from "./imageCompress";
 
@@ -194,6 +195,9 @@ export async function uploadPromoImage(file: File): Promise<string> {
   const ct = file.type || "image/jpeg";
   if (!ct.startsWith("image/")) throw new Error("File harus berupa gambar (JPG, PNG, WebP).");
   if (file.size > 10 * 1024 * 1024) throw new Error("Ukuran file maks 10 MB.");
+
+  // Validate server-side Supabase config before attempting upload
+  await assertHealthy("Upload Poster Promo");
   const agencyId = requireAgencyId();
   const compressed = await compressIfImage(file, ct);
   const finalContentType = compressed.type || ct;

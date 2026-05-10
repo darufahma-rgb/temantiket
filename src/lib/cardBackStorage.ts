@@ -19,6 +19,7 @@
  * so RLS on agency_members never blocks staff/agent from updating their own row.
  */
 import { supabase } from "@/lib/supabase";
+import { assertHealthy } from "@/lib/healthCheck";
 
 const BUCKET = "card-backs";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 7; // 7 days in seconds
@@ -87,6 +88,9 @@ export async function uploadCardBack(userId: string, file: File): Promise<string
   if (!supabase) throw new Error("Supabase belum dikonfigurasi.");
   if (!file.type.startsWith("image/")) throw new Error("File harus berupa gambar.");
   if (file.size > 10 * 1024 * 1024) throw new Error("Ukuran maksimum 10 MB.");
+
+  // Validate server-side Supabase config before attempting upload
+  await assertHealthy("Upload Gambar Kartu");
 
   console.log(`[cardBackStorage] uploadCardBack — userId=${userId} size=${file.size} type=${file.type}`);
 

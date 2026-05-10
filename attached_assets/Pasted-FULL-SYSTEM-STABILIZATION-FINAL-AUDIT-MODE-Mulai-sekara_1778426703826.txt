@@ -1,0 +1,355 @@
+FULL SYSTEM STABILIZATION & FINAL AUDIT MODE
+
+Mulai sekarang STOP menambahkan fitur random baru sebelum seluruh sistem Temantiket benar-benar stabil.
+
+Lakukan FULL SYSTEM AUDIT menyeluruh terhadap seluruh website Temantiket (frontend, backend, database, storage, API, leaderboard, member system, agency system, upload system, point system, wallet system, komisi, profit, analytics, dan semua flow bisnis).
+
+Tujuan utama:
+Membuat website stabil, konsisten, sinkron, scalable, profesional, dan bebas bug/bottleneck/error logic.
+
+==================================================
+PRIORITAS UTAMA
+==================================================
+
+Fokus utama sekarang adalah:
+
+1. STABILITAS
+2. KONSISTENSI DATA
+3. LOGIKA MATEMATIKA
+4. FLOW BISNIS
+5. ERROR HANDLING
+6. UI CONSISTENCY
+7. MOBILE RESPONSIVE
+8. PERFORMANCE
+9. DATABASE CLEAN STRUCTURE
+10. USER EXPERIENCE
+
+JANGAN tambal sementara.
+Cari akar masalah sampai tuntas.
+
+==================================================
+GLOBAL SYSTEM AUDIT
+==================================================
+
+Audit SEMUA hal berikut:
+
+- frontend rendering
+- backend API
+- Supabase connection
+- database schema
+- RLS policy
+- storage bucket
+- upload flow
+- image persistence
+- state management
+- leaderboard logic
+- point logic
+- reward logic
+- commission logic
+- wallet logic
+- referral logic
+- stamp logic
+- agent tier logic
+- operational fee logic
+- VOA lapangan logic
+- analytics calculation
+- profit calculation
+- fee payout
+- agency ranking
+- public page
+- PWA setup
+- navbar/logo consistency
+- mobile layout
+- card rendering
+- caching
+- hydration
+- async flow
+- race condition
+- duplicated calculations
+- stale data
+- realtime sync
+- UI consistency
+- design consistency
+- route consistency
+- loading state
+- error state
+- empty state
+
+==================================================
+SINGLE SOURCE OF TRUTH
+==================================================
+
+Semua perhitungan WAJIB menggunakan centralized helper/service.
+
+JANGAN ada hitungan berbeda di:
+- dashboard
+- leaderboard
+- analytics
+- agency page
+- payout page
+- public page
+- wallet
+- komisi
+
+Buat SINGLE SOURCE OF TRUTH.
+
+Semua wajib menggunakan:
+- shared calculation helper
+- shared formatter
+- shared point engine
+- shared commission engine
+
+==================================================
+FINANCIAL & COMMISSION SYSTEM
+==================================================
+
+Audit dan perbaiki total:
+
+- gross profit
+- net profit
+- modal
+- operational fee
+- agent fee
+- VOA lapangan fee
+- owner revenue
+- agency revenue
+- referral bonus
+- wallet balance
+- payout status
+
+PASTIKAN:
+
+NET PROFIT =
+Revenue
+- modal
+- operational fee
+- agent commission
+- VOA lapangan fee
+- semua biaya lain
+
+JANGAN ada angka fake/manual/random.
+
+==================================================
+LEDGER SYSTEM (WAJIB)
+==================================================
+
+Buat sistem ledger permanen.
+
+Gunakan:
+- commission_ledger
+- wallet_ledger
+- point_ledger
+- payout_history
+
+Semua perubahan uang/poin wajib tercatat.
+
+JANGAN hitung dari metadata UI.
+
+==================================================
+POINT & TIER SYSTEM
+==================================================
+
+Pastikan:
+
+- setiap transaksi completed = +20 point agent
+- referral reward sinkron
+- stamp sinkron
+- leaderboard sinkron
+- tier sinkron
+- mission sinkron
+- analytics sinkron
+
+Semua realtime dan konsisten.
+
+==================================================
+AGENT LAPANGAN FLOW
+==================================================
+
+Pastikan:
+
+Saat agent lapangan ditugaskan:
+- fee tercatat
+- muncul di profile agent
+- masuk wallet
+- masuk leaderboard
+- masuk analytics
+- masuk akumulasi komisi
+- masuk payout system
+
+JANGAN hanya tampil di order detail.
+
+==================================================
+UPLOAD & STORAGE SYSTEM
+==================================================
+
+Audit total upload kartu staff/member/agent.
+
+Cari akar error:
+- NOT_FOUND fra1::...
+- NOT_FOUND sin1::...
+- gagal update database
+- upload sukses tapi URL hilang
+- gambar hilang setelah refresh
+- mismatch table
+- mismatch record id
+
+Pastikan:
+- upload stabil
+- database update valid
+- storage cleanup valid
+- public URL valid
+- persistence valid
+
+==================================================
+HEALTH CHECK SYSTEM
+==================================================
+
+Tambahkan:
+- /api/health-check
+
+Validasi:
+- Supabase URL
+- anon key
+- service role
+- storage bucket
+- database connection
+- RLS
+- table access
+- update permission
+- upload permission
+
+Jika ada masalah:
+Tampilkan error detail.
+
+==================================================
+ERROR LOGGING
+==================================================
+
+Tambahkan logging detail:
+
+- tableName
+- recordId
+- userId
+- role
+- bucket
+- storagePath
+- payload
+- response
+- Supabase error
+- API error
+- stack trace
+
+JANGAN tampilkan generic error.
+
+==================================================
+UI/UX REFACTOR
+==================================================
+
+Gunakan style konsisten:
+
+- background putih natural
+- clean modern
+- elegant minimal
+- spacing rapi
+- card konsisten
+- navbar konsisten
+- typography konsisten
+- responsive mobile
+- no cramped layout
+- no oversized section
+- no dark random background
+
+Leaderboard:
+- elegant
+- scrollable
+- informative
+- responsive
+- realtime
+- CTA jelas
+
+==================================================
+PWA
+==================================================
+
+Pastikan:
+- PWA icon khusus menggunakan logo upload terbaru
+- tidak merubah favicon/icon lain
+- manifest valid
+- installable di Android/iPhone
+
+==================================================
+AI NOTE FORMATTER
+==================================================
+
+Perbaiki fitur “Rapihkan”.
+
+WAJIB benar-benar memformat ulang catatan.
+
+Support:
+- professional tone
+- formal
+- santai
+- marketing
+- clean markdown
+- bullet hierarchy
+- heading
+- spacing
+- emoji optional
+- CTA formatting
+
+JANGAN hanya return text lama.
+
+==================================================
+STAFF MONITORING PAGE
+==================================================
+
+Buat halaman khusus monitoring staff.
+
+Berisi:
+- total handled order
+- response speed
+- operational activity
+- assigned task
+- completed task
+- revenue contribution
+- monthly performance
+- active status
+- attendance/activity
+- notes/log
+
+==================================================
+FINAL REQUIREMENTS
+==================================================
+
+Lakukan:
+- deep debugging
+- refactor jika perlu
+- hapus dead code
+- hapus duplicate logic
+- rapikan structure
+- rapikan naming
+- rapikan API
+- rapikan state
+- rapikan hooks
+- rapikan database flow
+
+JANGAN membuat patch sementara.
+
+==================================================
+AFTER COMPLETION
+==================================================
+
+Berikan laporan lengkap:
+
+1. akar masalah
+2. bug yang ditemukan
+3. bottleneck yang ditemukan
+4. file yang diperbaiki
+5. flow yang diperbaiki
+6. logic yang diselaraskan
+7. database yang diubah
+8. API yang ditambahkan
+9. test yang dilakukan
+10. bukti semua berhasil
+
+Gunakan bahasa Indonesia yang mudah dipahami.

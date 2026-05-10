@@ -8,6 +8,7 @@ import {
   type FeePaymentRecord,
 } from "@/lib/agentFeePayments";
 import { pullWalletTxs, type WalletTransaction } from "@/lib/agentWallet";
+import { checkHealth, flushHealthCache } from "@/lib/healthCheck";
 import { AnimatePresence, motion } from "framer-motion";
 import { User, Bell, Shield, Palette, Globe, Save, Camera, TrendingUp, RefreshCw, Users, Plus, Trash2, Radio, PencilLine, KeyRound, Clock, CheckCircle2, Lock, History, FileEdit, FileX, FilePlus, Activity, XCircle, AlertCircle, Database, Cloud, HardDrive, UserCheck, MessageCircle, Instagram, FileText, Phone, Send, ChevronDown, ChevronUp, Megaphone, Image, ExternalLink, GripVertical, Eye, EyeOff, Link } from "lucide-react";
 import { InvoiceTemplateUploader } from "@/components/InvoiceTemplateUploader";
@@ -1963,12 +1964,14 @@ function ConnectionHealthPanel() {
 
   const runChecks = async () => {
     setRunning(true);
+    flushHealthCache(); // force fresh server check on manual re-run
     const initial: HealthCheck[] = [
-      { key: "config",  label: "Konfigurasi Env", desc: "VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY", Icon: Cloud,     status: "running" },
-      { key: "auth",    label: "Sesi Login",      desc: "Token aktif & user info dari Supabase Auth", Icon: UserCheck, status: "running" },
-      { key: "agency",  label: "Agency Member",   desc: "User ter-link ke agency di tabel agency_members", Icon: Users, status: "running" },
-      { key: "db",      label: "Database Read",   desc: "SELECT dari tabel packages (uji RLS)",       Icon: Database,  status: "running" },
-      { key: "storage", label: "Storage",         desc: "List bucket jamaah-photos",                  Icon: HardDrive, status: "running" },
+      { key: "config",  label: "Konfigurasi Env",         desc: "VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY",               Icon: Cloud,     status: "running" },
+      { key: "auth",    label: "Sesi Login",              desc: "Token aktif & user info dari Supabase Auth",                Icon: UserCheck, status: "running" },
+      { key: "agency",  label: "Agency Member",           desc: "User ter-link ke agency di tabel agency_members",           Icon: Users,     status: "running" },
+      { key: "db",      label: "Database Read (anon)",    desc: "SELECT dari tabel packages (uji RLS anon key)",             Icon: Database,  status: "running" },
+      { key: "storage", label: "Storage (anon)",          desc: "List bucket jamaah-photos (anon client)",                   Icon: HardDrive, status: "running" },
+      { key: "server",  label: "Server Health (backend)", desc: "Service role key, admin DB, & semua bucket via /api/health-check", Icon: Shield, status: "running" },
     ];
     setChecks(initial);
 
@@ -1984,75 +1987,125 @@ function ConnectionHealthPanel() {
     // 1. Env config
     if (!isSupabaseConfigured()) {
       upd("config", { status: "fail", message: "Supabase belum dikonfigurasi", detail: "VITE_SUPABASE_URL atau VITE_SUPABASE_ANON_KEY kosong di environment." });
-      ["auth", "agency", "db", "storage"].forEach((k) => upd(k, { status: "warn", message: "Skip — Supabase tidak aktif" }));
+      ["auth", "agency", "db", "storage", "server"].forEach((k) => upd(k, { status: "warn", message: "Skip — Supabase tidak aktif" }));
       setRunning(false);
       setLastRun(new Date());
       return;
     }
     upd("config", { status: "ok", message: SUPABASE_URL.replace(/^https?:\/\//, "") });
 
-    // 2. Auth session
-    let authedUserId: string | null = null;
-    try {
-      const { result, ms } = await time(() => supabase!.auth.getSession());
-      const session = result.data.session;
-      if (!session) {
-        upd("auth", { status: "fail", message: "Belum login", detail: "Tidak ada session aktif. Silakan login ulang.", durationMs: ms });
-      } else {
-        authedUserId = session.user.id;
-        upd("auth", { status: "ok", message: session.user.email ?? "Logged in", detail: `User ID: ${session.user.id.slice(0, 8)}…`, durationMs: ms });
-      }
-    } catch (e) {
-      upd("auth", { status: "fail", message: extractErr(e) });
-    }
-
-    // 3. Agency membership
-    if (!authedUserId) {
-      upd("agency", { status: "warn", message: "Skip — perlu login dulu" });
-    } else {
-      try {
-        const { result, ms } = await time(() =>
-          supabase!.from("agency_members").select("agency_id, role").eq("user_id", authedUserId!).maybeSingle()
-        );
-        if (result.error) {
-          upd("agency", { status: "fail", message: extractErr(result.error), detail: "Cek RLS policy untuk tabel agency_members.", durationMs: ms });
-        } else if (!result.data) {
-          upd("agency", { status: "fail", message: "User belum ter-link ke agency manapun", detail: "Insert row di tabel agency_members atau buat agency baru.", durationMs: ms });
-        } else {
-          upd("agency", { status: "ok", message: `Role: ${result.data.role}`, detail: `Agency ID: ${String(result.data.agency_id).slice(0, 8)}…`, durationMs: ms });
+    // Run client-side checks + server-side check in parallel
+    const [, , , , serverResult] = await Promise.allSettled([
+      // 2. Auth session
+      (async () => {
+        try {
+          const { result, ms } = await time(() => supabase!.auth.getSession());
+          const session = result.data.session;
+          if (!session) {
+            upd("auth", { status: "fail", message: "Belum login", detail: "Tidak ada session aktif. Silakan login ulang.", durationMs: ms });
+          } else {
+            upd("auth", { status: "ok", message: session.user.email ?? "Logged in", detail: `User ID: ${session.user.id.slice(0, 8)}…`, durationMs: ms });
+          }
+        } catch (e) {
+          upd("auth", { status: "fail", message: extractErr(e) });
         }
-      } catch (e) {
-        upd("agency", { status: "fail", message: extractErr(e) });
-      }
-    }
+      })(),
 
-    // 4. DB read (packages)
-    try {
-      const { result, ms } = await time(() =>
-        supabase!.from("packages").select("id", { count: "exact", head: true })
-      );
-      if (result.error) {
-        upd("db", { status: "fail", message: extractErr(result.error), detail: "Kemungkinan masalah RLS, schema, atau jaringan.", durationMs: ms });
-      } else {
-        upd("db", { status: "ok", message: `OK · ${result.count ?? 0} paket`, durationMs: ms });
-      }
-    } catch (e) {
-      upd("db", { status: "fail", message: extractErr(e) });
-    }
+      // 3. Agency membership
+      (async () => {
+        try {
+          const sessResult = await supabase!.auth.getSession();
+          const uid = sessResult.data.session?.user.id ?? null;
+          if (!uid) { upd("agency", { status: "warn", message: "Skip — perlu login dulu" }); return; }
+          const { result, ms } = await time(() =>
+            supabase!.from("agency_members").select("agency_id, role").eq("user_id", uid).maybeSingle()
+          );
+          if (result.error) {
+            upd("agency", { status: "fail", message: extractErr(result.error), detail: "Cek RLS policy untuk tabel agency_members.", durationMs: ms });
+          } else if (!result.data) {
+            upd("agency", { status: "fail", message: "User belum ter-link ke agency manapun", detail: "Insert row di tabel agency_members atau buat agency baru.", durationMs: ms });
+          } else {
+            upd("agency", { status: "ok", message: `Role: ${result.data.role}`, detail: `Agency ID: ${String(result.data.agency_id).slice(0, 8)}…`, durationMs: ms });
+          }
+        } catch (e) {
+          upd("agency", { status: "fail", message: extractErr(e) });
+        }
+      })(),
 
-    // 5. Storage
-    try {
-      const { result, ms } = await time(() =>
-        supabase!.storage.from("jamaah-photos").list("", { limit: 1 })
-      );
-      if (result.error) {
-        upd("storage", { status: "fail", message: extractErr(result.error), detail: "Cek bucket & storage policy.", durationMs: ms });
-      } else {
-        upd("storage", { status: "ok", message: "Bucket jamaah-photos accessible", durationMs: ms });
-      }
-    } catch (e) {
-      upd("storage", { status: "fail", message: extractErr(e) });
-    }
+      // 4. DB read (packages, anon client)
+      (async () => {
+        try {
+          const { result, ms } = await time(() =>
+            supabase!.from("packages").select("id", { count: "exact", head: true })
+          );
+          if (result.error) {
+            upd("db", { status: "fail", message: extractErr(result.error), detail: "Kemungkinan masalah RLS, schema, atau jaringan.", durationMs: ms });
+          } else {
+            upd("db", { status: "ok", message: `OK · ${result.count ?? 0} paket`, durationMs: ms });
+          }
+        } catch (e) {
+          upd("db", { status: "fail", message: extractErr(e) });
+        }
+      })(),
+
+      // 5. Storage (anon client)
+      (async () => {
+        try {
+          const { result, ms } = await time(() =>
+            supabase!.storage.from("jamaah-photos").list("", { limit: 1 })
+          );
+          if (result.error) {
+            upd("storage", { status: "fail", message: extractErr(result.error), detail: "Cek bucket & storage policy.", durationMs: ms });
+          } else {
+            upd("storage", { status: "ok", message: "Bucket jamaah-photos accessible", durationMs: ms });
+          }
+        } catch (e) {
+          upd("storage", { status: "fail", message: extractErr(e) });
+        }
+      })(),
+
+      // 6. Server-side health check (service role, admin DB, all buckets)
+      (async () => {
+        const t0 = performance.now();
+        try {
+          const h = await checkHealth(12_000);
+          const ms = Math.round(performance.now() - t0);
+          if (h.ok) {
+            const bucketList = Object.entries(h.bucketStatus)
+              .map(([b, s]) => `${b}:${s === "ok" ? "✓" : "✗"}`)
+              .join(" · ");
+            upd("server", {
+              status: "ok",
+              message: `Service role OK · DB OK · Semua bucket tersedia`,
+              detail: bucketList || "Semua sistem backend normal",
+              durationMs: ms,
+            });
+          } else {
+            const missing = Object.entries(h.bucketStatus)
+              .filter(([, s]) => s === "missing")
+              .map(([b]) => b);
+            const bucketDetail = missing.length > 0
+              ? `Bucket hilang: ${missing.join(", ")}`
+              : undefined;
+            const primaryErr = !h.serviceRole
+              ? "SUPABASE_SERVICE_ROLE_KEY tidak ada di Replit Secrets"
+              : !h.database
+                ? "Admin DB tidak bisa diakses (cek service role key & project URL)"
+                : bucketDetail ?? "Storage backend bermasalah";
+            upd("server", {
+              status: h.database && h.serviceRole ? "warn" : "fail",
+              message: primaryErr,
+              detail: h.errors.slice(0, 2).join(" · ") || undefined,
+              durationMs: ms,
+            });
+          }
+        } catch (e) {
+          upd("server", { status: "fail", message: `Server check exception: ${extractErr(e)}` });
+        }
+      })(),
+    ]);
+
+    void serverResult; // already handled inside the async IIFE above
 
     setLastRun(new Date());
     setRunning(false);
@@ -2126,7 +2179,8 @@ function ConnectionHealthPanel() {
           <li><b>Sesi Login gagal:</b> token expired — logout & login ulang.</li>
           <li><b>Agency Member gagal:</b> user belum punya row di tabel <code className="font-mono bg-white px-1 rounded">agency_members</code>.</li>
           <li><b>Database Read gagal:</b> biasanya RLS policy belum di-apply atau env vars salah.</li>
-          <li><b>Storage gagal:</b> bucket belum dibuat atau policy salah.</li>
+          <li><b>Storage (anon) gagal:</b> bucket belum dibuat atau storage policy salah.</li>
+          <li><b>Server Health gagal:</b> <code className="font-mono bg-white px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> belum ada di Replit Secrets, atau bucket belum dibuat di Supabase Dashboard.</li>
         </ul>
       </div>
     </div>
