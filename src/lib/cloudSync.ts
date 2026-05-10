@@ -93,16 +93,30 @@ const noteFromRow = (r: Record<string, unknown>): NoteCloud => {
   };
 };
 
-// BUG FIX: timestamps WAJIB di-convert ke ISO string untuk kolom timestamptz
-// Supabase. Sebelumnya dikirim sebagai raw Number (ms epoch) → upsert gagal
-// diam-diam dan data tidak tersimpan.
-const noteToRow = (n: NoteCloud, agencyId?: string) => ({
-  id: n.id, title: n.title, content: n.content, color: n.color,
-  pinned: !!n.pinned, tags: n.tags ?? [],
-  created_at: new Date(n.createdAt).toISOString(),
-  updated_at: new Date(n.updatedAt).toISOString(),
-  ...(agencyId ? { agency_id: agencyId } : {}),
-});
+// Schema: notes.created_at dan notes.updated_at bertipe BIGINT (Unix ms epoch),
+// bukan timestamptz. Kirim sebagai number, JANGAN .toISOString() — Postgres akan
+// menolak string ISO dengan "invalid input syntax for type bigint".
+const noteToRow = (n: NoteCloud, agencyId?: string) => {
+  // Guard: pastikan timestamps adalah number yang valid sebelum dikirim ke DB.
+  const createdAt = typeof n.createdAt === "number" && Number.isFinite(n.createdAt)
+    ? n.createdAt
+    : Date.now();
+  const updatedAt = typeof n.updatedAt === "number" && Number.isFinite(n.updatedAt)
+    ? n.updatedAt
+    : Date.now();
+
+  return {
+    id: n.id,
+    title: n.title,
+    content: n.content,
+    color: n.color,
+    pinned: !!n.pinned,
+    tags: n.tags ?? [],
+    created_at: createdAt,   // bigint → kirim sebagai number (ms epoch)
+    updated_at: updatedAt,   // bigint → kirim sebagai number (ms epoch)
+    ...(agencyId ? { agency_id: agencyId } : {}),
+  };
+};
 
 export async function pullNotes(): Promise<NoteCloud[] | null> {
   if (!isSupabaseConfigured()) return null;
@@ -117,20 +131,28 @@ export async function pullNotes(): Promise<NoteCloud[] | null> {
 export async function pushNotes(notes: NoteCloud[]): Promise<void> {
   if (!isSupabaseConfigured() || notes.length === 0) return;
   const agencyId = requireAgencyId();
+  const rows = notes.map((n) => noteToRow(n, agencyId));
   const { error } = await supabase!
     .from("notes")
-    .upsert(notes.map((n) => noteToRow(n, agencyId)), { onConflict: "id" });
-  if (error) throw new Error(`Gagal simpan catatan ke cloud: ${error.message}`);
+    .upsert(rows, { onConflict: "id" });
+  if (error) {
+    console.error("[cloudSync] pushNotes gagal. Payload sample:", rows[0], "Error:", error);
+    throw new Error(`Gagal simpan catatan ke cloud: ${error.message}`);
+  }
 }
 
 /** Upsert satu catatan. Dipakai saat edit/tambah agar lebih targeted. */
 export async function upsertNote(note: NoteCloud): Promise<void> {
   if (!isSupabaseConfigured()) return;
   const agencyId = requireAgencyId();
+  const row = noteToRow(note, agencyId);
   const { error } = await supabase!
     .from("notes")
-    .upsert(noteToRow(note, agencyId), { onConflict: "id" });
-  if (error) throw new Error(`Gagal simpan catatan ke cloud: ${error.message}`);
+    .upsert(row, { onConflict: "id" });
+  if (error) {
+    console.error("[cloudSync] upsertNote gagal. Payload:", row, "Error:", error);
+    throw new Error(`Gagal simpan catatan ke cloud: ${error.message}`);
+  }
 }
 
 export async function deleteNoteCloud(id: string): Promise<void> {
