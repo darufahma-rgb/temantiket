@@ -215,6 +215,14 @@ export default function OrderDetail() {
       const shouldCreditKurir = willBeCompleted && !!kurirAgentIdPre &&
         kurirFeeAmountPre > 0 && !metaPatch.kurirFeeCredited;
 
+      // Visa Student pelaksana (field-staff) fee — auto-deducted from profit & auto-credited on Completed.
+      // Fee langsung dikurangi dari harga customer saat status Completed, tidak perlu klik manual.
+      const pelaksanaIdForCredit  = (metaPatch.pelaksanaId as string | undefined) ?? null;
+      const pelaksanaFeeForCredit = Number(metaPatch.pelaksanaFee ?? 200_000);
+      const shouldCreditPelaksana = order.type === "visa_student" &&
+        willBeCompleted && !!pelaksanaIdForCredit &&
+        pelaksanaFeeForCredit > 0 && !metaPatch.pelaksanaFeeCredited;
+
       // Agent order commission (sales agent, not VOA field agent).
       // Only credit if createdByAgent resolves to a member with role === "agent".
       // Owner/staff set as "referral source" do NOT get a commission credit.
@@ -339,6 +347,39 @@ export default function OrderDetail() {
           console.error(`[OrderDetail] agent commission credit FAILED — agent=${agentCommId}:`, errMsg);
           toast.error(`Gagal catat komisi agen ke wallet`, {
             description: `Error: ${errMsg}. Komisi TIDAK dicatat ke database — coba simpan ulang.`,
+            duration: 10000,
+          });
+        }
+      }
+
+      // Pelaksana lapangan visa_student — otomatis dikreditkan saat Completed.
+      // Fee ini langsung dipotong dari profit customer, bukan perlu klik manual.
+      if (shouldCreditPelaksana) {
+        const pelaksanaName = members.find((m) => m.userId === pelaksanaIdForCredit)?.displayName ?? "pelaksana lapangan";
+        console.log(`[OrderDetail] crediting pelaksana wallet: id=${pelaksanaIdForCredit} amount=${pelaksanaFeeForCredit} order=${order.id}`);
+        const { persisted, error: walletErr } = await addWalletTxAsync(
+          pelaksanaIdForCredit!,
+          {
+            agentId:     pelaksanaIdForCredit!,
+            type:        "pelaksana_fee",
+            pointsDelta: 0,
+            amountIDR:   pelaksanaFeeForCredit,
+            description: `Fee Pelaksana Visa Student #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            createdBy:   currentUser?.id ?? "system",
+          },
+          `pelaksana-${order.id}`,
+        );
+        if (persisted) {
+          flagsPatch.pelaksanaFeeCredited = true;
+          toast.success(`Fee pelaksana otomatis dikreditkan ke wallet ${pelaksanaName}: ${fmtIDR(pelaksanaFeeForCredit)}`, {
+            description: "Fee langsung dipotong dari harga customer dan masuk wallet pelaksana.",
+            duration: 5000,
+          });
+        } else {
+          const errMsg = walletErr ?? "Gagal konek ke server";
+          console.error(`[OrderDetail] pelaksana wallet credit FAILED — id=${pelaksanaIdForCredit}:`, errMsg);
+          toast.error(`Gagal catat fee pelaksana ke wallet ${pelaksanaName}`, {
+            description: `Error: ${errMsg}. Fee TIDAK dicatat ke database — coba simpan ulang.`,
             duration: 10000,
           });
         }

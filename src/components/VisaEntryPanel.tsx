@@ -25,7 +25,6 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import { useOrdersStore } from "@/store/ordersStore";
 import { ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
-import { addWalletTx } from "@/lib/agentWallet";
 import { fmtIDR } from "@/lib/profit";
 import { toast } from "sonner";
 import type { Order } from "@/features/orders/ordersRepo";
@@ -49,7 +48,6 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
   const [assigning, setAssigning] = useState(false);
   const [advancing, setAdvancing] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
-  const [creditingFee, setCreditingFee] = useState(false);
   const [editingNote, setEditingNote] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [editingFee, setEditingFee] = useState(false);
@@ -64,6 +62,15 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
   const feeCredited = !!(meta.pelaksanaFeeCredited as boolean | null);
   const pelaksanaFee = Number(meta.pelaksanaFee ?? DEFAULT_PELAKSANA_FEE);
   const isDone = currentStep >= VISA_STEPS.length - 1;
+
+  // Hanya tampilkan "Agen Penjual" + "Fee Agen" jika createdByAgent benar-benar berperan "agent".
+  // Owner/staff yang di-set sebagai referral source TIDAK dihitung sebagai penerima komisi.
+  const isRealAgentCreator = useMemo(
+    () => !!order.createdByAgent && allMembers.some(
+      (m) => m.userId === order.createdByAgent && m.role === "agent",
+    ),
+    [order.createdByAgent, allMembers],
+  );
 
   const isPelaksana = user?.id === pelaksanaId;
   const canAdvance = (isOwner || isPelaksana) && !isDone;
@@ -171,31 +178,6 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
     }
   }
 
-  async function handleCreditFee() {
-    if (!pelaksanaId) return;
-    setCreditingFee(true);
-    try {
-      addWalletTx(pelaksanaId, {
-        agentId: pelaksanaId,
-        type: "pelaksana_fee",
-        pointsDelta: 0,
-        amountIDR: pelaksanaFee,
-        description: `Fee Pelaksana Visa Student #${order.id.slice(0, 8)}${order.title ? ` — ${order.title}` : ""}`,
-        createdBy: user?.id ?? "owner",
-      });
-      const newMeta = { ...meta, pelaksanaFeeCredited: true };
-      await patchOrder(order.id, { metadata: newMeta });
-      onMetaChange(newMeta);
-      toast.success(`Fee Pelaksana ${fmtIDR(pelaksanaFee)} berhasil dikreditkan ke wallet pelaksana!`, {
-        duration: 5000,
-      });
-    } catch {
-      toast.error("Gagal catat fee pelaksana.");
-    } finally {
-      setCreditingFee(false);
-    }
-  }
-
   const roleLabel: Record<string, string> = {
     owner: "Owner",
     staff: "Staff",
@@ -222,8 +204,8 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
 
       <div className="p-4 space-y-5">
 
-        {/* ── Agen Penjual (read-only info) ──────────────────────────── */}
-        {order.createdByAgent && (
+        {/* ── Agen Penjual (hanya tampil jika createdByAgent = member role "agent") ── */}
+        {isRealAgentCreator && (
           <div className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2.5 space-y-1">
             <p className="text-[10px] font-bold uppercase tracking-wide text-sky-700">Agen Penjual</p>
             <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -236,6 +218,7 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
                   ?? order.createdByAgent?.slice(0, 8) ?? "—"}
                 <ExternalLink className="h-2.5 w-2.5 opacity-60" />
               </button>
+              {/* Fee Agen hanya tampil jika benar-benar agen (bukan owner/staff) dan bukan view staff */}
               {!isStaff && (
                 <span className="text-[11px] font-mono font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">
                   Fee Agen: {fmtIDR(Number((meta.agentFee as number | null) ?? 0))}
@@ -487,7 +470,7 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
           </div>
         )}
 
-        {/* ── Kredit Fee Pelaksana — owner only ─────────────────────── */}
+        {/* ── Status Komisi Pelaksana — otomatis dikreditkan saat Completed ─── */}
         {isOwner && pelaksanaId && (
           <div className="border-t pt-3 space-y-2">
             <div className="flex items-center gap-1.5">
@@ -502,26 +485,13 @@ export function VisaEntryPanel({ order, onMetaChange }: Props) {
                 Fee Pelaksana {fmtIDR(pelaksanaFee)} sudah dikreditkan ke wallet pelaksana
               </div>
             ) : (
-              <div className="space-y-2">
-                <p className="text-[11px] text-muted-foreground">
-                  Fee pelaksana lapangan:{" "}
-                  <span className="font-bold text-violet-700">{fmtIDR(pelaksanaFee)}/berkas</span>
-                  {pelaksanaFee !== DEFAULT_PELAKSANA_FEE && (
-                    <span className="ml-1 text-[10px] text-amber-600">(dikustomisasi)</span>
-                  )}
+              <div className="flex items-center gap-2 rounded-xl bg-violet-50 border border-violet-200 px-3 py-2.5">
+                <Wallet className="h-4 w-4 text-violet-500 shrink-0" />
+                <p className="text-[11px] text-violet-700">
+                  Fee pelaksana{" "}
+                  <span className="font-bold">{fmtIDR(pelaksanaFee)}</span>{" "}
+                  akan dikreditkan otomatis ke wallet pelaksana saat status order → <span className="font-bold">Selesai</span>.
                 </p>
-                <Button
-                  size="sm"
-                  className="w-full h-9 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white"
-                  disabled={creditingFee}
-                  onClick={() => void handleCreditFee()}
-                >
-                  {creditingFee
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                    : <Wallet className="h-3.5 w-3.5 mr-1.5" />
-                  }
-                  Kredit Fee Pelaksana {fmtIDR(pelaksanaFee)} ke Wallet
-                </Button>
               </div>
             )}
           </div>
