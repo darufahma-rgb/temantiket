@@ -459,7 +459,10 @@ export default function Orders() {
         defaultClientId={clientIdParam}
         onSubmit={async (draft) => {
           const { agentFee, ...rest } = draft;
-          const o = await addOrder({ ...rest, metadata: { agentFee }, tripId: null, packageId: null, jamaahId: null, notes: null });
+          // Hanya simpan agentFee di metadata kalau nilainya > 0 (artinya ada agen yg dapat komisi).
+          // Owner/staff yg buat order langsung → metadata bersih tanpa agentFee.
+          const metadata: Record<string, unknown> = agentFee > 0 ? { agentFee } : {};
+          const o = await addOrder({ ...rest, metadata, tripId: null, packageId: null, jamaahId: null, notes: null });
           toast.success("Order dibuat");
           setAddOpen(false);
           navigate(`/orders/detail/${o.id}`);
@@ -498,7 +501,8 @@ function NewOrderDialog({
   }) => Promise<void>;
 }) {
   const { clients, addClient, patchClient } = useClientsStore();
-  useAuthStore();
+  const currentUser = useAuthStore((s) => s.user);
+  const isAgent = currentUser?.role === "agent";
 
   const [type, setType] = useState<OrderType>(defaultType);
   const [title, setTitle] = useState("");
@@ -537,14 +541,15 @@ function NewOrderDialog({
   }, [open, type, currencyEdited]);
 
   // Auto-fill fee komisi dari pengaturan fee per produk (nominal IDR).
+  // Hanya untuk user berperan agent — owner/staff tidak dapat komisi.
   // Jalan ulang setiap kali tipe order berubah,
   // KECUALI user sudah override manual.
   useEffect(() => {
-    if (!open || feeEdited) return;
+    if (!open || feeEdited || !isAgent) return;
     const pc = loadProductCommissions();
     const auto = getCommissionForOrderType(type, pc);
     setAgentFee(auto > 0 ? String(auto) : "");
-  }, [open, feeEdited, type]);
+  }, [open, feeEdited, type, isAgent]);
 
   // Auto-fill judul: "[Tipe Order] - [Nama Klien]" (atau cuma tipe kalau gak
   // ada klien). Cuma jalan kalau user belum ngetik manual.
@@ -707,42 +712,44 @@ function NewOrderDialog({
             </div>
           </div>
 
-          {/* Fee Komisi Agen */}
-          <div className="space-y-1">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              Fee Komisi Agen
-            </Label>
-            <div className="flex items-center gap-1.5">
-              <span className="px-2 h-9 rounded-md border bg-muted/40 text-[11px] font-semibold inline-flex items-center shrink-0">
-                Rp
-              </span>
-              <Input
-                type="number"
-                inputMode="numeric"
-                value={agentFee}
-                onChange={(e) => { setAgentFee(e.target.value); setFeeEdited(true); }}
-                placeholder="0"
-                className="flex-1 min-w-0"
-              />
-              {feeEdited && (
-                <button
-                  type="button"
-                  className="text-[11px] text-muted-foreground underline shrink-0"
-                  onClick={() => setFeeEdited(false)}
-                >
-                  Reset
-                </button>
-              )}
+          {/* Fee Komisi Agen — hanya tampil untuk user berperan "agent" */}
+          {isAgent && (
+            <div className="space-y-1">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Fee Komisi Agen
+              </Label>
+              <div className="flex items-center gap-1.5">
+                <span className="px-2 h-9 rounded-md border bg-muted/40 text-[11px] font-semibold inline-flex items-center shrink-0">
+                  Rp
+                </span>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={agentFee}
+                  onChange={(e) => { setAgentFee(e.target.value); setFeeEdited(true); }}
+                  placeholder="0"
+                  className="flex-1 min-w-0"
+                />
+                {feeEdited && (
+                  <button
+                    type="button"
+                    className="text-[11px] text-muted-foreground underline shrink-0"
+                    onClick={() => setFeeEdited(false)}
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground pt-0.5">
+                Auto-isi dari pengaturan fee per produk · bisa diubah manual
+              </p>
             </div>
-            <p className="text-[10px] text-muted-foreground pt-0.5">
-              Auto-isi dari pengaturan fee per produk · bisa diubah manual
-            </p>
-          </div>
+          )}
 
-          {/* Profit preview */}
+          {/* Profit preview — fee agen hanya dipotong kalau user berperan agent */}
           {(Number(totalPrice) > 0 || Number(costPrice) > 0) && (() => {
             const profit = (Number(totalPrice) || 0) - (Number(costPrice) || 0);
-            const fee = Number(agentFee) || 0;
+            const fee = isAgent ? (Number(agentFee) || 0) : 0;
             const net = profit - fee;
             const positive = profit >= 0;
             const netPositive = net >= 0;
@@ -758,7 +765,7 @@ function NewOrderDialog({
                     {positive ? "+" : ""}{currencySymbol} {Math.abs(profit).toLocaleString("id-ID")}
                   </span>
                 </div>
-                {fee > 0 && (
+                {isAgent && fee > 0 && (
                   <div className={`rounded-xl border px-3 py-2 flex items-center justify-between gap-2 ${
                     netPositive ? "bg-sky-50 border-sky-200" : "bg-red-50 border-red-200"
                   }`}>
@@ -789,7 +796,7 @@ function NewOrderDialog({
                   costPrice: Number(costPrice) || 0,
                   currency,
                   clientId: clientId || null,
-                  agentFee: Number(agentFee) || 0,
+                  agentFee: isAgent ? (Number(agentFee) || 0) : 0,
                 });
               } catch (e) {
                 toast.error("Gagal simpan", { description: e instanceof Error ? e.message : "Coba lagi." });

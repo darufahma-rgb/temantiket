@@ -608,9 +608,8 @@ export default function AgentProfileOwnerView() {
       if (!order) return;
       await patchOrder(orderId, { status: "Completed" });
 
-      const feeAmount =
-        Number((order.metadata as Record<string, unknown>).agentFee ?? 0) ||
-        getCommissionForOrderType(order.type);
+      const storedFee = Number((order.metadata as Record<string, unknown>).agentFee ?? -1);
+      const feeAmount = storedFee >= 0 ? storedFee : getCommissionForOrderType(order.type);
 
       if (feeAmount > 0) {
         const orderLabel = ORDER_TYPE_LABEL[order.type];

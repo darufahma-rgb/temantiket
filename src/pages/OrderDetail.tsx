@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Trash2, Save, ExternalLink, Eye, FileText } from "lucide-react";
+import { ArrowLeft, Trash2, Save, ExternalLink, Eye, FileText, Crown } from "lucide-react";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import ClientViewDialog from "@/components/ClientViewDialog";
 import { Button } from "@/components/ui/button";
@@ -878,6 +878,13 @@ export default function OrderDetail() {
         const hasDeductions = agentFee > 0 || pelaksanaFee > 0 || voaOpexTotal > 0 || kurirOpexTotal > 0;
         return (
           <div className="rounded-2xl bg-gradient-to-br from-sky-50 to-white border border-sky-100 p-5 space-y-3">
+            {/* Badge "Order Langsung Owner" — tampil kalau user adalah owner & tidak ada agent */}
+            {currentUser?.role === "owner" && !isValidAgentOrder && (
+              <div className="flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-[10.5px] font-semibold text-amber-700">
+                <Crown className="h-3 w-3 text-amber-500 shrink-0" />
+                Order Langsung Owner — tidak ada komisi agen
+              </div>
+            )}
             <div>
               <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Pendapatan Kotor</div>
               <div className="text-2xl md:text-3xl font-extrabold font-mono mt-1">

@@ -1025,6 +1025,28 @@ app.post('/api/award-commission-points', async (req, res) => {
     }
 
     const adminClient = makeAdminClient();
+
+    // Verifikasi bahwa agentId benar-benar berperan "agent" di agency ini.
+    // Mencegah owner/staff mendapat poin komisi secara tidak sengaja.
+    const { data: memberRow, error: memberErr } = await withTimeout(
+      adminClient
+        .from('agency_members')
+        .select('role')
+        .eq('user_id', agentId)
+        .eq('agency_id', agencyId)
+        .single(),
+      6000,
+      'Timeout saat verifikasi role agen'
+    );
+    if (memberErr || !memberRow) {
+      console.warn('[award-commission-points] member tidak ditemukan:', agentId);
+      return err(res, 404, 'Member tidak ditemukan di agency ini');
+    }
+    if (memberRow.role !== 'agent') {
+      console.warn('[award-commission-points] user bukan agent, diabaikan:', agentId, memberRow.role);
+      return ok(res, { awarded: 0, reason: 'not_agent', role: memberRow.role });
+    }
+
     const { error: insertErr } = await withTimeout(
       adminClient.from('agent_points').insert({
         agency_id:  agencyId,
