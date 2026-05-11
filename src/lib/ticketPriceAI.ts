@@ -1059,16 +1059,21 @@ function splitMoreBlocks(text: string): string[] {
 }
 
 /**
- * Parse pasted Galileo GDS text (display or PNR format) → ParsedTicketPrice[].
- * Does NOT call OpenAI — pure regex, instant result.
- *
- * Supports:
- *   • Galileo availability/pricing display:  1 GF 70 N 03JUN CAI BAH 1715 2015
- *   • Galileo PNR/booking confirmation:      1 GF 70N 03JUN 3 CAIBAH HK1 1715 2015+1
- *   • Multi-option Galileo output with MORE 1 / MORE 2 / MORE 3 blocks —
- *     each block is parsed independently and returned as a separate ticket entry.
- *     Handles "MORE N    TOTAL AMOUNT X.XX CUR" on a single line.
+ * Try both Galileo parsers on a single text block and return whichever finds
+ * MORE flight segments. This prevents the short-circuit of `??` from hiding
+ * a better result: e.g. if parseGalileoDisplay only matches 2 of 4 lines but
+ * parseGalileoPNR matches all 4, we should use the PNR result.
  */
+function bestGalileoData(block: string): ItineraryData | null {
+  const displayData = parseGalileoDisplay(block);
+  const pnrData     = parseGalileoPNR(block);
+  if (!displayData && !pnrData) return null;
+  if (!displayData) return pnrData;
+  if (!pnrData) return displayData;
+  // Both found segments — pick whichever has MORE (more complete parse)
+  return displayData.legs.length >= pnrData.legs.length ? displayData : pnrData;
+}
+
 export function parseGalileoTextToTickets(text: string): ScanResult {
   // ── Multi-option: split on "MORE N" block markers ──────────────────────────
   // Galileo outputs multiple pricing options prefixed with "MORE 1", "MORE 2", etc.
@@ -1083,7 +1088,7 @@ export function parseGalileoTextToTickets(text: string): ScanResult {
 
     for (const block of blocks) {
       if (!block.trim()) continue;
-      const data = parseGalileoDisplay(block) ?? parseGalileoPNR(block);
+      const data = bestGalileoData(block);
       if (!data || data.legs.length === 0) continue;
 
       const rawTickets = itineraryLegsToRawTickets(data);
@@ -1104,8 +1109,11 @@ export function parseGalileoTextToTickets(text: string): ScanResult {
     return { tickets: allTickets, usedAI: false, grouped: totalGrouped };
   }
 
-  // ── Single-block fallback (original logic) ─────────────────────────────────
-  const data = parseGalileoDisplay(text) ?? parseGalileoPNR(text);
+  // ── Single-block fallback ──────────────────────────────────────────────────
+  // Use bestGalileoData so both parsers compete — whichever finds more segments wins.
+  // This prevents the old `??` short-circuit from discarding the PNR parser when the
+  // display parser only partially matches (e.g. only 2 of 4 segments for a return trip).
+  const data = bestGalileoData(text);
 
   if (!data || data.legs.length === 0) {
     return {
