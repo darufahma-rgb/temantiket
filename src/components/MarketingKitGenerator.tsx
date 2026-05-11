@@ -1,107 +1,76 @@
 import { useState, useRef, useCallback } from "react";
 import {
   Wand2, Copy, CheckCheck, Loader2, RefreshCw, FileText,
-  Plane, Megaphone, Moon, Sparkles, AlignLeft,
-  ImagePlus, X, ScanText, PenLine, MessageCircle, Zap, ArrowRight,
-  GraduationCap, Globe, Smartphone, Users, Heart,
+  Sparkles, AlignLeft, ImagePlus, X, ScanText, PenLine,
+  MessageCircle, ArrowRight, ChevronDown, Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { generateCaptionFromDetail, generateCaptionFromPoster, type TokenUsage } from "@/lib/ai/openrouter";
+import {
+  generateCaptionFromContext,
+  generateCaptionFromPoster,
+  generateCaptionVariant,
+  type TokenUsage,
+  type VariantType,
+} from "@/lib/ai/openrouter";
 import { AIModelToggle } from "@/components/AIModelToggle";
 
-/* ─── Mode ──────────────────────────────────────────────── */
+/* ─── Types ─────────────────────────────────────────────── */
 type Mode = "manual" | "poster";
 
-/* ─── Kategori ─────────────────────────────────────────── */
-const CATEGORIES = [
-  {
-    key: "umrah",
-    label: "Paket Umrah",
-    Icon: Moon,
-    prompt: "paket umrah",
-    context: "Tulis untuk calon jamaah umrah Indonesia. Fokus pada paket keberangkatan grup, detail hotel, penawaran harga, highlight itinerari, dan pengalaman jamaah. Bahasa hangat, kekeluargaan, dan menyentuh kerinduan Baitullah.",
-  },
-  {
-    key: "visa-student",
-    label: "Visa Student Mesir",
-    Icon: GraduationCap,
-    prompt: "visa pelajar Mesir / Masisir",
-    context: "Tulis untuk mahasiswa Indonesia di Mesir (komunitas Masisir). Fokus pada proses visa pelajar, berkas, legalisir, izin tinggal, kampus Al-Azhar, dan administrasi keperluan studi. Bahasa jelas, informatif, dan terpercaya.",
-  },
-  {
-    key: "voa-mesir",
-    label: "Visa on Arrival Mesir",
-    Icon: Globe,
-    prompt: "Visa on Arrival Mesir",
-    context: "Tulis untuk wisatawan atau traveler yang ingin masuk Mesir via VOA. Fokus pada syarat, harga, proses kedatangan, dan info praktis tourist visa. Bahasa praktis, informatif, dan reassuring.",
-  },
-  {
-    key: "tiket-masisir",
-    label: "Tiket Pesawat Masisir",
-    Icon: Plane,
-    prompt: "tiket pesawat Indonesia–Mesir untuk Masisir",
-    context: "Tulis untuk mahasiswa Masisir atau calon mahasiswa yang butuh tiket Indonesia–Mesir (atau sebaliknya). Fokus pada rute, bagasi, transit, promo maskapai, dan kebutuhan perjalanan mahasiswa. Bahasa akrab dan informatif.",
-  },
-  {
-    key: "imei-kepulangan",
-    label: "Jasa IMEI & Kepulangan",
-    Icon: Smartphone,
-    prompt: "jasa IMEI dan kepulangan dari Mesir",
-    context: "Tulis untuk mahasiswa atau WNI yang sedang atau akan pulang ke Indonesia dari Mesir. Fokus pada registrasi IMEI, bantu kepulangan, airport assistance, kargo/bagasi, dan layanan pendampingan. Bahasa praktis, membantu, dan solutif.",
-  },
-  {
-    key: "follow-up-agen",
-    label: "Follow Up Agen",
-    Icon: Users,
-    prompt: "pesan follow-up agen kepada customer tiket Masisir dan visa Mesir",
-    context: `Tulis pesan follow-up yang dikirimkan AGEN kepada CUSTOMER — bukan untuk konsumsi internal.
-
-Target customer yang difollow-up adalah salah satu dari dua segmen berikut (pilih berdasarkan detail yang diisi user, atau tulis versi yang mencakup keduanya):
-
-1. CUSTOMER TIKET MASISIR — calon penumpang mahasiswa Indonesia di Mesir (atau mau berangkat ke Mesir) yang butuh tiket pesawat Indonesia–Mesir. Mereka peduli pada: harga terjangkau, bagasi ekstra, transit nyaman, kepastian booking, dan layanan cepat. Kekhawatiran utama: tiket tiba-tiba sold out, harga naik mendadak, atau masalah dokumen.
-
-2. CUSTOMER VISA MESIR — calon mahasiswa atau wisatawan yang sedang mengurus visa pelajar Mesir (Masisir) atau Visa on Arrival Mesir. Mereka peduli pada: kelengkapan berkas, waktu proses, jaminan kelulusan, dan pendampingan admin. Kekhawatiran utama: berkas salah, proses lama, atau tidak ada guidance yang jelas.
-
-Format pesan: seperti chat WhatsApp personal dari agen ke customer — hangat, informatif, tidak terlalu panjang, dan ada satu CTA yang jelas (tanya/kirim berkas/konfirmasi). Jangan pakai format caption publik atau broadcast. Awali dengan sapaan personal ("Halo Kak/Bro/Sis" diperbolehkan). Panjang ideal: 300–500 karakter (singkat, bisa dibaca langsung di notif WA).
-
-OVERRIDE ATURAN SISTEM: Untuk kategori Follow Up Agen ini, ABAIKAN aturan "DILARANG mulai dengan Halo" dan aturan panjang 600–900 karakter. Gunakan aturan format di atas (300–500 karakter, sapaan personal diperbolehkan). Ini bukan caption publik — ini pesan WA agen ke customer.`,
-  },
-  {
-    key: "broadcast-info",
-    label: "Broadcast Informasi",
-    Icon: Megaphone,
-    prompt: "broadcast informasi publik",
-    context: "Tulis sebagai pengumuman informasi penting. Fokus pada regulasi terbaru, info KBRI, kampus, legalisir, imigrasi, atau update layanan publik. Prioritaskan kejelasan, struktur yang rapi, dan kemudahan pemahaman. Hindari bahasa marketing berlebihan.",
-  },
-  {
-    key: "testimoni",
-    label: "Testimoni & Storytelling",
-    Icon: Heart,
-    prompt: "testimoni dan storytelling pelanggan",
-    context: "Tulis berdasarkan pengalaman nyata pelanggan. Fokus pada cerita perjalanan, transformasi emosional, before-after, trust building, dan authenticity. Bahasa hangat, personal, dan menyentuh. Hindari hiperbola — keaslian cerita adalah kekuatannya.",
-  },
-  {
-    key: "hard-selling",
-    label: "Hard Selling Promo",
-    Icon: Zap,
-    prompt: "hard selling dan promosi urgensi tinggi",
-    context: "Tulis caption dengan urgensi tinggi dan CTA kuat. Fokus pada scarcity (kuota/seat terbatas), deadline harga, penawaran terbatas waktu, dan konversi cepat. Gunakan loss aversion dan FOMO yang nyata (berbasis fakta). CTA muncul minimal dua kali — di tengah dan di akhir.",
-  },
-];
-
-/* ─── Tone ──────────────────────────────────────────────── */
+/* ─── Constants ─────────────────────────────────────────── */
 const TONES = [
-  { key: "santai",    label: "Santai",       desc: "Friendly, casual, akrab"         },
-  { key: "formal",    label: "Formal",       desc: "Profesional & terpercaya"        },
-  { key: "hardsell",  label: "Hard Selling", desc: "FOMO, urgent, ajak action"       },
-  { key: "story",     label: "Storytelling", desc: "Emosional, cerita perjalanan"    },
-  { key: "penasaran", label: "Penasaran",    desc: "Bikin penasaran, teaser, cliffhanger" },
+  { key: "santai",    label: "Santai",       desc: "Friendly, casual, akrab"              },
+  { key: "formal",    label: "Formal",       desc: "Profesional & terpercaya"             },
+  { key: "hardsell",  label: "Hard Selling", desc: "FOMO, urgent, ajak action"            },
+  { key: "story",     label: "Storytelling", desc: "Emosional, cerita perjalanan"         },
+  { key: "penasaran", label: "Penasaran",    desc: "Teaser, cliffhanger, bikin penasaran" },
 ];
 
-/* ─── Helpers ───────────────────────────────────────────── */
+const PLATFORMS = [
+  { key: "wa",       label: "WhatsApp"  },
+  { key: "ig",       label: "Instagram" },
+  { key: "telegram", label: "Telegram"  },
+];
+
+const LENGTHS = [
+  { key: "short",  label: "Pendek",  sub: "~300 kar"  },
+  { key: "normal", label: "Normal",  sub: "~700 kar"  },
+  { key: "long",   label: "Panjang", sub: "~1200 kar" },
+];
+
+const AUDIENCES = [
+  "Jamaah Umrah & Haji",
+  "Mahasiswa Masisir",
+  "Wisatawan ke Mesir",
+  "Agen / Reseller",
+  "WNI di Luar Negeri",
+];
+
+const VARIANT_ACTIONS: { key: VariantType; icon: string; label: string }[] = [
+  { key: "softer",      icon: "💬", label: "Lebih Soft"            },
+  { key: "harder",      icon: "🔥", label: "Lebih Hard Selling"    },
+  { key: "shorter",     icon: "✂️", label: "Pendekkan"             },
+  { key: "story_wa",    icon: "📱", label: "Versi Story WA"        },
+  { key: "broadcast",   icon: "📢", label: "Versi Broadcast Admin" },
+  { key: "testimonial", icon: "⭐", label: "Versi Testimoni"       },
+];
+
+const PLACEHOLDER = `Contoh:
+
+Mahasiswa Mesir mau pulang dan bisa bantu aktifin IMEI orang lain di bandara. Fee 500rb per HP. Boleh titip HP dan aman.
+
+Atau:
+
+Promo tiket Cairo–Jakarta bulan Juni transit Bahrain. Harga mulai 9 juta, bagasi 30kg, seat terbatas 12 orang.
+
+Atau:
+
+Broadcast follow up jamaah yang belum pelunasan paket Umrah Ramadan. Keberangkatan 3 bulan lagi.`;
+
+/* ─── Image helpers ─────────────────────────────────────── */
 function compressImage(file: File, maxWidth = 900, quality = 0.80): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -112,8 +81,7 @@ function compressImage(file: File, maxWidth = 900, quality = 0.80): Promise<stri
       const w = Math.round(img.width * scale);
       const h = Math.round(img.height * scale);
       const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
+      canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext("2d");
       if (!ctx) { reject(new Error("Canvas not supported")); return; }
       ctx.drawImage(img, 0, 0, w, h);
@@ -195,41 +163,36 @@ function Section({ label, icon: Icon, children }: {
 
 /* ─── Main Component ────────────────────────────────────── */
 export function CaptionGenerator() {
-  const [mode, setMode]                     = useState<Mode>("manual");
-  const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].key);
-  const [activeTone, setActiveTone]         = useState(TONES[0].key);
-  const [packageDetail, setPackageDetail]   = useState("");
-  const [waNumber, setWaNumber]             = useState("");
-  const [posterFile, setPosterFile]         = useState<File | null>(null);
-  const [posterPreview, setPosterPreview]   = useState<string | null>(null);
-  const [isDragging, setIsDragging]         = useState(false);
-  const [result, setResult]                 = useState<string>("");
-  const [lastUsage, setLastUsage]           = useState<TokenUsage | null>(null);
-  const [loading, setLoading]               = useState(false);
-  const [posterStatus, setPosterStatus]     = useState<string | null>(null);
-  const [copied, setCopied]                 = useState(false);
-  const fileInputRef                        = useRef<HTMLInputElement>(null);
+  const [mode, setMode]                   = useState<Mode>("manual");
+  const [userContext, setUserContext]     = useState("");
+  const [activeTone, setActiveTone]       = useState(TONES[0].key);
+  const [platform, setPlatform]           = useState("wa");
+  const [captionLength, setCaptionLength] = useState("normal");
+  const [useEmoji, setUseEmoji]           = useState(true);
+  const [audience, setAudience]           = useState("");
+  const [waNumber, setWaNumber]           = useState("");
+  const [posterFile, setPosterFile]       = useState<File | null>(null);
+  const [posterPreview, setPosterPreview] = useState<string | null>(null);
+  const [isDragging, setIsDragging]       = useState(false);
+  const [result, setResult]               = useState<string>("");
+  const [lastUsage, setLastUsage]         = useState<TokenUsage | null>(null);
+  const [loading, setLoading]             = useState(false);
+  const [variantLoading, setVariantLoading] = useState<VariantType | null>(null);
+  const [posterStatus, setPosterStatus]   = useState<string | null>(null);
+  const [copied, setCopied]               = useState(false);
+  const fileInputRef                      = useRef<HTMLInputElement>(null);
 
-  const cat = CATEGORIES.find((c) => c.key === activeCategory) ?? CATEGORIES[0];
-
+  /* ── File handling ── */
   const handleFile = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast.error("File harus berupa gambar (JPG, PNG, WebP, dll)");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Ukuran gambar maksimal 5 MB sebelum dikompresi");
-      return;
-    }
+    if (!file.type.startsWith("image/")) { toast.error("File harus berupa gambar (JPG, PNG, WebP)"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Gambar maks 5 MB sebelum kompresi"); return; }
     setPosterFile(file);
-    const url = URL.createObjectURL(file);
-    setPosterPreview(url);
+    setPosterPreview(URL.createObjectURL(file));
     setResult("");
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+    e.preventDefault(); setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
   }, [handleFile]);
@@ -237,184 +200,224 @@ export function CaptionGenerator() {
   const clearPoster = () => {
     setPosterFile(null);
     if (posterPreview) URL.revokeObjectURL(posterPreview);
-    setPosterPreview(null);
-    setResult("");
+    setPosterPreview(null); setResult("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const switchMode = (m: Mode) => {
-    setMode(m);
-    setResult("");
-  };
+  const switchMode = (m: Mode) => { setMode(m); setResult(""); };
 
+  /* ── Generate ── */
   const handleGenerate = async () => {
-    setLoading(true);
-    setResult("");
-    setLastUsage(null);
-    setPosterStatus(null);
+    setLoading(true); setResult(""); setLastUsage(null); setPosterStatus(null);
     try {
       if (mode === "poster") {
         if (!posterFile) { toast.error("Upload poster dulu ya!"); return; }
         const dataUrl = await compressImage(posterFile);
         const { caption, usage } = await generateCaptionFromPoster({
-          imageBase64: dataUrl,
-          tone: activeTone,
-          waNumber,
-          onStatus: setPosterStatus,
+          imageBase64: dataUrl, tone: activeTone, waNumber, onStatus: setPosterStatus,
         });
-        setResult(caption);
-        setLastUsage(usage);
+        setResult(caption); setLastUsage(usage);
       } else {
-        const { caption, usage } = await generateCaptionFromDetail({
-          categoryPrompt: cat.prompt,
-          categoryContext: cat.context,
-          tone: activeTone,
-          packageDetail,
-          waNumber,
+        const { caption, usage } = await generateCaptionFromContext({
+          userContext, tone: activeTone, platform, captionLength, useEmoji, audience, waNumber,
         });
-        setResult(caption);
-        setLastUsage(usage);
+        setResult(caption); setLastUsage(usage);
       }
     } catch (err) {
       toast.error(`Gagal generate: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
-      setLoading(false);
-      setPosterStatus(null);
+      setLoading(false); setPosterStatus(null);
     }
   };
 
+  /* ── Variant ── */
+  const handleVariant = async (variantType: VariantType) => {
+    setVariantLoading(variantType);
+    try {
+      const { caption, usage } = await generateCaptionVariant({
+        originalContext: userContext,
+        currentCaption: result,
+        variantType,
+        tone: activeTone,
+        waNumber,
+      });
+      setResult(caption); setLastUsage(usage);
+    } catch (err) {
+      toast.error(`Gagal buat varian: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setVariantLoading(null);
+    }
+  };
+
+  /* ── Copy ── */
   const handleCopy = async () => {
     await navigator.clipboard.writeText(result);
-    setCopied(true);
-    toast.success("Caption disalin!");
+    setCopied(true); toast.success("Caption disalin!");
     setTimeout(() => setCopied(false), 2000);
   };
 
   const canGenerate = mode === "poster" ? !!posterFile && !loading : !loading;
+  const isBusy = loading || variantLoading !== null;
 
   const charLen = result.length;
   const charInRange = charLen >= 600 && charLen <= 1000;
   const charTooShort = charLen > 0 && charLen < 600;
-  const charColor = charInRange
-    ? "text-emerald-600"
-    : charTooShort
-    ? "text-amber-500"
-    : charLen > 1000
-    ? "text-rose-500"
-    : "text-muted-foreground";
+  const charColor = charInRange ? "text-emerald-600" : charTooShort ? "text-amber-500" : charLen > 1000 ? "text-rose-500" : "text-muted-foreground";
 
   return (
     <div className="space-y-3 pb-10">
 
       {/* ── Mode Toggle ── */}
       <div className="flex gap-2 p-1 bg-muted/50 rounded-xl border border-border/60">
-        <button
-          onClick={() => switchMode("manual")}
-          className={cn(
-            "flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-semibold transition-all",
-            mode === "manual"
-              ? "bg-white shadow-sm text-foreground border border-border/60"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <PenLine className="h-3.5 w-3.5" strokeWidth={1.5} />
-          Input Manual
-        </button>
-        <button
-          onClick={() => switchMode("poster")}
-          className={cn(
-            "flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-semibold transition-all",
-            mode === "poster"
-              ? "bg-white shadow-sm text-foreground border border-border/60"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <ScanText className="h-3.5 w-3.5" strokeWidth={1.5} />
-          Scan Poster
-        </button>
+        {(["manual", "poster"] as Mode[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => switchMode(m)}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-semibold transition-all",
+              mode === m
+                ? "bg-white shadow-sm text-foreground border border-border/60"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {m === "manual"
+              ? <><PenLine className="h-3.5 w-3.5" strokeWidth={1.5} /> Input Konteks</>
+              : <><ScanText className="h-3.5 w-3.5" strokeWidth={1.5} /> Scan Poster</>}
+          </button>
+        ))}
       </div>
 
       <AnimatePresence mode="wait">
 
-        {/* ══ MANUAL MODE ══════════════════════════════════════ */}
+        {/* ══ MANUAL MODE ══ */}
         {mode === "manual" && (
           <motion.div
             key="manual"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
+            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.2 }}
             className="space-y-3"
           >
-            {/* Kategori */}
-            <Section label="Kategori" icon={Wand2}>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map(({ key, label, Icon }) => {
-                  const isActive = key === activeCategory;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => setActiveCategory(key)}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-all",
-                        isActive
-                          ? "border-[#1a44d4] bg-[#1a44d4] text-white shadow-sm"
-                          : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40 hover:bg-blue-50/40",
-                      )}
-                    >
-                      <Icon className={cn("h-3.5 w-3.5 shrink-0", isActive ? "text-white" : "text-muted-foreground")} strokeWidth={1.5} />
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </Section>
-
-            {/* Detail Paket / Konteks Follow Up */}
-            <Section
-              label={cat.key === "follow-up-agen" ? "Konteks Follow Up (opsional)" : "Detail Paket (opsional)"}
-              icon={AlignLeft}
-            >
+            {/* Context textarea */}
+            <Section label="Ceritakan konteks promosi / kebutuhan caption" icon={AlignLeft}>
               <textarea
-                value={packageDetail}
-                onChange={(e) => setPackageDetail(e.target.value)}
-                placeholder={
-                  cat.key === "follow-up-agen"
-                    ? "Contoh:\nCustomer tanya tiket Jakarta–Cairo transit Qatar bulan Juli\nSudah chat 2 hari lalu, belum ada konfirmasi lanjut\nHarga sekitar 8–10 juta, bagasi 30kg"
-                    : "Contoh:\nPaket Umrah 12 hari, berangkat 15 Maret 2025\n" +
-                      "Hotel bintang 4, Makkah & Madinah walking distance\n" +
-                      "Harga mulai Rp 28 juta/orang, kuota terbatas 40 seat"
-                }
-                rows={4}
-                className="w-full rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-3 text-[13px] text-foreground placeholder-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 focus:border-[#1a44d4]/50 transition-all"
+                value={userContext}
+                onChange={(e) => setUserContext(e.target.value)}
+                placeholder={PLACEHOLDER}
+                rows={7}
+                className="w-full rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-3 text-[13px] text-foreground placeholder-muted-foreground/50 resize-y focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 focus:border-[#1a44d4]/50 transition-all leading-relaxed"
               />
               <p className="text-[10.5px] text-muted-foreground mt-1.5">
-                {cat.key === "follow-up-agen"
-                  ? "Isi konteks customer (kebutuhan tiket/visa, riwayat chat, dsb.) agar pesan follow-up lebih personal."
-                  : "Semakin detail info paket, semakin relevan caption yang dihasilkan AI."}
+                Ceritakan bebas — produk, target, tujuan, harga, promo, apapun. AI memahami konteksmu dan menyesuaikan caption secara otomatis.
               </p>
             </Section>
+
+            {/* Caption settings */}
+            <div className="rounded-xl border border-border/70 bg-white p-4 md:p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <Wand2 className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+                <h3 className="text-[13.5px] font-semibold text-foreground">Pengaturan Caption</h3>
+              </div>
+
+              {/* Platform */}
+              <div>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Platform</p>
+                <div className="flex gap-2">
+                  {PLATFORMS.map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => setPlatform(key)}
+                      className={cn(
+                        "flex-1 rounded-lg border py-2 text-[12.5px] font-medium transition-all",
+                        platform === key
+                          ? "border-[#1a44d4] bg-[#1a44d4] text-white"
+                          : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40 hover:bg-blue-50/30",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Length */}
+              <div>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Panjang Caption</p>
+                <div className="flex gap-2">
+                  {LENGTHS.map(({ key, label, sub }) => (
+                    <button
+                      key={key}
+                      onClick={() => setCaptionLength(key)}
+                      className={cn(
+                        "flex-1 rounded-lg border px-3 py-2 text-left transition-all",
+                        captionLength === key
+                          ? "border-[#1a44d4] bg-[#1a44d4] text-white"
+                          : "border-border/70 bg-white hover:border-[#1a44d4]/40 hover:bg-blue-50/30",
+                      )}
+                    >
+                      <div className={cn("text-[12.5px] font-semibold", captionLength === key ? "text-white" : "text-foreground")}>{label}</div>
+                      <div className={cn("text-[10px] mt-0.5", captionLength === key ? "text-white/70" : "text-muted-foreground")}>{sub}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Emoji + Audience */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Emoji</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setUseEmoji(true)}
+                      className={cn(
+                        "flex-1 rounded-lg border py-2 text-[12px] font-medium transition-all",
+                        useEmoji ? "border-[#1a44d4] bg-[#1a44d4] text-white" : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40",
+                      )}
+                    >
+                      Pakai 😊
+                    </button>
+                    <button
+                      onClick={() => setUseEmoji(false)}
+                      className={cn(
+                        "flex-1 rounded-lg border py-2 text-[12px] font-medium transition-all",
+                        !useEmoji ? "border-[#1a44d4] bg-[#1a44d4] text-white" : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40",
+                      )}
+                    >
+                      Tanpa
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Target Audiens</p>
+                  <div className="relative">
+                    <select
+                      value={audience}
+                      onChange={(e) => setAudience(e.target.value)}
+                      className="w-full appearance-none rounded-lg border border-border/70 bg-white px-3 py-[9px] text-[12px] text-foreground focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 pr-8 cursor-pointer"
+                    >
+                      <option value="">Auto-detect dari konteks</option>
+                      {AUDIENCES.map((a) => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+                  </div>
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
 
-        {/* ══ POSTER MODE ══════════════════════════════════════ */}
+        {/* ══ POSTER MODE ══ */}
         {mode === "poster" && (
           <motion.div
             key="poster"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
+            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.2 }}
           >
             <Section label="Upload Poster Paket" icon={ImagePlus}>
               <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
+                ref={fileInputRef} type="file" accept="image/*" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
               />
-
               {!posterPreview ? (
                 <div
                   onClick={() => fileInputRef.current?.click()}
@@ -423,9 +426,7 @@ export function CaptionGenerator() {
                   onDrop={handleDrop}
                   className={cn(
                     "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 cursor-pointer transition-all select-none",
-                    isDragging
-                      ? "border-[#1a44d4] bg-blue-50/60"
-                      : "border-border/60 bg-gray-50/50 hover:border-[#1a44d4]/50 hover:bg-blue-50/30",
+                    isDragging ? "border-[#1a44d4] bg-blue-50/60" : "border-border/60 bg-gray-50/50 hover:border-[#1a44d4]/50 hover:bg-blue-50/30",
                   )}
                 >
                   <div className="h-11 w-11 rounded-xl border border-border/60 bg-white flex items-center justify-center shadow-sm">
@@ -435,18 +436,12 @@ export function CaptionGenerator() {
                     <p className="text-[13px] font-semibold text-foreground">
                       {isDragging ? "Lepaskan gambar di sini" : "Upload poster paket"}
                     </p>
-                    <p className="text-[11.5px] text-muted-foreground mt-0.5">
-                      Drag & drop atau klik untuk pilih — JPG, PNG, WebP (maks. 5 MB)
-                    </p>
+                    <p className="text-[11.5px] text-muted-foreground mt-0.5">Drag & drop atau klik untuk pilih — JPG, PNG, WebP (maks. 5 MB)</p>
                   </div>
                 </div>
               ) : (
                 <div className="relative rounded-xl overflow-hidden border border-border/60 bg-gray-50">
-                  <img
-                    src={posterPreview}
-                    alt="Poster preview"
-                    className="w-full max-h-72 object-contain"
-                  />
+                  <img src={posterPreview} alt="Poster preview" className="w-full max-h-72 object-contain" />
                   <button
                     onClick={clearPoster}
                     className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
@@ -460,10 +455,7 @@ export function CaptionGenerator() {
                   </div>
                 </div>
               )}
-
-              <p className="text-[10.5px] text-muted-foreground mt-2">
-                AI akan membaca teks & info dari poster lalu langsung bikin caption siap pakai.
-              </p>
+              <p className="text-[10.5px] text-muted-foreground mt-2">AI membaca teks & info dari poster lalu langsung bikin caption siap pakai.</p>
             </Section>
           </motion.div>
         )}
@@ -481,24 +473,18 @@ export function CaptionGenerator() {
                 onClick={() => setActiveTone(key)}
                 className={cn(
                   "rounded-xl border px-3 py-2.5 text-left transition-all",
-                  isActive
-                    ? "border-[#1a44d4] bg-[#1a44d4] text-white"
-                    : "border-border/70 bg-white hover:border-[#1a44d4]/40 hover:bg-blue-50/40",
+                  isActive ? "border-[#1a44d4] bg-[#1a44d4] text-white" : "border-border/70 bg-white hover:border-[#1a44d4]/40 hover:bg-blue-50/40",
                 )}
               >
-                <div className={cn("text-[12.5px] font-semibold", isActive ? "text-white" : "text-foreground")}>
-                  {label}
-                </div>
-                <div className={cn("text-[10.5px] mt-0.5 leading-snug", isActive ? "text-white/75" : "text-muted-foreground")}>
-                  {desc}
-                </div>
+                <div className={cn("text-[12.5px] font-semibold", isActive ? "text-white" : "text-foreground")}>{label}</div>
+                <div className={cn("text-[10.5px] mt-0.5 leading-snug", isActive ? "text-white/75" : "text-muted-foreground")}>{desc}</div>
               </button>
             );
           })}
         </div>
       </Section>
 
-      {/* ── Nomor WhatsApp ── */}
+      {/* ── WA Number (shared) ── */}
       <Section label="Nomor WhatsApp Temantiket" icon={MessageCircle}>
         <div className="flex items-center gap-2">
           <span className="shrink-0 rounded-lg border border-border/70 bg-gray-50 px-3 py-2.5 text-[13px] text-muted-foreground font-medium select-none">
@@ -513,34 +499,26 @@ export function CaptionGenerator() {
           />
         </div>
         {waNumber.trim() ? (
-          <p className="text-[10.5px] text-[#1a44d4] mt-1.5">
-            Akan ditambahkan: 📲 Hubungi kami via WA: wa.me/{waNumber.trim()}
-          </p>
+          <p className="text-[10.5px] text-[#1a44d4] mt-1.5">Akan ditambahkan: 📲 Hubungi kami via WA: wa.me/{waNumber.trim()}</p>
         ) : (
-          <p className="text-[10.5px] text-muted-foreground mt-1.5">
-            Opsional — jika diisi, link WA otomatis ditambahkan di akhir caption.
-          </p>
+          <p className="text-[10.5px] text-muted-foreground mt-1.5">Opsional — jika diisi, link WA otomatis ditambahkan di akhir caption.</p>
         )}
       </Section>
 
-      {/* ── AI Model Toggle (manual mode only) ── */}
+      {/* ── AI Model Toggle ── */}
       {mode === "manual" && (
         <div className="flex items-center justify-between px-0.5">
           <span className="text-[11px] text-muted-foreground">Model AI untuk generate caption</span>
           <AIModelToggle feature="caption" />
         </div>
       )}
-
-      {/* ── Poster scan model info ── */}
       {mode === "poster" && (
         <div className="flex items-center justify-between px-0.5">
           <span className="text-[11px] text-muted-foreground">Model AI untuk scan poster</span>
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700">
             <Sparkles className="h-3 w-3" strokeWidth={2} />
-            Flash OCR → Claude
-            <span className="rounded bg-emerald-200 px-1 py-px text-[9px] font-bold uppercase tracking-wide leading-none text-emerald-700">
-              2-STEP AI
-            </span>
+            Flash OCR → Caption AI
+            <span className="rounded bg-emerald-200 px-1 py-px text-[9px] font-bold uppercase tracking-wide leading-none">2-STEP</span>
           </span>
         </div>
       )}
@@ -553,97 +531,63 @@ export function CaptionGenerator() {
       >
         <AnimatePresence mode="wait">
           {loading ? (
-            <motion.span key="loading" className="flex items-center gap-2"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.span key="loading" className="flex items-center gap-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <Loader2 className="h-4 w-4 animate-spin" />
               <AnimatePresence mode="wait">
                 <motion.span
                   key={posterStatus ?? (mode === "poster" ? "poster-init" : "manual")}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.2 }}
+                  initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.2 }}
                 >
-                  {mode === "poster"
-                    ? (posterStatus ?? "Memproses...")
-                    : "AI sedang nulis caption…"}
+                  {mode === "poster" ? (posterStatus ?? "Memproses...") : "AI sedang nulis caption…"}
                 </motion.span>
               </AnimatePresence>
             </motion.span>
           ) : result ? (
-            <motion.span key="regen" className="flex items-center gap-2"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
-              Generate Ulang
+            <motion.span key="regen" className="flex items-center gap-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <RefreshCw className="h-4 w-4" strokeWidth={1.5} /> Generate Ulang
             </motion.span>
           ) : (
-            <motion.span key="idle" className="flex items-center gap-2"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.span key="idle" className="flex items-center gap-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               {mode === "poster"
                 ? <><ScanText className="h-4 w-4" strokeWidth={1.5} /> Scan & Generate Caption</>
-                : <><Wand2 className="h-4 w-4" strokeWidth={1.5} /> Generate Caption</>
-              }
+                : <><Wand2 className="h-4 w-4" strokeWidth={1.5} /> Generate Caption</>}
             </motion.span>
           )}
         </AnimatePresence>
       </Button>
 
-      {/* ── 2-step progress indicator (poster mode only) ── */}
+      {/* ── 2-step poster progress ── */}
       <AnimatePresence>
         {mode === "poster" && loading && (
           <motion.div
             key="poster-steps"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.2 }}
             className="flex items-center justify-center gap-2 px-2 py-0.5"
           >
-            {/* Step 1 */}
-            <div className={cn(
-              "flex items-center gap-1.5 text-[11.5px] font-medium transition-colors duration-300",
-              posterStatus === "Menyusun caption..."
-                ? "text-emerald-600"
-                : "text-[#1a44d4]",
-            )}>
+            <div className={cn("flex items-center gap-1.5 text-[11.5px] font-medium transition-colors duration-300", posterStatus === "Menyusun caption..." ? "text-emerald-600" : "text-[#1a44d4]")}>
               {posterStatus === "Menyusun caption..."
                 ? <CheckCheck className="h-3 w-3 shrink-0" strokeWidth={2.5} />
-                : <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-              }
+                : <Loader2 className="h-3 w-3 shrink-0 animate-spin" />}
               Membaca poster
             </div>
-
-            {/* Connector */}
-            <ArrowRight className={cn(
-              "h-3 w-3 shrink-0 transition-colors duration-300",
-              posterStatus === "Menyusun caption..." ? "text-emerald-500" : "text-muted-foreground/30",
-            )} strokeWidth={2} />
-
-            {/* Step 2 */}
-            <div className={cn(
-              "flex items-center gap-1.5 text-[11.5px] font-medium transition-colors duration-300",
-              posterStatus === "Menyusun caption..."
-                ? "text-[#1a44d4]"
-                : "text-muted-foreground/40",
-            )}>
+            <ArrowRight className={cn("h-3 w-3 shrink-0 transition-colors duration-300", posterStatus === "Menyusun caption..." ? "text-emerald-500" : "text-muted-foreground/30")} strokeWidth={2} />
+            <div className={cn("flex items-center gap-1.5 text-[11.5px] font-medium transition-colors duration-300", posterStatus === "Menyusun caption..." ? "text-[#1a44d4]" : "text-muted-foreground/40")}>
               {posterStatus === "Menyusun caption..."
                 ? <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-                : <span className="h-3 w-3 shrink-0 rounded-full border-2 border-current inline-flex" />
-              }
+                : <span className="h-3 w-3 shrink-0 rounded-full border-2 border-current inline-flex" />}
               Menyusun caption
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Result ── */}
+      {/* ── Loading skeleton ── */}
       <AnimatePresence>
         {loading && (
-          <motion.div key="skeleton"
-            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+          <motion.div key="skeleton" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             className="rounded-xl border border-border/70 bg-white p-4 animate-pulse space-y-2.5"
           >
-            <div className="h-2.5 bg-muted rounded w-1/4" />
+            <div className="h-2.5 bg-muted rounded w-1/3" />
             <div className="h-2.5 bg-muted rounded w-full" />
             <div className="h-2.5 bg-muted rounded w-5/6" />
             <div className="h-2.5 bg-muted rounded w-full" />
@@ -652,19 +596,20 @@ export function CaptionGenerator() {
             <div className="h-2.5 bg-muted rounded w-3/5" />
           </motion.div>
         )}
+      </AnimatePresence>
 
+      {/* ── Result ── */}
+      <AnimatePresence>
         {!loading && result && (
-          <motion.div key="result"
-            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-          >
+          <motion.div key="result" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+
             <div className="flex items-center gap-2 py-1 mb-2">
               <div className="h-px flex-1 bg-border/60" />
-              <span className="text-[11px] text-muted-foreground tracking-wide">
-                Temantiket Brand Voice
-              </span>
+              <span className="text-[11px] text-muted-foreground tracking-wide">Temantiket Brand Voice</span>
               <div className="h-px flex-1 bg-border/60" />
             </div>
 
+            {/* Caption display */}
             <div className="rounded-xl border border-border/70 bg-white p-4 md:p-5 hover:border-foreground/25 transition-colors">
               <div className="flex items-center justify-between mb-3">
                 <span className={cn("text-[10.5px] font-medium", charColor)}>
@@ -684,26 +629,48 @@ export function CaptionGenerator() {
                 >
                   {copied
                     ? <><CheckCheck className="h-3.5 w-3.5" strokeWidth={1.5} /> Disalin</>
-                    : <><Copy className="h-3.5 w-3.5" strokeWidth={1.5} /> Salin Caption</>
-                  }
+                    : <><Copy className="h-3.5 w-3.5" strokeWidth={1.5} /> Salin Caption</>}
                 </button>
               </div>
               <WAMarkdown text={result} />
             </div>
 
-            {/* ── Token usage indicator ── */}
+            {/* ── Quick variant actions ── */}
+            <div className="mt-3 rounded-xl border border-border/70 bg-white p-3.5">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2.5">
+                Buat Versi Lain
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {VARIANT_ACTIONS.map(({ key, icon, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => void handleVariant(key)}
+                    disabled={isBusy}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-medium transition-all",
+                      variantLoading === key
+                        ? "border-[#1a44d4] bg-[#1a44d4] text-white"
+                        : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40 hover:bg-blue-50/40 disabled:opacity-40 disabled:cursor-not-allowed",
+                    )}
+                  >
+                    {variantLoading === key
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <span className="text-[13px] leading-none select-none">{icon}</span>}
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Token usage ── */}
             {lastUsage && (
               <motion.div
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
+                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
                 className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-border/50 bg-slate-50/80 px-3.5 py-2.5"
               >
                 <div className="flex items-center gap-1.5 text-[10.5px] text-slate-500 font-medium">
                   <Zap className="h-3 w-3 text-amber-400 shrink-0" strokeWidth={2.5} />
-                  <span className="text-slate-700 font-semibold">
-                    {lastUsage.totalTokens.toLocaleString("id-ID")}
-                  </span>
+                  <span className="text-slate-700 font-semibold">{lastUsage.totalTokens.toLocaleString("id-ID")}</span>
                   token
                 </div>
                 <div className="h-3 w-px bg-slate-200 shrink-0" />
@@ -718,9 +685,7 @@ export function CaptionGenerator() {
                 <div className="flex items-center gap-1 text-[10.5px]">
                   <span className="text-slate-400">est.</span>
                   <span className="font-semibold text-emerald-600">
-                    ${lastUsage.estimatedCostUsd < 0.000001
-                      ? "<$0.000001"
-                      : lastUsage.estimatedCostUsd.toFixed(6)}
+                    ${lastUsage.estimatedCostUsd < 0.000001 ? "<$0.000001" : lastUsage.estimatedCostUsd.toFixed(6)}
                   </span>
                 </div>
                 <div className="h-3 w-px bg-slate-200 shrink-0 hidden sm:block" />
@@ -729,6 +694,7 @@ export function CaptionGenerator() {
                 </div>
               </motion.div>
             )}
+
           </motion.div>
         )}
       </AnimatePresence>

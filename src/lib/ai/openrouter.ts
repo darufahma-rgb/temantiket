@@ -416,6 +416,7 @@ Teknik wajib:
 /**
  * generateCaptionFromDetail — buat caption dari input manual (kategori + tone + detail paket).
  * Dipakai di MarketingKitGenerator mode "manual".
+ * @deprecated Gunakan generateCaptionFromContext untuk UI baru berbasis free-text context.
  */
 export async function generateCaptionFromDetail(params: {
   categoryPrompt: string;
@@ -443,6 +444,126 @@ export async function generateCaptionFromDetail(params: {
     prompt: `Buat 1 caption marketing untuk ${categoryPrompt}.${contextSection}\nTone yang diminta: ${toneInstruction}.${detailSection}${waSection}`,
     temperature: 0.85,
     maxTokens: 1500,
+  });
+  return { caption: content, usage };
+}
+
+/**
+ * generateCaptionFromContext — buat caption dari free-text context bisnis (UI baru).
+ * User mendeskripsikan kebutuhan secara natural, AI memahami konteks dan membuat caption.
+ */
+export async function generateCaptionFromContext(params: {
+  userContext: string;
+  tone: string;
+  platform: string;       // "wa" | "ig" | "telegram"
+  captionLength: string;  // "short" | "normal" | "long"
+  useEmoji: boolean;
+  audience?: string;
+  waNumber?: string;
+}): Promise<CaptionResult> {
+  const { userContext, tone, platform, captionLength, useEmoji, audience, waNumber } = params;
+  const toneInstruction = TONE_INSTRUCTIONS[tone] ?? tone;
+
+  const platformMap: Record<string, string> = {
+    wa:       "WhatsApp — gunakan *bold* dan _italic_ WA style, baris pendek, mudah dibaca di notifikasi",
+    ig:       "Instagram — bisa lebih panjang, storytelling visual, tambah 3–5 hashtag relevan di akhir",
+    telegram: "Telegram — Markdown support, boleh agak detail, list dengan - atau 1.",
+  };
+
+  const lengthMap: Record<string, string> = {
+    short:  "PENDEK: 280–420 karakter — langsung to the point, 1–2 paragraf, CTA singkat",
+    normal: "NORMAL: 580–900 karakter — standar ideal, 3–4 paragraf, hook + value + CTA",
+    long:   "PANJANG: 1000–1400 karakter — detail dan komprehensif, penjelasan menyeluruh",
+  };
+
+  const emojiRule = useEmoji
+    ? "Gunakan 2–5 emoji yang memperkuat emosi dan keterbacaan. Tempatkan secara strategis."
+    : "DILARANG menggunakan emoji. Caption harus bersih, teks saja.";
+
+  const audienceLine = audience?.trim()
+    ? `Target audiens: ${audience.trim()}.`
+    : "Target audiens: analisa sendiri dari konteks.";
+
+  const waSection = waNumber?.trim()
+    ? `\nNomor WA untuk CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}`
+    : "";
+
+  const model = useAIOverrideStore.getState().getModel("caption", OR_MODELS.CAPTION);
+  const { content, usage } = await callAIOpenRouterFull({
+    model,
+    systemPrompt: CAPTION_SYSTEM_PROMPT,
+    prompt: `Buat 1 caption marketing berdasarkan konteks bisnis berikut:
+
+--- KONTEKS BISNIS (dari user) ---
+${userContext.trim() || "[Buat caption umum Temantiket untuk promosi layanan travel Umrah & Mesir]"}
+---
+
+${audienceLine}
+Platform: ${platformMap[platform] ?? platform}
+Panjang: ${lengthMap[captionLength] ?? lengthMap.normal}
+${emojiRule}${waSection}
+
+Pahami konteks di atas — apa produk/jasanya, siapa target pasarnya, apa tujuannya — lalu buat caption yang tepat sasaran dan compelling.
+
+Tone yang diminta:${toneInstruction}`,
+    temperature: 0.85,
+    maxTokens: 1800,
+  });
+  return { caption: content, usage };
+}
+
+export type VariantType = "softer" | "harder" | "shorter" | "story_wa" | "broadcast" | "testimonial";
+
+/**
+ * generateCaptionVariant — buat varian dari caption yang sudah ada.
+ * Dipakai untuk quick-action buttons (lebih soft, harder sell, pendekkan, dll).
+ */
+export async function generateCaptionVariant(params: {
+  originalContext: string;
+  currentCaption: string;
+  variantType: VariantType;
+  tone: string;
+  waNumber?: string;
+}): Promise<CaptionResult> {
+  const { originalContext, currentCaption, variantType, waNumber } = params;
+
+  const variantInstructions: Record<VariantType, string> = {
+    softer:
+      "Tulis ulang caption ini dengan tone yang lebih SOFT dan hangat. Kurangi tekanan dan urgency. Tambah empati, pengertian, dan rasa kekeluargaan. Nada: seperti teman yang peduli, bukan sales yang mengejar target.",
+    harder:
+      "Tulis ulang caption ini dengan HARD SELLING yang lebih kuat. Tambah urgency nyata, scarcity (kuota/seat terbatas, deadline harga), FOMO berbasis fakta. CTA harus kuat dan muncul dua kali. Nada: mendorong konversi segera — tapi tetap jujur.",
+    shorter:
+      "Pendekkan caption ini menjadi MAKSIMAL 320 karakter. Ambil inti pesan dan satu CTA yang kuat saja. Buang semua yang tidak esensial. Harus tetap compelling dan ada CTA yang jelas.",
+    story_wa:
+      "Ubah caption ini menjadi 3 SLIDE WhatsApp Status yang mengalir. Setiap slide maks 250 karakter, harus berdiri sendiri tapi nyambung ke slide berikutnya. Format output:\n[SLIDE 1]\n...\n\n[SLIDE 2]\n...\n\n[SLIDE 3]\n...",
+    broadcast:
+      "Ubah caption ini menjadi pesan BROADCAST ADMIN yang profesional dan informatif. Format resmi, terstruktur dengan bullet point jika perlu. Awali dengan kop pengumuman singkat. Nada: informatif dan terpercaya, bukan marketing berlebihan.",
+    testimonial:
+      "Ubah caption ini menjadi TESTIMONI / STORYTELLING dari sudut pandang pelanggan yang sudah puas. Tulis seolah cerita nyata dari customer (gunakan nama fiktif wajar seperti 'Kak Rina dari Bandung'). Authentic, personal, tidak terasa seperti iklan.",
+  };
+
+  const waSection = waNumber?.trim()
+    ? `\nNomor WA untuk CTA: wa.me/${waNumber.trim().replace(/\D/g, "")}`
+    : "";
+
+  const model = useAIOverrideStore.getState().getModel("caption", OR_MODELS.CAPTION);
+  const { content, usage } = await callAIOpenRouterFull({
+    model,
+    systemPrompt: CAPTION_SYSTEM_PROMPT,
+    prompt: `${variantInstructions[variantType]}
+
+Konteks bisnis asli (referensi):
+${originalContext.trim().slice(0, 600) || "[tidak ada konteks tambahan]"}
+${waSection}
+
+Caption yang perlu diubah:
+---
+${currentCaption}
+---
+
+Tulis langsung versi barunya — tanpa penjelasan, tanpa label, langsung caption siap pakai.`,
+    temperature: 0.88,
+    maxTokens: 1800,
   });
   return { caption: content, usage };
 }
