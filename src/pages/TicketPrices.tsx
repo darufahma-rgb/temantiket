@@ -30,9 +30,10 @@ import { useRatesStore } from "@/store/ratesStore";
 import {
   scanTicketPriceScreenshot, parseGalileoTextToTickets,
   getAirlineLogoUrl, getAirlineGradient,
-  encodeReturnLeg, decodeReturnLeg, isReturnTrip,
-  encodeMultiLeg, decodeMultiLeg, isMultiLegNotes, buildRouteLabel,
+  encodeReturnLeg, decodeReturnLeg,
+  encodeMultiLeg, decodeMultiLeg, buildRouteLabel,
   type ParsedTicketPrice, type ReturnLegData, type MultiLegData, type LegInfo,
+  type ScanDebugInfo,
 } from "@/lib/ticketPriceAI";
 import {
   listTicketPrices, createTicketPrice, updateTicketPrice, deleteTicketPrice,
@@ -1547,6 +1548,66 @@ function SearchFilterBar({
   );
 }
 
+// ── OCR Segment Row helpers (used by pending OCR result cards) ────────────────
+function _layoverMins(etaStr: string | null | undefined, etdStr: string | null | undefined): number | null {
+  if (!etaStr || !etdStr) return null;
+  const [h1, m1] = etaStr.split(":").map(Number);
+  const [h2, m2] = etdStr.split(":").map(Number);
+  if (isNaN(h1) || isNaN(h2)) return null;
+  let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+  if (diff < 0) diff += 24 * 60;
+  return diff;
+}
+function _fmtLayover(mins: number) {
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return m > 0 ? `${h}j ${m}m` : `${h}j`;
+}
+
+function OcrSegmentRow({ leg, segNum, totalInDir, nextEtd }: {
+  leg: LegInfo; segNum: number; totalInDir: number; nextEtd?: string | null;
+}) {
+  const layover = nextEtd !== undefined ? _layoverMins(leg.eta, nextEtd) : null;
+  const isLongLayover = layover !== null && layover > 8 * 60;
+  return (
+    <div>
+      <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white/70 border border-slate-100">
+        <span className="text-[9px] font-bold text-slate-400 w-4 shrink-0">S{segNum}</span>
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          <span className="text-[11px] font-bold text-slate-900 font-mono shrink-0">{leg.fromCode}</span>
+          <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
+          <span className="text-[11px] font-bold text-slate-900 font-mono shrink-0">{leg.toCode}</span>
+          {leg.flightNumber && (
+            <span className="text-[9px] bg-slate-100 text-slate-600 rounded-md px-1.5 py-0.5 font-mono shrink-0">
+              {leg.flightNumber}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {leg.etd && <span className="text-[9.5px] text-slate-600 font-mono font-bold">{leg.etd}</span>}
+          {leg.etd && leg.eta && <span className="text-[9px] text-slate-400">→</span>}
+          {leg.eta && <span className="text-[9.5px] text-slate-500 font-mono">{leg.eta}</span>}
+        </div>
+        {leg.date && (
+          <span className="text-[9px] text-slate-400 shrink-0 hidden sm:block">{fmtDate(leg.date)}</span>
+        )}
+      </div>
+      {nextEtd !== undefined && segNum < totalInDir && (
+        <div className={cn(
+          "ml-6 my-0.5 flex items-center gap-1.5 px-2",
+          isLongLayover ? "text-amber-600" : "text-slate-400",
+        )}>
+          <div className="w-px h-3.5 bg-current opacity-40 shrink-0" />
+          <Clock className="w-2.5 h-2.5 shrink-0" />
+          <span className="text-[9px] font-medium">
+            Transit {leg.toCode}{layover !== null ? ` · ${_fmtLayover(layover)}` : ""}
+            {isLongLayover && " ⚠ layover panjang"}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function TicketPrices() {
   const { user } = useAuthStore();
@@ -1567,6 +1628,7 @@ export default function TicketPrices() {
   const [pendingForms, setPendingForms] = useState<FormState[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState<{ current: number; total: number } | null>(null);
+  const [scanDebugInfos, setScanDebugInfos] = useState<(ScanDebugInfo | undefined)[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Draft persistence (survive page refresh) ────────────────────────────
@@ -1686,6 +1748,7 @@ export default function TicketPrices() {
     setScanError(null);
     setParsedTickets([]);
     setPendingForms([]);
+    setScanDebugInfos([]);
 
     const result = await scanTicketPriceScreenshot(file);
     setScanning(false);
@@ -1701,6 +1764,7 @@ export default function TicketPrices() {
     const forms = result.tickets.map(formFromParsed);
     setParsedTickets(result.tickets);
     setPendingForms(forms);
+    setScanDebugInfos(result.tickets.map(() => result.debug));
     saveDraft(forms);
     const rtCount = result.grouped ?? 0;
     toast.success(
@@ -1722,6 +1786,7 @@ export default function TicketPrices() {
     setScanError(null);
     setParsedTickets([]);
     setPendingForms([]);
+    setScanDebugInfos([]);
 
     const result = parseGalileoTextToTickets(pasteText);
 
@@ -1733,6 +1798,7 @@ export default function TicketPrices() {
     const forms = result.tickets.map(formFromParsed);
     setParsedTickets(result.tickets);
     setPendingForms(forms);
+    setScanDebugInfos(result.tickets.map(() => result.debug));
     saveDraft(forms);
     setPasteText("");
     const rtCount = result.grouped ?? 0;
@@ -2529,62 +2595,60 @@ export default function TicketPrices() {
                     }
                   </Button>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {pendingForms.map((form, idx) => {
-                    // Fase 19.5: detect multi-leg first, then simple RT
+                    // Decode multi-leg and simple-RT from notes
                     const { ml: pendingML } = decodeMultiLeg(form.notes);
                     const isMLForm = !!pendingML;
                     const { leg: rtLeg } = isMLForm ? { leg: null } : decodeReturnLeg(form.notes);
                     const isRTForm = !!rtLeg;
                     const isPPForm = isMLForm || isRTForm;
-                    // Build per-card flight-number display from multiLeg leg data (if available)
-                    // so outbound and return flights are shown separately and accurately.
-                    const mlOutFlights = pendingML
-                      ? pendingML.outboundLegs.map((l) => l.flightNumber).filter(Boolean).join("/")
-                      : null;
-                    const mlRetFlights = pendingML?.returnLegs?.length
-                      ? pendingML.returnLegs.map((l) => l.flightNumber).filter(Boolean).join("/")
-                      : null;
-                    const mlFlightDisplay = mlOutFlights
-                      ? mlRetFlights ? `${mlOutFlights} / ${mlRetFlights}` : mlOutFlights
-                      : form.flightNumber ?? "";
+                    const isMLReturn = isMLForm && (pendingML?.returnLegs?.length ?? 0) > 0;
+                    const debugInfo = scanDebugInfos[idx];
+
+                    // Type labels
+                    const typeLabel = isMLReturn ? "Return / PP" : isRTForm ? "Pulang-Pergi" : isMLForm ? "Multi-city" : "One Way";
+                    const typeBadgeCls = isPPForm
+                      ? "bg-violet-100 text-violet-700 border border-violet-200"
+                      : "bg-sky-100 text-sky-700 border border-sky-200";
+
+                    // Route summary
+                    const routeSummary = isMLForm
+                      ? buildRouteLabel(pendingML!)
+                      : isRTForm
+                        ? `${form.fromCode} ⇄ ${form.toCode}${form.transitCode ? ` via ${form.transitCode}` : ""}`
+                        : `${form.fromCode} → ${form.toCode}${form.transitCode ? ` via ${form.transitCode}` : ""}`;
+
+                    // Segment counts
+                    const outCount = pendingML?.outboundLegs?.length ?? 1;
+                    const retCount = pendingML?.returnLegs?.length ?? (isRTForm ? 1 : 0);
+                    const totalSegs = outCount + retCount;
+
                     return (
                     <div key={idx} className={cn(
-                      "border rounded-xl p-3 space-y-3",
-                      isPPForm ? "border-violet-200 bg-violet-50/40" : "border-sky-200 bg-sky-50/50"
+                      "border rounded-xl overflow-hidden",
+                      isPPForm ? "border-violet-200" : "border-sky-200",
                     )}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <AirlineLogo code={form.airlineCode} airline={form.airline} size={28} />
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {/* Option number badge — visible when multiple entries exist */}
-                              {pendingForms.length > 1 && (
-                                <span className="inline-flex items-center text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full shrink-0">
-                                  Opsi {idx + 1}
-                                </span>
-                              )}
-                              <p className="text-xs font-bold text-slate-800 truncate">{form.airline || "—"}</p>
-                              {isMLForm && (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full shrink-0">
-                                  <ArrowLeftRight className="w-2.5 h-2.5" />Multi-Leg PP
-                                </span>
-                              )}
-                              {!isMLForm && isRTForm && (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full shrink-0">
-                                  <ArrowLeftRight className="w-2.5 h-2.5" />PP
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[10px] text-slate-500 font-mono truncate">
-                              {isMLForm
-                                ? `${buildRouteLabel(pendingML!)} · ${mlFlightDisplay} · Total: ${form.currency} ${form.basePrice?.toLocaleString("id-ID") ?? "—"}`
-                                : isRTForm
-                                  ? `${form.fromCode} ⇄ ${form.toCode} · ${form.flightNumber ?? ""}${rtLeg?.returnFlightNumber ? `/${rtLeg.returnFlightNumber}` : ""} · Total: ${form.currency} ${form.basePrice?.toLocaleString("id-ID") ?? "—"}`
-                                  : `${form.fromCode} → ${form.toCode}${form.flightNumber ? ` · ${form.flightNumber}` : ""}${form.etd ? ` · ${form.etd}` : ""}${form.eta ? `→${form.eta}` : ""}${form.transitCode ? ` via ${form.transitCode}` : ""}${form.basePrice ? ` · ${form.currency} ${form.basePrice.toLocaleString("id-ID")}` : ""}`
-                              }
-                            </p>
+                      {/* ── HEADER ── */}
+                      <div className={cn(
+                        "flex items-center gap-2 px-3 py-2.5",
+                        isPPForm ? "bg-violet-50/70" : "bg-sky-50/70",
+                      )}>
+                        <AirlineLogo code={form.airlineCode} airline={form.airline} size={30} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {pendingForms.length > 1 && (
+                              <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">
+                                Opsi {idx + 1}
+                              </span>
+                            )}
+                            <span className="text-[11.5px] font-bold text-slate-900">{form.airline || "—"}</span>
+                            <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5", typeBadgeCls)}>
+                              {isPPForm && <ArrowLeftRight className="w-2.5 h-2.5" />}
+                              {typeLabel}
+                            </span>
                           </div>
+                          <p className="text-[9.5px] text-slate-500 font-mono mt-0.5 truncate">{routeSummary}</p>
                         </div>
                         <Button
                           size="icon" variant="ghost"
@@ -2595,215 +2659,235 @@ export default function TicketPrices() {
                         </Button>
                       </div>
 
-                      {/* Multi-leg leg chain preview — outbound + return clearly separated */}
-                      {isMLForm && pendingML && (
-                        <div className="rounded-lg bg-violet-100/60 border border-violet-200 px-2.5 py-2 space-y-1.5">
-                          <div className="space-y-0.5">
-                            <p className="text-[9.5px] font-bold text-violet-700 uppercase tracking-wide">↗ Berangkat</p>
-                            {pendingML.outboundLegs.map((leg, li) => (
-                              <div key={li} className="flex items-center gap-1.5 pl-2">
-                                <span className="text-[10px] font-bold text-violet-900 font-mono">{leg.fromCode}→{leg.toCode}</span>
-                                {leg.flightNumber && <span className="text-[9.5px] text-violet-600 font-mono">{leg.flightNumber}</span>}
-                                {leg.etd && <span className="text-[9.5px] text-violet-500">{leg.etd}</span>}
-                                {leg.eta && <span className="text-[9.5px] text-violet-400">→{leg.eta}</span>}
-                                {leg.date && <span className="text-[9px] text-violet-400 ml-auto">{fmtDate(leg.date)}</span>}
-                              </div>
-                            ))}
+                      <div className="p-3 space-y-3">
+                        {/* ── RINGKASAN ── */}
+                        <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Plane className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span className="text-[10px] text-slate-600 font-medium truncate">{routeSummary}</span>
+                            {totalSegs > 1 && (
+                              <span className="text-[9px] bg-slate-200 text-slate-600 rounded-md px-1 py-0.5 font-mono shrink-0">
+                                {totalSegs} seg
+                              </span>
+                            )}
                           </div>
-                          {(pendingML.returnLegs?.length ?? 0) > 0 && (
-                            <>
-                              <div className="border-t border-violet-200/70" />
-                              <div className="space-y-0.5">
-                                <p className="text-[9.5px] font-bold text-violet-700 uppercase tracking-wide">↩ Pulang</p>
-                                {pendingML.returnLegs!.map((leg, li) => (
-                                  <div key={li} className="flex items-center gap-1.5 pl-2">
-                                    <span className="text-[10px] font-bold text-violet-900 font-mono">{leg.fromCode}→{leg.toCode}</span>
-                                    {leg.flightNumber && <span className="text-[9.5px] text-violet-600 font-mono">{leg.flightNumber}</span>}
-                                    {leg.etd && <span className="text-[9.5px] text-violet-500">{leg.etd}</span>}
-                                    {leg.eta && <span className="text-[9.5px] text-violet-400">→{leg.eta}</span>}
-                                    {leg.date && <span className="text-[9px] text-violet-400 ml-auto">{fmtDate(leg.date)}</span>}
-                                  </div>
-                                ))}
-                              </div>
-                            </>
+                          {form.basePrice > 0 && (
+                            <span className="text-[10px] font-bold text-slate-700 shrink-0 font-mono">
+                              {form.currency} {form.basePrice.toLocaleString("id-ID")}
+                            </span>
                           )}
                         </div>
-                      )}
 
-                      {/* Simple RT leg info */}
-                      {!isMLForm && isRTForm && (
-                        <div className="rounded-lg bg-violet-100/60 border border-violet-200 px-2.5 py-1.5 space-y-0.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[9.5px] font-bold text-violet-700 uppercase tracking-wide shrink-0">↗ Berangkat</span>
-                            <span className="text-[10px] text-violet-800 font-mono font-bold">{form.fromCode}→{form.toCode}</span>
-                            {form.etd && <span className="text-[9.5px] text-violet-500">{form.etd}</span>}
-                            {form.departDate && <span className="text-[9px] text-violet-400 ml-auto">{fmtDate(form.departDate)}</span>}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[9.5px] font-bold text-violet-700 uppercase tracking-wide shrink-0">↩ Pulang</span>
-                            <span className="text-[10px] text-violet-800 font-mono font-bold">{rtLeg?.returnFromCode}→{rtLeg?.returnToCode}</span>
-                            {rtLeg?.returnEtd && <span className="text-[9.5px] text-violet-500">{rtLeg.returnEtd}</span>}
-                            {rtLeg?.returnDate && <span className="text-[9px] text-violet-400 ml-auto">{fmtDate(rtLeg.returnDate)}</span>}
-                          </div>
-                        </div>
-                      )}
+                        {/* ── MULTI-LEG: Keberangkatan + Kepulangan sections ── */}
+                        {isMLForm && pendingML && (
+                          <div className="space-y-2">
+                            {/* Outbound */}
+                            <div className="space-y-0.5">
+                              <p className="text-[9px] font-bold text-sky-600 uppercase tracking-widest px-1">
+                                ↗ Keberangkatan · {outCount} segmen
+                              </p>
+                              <div className="space-y-0.5">
+                                {pendingML.outboundLegs.map((leg, li) => (
+                                  <OcrSegmentRow
+                                    key={li} leg={leg} segNum={li + 1} totalInDir={outCount}
+                                    nextEtd={li < outCount - 1 ? (pendingML.outboundLegs[li + 1]?.etd ?? null) : undefined}
+                                  />
+                                ))}
+                              </div>
+                            </div>
 
-                      {/* Quick edit inline */}
-                      {isPPForm && (
-                        <div className="flex items-center gap-2">
-                          <div className="h-px flex-1 bg-sky-200" />
-                          <span className="text-[9px] font-bold uppercase tracking-widest text-sky-600">↗ Berangkat</span>
-                          <div className="h-px flex-1 bg-sky-200" />
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {/* Tipe Tiket — auto-detected, read-only */}
-                        <div className="col-span-2 sm:col-span-4 flex items-center gap-2">
-                          <span className="text-[10px] text-slate-500 shrink-0">Tipe Tiket:</span>
-                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            isMLForm && (pendingML?.returnLegs?.length ?? 0) > 0
-                              ? "bg-violet-100 text-violet-700"
-                              : isRTForm
-                              ? "bg-violet-100 text-violet-700"
-                              : isMLForm
-                              ? "bg-sky-100 text-sky-700"
-                              : "bg-slate-100 text-slate-600"
-                          }`}>
-                            {isMLForm && (pendingML?.returnLegs?.length ?? 0) > 0
-                              ? "↩ Return / PP"
-                              : isRTForm
-                              ? "↩ Return / PP"
-                              : isMLForm
-                              ? "✈ Multi-city"
-                              : "→ Oneway"}
-                          </span>
-                        </div>
-                        <div className="space-y-0.5 col-span-2">
-                          <Label className="text-[10px] text-slate-500">Maskapai</Label>
-                          <Input className="h-7 text-xs" value={form.airline}
-                            onChange={(e) => updatePending(idx, { airline: e.target.value })} />
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-[10px] text-slate-500">No. Penerbangan</Label>
-                          <Input className="h-7 text-xs font-mono uppercase" value={form.flightNumber ?? ""}
-                            onChange={(e) => updatePending(idx, { flightNumber: e.target.value.toUpperCase() || null })} />
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-[10px] text-slate-500">Kode IATA</Label>
-                          <Input className="h-7 text-xs font-mono uppercase" maxLength={2} value={form.airlineCode}
-                            onChange={(e) => updatePending(idx, { airlineCode: e.target.value.toUpperCase() })} />
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-[10px] text-slate-500">Dari</Label>
-                          <Input className="h-7 text-xs font-mono uppercase" maxLength={3} value={form.fromCode}
-                            onChange={(e) => updatePending(idx, { fromCode: e.target.value.toUpperCase() })} />
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-[10px] text-slate-500">Ke</Label>
-                          <Input className="h-7 text-xs font-mono uppercase" maxLength={3} value={form.toCode}
-                            onChange={(e) => updatePending(idx, { toCode: e.target.value.toUpperCase() })} />
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-[10px] text-slate-500">ETD</Label>
-                          <Input className="h-7 text-xs font-mono" placeholder="23:55" value={form.etd ?? ""}
-                            onChange={(e) => updatePending(idx, { etd: e.target.value || null })} />
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-[10px] text-slate-500">ETA</Label>
-                          <Input className="h-7 text-xs font-mono" placeholder="05:30" value={form.eta ?? ""}
-                            onChange={(e) => updatePending(idx, { eta: e.target.value || null })} />
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-[10px] text-slate-500">Tgl Berangkat</Label>
-                          <Input className="h-7 text-xs" type="date" value={form.departDate ?? ""}
-                            onChange={(e) => updatePending(idx, { departDate: e.target.value || null })} />
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-[10px] text-slate-500">Harga Modal</Label>
-                          <Input className="h-7 text-xs" type="number" value={form.basePrice || ""}
-                            onChange={(e) => updatePending(idx, { basePrice: Number(e.target.value) })} />
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-[10px] text-slate-500">Mata Uang</Label>
-                          <Select value={form.currency} onValueChange={(v) => updatePending(idx, { currency: v as TicketCurrency })}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {(["IDR","EGP","USD","SAR"] as TicketCurrency[]).map((c) => (
-                                <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-[10px] text-slate-500">Berlaku Hingga</Label>
-                          <Input className="h-7 text-xs" type="date" value={form.validUntil ?? ""}
-                            onChange={(e) => updatePending(idx, { validUntil: e.target.value || null })} />
-                        </div>
-                        {!isMLForm && (form.transitCode || form.transitCity) && (
-                          <div className="col-span-2 space-y-0.5">
-                            <Label className="text-[10px] text-slate-500">Transit</Label>
-                            <div className="flex gap-1">
-                              <Input className="h-7 text-xs font-mono uppercase w-20" maxLength={3}
-                                placeholder="DOH" value={form.transitCode ?? ""}
-                                onChange={(e) => updatePending(idx, { transitCode: e.target.value.toUpperCase() || null })} />
-                              <Input className="h-7 text-xs flex-1" placeholder="Doha" value={form.transitCity ?? ""}
-                                onChange={(e) => updatePending(idx, { transitCity: e.target.value || null })} />
-                              <Input className="h-7 text-xs w-20" placeholder="2h 30m" value={form.transitDuration ?? ""}
-                                onChange={(e) => updatePending(idx, { transitDuration: e.target.value || null })} />
+                            {/* Return */}
+                            {isMLReturn && (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-px flex-1 bg-violet-200" />
+                                  <ArrowLeftRight className="w-3 h-3 text-violet-400" />
+                                  <div className="h-px flex-1 bg-violet-200" />
+                                </div>
+                                <div className="space-y-0.5">
+                                  <p className="text-[9px] font-bold text-violet-600 uppercase tracking-widest px-1">
+                                    ↩ Kepulangan · {retCount} segmen
+                                  </p>
+                                  <div className="space-y-0.5">
+                                    {pendingML.returnLegs!.map((leg, li) => (
+                                      <OcrSegmentRow
+                                        key={li} leg={leg} segNum={li + 1} totalInDir={retCount}
+                                        nextEtd={li < retCount - 1 ? (pendingML.returnLegs![li + 1]?.etd ?? null) : undefined}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* ── SIMPLE RT (non-ML) ── */}
+                        {!isMLForm && isRTForm && rtLeg && (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white border border-sky-100">
+                              <span className="text-[9px] font-bold text-sky-500 w-12 shrink-0">↗ Berangkat</span>
+                              <span className="text-[11px] font-bold text-slate-900 font-mono">{form.fromCode}→{form.toCode}</span>
+                              {form.flightNumber && <span className="text-[9px] bg-slate-100 text-slate-600 rounded-md px-1.5 font-mono">{form.flightNumber}</span>}
+                              {form.etd && <span className="text-[9.5px] text-slate-600 font-mono ml-auto">{form.etd}{form.eta ? `→${form.eta}` : ""}</span>}
+                              {form.departDate && <span className="text-[9px] text-slate-400">{fmtDate(form.departDate)}</span>}
+                            </div>
+                            <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white border border-violet-100">
+                              <span className="text-[9px] font-bold text-violet-500 w-12 shrink-0">↩ Pulang</span>
+                              <span className="text-[11px] font-bold text-slate-900 font-mono">{rtLeg.returnFromCode ?? "—"}→{rtLeg.returnToCode ?? "—"}</span>
+                              {rtLeg.returnFlightNumber && <span className="text-[9px] bg-slate-100 text-slate-600 rounded-md px-1.5 font-mono">{rtLeg.returnFlightNumber}</span>}
+                              {rtLeg.returnEtd && <span className="text-[9.5px] text-slate-600 font-mono ml-auto">{rtLeg.returnEtd}{rtLeg.returnEta ? `→${rtLeg.returnEta}` : ""}</span>}
+                              {rtLeg.returnDate && <span className="text-[9px] text-slate-400">{fmtDate(rtLeg.returnDate)}</span>}
                             </div>
                           </div>
                         )}
+
+                        {/* ── ONEWAY single segment display ── */}
+                        {!isPPForm && (
+                          <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white border border-sky-100">
+                            <span className="text-[11px] font-bold text-slate-900 font-mono">{form.fromCode}→{form.toCode}</span>
+                            {form.flightNumber && <span className="text-[9px] bg-slate-100 text-slate-600 rounded-md px-1.5 font-mono">{form.flightNumber}</span>}
+                            {form.transitCode && <span className="text-[9px] text-amber-600 font-medium">via {form.transitCode}</span>}
+                            {form.etd && <span className="text-[9.5px] text-slate-600 font-mono ml-auto">{form.etd}{form.eta ? `→${form.eta}` : ""}</span>}
+                            {form.departDate && <span className="text-[9px] text-slate-400">{fmtDate(form.departDate)}</span>}
+                          </div>
+                        )}
+
+                        {/* ── EDITABLE FIELDS ── */}
+                        <div className="border-t border-slate-100 pt-2.5 space-y-2">
+                          {/* Row 1: Maskapai + IATA */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="col-span-2 space-y-0.5">
+                              <Label className="text-[9.5px] text-slate-500">Maskapai</Label>
+                              <Input className="h-7 text-xs" value={form.airline}
+                                onChange={(e) => updatePending(idx, { airline: e.target.value })} />
+                            </div>
+                            <div className="space-y-0.5">
+                              <Label className="text-[9.5px] text-slate-500">Kode IATA</Label>
+                              <Input className="h-7 text-xs font-mono uppercase" maxLength={2} value={form.airlineCode}
+                                onChange={(e) => updatePending(idx, { airlineCode: e.target.value.toUpperCase() })} />
+                            </div>
+                          </div>
+                          {/* Row 2: For oneway — show route fields */}
+                          {!isPPForm && (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              <div className="space-y-0.5">
+                                <Label className="text-[9.5px] text-slate-500">No. Penerbangan</Label>
+                                <Input className="h-7 text-xs font-mono uppercase" value={form.flightNumber ?? ""}
+                                  onChange={(e) => updatePending(idx, { flightNumber: e.target.value.toUpperCase() || null })} />
+                              </div>
+                              <div className="space-y-0.5">
+                                <Label className="text-[9.5px] text-slate-500">Dari</Label>
+                                <Input className="h-7 text-xs font-mono uppercase" maxLength={3} value={form.fromCode}
+                                  onChange={(e) => updatePending(idx, { fromCode: e.target.value.toUpperCase() })} />
+                              </div>
+                              <div className="space-y-0.5">
+                                <Label className="text-[9.5px] text-slate-500">Ke</Label>
+                                <Input className="h-7 text-xs font-mono uppercase" maxLength={3} value={form.toCode}
+                                  onChange={(e) => updatePending(idx, { toCode: e.target.value.toUpperCase() })} />
+                              </div>
+                              <div className="space-y-0.5">
+                                <Label className="text-[9.5px] text-slate-500">Tgl Berangkat</Label>
+                                <Input className="h-7 text-xs" type="date" value={form.departDate ?? ""}
+                                  onChange={(e) => updatePending(idx, { departDate: e.target.value || null })} />
+                              </div>
+                              <div className="space-y-0.5">
+                                <Label className="text-[9.5px] text-slate-500">ETD</Label>
+                                <Input className="h-7 text-xs font-mono" placeholder="23:55" value={form.etd ?? ""}
+                                  onChange={(e) => updatePending(idx, { etd: e.target.value || null })} />
+                              </div>
+                              <div className="space-y-0.5">
+                                <Label className="text-[9.5px] text-slate-500">ETA</Label>
+                                <Input className="h-7 text-xs font-mono" placeholder="05:30" value={form.eta ?? ""}
+                                  onChange={(e) => updatePending(idx, { eta: e.target.value || null })} />
+                              </div>
+                              {(form.transitCode || form.transitCity) && (
+                                <div className="col-span-2 space-y-0.5">
+                                  <Label className="text-[9.5px] text-slate-500">Transit</Label>
+                                  <div className="flex gap-1">
+                                    <Input className="h-7 text-xs font-mono uppercase w-16" maxLength={3}
+                                      placeholder="DOH" value={form.transitCode ?? ""}
+                                      onChange={(e) => updatePending(idx, { transitCode: e.target.value.toUpperCase() || null })} />
+                                    <Input className="h-7 text-xs flex-1" placeholder="Doha" value={form.transitCity ?? ""}
+                                      onChange={(e) => updatePending(idx, { transitCity: e.target.value || null })} />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {/* Row 3: Harga + Currency + ValidUntil */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-0.5">
+                              <Label className="text-[9.5px] text-slate-500">Harga Modal</Label>
+                              <Input className="h-7 text-xs" type="number" value={form.basePrice || ""}
+                                onChange={(e) => updatePending(idx, { basePrice: Number(e.target.value) })} />
+                            </div>
+                            <div className="space-y-0.5">
+                              <Label className="text-[9.5px] text-slate-500">Mata Uang</Label>
+                              <Select value={form.currency} onValueChange={(v) => updatePending(idx, { currency: v as TicketCurrency })}>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {(["IDR","EGP","USD","SAR"] as TicketCurrency[]).map((c) => (
+                                    <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-0.5">
+                              <Label className="text-[9.5px] text-slate-500">Berlaku Hingga</Label>
+                              <Input className="h-7 text-xs" type="date" value={form.validUntil ?? ""}
+                                onChange={(e) => updatePending(idx, { validUntil: e.target.value || null })} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* ── SELLING PRICE ── */}
+                        {form.basePrice > 0 && (
+                          <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-100 px-2.5 py-1.5">
+                            <span className="text-[10px] text-emerald-700 font-medium">
+                              {isPPForm ? "💰 Harga paket PP" : "💰 Harga jual"}
+                            </span>
+                            <div className="text-right">
+                              <span className="text-[11px] font-bold text-emerald-700">
+                                {fmtIDR(sellingPrice(form.basePrice, form.currency, rates, markup))}
+                              </span>
+                              {markup > 0 && (
+                                <p className="text-[9px] text-emerald-500">
+                                  modal {form.currency} {form.basePrice.toLocaleString("id-ID")} + markup {fmtIDR(markup)}
+                                  {isPPForm ? " (sekali/paket)" : ""}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── DEV DEBUG PANEL ── */}
+                        {import.meta.env.DEV && debugInfo && (
+                          <details className="text-[9px] border border-amber-200 rounded-lg overflow-hidden">
+                            <summary className="px-2 py-1.5 bg-amber-50 text-amber-700 font-bold cursor-pointer select-none flex items-center gap-1.5">
+                              🔬 Debug — klik untuk lihat info parser
+                            </summary>
+                            <div className="px-2 py-2 bg-amber-50/60 space-y-1 font-mono">
+                              <p className="text-amber-800 font-bold">Sumber: {debugInfo.source === "ai" ? "AI Vision" : "Regex Parser"}</p>
+                              <p>Raw segments dari AI/parser: <span className="font-bold text-amber-900">{debugInfo.rawSegmentsCount}</span></p>
+                              <p>firstOrigin: <span className="font-bold">{debugInfo.firstOrigin ?? "null"}</span> · lastDest: <span className="font-bold">{debugInfo.lastDestination ?? "null"}</span></p>
+                              <p>Return trip detected: <span className="font-bold">{debugInfo.firstOrigin === debugInfo.lastDestination ? "✓ YA (origin === dest)" : "✗ TIDAK"}</span></p>
+                              <p>Hasil setelah grouper: <span className="font-bold">{debugInfo.groupedCount}</span> tiket, tipe: <span className="font-bold">{debugInfo.detectedType}</span></p>
+                              {debugInfo.rawSegmentsCount < 4 && debugInfo.rawSegmentsCount > 0 && debugInfo.source === "ai" && (
+                                <p className="text-red-700 font-bold">⚠ AI hanya mengembalikan {debugInfo.rawSegmentsCount} segment — Galileo 4-segment mungkin tidak terbaca penuh</p>
+                              )}
+                              <div className="mt-1 space-y-0.5">
+                                <p className="text-amber-700 font-bold">Segmen mentah:</p>
+                                {debugInfo.rawSegments.map((s, si) => (
+                                  <p key={si} className="pl-2 text-slate-600">
+                                    {si + 1}. {s.from}→{s.to} · {s.flight ?? "—"} · {s.date ?? "?"} · [{s.tripType}]
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                          </details>
+                        )}
                       </div>
-
-                      {/* ── Return leg editable fields (simple RT only) ── */}
-                      {isRTForm && rtLeg && (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <div className="h-px flex-1 bg-violet-200" />
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-violet-600">↩ Pulang</span>
-                            <div className="h-px flex-1 bg-violet-200" />
-                          </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-lg bg-violet-50/60 border border-violet-200 p-2">
-                            <div className="space-y-0.5">
-                              <Label className="text-[10px] text-violet-600">No. Penerbangan</Label>
-                              <Input className="h-7 text-xs font-mono uppercase" value={rtLeg.returnFlightNumber ?? ""}
-                                onChange={(e) => updatePendingRT(idx, { returnFlightNumber: e.target.value.toUpperCase() || null })} />
-                            </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-[10px] text-violet-600">Dari</Label>
-                              <Input className="h-7 text-xs font-mono uppercase" maxLength={3} value={rtLeg.returnFromCode ?? ""}
-                                onChange={(e) => updatePendingRT(idx, { returnFromCode: e.target.value.toUpperCase() || null })} />
-                            </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-[10px] text-violet-600">Ke</Label>
-                              <Input className="h-7 text-xs font-mono uppercase" maxLength={3} value={rtLeg.returnToCode ?? ""}
-                                onChange={(e) => updatePendingRT(idx, { returnToCode: e.target.value.toUpperCase() || null })} />
-                            </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-[10px] text-violet-600">Tgl Pulang</Label>
-                              <Input className="h-7 text-xs" type="date" value={rtLeg.returnDate ?? ""}
-                                onChange={(e) => updatePendingRT(idx, { returnDate: e.target.value || null })} />
-                            </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-[10px] text-violet-600">ETD Pulang</Label>
-                              <Input className="h-7 text-xs font-mono" placeholder="08:00" value={rtLeg.returnEtd ?? ""}
-                                onChange={(e) => updatePendingRT(idx, { returnEtd: e.target.value || null })} />
-                            </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-[10px] text-violet-600">ETA Pulang</Label>
-                              <Input className="h-7 text-xs font-mono" placeholder="18:30" value={rtLeg.returnEta ?? ""}
-                                onChange={(e) => updatePendingRT(idx, { returnEta: e.target.value || null })} />
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                      {form.basePrice > 0 && (
-                        <p className="text-[11px] text-emerald-600 font-medium">
-                          💰 {isPPForm ? "Harga paket PP" : "Harga jual"}: {fmtIDR(sellingPrice(form.basePrice, form.currency, rates, markup))}
-                          {markup > 0 && ` (modal ${form.currency} ${form.basePrice.toLocaleString("id-ID")} + markup ${fmtIDR(markup)}${isPPForm ? " — markup SEKALI untuk seluruh paket" : ""})`}
-                        </p>
-                      )}
                     </div>
                     );
                   })}

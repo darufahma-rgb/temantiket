@@ -1,0 +1,338 @@
+Lakukan full upgrade dan hardening untuk seluruh sistem Order Progress, Agent Fee Backfill, Wallet Ledger, Realtime Tracking, Branding, dan Public Client Portal agar production-grade, self-healing, future-proof, dan minim bug edge-case.
+
+TARGET BESAR:
+
+* Hilangkan mismatch data antar halaman
+* Hilangkan silent failure
+* Hilangkan fee hilang permanen
+* Hilangkan progress mismatch admin vs publik
+* Jadikan sistem audit-friendly
+* Jadikan sistem realtime stabil
+* Jadikan branding centralized
+* Jadikan seluruh flow idempotent dan observable
+
+================================================================
+A. UNIFIED ORDER PROGRESS SYSTEM
+================================
+
+1. Ganti seluruh metadata.processStep:
+
+* dari numeric index
+* menjadi string-based key
+
+Contoh:
+
+* "draft"
+* "docs_uploaded"
+* "docs_checked"
+* "visa_process"
+* "payment_pending"
+* "completed"
+
+2. Buat single source of truth:
+   src/lib/orderProgress.ts
+
+Isi:
+
+* step definitions
+* labels
+* colors
+* icons
+* ETA defaults
+* step ordering
+* role visibility
+* helper functions
+
+3. Semua halaman wajib memakai source yang sama:
+
+* OrderProgressTracker
+* PublicOrderProgressSection
+* Visa Tracker
+* Staff Dashboard
+* Client Detail
+* Public Member Card
+* Reports
+* Notification system
+
+4. Tambahkan helper:
+
+* getStepIndexFromKey()
+* getStepKeyFromIndex()
+* getNextStep()
+* getProgressPercent()
+
+5. Tambahkan validation:
+
+* unknown step → fallback aman
+* corrupted metadata → auto repair
+
+6. Tambahkan migration engine:
+
+* preview mode
+* simulation mode
+* rollback snapshot
+* migration report
+
+================================================================
+B. WALLET & AGENT FEE HARDENING
+===============================
+
+1. Jadikan wallet transaction sebagai SATU-SATUNYA source of truth.
+
+2. Backfill wajib mendukung:
+
+* order_bonus
+* voa_agent_fee
+* field_agent_fee
+* pelaksana_fee
+* kurir_fee
+* operational_fee
+* adjustment
+* payout
+
+3. Tambahkan assignment resolver:
+
+* salesAgentId
+* assignedAgentId
+* handlerAgentId
+* courierAgentId
+* fieldAgentId
+* pelaksanaId
+* operationalAgentId
+
+4. Tambahkan duplicate-role detection:
+   Jika agent sama muncul di banyak role:
+
+* tampilkan conflict warning
+* gunakan priority system:
+  sales > assigned > handler > field > courier > pelaksana > operational
+
+5. Tambahkan reconciliation engine:
+   Deteksi:
+
+* orphan fees
+* missing wallet tx
+* duplicate tx
+* mismatch nominal
+* stale metadata
+* dangling credited flags
+
+6. Tambahkan deterministic idempotency key untuk semua tx:
+
+* bonus-{orderId}
+* voa-{orderId}
+* kurir-{orderId}
+* pelaksana-{orderId}
+* field-{orderId}
+
+7. Jangan pernah skip berdasarkan *FeeCredited flag saja.
+   Selalu cek keberadaan wallet tx sebenarnya.
+
+================================================================
+C. DEBUG & AUDIT CENTER
+=======================
+
+1. Buat unified Audit Center UI.
+
+Mode:
+
+* Ringkas
+* Teknis
+
+2. Tambahkan severity:
+
+* success
+* info
+* warning
+* error
+
+3. Tambahkan audit widgets:
+
+* missing fees
+* duplicate tx
+* orphan assignments
+* mismatch nominal
+* realtime status
+* sync health
+* stale orders
+
+4. Tambahkan export:
+
+* CSV
+* JSON
+* PDF
+
+5. Tambahkan copy debug report.
+
+6. Tambahkan intelligent error translator:
+
+* PostgreSQL
+* Supabase RLS
+* Realtime
+* Storage
+* Constraint
+* Missing migration
+
+Contoh:
+CHECK constraint violation
+→ "Jenis fee belum diizinkan. Jalankan migration wallet-sync-fix.sql"
+
+================================================================
+D. REALTIME STABILITY
+=====================
+
+1. Tambahkan centralized realtime manager:
+   src/lib/realtimeManager.ts
+
+2. Features:
+
+* auto reconnect
+* heartbeat
+* stale detection
+* duplicate subscription prevention
+* cleanup on unmount
+
+3. Tambahkan realtime indicator:
+
+* Live
+* Reconnecting
+* Offline
+
+4. Jika realtime gagal:
+
+* fallback polling otomatis
+
+5. Tambahkan toast:
+   "Data baru saja diperbarui"
+
+================================================================
+E. PUBLIC ORDER PORTAL
+======================
+
+1. Tambahkan:
+
+* ETA otomatis
+* activity timeline
+* update history
+* admin name
+* timestamp perubahan
+
+2. Tambahkan:
+
+* push notification
+* WhatsApp reminder
+* email notification
+
+3. Tambahkan SLA engine:
+
+* warning jika order terlalu lama di satu step
+
+4. Tambahkan smart customer actions:
+
+* upload dokumen
+* konfirmasi pembayaran
+* chat admin
+
+================================================================
+F. BRANDING SYSTEM
+==================
+
+1. Buat:
+   src/config/brand.ts
+
+Isi:
+
+* logoLight
+* logoDark
+* logoIcon
+* favicon
+* brandColor
+* brandName
+
+2. Semua halaman wajib import dari config ini.
+
+3. Tambahkan reusable component:
+
+   <BrandLogo />
+
+4. Tambahkan:
+
+* SVG support
+* PNG fallback
+* retina optimization
+* preload
+* lazy decoding
+
+5. Tambahkan:
+
+* white-label support
+* seasonal branding
+* multi-brand mode
+
+================================================================
+G. FINANCIAL ACCURACY
+=====================
+
+1. Revenue & profit wajib berbasis cashflow nyata:
+
+* PAID = real revenue
+* DP = partial
+* UNPAID = receivable only
+
+2. Tambahkan:
+
+* Piutang Aktif
+* Profit Pending
+* Cashflow Accuracy %
+
+3. Tambahkan:
+
+* mismatch detector antara ledger vs orders
+
+4. Tambahkan:
+
+* audit trail semua perubahan payment status
+
+================================================================
+H. SAFETY & OBSERVABILITY
+=========================
+
+1. Semua endpoint wajib:
+
+* structured logs
+* request ID
+* actor ID
+* agency ID
+
+2. Tambahkan:
+
+* retry-safe operations
+* timeout handling
+* optimistic UI rollback
+
+3. Tambahkan:
+
+* feature flags
+* health dashboards
+* environment diagnostics
+
+4. Tambahkan:
+
+* migration status checker
+* missing SQL detector
+
+================================================================
+I. FINAL GOAL
+=============
+
+Hasil akhir sistem harus:
+
+* konsisten antar semua halaman
+* realtime stabil
+* tidak ada fee hilang
+* tidak ada silent error
+* self-healing
+* audit-friendly
+* mudah debug
+* production-grade
+* scalable untuk multi-agency besar

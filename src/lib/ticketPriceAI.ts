@@ -142,131 +142,92 @@ async function compressImage(dataUrl: string, maxEdge = 1800): Promise<string> {
 // ── System prompt ─────────────────────────────────────────────────────────────
 
 const SYSTEM_PROMPT = `You are a flight ticket data extractor for an Indonesian travel agency (Temantiket).
-Given a screenshot of airline tickets or price lists (Galileo GDS, booking systems, WhatsApp screenshots, Traveloka, Trip.com, airline websites, etc.), extract ALL visible flights and INTELLIGENTLY GROUP them.
 
-## CRITICAL RULE 0: MULTI-OPTION DETECTION (highest priority of all)
+════════════════════════════════════════════════════════════
+ RULE 0 — GALILEO GDS FORMAT: ONE TICKET ENTRY PER ROW
+════════════════════════════════════════════════════════════
+When you see numbered flight segment rows (e.g. "1 GF 70 N 03JUN CAI BAH 1715 2015"):
+  • Return EXACTLY ONE ticket entry per numbered row.
+  • Set tripType = "one_way" for each row.
+  • fromCode = origin of THAT row. toCode = destination of THAT row (not the final destination of the whole trip).
+  • flightNumber = ONLY the flight of that row (e.g. "GF70", never "GF70/GF284").
+  • ALL rows in the same block share the same basePrice = TOTAL AMOUNT of that block.
+  • DO NOT merge rows. DO NOT detect return trips. Our backend handles all grouping.
 
-In Galileo GDS output, multiple pricing options are shown with markers like "MORE 1", "MORE 2", "MORE 3", etc.
-Each "MORE N" block is a COMPLETELY SEPARATE booking option with its own set of segments.
-Even if they share the same price and airline, they represent DIFFERENT flight schedules and MUST be extracted as SEPARATE ticket entries.
+GALILEO EXAMPLE — 4 rows → return 4 separate one_way entries:
+  1 GF  70  N  03JUN  CAI  BAH  1715  2015  WE
+  2 GF 284  N  03JUN  BAH  GOI  2115  0340# WE
+  3 GF 285  O  03SEP  GOI  BAH  0440  0610  TH
+  4 GF  79  O  04SEP  BAH  CAI  0110  0430  FR
+  TOTAL AMOUNT 29283.80 EGP
 
-EXAMPLE: Galileo multi-option output:
-  MORE 1    TOTAL AMOUNT 29283.80 EGP
-  1 GF  70  N  03JUN  CAI  BAH  1715  2015
-  2 GF 284  N  03JUN  BAH  GOI  2115  0340#
-  3 GF 285  O  03SEP  GOI  BAH  0440  0610
-  4 GF  79  O  04SEP  BAH  CAI  0110  0430
-  MORE 2    TOTAL AMOUNT 29283.80 EGP
-  1 GF  80  N  03JUN  CAI  BAH  0530  0830
-  2 GF 286  N  03JUN  BAH  GOI  1540  2205
-  3 GF 285  O  03SEP  GOI  BAH  0440  0610
-  4 GF  71  O  03SEP  BAH  CAI  1215  1535
+→ Return 4 ticket objects:
+  { fromCode:"CAI", toCode:"BAH", flightNumber:"GF70",  etd:"17:15", eta:"20:15", departDate:"YYYY-06-03", basePrice:29283.80, currency:"EGP", tripType:"one_way", ... all return* fields: null }
+  { fromCode:"BAH", toCode:"GOI", flightNumber:"GF284", etd:"21:15", eta:"03:40", departDate:"YYYY-06-03", basePrice:29283.80, currency:"EGP", tripType:"one_way", ... all return* fields: null }
+  { fromCode:"GOI", toCode:"BAH", flightNumber:"GF285", etd:"04:40", eta:"06:10", departDate:"YYYY-09-03", basePrice:29283.80, currency:"EGP", tripType:"one_way", ... all return* fields: null }
+  { fromCode:"BAH", toCode:"CAI", flightNumber:"GF79",  etd:"01:10", eta:"04:30", departDate:"YYYY-09-04", basePrice:29283.80, currency:"EGP", tripType:"one_way", ... all return* fields: null }
 
-→ Extract as TWO separate ticket entries: MORE 1 (flights GF70/GF284, return GF285/GF79) and MORE 2 (flights GF80/GF286, return GF285/GF71).
-NEVER merge MORE blocks together. Each MORE block = 1 ticket entry.
+NOTE on next-day arrival: the "#" or "+1" suffix means the ARRIVAL is next day. The departDate is still the row's departure date. The eta time value does NOT include "#".
+NOTE: "YYYY" = current year unless month already passed (then next year).
 
-## CRITICAL RULE 1: RETURN TRIP DETECTION (highest priority after RULE 0)
+════════════════════════════════════════════════════════════
+ RULE 1 — MORE N BLOCKS (Galileo multi-option)
+════════════════════════════════════════════════════════════
+If the screen shows "MORE 1", "MORE 2" etc., each MORE N block is a separate pricing option.
+All segment rows under MORE 1 share that block's TOTAL AMOUNT.
+All segment rows under MORE 2 share their TOTAL AMOUNT.
+Return all segments from ALL MORE blocks as individual one_way entries.
 
-Before applying transit chain detection, check if ALL segments together form a ROUND TRIP:
+════════════════════════════════════════════════════════════
+ RULE 2 — NON-GALILEO SCREENSHOTS (booking sites, WhatsApp, Traveloka, airline)
+════════════════════════════════════════════════════════════
+For non-GDS screenshots that show complete trips (NOT individual numbered rows):
+  • One ticket entry per complete trip / booking option.
+  • If it's a round trip (clearly shows outbound + return), set tripType="return" and fill returnFrom/To/Date/Flight fields.
+  • If it shows transit (A→B→C), set fromCode=A, toCode=C, transitCode=B, flightNumber=flight1/flight2.
+  • tripType="one_way" for one-direction bookings.
 
-ROUND TRIP RULE: If the FIRST segment's origin == the LAST segment's destination → this is a RETURN/PP trip.
-Split it at the largest date gap between consecutive segments.
+════════════════════════════════════════════════════════════
+ OUTPUT FORMAT
+════════════════════════════════════════════════════════════
+Return ONLY valid JSON {"tickets":[...]} — no markdown, no explanation.
 
-EXAMPLE — 4 segments forming a return trip (NO "MORE N" header):
-  1 GF  70  N  03JUN  CAI  BAH  1715  2015
-  2 GF 284  N  03JUN  BAH  GOI  2115  0340+1
-  3 GF 285  O  03SEP  GOI  BAH  0440  0610
-  4 GF  79  O  04SEP  BAH  CAI  0110  0430
-
-Analysis:
-  First origin = CAI (segment 1)
-  Last destination = CAI (segment 4)
-  CAI == CAI → THIS IS A RETURN/PP TRIP, not a oneway with 4 stops!
-  Largest date gap: 03JUN → 03SEP (92 days), so split at index 2
-  Outbound: [CAI→BAH (GF70), BAH→GOI (GF284)] — departs 03JUN via Bahrain
-  Return:   [GOI→BAH (GF285), BAH→CAI (GF79)] — departs 03SEP via Bahrain
-
-Result: ONE return ticket entry:
-  fromCode=CAI, toCode=GOI, transitCode=BAH, flightNumber=GF70/GF284
-  tripType="return"
-  returnFromCode=GOI, returnToCode=CAI, returnTransitCode=BAH, returnFlightNumber=GF285/GF79
-  returnDate=YYYY-09-03
-
-DO NOT output this as a oneway CAI→GOI or CAI→CAI. It is RETURN/PP.
-DO NOT ignore segments 3 and 4. All 4 segments must be present in the output.
-
-## TRANSIT CHAIN DETECTION (within each direction of a booking)
-
-After determining if a booking is return or oneway, group SAME-DIRECTION segments with transit connections:
-
-DETECTION: If Row[n].ArrivalAirport == Row[n+1].DepartureAirport AND the date gap ≤ 2 days → TRANSIT (same direction leg)
-
-ONEWAY TRANSIT EXAMPLE:
-  Row 1: CAI → BAH  GF70  Total: EGP 29,283.80
-  Row 2: BAH → GOI  GF286  Total: EGP 29,283.80
-  BAH == BAH, same day → ONE oneway ticket: CAI → GOI (via BAH), price EGP 29,283.80
-
-MULTI-TRANSIT EXAMPLE (CAI→BAH→MCT→CGK):
-  Row 1: CAI → BAH  Total: X
-  Row 2: BAH → MCT  Total: X
-  Row 3: MCT → CGK  Total: X
-  → ONE oneway ticket: CAI → CGK, transitCode=BAH (first transit)
-
-## CLASSIC ROUND TRIP GROUPING (simple 2-segment case)
-
-If exactly 2 legs share the same Total Amount AND routes are reversed (A→B + B→A) → ROUND TRIP:
-- Example: CAI→GOI on 3 Jun + GOI→CAI on 3 Sep → tripType="return"
-
-## RULE 3: SINGLE PRICE POINT
-The basePrice must be set ONCE to the Total Amount shown in the screenshot.
-Never multiply by number of transit rows. Never create separate entries for transit legs.
-
-## RULE 4: TRIP TYPE
-- "one_way": single direction, no return
-- "return": round trip (A→B then B→A pattern, same Total Amount)
-- "multi_city": 3+ locations that don't form simple A↔A pattern
-
-Return ONLY a valid JSON object with a "tickets" array (no markdown, no explanation):
+Each ticket object (use null for unknown/not-applicable fields):
 {
-  "tickets": [
-    {
-      "airline": "full airline name e.g. Gulf Air",
-      "airlineCode": "IATA 2-letter code e.g. GF",
-      "fromCode": "IATA 3-letter OUTBOUND ORIGIN airport e.g. CAI",
-      "fromCity": "outbound origin city e.g. Cairo",
-      "toCode": "IATA 3-letter OUTBOUND FINAL DESTINATION airport e.g. GOI (NOT the transit!)",
-      "toCity": "outbound final destination city",
-      "departDate": "YYYY-MM-DD outbound first departure date, or null",
-      "basePrice": number — TOTAL PACKAGE PRICE (single price for the whole booking), or null,
-      "currency": "IDR or EGP or USD or SAR",
-      "tripType": "one_way or return or multi_city",
-      "flightNumber": "outbound flight number(s) e.g. GF70/GF286 (slash-separated for multi-leg), null if not shown",
-      "etd": "HH:MM outbound FIRST departure time 24h, null if not shown",
-      "eta": "HH:MM outbound FINAL arrival time 24h, null if not shown",
-      "terminal": "terminal info, null if not shown",
-      "transitCode": "IATA 3-letter FIRST outbound transit airport e.g. BAH, null if direct",
-      "transitCity": "first outbound transit city, null if direct",
-      "transitDuration": "outbound layover at first transit e.g. 7h 10m, null if not shown",
-      "returnFromCode": "IATA 3-letter RETURN ORIGIN airport e.g. GOI, null for one_way",
-      "returnToCode": "IATA 3-letter RETURN FINAL DESTINATION e.g. CAI, null for one_way",
-      "returnFromCity": "return origin city, null for one_way",
-      "returnToCity": "return final destination city, null for one_way",
-      "returnDate": "YYYY-MM-DD return first departure date, null for one_way",
-      "returnFlightNumber": "return flight number(s) e.g. GF285/GF79, null if not shown or one_way",
-      "returnEtd": "HH:MM return FIRST departure time 24h, null if not shown",
-      "returnEta": "HH:MM return FINAL arrival time 24h, null if not shown",
-      "returnTransitCode": "IATA 3-letter FIRST return transit airport, null if direct or one_way",
-      "returnTransitCity": "first return transit city, null if direct or one_way",
-      "returnTransitDuration": "return layover duration, null if not shown"
-    }
-  ]
+  "airline": "full name e.g. Gulf Air",
+  "airlineCode": "2-letter IATA e.g. GF",
+  "fromCode": "IATA 3-letter origin",
+  "fromCity": "origin city name",
+  "toCode": "IATA 3-letter destination",
+  "toCity": "destination city name",
+  "departDate": "YYYY-MM-DD or null",
+  "basePrice": number or null,
+  "currency": "IDR or EGP or USD or SAR",
+  "tripType": "one_way or return",
+  "flightNumber": "e.g. GF70 (single for Galileo rows) or GF70/GF284 (merged for non-Galileo), null if unknown",
+  "etd": "HH:MM 24h departure time or null",
+  "eta": "HH:MM 24h arrival time (no # suffix) or null",
+  "terminal": null,
+  "transitCode": "IATA transit airport or null",
+  "transitCity": "transit city or null",
+  "transitDuration": "e.g. 2h 30m or null",
+  "returnFromCode": "return origin IATA or null",
+  "returnToCode": "return destination IATA or null",
+  "returnFromCity": "return origin city or null",
+  "returnToCity": "return destination city or null",
+  "returnDate": "YYYY-MM-DD or null",
+  "returnFlightNumber": "return flight(s) or null",
+  "returnEtd": "HH:MM or null",
+  "returnEta": "HH:MM or null",
+  "returnTransitCode": "return transit IATA or null",
+  "returnTransitCity": "return transit city or null",
+  "returnTransitDuration": "return layover duration or null"
 }
 
-AIRPORT CODES: CGK=Jakarta, SUB=Surabaya, JED=Jeddah, MED=Madinah, RUH=Riyadh, CAI=Cairo, DOH=Doha, DXB=Dubai, AUH=Abu Dhabi, KUL=Kuala Lumpur, SIN=Singapore, IST=Istanbul, KWI=Kuwait, MCT=Muscat, BAH=Bahrain, AMM=Amman, BKK=Bangkok, KNO=Medan, GOI=Goa/Bahrain??, GOI=Gulf of India (Goa).
+AIRPORT CODES: CGK=Jakarta, SUB=Surabaya, JED=Jeddah, MED=Madinah, RUH=Riyadh, CAI=Cairo, DOH=Doha, DXB=Dubai, AUH=Abu Dhabi, KUL=Kuala Lumpur, SIN=Singapore, IST=Istanbul, KWI=Kuwait, MCT=Muscat, BAH=Bahrain, AMM=Amman, BKK=Bangkok, KNO=Medan, GOI=Goa (India).
 AIRLINE CODES: QR=Qatar Airways, SV=Saudia, EK=Emirates, GA=Garuda, SQ=Singapore Airlines, EY=Etihad, TK=Turkish, MS=EgyptAir, AI=Air India, KU=Kuwait Airways, WY=Oman Air, GF=Gulf Air, MH=Malaysia Airlines, CX=Cathay Pacific.
 CURRENCY: Rp/IDR=IDR, EGP/£E/جنيه=EGP, $=USD, SAR/SR/ريال=SAR. Default IDR if unclear.
-
-REMEMBER: One booking = ONE ticket entry. Transit rows with same Total Amount = ONE ticket, NOT multiple entries. Return {"tickets":[]} if no clear flight data found.`;
+Return {"tickets":[]} if no clear flight data found.`;
 
 // ── OpenAI Vision call ────────────────────────────────────────────────────────
 
@@ -959,10 +920,21 @@ export function isReturnTrip(notes: string | null): boolean {
 
 // ── Main entry ────────────────────────────────────────────────────────────────
 
+export interface ScanDebugInfo {
+  rawSegmentsCount: number;
+  rawSegments: Array<{ from: string; to: string; flight: string | null; date: string | null; tripType: string }>;
+  firstOrigin: string | null;
+  lastDestination: string | null;
+  detectedType: string;
+  groupedCount: number;
+  source: "ai" | "text";
+}
+
 export interface ScanResult {
   tickets: ParsedTicketPrice[];
   usedAI: boolean;
   grouped: number;
+  debug?: ScanDebugInfo;
   error?: string;
 }
 
@@ -976,7 +948,21 @@ export async function scanTicketPriceScreenshot(imageSource: File | string): Pro
     // More robust than plain groupRoundTrips for sequential Galileo-style AI output.
     const tickets = groupGalileoLegsSequentially(rawTickets);
     const grouped = tickets.filter((t) => t.tripType === "return" || t.multiLeg).length;
-    return { tickets, usedAI: true, grouped };
+
+    const debug: ScanDebugInfo = {
+      rawSegmentsCount: rawTickets.length,
+      rawSegments: rawTickets.map((t) => ({
+        from: t.fromCode, to: t.toCode, flight: t.flightNumber ?? null,
+        date: t.departDate ?? null, tripType: t.tripType,
+      })),
+      firstOrigin: rawTickets[0]?.fromCode ?? null,
+      lastDestination: rawTickets[rawTickets.length - 1]?.toCode ?? null,
+      detectedType: tickets[0]?.tripType ?? "unknown",
+      groupedCount: tickets.length,
+      source: "ai",
+    };
+
+    return { tickets, usedAI: true, grouped, debug };
   } catch (err) {
     return { tickets: [], usedAI: false, grouped: 0, error: err instanceof Error ? err.message : String(err) };
   }
@@ -1127,7 +1113,19 @@ export function parseGalileoTextToTickets(text: string): ScanResult {
   const rawTickets = itineraryLegsToRawTickets(data);
   const tickets    = groupGalileoLegsSequentially(rawTickets);
   const grouped    = tickets.filter((t) => t.tripType === "return" || !!t.multiLeg).length;
-  return { tickets, usedAI: false, grouped };
+  const debug: ScanDebugInfo = {
+    rawSegmentsCount: rawTickets.length,
+    rawSegments: rawTickets.map((t) => ({
+      from: t.fromCode, to: t.toCode, flight: t.flightNumber ?? null,
+      date: t.departDate ?? null, tripType: t.tripType,
+    })),
+    firstOrigin: rawTickets[0]?.fromCode ?? null,
+    lastDestination: rawTickets[rawTickets.length - 1]?.toCode ?? null,
+    detectedType: tickets[0]?.tripType ?? "unknown",
+    groupedCount: tickets.length,
+    source: "text",
+  };
+  return { tickets, usedAI: false, grouped, debug };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
