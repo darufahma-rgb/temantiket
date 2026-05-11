@@ -11,7 +11,8 @@ import {
 import MemberCard from "@/components/MemberCard";
 import { BrandLogo } from "@/components/BrandLogo";
 import { OrderProgressTracker, ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
-import { lookupMemberCard, type PublicMemberCard, type PublicMemberStamp, type ReferralDetail } from "@/features/portal/memberCardRepo";
+import { lookupMemberCard, fetchPublicClientOrders, type PublicMemberCard, type PublicMemberStamp, type ReferralDetail, type PublicOrderData } from "@/features/portal/memberCardRepo";
+import { PublicOrderProgressSection } from "@/components/PublicOrderProgressSection";
 import { fetchPublicPromoPosters, type PromoPost } from "@/lib/promoPostersSettings";
 import { buildPublicMemberUrl, buildReferralUrl, normalizePhoneForWa } from "@/lib/memberSlug";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
@@ -186,27 +187,42 @@ export default function PublicMemberCardPage() {
   const refSlug        = searchParams.get("ref");
   const isReferralView = !!refSlug && refSlug !== slug;
 
-  const [data,           setData]           = useState<PublicMemberCard | null>(null);
-  const [refData,        setRefData]        = useState<PublicMemberCard | null>(null);
-  const [posters,        setPosters]        = useState<PromoPost[]>([]);
-  const [loading,        setLoading]        = useState(true);
-  const [err,            setErr]            = useState<"not_found" | "invalid_slug" | "network" | null>(null);
-  const [referralCopied, setReferralCopied] = useState(false);
-  const [showAllHistory, setShowAllHistory] = useState(false);
-  const [showRewards,    setShowRewards]    = useState(false);
+  const [data,                setData]                = useState<PublicMemberCard | null>(null);
+  const [refData,             setRefData]             = useState<PublicMemberCard | null>(null);
+  const [posters,             setPosters]             = useState<PromoPost[]>([]);
+  const [loading,             setLoading]             = useState(true);
+  const [err,                 setErr]                 = useState<"not_found" | "invalid_slug" | "network" | null>(null);
+  const [referralCopied,      setReferralCopied]      = useState(false);
+  const [showAllHistory,      setShowAllHistory]      = useState(false);
+  const [showRewards,         setShowRewards]         = useState(false);
+  const [publicOrders,        setPublicOrders]        = useState<PublicOrderData[]>([]);
+  const [loadingPublicOrders, setLoadingPublicOrders] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!slug) { setErr("invalid_slug"); setLoading(false); return; }
       setLoading(true); setErr(null); setData(null); setRefData(null); setPosters([]);
+      setPublicOrders([]); setLoadingPublicOrders(false);
       const [res, refRes, posterData] = await Promise.all([
         lookupMemberCard(slug),
         isReferralView && refSlug ? lookupMemberCard(refSlug) : Promise.resolve(null),
         fetchPublicPromoPosters(slug),
       ]);
       if (cancelled) return;
-      if (res.ok) setData(res.data); else setErr(res.error);
+      if (res.ok) {
+        setData(res.data);
+        // If we resolved a clientId via secondary enrichment, fetch active orders
+        const clientId = res.data.client.clientId;
+        if (clientId) {
+          setLoadingPublicOrders(true);
+          fetchPublicClientOrders(clientId)
+            .then((orders) => { if (!cancelled) setPublicOrders(orders); })
+            .finally(() => { if (!cancelled) setLoadingPublicOrders(false); });
+        }
+      } else {
+        setErr(res.error);
+      }
       if (refRes && refRes.ok) setRefData(refRes.data);
       setPosters(posterData);
       setLoading(false);
@@ -505,7 +521,18 @@ export default function PublicMemberCardPage() {
                   ))}
                 </div>
 
-                {/* ④ Progress Stamp */}
+                {/* ④ Progress Pesanan — active orders */}
+                {(loadingPublicOrders || publicOrders.length > 0) && (
+                  <PublicOrderProgressSection
+                    orders={publicOrders}
+                    loading={loadingPublicOrders}
+                    adminWa={adminWa}
+                    clientName={data.client.name}
+                    memberIdStr={memberIdStr}
+                  />
+                )}
+
+                {/* ⑤ Progress Stamp */}
                 <div className="rounded-2xl border border-gray-100 bg-white px-5 py-5 shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">

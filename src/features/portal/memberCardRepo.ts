@@ -1,5 +1,64 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
+// ── Public Order Progress types ──────────────────────────────────────────────
+
+export interface PublicOrderData {
+  id: string;
+  type: string;
+  status: string;
+  title: string | null;
+  totalPrice: number;
+  paymentStatus: string;  // UNPAID | DP | PAID | REFUNDED
+  paidAmount: number;
+  processStep: number;    // 0-based, from metadata.processStep
+  /** Catatan publik dari admin (metadata.adminNotes) — aman untuk klien */
+  adminNotes: string | null;
+  /** Dokumen yang masih kurang (metadata.missingDocs) */
+  missingDocs: string | null;
+  /** Estimasi selesai (metadata.estimatedCompletion) */
+  estimatedCompletion: string | null;
+  createdAt: string;
+}
+
+/**
+ * Fetch active (Confirmed/Paid) orders for a public member page.
+ * Only exposes client-safe fields — no profit, cost, agent, or internal notes.
+ * Silently returns [] if RLS blocks anon access.
+ */
+export async function fetchPublicClientOrders(clientId: string): Promise<PublicOrderData[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data, error } = await supabase!
+      .from("orders")
+      .select("id,type,status,title,total_price,payment_status,paid_amount,metadata,created_at")
+      .eq("client_id", clientId)
+      .in("status", ["Confirmed", "Paid"])
+      .order("created_at", { ascending: false });
+    if (error || !data) return [];
+    return (data as Array<Record<string, unknown>>).map((r) => {
+      const meta = (r.metadata as Record<string, unknown>) ?? {};
+      return {
+        id:                  String(r.id),
+        type:                String(r.type ?? "umrah"),
+        status:              String(r.status ?? "Confirmed"),
+        title:               (r.title as string) ?? null,
+        totalPrice:          r.total_price == null ? 0 : Number(r.total_price),
+        paymentStatus:       String(r.payment_status ?? "UNPAID"),
+        paidAmount:          r.paid_amount == null ? 0 : Number(r.paid_amount),
+        processStep:         Number(meta.processStep ?? 0),
+        adminNotes:          (meta.adminNotes as string) || null,
+        missingDocs:         (meta.missingDocs as string) || null,
+        estimatedCompletion: (meta.estimatedCompletion as string) || null,
+        createdAt:           String(r.created_at ?? new Date().toISOString()),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+// ── Member Card types ─────────────────────────────────────────────────────────
+
 /** Stamp order minimal — match RPC `get_member_card` output */
 export interface PublicMemberStamp {
   type: "umrah" | "flight" | "visa_voa" | "visa_student" | string;
@@ -29,6 +88,8 @@ export interface PublicMemberCard {
     referralStamps: number;
     /** Detail per-referral stamp — mungkin kosong jika RLS memblokir query anon */
     referralDetails?: ReferralDetail[];
+    /** clientId — populated dari secondary enrichment (mungkin kosong jika RLS blokir) */
+    clientId?: string;
   };
   orders: PublicMemberStamp[];
 }
@@ -78,6 +139,7 @@ export async function lookupMemberCard(slug: string): Promise<PublicMemberLookup
 
         const clientId = (clientRows ?? [])[0]?.id as string | undefined;
         if (clientId) {
+          card.client.clientId = clientId;
           // Run order enrichment + referral detail query in parallel
           const [orderResult, referralResult] = await Promise.all([
             supabase!
