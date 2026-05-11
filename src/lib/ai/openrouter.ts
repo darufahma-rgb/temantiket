@@ -795,12 +795,66 @@ Hubungi **Temantiket** untuk konfirmasi pengiriman dokumen.
 Tulis langsung hasilnya. Tidak ada penjelasan, tidak ada kata pembuka, tidak ada blok kode. Mulai langsung dari konten.`;
 
 
+// ── Rapihkan: WA/Telegram mode detection ────────────────────────────────────
+
+/** Tones that always produce WhatsApp-native output (no web markdown) */
+export const WA_TONE_IDS = new Set(["broadcast", "friendly"]);
+
+/** Formats that always produce WhatsApp-native output (no web markdown) */
+export const WA_FORMAT_IDS = new Set(["announcement"]);
+
+/** Returns true when the selected tone or format targets WhatsApp / Telegram */
+export function isWAMode(tone: string, format: string): boolean {
+  return WA_TONE_IDS.has(tone) || WA_FORMAT_IDS.has(format);
+}
+
+// ── Rapihkan: System prompt for WhatsApp / Telegram output ───────────────────
+
+const RAPIKAN_WA_SYSTEM_PROMPT = `Kamu adalah admin senior travel agency yang ahli menulis broadcast WhatsApp dan Telegram.
+
+PENTING — OUTPUT INI UNTUK WHATSAPP / TELEGRAM:
+Gunakan SINTAKS WHATSAPP ASLI. BUKAN markdown web atau HTML.
+
+SINTAKS WAJIB:
+• Bold:   *teks*       (satu asterisk kiri-kanan)
+• Italic: _teks_       (underscore kiri-kanan)
+• Strike: ~teks~
+• Mono:   \`teks\`
+
+SINTAKS YANG DILARANG KERAS:
+✗ # Heading
+✗ ## Heading
+✗ ### Heading
+✗ **bold** (dua asterisk)
+✗ __italic__ (dua underscore)
+✗ HTML tag atau rich text apapun
+
+SEPARATOR antar section:
+✓ ──────────
+✓ ——————————
+
+BULLET:
+✓ • item   atau   - item
+✗ Jangan nested bullet aneh
+
+EMOJI:
+• Maksimal 1 emoji per section header (📢 📌 ✅ ⚠️ 📍)
+• Jangan spam emoji dekoratif (✨🔥💥🌈🎉)
+
+ATURAN MUTLAK:
+✗ Jangan hapus atau tambah informasi dari teks asli
+✗ Jangan tulis kata pengantar ("Berikut adalah...", "Saya telah...")
+✗ Jangan bungkus output dalam blok kode (triple backtick)
+✗ Jangan ubah angka, fakta, nama, atau makna
+✓ Mulai langsung dari konten
+✓ Bahasa Indonesia natural, profesional, dan ringan dibaca`;
+
 // ── Rapihkan: Tone & Format instruction maps ─────────────────────────────────
 
 const RAPIKAN_TONE_INSTRUCTIONS: Record<string, string> = {
   profesional: `Tone: PROFESIONAL — Bahasa Indonesia baku, formal, dan elegan. Kalimat lengkap dan tertata. Hindari singkatan kasual, emoji berlebihan, atau ungkapan terlalu santai. Cocok untuk dokumen resmi, proposal, atau komunikasi bisnis. Tulis seperti admin senior yang menulis untuk klien korporat.`,
 
-  friendly: `Tone: SANTAI & RAMAH — Bahasa percakapan yang hangat dan akrab, seperti kakak yang menjelaskan ke adik. Boleh sedikit emoji (max 2–3, jangan berlebihan). Kalimat pendek dan mudah dicerna. Hindari kaku. Cocok untuk panduan WhatsApp, info perjalanan, atau instruksi klien.`,
+  friendly: `Tone: FRIENDLY WHATSAPP — Bahasa percakapan yang hangat dan akrab. Kalimat pendek dan mudah dicerna. Boleh 2–3 emoji yang relevan dan membantu (bukan dekoratif). Hindari kaku. Cocok untuk panduan WhatsApp, info perjalanan, atau instruksi klien.`,
 
   persuasif: `Tone: MARKETING PERSUASIF — Fokus pada manfaat dan nilai tambah. Kalimat aktif dan energik. Sertakan CTA yang kuat di akhir. Highlight keunggulan dengan bold. Buat pembaca merasa rugi jika tidak bertindak. Cocok untuk promo, penawaran layanan, dan marketing copy.`,
 
@@ -810,7 +864,13 @@ const RAPIKAN_TONE_INSTRUCTIONS: Record<string, string> = {
 
   elegant: `Tone: ELEGANT CLEAN — Minimalis, tenang, dan estetis. Seperti catatan di Notion atau Medium. Tidak ada dekorasi berlebihan. Kalimat mengalir natural. Spacing konsisten. Bold hanya untuk hal yang benar-benar penting. Cocok untuk jurnal profesional, catatan meeting, atau konten yang ingin terlihat premium.`,
 
-  broadcast: `Tone: BROADCAST / SIARAN — Format untuk Telegram atau WhatsApp Channel. Header besar dan tegas di atas. Isi terstruktur dengan jelas. Penutup dengan CTA atau info kontak yang menonjol. Boleh emoji di heading. Harus bisa langsung di-copy dan disebar tanpa edit.`,
+  broadcast: `Tone: BROADCAST TELEGRAM/WA — Header *KAPITAL BOLD* dan tegas di baris pertama. Section-section terstruktur, dipisah dengan ──────────. Penutup dengan CTA atau info kontak yang menonjol. Boleh 1 emoji per section header. Harus bisa langsung di-copy dan disebar tanpa edit.`,
+};
+
+/** WA-specific tone overrides — replace the default when isWAMode = true */
+const RAPIKAN_WA_TONE_INSTRUCTIONS: Record<string, string> = {
+  broadcast: `Tone: BROADCAST TELEGRAM/WA — Buka dengan *📢 JUDUL KAPITAL TEGAS*. Section dipisah ──────────. Isi terstruktur dengan • bullet. Penutup CTA atau kontak. Langsung siap copy-paste. Satu emoji per section header maksimal.`,
+  friendly:  `Tone: FRIENDLY WHATSAPP — Hangat dan akrab, seperti pesan dari teman. Kalimat pendek. Boleh 2–3 emoji yang relevan. Mudah dibaca di layar kecil.`,
 };
 
 const RAPIKAN_FORMAT_INSTRUCTIONS: Record<string, string> = {
@@ -835,6 +895,29 @@ const RAPIKAN_FORMAT_INSTRUCTIONS: Record<string, string> = {
   client: `Format: INSTRUKSI KLIEN — Tulis langkah demi langkah menggunakan numbered list (1. 2. 3.). Setelah numbered list, tambahkan catatan penting dengan ### Catatan Penting jika ada. Bahasa harus mudah diikuti orang awam. Tidak ada jargon teknis. Tutup dengan info kontak jika ada.`,
 };
 
+/** WA-specific format overrides (no ## ### **bold**) */
+const RAPIKAN_WA_FORMAT_INSTRUCTIONS: Record<string, string> = {
+  bullet: `Format: BULLET LIST — Gunakan • atau - per poin. Kelompokkan di bawah *JUDUL SECTION* (bold kapital). Section dipisah ──────────. Satu baris kosong setelah judul section.`,
+
+  checklist: `Format: CHECKLIST — Setiap item ditulis sebagai: ☐ item atau - item. Kelompokkan per kategori dengan *NAMA KATEGORI* (bold kapital). Grup dipisah satu baris kosong.`,
+
+  numbered: `Format: NUMBERED STEPS — Gunakan 1. 2. 3. untuk langkah berurutan. Jika ada sub-tahap, tulis *Tahap N — Nama* (bold) sebagai label sebelum langkahnya. Setiap step diawali baris kosong.`,
+
+  faq: `Format: FAQ — Setiap pasang: *Q: pertanyaan?* (bold), baris kosong, lalu A: jawaban. Pisahkan FAQ dengan ──────────. Kategori ditulis *NAMA KATEGORI* (bold kapital) jika ada beberapa topik.`,
+
+  card: `Format: CARD SECTIONS — Setiap card dimulai dengan *JUDUL CARD* (bold kapital). Card dipisah dengan ──────────. Dalam tiap card gunakan • bullet atau paragraf pendek.`,
+
+  announcement: `Format: ANNOUNCEMENT WHATSAPP — Baris pertama: *📢 JUDUL PENGUMUMAN* (bold kapital). Lalu paragraf singkat berisi inti info. Kemudian detail dengan • bullet. Pisahkan section dengan ──────────. Tutup dengan CTA atau kontak. Siap copy-paste langsung ke WA/Telegram.`,
+
+  paragraph: `Format: NARASI PARAGRAF — Tulis dalam paragraf yang mengalir natural. Pisahkan antar paragraf dengan satu baris kosong. Gunakan *bold* (satu asterisk) untuk penekanan kunci dan _italic_ untuk keterangan.`,
+
+  compact: `Format: COMPACT NOTES — Satu item per baris: *Label:* nilai. Minimal baris kosong antar item. Gunakan ────────── untuk memisahkan grup besar.`,
+
+  travel: `Format: TRAVEL TEMPLATE — Struktur: *NAMA LAYANAN* (bold kapital) → paragraf intro → ──────────→ *Syarat Dokumen* → • bullet → ──────────→ *Biaya* → ──────────→ *Cara Pengiriman* → ──────────→ *Kontak*.`,
+
+  client: `Format: INSTRUKSI KLIEN — Langkah demi langkah: 1. 2. 3. Jika ada catatan penting, tulis *Catatan Penting* (bold) sebagai label. Bahasa mudah dipahami. Tutup dengan info kontak jika ada.`,
+};
+
 /**
  * cleanAndStructureNote — rapikan & format teks catatan mentah menjadi Markdown bersih.
  * Dipakai di fitur "Rapikan" di halaman Catatan.
@@ -847,9 +930,18 @@ export async function cleanAndStructureNote(
   tone = "profesional",
   format = "bullet"
 ): Promise<string> {
-  const model = useAIOverrideStore.getState().getModel("notes", OR_MODELS.NOTES_WRITER);
-  const toneInstr = RAPIKAN_TONE_INSTRUCTIONS[tone]    ?? RAPIKAN_TONE_INSTRUCTIONS.profesional;
-  const fmtInstr  = RAPIKAN_FORMAT_INSTRUCTIONS[format] ?? RAPIKAN_FORMAT_INSTRUCTIONS.bullet;
+  const model  = useAIOverrideStore.getState().getModel("notes", OR_MODELS.NOTES_WRITER);
+  const waMode = isWAMode(tone, format);
+
+  const toneInstr = waMode
+    ? (RAPIKAN_WA_TONE_INSTRUCTIONS[tone]    ?? RAPIKAN_TONE_INSTRUCTIONS[tone]    ?? RAPIKAN_TONE_INSTRUCTIONS.profesional)
+    : (RAPIKAN_TONE_INSTRUCTIONS[tone]       ?? RAPIKAN_TONE_INSTRUCTIONS.profesional);
+
+  const fmtInstr = waMode
+    ? (RAPIKAN_WA_FORMAT_INSTRUCTIONS[format] ?? RAPIKAN_FORMAT_INSTRUCTIONS[format] ?? RAPIKAN_FORMAT_INSTRUCTIONS.bullet)
+    : (RAPIKAN_FORMAT_INSTRUCTIONS[format]    ?? RAPIKAN_FORMAT_INSTRUCTIONS.bullet);
+
+  const systemPrompt = waMode ? RAPIKAN_WA_SYSTEM_PROMPT : RAPIKAN_SYSTEM_PROMPT;
 
   // Heuristic: detect likely content type for additional AI context
   const t = text.trim();
@@ -858,23 +950,28 @@ export async function cleanAndStructureNote(
   const hasSections = /:\s*\n|:\s{2,}/.test(t) || /\b(syarat|biaya|layanan|kontak|alamat|harga|dokumen)\b/i.test(t);
 
   const contentHint = hasTahap
-    ? "Format A (prosedur bertahap)"
+    ? "Prosedur bertahap"
     : hasSections
-    ? "Format C (info terstruktur campuran)"
+    ? "Info terstruktur campuran"
     : hasBullets
-    ? "Format B (daftar murni)"
-    : "Format D (paragraf/narasi)";
+    ? "Daftar murni"
+    : "Narasi/paragraf";
+
+  const outputMode = waMode
+    ? "OUTPUT: WhatsApp/Telegram native — WAJIB pakai sintaks WA (*bold*, _italic_, ──────────). DILARANG ## ### **bold**."
+    : "OUTPUT: Markdown bersih untuk preview internal.";
 
   return callAIOpenRouter({
     model,
-    systemPrompt: RAPIKAN_SYSTEM_PROMPT,
-    prompt: `Rapikan catatan berikut menjadi Markdown yang bersih dan terstruktur. Jangan hilangkan informasi apapun.
+    systemPrompt,
+    prompt: `Rapikan teks berikut. Jangan hilangkan informasi apapun.
 
 TONE PENULISAN: ${toneInstr}
 FORMAT LAYOUT: ${fmtInstr}
-DETEKSI KONTEN AWAL: ${contentHint}
+DETEKSI KONTEN: ${contentHint}
+${outputMode}
 
-CATATAN:
+TEKS:
 ${t}`,
     temperature: 0.2,
     maxTokens: 3000,

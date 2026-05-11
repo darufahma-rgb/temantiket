@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useT } from "@/lib/regional";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { pullNotes, upsertNote, deleteNoteCloud, syncNotesFull, type NoteCloud } from "@/lib/cloudSync";
-import { cleanAndStructureNote } from "@/lib/ai/openrouter";
+import { cleanAndStructureNote, isWAMode } from "@/lib/ai/openrouter";
 import { AIModelToggle } from "@/components/AIModelToggle";
 import { MarkdownContent } from "@/components/MarkdownContent";
 
@@ -470,7 +470,8 @@ export default function Notes() {
       }
       console.log(`[Rapihkan] ✓ AI sukses — resultLength=${aiResult.trim().length}`);
       toast.dismiss(toastId);
-      setPreviewMode("rendered");
+      // WA/Telegram output → default to Raw view so users see actual WA text
+      setPreviewMode(isWAMode(rapihkanTone, rapihkanFormat) ? "raw" : "rendered");
       setRapihkanPreview({ id, original: content, formatted: aiResult.trim() });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1252,9 +1253,18 @@ export default function Notes() {
               <Sparkles className="h-4 w-4 text-sky-500 shrink-0" />
               Rapihkan dengan AI
             </DialogTitle>
-            <p className="text-[12px] text-muted-foreground mt-0.5">
-              Pilih gaya penulisan dan format output — AI akan memformat ulang catatan menjadi Markdown profesional.
-            </p>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <p className="text-[12px] text-muted-foreground flex-1">
+                {isWAMode(rapihkanTone, rapihkanFormat)
+                  ? "Output akan menggunakan sintaks WhatsApp asli — siap copy-paste ke WA/Telegram."
+                  : "Pilih gaya penulisan dan format output — AI akan memformat ulang catatan menjadi Markdown profesional."}
+              </p>
+              {isWAMode(rapihkanTone, rapihkanFormat) && (
+                <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-semibold shrink-0">
+                  WA Native
+                </span>
+              )}
+            </div>
           </DialogHeader>
 
           <div className="overflow-y-auto max-h-[65vh]">
