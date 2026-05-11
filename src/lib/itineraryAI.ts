@@ -62,7 +62,7 @@ export interface ItineraryData {
 //   - '#' setelah waktu tiba = hari berikutnya
 
 const GALILEO_ROW_RE =
-  /^\s*(\d+)\s+([A-Z]{2})\s+(\d+)\s+([A-Z])\s+(\d{1,2}[A-Z]{3})\s+([A-Z]{3})\s+([A-Z]{3})\s+(\d{4})\s+(\d{4})\s*(#?)/;
+  /^\s*(\d+)\s+([A-Z]{2})\s+(\d+)\s+([A-Z])\s+(\d{1,2}[A-Z]{3})\s+([A-Z]{3})\s+([A-Z]{3})\s+(\d{4})\s+(\d{4})\s*(#|\+1|\(\+1\)|\(\+2\)|\+2)?/;
 
 const GALILEO_PRICE_RE = /TOTAL\s+AMOUNT\s+([\d.,]+)\s+([A-Z]{3})/i;
 
@@ -125,7 +125,8 @@ export function parseGalileoDisplay(text: string): ItineraryData | null {
     const [, , airlineCode, flightNo, classCode, dateStr, origCode, destCode, depRaw, arrRaw, nextDayFlag] = m;
 
     const departDate = parseDDMMM(dateStr);
-    const arriveDate = nextDayFlag === "#" && departDate ? addOneDay(departDate) : departDate;
+    const isNextDay = !!nextDayFlag && nextDayFlag !== "";
+    const arriveDate = isNextDay && departDate ? addOneDay(departDate) : departDate;
 
     const leg: FlightLeg = {
       airline: KNOWN_AIRLINES[airlineCode] ?? airlineCode,

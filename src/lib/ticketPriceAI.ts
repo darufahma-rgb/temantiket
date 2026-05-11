@@ -165,38 +165,57 @@ EXAMPLE: Galileo multi-option output:
 → Extract as TWO separate ticket entries: MORE 1 (flights GF70/GF284, return GF285/GF79) and MORE 2 (flights GF80/GF286, return GF285/GF71).
 NEVER merge MORE blocks together. Each MORE block = 1 ticket entry.
 
-## CRITICAL RULE 1: TRANSIT CHAIN DETECTION (within each MORE block)
+## CRITICAL RULE 1: RETURN TRIP DETECTION (highest priority after RULE 0)
 
-In GDS/booking systems, a SINGLE booking often shows multiple "segment rows". These MUST be merged into one ticket:
+Before applying transit chain detection, check if ALL segments together form a ROUND TRIP:
 
-DETECTION: If Row[n].ArrivalAirport == Row[n+1].DepartureAirport AND they share the same Total Amount → SAME booking with transit stop.
+ROUND TRIP RULE: If the FIRST segment's origin == the LAST segment's destination → this is a RETURN/PP trip.
+Split it at the largest date gap between consecutive segments.
 
-EXAMPLE from Galileo GDS:
-  Row 1: CAI → BAH  GF70  05:30→08:30  Total: EGP 29,283.80
-  Row 2: BAH → GOI  GF286  15:40→22:05  Total: EGP 29,283.80
-  BAH == BAH → ONE ticket: CAI → GOI (via BAH), price EGP 29,283.80
+EXAMPLE — 4 segments forming a return trip (NO "MORE N" header):
+  1 GF  70  N  03JUN  CAI  BAH  1715  2015
+  2 GF 284  N  03JUN  BAH  GOI  2115  0340+1
+  3 GF 285  O  03SEP  GOI  BAH  0440  0610
+  4 GF  79  O  04SEP  BAH  CAI  0110  0430
 
-Result: ONE ticket entry with fromCode=CAI, toCode=GOI, transitCode=BAH
+Analysis:
+  First origin = CAI (segment 1)
+  Last destination = CAI (segment 4)
+  CAI == CAI → THIS IS A RETURN/PP TRIP, not a oneway with 4 stops!
+  Largest date gap: 03JUN → 03SEP (92 days), so split at index 2
+  Outbound: [CAI→BAH (GF70), BAH→GOI (GF284)] — departs 03JUN via Bahrain
+  Return:   [GOI→BAH (GF285), BAH→CAI (GF79)] — departs 03SEP via Bahrain
+
+Result: ONE return ticket entry:
+  fromCode=CAI, toCode=GOI, transitCode=BAH, flightNumber=GF70/GF284
+  tripType="return"
+  returnFromCode=GOI, returnToCode=CAI, returnTransitCode=BAH, returnFlightNumber=GF285/GF79
+  returnDate=YYYY-09-03
+
+DO NOT output this as a oneway CAI→GOI or CAI→CAI. It is RETURN/PP.
+DO NOT ignore segments 3 and 4. All 4 segments must be present in the output.
+
+## TRANSIT CHAIN DETECTION (within each direction of a booking)
+
+After determining if a booking is return or oneway, group SAME-DIRECTION segments with transit connections:
+
+DETECTION: If Row[n].ArrivalAirport == Row[n+1].DepartureAirport AND the date gap ≤ 2 days → TRANSIT (same direction leg)
+
+ONEWAY TRANSIT EXAMPLE:
+  Row 1: CAI → BAH  GF70  Total: EGP 29,283.80
+  Row 2: BAH → GOI  GF286  Total: EGP 29,283.80
+  BAH == BAH, same day → ONE oneway ticket: CAI → GOI (via BAH), price EGP 29,283.80
 
 MULTI-TRANSIT EXAMPLE (CAI→BAH→MCT→CGK):
   Row 1: CAI → BAH  Total: X
   Row 2: BAH → MCT  Total: X
   Row 3: MCT → CGK  Total: X
-  → ONE ticket: CAI → CGK, transitCode=BAH (first transit), all rows share price X
+  → ONE oneway ticket: CAI → CGK, transitCode=BAH (first transit)
 
-## CRITICAL RULE 2: ROUND TRIP GROUPING
+## CLASSIC ROUND TRIP GROUPING (simple 2-segment case)
 
-After transit chain detection, group round trips:
-- If two legs share the same Total Amount AND one leg's route reverses the other → ROUND TRIP
-- Example: CAI→GOI-via-BAH on 3 Jun + GOI→CAI-via-BAH on 3 Sep (same price) = ONE return ticket
-- basePrice = TOTAL PACKAGE price (the shared Total Amount), NOT per-leg price
-- tripType = "return"
-
-For the transit+roundtrip combined case:
-- Outbound: CAI→BAH→GOI (from segment rows 1+2 going forward)
-- Return: GOI→BAH→CAI (from segment rows going backward, same date range)
-- Result: ONE entry, tripType="return", fromCode=CAI, toCode=GOI, transitCode=BAH
-- returnFromCode=GOI, returnToCode=CAI, returnTransitCode=BAH
+If exactly 2 legs share the same Total Amount AND routes are reversed (A→B + B→A) → ROUND TRIP:
+- Example: CAI→GOI on 3 Jun + GOI→CAI on 3 Sep → tripType="return"
 
 ## RULE 3: SINGLE PRICE POINT
 The basePrice must be set ONCE to the Total Amount shown in the screenshot.
@@ -290,6 +309,20 @@ async function callOpenAIVision(dataUrl: string): Promise<ParsedTicketPrice[]> {
   return tickets.map(normalizeTicket);
 }
 
+/**
+ * Strip next-day suffixes from a time string returned by AI or parsed from GDS text.
+ * Handles: "03:40+1", "03:40 +1", "0340+1", "03:40(+1)", "03:40#", "03:40 #"
+ * Returns "HH:MM" or null.
+ */
+function normalizeTime(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  // Strip next-day markers: +1, +2, (#), (+1), (+2), trailing #
+  let s = String(raw).replace(/\s*(#|\(\+\d+\)|\+\d+)\s*$/, "").trim();
+  // Handle HHMM → HH:MM (if no colon)
+  if (/^\d{4}$/.test(s)) s = `${s.slice(0, 2)}:${s.slice(2)}`;
+  return /^\d{1,2}:\d{2}$/.test(s) ? s.padStart(5, "0") : null;
+}
+
 function normalizeTicket(t: Partial<ParsedTicketPrice>): ParsedTicketPrice {
   const tripType = (["one_way", "return", "multi_city"].includes(String(t.tripType ?? ""))
     ? t.tripType
@@ -309,8 +342,8 @@ function normalizeTicket(t: Partial<ParsedTicketPrice>): ParsedTicketPrice {
     currency:        (["IDR","EGP","USD","SAR"].includes(String(t.currency ?? "")) ? t.currency : "IDR") as ParsedTicketPrice["currency"],
     tripType,
     flightNumber:    t.flightNumber ? String(t.flightNumber).trim().toUpperCase() : null,
-    etd:             /^\d{1,2}:\d{2}$/.test(String(t.etd ?? "")) ? String(t.etd).padStart(5, "0") : null,
-    eta:             /^\d{1,2}:\d{2}$/.test(String(t.eta ?? "")) ? String(t.eta).padStart(5, "0") : null,
+    etd:             normalizeTime(t.etd as string | null),
+    eta:             normalizeTime(t.eta as string | null),
     terminal:        t.terminal ? String(t.terminal).trim() : null,
     transitCode:     t.transitCode ? String(t.transitCode).trim().toUpperCase().slice(0, 3) : null,
     transitCity:     t.transitCity ? String(t.transitCity).trim() : null,
@@ -321,8 +354,8 @@ function normalizeTicket(t: Partial<ParsedTicketPrice>): ParsedTicketPrice {
     returnToCity:        isReturn && t.returnToCity   ? String(t.returnToCity).trim()                             : null,
     returnDate:          isReturn && /^\d{4}-\d{2}-\d{2}$/.test(String(t.returnDate ?? "")) ? String(t.returnDate) : null,
     returnFlightNumber:  isReturn && t.returnFlightNumber ? String(t.returnFlightNumber).trim().toUpperCase()     : null,
-    returnEtd:           isReturn && /^\d{1,2}:\d{2}$/.test(String(t.returnEtd ?? "")) ? String(t.returnEtd).padStart(5, "0") : null,
-    returnEta:           isReturn && /^\d{1,2}:\d{2}$/.test(String(t.returnEta ?? "")) ? String(t.returnEta).padStart(5, "0") : null,
+    returnEtd:           isReturn ? normalizeTime(t.returnEtd as string | null)                                   : null,
+    returnEta:           isReturn ? normalizeTime(t.returnEta as string | null)                                   : null,
     returnTransitCode:   isReturn && t.returnTransitCode ? String(t.returnTransitCode).trim().toUpperCase().slice(0, 3) : null,
     returnTransitCity:   isReturn && t.returnTransitCity ? String(t.returnTransitCity).trim()                          : null,
     returnTransitDuration: isReturn && t.returnTransitDuration ? String(t.returnTransitDuration).trim()                : null,
@@ -775,6 +808,17 @@ function groupGalileoLegsSequentially(rawTickets: ParsedTicketPrice[]): ParsedTi
 // If AI outputs individual legs, detect and merge round-trip pairs.
 
 export function groupRoundTrips(tickets: ParsedTicketPrice[]): ParsedTicketPrice[] {
+  // Phase 0: direct return-trip detection on raw segments (mirrors groupGalileoLegsSequentially Phase 0)
+  // If the raw input is already a sequence of single-leg segments where first.from == last.to → RETURN.
+  // This catches the case where AI returns 4 individual one-way tickets in journey order.
+  if (tickets.length >= 2 && tickets.every((t) => t.tripType === "one_way" && !t.multiLeg)) {
+    const returnSplit = detectReturnSplit(tickets);
+    if (returnSplit) {
+      const [outboundSegs, returnSegs] = returnSplit;
+      return [buildReturnMergedTicket(outboundSegs, returnSegs)];
+    }
+  }
+
   // Phase 1: merge transit chains (Fase 19.5)
   const afterTransit = mergeTransitChains(tickets);
 
@@ -927,8 +971,10 @@ export async function scanTicketPriceScreenshot(imageSource: File | string): Pro
     const rawDataUrl = imageSource instanceof File ? await fileToDataUrl(imageSource) : imageSource;
     const dataUrl    = await compressImage(rawDataUrl, 1800);
     const rawTickets = await callOpenAIVision(dataUrl);
-    // Apply client-side grouper (transit merge + round-trip pairing)
-    const tickets = groupRoundTrips(rawTickets);
+    // groupGalileoLegsSequentially: Phase 0 (detectReturnSplit on ordered segments) →
+    // Phase 1-2 (direction chains + multi-leg) → Phase 3 (fallback round-trip).
+    // More robust than plain groupRoundTrips for sequential Galileo-style AI output.
+    const tickets = groupGalileoLegsSequentially(rawTickets);
     const grouped = tickets.filter((t) => t.tripType === "return" || t.multiLeg).length;
     return { tickets, usedAI: true, grouped };
   } catch (err) {
