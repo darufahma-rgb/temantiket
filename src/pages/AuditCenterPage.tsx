@@ -372,6 +372,75 @@ export default function AuditCenterPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportPDF = () => {
+    const date = new Date().toLocaleString("id-ID");
+    const sevBg: Record<AuditSeverity, string> = {
+      error:   "#fee2e2",
+      warning: "#fef3c7",
+      info:    "#dbeafe",
+      success: "#d1fae5",
+    };
+    const sevColor: Record<AuditSeverity, string> = {
+      error:   "#b91c1c",
+      warning: "#b45309",
+      info:    "#1d4ed8",
+      success: "#065f46",
+    };
+    const rows = items.map(i => `
+      <tr style="border-bottom:1px solid #f1f5f9;">
+        <td style="padding:6px 8px;">
+          <span style="display:inline-block;padding:2px 7px;border-radius:9999px;font-size:10px;font-weight:700;background:${sevBg[i.severity]};color:${sevColor[i.severity]}">
+            ${i.severity.toUpperCase()}
+          </span>
+        </td>
+        <td style="padding:6px 8px;font-size:11px;color:#64748b;">${i.category}</td>
+        <td style="padding:6px 8px;font-size:11px;font-weight:600;color:#1e293b;">${i.title}</td>
+        <td style="padding:6px 8px;font-size:10.5px;color:#475569;">${i.description}</td>
+        <td style="padding:6px 8px;font-size:10px;color:#94a3b8;white-space:nowrap;">${i.ts ? new Date(i.ts).toLocaleString("id-ID") : "—"}</td>
+      </tr>`).join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<title>Audit Report — Temantiket</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 32px; color: #1e293b; }
+  h1   { font-size: 18px; font-weight: 800; margin: 0 0 4px; }
+  p.sub { font-size: 11px; color: #64748b; margin: 0 0 20px; }
+  .stats { display: flex; gap: 12px; margin-bottom: 20px; }
+  .stat  { padding: 10px 16px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center; }
+  .stat .val { font-size: 20px; font-weight: 900; }
+  .stat .lbl { font-size: 10px; color: #64748b; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { text-align: left; padding: 8px; background: #f8fafc; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+  @media print { body { padding: 16px; } }
+</style>
+</head>
+<body>
+<h1>🛡 Audit Report — Temantiket</h1>
+<p class="sub">Dijalankan: ${date} &nbsp;·&nbsp; User: ${user?.name ?? user?.id ?? "—"} (${user?.role ?? "—"}) &nbsp;·&nbsp; Total order: ${orders.length}</p>
+<div class="stats">
+  <div class="stat"><div class="val" style="color:#ef4444">${counts.error}</div><div class="lbl">Error</div></div>
+  <div class="stat"><div class="val" style="color:#f59e0b">${counts.warning}</div><div class="lbl">Perhatian</div></div>
+  <div class="stat"><div class="val" style="color:#3b82f6">${counts.info}</div><div class="lbl">Info</div></div>
+  <div class="stat"><div class="val" style="color:#10b981">${counts.success}</div><div class="lbl">OK</div></div>
+</div>
+<table>
+  <thead><tr><th>Sev</th><th>Kategori</th><th>Judul</th><th>Deskripsi</th><th>Waktu</th></tr></thead>
+  <tbody>${rows || "<tr><td colspan='5' style='padding:16px;text-align:center;color:#94a3b8'>Tidak ada item audit.</td></tr>"}</tbody>
+</table>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 400);
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
   const overallOk = counts.error === 0 && counts.warning === 0;
 
@@ -472,6 +541,9 @@ export default function AuditCenterPage() {
           </Button>
           <Button size="sm" variant="outline" className="h-8 text-[10px] gap-1" onClick={handleExportJSON}>
             <Download className="h-3 w-3" /> JSON
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 text-[10px] gap-1" onClick={handleExportPDF}>
+            <Download className="h-3 w-3" /> PDF
           </Button>
         </div>
       </div>

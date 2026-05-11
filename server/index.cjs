@@ -62,6 +62,22 @@ app.use(express.json({ limit: '20mb' }));
 // Actor/agency context is extracted from auth header asynchronously if present.
 const { randomUUID } = require('crypto');
 
+/**
+ * Decode a JWT payload without verifying signature.
+ * Returns null on any failure — never throws.
+ */
+function decodeJwtPayload(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = Buffer.from(payload, 'base64').toString('utf8');
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 app.use((req, res, next) => {
   const requestId = randomUUID();
   const start = Date.now();
@@ -69,6 +85,19 @@ app.use((req, res, next) => {
 
   // Attach requestId to response headers for client-side tracing
   res.setHeader('X-Request-Id', requestId);
+
+  // Extract actor/agency context from Authorization header (non-blocking)
+  let actorId   = null;
+  let agencyId  = null;
+  const authHeader = req.headers['authorization'] ?? '';
+  if (authHeader.startsWith('Bearer ')) {
+    const payload = decodeJwtPayload(authHeader.slice(7));
+    if (payload) {
+      // Supabase JWT: sub = user UUID; app_metadata.agency_id if set
+      actorId  = payload.sub ?? null;
+      agencyId = payload.app_metadata?.agency_id ?? null;
+    }
+  }
 
   res.on('finish', () => {
     const durationMs = Date.now() - start;
@@ -83,6 +112,8 @@ app.use((req, res, next) => {
       status:   res.statusCode,
       ms:       durationMs,
       ts:       new Date().toISOString(),
+      actorId,
+      agencyId,
     };
     // Structured output: single JSON line per request (parseable by log aggregators)
     console.log(JSON.stringify(log));
