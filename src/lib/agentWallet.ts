@@ -429,6 +429,144 @@ export async function recordPayoutAsync(
   });
 }
 
+// ─── B — Canonical agent ID resolver ─────────────────────────────────────────
+
+/**
+ * resolveAgentId — normalize any raw agent identifier to a canonical user UUID.
+ *
+ * All wallet transactions, profile pages, and order metadata MUST use the
+ * Supabase auth user UUID (= agency_members.user_id) as the canonical ID.
+ * This function is the single entry point for resolving any ambiguous ID.
+ *
+ * If memberLookup is provided (maps any possible ID → userId), it is tried
+ * first. Falls back to returning rawId as-is (assumed already canonical).
+ * Returns null for empty / "__none" / whitespace-only inputs.
+ */
+export function resolveAgentId(
+  rawId: string | null | undefined,
+  memberLookup?: (id: string) => string | null,
+): string | null {
+  if (!rawId || rawId.trim() === "" || rawId === "__none") return null;
+  const trimmed = rawId.trim();
+  if (memberLookup) {
+    const resolved = memberLookup(trimmed);
+    if (resolved) return resolved;
+  }
+  return trimmed;
+}
+
+/**
+ * All metadata field names that can hold an agent's identity across different
+ * order types and historical naming conventions.
+ *
+ * Used by extractFieldAgents() and AgentProfile to scan all possible keys.
+ */
+export const FIELD_AGENT_META_KEYS = [
+  "voaFieldAgentId",
+  "fieldAgentId",
+  "pelaksanaId",
+  "kurirAgentId",
+  "assignedOperationalAgentId",
+  "visaExecutorId",
+  "salesAgentId",
+  "assignedAgentId",
+  "handlerAgentId",
+  "courierAgentId",
+] as const;
+
+export type FieldAgentMetaKey = typeof FIELD_AGENT_META_KEYS[number];
+
+export interface ExtractedFieldRole {
+  /** Which metadata key was used to store this agent ID */
+  fieldKey:        FieldAgentMetaKey;
+  /** Canonical agent user UUID */
+  agentId:         string;
+  /** Fee amount in IDR (0 if no fee defined) */
+  feeAmount:       number;
+  /** WalletTxType to use when crediting this role */
+  feeType:         WalletTxType;
+  /** Deterministic idempotency key for wallet upsert */
+  idempotencyKey:  string;
+  /** Whether the *Credited flag is set in metadata */
+  creditedFlag:    boolean;
+}
+
+/**
+ * extractFieldAgents — canonical extractor for ALL field agent roles in an order.
+ *
+ * Single source of truth for reading field agent metadata. All pages (AgentProfile,
+ * AgentProfileOwnerView, backfill, audit) MUST use this function to avoid missing
+ * agents due to metadata key name variations.
+ *
+ * Covers all known metadata field names including legacy ones from earlier versions.
+ * Each role produces a separate ExtractedFieldRole entry (no else-if exclusions).
+ *
+ * @param orderId  - order UUID (used to build idempotency keys)
+ * @param metadata - raw order metadata object
+ * @param filterAgentId - if provided, only returns roles for this agent
+ */
+export function extractFieldAgents(
+  orderId: string,
+  metadata: Record<string, unknown>,
+  filterAgentId?: string | null,
+): ExtractedFieldRole[] {
+  const roles: ExtractedFieldRole[] = [];
+
+  function tryAdd(
+    fieldKey:        FieldAgentMetaKey,
+    agentIdKey:      string,
+    feeKey:          string,
+    feeType:         WalletTxType,
+    idempotencyPfx:  string,
+    creditedKey:     string,
+    defaultFee      = 0,
+  ) {
+    const rawId = metadata[agentIdKey];
+    if (!rawId || rawId === "__none") return;
+    const agentId = String(rawId).trim();
+    if (!agentId) return;
+    if (filterAgentId && filterAgentId !== agentId) return;
+    const feeAmount = Number(metadata[feeKey] ?? defaultFee);
+    roles.push({
+      fieldKey,
+      agentId,
+      feeAmount,
+      feeType,
+      idempotencyKey: `${idempotencyPfx}-${orderId}`,
+      creditedFlag:   !!(metadata[creditedKey] as boolean | undefined),
+    });
+  }
+
+  // VOA field agent (primary — most common)
+  tryAdd("voaFieldAgentId",            "voaFieldAgentId",            "voaAgentFee",        "voa_agent_fee",   "voa",       "voaFeeCredited");
+  // Generic field agent (legacy / non-VOA)
+  tryAdd("fieldAgentId",               "fieldAgentId",               "fieldAgentFee",      "field_agent_fee", "field",     "fieldFeeCredited");
+  // Visa student pelaksana
+  tryAdd("pelaksanaId",                "pelaksanaId",                "pelaksanaFee",       "pelaksana_fee",   "pelaksana", "pelaksanaFeeCredited", 200_000);
+  // Kurir setoran
+  tryAdd("kurirAgentId",               "kurirAgentId",               "kurirFee",           "kurir_fee",       "kurir",     "kurirFeeCredited");
+  // Operational / transport agent
+  tryAdd("assignedOperationalAgentId", "assignedOperationalAgentId", "operationalAgentFee","operational_fee", "op",        "operationalFeeCredited");
+  // Visa executor (legacy field name used in some early orders)
+  tryAdd("visaExecutorId",             "visaExecutorId",             "executorFee",        "pelaksana_fee",   "executor",  "executorFeeCredited");
+
+  return roles;
+}
+
+/**
+ * Check if a given agentId (user UUID) has ANY field assignment in this order.
+ * Uses the canonical extractFieldAgents() internally.
+ *
+ * @returns list of field role keys where agentId appears
+ */
+export function getAgentFieldRoles(
+  orderId: string,
+  metadata: Record<string, unknown>,
+  agentId: string,
+): ExtractedFieldRole[] {
+  return extractFieldAgents(orderId, metadata, agentId);
+}
+
 // ─── B — Duplicate-role detector ─────────────────────────────────────────────
 
 export interface RoleConflict {

@@ -277,23 +277,25 @@ export default function OrderDetail() {
       // VOA field-agent fee
       const voaFieldAgentId = (metaPatch.voaFieldAgentId as string | undefined) ?? null;
       const voaFieldFee     = Number(metaPatch.voaAgentFee ?? 0);
+      // NOTE: do NOT guard with !voaFeeCredited — rely on idempotency key (voa-{orderId}) instead.
+      // If an agent was reassigned AFTER the first Completed save, removing the guard ensures the
+      // new agent gets credited even when voaFeeCredited=true is already in metadata.
+      // The wallet upsert (onConflict:'id') is safe to call multiple times — no double-credit.
       const shouldCreditVoa = order.type === "visa_voa" &&
-        willBeCompleted && !!voaFieldAgentId && voaFieldFee > 0 &&
-        !metaPatch.voaFeeCredited;
+        willBeCompleted && !!voaFieldAgentId && voaFieldFee > 0;
 
-      // Kurir fee
+      // Kurir fee — same idempotency logic: no *Credited guard, rely on kurir-{orderId} key
       const kurirAgentIdPre   = (metaPatch.kurirAgentId as string | undefined) ?? null;
       const kurirFeeAmountPre = Number(metaPatch.kurirFee ?? 0);
       const shouldCreditKurir = willBeCompleted && !!kurirAgentIdPre &&
-        kurirFeeAmountPre > 0 && !metaPatch.kurirFeeCredited;
+        kurirFeeAmountPre > 0;
 
-      // Visa Student pelaksana (field-staff) fee — auto-deducted from profit & auto-credited on Completed.
-      // Fee langsung dikurangi dari harga customer saat status Completed, tidak perlu klik manual.
+      // Visa Student pelaksana (field-staff) fee — idempotency key: pelaksana-{orderId}
       const pelaksanaIdForCredit  = (metaPatch.pelaksanaId as string | undefined) ?? null;
       const pelaksanaFeeForCredit = Number(metaPatch.pelaksanaFee ?? 200_000);
       const shouldCreditPelaksana = order.type === "visa_student" &&
         willBeCompleted && !!pelaksanaIdForCredit &&
-        pelaksanaFeeForCredit > 0 && !metaPatch.pelaksanaFeeCredited;
+        pelaksanaFeeForCredit > 0;
 
       // Agent order commission (sales agent, not VOA field agent).
       // Only credit if createdByAgent resolves to a member with role === "agent".
@@ -314,8 +316,9 @@ export default function OrderDetail() {
         metaPatch = { ...metaPatch, agentFee: agentFeeAmount };
       }
 
+      // Sales commission — idempotency key: agent-{orderId}, no *Credited guard needed
       const shouldCreditAgent = willBeCompleted && !!agentCommId &&
-        agentFeeAmount > 0 && !metaPatch.agentFeeCredited;
+        agentFeeAmount > 0;
 
       // ── Step 1: Save order WITHOUT "credited" flags ────────────────────────
       // Flags are only stamped AFTER Supabase confirms each wallet insert.

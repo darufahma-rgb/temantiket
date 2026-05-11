@@ -588,10 +588,16 @@ export default function AgentProfileOwnerView() {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [walletTxs],
   );
-  /** Semua jenis komisi lapangan: VOA field agent + pelaksana visa + kurir setoran. */
+  /** Semua jenis komisi lapangan: VOA, generic field agent, pelaksana visa, kurir, operasional. */
   const fieldCommTxs = useMemo(
     () => [...walletTxs]
-      .filter((t) => t.type === "voa_agent_fee" || t.type === "pelaksana_fee" || t.type === "kurir_fee")
+      .filter((t) =>
+        t.type === "voa_agent_fee"  ||
+        t.type === "field_agent_fee" ||
+        t.type === "pelaksana_fee"  ||
+        t.type === "kurir_fee"      ||
+        t.type === "operational_fee"
+      )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [walletTxs],
   );
@@ -1812,9 +1818,11 @@ export default function AgentProfileOwnerView() {
               {/* ── Komisi Lapangan — unified section (VOA + Pelaksana + Kurir) ── */}
               {fieldCommTxs.length > 0 && (() => {
                 const FIELD_CFG: Record<string, { emoji: string; label: string; badgeCls: string; rowHover: string; amtCls: string }> = {
-                  voa_agent_fee:  { emoji: "🛂", label: "Agent Lapangan VOA",  badgeCls: "bg-indigo-100 text-indigo-700",  rowHover: "hover:bg-indigo-50/40",  amtCls: "text-indigo-700" },
-                  pelaksana_fee:  { emoji: "🎓", label: "Pelaksana Visa",       badgeCls: "bg-purple-100 text-purple-700",  rowHover: "hover:bg-purple-50/40",  amtCls: "text-purple-700" },
-                  kurir_fee:      { emoji: "🚗", label: "Kurir Setoran",        badgeCls: "bg-amber-100 text-amber-700",    rowHover: "hover:bg-amber-50/40",   amtCls: "text-amber-700" },
+                  voa_agent_fee:  { emoji: "🛂", label: "Agent Lapangan VOA",   badgeCls: "bg-indigo-100 text-indigo-700",  rowHover: "hover:bg-indigo-50/40",  amtCls: "text-indigo-700" },
+                  field_agent_fee:{ emoji: "📋", label: "Agent Lapangan",        badgeCls: "bg-sky-100 text-sky-700",        rowHover: "hover:bg-sky-50/40",     amtCls: "text-sky-700" },
+                  pelaksana_fee:  { emoji: "🎓", label: "Pelaksana Visa",        badgeCls: "bg-purple-100 text-purple-700",  rowHover: "hover:bg-purple-50/40",  amtCls: "text-purple-700" },
+                  kurir_fee:      { emoji: "🚗", label: "Kurir Setoran",         badgeCls: "bg-amber-100 text-amber-700",    rowHover: "hover:bg-amber-50/40",   amtCls: "text-amber-700" },
+                  operational_fee:{ emoji: "⚙️", label: "Fee Operasional",       badgeCls: "bg-teal-100 text-teal-700",      rowHover: "hover:bg-teal-50/40",    amtCls: "text-teal-700" },
                 };
                 const statusCfg: Record<string, { cls: string; label: string }> = {
                   Completed:  { cls: "bg-emerald-100 text-emerald-700", label: "Selesai" },

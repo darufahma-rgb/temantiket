@@ -22,7 +22,7 @@ import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, type OrderType } from "@/features/orders/ordersRepo";
 import { fmtIDR, agentFeeFromMeta } from "@/lib/profit";
 import { computeFeeBreakdown } from "@/lib/agentFeeBreakdown";
-import { pullWalletTxs, type WalletTransaction } from "@/lib/agentWallet";
+import { pullWalletTxs, type WalletTransaction, extractFieldAgents } from "@/lib/agentWallet";
 import { uploadAvatar, savePhotoUrl, loadPhotoUrl } from "@/lib/avatarStorage";
 import { uploadCardBack, saveCardBackUrl, loadCardBackUrl } from "@/lib/cardBackStorage";
 import { supabase } from "@/lib/supabase";
@@ -30,7 +30,7 @@ import { AgentCard } from "@/components/AgentCard";
 import { cn } from "@/lib/utils";
 
 // ── Field task type config ────────────────────────────────────────────────────
-type FieldTaskType = "voa" | "pelaksana" | "kurir";
+type FieldTaskType = "voa" | "pelaksana" | "kurir" | "fieldAgent" | "operational" | "executor";
 
 interface FieldTask {
   orderId:    string;
@@ -47,9 +47,12 @@ const FIELD_CFG: Record<FieldTaskType, {
   emoji: string; label: string; shortLabel: string;
   badgeCls: string; amtCls: string; iconCls: string; bgCls: string;
 }> = {
-  voa:       { emoji: "🛂", label: "Agent Lapangan VOA",  shortLabel: "VOA",       badgeCls: "bg-indigo-100 text-indigo-700", amtCls: "text-indigo-700", iconCls: "text-indigo-500", bgCls: "bg-indigo-50 border-indigo-100" },
-  pelaksana: { emoji: "🎓", label: "Pelaksana Visa",      shortLabel: "Pelaksana", badgeCls: "bg-purple-100 text-purple-700", amtCls: "text-purple-700", iconCls: "text-purple-500", bgCls: "bg-purple-50 border-purple-100" },
-  kurir:     { emoji: "🚗", label: "Kurir Setoran",       shortLabel: "Kurir",     badgeCls: "bg-amber-100 text-amber-700",   amtCls: "text-amber-700",  iconCls: "text-amber-500",  bgCls: "bg-amber-50 border-amber-100"   },
+  voa:         { emoji: "🛂", label: "Agent Lapangan VOA",   shortLabel: "VOA",         badgeCls: "bg-indigo-100 text-indigo-700", amtCls: "text-indigo-700", iconCls: "text-indigo-500", bgCls: "bg-indigo-50 border-indigo-100" },
+  pelaksana:   { emoji: "🎓", label: "Pelaksana Visa",       shortLabel: "Pelaksana",   badgeCls: "bg-purple-100 text-purple-700", amtCls: "text-purple-700", iconCls: "text-purple-500", bgCls: "bg-purple-50 border-purple-100" },
+  kurir:       { emoji: "🚗", label: "Kurir Setoran",        shortLabel: "Kurir",       badgeCls: "bg-amber-100 text-amber-700",   amtCls: "text-amber-700",  iconCls: "text-amber-500",  bgCls: "bg-amber-50 border-amber-100"   },
+  fieldAgent:  { emoji: "📋", label: "Agent Lapangan",       shortLabel: "Lapangan",    badgeCls: "bg-sky-100 text-sky-700",       amtCls: "text-sky-700",    iconCls: "text-sky-500",    bgCls: "bg-sky-50 border-sky-100"       },
+  operational: { emoji: "⚙️", label: "Agent Operasional",    shortLabel: "Operasional", badgeCls: "bg-teal-100 text-teal-700",     amtCls: "text-teal-700",   iconCls: "text-teal-500",   bgCls: "bg-teal-50 border-teal-100"     },
+  executor:    { emoji: "📑", label: "Pelaksana Visa (Exec)", shortLabel: "Executor",   badgeCls: "bg-violet-100 text-violet-700", amtCls: "text-violet-700", iconCls: "text-violet-500", bgCls: "bg-violet-50 border-violet-100" },
 };
 
 export default function AgentProfile() {
@@ -173,52 +176,53 @@ export default function AgentProfile() {
   );
 
   // ── Field task orders: orders where agent is assigned as field worker ────
-  // Covers: VOA agent lapangan, pelaksana visa pelajar, kurir setoran
+  // Uses extractFieldAgents() as canonical resolver — covers ALL metadata key
+  // naming conventions (voaFieldAgentId, fieldAgentId, pelaksanaId,
+  // kurirAgentId, assignedOperationalAgentId, visaExecutorId).
+  // Each role is a SEPARATE entry (no else-if exclusions): if agent fills
+  // two roles on the same order, both appear independently.
   const fieldTaskOrders = useMemo((): FieldTask[] => {
     if (!user?.id) return [];
     const uid = user.id;
     const result: FieldTask[] = [];
 
+    // Map from extractFieldAgents fieldKey → FieldTaskType display config
+    const ROLE_TO_TASK_TYPE: Record<string, FieldTaskType> = {
+      voaFieldAgentId:            "voa",
+      fieldAgentId:               "fieldAgent",
+      pelaksanaId:                "pelaksana",
+      kurirAgentId:               "kurir",
+      assignedOperationalAgentId: "operational",
+      visaExecutorId:             "executor",
+    };
+    const ROLE_TO_TITLE: Record<string, string> = {
+      voaFieldAgentId:            "Order VOA",
+      fieldAgentId:               "Tugas Lapangan",
+      pelaksanaId:                "Visa Pelajar",
+      kurirAgentId:               "Kurir Setoran",
+      assignedOperationalAgentId: "Tugas Operasional",
+      visaExecutorId:             "Visa (Executor)",
+    };
+
     for (const o of orders) {
       const meta = (o.metadata ?? {}) as Record<string, unknown>;
+      const clientName =
+        clientMap.get((o as Record<string, unknown>).clientId as string ?? "")?.name
+        ?? (meta.clientName as string | undefined)
+        ?? "—";
 
-      if (meta.voaFieldAgentId === uid) {
+      // extractFieldAgents returns all roles for this agent in this order
+      const roles = extractFieldAgents(o.id, meta, uid);
+      for (const role of roles) {
+        const taskType = ROLE_TO_TASK_TYPE[role.fieldKey] ?? "voa";
         result.push({
           orderId:    o.id,
-          orderTitle: o.title ?? "Order VOA",
+          orderTitle: o.title ?? ROLE_TO_TITLE[role.fieldKey] ?? "Penugasan Lapangan",
           orderType:  o.type,
-          taskType:   "voa",
-          fee:        Number(meta.voaAgentFee ?? 0),
-          credited:   !!(meta.voaFeeCredited as boolean | undefined),
-          clientName: clientMap.get((o as Record<string, unknown>).clientId as string ?? "")?.name
-                      ?? (meta.clientName as string | undefined)
-                      ?? "—",
-          date:       String(o.createdAt ?? ""),
-        });
-      } else if (meta.pelaksanaId === uid) {
-        result.push({
-          orderId:    o.id,
-          orderTitle: o.title ?? "Visa Pelajar",
-          orderType:  o.type,
-          taskType:   "pelaksana",
-          fee:        Number(meta.pelaksanaFee ?? 200_000),
-          credited:   !!(meta.pelaksanaFeeCredited as boolean | undefined),
-          clientName: clientMap.get((o as Record<string, unknown>).clientId as string ?? "")?.name
-                      ?? (meta.clientName as string | undefined)
-                      ?? "—",
-          date:       String(o.createdAt ?? ""),
-        });
-      } else if (meta.kurirAgentId === uid) {
-        result.push({
-          orderId:    o.id,
-          orderTitle: o.title ?? "Kurir Setoran",
-          orderType:  o.type,
-          taskType:   "kurir",
-          fee:        Number(meta.kurirFee ?? 0),
-          credited:   !!(meta.kurirFeeCredited as boolean | undefined),
-          clientName: clientMap.get((o as Record<string, unknown>).clientId as string ?? "")?.name
-                      ?? (meta.clientName as string | undefined)
-                      ?? "—",
+          taskType,
+          fee:        role.feeAmount,
+          credited:   role.creditedFlag,
+          clientName,
           date:       String(o.createdAt ?? ""),
         });
       }
@@ -239,6 +243,7 @@ export default function AgentProfile() {
     let voaCount     = 0;
     let pelaksanaCount = 0;
     let kurirCount   = 0;
+    let otherCount   = 0;
     let lastTaskDate: string | null = null;
 
     for (const t of fieldTaskOrders) {
@@ -251,16 +256,17 @@ export default function AgentProfile() {
       }
 
       if (!lastTaskDate || t.date > lastTaskDate) lastTaskDate = t.date;
-      if (t.taskType === "voa")       voaCount++;
+      if (t.taskType === "voa")            voaCount++;
       else if (t.taskType === "pelaksana") pelaksanaCount++;
       else if (t.taskType === "kurir")     kurirCount++;
+      else                                 otherCount++;
     }
 
     return {
       totalFee, pendingFee, monthlyFee,
       paidFee: totalFee - pendingFee,
       totalTasks: fieldTaskOrders.length,
-      voaCount, pelaksanaCount, kurirCount,
+      voaCount, pelaksanaCount, kurirCount, otherCount,
       lastTaskDate,
     };
   }, [fieldTaskOrders]);
@@ -291,12 +297,53 @@ export default function AgentProfile() {
   );
 
   // fieldCommTxs: wallet-based history (for payout correlation)
+  // Covers all field fee types: voa_agent_fee, field_agent_fee, pelaksana_fee,
+  // kurir_fee, operational_fee — matches all types written by backfill + OrderDetail
   const fieldCommTxs = useMemo(
     () => [...walletTxs]
-      .filter((t) => t.type === "voa_agent_fee" || t.type === "pelaksana_fee" || t.type === "kurir_fee")
+      .filter((t) =>
+        t.type === "voa_agent_fee"  ||
+        t.type === "field_agent_fee" ||
+        t.type === "pelaksana_fee"  ||
+        t.type === "kurir_fee"      ||
+        t.type === "operational_fee"
+      )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [walletTxs],
   );
+
+  // ── Debug panel: ID diagnosis for field-agent fee mismatch debugging ────────
+  // Only renders in development builds (import.meta.env.DEV).
+  // Shows userId, agency, total field assignments found, wallet tx count.
+  const debugInfo = useMemo(() => {
+    if (!user?.id) return null;
+    const uid = user.id;
+    const allAssignedOrders = orders.filter((o) => {
+      const meta = (o.metadata ?? {}) as Record<string, unknown>;
+      return extractFieldAgents(o.id, meta, uid).length > 0;
+    });
+    const walletFieldTxs = walletTxs.filter((t) =>
+      t.type === "voa_agent_fee"  ||
+      t.type === "field_agent_fee" ||
+      t.type === "pelaksana_fee"  ||
+      t.type === "kurir_fee"      ||
+      t.type === "operational_fee"
+    );
+    const unmatchedAssignments = allAssignedOrders.filter((o) => {
+      const meta = (o.metadata ?? {}) as Record<string, unknown>;
+      const roles = extractFieldAgents(o.id, meta, uid);
+      return roles.some((r) => r.feeAmount > 0 && !r.creditedFlag);
+    });
+    return {
+      userId:             uid,
+      agencyId:           user.agencyId ?? "—",
+      assignedOrderCount: allAssignedOrders.length,
+      walletTxCount:      walletFieldTxs.length,
+      walletTxTotal:      walletFieldTxs.reduce((s, t) => s + t.amountIDR, 0),
+      unmatchedCount:     unmatchedAssignments.length,
+      unmatchedOrderIds:  unmatchedAssignments.map((o) => o.id.slice(0, 8)),
+    };
+  }, [user?.id, user?.agencyId, orders, walletTxs]);
 
   const portfolio = useMemo(() => {
     const types: OrderType[] = ["umrah", "flight", "visa_voa", "visa_student"];
@@ -998,6 +1045,28 @@ export default function AgentProfile() {
             Belum ada aktivitas tercatat. Fee akan muncul saat admin assign lo ke penugasan lapangan atau saat order penjualan selesai.
           </p>
         </div>
+      )}
+
+      {/* ── Debug Panel — dev only ── */}
+      {import.meta.env.DEV && debugInfo && (
+        <details className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 overflow-hidden">
+          <summary className="px-4 py-2 cursor-pointer text-[11px] font-semibold text-slate-500 select-none">
+            🔧 Debug: Field-Agent Fee Diagnosis
+          </summary>
+          <div className="px-4 pb-4 pt-2 space-y-1 font-mono text-[10px] text-slate-600">
+            <p><span className="font-semibold">User ID:</span> {debugInfo.userId}</p>
+            <p><span className="font-semibold">Agency ID:</span> {debugInfo.agencyId}</p>
+            <p><span className="font-semibold">Penugasan lapangan ditemukan:</span> {debugInfo.assignedOrderCount} order</p>
+            <p><span className="font-semibold">Wallet tx lapangan:</span> {debugInfo.walletTxCount} transaksi ({fmtIDR(debugInfo.walletTxTotal)})</p>
+            <p className={debugInfo.unmatchedCount > 0 ? "text-red-600 font-semibold" : "text-emerald-600 font-semibold"}>
+              Penugasan belum dikreditkan: {debugInfo.unmatchedCount}
+              {debugInfo.unmatchedCount > 0 && ` — order IDs: ${debugInfo.unmatchedOrderIds.join(", ")}`}
+            </p>
+            <p className="text-[9px] text-slate-400 mt-1">
+              Panel ini hanya muncul di mode development. Untuk perbaiki fee yang belum dikreditkan, minta owner buka profil kamu dan klik "Sinkronisasi Fee Lapangan".
+            </p>
+          </div>
+        </details>
       )}
 
       {/* ── Quick Actions ── */}
