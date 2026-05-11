@@ -2657,6 +2657,27 @@ export default function TicketPrices() {
                         </div>
                       )}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {/* Tipe Tiket — auto-detected, read-only */}
+                        <div className="col-span-2 sm:col-span-4 flex items-center gap-2">
+                          <span className="text-[10px] text-slate-500 shrink-0">Tipe Tiket:</span>
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isMLForm && (pendingML?.returnLegs?.length ?? 0) > 0
+                              ? "bg-violet-100 text-violet-700"
+                              : isRTForm
+                              ? "bg-violet-100 text-violet-700"
+                              : isMLForm
+                              ? "bg-sky-100 text-sky-700"
+                              : "bg-slate-100 text-slate-600"
+                          }`}>
+                            {isMLForm && (pendingML?.returnLegs?.length ?? 0) > 0
+                              ? "↩ Return / PP"
+                              : isRTForm
+                              ? "↩ Return / PP"
+                              : isMLForm
+                              ? "✈ Multi-city"
+                              : "→ Oneway"}
+                          </span>
+                        </div>
                         <div className="space-y-0.5 col-span-2">
                           <Label className="text-[10px] text-slate-500">Maskapai</Label>
                           <Input className="h-7 text-xs" value={form.airline}

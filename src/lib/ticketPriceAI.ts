@@ -333,6 +333,24 @@ function normalizeTicket(t: Partial<ParsedTicketPrice>): ParsedTicketPrice {
 // Detects when ticket[i].toCode == ticket[j].fromCode + same price + same airline
 // → merges them into ONE multi-leg entry with single price point
 
+/**
+ * Calculate layover duration between an arrival time and the next departure time.
+ * Both times are "HH:MM" strings. Returns "1h 05m" style string or null.
+ * Assumes same-day or next-day (wraps around midnight).
+ */
+function calcLayover(arrivalTime: string | null | undefined, departureTime: string | null | undefined): string | null {
+  if (!arrivalTime || !departureTime) return null;
+  const [ah, am] = arrivalTime.split(":").map(Number);
+  const [dh, dm] = departureTime.split(":").map(Number);
+  if (isNaN(ah) || isNaN(am) || isNaN(dh) || isNaN(dm)) return null;
+  let totalMinutes = (dh * 60 + dm) - (ah * 60 + am);
+  if (totalMinutes < 0) totalMinutes += 24 * 60; // next-day departure
+  if (totalMinutes <= 0 || totalMinutes > 36 * 60) return null; // sanity check
+  const hours = Math.floor(totalMinutes / 60);
+  const mins  = totalMinutes % 60;
+  return `${hours}h ${String(mins).padStart(2, "0")}m`;
+}
+
 function priceMatch(a: ParsedTicketPrice, b: ParsedTicketPrice): boolean {
   // Both unpiced (e.g. PNR-only text with no fare) → treat as matching
   if (a.basePrice == null && b.basePrice == null) return true;
@@ -364,7 +382,8 @@ function buildMultiLegTicket(chain: ParsedTicketPrice[]): ParsedTicketPrice {
     eta:          t.eta || null,
     date:         t.departDate || null,
   }));
-  const transitCodes = chain.slice(0, -1).map((t) => t.toCode);
+  const transitCodes  = chain.slice(0, -1).map((t) => t.toCode);
+  const transitCities = chain.slice(0, -1).map((t) => t.toCity || t.toCode);
 
   // Return legs — present if ALL tickets are return trips
   const allReturn = chain.every(
@@ -373,6 +392,8 @@ function buildMultiLegTicket(chain: ParsedTicketPrice[]): ParsedTicketPrice {
 
   let returnLegs: LegInfo[] | undefined;
   let returnTransitCodes: string[] | undefined;
+  let returnTransitCities: string[] = [];
+  let returnTransitDuration: string | null = null;
   let returnDate: string | null = null;
 
   if (allReturn) {
@@ -388,8 +409,10 @@ function buildMultiLegTicket(chain: ParsedTicketPrice[]): ParsedTicketPrice {
       eta:          t.returnEta || null,
       date:         t.returnDate || null,
     }));
-    // Intermediate airports in the return journey
+    // Intermediate airports in the return journey (code + city name)
     returnTransitCodes = reversed.slice(0, -1).map((t) => t.returnToCode!).filter(Boolean);
+    returnTransitCities = reversed.slice(0, -1).map((t) => t.returnToCity || t.returnToCode || "").filter(Boolean);
+    returnTransitDuration = returnLegs.length >= 2 ? calcLayover(returnLegs[0].eta, returnLegs[1].etd) : null;
     returnDate = chain.find((t) => t.returnDate)?.returnDate ?? null;
   }
 
@@ -413,11 +436,12 @@ function buildMultiLegTicket(chain: ParsedTicketPrice[]): ParsedTicketPrice {
     // Outbound: origin → final destination
     toCode:          last.toCode,
     toCity:          last.toCity,
+    eta:             last.eta || null,
     flightNumber:    outFlights || null,
     // First transit in outbound chain
     transitCode:     transitCodes[0] ?? null,
-    transitCity:     transitCodes.length > 0 ? transitCodes.join(", ") : null,
-    transitDuration: null,
+    transitCity:     transitCities.length > 0 ? transitCities.join(", ") : null,
+    transitDuration: chain.length >= 2 ? calcLayover(chain[0].eta, chain[1].etd) : null,
     tripType:        allReturn ? "return" : "one_way",
     // Return leg summary (backward compat for decodeReturnLeg path)
     returnFromCode:       allReturn ? last.toCode : null,
@@ -429,8 +453,8 @@ function buildMultiLegTicket(chain: ParsedTicketPrice[]): ParsedTicketPrice {
     returnEtd:            allReturn ? (returnLegs?.[0]?.etd ?? null) : null,
     returnEta:            allReturn ? (returnLegs?.[returnLegs.length - 1]?.eta ?? null) : null,
     returnTransitCode:    allReturn ? (returnTransitCodes?.[0] ?? null) : null,
-    returnTransitCity:    allReturn ? (returnTransitCodes?.join(", ") ?? null) : null,
-    returnTransitDuration: null,
+    returnTransitCity:    allReturn ? (returnTransitCities.length > 0 ? returnTransitCities.join(", ") : null) : null,
+    returnTransitDuration: allReturn ? returnTransitDuration : null,
     // Full multi-leg payload
     multiLeg: mlData,
   };
@@ -577,8 +601,10 @@ function groupGalileoLegsSequentially(rawTickets: ParsedTicketPrice[]): ParsedTi
         etd: t.etd || null, eta: t.eta || null,
         date: t.departDate || null,
       }));
-      const transitCodes       = directionChains[0].slice(0, -1).map((t) => t.toCode);
-      const returnTransitCodes = directionChains[1].slice(0, -1).map((t) => t.toCode);
+      const transitCodes        = directionChains[0].slice(0, -1).map((t) => t.toCode);
+      const transitCities       = directionChains[0].slice(0, -1).map((t) => t.toCity || t.toCode);
+      const returnTransitCodes  = directionChains[1].slice(0, -1).map((t) => t.toCode);
+      const returnTransitCities = directionChains[1].slice(0, -1).map((t) => t.toCity || t.toCode);
 
       const mergedML: MultiLegData = {
         v: 1,
@@ -597,10 +623,11 @@ function groupGalileoLegsSequentially(rawTickets: ParsedTicketPrice[]): ParsedTi
         tripType:             "return",
         toCode:               outLegs[outLegs.length - 1].toCode,
         toCity:               outLegs[outLegs.length - 1].toCity ?? outbound.toCity,
+        eta:                  outLegs[outLegs.length - 1].eta ?? outbound.eta,
         flightNumber:         outFlightNumber || outbound.flightNumber,
         transitCode:          transitCodes[0] ?? null,
-        transitCity:          transitCodes.length > 0 ? transitCodes.join(", ") : null,
-        transitDuration:      null,
+        transitCity:          transitCities.length > 0 ? transitCities.join(", ") : null,
+        transitDuration:      outLegs.length >= 2 ? calcLayover(outLegs[0].eta, outLegs[1].etd) : null,
         returnFromCode:       ret.fromCode,
         returnToCode:         ret.toCode,
         returnFromCity:       ret.fromCity ?? null,
@@ -610,8 +637,8 @@ function groupGalileoLegsSequentially(rawTickets: ParsedTicketPrice[]): ParsedTi
         returnEtd:            retLegs[0]?.etd ?? null,
         returnEta:            retLegs[retLegs.length - 1]?.eta ?? null,
         returnTransitCode:    returnTransitCodes[0] ?? null,
-        returnTransitCity:    returnTransitCodes.length > 0 ? returnTransitCodes.join(", ") : null,
-        returnTransitDuration: null,
+        returnTransitCity:    returnTransitCities.length > 0 ? returnTransitCities.join(", ") : null,
+        returnTransitDuration: retLegs.length >= 2 ? calcLayover(retLegs[0].eta, retLegs[1].etd) : null,
         multiLeg:             mergedML,
       };
       return [merged];

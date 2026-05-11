@@ -62,7 +62,7 @@ export interface ItineraryData {
 //   - '#' setelah waktu tiba = hari berikutnya
 
 const GALILEO_ROW_RE =
-  /^\s*(\d+)\s+([A-Z]{2})\s+(\d+)\s+([A-Z])\s+(\d{1,2}[A-Z]{3})\s+([A-Z]{3})\s+([A-Z]{3})\s+(\d{4})\s+(\d{4})(#?)/;
+  /^\s*(\d+)\s+([A-Z]{2})\s+(\d+)\s+([A-Z])\s+(\d{1,2}[A-Z]{3})\s+([A-Z]{3})\s+([A-Z]{3})\s+(\d{4})\s+(\d{4})\s*(#?)/;
 
 const GALILEO_PRICE_RE = /TOTAL\s+AMOUNT\s+([\d.,]+)\s+([A-Z]{3})/i;
 
