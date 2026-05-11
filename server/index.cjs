@@ -1904,134 +1904,126 @@ app.post('/api/backfill-field-fees', async (req, res) => {
       const oid8 = String(order.id).slice(0, 8);
 
       // ── 1. VOA field agent fee (voaFieldAgentId + voaAgentFee) ────────────
+      // NOTE: do NOT skip when voaFeeCredited=true — rely on the idempotency
+      // key (voa-{orderId}) instead. This ensures that if the flag was ever
+      // set without the wallet tx actually being written (race condition /
+      // prior bug), the backfill still repairs the gap.
       const voaAgentId = meta.voaFieldAgentId;
       const voaFee     = Number(meta.voaAgentFee ?? 0);
-      if (voaAgentId && voaFee > 0) {
-        if (meta.voaFeeCredited) {
-          results.skipped++;
-        } else if (!filterAgentId || filterAgentId === voaAgentId) {
-          const txErr = await upsertTx(
-            `voa-${order.id}`, voaAgentId, 'voa_agent_fee', voaFee,
-            `Fee Agent Lapangan VOA — order #${oid8}`
-          );
-          if (txErr) {
-            collectErr(`VOA #${oid8}`, txErr);
-          } else {
+      if (voaAgentId && voaFee > 0 && (!filterAgentId || filterAgentId === voaAgentId)) {
+        const txErr = await upsertTx(
+          `voa-${order.id}`, voaAgentId, 'voa_agent_fee', voaFee,
+          `Fee Agent Lapangan VOA — order #${oid8}`
+        );
+        if (txErr) {
+          collectErr(`VOA #${oid8}`, txErr);
+        } else {
+          if (!meta.voaFeeCredited) {
             await admin.from('orders')
               .update({ metadata: { ...meta, voaFeeCredited: true } })
               .eq('id', order.id);
-            results.credited++;
           }
+          results.credited++;
         }
       }
 
       // ── 2. Generic field agent fee (fieldAgentId + fieldAgentFee) ─────────
       const fieldAgentId = meta.fieldAgentId;
       const fieldFee     = Number(meta.fieldAgentFee ?? 0);
-      if (fieldAgentId && fieldFee > 0) {
-        if (meta.fieldFeeCredited) {
-          results.skipped++;
-        } else if (!filterAgentId || filterAgentId === fieldAgentId) {
-          const txErr = await upsertTx(
-            `field-${order.id}`, fieldAgentId, 'voa_agent_fee', fieldFee,
-            `Fee Agent Lapangan — order #${oid8}`
-          );
-          if (txErr) {
-            collectErr(`field #${oid8}`, txErr);
-          } else {
+      if (fieldAgentId && fieldFee > 0 && (!filterAgentId || filterAgentId === fieldAgentId)) {
+        const txErr = await upsertTx(
+          `field-${order.id}`, fieldAgentId, 'voa_agent_fee', fieldFee,
+          `Fee Agent Lapangan — order #${oid8}`
+        );
+        if (txErr) {
+          collectErr(`field #${oid8}`, txErr);
+        } else {
+          if (!meta.fieldFeeCredited) {
             await admin.from('orders')
               .update({ metadata: { ...meta, fieldFeeCredited: true } })
               .eq('id', order.id);
-            results.credited++;
           }
+          results.credited++;
         }
       }
 
       // ── 3. Visa executor fee (visaExecutorId + executorFee) ───────────────
       const executorId  = meta.visaExecutorId;
       const executorFee = Number(meta.executorFee ?? 0);
-      if (executorId && executorFee > 0) {
-        if (meta.executorFeeCredited) {
-          results.skipped++;
-        } else if (!filterAgentId || filterAgentId === executorId) {
-          const txErr = await upsertTx(
-            `executor-${order.id}`, executorId, 'pelaksana_fee', executorFee,
-            `Fee Pelaksana Visa — order #${oid8}`
-          );
-          if (txErr) {
-            collectErr(`executor #${oid8}`, txErr);
-          } else {
+      if (executorId && executorFee > 0 && (!filterAgentId || filterAgentId === executorId)) {
+        const txErr = await upsertTx(
+          `executor-${order.id}`, executorId, 'pelaksana_fee', executorFee,
+          `Fee Pelaksana Visa — order #${oid8}`
+        );
+        if (txErr) {
+          collectErr(`executor #${oid8}`, txErr);
+        } else {
+          if (!meta.executorFeeCredited) {
             await admin.from('orders')
               .update({ metadata: { ...meta, executorFeeCredited: true } })
               .eq('id', order.id);
-            results.credited++;
           }
+          results.credited++;
         }
       }
 
       // ── 4. Operational agent fee (assignedOperationalAgentId + operationalAgentFee)
       const opAgentId = meta.assignedOperationalAgentId;
       const opFee     = Number(meta.operationalAgentFee ?? 0);
-      if (opAgentId && opFee > 0) {
-        if (meta.operationalFeeCredited) {
-          results.skipped++;
-        } else if (!filterAgentId || filterAgentId === opAgentId) {
-          const txErr = await upsertTx(
-            `op-${order.id}`, opAgentId, 'voa_agent_fee', opFee,
-            `Fee Agent Operasional — order #${oid8}`
-          );
-          if (txErr) {
-            collectErr(`op #${oid8}`, txErr);
-          } else {
+      if (opAgentId && opFee > 0 && (!filterAgentId || filterAgentId === opAgentId)) {
+        const txErr = await upsertTx(
+          `op-${order.id}`, opAgentId, 'voa_agent_fee', opFee,
+          `Fee Agent Operasional — order #${oid8}`
+        );
+        if (txErr) {
+          collectErr(`op #${oid8}`, txErr);
+        } else {
+          if (!meta.operationalFeeCredited) {
             await admin.from('orders')
               .update({ metadata: { ...meta, operationalFeeCredited: true } })
               .eq('id', order.id);
-            results.credited++;
           }
+          results.credited++;
         }
       }
 
       // ── 5. Pelaksana visa_student fee (pelaksanaId + pelaksanaFee) ────────
       const pelaksanaId = meta.pelaksanaId;
       const pelFee      = Number(meta.pelaksanaFee ?? (order.type === 'visa_student' && pelaksanaId ? 200000 : 0));
-      if (order.type === 'visa_student' && pelaksanaId && pelFee > 0) {
-        if (meta.pelaksanaFeeCredited) {
-          results.skipped++;
-        } else if (!filterAgentId || filterAgentId === pelaksanaId) {
-          const txErr = await upsertTx(
-            `pelaksana-${order.id}`, pelaksanaId, 'pelaksana_fee', pelFee,
-            `Fee Pelaksana Visa Student — order #${oid8}`
-          );
-          if (txErr) {
-            collectErr(`pelaksana #${oid8}`, txErr);
-          } else {
+      if (order.type === 'visa_student' && pelaksanaId && pelFee > 0 && (!filterAgentId || filterAgentId === pelaksanaId)) {
+        const txErr = await upsertTx(
+          `pelaksana-${order.id}`, pelaksanaId, 'pelaksana_fee', pelFee,
+          `Fee Pelaksana Visa Student — order #${oid8}`
+        );
+        if (txErr) {
+          collectErr(`pelaksana #${oid8}`, txErr);
+        } else {
+          if (!meta.pelaksanaFeeCredited) {
             await admin.from('orders')
               .update({ metadata: { ...meta, pelaksanaFeeCredited: true } })
               .eq('id', order.id);
-            results.credited++;
           }
+          results.credited++;
         }
       }
 
       // ── 6. Kurir setoran fee (kurirAgentId + kurirFee) ────────────────────
       const kurirAgentId = meta.kurirAgentId;
       const kurirFee     = Number(meta.kurirFee ?? 0);
-      if (kurirAgentId && kurirFee > 0) {
-        if (meta.kurirFeeCredited) {
-          results.skipped++;
-        } else if (!filterAgentId || filterAgentId === kurirAgentId) {
-          const txErr = await upsertTx(
-            `kurir-${order.id}`, kurirAgentId, 'kurir_fee', kurirFee,
-            `Fee Kurir Setoran — order #${oid8}`
-          );
-          if (txErr) {
-            collectErr(`kurir #${oid8}`, txErr);
-          } else {
+      if (kurirAgentId && kurirFee > 0 && (!filterAgentId || filterAgentId === kurirAgentId)) {
+        const txErr = await upsertTx(
+          `kurir-${order.id}`, kurirAgentId, 'kurir_fee', kurirFee,
+          `Fee Kurir Setoran — order #${oid8}`
+        );
+        if (txErr) {
+          collectErr(`kurir #${oid8}`, txErr);
+        } else {
+          if (!meta.kurirFeeCredited) {
             await admin.from('orders')
               .update({ metadata: { ...meta, kurirFeeCredited: true } })
               .eq('id', order.id);
-            results.credited++;
           }
+          results.credited++;
         }
       }
     }

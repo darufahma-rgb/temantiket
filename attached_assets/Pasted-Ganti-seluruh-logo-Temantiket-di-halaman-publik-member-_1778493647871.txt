@@ -1,0 +1,138 @@
+Ganti seluruh logo Temantiket di halaman publik/member/public landing dengan logo baru yang akan saya upload. Pastikan replacement dilakukan total dan konsisten di semua komponen public-facing, bukan hanya mengganti 1 image di navbar.
+
+Target halaman:
+
+* halaman public member `/m/[id]`
+* public profile member
+* kartu member publik
+* header/navbar publik
+* login/public auth (jika memakai logo lama)
+* footer publik
+* favicon/public metadata jika ada
+* OpenGraph/logo preview jika tersedia
+
+Masalah sekarang:
+Logo lama masih hardcoded di beberapa tempat sehingga branding tidak konsisten. Saya ingin setelah upload logo baru, semua tampilan publik otomatis memakai logo terbaru.
+
+==================================================
+ATURAN IMPLEMENTASI
+===================
+
+Jangan hardcode file image langsung di component.
+
+Buat centralized branding config:
+
+```ts
+branding = {
+  appName: "Temantiket",
+  publicLogo: "...",
+  darkLogo: "...",
+  lightLogo: "...",
+  favicon: "...",
+}
+```
+
+Semua component public harus membaca dari config ini.
+
+==================================================
+UPLOAD LOGO
+===========
+
+Tambahkan support:
+
+* upload logo baru via admin/pengaturan
+* simpan ke Supabase Storage
+* update URL logo otomatis
+* cache busting otomatis
+* fallback jika upload gagal
+
+Gunakan naming aman:
+
+```ts
+branding/public-logo-v2.png
+```
+
+atau gunakan timestamp/versioning supaya browser tidak cache logo lama.
+
+==================================================
+AREA YANG WAJIB BERUBAH
+=======================
+
+1. Navbar publik
+   Logo kiri atas harus langsung memakai logo baru.
+
+2. Card member publik
+   Jika ada watermark/logo kecil, ganti semua.
+
+3. Metadata browser
+
+* favicon
+* apple-touch-icon
+* og:image
+
+4. Empty states / placeholder
+   Cari semua asset lama `temantiket-logo.*`
+
+5. Footer
+   Gunakan logo baru.
+
+6. Loading screen / splash
+   Jika ada.
+
+==================================================
+JANGAN HANYA GANTI IMAGE
+========================
+
+Cari semua:
+
+* import logo lama
+* hardcoded asset
+* inline SVG lama
+* favicon lama
+* manifest icon lama
+* metadata OpenGraph lama
+
+Hapus dependency logo lama sepenuhnya.
+
+==================================================
+RESPONSIVE & QUALITY
+====================
+
+Pastikan logo baru:
+
+* tetap tajam retina/mobile
+* aspect ratio aman
+* tidak gepeng/stretch
+* dark/light compatible
+* ukuran navbar proporsional
+
+Gunakan:
+
+```css
+object-fit: contain;
+```
+
+dan max-height konsisten.
+
+==================================================
+AUTO FALLBACK
+=============
+
+Jika logo upload gagal:
+
+* fallback ke default branding logo
+* jangan blank image
+
+==================================================
+EXPECTED RESULT
+===============
+
+Setelah saya upload logo baru:
+
+* seluruh halaman publik Temantiket langsung memakai logo baru
+* tidak ada lagi logo lama muncul di navbar/card/favicon/footer
+* branding konsisten di semua public page
+* browser cache tidak membuat logo lama tetap muncul
+* mobile & desktop tampil rapi
+
+Kalau masih ada 1 tempat saja yang memakai logo lama, berarti implementasi dianggap belum selesai.

@@ -319,6 +319,7 @@ export default function AgentProfileOwnerView() {
   const [isSaving, setIsSaving] = useState(false);
   const [walletTxs, setWalletTxs] = useState<WalletTransaction[]>([]);
   const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
+  const [syncingFee, setSyncingFee] = useState(false);
   const isOwner = user?.role === "owner";
   const canEdit = isOwner || user?.id === agentId;
 
@@ -388,32 +389,65 @@ export default function AgentProfileOwnerView() {
     });
   }, [agentId, agencyId]);
 
-  // Auto-backfill field fees silently for owner on mount
+  // Reusable backfill runner — surfaces errors to admin; used by auto-run & manual button
+  const runBackfill = async (silent = false) => {
+    if (!agentId || !supabase) return;
+    setSyncingFee(true);
+    try {
+      const { data: sess } = await supabase!.auth.getSession();
+      const token = sess?.session?.access_token;
+      if (!token) {
+        if (!silent) toast.error("Sesi tidak valid — login ulang dulu.");
+        return;
+      }
+      const res = await fetch("/api/backfill-field-fees", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ agentId }),
+      });
+      const json = await res.json().catch(() => ({})) as {
+        credited?: number;
+        errors?: number;
+        errorSample?: string;
+        error?: string;
+      };
+      // Always refresh wallet — picks up newly credited txs
+      const fresh = await pullWalletTxs(agentId!);
+      setWalletTxs(fresh);
+      if (!res.ok) {
+        const msg = json.error ?? `Server error ${res.status}`;
+        console.error("[AgentProfileOwnerView] backfill failed:", msg);
+        if (!silent) {
+          toast.error("Sinkronisasi fee gagal", {
+            description: msg,
+            duration: 10000,
+          });
+        }
+      } else {
+        if ((json.errors ?? 0) > 0 && json.errorSample) {
+          console.error("[AgentProfileOwnerView] backfill partial errors:", json.errorSample);
+          toast.warning(`Sebagian fee gagal disinkronkan`, {
+            description: json.errorSample,
+            duration: 12000,
+          });
+        } else if ((json.credited ?? 0) > 0) {
+          toast.success(`${json.credited} fee berhasil disinkronkan ke wallet.`, { duration: 5000 });
+        } else if (!silent) {
+          toast.info("Tidak ada fee baru yang perlu disinkronkan.", { duration: 3000 });
+        }
+      }
+    } catch (e) {
+      console.error("[AgentProfileOwnerView] backfill exception:", e);
+      if (!silent) toast.error("Gagal menghubungi server untuk sinkronisasi fee.");
+    } finally {
+      setSyncingFee(false);
+    }
+  };
+
+  // Auto-backfill field fees on mount (owner only) — runs silently in background
   useEffect(() => {
     if (!agentId || !isOwner || !supabase) return;
-    (async () => {
-      try {
-        const { data: sess } = await supabase!.auth.getSession();
-        const token = sess?.session?.access_token;
-        if (!token) return;
-        const res = await fetch("/api/backfill-field-fees", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ agentId }),
-        });
-        const json = res.ok
-          ? await res.json().catch(() => ({})) as { credited?: number }
-          : {};
-        // Always refresh wallet — picks up both newly credited + previously existing txs
-        const fresh = await pullWalletTxs(agentId);
-        setWalletTxs(fresh);
-        if ((json.credited ?? 0) > 0) {
-          toast.success(`${json.credited} fee lama berhasil disinkronkan ke wallet.`, { duration: 5000 });
-        }
-      } catch {
-        // silent — non-blocking background sync
-      }
-    })();
+    void runBackfill(true);
   }, [agentId, isOwner]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCardBackFile = async (file: File) => {
@@ -1590,6 +1624,31 @@ export default function AgentProfileOwnerView() {
                   </p>
                 </div>
               </div>
+
+              {/* Manual sync button — visible to owner */}
+              {isOwner && (
+                <div className="flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                    <p className="text-[11px] text-blue-700 font-medium">
+                      Jika fee lapangan belum muncul, klik Sinkronkan untuk memuat ulang dari database.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[11px] border-blue-200 text-blue-700 hover:bg-blue-100 shrink-0 ml-2"
+                    disabled={syncingFee}
+                    onClick={() => void runBackfill(false)}
+                  >
+                    {syncingFee ? (
+                      <><Loader2 className="h-3 w-3 animate-spin mr-1" />Menyinkronkan…</>
+                    ) : (
+                      <><RefreshCw className="h-3 w-3 mr-1" />Sinkronkan Fee</>
+                    )}
+                  </Button>
+                </div>
+              )}
 
               {/* Per-order commission audit list */}
               <div className="rounded-2xl border bg-white overflow-hidden">

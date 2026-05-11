@@ -1,0 +1,256 @@
+FIX TOTAL parser Harga Tiket Galileo/OCR karena bug return masih terus kebaca Oneway. Jangan patch UI saja. Cari dan perbaiki akar masalah di parser, normalizer, mapper hasil AI, dan form renderer. Masalahnya: data OCR sudah berisi 4 segment return, tetapi sistem hanya memakai 2 segment pertama sehingga hasil akhirnya tetap Oneway.
+
+Input contoh dari screenshot:
+
+TOTAL AMOUNT 29283.80 EGP
+
+1 GF 70 N 03JUN CAI BAH 1715 2015 WE 32N
+2 GF 284 N 03JUN BAH GOI 2115 0340 # WE 32Q
+3 GF 285 O 03SEP GOI BAH 0440 0610 TH 32N
+4 GF 79 O 04SEP BAH CAI 0110 0430 FR 32N
+
+Ini WAJIB terbaca sebagai RETURN / PP, bukan Oneway.
+
+==================================================
+AKAR MASALAH YANG HARUS DIBENERIN
+=================================
+
+Saat ini sistem kemungkinan masih:
+
+* mengambil hanya segment pertama dan kedua
+* menganggap route utama `CAI → GOI` sebagai oneway
+* mengabaikan segment 3 dan 4
+* menentukan ticketType dari `from` dan `to` form utama saja
+* mapping hasil OCR ke form flat, bukan segment-based
+* AI extraction hanya mengirim ringkasan `CAI → GOI` tanpa full segments
+
+Semua ini harus dibenerin.
+
+==================================================
+ATURAN BARU: SEGMENT-BASED PARSING
+==================================
+
+Parser wajib menghasilkan struktur utama:
+
+```ts
+segments: FlightSegment[]
+ticketType: 'RETURN' | 'ONEWAY' | 'MULTICITY'
+outboundSegments: FlightSegment[]
+inboundSegments: FlightSegment[]
+```
+
+JANGAN lagi menjadikan form flat sebagai sumber utama.
+
+`segments[]` harus menyimpan semua baris flight:
+
+1. GF70 CAI → BAH
+2. GF284 BAH → GOI
+3. GF285 GOI → BAH
+4. GF79 BAH → CAI
+
+==================================================
+LOGIKA DETEKSI RETURN YANG WAJIB
+================================
+
+Gunakan logic ini setelah semua segment berhasil diparse:
+
+```ts
+const firstOrigin = segments[0].from;
+const finalDestination = segments[segments.length - 1].to;
+
+if (segments.length >= 2 && finalDestination === firstOrigin) {
+  ticketType = 'RETURN';
+} else if (segments.length > 2) {
+  ticketType = 'MULTICITY';
+} else {
+  ticketType = 'ONEWAY';
+}
+```
+
+Untuk contoh:
+
+* firstOrigin = CAI
+* finalDestination = CAI
+* maka `ticketType = RETURN`
+
+Jangan overwrite lagi ticketType jadi Oneway setelah mapping ke form.
+
+==================================================
+LOGIKA MEMECAH OUTBOUND & INBOUND
+=================================
+
+Untuk route return:
+
+Cari titik balik saat segment berikutnya mulai dari destination utama outbound.
+
+Dalam contoh:
+
+* outbound: CAI → BAH → GOI
+* inbound: GOI → BAH → CAI
+
+Implementasi aman:
+
+1. firstOrigin = CAI
+2. finalDestination = CAI
+3. cari segment index pertama setelah index 0 yang `from !== previous.to` atau route mulai kembali ke origin.
+4. Untuk kasus common 4 segment:
+
+   * jika `segments[0].from === segments[last].to`
+   * dan ada kota tengah tujuan seperti `GOI`
+   * pecah saat segment `from === outboundDestination`
+5. Jika bingung, fallback:
+
+   * outbound = segment sebelum city mulai kembali
+   * inbound = segment setelah destination utama
+
+Untuk contoh ini, hasil wajib:
+
+* outboundSegments = [GF70, GF284]
+* inboundSegments = [GF285, GF79]
+
+==================================================
+FIELD YANG HARUS TAMPIL DI FORM
+===============================
+
+Di card hasil OCR, jangan cuma tampil field flat.
+
+Tampilkan:
+
+Tipe Tiket:
+↔ Return / PP
+
+Rute Utama:
+CAI → GOI → CAI
+
+Keberangkatan:
+
+* GF70 CAI → BAH, 03JUN, 17:15–20:15
+* GF284 BAH → GOI, 03JUN, 21:15–03:40 +1
+
+Kepulangan:
+
+* GF285 GOI → BAH, 03SEP, 04:40–06:10
+* GF79 BAH → CAI, 04SEP, 01:10–04:30
+
+Transit:
+
+* Bahrain saat berangkat
+* Bahrain saat pulang
+
+Harga Modal:
+29283.80 EGP
+
+==================================================
+NORMALISASI OCR
+===============
+
+Parser harus kuat membaca format Galileo:
+
+* `0340 #` artinya arrival next day
+* `0340+1` artinya arrival next day
+* `1715 2015` menjadi `17:15` dan `20:15`
+* `03JUN` menjadi tanggal 03 Juni, tahun mengikuti input/default
+* maskapai `GF` = Gulf Air
+* flight number gabungan `GF70`, `GF284`, dst
+
+Jangan hilangkan tanda `#`.
+
+==================================================
+PERBAIKI AI EXTRACTION
+======================
+
+Kalau memakai AI untuk extract screenshot, instruksi model harus memaksa output JSON dengan full segments.
+
+Output AI wajib seperti:
+
+```json
+{
+  "totalAmount": 29283.8,
+  "currency": "EGP",
+  "segments": [
+    { "airlineCode": "GF", "flightNumber": "70", "date": "03JUN", "from": "CAI", "to": "BAH", "departureTime": "1715", "arrivalTime": "2015" },
+    { "airlineCode": "GF", "flightNumber": "284", "date": "03JUN", "from": "BAH", "to": "GOI", "departureTime": "2115", "arrivalTime": "0340", "arrivalNextDay": true },
+    { "airlineCode": "GF", "flightNumber": "285", "date": "03SEP", "from": "GOI", "to": "BAH", "departureTime": "0440", "arrivalTime": "0610" },
+    { "airlineCode": "GF", "flightNumber": "79", "date": "04SEP", "from": "BAH", "to": "CAI", "departureTime": "0110", "arrivalTime": "0430" }
+  ]
+}
+```
+
+Jika AI hanya mengembalikan 2 segment padahal OCR text terlihat 4 baris, anggap extraction gagal dan fallback ke regex parser dari raw OCR text.
+
+==================================================
+PERBAIKI SIMPAN SEMUA
+=====================
+
+Saat klik “Simpan Semua”, simpan semua segments ke database. Jangan cuma simpan:
+
+* `from`
+* `to`
+* `etd`
+* `eta`
+
+Tambahkan field:
+
+* `segments_json`
+* `ticket_type`
+* `outbound_segments_json`
+* `inbound_segments_json`
+
+Jika schema belum ada, buat migration.
+
+==================================================
+PERBAIKI SEMUA OUTPUT TURUNAN
+=============================
+
+Pastikan data segment yang sama dipakai oleh:
+
+* form hasil OCR
+* Harga Tiket
+* Itinerary Generator
+* WhatsApp itinerary
+* Travel Card
+* Public ticket display
+* Export
+
+Jangan ada satu halaman yang masih pakai kalkulasi lama berbasis `from/to` flat.
+
+==================================================
+TEST WAJIB
+==========
+
+Tambahkan test manual/unit:
+
+Input 4 segment:
+CAI→BAH→GOI→BAH→CAI
+Expected:
+`RETURN`
+
+Input 2 segment:
+CAI→BAH→GOI
+Expected:
+`ONEWAY with transit`
+
+Input:
+CAI→JED→MED
+Expected:
+`MULTICITY` atau `ONEWAY transit` sesuai rule
+
+Input:
+CAI→JED→CAI
+Expected:
+`RETURN`
+
+==================================================
+EXPECTED RESULT
+===============
+
+Setelah fix, screenshot Galileo 4 segment ini tidak boleh lagi tampil “Oneway”. Hasil final wajib:
+
+Tipe Tiket: Return / PP
+Outbound: CAI → BAH → GOI
+Inbound: GOI → BAH → CAI
+Flight: GF70, GF284, GF285, GF79
+Harga: 29283.80 EGP
+Transit: Bahrain pergi & pulang
+
+Kalau masih tampil Oneway, berarti fix dianggap gagal.
