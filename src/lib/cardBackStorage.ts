@@ -1,24 +1,25 @@
 /**
- * cardBackStorage v2 — Direct Supabase Storage, zero custom API.
+ * cardBackStorage v3 — Direct Supabase Storage, zero custom API.
  *
- * Bucket : card-back-images  (must be set PUBLIC in Supabase Storage dashboard)
- * Path   : {role_type}/{owner_uuid}/back.webp
+ * Bucket : card-back-images  (PUBLIC — auto-created on server startup via ensureCardBackBucket)
+ * Path   : {role}/{userId}/back.webp
  * Table  : card_back_images
  *          (id, owner_uuid, role_type, image_path, image_url, created_at, updated_at)
  *
  * Upload flow:
  *   1. Frontend resize/compress → WebP max 1200px (JPEG fallback)
  *   2. supabase.storage.from(BUCKET).upload() — direct to Supabase, no proxy
- *   3. supabase.from("card_back_images").upsert()
- *   4. If DB upsert fails → remove uploaded file (orphan cleanup)
- *   5. Return permanent public URL
+ *   3. If bucket missing → call /api/setup-card-back (auto-create) then retry once
+ *   4. supabase.from("card_back_images").upsert()
+ *   5. If DB upsert fails → remove uploaded file (orphan cleanup)
+ *   6. Return permanent public URL with cache-buster
  *
  * Load flow:
  *   1. SELECT image_url FROM card_back_images WHERE owner_uuid + role_type
  *   2. Return URL with 5-min cache-bust suffix
  *
- * Setup: run supabase/card-back-images-setup.sql in Supabase SQL Editor,
- *        then create bucket 'card-back-images' (public) in Supabase Storage dashboard.
+ * Setup: bucket is auto-created by server on startup.
+ *        Table: run supabase/card-back-images-setup.sql in Supabase SQL Editor once.
  */
 
 import { supabase } from "@/lib/supabase";
@@ -81,10 +82,31 @@ async function resizeToWebP(
 }
 
 /**
+ * Call server endpoint to auto-create the 'card-back-images' bucket.
+ * Returns true if bucket is now available.
+ */
+async function triggerBucketSetup(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/setup-card-back", { method: "POST" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      console.warn("[cardBackStorage] setup-card-back failed:", body?.error ?? res.status);
+      return false;
+    }
+    console.log("[cardBackStorage] bucket auto-created via /api/setup-card-back");
+    return true;
+  } catch (e) {
+    console.warn("[cardBackStorage] setup-card-back exception:", e);
+    return false;
+  }
+}
+
+/**
  * Upload gambar belakang kartu langsung ke Supabase Storage.
  *
- * Storage path always `{role}/{userId}/back.webp` — upsert overwrites old file.
- * If DB upsert fails the storage file is deleted automatically (no orphans).
+ * Storage path: `{role}/{userId}/back.webp` — upsert overwrites old file.
+ * If bucket missing → auto-triggers server setup then retries once.
+ * If DB upsert fails → storage file deleted automatically (no orphans).
  *
  * @param userId      Supabase auth UUID of card owner
  * @param file        Image file selected by user
@@ -99,38 +121,67 @@ export async function uploadCardBack(
   targetRole: CardRole = "agent",
 ): Promise<string> {
   if (!supabase) throw new Error("Supabase belum dikonfigurasi.");
-  if (!file.type.startsWith("image/")) throw new Error("File harus berupa gambar (JPG/PNG/WebP).");
-  if (file.size > 15 * 1024 * 1024) throw new Error("Ukuran file maksimum 15 MB.");
-  if (!userId || userId.length < 8) throw new Error(`userId tidak valid: "${userId}".`);
+  if (!file.type.startsWith("image/"))
+    throw new Error("Format file tidak didukung — gunakan JPG, PNG, atau WebP.");
+  if (file.size > 15 * 1024 * 1024)
+    throw new Error("Ukuran file terlalu besar — maksimum 15 MB.");
+  if (!userId || userId.length < 8)
+    throw new Error(`userId tidak valid: "${userId}".`);
 
   const role = safeRole(targetRole);
   const storagePath = `${role}/${userId}/back.webp`;
 
-  console.log(`[cardBackStorage] upload start — role=${role} userId=${userId} file=${file.name} (${file.size}B)`);
+  console.log(
+    `[cardBackStorage] upload start — role=${role} userId=${userId} ` +
+    `file=${file.name} (${file.size}B)`,
+  );
 
   const { blob, mimeType } = await resizeToWebP(file, 1200, 0.85);
   console.log(`[cardBackStorage] resize OK — ${blob.size}B ${mimeType}`);
 
-  const { error: uploadErr } = await supabase.storage
-    .from(BUCKET)
-    .upload(storagePath, blob, { contentType: mimeType, upsert: true });
+  const doUpload = () =>
+    supabase!.storage
+      .from(BUCKET)
+      .upload(storagePath, blob, { contentType: mimeType, upsert: true });
+
+  let { error: uploadErr } = await doUpload();
 
   if (uploadErr) {
-    console.error("[cardBackStorage] storage error:", uploadErr.message);
     const msg = uploadErr.message ?? "";
-    if (msg.includes("Bucket not found") || msg.includes("not found") || msg.includes("does not exist")) {
-      throw new Error(
-        `Bucket '${BUCKET}' belum ada. Buat bucket '${BUCKET}' di Supabase Storage dashboard ` +
-        `(set ke Public), lalu jalankan supabase/card-back-images-setup.sql.`,
-      );
-    }
-    if (msg.toLowerCase().includes("policy") || msg.includes("403") || msg.includes("Unauthorized")) {
+    const isBucketMissing =
+      msg.includes("Bucket not found") ||
+      msg.includes("not found") ||
+      msg.includes("does not exist") ||
+      msg.includes("bucket") && msg.includes("exist");
+
+    if (isBucketMissing) {
+      console.warn(`[cardBackStorage] bucket missing — attempting auto-setup…`);
+      const ok = await triggerBucketSetup();
+      if (ok) {
+        const retry = await doUpload();
+        uploadErr = retry.error ?? null;
+      }
+      if (uploadErr) {
+        const stillMsg = uploadErr?.message ?? msg;
+        throw new Error(
+          `Bucket '${BUCKET}' belum ada dan gagal dibuat otomatis. ` +
+          `Buat bucket secara manual di Supabase Dashboard → Storage → New Bucket → ` +
+          `"${BUCKET}" (aktifkan Public), lalu jalankan supabase/card-back-images-setup.sql. ` +
+          `Detail: ${stillMsg}`,
+        );
+      }
+    } else if (
+      msg.toLowerCase().includes("policy") ||
+      msg.includes("403") ||
+      msg.includes("Unauthorized")
+    ) {
       throw new Error(
         `Storage policy belum dikonfigurasi untuk bucket '${BUCKET}'. ` +
         `Jalankan supabase/card-back-images-setup.sql di Supabase SQL Editor.`,
       );
+    } else if (!isBucketMissing) {
+      throw new Error(`Upload gambar gagal: ${msg}`);
     }
-    throw new Error(`Upload gambar gagal: ${msg}`);
   }
 
   const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
@@ -151,10 +202,12 @@ export async function uploadCardBack(
   if (dbErr) {
     console.error("[cardBackStorage] DB upsert error:", dbErr.code, dbErr.message);
     await supabase.storage.from(BUCKET).remove([storagePath]).catch(() => {});
+
     if (dbErr.code === "42P01" || dbErr.message?.includes("does not exist")) {
       throw new Error(
         `Tabel card_back_images belum ada. ` +
-        `Jalankan supabase/card-back-images-setup.sql di Supabase SQL Editor.`,
+        `Jalankan supabase/card-back-images-setup.sql di Supabase SQL Editor, ` +
+        `lalu coba upload lagi.`,
       );
     }
     throw new Error(
@@ -201,7 +254,10 @@ export async function loadCardBackUrl(
 
     if (error) {
       if (error.code === "42P01" || error.message?.includes("does not exist")) {
-        console.warn("[cardBackStorage] tabel card_back_images belum ada — jalankan migration SQL.");
+        console.warn(
+          "[cardBackStorage] tabel card_back_images belum ada — " +
+          "jalankan supabase/card-back-images-setup.sql di Supabase SQL Editor.",
+        );
       } else {
         console.warn("[cardBackStorage] loadCardBackUrl error:", error.message);
       }

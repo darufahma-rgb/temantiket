@@ -2060,6 +2060,88 @@ if (isProd) {
   });
 }
 
+/* ──────────────────────────────────────────────
+   POST /api/setup-card-back
+   Auto-create bucket 'card-back-images' (public) via service-role key.
+   Called by frontend when upload fails with "bucket not found".
+   Returns: { ok, bucket, message }
+────────────────────────────────────────────── */
+app.post('/api/setup-card-back', async (req, res) => {
+  const ROUTE = '[setup-card-back]';
+  if (!SERVICE_ROLE_KEY || !SUPABASE_URL) {
+    return err(res, 503, 'SUPABASE_SERVICE_ROLE_KEY atau VITE_SUPABASE_URL belum dikonfigurasi');
+  }
+  try {
+    const admin = makeAdminClient();
+    const BUCKET = 'card-back-images';
+
+    const { data: existing } = await admin.storage.getBucket(BUCKET);
+    if (existing) {
+      console.log(`${ROUTE} bucket '${BUCKET}' already exists`);
+      return ok(res, { ok: true, bucket: BUCKET, message: `Bucket '${BUCKET}' sudah ada.` });
+    }
+
+    const { error: createErr } = await admin.storage.createBucket(BUCKET, {
+      public: true,
+      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+      fileSizeLimit: 10 * 1024 * 1024,
+    });
+
+    if (createErr) {
+      const already = createErr.message?.toLowerCase().includes('already exists')
+        || createErr.message?.toLowerCase().includes('duplicate');
+      if (already) {
+        console.log(`${ROUTE} bucket '${BUCKET}' already exists (race)`);
+        return ok(res, { ok: true, bucket: BUCKET, message: `Bucket '${BUCKET}' sudah ada.` });
+      }
+      console.error(`${ROUTE} createBucket error:`, createErr.message);
+      return err(res, 500, `Gagal membuat bucket: ${createErr.message}`);
+    }
+
+    console.log(`${ROUTE} bucket '${BUCKET}' created successfully`);
+    return ok(res, { ok: true, bucket: BUCKET, message: `Bucket '${BUCKET}' berhasil dibuat.` });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`${ROUTE} exception:`, msg);
+    return err(res, 500, `Setup bucket gagal: ${msg}`);
+  }
+});
+
+/* ──────────────────────────────────────────────
+   Auto-setup: create card-back-images bucket on startup (non-blocking).
+────────────────────────────────────────────── */
+async function ensureCardBackBucket() {
+  if (!SERVICE_ROLE_KEY || !SUPABASE_URL) return;
+  const BUCKET = 'card-back-images';
+  try {
+    const admin = makeAdminClient();
+    const { data: existing } = await admin.storage.getBucket(BUCKET);
+    if (existing) {
+      console.log(`[server] bucket '${BUCKET}' ✓ already exists`);
+      return;
+    }
+    const { error: createErr } = await admin.storage.createBucket(BUCKET, {
+      public: true,
+      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+      fileSizeLimit: 10 * 1024 * 1024,
+    });
+    if (createErr) {
+      const already = createErr.message?.toLowerCase().includes('already exists')
+        || createErr.message?.toLowerCase().includes('duplicate');
+      if (already) {
+        console.log(`[server] bucket '${BUCKET}' ✓ already exists (race)`);
+      } else {
+        console.warn(`[server] ⚠️  Gagal membuat bucket '${BUCKET}': ${createErr.message}`);
+        console.warn(`[server]    → Buat manual di Supabase Dashboard → Storage → New Bucket → "${BUCKET}" (Public)`);
+      }
+    } else {
+      console.log(`[server] bucket '${BUCKET}' ✓ dibuat otomatis`);
+    }
+  } catch (e) {
+    console.warn(`[server] ⚠️  ensureCardBackBucket exception:`, e?.message ?? e);
+  }
+}
+
 // Keep the event loop alive — @supabase/auth-js calls .unref() on its internal
 // timers, which would otherwise allow Node to exit when there are no active
 // HTTP connections.
@@ -2090,4 +2172,5 @@ app.listen(PORT, '0.0.0.0', () => {
   if (!SUPABASE_URL) {
     console.warn('[server] ⚠️  VITE_SUPABASE_URL tidak ditemukan');
   }
+  ensureCardBackBucket().catch(() => {});
 });

@@ -1,0 +1,119 @@
+Perbaiki total flow fee agent lapangan di halaman `/agents/:id`. Hapus tombol manual “Sinkronkan Fee Sekarang” karena selalu gagal 404 dan bikin flow jadi ribet. Saya ingin fee agent lapangan/kurir/pelaksana masuk otomatis ke profile agent tanpa perlu tombol sync manual.
+
+Masalah utama:
+Fairuz sudah pernah dipilih sebagai agent lapangan untuk order VOA dengan fee Rp200.000, tetapi di profile agent `/agents/{id}` masih tampil:
+
+* Fee Agent Lapangan: Rp0
+* Total Komisi: Rp0
+* Belum ada komisi tercatat
+
+Ini salah. Kalau agent sudah ditugaskan dan order sudah `Completed`, fee harus langsung muncul di profile agent tersebut.
+
+Flow baru yang wajib:
+Saat order berubah menjadi `Completed`, sistem otomatis:
+
+1. baca semua field penugasan agent:
+
+   * `voaFieldAgentId`
+   * `fieldAgentId`
+   * `assignedOperationalAgentId`
+   * `visaExecutorId`
+   * `courierAgentId`
+   * atau field agent lapangan/kurir lain yang memang dipakai di project
+2. baca nominal fee yang sesuai:
+
+   * `voaAgentFee`
+   * `fieldAgentFee`
+   * `operationalAgentFee`
+   * `executorFee`
+   * `courierFee`
+3. buat record komisi/ledger untuk agent yang ditugaskan
+4. tampilkan otomatis di profile agent
+5. update total komisi, wallet, riwayat, manajemen agen, leaderboard, dan laporan terkait
+
+Jangan masukkan `transportFee`, `operationalCost`, atau biaya lain ke pendapatan agent kecuali field tersebut memang fee agent. Transport/biaya operasional hanya mengurangi profit owner.
+
+Buat single source of truth untuk income agent:
+`agent_income_ledger` atau gunakan ledger komisi existing yang paling tepat.
+
+Setiap record ledger minimal berisi:
+
+* `id`
+* `agent_id`
+* `order_id`
+* `type`
+* `source`
+* `amount`
+* `status`
+* `created_at`
+* `credited_at`
+* `metadata`
+
+Jenis type/source:
+
+* `sales_commission`
+* `voa_field_fee`
+* `courier_fee`
+* `visa_executor_fee`
+* `manual_bonus`
+
+Gunakan unique constraint/idempotency:
+`order_id + agent_id + type`
+
+Supaya aman jika order di-save ulang dan tidak double count.
+
+Perbaiki halaman `/agents/:id` agar membaca total dari ledger ini, bukan dari state lokal atau kalkulasi UI terpisah.
+
+Di tab Komisi profile agent, tampilkan breakdown:
+
+* Komisi Sales
+* Fee Agent Lapangan
+* Fee Kurir
+* Fee Pelaksana Visa
+* Bonus / Manual
+* Total Komisi
+* Saldo Wallet
+
+Tambahkan daftar riwayat fee per order:
+
+* nama klien
+* jenis order
+* role agent di order tersebut
+* nominal fee
+* status order
+* status payout/wallet
+* tanggal completed
+
+Contoh expected untuk Fairuz:
+Jika order VOA Completed memiliki:
+`voaFieldAgentId = Fairuz`
+`voaAgentFee = 200000`
+
+Maka profile Fairuz wajib menampilkan:
+
+* Fee Agent Lapangan: Rp200.000
+* Total Komisi: Rp200.000
+* Riwayat: Fee Agent Lapangan VOA — Rp200.000
+* Wallet bertambah sesuai policy payout
+
+Backfill order lama:
+Cari semua order lama yang sudah `Completed` dan punya agent lapangan/kurir/pelaksana + fee, tapi belum ada record ledger. Buat migration/backfill idempotent agar fee lama langsung masuk ke profile agent. Jalankan otomatis saat app load/admin open Agent Center, atau buat script aman yang bisa dijalankan sekali.
+
+Hapus/disable UI manual:
+
+* hapus section “Sinkronkan Fee Lapangan”
+* hapus tombol “Sinkronkan Fee Sekarang”
+* hapus endpoint sync yang 404 kalau tidak dipakai
+* ganti dengan info kecil:
+  “Fee lapangan otomatis tercatat saat order Completed.”
+
+Error handling:
+Jika gagal membuat ledger saat order Completed:
+
+* jangan diam-diam gagal
+* tampilkan error detail di console
+* simpan log audit
+* jangan tandai fee sebagai credited kalau ledger gagal dibuat
+
+Target akhir:
+Siapa pun agent yang dipilih sebagai agent lapangan VOA, pelaksana visa, atau kurir, fee-nya otomatis masuk ke profile agent setelah order Completed. Tidak perlu tombol sync manual, tidak ada HTTP 404, tidak ada mismatch antara order detail, profile agent, wallet, manajemen agen, leaderboard, dan laporan keuangan.

@@ -1,16 +1,16 @@
 -- ============================================================
--- card-back-images-setup.sql
--- Run this in Supabase SQL Editor (once, idempotent).
+-- card-back-images-setup.sql  (v3 — idempotent, run once)
+-- Run this in: Supabase Dashboard → SQL Editor → New Query
 -- ============================================================
 --
--- STEP 1 (manual, dashboard only):
---   Go to Supabase → Storage → New Bucket
---   Name: card-back-images
---   ✅ Public bucket (so getPublicUrl() works without signed URLs)
+-- CATATAN:
+--   Bucket 'card-back-images' dibuat OTOMATIS oleh server Express
+--   saat startup (ensureCardBackBucket). Tidak perlu buat manual.
 --
--- STEP 2: Run this file in SQL Editor.
---   It creates the card_back_images table, RLS policies,
---   and Storage policies for the bucket.
+--   Jika ingin buat manual: Storage → New Bucket → "card-back-images"
+--   aktifkan "Public bucket".
+--
+-- File ini hanya perlu dijalankan SEKALI untuk membuat table + policies.
 -- ============================================================
 
 -- ── 1. Table ─────────────────────────────────────────────────
@@ -30,7 +30,7 @@ CREATE INDEX IF NOT EXISTS card_back_images_owner_role_idx
   ON public.card_back_images (owner_uuid, role_type);
 
 -- ── 3. updated_at trigger ────────────────────────────────────
-CREATE OR REPLACE FUNCTION public.set_updated_at()
+CREATE OR REPLACE FUNCTION public.set_card_back_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
 $$;
@@ -38,12 +38,12 @@ $$;
 DROP TRIGGER IF EXISTS card_back_images_updated_at ON public.card_back_images;
 CREATE TRIGGER card_back_images_updated_at
   BEFORE UPDATE ON public.card_back_images
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.set_card_back_updated_at();
 
 -- ── 4. Row Level Security ─────────────────────────────────────
 ALTER TABLE public.card_back_images ENABLE ROW LEVEL SECURITY;
 
--- Anyone authenticated can read (needed to load card backs for display)
+-- Anyone authenticated can read (needed to display card backs)
 DROP POLICY IF EXISTS "card_back_images_read" ON public.card_back_images;
 CREATE POLICY "card_back_images_read"
   ON public.card_back_images FOR SELECT
@@ -56,7 +56,7 @@ CREATE POLICY "card_back_images_own"
   USING  (auth.uid() = owner_uuid)
   WITH CHECK (auth.uid() = owner_uuid);
 
--- Agency owners and staff can manage card backs for any member in their agency
+-- Owner & staff can manage card backs for any member in their agency
 DROP POLICY IF EXISTS "card_back_images_agency_admin" ON public.card_back_images;
 CREATE POLICY "card_back_images_agency_admin"
   ON public.card_back_images FOR ALL
@@ -75,21 +75,14 @@ CREATE POLICY "card_back_images_agency_admin"
     )
   );
 
--- ── 5. Storage bucket policies ───────────────────────────────
--- These apply to the 'card-back-images' bucket.
--- If using Supabase Dashboard to set policies, add:
---   SELECT  → public (anyone)
---   INSERT  → authenticated users
---   UPDATE  → authenticated users
---   DELETE  → authenticated users
---
--- Or run below (requires pg_policies on storage.objects):
-
+-- ── 5. Storage policies for bucket 'card-back-images' ────────
+-- Public read (since bucket is public, this is belt-and-suspenders)
 DROP POLICY IF EXISTS "card_back_images_storage_select" ON storage.objects;
 CREATE POLICY "card_back_images_storage_select"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'card-back-images');
 
+-- Authenticated users can upload
 DROP POLICY IF EXISTS "card_back_images_storage_insert" ON storage.objects;
 CREATE POLICY "card_back_images_storage_insert"
   ON storage.objects FOR INSERT
@@ -98,6 +91,7 @@ CREATE POLICY "card_back_images_storage_insert"
     AND auth.role() = 'authenticated'
   );
 
+-- Authenticated users can update (overwrite / upsert)
 DROP POLICY IF EXISTS "card_back_images_storage_update" ON storage.objects;
 CREATE POLICY "card_back_images_storage_update"
   ON storage.objects FOR UPDATE
@@ -106,6 +100,7 @@ CREATE POLICY "card_back_images_storage_update"
     AND auth.role() = 'authenticated'
   );
 
+-- Authenticated users can delete
 DROP POLICY IF EXISTS "card_back_images_storage_delete" ON storage.objects;
 CREATE POLICY "card_back_images_storage_delete"
   ON storage.objects FOR DELETE
@@ -114,6 +109,7 @@ CREATE POLICY "card_back_images_storage_delete"
     AND auth.role() = 'authenticated'
   );
 
--- ── Done ─────────────────────────────────────────────────────
--- Verify with:
---   SELECT * FROM card_back_images LIMIT 5;
+-- ── Verify ────────────────────────────────────────────────────
+-- Run to confirm setup:
+--   SELECT * FROM public.card_back_images LIMIT 5;
+--   SELECT id, name, public FROM storage.buckets WHERE id = 'card-back-images';
