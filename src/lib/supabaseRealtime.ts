@@ -1,21 +1,17 @@
 /**
- * Realtime sync — subscribe ke perubahan tabel dari device lain.
+ * supabaseRealtime.ts — Realtime sync (D — Stability upgrade).
  *
- * OPTIMISASI (vs versi lama):
- *   1. Setiap subscription sekarang pakai filter `agency_id=eq.<id>` sehingga
- *      Supabase hanya memproses baris milik agency ini — bukan semua agency.
- *      Ini yang menyebabkan realtime.list_changes() mendominasi query cost.
- *   2. event: '*' dipecah ke event spesifik (INSERT/UPDATE/DELETE) di semua
- *      tabel yang memungkinkan — mengurangi payload WAL yang dikirim server.
- *   3. agent_points hanya pakai event: 'INSERT' karena poin di-award via
- *      trigger dan tidak pernah di-UPDATE/DELETE secara langsung.
- *   4. mission_submissions pakai INSERT + UPDATE (bukan '*') — DELETE tidak
- *      relevan karena submissions tidak pernah dihapus.
- *   5. Pola surgical update dipertahankan — tidak ada full refetch di listener.
- *   6. Single channel + removeChannel cleanup di return function.
+ * OPTIMISASI vs versi lama:
+ *   1. Filter `agency_id=eq.<id>` di semua subscription — hemat WAL
+ *   2. Event spesifik (INSERT/UPDATE/DELETE) — bukan '*'
+ *   3. Surgical state update — tidak ada full refetch di listener
+ *   4. Single channel + removeChannel cleanup di return function
  *
- * startRealtimeSync(agencyId) sekarang menerima agencyId sebagai parameter.
- * Dipanggil dari App.tsx setelah user authenticated dengan user.agencyId.
+ * BARU (D — Realtime Stability):
+ *   5. Callback hooks: onConnected, onError, onDisconnected
+ *      dipakai oleh realtimeManager.ts untuk auto-reconnect
+ *   6. Duplicate subscription guard: channel === null check
+ *   7. subscribe() status → callback sehingga manager bisa tahu
  */
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { useTripsStore, useJamaahStore } from "@/store/tripsStore";
@@ -52,8 +48,6 @@ export function onAgentPointsChanged(fn: AgentPointsListener): () => void {
 
 /**
  * Listeners untuk mission_submissions + daily_missions.
- * AgentMissionWidget & AgentProfile subscribe biar status misi auto-refresh
- * tanpa reload saat admin approve / reject bukti.
  */
 type MissionListener = () => void;
 const missionListeners = new Set<MissionListener>();
@@ -65,8 +59,6 @@ export function onMissionsChanged(fn: MissionListener): () => void {
 
 /**
  * Listeners khusus untuk INSERT baru ke daily_missions.
- * AgentDashboard subscribe biar bisa show popup notifikasi saat owner
- * deploy side job baru. Payload-nya adalah raw DB row dari daily_missions.
  */
 type NewMissionListener = (row: Record<string, unknown>) => void;
 const newMissionListeners = new Set<NewMissionListener>();
@@ -81,24 +73,43 @@ function oldId(payload: { old: Record<string, unknown> }): string {
   return String(payload.old.id);
 }
 
+// ─── Lifecycle callback types ─────────────────────────────────────────────────
+
+export interface RealtimeSyncCallbacks {
+  /** Called when channel is fully subscribed and live. */
+  onConnected?:    () => void;
+  /** Called when a CHANNEL_ERROR or TIMED_OUT status is received. */
+  onError?:        (reason: string) => void;
+  /** Called when the channel is closed (CLOSED status). */
+  onDisconnected?: () => void;
+}
+
 /**
  * startRealtimeSync — buka satu channel dengan semua subscription yang difilter
  * by agency_id. Harus dipanggil setelah user authenticated.
  *
- * @param agencyId  — UUID agency dari user yang login (user.agencyId)
+ * @param agencyId   — UUID agency dari user yang login (user.agencyId)
+ * @param callbacks  — optional lifecycle callbacks (used by realtimeManager)
  * @returns cleanup function — panggil saat komponen/app unmount
  */
-export function startRealtimeSync(agencyId: string): () => void {
-  if (!isSupabaseConfigured() || !agencyId || channel) return () => undefined;
+export function startRealtimeSync(
+  agencyId: string,
+  callbacks?: RealtimeSyncCallbacks,
+): () => void {
+  // ── Duplicate subscription guard ─────────────────────────────────────────
+  if (!isSupabaseConfigured() || !agencyId) return () => undefined;
+  if (channel) {
+    // Already connected — teardown before re-subscribing (idempotent)
+    void supabase!.removeChannel(channel);
+    channel = null;
+  }
 
-  // Filter string yang sama dipakai di semua tabel — satu tempat untuk ganti.
   const agencyFilter = `agency_id=eq.${agencyId}`;
 
   channel = supabase!
     .channel("igh-tour-sync")
 
     // ── TRIPS ─────────────────────────────────────────────────────────────────
-    // Filter: hanya trips milik agency ini.
     .on("postgres_changes", {
       event: "INSERT", schema: "public", table: "trips",
       filter: agencyFilter,
@@ -124,13 +135,11 @@ export function startRealtimeSync(agencyId: string): () => void {
     })
 
     // ── JAMAAH ────────────────────────────────────────────────────────────────
-    // INSERT: tambahkan hanya kalau trip-nya sudah ada di store (user sedang lihat trip itu).
-    // UPDATE/DELETE: cukup cocokkan by id — kalau tidak ada, setState adalah no-op.
     .on("postgres_changes", {
       event: "INSERT", schema: "public", table: "jamaah",
       filter: agencyFilter,
     }, (payload) => {
-      const row = payload.new as Record<string, unknown>;
+      const row    = payload.new as Record<string, unknown>;
       const tripId = String(row.trip_id ?? "");
       const current = useJamaahStore.getState().jamaah;
       if (tripId && current.some((j) => j.tripId === tripId)) {
@@ -179,7 +188,7 @@ export function startRealtimeSync(agencyId: string): () => void {
     }, (payload) => {
       const id = oldId(payload as { old: Record<string, unknown> });
       usePackagesStore.setState((s) => ({
-        items: s.items.filter((p) => p.id !== id),
+        items:     s.items.filter((p) => p.id !== id),
         currentId: s.currentId === id ? null : s.currentId,
       }));
     })
@@ -235,8 +244,6 @@ export function startRealtimeSync(agencyId: string): () => void {
     })
 
     // ── AGENT POINTS ──────────────────────────────────────────────────────────
-    // Hanya INSERT — poin di-award via database trigger, tidak pernah di-UPDATE
-    // atau di-DELETE secara langsung dari aplikasi.
     .on("postgres_changes", {
       event: "INSERT", schema: "public", table: "agent_points",
       filter: agencyFilter,
@@ -245,9 +252,6 @@ export function startRealtimeSync(agencyId: string): () => void {
     })
 
     // ── MISSION SUBMISSIONS ───────────────────────────────────────────────────
-    // INSERT: agent submit bukti baru.
-    // UPDATE: owner approve/reject (status berubah).
-    // DELETE tidak dipakai — submissions tidak pernah dihapus.
     .on("postgres_changes", {
       event: "INSERT", schema: "public", table: "mission_submissions",
       filter: agencyFilter,
@@ -262,9 +266,6 @@ export function startRealtimeSync(agencyId: string): () => void {
     })
 
     // ── DAILY MISSIONS ────────────────────────────────────────────────────────
-    // INSERT (misi baru), UPDATE (edit misi), DELETE (hapus misi) semua relevan
-    // bagi agent yang sedang lihat daftar misi.
-    // INSERT juga memicu newMissionListeners dengan raw row — buat popup notif.
     .on("postgres_changes", {
       event: "INSERT", schema: "public", table: "daily_missions",
       filter: agencyFilter,
@@ -286,7 +287,6 @@ export function startRealtimeSync(agencyId: string): () => void {
     })
 
     // ── PDF LAYOUT PRESETS ────────────────────────────────────────────────────
-    // INSERT/UPDATE/DELETE semua relevan — preset bisa dibuat, diedit, dihapus.
     .on("postgres_changes", {
       event: "INSERT", schema: "public", table: "pdf_layout_presets",
       filter: agencyFilter,
@@ -312,11 +312,22 @@ export function startRealtimeSync(agencyId: string): () => void {
       });
     })
 
+    // ── Subscribe + lifecycle callbacks ──────────────────────────────────────
     .subscribe((status) => {
       const sync = useSyncStatusStore.getState();
-      if (status === "SUBSCRIBED") sync.markSyncOk();
-      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") sync.markSyncError(`Realtime: ${status}`);
-      else if (status === "CLOSED") sync.setOnline(navigator.onLine);
+
+      if (status === "SUBSCRIBED") {
+        sync.markSyncOk();
+        callbacks?.onConnected?.();
+
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        sync.markSyncError(`Realtime: ${status}`);
+        callbacks?.onError?.(status);
+
+      } else if (status === "CLOSED") {
+        sync.setOnline(navigator.onLine);
+        callbacks?.onDisconnected?.();
+      }
     });
 
   return () => {

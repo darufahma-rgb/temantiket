@@ -152,16 +152,6 @@ export function voaAgentFeeFromMeta(order: Order): number {
  *
  * Semua halaman (OrderDetail, Reports, Ledger, Dashboard) wajib pakai fungsi
  * ini agar angka profit tidak berbeda-beda antar halaman.
- *
- * Catatan validasi:
- * - agentFeeFromMeta: hanya non-0 jika createdByAgent ada di metadata
- *   (divalidasi saat save di OrderDetail — direct order tidak punya agentFee)
- * - pelaksanaFeeFromMeta: hanya non-0 jika visa_student + pelaksanaId ada
- * - voaOpCost: hanya non-0 untuk visa_voa
- * - kurirOpCost: berlaku semua jenis order
- *
- * @param order   - order object dari ordersRepo
- * @param egpRate - kurs EGP→IDR live (default EGP_TO_IDR = 515)
  */
 export function netProfitIDR(order: Order, egpRate = EGP_TO_IDR): number {
   return (
@@ -175,14 +165,9 @@ export function netProfitIDR(order: Order, egpRate = EGP_TO_IDR): number {
 
 /**
  * Breakdown setiap komponen pemotongan profit untuk keperluan tooltip / audit.
- * Gunakan ini di halaman laporan agar tabel bisa menampilkan rincian setiap biaya
- * dengan angka yang persis sama dengan profitIDR / netProfitIDR.
- *
- * CATATAN: agentFee di sini selalu dibaca dari meta.agentFee (trust metadata).
- * Jika Reports page perlu validasi role, lakukan override nilai agentFee dari luar.
  */
 export function profitBreakdown(order: Order, egpRate = EGP_TO_IDR, overrideAgentFee?: number) {
-  const gross    = profitIDR(order, egpRate);       // revenue - cost in IDR
+  const gross    = profitIDR(order, egpRate);
   const agentFee = overrideAgentFee !== undefined ? overrideAgentFee : agentFeeFromMeta(order);
   const pelFee   = pelaksanaFeeFromMeta(order);
   const voaOp    = voaOpCost(order);
@@ -190,4 +175,139 @@ export function profitBreakdown(order: Order, egpRate = EGP_TO_IDR, overrideAgen
   const net      = gross - agentFee - pelFee - voaOp - kurirOp;
   const hasDeductions = agentFee > 0 || pelFee > 0 || voaOp > 0 || kurirOp > 0;
   return { gross, agentFee, pelFee, voaOp, kurirOp, net, hasDeductions };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// G — Financial Accuracy: Cashflow-based revenue helpers
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Cashflow-accurate revenue for an order (G — Financial Accuracy).
+ *
+ * Revenue categories:
+ *   PAID    → full revenue recognized (real cashflow)
+ *   DP      → partial revenue recognized (only paidAmount counts as cash)
+ *   UNPAID  → receivable only, NOT recognized as revenue yet
+ *   REFUNDED→ 0 (money returned)
+ *
+ * Use this in financial reports instead of revenueIDR() for cashflow accuracy.
+ */
+export function cashflowRevenueIDR(order: Order, egpRate = EGP_TO_IDR): number {
+  const status = order.paymentStatus ?? "UNPAID";
+  if (status === "PAID")     return revenueIDR(order, egpRate);
+  if (status === "DP")       return paidAmountIDR(order, egpRate);
+  if (status === "REFUNDED") return 0;
+  // UNPAID → receivable, not yet cashflow
+  return 0;
+}
+
+/**
+ * Piutang aktif (outstanding receivable) untuk satu order, dalam IDR.
+ * = 0 jika PAID / REFUNDED, full totalPrice jika UNPAID, sisa jika DP.
+ */
+export function piutangIDR(order: Order, egpRate = EGP_TO_IDR): number {
+  const status = order.paymentStatus ?? "UNPAID";
+  if (status === "PAID" || status === "REFUNDED") return 0;
+  return receivableIDR(order, egpRate);
+}
+
+/**
+ * Pending profit = profit that will materialize when receivable is collected.
+ * For PAID orders: 0 (profit already realized in cashflow).
+ * For DP: profit on the uncollected portion (proportional).
+ * For UNPAID: full net profit is still pending.
+ */
+export function pendingProfitIDR(order: Order, egpRate = EGP_TO_IDR): number {
+  const status = order.paymentStatus ?? "UNPAID";
+  if (status === "PAID" || status === "REFUNDED") return 0;
+  const net   = netProfitIDR(order, egpRate);
+  const total = revenueIDR(order, egpRate);
+  if (status === "UNPAID") return net;
+  if (status === "DP") {
+    // Pending portion = net * (receivable / total)
+    if (total <= 0) return 0;
+    const receivable = piutangIDR(order, egpRate);
+    return Math.round(net * (receivable / total));
+  }
+  return 0;
+}
+
+/**
+ * Aggregate cashflow summary across a list of orders.
+ * Returns cashflow-accurate numbers for financial reporting.
+ */
+export function aggregateCashflow(
+  orders: Order[],
+  egpRate = EGP_TO_IDR,
+): {
+  totalRevenue:      number;
+  cashflowRevenue:   number;
+  piutangTotal:      number;
+  netProfit:         number;
+  pendingProfit:     number;
+  cashflowAccuracy:  number;
+  countPaid:         number;
+  countDp:           number;
+  countUnpaid:       number;
+  countRefunded:     number;
+} {
+  let totalRevenue    = 0;
+  let cashflowRevenue = 0;
+  let piutangTotal    = 0;
+  let netProfit       = 0;
+  let pendingProfit   = 0;
+  let countPaid       = 0;
+  let countDp         = 0;
+  let countUnpaid     = 0;
+  let countRefunded   = 0;
+
+  for (const o of orders) {
+    totalRevenue    += revenueIDR(o, egpRate);
+    cashflowRevenue += cashflowRevenueIDR(o, egpRate);
+    piutangTotal    += piutangIDR(o, egpRate);
+    netProfit       += netProfitIDR(o, egpRate);
+    pendingProfit   += pendingProfitIDR(o, egpRate);
+    const s = o.paymentStatus ?? "UNPAID";
+    if      (s === "PAID")     countPaid++;
+    else if (s === "DP")       countDp++;
+    else if (s === "REFUNDED") countRefunded++;
+    else                       countUnpaid++;
+  }
+
+  const cashflowAccuracy = totalRevenue > 0
+    ? Math.round((cashflowRevenue / totalRevenue) * 100)
+    : 100;
+
+  return {
+    totalRevenue,
+    cashflowRevenue,
+    piutangTotal,
+    netProfit,
+    pendingProfit,
+    cashflowAccuracy,
+    countPaid,
+    countDp,
+    countUnpaid,
+    countRefunded,
+  };
+}
+
+/**
+ * Detect ledger vs order mismatches.
+ * Compares expected revenue from orders against a provided ledger total.
+ *
+ * @param orders      - list of orders to cross-check
+ * @param ledgerTotal - total from financial ledger (in IDR)
+ * @param egpRate     - EGP→IDR rate
+ * @returns mismatch amount (positive = ledger > orders, negative = orders > ledger)
+ */
+export function detectLedgerMismatch(
+  orders:      Order[],
+  ledgerTotal: number,
+  egpRate = EGP_TO_IDR,
+): { mismatch: number; ordersTotal: number; ledgerTotal: number; hasGap: boolean } {
+  const ordersTotal = orders.reduce((sum, o) => sum + cashflowRevenueIDR(o, egpRate), 0);
+  const mismatch    = ledgerTotal - ordersTotal;
+  const hasGap      = Math.abs(mismatch) > 1_000; // 1K IDR tolerance
+  return { mismatch, ordersTotal, ledgerTotal, hasGap };
 }

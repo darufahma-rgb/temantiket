@@ -1,10 +1,12 @@
 /**
- * BrandLogo — Komponen logo resmi Temantiket yang digunakan di semua halaman publik.
+ * BrandLogo — Komponen logo resmi yang dipakai di semua halaman publik.
  *
- * Menggunakan:
- *   - /temantiket-icon.svg (SVG vektor, tajam di retina/HiDPI)
- *   - Teks "Temantiket" via CSS (font-black, tracking tight)
- *   - Fallback "T" jika gambar gagal load
+ * Menggunakan brand.ts sebagai single source of truth untuk:
+ *   - logo icon path (SVG vektor, tajam di retina/HiDPI)
+ *   - brand name
+ *   - brand color
+ *
+ * Fallback "T" jika gambar gagal load.
  *
  * Penggunaan:
  *   <Link to="/"><BrandLogo /></Link>
@@ -13,6 +15,7 @@
  */
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { getBrand } from "@/config/brand";
 
 interface BrandLogoProps {
   /** Ukuran icon dalam px (lebar & tinggi). Default: 28 */
@@ -27,6 +30,8 @@ interface BrandLogoProps {
   gapClass?: string;
   /** Kelas tambahan untuk wrapper div */
   className?: string;
+  /** Force PNG icon (retina-safe fallback for environments without SVG support) */
+  forcePng?: boolean;
 }
 
 export function BrandLogo({
@@ -36,23 +41,34 @@ export function BrandLogo({
   textColorClass = "text-slate-900",
   gapClass    = "gap-2",
   className,
+  forcePng    = false,
 }: BrandLogoProps) {
   const [imgError, setImgError] = useState(false);
+  const brand = getBrand();
+  const iconSrc = forcePng ? "/temantiket-icon.png" : brand.logoIcon;
 
   return (
     <div className={cn("flex items-center shrink-0", gapClass, className)}>
-      {/* Icon mark — SVG vektor, tajam di retina, fallback "T" jika gagal */}
+      {/* Icon mark — SVG vektor, tajam di retina, fallback teks jika gagal */}
       {imgError ? (
         <span
           className="shrink-0 font-black select-none leading-none"
-          style={{ fontSize: iconSize * 0.75, color: "#1a44d4", width: iconSize, height: iconSize, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+          style={{
+            fontSize: iconSize * 0.75,
+            color: brand.brandColor,
+            width: iconSize,
+            height: iconSize,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
           aria-hidden="true"
         >
-          T
+          {brand.name.charAt(0)}
         </span>
       ) : (
         <img
-          src="/temantiket-icon.svg"
+          src={iconSrc}
           alt=""
           aria-hidden="true"
           width={iconSize}
@@ -71,7 +87,7 @@ export function BrandLogo({
           className={cn("font-black tracking-[-0.03em] leading-none select-none", textColorClass)}
           style={{ fontSize: textSize }}
         >
-          Temantiket
+          {brand.name}
         </span>
         {subtitle && (
           <span className="text-[10px] text-slate-400 mt-[3px] leading-none select-none whitespace-nowrap">
