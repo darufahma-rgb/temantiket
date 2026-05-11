@@ -5,6 +5,7 @@ import {
   TrendingUp, TrendingDown, Wallet, Receipt, ShieldCheck, Filter,
   Crown, ArrowDown, Users, Trophy, Handshake, Building2,
   BarChart3, ArrowUpDown, ChevronUp, ChevronDown, Search, FileDown, Info,
+  AlertTriangle, Clock,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, Legend,
@@ -32,6 +33,7 @@ import {
   PAYMENT_STATUS_EMOJI,
   isReceivable,
   fmtIDRShort,
+  derivePaymentStatus,
 } from "@/lib/paymentStatus";
 import { useRatesStore } from "@/store/ratesStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
@@ -286,6 +288,37 @@ export default function Reports() {
     return { totalTagihan, totalCair, totalPiutang, piutangCount, piutangOrders };
   }, [orders, clients, egpRate]);
 
+  // ── Cashflow: pisahkan angka real (sudah lunas) vs pending (belum bayar/DP) ──
+  // Hanya order dengan paymentStatus PAID yang dihitung sebagai revenue & profit aktual.
+  // UNPAID dan DP hanya dihitung sebagai "piutang/profit pending" — belum jadi uang.
+  const cashflow = useMemo(() => {
+    let cashReceived  = 0;   // total paidAmountIDR (uang yang sudah masuk)
+    let netProfitReal = 0;   // profit dari order PAID saja
+    let profitPending = 0;   // estimasi profit dari order UNPAID + DP
+    let paidRevenue   = 0;   // revenue dari order PAID saja
+    let paidCount     = 0;
+    let dpCount       = 0;
+    let unpaidCount   = 0;
+
+    for (const o of filtered) {
+      const ps = derivePaymentStatus(Number(o.paidAmount ?? 0), Number(o.totalPrice ?? 0), o.paymentStatus);
+      cashReceived += paidAmountIDR(o, egpRate);
+      if (ps === "PAID") {
+        netProfitReal += agencyProfit(o);
+        paidRevenue   += revenueIDR(o, egpRate);
+        paidCount++;
+      } else if (ps === "DP") {
+        profitPending += agencyProfit(o);
+        dpCount++;
+      } else if (ps === "UNPAID") {
+        profitPending += agencyProfit(o);
+        unpaidCount++;
+      }
+    }
+
+    return { cashReceived, netProfitReal, profitPending, paidRevenue, paidCount, dpCount, unpaidCount };
+  }, [filtered, egpRate, agencyProfit]);
+
   // Profit per type (utk pie chart) — pakai agency profit (sudah dikurangi komisi agen).
   const byType = useMemo(() => {
     const m = new Map<OrderType, { profit: number; revenue: number; count: number }>();
@@ -453,6 +486,8 @@ export default function Reports() {
         kurirIDR,
         internalOpex,
         agentName: agentFee > 0 ? (member?.displayName ?? "Agen") : null,
+        paymentStatus: (o.paymentStatus ?? "UNPAID") as PaymentStatus,
+        paidAmountRow: paidAmountIDR(o, egpRate),
       };
     });
   }, [filtered, egpRate, agencyProfit, memberById]);
@@ -531,10 +566,15 @@ export default function Reports() {
           </div>
           <div className="relative flex items-start justify-between gap-3 mb-3">
             <div>
-              <p className="text-[8px] font-semibold uppercase tracking-widest text-sky-400/70 mb-0.5">Net Profit</p>
-              <p className={`text-[28px] font-black leading-none tabular-nums ${totals.profit < 0 ? "text-red-300" : "text-white"}`}>
-                {fmtIDR(totals.profit)}
+              <p className="text-[8px] font-semibold uppercase tracking-widest text-sky-400/70 mb-0.5">Net Profit Real</p>
+              <p className={`text-[28px] font-black leading-none tabular-nums ${cashflow.netProfitReal < 0 ? "text-red-300" : "text-white"}`}>
+                {fmtIDR(cashflow.netProfitReal)}
               </p>
+              {(cashflow.dpCount > 0 || cashflow.unpaidCount > 0) && (
+                <p className="text-[9px] text-amber-300/80 mt-0.5">
+                  +{fmtIDR(cashflow.profitPending)} pending
+                </p>
+              )}
             </div>
             <div className="h-9 w-9 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 mt-0.5 backdrop-blur-sm">
               <TrendingUp className="h-5 w-5 text-white" />
@@ -542,9 +582,9 @@ export default function Reports() {
           </div>
           <div className="relative flex items-center pt-3 border-t border-white/10">
             {[
-              { label: "Revenue",   value: fmtIDR(totals.revenue) },
-              { label: "Modal",     value: fmtIDR(totals.cost)    },
-              { label: "Orders",    value: String(totals.count)   },
+              { label: "Cash Masuk", value: fmtIDR(cashflow.cashReceived) },
+              { label: "Piutang",    value: fmtIDR(piutang.totalPiutang)  },
+              { label: "Orders",     value: String(totals.count)           },
             ].map((s, i) => (
               <div key={s.label} className={`flex-1 text-center ${i > 0 ? "border-l border-white/10" : ""}`}>
                 <p className="text-[11px] font-black text-white tabular-nums leading-none truncate px-1">{s.value}</p>
@@ -699,31 +739,54 @@ export default function Reports() {
         variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } } }}
       >
         <SummaryCard
-          label="Net Profit Agency"
-          value={fmtIDR(split.netAgencyProfit)}
-          icon={split.netAgencyProfit >= 0 ? TrendingUp : TrendingDown}
-          tone={split.netAgencyProfit >= 0 ? "emerald" : "red"}
+          label="Net Profit Real"
+          value={fmtIDR(cashflow.netProfitReal)}
+          sub={`${cashflow.paidCount} order lunas · profit aktual`}
+          icon={cashflow.netProfitReal >= 0 ? TrendingUp : TrendingDown}
+          tone={cashflow.netProfitReal >= 0 ? "emerald" : "red"}
           big
         />
         <SummaryCard
-          label="Total Revenue"
-          value={fmtIDR(totals.revenue)}
+          label="Cash Masuk Aktual"
+          value={fmtIDR(cashflow.cashReceived)}
+          sub="uang sudah diterima"
           icon={Receipt}
           tone="sky"
         />
         <SummaryCard
-          label="Total Modal"
-          value={fmtIDR(totals.cost)}
-          icon={ArrowDown}
-          tone="amber"
+          label="Piutang Aktif"
+          value={fmtIDR(piutang.totalPiutang)}
+          sub={`${piutang.piutangCount} tagihan outstanding`}
+          icon={AlertTriangle}
+          tone={piutang.totalPiutang > 0 ? "amber" : "emerald"}
         />
         <SummaryCard
-          label="Jumlah Order"
-          value={String(totals.count)}
-          icon={Users}
-          tone="violet"
+          label="Profit Pending"
+          value={fmtIDR(cashflow.profitPending)}
+          sub={`${cashflow.dpCount + cashflow.unpaidCount} order belum lunas`}
+          icon={Clock}
+          tone={cashflow.profitPending > 0 ? "violet" : "emerald"}
         />
       </motion.div>
+
+      {/* Cashflow accuracy strip */}
+      {totals.count > 0 && (cashflow.dpCount > 0 || cashflow.unpaidCount > 0) && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/60 px-3.5 py-2.5 text-[11.5px]">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+          <span className="font-semibold text-amber-800">Perhatian Keuangan:</span>
+          <span className="text-amber-700">
+            {cashflow.unpaidCount > 0 && <span>{cashflow.unpaidCount} order <strong>belum dibayar</strong></span>}
+            {cashflow.unpaidCount > 0 && cashflow.dpCount > 0 && <span> · </span>}
+            {cashflow.dpCount > 0 && <span>{cashflow.dpCount} order <strong>DP sebagian</strong></span>}
+            <span className="mx-1">—</span>
+            tidak dihitung sebagai profit real. Tagihan outstanding:{" "}
+            <span className="font-mono font-bold">{fmtIDR(piutang.totalPiutang)}</span>
+          </span>
+          <span className="ml-auto text-[10.5px] text-muted-foreground">
+            Gross estimasi: <span className="font-mono">{fmtIDR(cashflow.netProfitReal + cashflow.profitPending)}</span>
+          </span>
+        </div>
+      )}
 
       {/* Direct vs Agent split */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1043,6 +1106,7 @@ export default function Reports() {
                   Tanggal <SortIcon col="date" />
                 </th>
                 <th className="text-center font-semibold py-2 px-2">Tipe</th>
+                <th className="text-center font-semibold py-2 px-2">Bayar</th>
                 <th
                   className="text-right font-semibold py-2 px-2 cursor-pointer select-none hover:text-foreground transition-colors"
                   onClick={() => toggleSort("revenue")}
@@ -1114,6 +1178,11 @@ export default function Reports() {
                           }}
                         >
                           {ORDER_TYPE_EMOJI[row.type]} {ORDER_TYPE_LABEL[row.type]}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        <span className={`inline-block text-[9.5px] font-bold px-1.5 py-0.5 rounded-full border ${PAYMENT_STATUS_STYLE[row.paymentStatus]}`}>
+                          {PAYMENT_STATUS_EMOJI[row.paymentStatus]} {PAYMENT_STATUS_LABEL[row.paymentStatus]}
                         </span>
                       </td>
                       <td className="py-2 px-2 text-right font-mono">{fmtIDR(row.revenue)}</td>
@@ -1258,7 +1327,7 @@ export default function Reports() {
             {byOrderFiltered.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-blue-200 bg-blue-50/50 font-bold text-[12px]">
-                  <td colSpan={4} className="py-2.5 px-2 text-blue-800">Total ({byOrderFiltered.length} order)</td>
+                  <td colSpan={5} className="py-2.5 px-2 text-blue-800">Total ({byOrderFiltered.length} order)</td>
                   <td className="py-2.5 px-2 text-right font-mono text-sky-700">
                     {fmtIDR(byOrderFiltered.reduce((s, r) => s + r.revenue, 0))}
                   </td>
@@ -1641,11 +1710,12 @@ export default function Reports() {
 
       {/* Footer note */}
       <div className="rounded-xl border bg-muted/30 p-3 text-[10.5px] text-muted-foreground leading-relaxed">
-        <strong className="text-foreground">Catatan:</strong>{" "}
-        Profit Bersih = Harga Jual − Modal − Fee Agen Penjual − Fee Pelaksana − Biaya Operasional VOA − Biaya Kurir.
-        Semua fee dibaca dari data order masing-masing (bukan rate global) agar angka konsisten di semua halaman.
-        Order EGP (visa Mesir) di-konversi ke IDR pakai kurs <span className="font-mono">1 EGP ≈ Rp {egpRate}</span>.
-        Poin di-award otomatis: +10 poin saat order Completed; +20 poin bonus jika order via agen (total +30 poin dengan komisi).
+        <strong className="text-foreground">Catatan Akuntansi:</strong>{" "}
+        <strong className="text-foreground">Net Profit Real</strong> hanya menghitung order berstatus <em>Lunas (PAID)</em> — uang yang benar-benar sudah diterima.
+        Order <em>Belum Bayar</em> atau <em>DP</em> masuk ke kolom <strong className="text-foreground">Profit Pending</strong> dan <strong className="text-foreground">Piutang Aktif</strong>.
+        {" "}Profit Bersih per order = Harga Jual − Modal − Fee Agen − Fee Pelaksana − Biaya VOA − Biaya Kurir.
+        Semua fee dibaca dari data order masing-masing (bukan rate global).
+        {" "}EGP di-konversi ke IDR pakai kurs <span className="font-mono">1 EGP ≈ Rp {egpRate}</span>.
       </div>
 
       </div>{/* end shared content */}
@@ -1654,10 +1724,11 @@ export default function Reports() {
 }
 
 function SummaryCard({
-  label, value, icon: Icon, tone, big = false,
+  label, value, sub, icon: Icon, tone, big = false,
 }: {
   label: string;
   value: string;
+  sub?: string;
   icon: React.ComponentType<{ className?: string }>;
   tone: "emerald" | "red" | "sky" | "amber" | "violet";
   big?: boolean;
@@ -1688,6 +1759,9 @@ function SummaryCard({
       <div className={`mt-1.5 font-extrabold font-mono ${big ? "text-xl md:text-2xl" : "text-base md:text-lg"} text-foreground`}>
         {value}
       </div>
+      {sub && (
+        <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{sub}</div>
+      )}
     </motion.div>
   );
 }

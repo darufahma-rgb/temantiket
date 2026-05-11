@@ -566,6 +566,37 @@ export default function OrderDetail() {
         </div>
       </div>
 
+      {/* ── Payment warning banner — shown when order is UNPAID or DP ── */}
+      {currentUser?.role !== "staff" && (() => {
+        const ps = derivePaymentStatus(
+          Number(order.paidAmount ?? 0),
+          Number(order.totalPrice ?? 0),
+          order.paymentStatus,
+        );
+        if (ps === "PAID" || ps === "REFUNDED") return null;
+        const remaining = Math.max(0, Number(order.totalPrice ?? 0) - Number(order.paidAmount ?? 0));
+        const fmtNat = (v: number) =>
+          order.currency === "EGP" ? `EGP ${v.toLocaleString("en")}` : `Rp ${v.toLocaleString("id-ID")}`;
+        return (
+          <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${
+            ps === "DP" ? "bg-amber-50 border-amber-200" : "bg-red-50 border-red-200"
+          }`}>
+            <span className="text-lg shrink-0 mt-0.5">{ps === "DP" ? "🟡" : "🔴"}</span>
+            <div className="flex-1 min-w-0">
+              <p className={`text-[12.5px] font-bold ${ps === "DP" ? "text-amber-800" : "text-red-700"}`}>
+                {ps === "DP" ? "Pembayaran Sebagian (DP)" : "Pembayaran Belum Diterima"}
+              </p>
+              <p className={`text-[11.5px] mt-0.5 ${ps === "DP" ? "text-amber-700" : "text-red-600"}`}>
+                {ps === "DP"
+                  ? `Sisa tagihan ${fmtNat(remaining)} belum diterima — order ini belum sepenuhnya dihitung sebagai profit real di laporan keuangan.`
+                  : `Order senilai ${fmtNat(Number(order.totalPrice ?? 0))} belum dibayar — tidak dihitung sebagai revenue aktual atau profit di laporan keuangan.`
+                }
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Flight-specific editor (Magic Parser, route, harga, passport sync) */}
       {order.type === "flight" && (
         <FlightOrderEditor

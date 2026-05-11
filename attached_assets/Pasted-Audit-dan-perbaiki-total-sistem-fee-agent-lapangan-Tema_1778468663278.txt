@@ -1,0 +1,115 @@
+Audit dan perbaiki total sistem fee agent lapangan Temantiket.
+
+Masalah saat ini:
+1. Di halaman /agents/:id tab Komisi, tombol “Sinkronkan Fee Sekarang” gagal dengan error 404.
+2. Fee agent lapangan yang sudah ditugaskan di order belum masuk ke profile agent yang ditugaskan.
+3. Fee agent lapangan juga belum muncul di “Akumulasi Fee Komisi Agen” di halaman /settings.
+4. Komisi sales terlihat 0, fee lapangan terlihat 0, padahal order sudah punya assignment agent lapangan.
+5. Sistem harus menampilkan semua fee lapangan: VOA, pelaksana, kurir, field agent, visa executor, operational agent.
+
+Yang harus diaudit:
+- Pastikan endpoint `/api/backfill-field-fees` benar-benar tersedia di environment yang sedang dipakai.
+- Jika deploy di Vercel, jangan cuma taruh route di `server/index.cjs`, karena Express server tidak jalan di Vercel. Buat serverless endpoint di `api/backfill-field-fees.js`.
+- Pastikan frontend memanggil URL endpoint yang benar.
+- Pastikan response error dari server dibaca dari `json.error`, bukan `json.message`.
+- Pastikan endpoint tidak return success kalau semua insert gagal.
+- Pastikan endpoint melakukan preflight check ke tabel `agent_wallet_transactions`.
+- Pastikan endpoint mendeteksi CHECK constraint violation dan memberi pesan jelas untuk menjalankan SQL migration.
+- Pastikan migration wallet type sudah mencakup:
+  - `order_bonus`
+  - `voa_agent_fee`
+  - `pelaksana_fee`
+  - `kurir_fee`
+  - `field_agent_fee`
+  - `visa_executor_fee`
+  - `operational_agent_fee`
+  - `mission_conversion`
+  - `payout`
+  - `adjustment`
+
+Yang harus diperbaiki:
+1. Buat / perbaiki endpoint `/api/backfill-field-fees`
+   - support local Express dan Vercel serverless.
+   - validasi user login.
+   - hanya owner/staff yang boleh menjalankan.
+   - support filter `agentId`.
+   - scan semua order Completed di agency.
+   - cari fee yang belum dikreditkan berdasarkan metadata:
+     - `voaFieldAgentId` + `voaAgentFee` + `voaFeeCredited`
+     - `pelaksanaId` + `pelaksanaFee` + `pelaksanaFeeCredited`
+     - `kurirAgentId` + `kurirFee` + `kurirFeeCredited`
+     - `fieldAgentId` + `fieldAgentFee` + `fieldAgentFeeCredited`
+     - `visaExecutorId` + `executorFee` + `executorFeeCredited`
+     - `assignedOperationalAgentId` + `operationalAgentFee` + `operationalAgentFeeCredited`
+   - insert/upsert ke `agent_wallet_transactions` pakai deterministic id:
+     - `voa-{orderId}`
+     - `pelaksana-{orderId}`
+     - `kurir-{orderId}`
+     - `field-{orderId}`
+     - `executor-{orderId}`
+     - `operational-{orderId}`
+   - setelah wallet transaction berhasil, update metadata order menjadi `*FeeCredited: true`.
+   - harus idempotent, aman dijalankan berkali-kali.
+   - return JSON berisi:
+     - `credited`
+     - `skipped`
+     - `errors`
+     - `errorSample`
+     - `processedOrders`
+
+2. Perbaiki AgentProfileOwnerView.tsx
+   - tombol “Sinkronkan Fee Sekarang” harus call endpoint yang benar.
+   - jika 404, tampilkan pesan jelas bahwa endpoint belum tersedia di environment.
+   - setelah sukses, reload wallet transactions dan orders.
+   - jangan tampilkan success kalau `credited === 0` dan `errors > 0`.
+   - tampilkan `errorSample` di toast.
+
+3. Perbaiki AgentProfile.tsx
+   - profile agent harus membaca fee lapangan dari dua sumber:
+     - wallet transactions yang sudah credited
+     - order assignment yang masih pending
+   - tampilkan di tab Komisi:
+     - Komisi Sales
+     - Fee Agent Lapangan
+     - Fee Pelaksana
+     - Fee Kurir
+     - Bonus / Manual
+     - Total
+   - tampilkan riwayat tugas lapangan meskipun belum dikreditkan.
+   - cocokkan assignment berdasarkan user id agent dengan metadata order.
+
+4. Perbaiki Settings.tsx bagian “Akumulasi Fee Komisi Agen”
+   - jangan hanya baca `agentFeeFromMeta`.
+   - gunakan `agent_wallet_transactions` sebagai sumber credited.
+   - tambahkan pending dari order assignment yang belum credited.
+   - tampilkan breakdown:
+     - Closing
+     - Agent Lapangan
+     - Pelaksana
+     - Kurir
+     - Bonus / Adjustment
+     - Pending
+     - Saldo Wallet
+   - pastikan agent yang hanya bertugas lapangan tetap muncul nilainya.
+
+5. Pastikan AgentLeaderboard.tsx dan AgentCommandCenter.tsx
+   - hanya hitung fee dari order Completed.
+   - field fee harus mencakup semua tipe fee lapangan.
+   - jangan hitung order yang masih Draft/Process.
+
+6. Buat / update SQL migration:
+   - file: `supabase/wallet-sync-fix.sql`
+   - expand CHECK constraint `agent_wallet_transactions.type`.
+   - tambahkan RLS policy UPDATE yang diperlukan untuk UPSERT.
+   - pastikan tabel punya unique/idempotency key yang mencegah double entry.
+   - tulis instruksi jelas agar SQL dijalankan di Supabase SQL Editor.
+
+Acceptance criteria:
+- Klik “Sinkronkan Fee Sekarang” di /agents/:id tidak 404.
+- Jika migration belum dijalankan, muncul error jelas menyebut file SQL yang harus dijalankan.
+- Fee VOA/pelaksana/kurir/field/executor/operational agent dari order Completed masuk ke wallet agent yang ditugaskan.
+- Fee muncul di profile agent /agents/:id.
+- Fee muncul di Akumulasi Fee Komisi Agen di /settings.
+- Leaderboard dan Agent Command Center ikut menampilkan komisi yang benar.
+- Aman dijalankan berkali-kali tanpa double transaction.
+- TypeScript harus 0 error.
