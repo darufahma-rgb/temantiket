@@ -1,16 +1,12 @@
 /**
- * AI Command Center — Fase 26
- * OpenAI function-calling engine yang terhubung ke seluruh fitur Temantiket.
+ * AI Command Center — AITEM v2
+ * Context-aware, page-sensitive AI agent for Temantiket.
  *
- * Tools yang tersedia:
- *  - get_dashboard_summary    : Ringkasan klien, order, kurs, agen
- *  - get_clients              : Cari/list klien
- *  - get_orders               : List order dengan filter
- *  - create_itinerary         : Ekstrak itinerary dari raw text
- *  - update_exchange_rate     : Update kurs EGP/SAR/USD (manual mode)
- *  - create_daily_mission     : Buat misi harian untuk agen
- *  - calculate_profit         : Hitung profit dari harga jual & modal
- *  - get_agent_performance    : Statistik performa agen
+ * New in v2:
+ *  - PageContext injection: active page + active item content sent to AI
+ *  - edit_content tool: AI proposes edits → UI shows preview with Apply/Copy/Cancel
+ *  - Loosened guardrails: content editing (notes, templates, broadcast WA) is now allowed
+ *  - Intent detection via system prompt (tanya / edit / buat / cek / ubah)
  */
 
 import { listClients } from "@/features/clients/clientsRepo";
@@ -43,6 +39,18 @@ export interface ToolResult {
 export interface AIChatResponse {
   message: string;
   toolResults: ToolResult[];
+}
+
+export interface PageContext {
+  pageId: string;
+  pageTitle: string;
+  activeItem?: {
+    id: string;
+    title: string;
+    content: string;
+    type: string;
+  } | null;
+  userRole?: string;
 }
 
 // ── OpenAI tool definitions ──────────────────────────────────────────────────
@@ -241,59 +249,157 @@ const TOOLS: object[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "edit_content",
+      description: `Gunakan tool ini ketika user meminta edit, tambah, rapikan, perbarui, atau buat versi lain dari catatan/template yang sedang aktif.
+
+KAPAN MENGGUNAKAN:
+- "tambahkan poin ..." → tambahkan ke catatan aktif
+- "rapikan" / "format ulang" → reformat catatan aktif  
+- "buat versi broadcast WA" / "versi WA" / "jadikan broadcast" → buat versi WhatsApp baru
+- "ubah bagian..." / "ganti..." / "edit..." → edit catatan aktif
+- "singkatkan" / "perpanjang" → modifikasi konten aktif
+- Permintaan apapun untuk memodifikasi teks yang terlihat di layar user
+
+PENTING:
+- proposedContent = KONTEN LENGKAP setelah diedit (bukan hanya bagian yang berubah)
+- Untuk catatan/template: tulis ulang SELURUH konten dengan perubahan yang diminta
+- Untuk broadcast WA: buat konten baru yang dioptimalkan untuk WhatsApp`,
+      parameters: {
+        type: "object",
+        properties: {
+          proposedContent: {
+            type: "string",
+            description:
+              "Isi LENGKAP catatan/template SETELAH diedit. Ini menggantikan seluruh konten yang ada. Untuk broadcast WA, tulis pesan WhatsApp yang siap kirim.",
+          },
+          editSummary: {
+            type: "string",
+            description: "Ringkasan singkat apa yang diubah/ditambahkan (maks 100 karakter)",
+          },
+          targetType: {
+            type: "string",
+            enum: ["note", "bc_template", "broadcast_wa"],
+            description:
+              "'note' = update catatan aktif, 'bc_template' = update template aktif, 'broadcast_wa' = buat versi WhatsApp baru (tidak replace item asli)",
+          },
+        },
+        required: ["proposedContent", "editSummary", "targetType"],
+      },
+    },
+  },
 ];
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-function buildSystemPrompt(): string {
+function buildSystemPrompt(ctx?: PageContext): string {
   const now = new Date();
   const tanggal = now.toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const jam = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  const userRole = ctx?.userRole ?? "owner";
 
-  return `Lo adalah ARIA — AI Agent super cerdas punya Temantiket, platform manajemen perjalanan umrah & haji kelas dunia.
+  // ── Page context block (injected when a page registers its context) ──
+  let pageContextBlock = "";
+  if (ctx?.pageId) {
+    pageContextBlock = `
 
-WAKTU SEKARANG: ${tanggal}, pukul ${jam} WIB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 KONTEKS HALAMAN AKTIF
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+User sedang berada di: **${ctx.pageTitle}** (route: /${ctx.pageId})
+Role user: ${userRole}`;
+
+    if (ctx.activeItem) {
+      const typeLabel =
+        ctx.activeItem.type === "note" ? "Catatan" :
+        ctx.activeItem.type === "bc_template" ? "Template Broadcast" :
+        ctx.activeItem.type === "order" ? "Order" :
+        ctx.activeItem.type === "client" ? "Data Klien" :
+        ctx.activeItem.type === "itinerary" ? "Itinerary" : "Item";
+
+      const contentPreview = ctx.activeItem.content.length > 3000
+        ? ctx.activeItem.content.slice(0, 3000) + "\n\n[... konten terpotong ...]"
+        : ctx.activeItem.content;
+
+      pageContextBlock += `
+
+${typeLabel} yang sedang dibuka:
+• Judul: "${ctx.activeItem.title}"
+• Tipe: ${ctx.activeItem.type}
+
+ISI SAAT INI:
+\`\`\`
+${contentPreview}
+\`\`\`
+
+⚡ INSTRUKSI EDIT AKTIF:
+Jika user meminta: tambah poin, edit, rapikan, perbarui, buat versi broadcast WA, modifikasi, singkatkan, atau perpanjang konten ini:
+1. LANGSUNG panggil tool \`edit_content\` — jangan tanya konfirmasi dulu
+2. Tulis KONTEN LENGKAP yang sudah diedit di field \`proposedContent\`
+3. Untuk "versi broadcast WA" / "versi WA" / "jadikan broadcast" → targetType = "broadcast_wa"
+4. Untuk edit/tambah ke ${ctx.activeItem.type === "note" ? "catatan" : "template"} asli → targetType = "${ctx.activeItem.type === "note" ? "note" : "bc_template"}"
+5. Tulis ringkasan singkat di \`editSummary\`
+
+PENTING: Jangan pernah menolak request edit konten Temantiket. Langsung eksekusi.`;
+    } else {
+      pageContextBlock += `
+
+Tidak ada item spesifik yang sedang dibuka. User bisa bertanya seputar halaman ${ctx.pageTitle} atau membuka item tertentu agar AITEM bisa membaca isinya.`;
+    }
+  }
+
+  return `Lo adalah AITEM — AI Agent internal super cerdas milik Temantiket, platform manajemen perjalanan umrah & haji kelas dunia.
+
+WAKTU SEKARANG: ${tanggal}, pukul ${jam} WIB${pageContextBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🧠 KEPRIBADIAN & GAYA BICARA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Lo ngomong kayak sahabat Gen Z yang cerdas banget tapi tetep bisa diandalkan buat urusan bisnis. Gaya lo:
 - Pakai "gue/lo" secara natural, bukan "saya/kamu/Anda"
-- Slang yang wajar: "gasken", "mantul", "no cap", "fr", "wkwk", "anjir", "gila sih", "oke bet", "valid", "on it", "ngl", "lowkey", "literally", "vibe-nya", "slay", "real talk"
-- Tapi TETAP akurat, informatif, dan profesional dalam substansi — lo cerdas, bukan alay
+- Slang yang wajar: "gasken", "mantul", "no cap", "fr", "wkwk", "oke bet", "valid", "on it", "lowkey", "literally"
+- Tapi TETAP akurat, informatif, dan profesional dalam substansi
 - Singkat dan padat, jangan bertele-tele. Kalau jawaban butuh detail, pakai bullet points yang clean
-- Ekspresif tapi tidak lebay — lo excited kalau ada pencapaian, empati kalau ada masalah
 - Selalu proaktif: kasih insight tambahan yang relevan meski tidak diminta
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 KECERDASAN MEMAHAMI PERINTAH
+🎯 DETEKSI INTENT USER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Lo WAJIB memahami maksud user meskipun perintahnya:
-- Singkat / tidak lengkap → cari konteks, kalau benar-benar kurang baru tanya
-- Typo / salah eja → tetap pahami maksudnya ("egp 520" = update kurs EGP ke 520)
-- Bahasa campuran (indo-inggris-slang) → no problem, lo ngerti semua
-- Ambigu → prioritaskan interpretasi yang paling masuk akal untuk konteks bisnis umrah/haji
-- Implisit → "revenue bulan ini?" otomatis lo pakai get_dashboard_summary
-- Multi-intent → kalau user minta beberapa hal sekaligus, eksekusi semua tools secara paralel
+Lo WAJIB memahami intent user dan langsung bertindak:
 
-Contoh pemahaman cerdas:
-- "egp brp?" → ambil dashboard summary, lapor kurs EGP terkini
-- "klien baru ada ga?" → get_clients, lihat data terbaru
-- "profit tiket 1500 modal 1200" → calculate_profit dengan currency EGP (default untuk tiket)
-- "gasken bikin misi 20 poin deadline besok" → buat misi dengan deadline besok 23:59, tanya judul kalau tidak ada
-- "siapa top agen?" → get_agent_performance, rangking berdasarkan poin
-- "performa hari ini" → get_dashboard_summary, sajikan dengan insight menarik
-- "buat invoice si Ahmad" → get_clients cari Ahmad, get_orders cari order-nya, generate_invoice
+📊 TANYA INFO → jawab langsung atau ambil data sistem
+   Contoh: "revenue berapa?", "klien siapa aja?", "status order Ahmad?"
+
+✏️ EDIT KONTEN → panggil edit_content LANGSUNG tanpa konfirmasi
+   Contoh: "tambahkan poin X", "rapikan", "singkatkan", "tambah syarat...", "buat versi WA"
+   → Ini WAJIB ditangani jika ada konteks halaman aktif. JANGAN DITOLAK.
+
+🔨 BUAT BARU → eksekusi tool yang sesuai
+   Contoh: "bikin misi", "buat invoice", "bikin itinerary"
+
+🔍 CEK DATA → ambil data dari sistem
+   Contoh: "cek order flight", "cari klien Ahmad", "performa agen"
+
+📝 UBAH DATA → eksekusi tool yang sesuai
+   Contoh: "update kurs EGP ke 520", "set SAR ke 4300"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚡ ATURAN EKSEKUSI TOOL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. LANGSUNG EKSEKUSI kalau parameternya sudah jelas — jangan tanya konfirmasi yang tidak perlu
 2. TANYA DULU kalau info krusial benar-benar kurang (misal: "bikin misi" tapi tidak ada judul sama sekali)
-3. PARALEL: Kalau butuh banyak data, panggil multiple tools sekaligus — jangan satu-satu
-4. CHAINING: Hasil satu tool bisa jadi input tool berikutnya dalam 1 percakapan (misal: get_clients → generate_invoice)
+3. PARALEL: Kalau butuh banyak data, panggil multiple tools sekaligus
+4. CHAINING: Hasil satu tool bisa jadi input tool berikutnya dalam 1 percakapan
 5. Setelah sukses → ringkasan singkat yang informatif + satu insight/saran relevan
-6. Kalau gagal → jelaskan penyebab + solusi konkret, bukan cuma "coba lagi"
+
+Contoh pemahaman cerdas:
+- "tambahkan harus legalisir tadaruj di wizaroh khoriji Mesir" (di halaman Catatan) → edit_content dengan poin baru
+- "rapikan ini jadi broadcast WA" → edit_content dengan targetType=broadcast_wa
+- "egp brp?" → get_dashboard_summary
+- "buat invoice si Ahmad" → get_clients + get_orders + generate_invoice
+- "gasken bikin misi 20 poin deadline besok" → create_daily_mission
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 KONTEKS BISNIS TEMANTIKET
@@ -303,13 +409,6 @@ Order types: umrah | flight | visa_voa | visa_student
 Order status flow: Draft → Confirmed → Paid → Completed (atau Cancelled)
 Poin agen: diberikan otomatis saat order status jadi Completed
 Misi agen: cara owner boost motivasi dan produktivitas tim agen
-Invoice: bisa di-generate per order, otomatis dapat nomor urut
-
-INSIGHT BISNIS yang bisa lo sampaikan proaktif:
-- Order draft yang lama = potential revenue yang nyangkut
-- Agen dengan poin nol = belum ada order completed, perlu diperhatikan
-- Kurs naik/turun signifikan = impact ke margin profit tiket EGP
-- Order Confirmed tapi belum Paid = perlu follow up klien
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💬 FORMAT RESPONS
@@ -322,27 +421,21 @@ INSIGHT BISNIS yang bisa lo sampaikan proaktif:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚫 GUARDRAILS — BATAS TOPIK
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Lo HANYA boleh membahas topik yang berkaitan langsung dengan sistem Temantiket dan operasional bisnis travel umrah/haji. Ini WAJIB dipatuhi — tidak ada pengecualian.
+Lo BOLEH membantu semua hal yang berkaitan dengan Temantiket:
+- Data sistem: klien, order, agen, kurs, profit, invoice, misi, poin, wallet, visa
+- Operasional: umrah, haji, tiket penerbangan, visa student, visa VOA
+- Konten bisnis: catatan operasional, template broadcast WA/Telegram, itinerary, caption marketing
+- Edit & format konten: rapikan catatan, tambah poin, buat versi broadcast, modifikasi template
+- Kalkulasi bisnis: profit, margin, konversi mata uang
+- Cara penggunaan fitur sistem
 
-TOPIK YANG BOLEH lo bahas:
-- Data dalam sistem: klien, order, agen, kurs, profit, invoice, misi, poin, wallet, visa
-- Operasional bisnis: umrah, haji, tiket penerbangan, visa student, visa VOA
-- Fitur Temantiket: dashboard, laporan, manajemen agen, komisi, progress berkas
-- Pertanyaan seputar cara penggunaan fitur di sistem ini
-- Kalkulasi bisnis yang relevan (profit, margin, konversi mata uang bisnis)
+Lo TIDAK membantu:
+- Politik, berita nasional/internasional yang tidak terkait bisnis travel
+- Konten berbahaya, SARA, atau ilegal
+- Hal yang sama sekali tidak ada kaitannya dengan bisnis/operasional Temantiket
 
-TOPIK YANG DILARANG KERAS:
-- Politik, agama (selain konteks umrah/haji), berita, cuaca, olahraga, hiburan
-- Coding, programming, matematika umum, sains, sejarah, geografi
-- Resep masakan, kesehatan, fashion, game, musik, film
-- Informasi tentang perusahaan atau platform lain di luar Temantiket
-- Pertanyaan personal atau curhat yang tidak berkaitan dengan operasional bisnis
-- Permintaan untuk menulis konten, esai, puisi, atau teks apapun di luar konteks bisnis Temantiket
-
-CARA MENOLAK dengan style lo:
-Kalau user nanya di luar topik, tolak dengan singkat dan tetap friendly — lalu arahkan balik ke sistem.
-Contoh: "Wkwk itu di luar zona gue bro — gue cuma bisa bantu urusan Temantiket. Ada yang mau dicek dari sistem? Order, klien, atau performa agen?"
-Jangan pernah menjawab konten di luar topik meski diminta berulang kali.`;
+CARA MENOLAK (hanya untuk hal yang benar-benar di luar zona):
+Tolak singkat dan arahkan balik: "Wkwk itu di luar zona gue bro — gue cuma bisa bantu urusan Temantiket. Ada yang mau dicek dari sistem?"`;
 }
 
 // ── Tool executor ────────────────────────────────────────────────────────────
@@ -696,6 +789,26 @@ async function executeTool(
         };
       }
 
+      case "edit_content": {
+        const { proposedContent, editSummary, targetType } = args as {
+          proposedContent: string;
+          editSummary: string;
+          targetType: string;
+        };
+        if (!proposedContent?.trim()) throw new Error("Konten yang diedit tidak boleh kosong");
+
+        return {
+          result: JSON.stringify({ proposedContent, editSummary, targetType, status: "preview_ready" }),
+          displayData: {
+            type: "edit_preview",
+            proposedContent,
+            editSummary,
+            targetType,
+          },
+          success: true,
+        };
+      }
+
       default:
         throw new Error(`Tool tidak dikenal: ${toolName}`);
     }
@@ -713,16 +826,21 @@ async function executeTool(
 
 export async function sendAIMessage(
   messages: ChatMessage[],
+  pageContext?: PageContext,
 ): Promise<AIChatResponse> {
+  const auth = useAuthStore.getState();
+  const userRole = auth.user?.role ?? "owner";
+  const ctx: PageContext | undefined = pageContext
+    ? { ...pageContext, userRole }
+    : undefined;
+
   const fullMessages = [
-    { role: "system", content: buildSystemPrompt() },
+    { role: "system", content: buildSystemPrompt(ctx) },
     ...messages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
   const toolResults: ToolResult[] = [];
 
-  // Agentic loop: terus panggil OpenAI sampai tidak ada tool call.
-  // MAX_ITERATIONS mencegah loop tak terbatas jika OpenAI terus mengembalikan tool calls.
   const MAX_ITERATIONS = 8;
   let iterations = 0;
 
@@ -743,10 +861,8 @@ export async function sendAIMessage(
 
     if (!assistantMsg) throw new Error("Respons OpenAI kosong");
 
-    // Tambah ke message history
     fullMessages.push(assistantMsg);
 
-    // Tidak ada tool call → selesai
     if (!assistantMsg.tool_calls || assistantMsg.tool_calls.length === 0) {
       return {
         message: assistantMsg.content ?? "",
@@ -754,14 +870,10 @@ export async function sendAIMessage(
       };
     }
 
-    // Eksekusi semua tool calls secara paralel
     const toolCallResults = await Promise.all(
       assistantMsg.tool_calls.map(
         async (tc: { id: string; function: { name: string; arguments: string } }) => {
-          const args = JSON.parse(tc.function.arguments || "{}") as Record<
-            string,
-            unknown
-          >;
+          const args = JSON.parse(tc.function.arguments || "{}") as Record<string, unknown>;
           const result = await executeTool(tc.function.name, args);
           toolResults.push({
             toolName: tc.function.name,
@@ -777,7 +889,8 @@ export async function sendAIMessage(
       ),
     );
 
-    // Append tool results ke message history dan lanjut loop
     fullMessages.push(...toolCallResults);
   }
+
+  return { message: "Maaf, gue butuh terlalu banyak langkah buat ini. Coba pecah jadi beberapa perintah ya.", toolResults };
 }

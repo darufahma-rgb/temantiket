@@ -1,8 +1,13 @@
 /**
- * AIChatWidget — Fase 26: AI Command Center
- * Floating chat bubble di pojok kanan bawah dashboard.
- * Mendukung OpenAI function calling untuk kontrol penuh Temantiket.
- * Context-aware: chip suggestion berubah sesuai halaman aktif.
+ * AIChatWidget — AITEM v2
+ * Context-aware floating AI assistant for Temantiket.
+ *
+ * New in v2:
+ *  - Reads active page context from useAIContextStore
+ *  - Sends page + active item content to AI with every message
+ *  - EditPreviewCard: shows proposed edits with Apply / Copy / Cancel
+ *  - Context badge in header shows active item title
+ *  - Chip suggestions updated per page + edit-oriented prompts for notes/templates
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -11,16 +16,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
-  Bot, Send, Loader2, Sparkles,
+  Send, Loader2, Sparkles,
   TrendingUp, Users, ShoppingBag, Zap, RefreshCw,
   CheckCircle2, AlertCircle, Target, Calculator, ChevronDown,
-  FileDown,
+  FileDown, Copy, ClipboardCheck, X, Edit3, FileText,
 } from "lucide-react";
-import { sendAIMessage, type ChatMessage, type ToolResult } from "@/lib/aiCommandCenter";
+import { sendAIMessage, type ChatMessage, type ToolResult, type PageContext } from "@/lib/aiCommandCenter";
 import { useAIChatStore } from "@/store/aiChatStore";
+import { useAIContextStore } from "@/store/aiContextStore";
 import { cn } from "@/lib/utils";
 
-// ── Page-aware fallback suggestions ─────────────────────────────────────────
+// ── Page-aware chip suggestions ──────────────────────────────────────────────
 
 interface PageSuggestions {
   match: (p: string) => boolean;
@@ -141,23 +147,23 @@ const PAGE_SUGGESTIONS: PageSuggestions[] = [
   {
     match: (p) => p.startsWith("/bc-templates"),
     chips: [
+      "Edit template ini jadi lebih persuasif",
+      "Buat versi Broadcast WA dari template ini",
+      "Tambahkan call to action yang kuat",
+      "Singkatkan template ini",
+      "Rapikan format template aktif",
       "List semua klien buat bahan broadcast",
-      "Berapa total klien aktif gue?",
-      "Ringkasan bisnis buat bahan BC",
-      "Cari klien nama Ahmad",
-      "Order terbaru yang perlu di-follow up?",
-      "Revenue bulan ini berapa?",
     ],
   },
   {
     match: (p) => p.startsWith("/notes"),
     chips: [
-      "Ringkasan bisnis buat gue catat",
+      "Tambahkan poin baru ke catatan ini",
+      "Rapikan format catatan ini jadi lebih rapi",
+      "Buat versi Broadcast WA dari catatan ini",
+      "Singkatkan catatan ini",
       "Total revenue & profit sekarang?",
-      "Order yang baru Completed apa aja?",
-      "Status performa agen gimana?",
-      "Update kurs EGP ke 520",
-      "5 klien terbaru",
+      "Tambah: [ketik poin yang mau ditambah]",
     ],
   },
 ];
@@ -175,11 +181,138 @@ function getPageSuggestions(pathname: string): string[] {
   return PAGE_SUGGESTIONS.find((p) => p.match(pathname))?.chips ?? DEFAULT_SUGGESTIONS;
 }
 
-// ── Tool result display ──────────────────────────────────────────────────────
+// ── Edit Preview Card ─────────────────────────────────────────────────────────
+
+function EditPreviewCard({ result }: { result: ToolResult }) {
+  const { onApplyEdit, activeItem } = useAIContextStore();
+  const [copied, setCopied] = useState(false);
+  const [applied, setApplied] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  if (dismissed) return null;
+
+  const d = result.displayData;
+  const content = d.proposedContent as string;
+  const summary = d.editSummary as string;
+  const targetType = d.targetType as string;
+  const isBroadcast = targetType === "broadcast_wa";
+  const canApply = !isBroadcast && onApplyEdit !== null;
+
+  const handleApply = () => {
+    if (onApplyEdit) {
+      onApplyEdit(content);
+      setApplied(true);
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // fallback
+    }
+  };
+
+  const headerLabel = isBroadcast
+    ? "Versi Broadcast WA"
+    : targetType === "bc_template"
+    ? "Preview Edit Template"
+    : "Preview Edit Catatan";
+
+  const activeTitle = activeItem?.title;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      className="rounded-xl border border-blue-200 bg-white overflow-hidden shadow-sm"
+    >
+      {/* Header */}
+      <div
+        className="flex items-center gap-2 px-3 py-2.5 text-white text-xs"
+        style={{ background: "linear-gradient(135deg, #1a44d4 0%, #0a2472 100%)" }}
+      >
+        {isBroadcast ? (
+          <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
+        ) : (
+          <Edit3 className="w-3.5 h-3.5 shrink-0" />
+        )}
+        <span className="font-semibold flex-1">{headerLabel}</span>
+        {activeTitle && !isBroadcast && (
+          <span className="text-white/60 truncate max-w-[90px]">{activeTitle}</span>
+        )}
+        <button
+          onClick={() => setDismissed(true)}
+          className="w-5 h-5 rounded flex items-center justify-center hover:bg-white/20 transition-colors shrink-0 ml-1"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+
+      {/* Summary */}
+      <div className="px-3 py-2 text-[11.5px] text-blue-700 bg-blue-50/80 border-b border-blue-100 font-medium">
+        ✏️ {summary}
+      </div>
+
+      {/* Content preview */}
+      <div className="px-3 py-3 max-h-52 overflow-y-auto bg-slate-50">
+        <pre className="text-[11.5px] text-foreground/80 leading-relaxed whitespace-pre-wrap font-sans break-words">
+          {content}
+        </pre>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-2 p-2.5 border-t border-blue-100 bg-white">
+        {/* Apply button — only for note/template types when handler is registered */}
+        {canApply && !applied && (
+          <button
+            onClick={handleApply}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-white text-xs font-semibold transition-colors"
+            style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Terapkan
+          </button>
+        )}
+        {canApply && applied && (
+          <div className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-semibold">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Diterapkan!
+          </div>
+        )}
+        {!canApply && !isBroadcast && (
+          <div className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs">
+            <FileText className="w-3.5 h-3.5" />
+            Buka catatan dulu untuk terapkan
+          </div>
+        )}
+
+        {/* Copy button */}
+        <button
+          onClick={handleCopy}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold transition-colors"
+        >
+          {copied ? (
+            <><ClipboardCheck className="w-3.5 h-3.5 text-emerald-500" /> Tersalin!</>
+          ) : (
+            <><Copy className="w-3.5 h-3.5" /> Salin</>
+          )}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Tool result display ───────────────────────────────────────────────────────
 
 function ToolResultCard({ result }: { result: ToolResult }) {
   const d = result.displayData;
   const type = d.type as string;
+
+  // edit_preview is handled separately by EditPreviewCard
+  if (type === "edit_preview") return null;
 
   if (!result.success) {
     return (
@@ -412,7 +545,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ── Message bubble ───────────────────────────────────────────────────────────
+// ── Message bubble ────────────────────────────────────────────────────────────
 
 interface StoredMessage {
   msg: ChatMessage;
@@ -421,6 +554,14 @@ interface StoredMessage {
 
 function MessageBubble({ msg, toolResults }: { msg: ChatMessage; toolResults?: ToolResult[] }) {
   const isUser = msg.role === "user";
+
+  const editPreviews = toolResults?.filter(
+    (r) => r.success && r.displayData.type === "edit_preview",
+  ) ?? [];
+  const otherResults = toolResults?.filter(
+    (r) => r.displayData.type !== "edit_preview",
+  ) ?? [];
+
   return (
     <div className={cn("flex flex-col gap-1.5", isUser ? "items-end" : "items-start")}>
       {!isUser && (
@@ -432,14 +573,16 @@ function MessageBubble({ msg, toolResults }: { msg: ChatMessage; toolResults?: T
         </div>
       )}
 
-      {toolResults && toolResults.length > 0 && (
+      {/* Standard tool result cards (non-edit-preview) */}
+      {otherResults.length > 0 && (
         <div className="w-full space-y-1.5 px-1">
-          {toolResults.map((r, i) => (
+          {otherResults.map((r, i) => (
             <ToolResultCard key={i} result={r} />
           ))}
         </div>
       )}
 
+      {/* Text bubble */}
       {msg.content && (
         <div className={cn(
           "max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed",
@@ -454,24 +597,24 @@ function MessageBubble({ msg, toolResults }: { msg: ChatMessage; toolResults?: T
               remarkPlugins={[remarkGfm]}
               components={{
                 p: ({ children }) => (
-                  <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+                  <p className="mb-2 last:mb-0 leading-relaxed font-normal">{children}</p>
                 ),
                 strong: ({ children }) => (
-                  <strong className="font-semibold text-foreground">{children}</strong>
+                  <strong className="font-bold text-foreground">{children}</strong>
                 ),
                 em: ({ children }) => (
-                  <em className="italic opacity-90">{children}</em>
+                  <em className="italic opacity-80">{children}</em>
                 ),
                 ul: ({ children }) => (
-                  <ul className="mb-2 last:mb-0 space-y-1 pl-1">{children}</ul>
+                  <ul className="mb-2 last:mb-0 space-y-1.5 pl-0.5">{children}</ul>
                 ),
                 ol: ({ children }) => (
-                  <ol className="mb-2 last:mb-0 space-y-1 pl-1 list-decimal list-inside">{children}</ol>
+                  <ol className="mb-2 last:mb-0 space-y-1.5 pl-5 list-decimal marker:text-muted-foreground/60">{children}</ol>
                 ),
                 li: ({ children }) => (
-                  <li className="flex items-start gap-1.5 text-sm">
-                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0" />
-                    <span>{children}</span>
+                  <li className="flex items-start gap-2 text-sm list-none font-normal">
+                    <span className="mt-[0.5em] h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0 flex-none" />
+                    <span className="flex-1 min-w-0">{children}</span>
                   </li>
                 ),
                 h1: ({ children }) => (
@@ -499,7 +642,7 @@ function MessageBubble({ msg, toolResults }: { msg: ChatMessage; toolResults?: T
                   <pre className="bg-slate-100 rounded-lg my-2 overflow-x-auto">{children}</pre>
                 ),
                 blockquote: ({ children }) => (
-                  <blockquote className="border-l-2 border-sky-300 pl-3 my-2 text-muted-foreground italic">
+                  <blockquote className="border-l-2 border-sky-300 pl-3 my-2 text-muted-foreground font-normal">
                     {children}
                   </blockquote>
                 ),
@@ -517,15 +660,57 @@ function MessageBubble({ msg, toolResults }: { msg: ChatMessage; toolResults?: T
           )}
         </div>
       )}
+
+      {/* Edit preview cards — rendered below the text bubble */}
+      {editPreviews.length > 0 && (
+        <div className="w-full space-y-2 px-1 mt-0.5">
+          {editPreviews.map((r, i) => (
+            <EditPreviewCard key={i} result={r} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Main widget ──────────────────────────────────────────────────────────────
+// ── Context badge (shown in header when item is active) ───────────────────────
+
+function ContextBadge({ item, page }: { item: { title: string; type: string } | null; page: { pageTitle: string } | null }) {
+  if (!page) return null;
+
+  const label = item
+    ? item.title.length > 22
+      ? item.title.slice(0, 22) + "…"
+      : item.title
+    : null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center gap-1 mt-0.5"
+    >
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block shrink-0" />
+      <span className="text-[10.5px] text-white/65">
+        {label ? (
+          <>
+            <span className="text-white/40">{page.pageTitle} · </span>
+            <span className="text-white/80 font-medium">{label}</span>
+          </>
+        ) : (
+          <span>{page.pageTitle} · Siap membantu</span>
+        )}
+      </span>
+    </motion.div>
+  );
+}
+
+// ── Main widget ───────────────────────────────────────────────────────────────
 
 export function AIChatWidget() {
   const { pathname } = useLocation();
   const { isOpen, pendingText, open, close, clearPendingText } = useAIChatStore();
+  const { page, activeItem } = useAIContextStore();
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -554,7 +739,7 @@ export function AIChatWidget() {
     if (isOpen) scrollToBottom();
   }, [history, loading, isOpen, scrollToBottom]);
 
-  // Handle pending text from external (AIContextualBar chips)
+  // Handle pending text from external chips / AIContextualBar
   useEffect(() => {
     if (pendingText && isOpen) {
       setInput(pendingText);
@@ -575,8 +760,24 @@ export function AIChatWidget() {
     setInput("");
     setLoading(true);
 
+    // Build page context from aiContextStore
+    const pageCtx: PageContext | undefined = page
+      ? {
+          pageId: page.pageId,
+          pageTitle: page.pageTitle,
+          activeItem: activeItem
+            ? {
+                id: activeItem.id,
+                title: activeItem.title,
+                content: activeItem.content,
+                type: activeItem.type,
+              }
+            : null,
+        }
+      : undefined;
+
     try {
-      const response = await sendAIMessage(nextApiMessages);
+      const response = await sendAIMessage(nextApiMessages, pageCtx);
       const assistantMsg: ChatMessage = { role: "assistant", content: response.message };
       setHistory((h) => [...h, { msg: assistantMsg, toolResults: response.toolResults }]);
       setApiMessages((prev) => [...prev, assistantMsg]);
@@ -591,7 +792,7 @@ export function AIChatWidget() {
     } finally {
       setLoading(false);
     }
-  }, [apiMessages, loading, isOpen]);
+  }, [apiMessages, loading, isOpen, page, activeItem]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -630,6 +831,10 @@ export function AIChatWidget() {
               {hasUnread && (
                 <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
               )}
+              {/* Context dot — shows when page/item context is active */}
+              {activeItem && (
+                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-white" />
+              )}
             </motion.button>
           )}
         </AnimatePresence>
@@ -645,7 +850,7 @@ export function AIChatWidget() {
             exit={{ opacity: 0, y: 24, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
             className="fixed bottom-24 right-4 z-50 md:bottom-6 md:right-6 w-[calc(100vw-2rem)] max-w-sm flex flex-col bg-white rounded-2xl shadow-2xl shadow-sky-500/10 border border-border/60 overflow-hidden"
-            style={{ maxHeight: "min(600px, calc(100svh - 8rem))" }}
+            style={{ maxHeight: "min(620px, calc(100svh - 8rem))" }}
           >
             {/* Header */}
             <div
@@ -666,10 +871,7 @@ export function AIChatWidget() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-[15px] text-white leading-tight tracking-tight">AITEM</div>
-                <div className="text-[10.5px] text-white/65 flex items-center gap-1.5 mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block shrink-0" />
-                  Siap membantu • gpt-4o-mini
-                </div>
+                <ContextBadge item={activeItem} page={page} />
               </div>
               <button
                 onClick={close}
@@ -692,10 +894,26 @@ export function AIChatWidget() {
                     </div>
                     <p className="font-bold text-[15px] text-foreground tracking-tight">Halo! Saya AITEM</p>
                     <p className="text-[12px] text-muted-foreground mt-1.5 px-5 leading-relaxed">
-                      Kontrol seluruh bisnis Temantiket hanya lewat chat.
-                      Coba salah satu perintah di bawah 👇
+                      {activeItem
+                        ? `Gue bisa baca & edit "${activeItem.title.slice(0, 30)}${activeItem.title.length > 30 ? "…" : ""}". Mau ngapain?`
+                        : "Kontrol seluruh bisnis Temantiket hanya lewat chat. Coba salah satu perintah di bawah 👇"}
                     </p>
                   </div>
+
+                  {/* Context hint banner */}
+                  {activeItem && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mx-1 px-3 py-2 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-2"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-blue-700 leading-snug">
+                        <span className="font-semibold">Konteks aktif:</span> {activeItem.type === "note" ? "Catatan" : "Template"} "<span className="italic">{activeItem.title.slice(0, 40)}</span>" sudah dibaca AITEM. Lo bisa langsung minta edit, tambah poin, atau buat versi WA.
+                      </p>
+                    </motion.div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-2">
                     {suggestions.map((s) => (
                       <button
@@ -751,7 +969,7 @@ export function AIChatWidget() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ketik perintah… (Enter untuk kirim)"
+                  placeholder={activeItem ? `Edit "${activeItem.title.slice(0, 20)}…" atau tanya apa saja…` : "Ketik perintah… (Enter untuk kirim)"}
                   rows={1}
                   disabled={loading}
                   className="flex-1 resize-none bg-transparent text-[13px] placeholder:text-slate-400 focus:outline-none disabled:opacity-50 max-h-24 leading-relaxed"
