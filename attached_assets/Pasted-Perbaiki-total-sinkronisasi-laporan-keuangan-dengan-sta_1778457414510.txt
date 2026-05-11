@@ -1,0 +1,91 @@
+Perbaiki total sinkronisasi laporan keuangan dengan status pembayaran klien. Saat ini order yang belum dibayar tetap terlihat seperti transaksi normal sehingga laporan keuangan menjadi tidak akurat. Saya ingin sistem membedakan dengan jelas antara order yang sudah lunas, DP, dan belum bayar sama sekali.
+
+Tambahkan status pembayaran standar:
+
+* `UNPAID` → belum bayar
+* `DP` → sudah bayar sebagian
+* `PAID` → lunas
+* `REFUNDED` → dibatalkan/refund
+
+Semua order harus memiliki:
+
+* total order
+* total dibayar
+* sisa tagihan
+* status pembayaran realtime
+
+Di halaman order, kartu klien, profile klien, dan laporan keuangan, tampilkan badge/status yang jelas:
+
+* merah = Belum Bayar
+* kuning = DP
+* hijau = Lunas
+
+Jika klien belum bayar tetapi berkas sudah masuk/proses berjalan, order tetap boleh aktif tetapi harus masuk kategori:
+“Piutang / Belum Dibayar”.
+
+Tambahkan section baru di Laporan Keuangan:
+
+1. Pendapatan Masuk (uang benar-benar diterima)
+2. Piutang Aktif (order belum lunas)
+3. DP Berjalan
+4. Refund/Pembatalan
+5. Proyeksi Pendapatan
+
+Jangan hitung order `UNPAID` sebagai pendapatan cair. Masukkan ke “piutang” saja. Untuk `DP`, hanya nominal yang sudah dibayar yang masuk pendapatan cair, sisanya masuk piutang.
+
+Contoh:
+Order Visa Rp1.300.000
+Klien baru bayar DP Rp300.000
+
+Maka:
+
+* Pendapatan cair: Rp300.000
+* Piutang: Rp1.000.000
+* Status: DP
+
+Tambahkan filter di laporan:
+
+* Semua
+* Belum Bayar
+* DP
+* Lunas
+* Refund
+
+Tambahkan widget ringkasan:
+
+* Total Piutang
+* Order Belum Bayar
+* DP Aktif
+* Pendapatan Cair Hari Ini
+* Potensi Pendapatan
+
+Komisi agent juga harus sinkron:
+
+* agent TIDAK mendapat komisi penuh jika order masih UNPAID
+* jika DP, komisi bisa pending atau proporsional sesuai pembayaran
+* komisi penuh hanya masuk saat status `PAID`
+
+Tambahkan reminder otomatis:
+
+* owner bisa lihat daftar klien yang belum bayar
+* tombol “Ingatkan Pembayaran”
+* kirim WhatsApp otomatis/manual
+
+Tambahkan indikator visual di kartu order:
+
+* badge DP / UNPAID / PAID
+* progress pembayaran
+* sisa tagihan
+
+Pastikan seluruh halaman sinkron:
+
+* Order
+* Profile Klien
+* Visa Tracker
+* Laporan Keuangan
+* Wallet
+* Komisi Agent
+* Analytics
+* Dashboard
+
+Gunakan satu source of truth dari database payment/order agar tidak mismatch antar halaman.

@@ -1,0 +1,88 @@
+Redesign total fitur “Caption Generator” agar tidak lagi bergantung pada kategori statis seperti “Visa”, “IMEI”, “Broadcast”, dll. Hapus sistem kategori fixed karena terlalu membatasi konteks bisnis nyata Temantiket. Ganti dengan sistem prompt/context based input seperti ChatGPT, dimana user bisa menjelaskan kebutuhan secara bebas menggunakan bahasa natural, lalu AI yang memahami konteks dan membuat caption terbaik sesuai tone yang dipilih.
+
+UI baru:
+
+* hapus section kategori tombol
+* ganti menjadi textarea besar “Ceritakan konteks promosi / kebutuhan caption”
+* placeholder harus natural dan membantu user
+
+Contoh placeholder:
+“Contoh:
+Mahasiswa Mesir mau pulang dan bisa bantu aktifin IMEI orang lain di bandara. Fee 500rb per HP. Boleh titip HP dan aman.
+Atau:
+Promo tiket Cairo–Jakarta bulan Juni transit Bahrain.
+Atau:
+Broadcast follow up jamaah yang belum pelunasan.”
+
+Tambahkan AI Context Engine:
+AI harus memahami:
+
+* apa produk/jasa yang dijual
+* siapa target market
+* tujuan caption
+* urgency/promosi
+* konteks emosional
+* CTA yang cocok
+
+Jadi user cukup cerita biasa seperti manusia, misalnya:
+“Mahasiswa Mesir yang mau pulang bisa bantu aktifin imei hp titipan orang di Indonesia. Fee 500rb per hp. Aman karena dibantu sampai aktif.”
+
+Lalu AI otomatis mengubah menjadi caption marketing yang rapi, manusiawi, enak dibaca, dan sesuai tone.
+
+Tone selector tetap dipakai:
+
+* Santai
+* Formal
+* Hard Selling
+* Storytelling
+* Penasaran
+
+Tetapi hasil caption harus benar-benar berbeda sesuai tone, bukan sekadar ganti emoji.
+
+Contoh:
+Hard Selling → lebih urgent/FOMO
+Storytelling → seperti pengalaman nyata
+Formal → profesional & terpercaya
+Santai → seperti chat teman
+Penasaran → teaser/clickbait elegan
+
+Tambahkan opsi:
+
+* target audiens
+* platform (WA / IG / Telegram)
+* panjang caption
+* pakai emoji atau tidak
+* CTA otomatis
+
+AI juga harus bisa memahami konteks campuran tanpa kategori:
+contoh:
+
+* tiket
+* visa
+* IMEI
+* follow up
+* referral
+* open trip
+* jasa titip
+* airport handling
+* transit
+* jamaah
+* mahasiswa Mesir
+* umrah
+* VOA
+* kurir dokumen
+
+Semua cukup dari teks bebas user.
+
+Tambahkan fitur:
+
+* “Generate Ulang”
+* “Buat versi lebih soft”
+* “Buat lebih hard selling”
+* “Pendekkan caption”
+* “Buat versi story WA”
+* “Buat versi broadcast admin”
+* “Buat versi testimoni”
+
+Target akhir:
+Caption Generator terasa seperti AI marketing assistant sungguhan, bukan form kategori template. User cukup cerita konteks bisnisnya secara natural, lalu AI memahami maksudnya dan membuat caption yang relevan, detail, manusiawi, dan powerful.

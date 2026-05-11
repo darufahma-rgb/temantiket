@@ -41,6 +41,7 @@ import type { DailyMission, MissionSubmission, MissionStatus } from "@/features/
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
 import { fmtIDR, agentFeeFromMeta } from "@/lib/profit";
+import { computeFeeBreakdown } from "@/lib/agentFeeBreakdown";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { uploadAvatar, savePhotoUrl } from "@/lib/avatarStorage";
@@ -388,6 +389,31 @@ export default function AgentProfileOwnerView() {
     });
   }, [agentId, agencyId]);
 
+  // Auto-backfill field fees silently for owner on mount
+  useEffect(() => {
+    if (!agentId || !isOwner || !supabase) return;
+    (async () => {
+      try {
+        const { data: sess } = await supabase!.auth.getSession();
+        const token = sess?.session?.access_token;
+        if (!token) return;
+        const res = await fetch("/api/backfill-field-fees", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ agentId }),
+        });
+        if (!res.ok) return;
+        const json = await res.json().catch(() => ({})) as { credited?: number };
+        if ((json.credited ?? 0) > 0) {
+          const fresh = await pullWalletTxs(agentId);
+          setWalletTxs(fresh);
+          toast.success(`${json.credited} fee lama berhasil disinkronkan ke wallet.`, { duration: 5000 });
+        }
+      } catch {
+      }
+    })();
+  }, [agentId, isOwner]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleCardBackFile = async (file: File) => {
     if (!agentId || !agencyId || !file.type.startsWith("image/")) return;
     setCardBackUploading(true);
@@ -446,13 +472,7 @@ export default function AgentProfileOwnerView() {
     return idx >= 0 ? idx + 1 : null;
   }, [allAgentsPts, agentId]);
 
-  const feeStats = useMemo(() => {
-    const total = agentOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0);
-    const paid = agentOrders
-      .filter((o) => o.status === "Paid" || o.status === "Completed")
-      .reduce((s, o) => s + agentFeeFromMeta(o), 0);
-    return { total, paid, pending: total - paid };
-  }, [agentOrders]);
+  const bd = useMemo(() => computeFeeBreakdown(walletTxs), [walletTxs]);
 
   const portfolio = useMemo(() => {
     const types: OrderType[] = ["umrah", "flight", "visa_voa", "visa_student"];
@@ -510,31 +530,10 @@ export default function AgentProfileOwnerView() {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [walletTxs],
   );
-  const voaFieldTxs = useMemo(
-    () => fieldCommTxs.filter((t) => t.type === "voa_agent_fee"),
-    [fieldCommTxs],
-  );
-  /** Total semua fee lapangan (VOA + pelaksana + kurir). */
-  const totalFieldFee = useMemo(
-    () => fieldCommTxs.reduce((s, t) => s + t.amountIDR, 0),
-    [fieldCommTxs],
-  );
-  const totalVoaFieldFee = useMemo(
-    () => voaFieldTxs.reduce((s, t) => s + t.amountIDR, 0),
-    [voaFieldTxs],
-  );
   const walletBal = useMemo(() => walletBalance(walletTxs), [walletTxs]);
-  const totalCommissionCredited = useMemo(
-    () => orderBonusTxs.reduce((s, t) => s + t.amountIDR, 0),
-    [orderBonusTxs],
-  );
   const payoutTxs = useMemo(
     () => walletTxs.filter((t) => t.type === "payout"),
     [walletTxs],
-  );
-  const totalPaidOut = useMemo(
-    () => payoutTxs.reduce((s, t) => s + Math.abs(t.amountIDR), 0),
-    [payoutTxs],
   );
 
   const handlePhotoFile = async (file: File) => {
@@ -1028,7 +1027,7 @@ export default function AgentProfileOwnerView() {
                 {[
                   { icon: ShoppingBag, label: "Total Order",  value: String(agentOrders.length),            sub: `${agentOrders.filter((o) => o.status === "Completed").length} selesai`, color: "text-violet-600", bg: "bg-violet-50 border-violet-100" },
                   { icon: Users,       label: "Total Klien",  value: String(agentClients.length),           sub: "klien aktif",                        color: "text-sky-600",    bg: "bg-sky-50 border-sky-100" },
-                  { icon: TrendingUp,  label: "Total Komisi", value: fmtIDR(feeStats.total + totalFieldFee), sub: "komisi sales + lapangan",                  color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
+                  { icon: TrendingUp,  label: "Total Komisi", value: fmtIDR(bd.totalCredit), sub: "komisi sales + lapangan",                  color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
                   { icon: Trophy,      label: "Total Poin",   value: totalPoints.toLocaleString("id-ID"),   sub: `Tier ${tier.label}`,                  color: "text-amber-600",  bg: "bg-amber-50 border-amber-100" },
                 ].map((s) => (
                   <div key={s.label} className={`rounded-2xl border p-3 ${s.bg}`}>
@@ -1101,53 +1100,50 @@ export default function AgentProfileOwnerView() {
                 </div>
               </motion.div>
 
-              {/* Fee Komisi Akumulasi */}
+              {/* Ringkasan Komisi — 5-kategori breakdown dari wallet */}
               <div className="rounded-2xl border border-blue-100 bg-white overflow-hidden">
                 <div className="px-4 py-3 border-b border-blue-100 bg-blue-50 flex items-center gap-2">
                   <Wallet className="h-4 w-4 text-blue-500" />
                   <div>
-                    <p className="text-sm font-semibold">Akumulasi Fee Komisi</p>
-                    <p className="text-[11px] text-muted-foreground">Total fee yang dikumpulkan dari semua order</p>
+                    <p className="text-sm font-semibold">Ringkasan Komisi</p>
+                    <p className="text-[11px] text-muted-foreground">Breakdown lengkap semua pendapatan yang dikreditkan ke wallet</p>
                   </div>
                 </div>
-                <div className="p-4 space-y-3">
-                  <div className="text-center py-1">
-                    <div className="text-xl md:text-3xl font-extrabold font-mono">{fmtIDR(feeStats.total + totalFieldFee)}</div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">total akumulasi (komisi sales + lapangan)</div>
+                <div className="p-4 space-y-2">
+                  {[
+                    { label: "Komisi Sales",       value: bd.salesCommission, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-100", sub: "dari order yang dibuat" },
+                    { label: "Fee Agent Lapangan", value: bd.fieldAgentFee,   color: "text-indigo-700",  bg: "bg-indigo-50 border-indigo-100",   sub: "penugasan VOA / bandara" },
+                    { label: "Fee Kurir",          value: bd.kurirFee,        color: "text-amber-700",   bg: "bg-amber-50 border-amber-100",     sub: "kurir setoran uang" },
+                    { label: "Fee Pelaksana",      value: bd.pelaksanaFee,    color: "text-purple-700",  bg: "bg-purple-50 border-purple-100",   sub: "pelaksana visa pelajar" },
+                    { label: "Bonus / Manual",     value: bd.bonusManual,     color: "text-violet-700",  bg: "bg-violet-50 border-violet-100",   sub: "konversi poin · koreksi" },
+                  ].map((row) => (
+                    <div key={row.label} className={`flex items-center justify-between rounded-xl border px-3 py-2.5 ${row.bg}`}>
+                      <span className={`text-[12px] font-semibold ${row.color}`}>{row.label}</span>
+                      <div className="text-right">
+                        <div className={`text-sm font-extrabold font-mono ${row.color}`}>{fmtIDR(row.value)}</div>
+                        <div className="text-[10px] text-muted-foreground">{row.sub}</div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="border-t pt-2.5 flex items-center justify-between">
+                    <span className="text-sm font-bold text-foreground">Total Komisi</span>
+                    <span className="text-lg font-extrabold font-mono text-emerald-700">{fmtIDR(bd.totalCredit)}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wide">Komisi Order</div>
-                        <div className="text-sm font-bold font-mono text-emerald-700">{fmtIDR(feeStats.paid)}</div>
-                        <div className="text-[10px] text-muted-foreground">order Paid/Completed</div>
+                  {bd.totalPaidOut > 0 && (
+                    <>
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="text-muted-foreground">Sudah Dicairkan</span>
+                        <span className="font-mono text-orange-600">−{fmtIDR(bd.totalPaidOut)}</span>
                       </div>
-                    </div>
-                    <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 flex items-start gap-2">
-                      <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide">Belum Cair</div>
-                        <div className="text-sm font-bold font-mono text-amber-700">{fmtIDR(feeStats.pending)}</div>
-                        <div className="text-[10px] text-muted-foreground">order belum selesai</div>
+                      <div className="flex items-center justify-between text-sm font-bold border-t pt-2">
+                        <span>Saldo Wallet</span>
+                        <span className={`font-mono ${bd.netBalance >= 0 ? "text-sky-700" : "text-red-600"}`}>{fmtIDR(bd.netBalance)}</span>
                       </div>
-                    </div>
-                  </div>
-                  {totalFieldFee > 0 && (
-                    <div className="rounded-xl bg-purple-50 border border-purple-100 p-3 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">🗂️</span>
-                        <div>
-                          <div className="text-[10px] text-purple-700 font-semibold uppercase tracking-wide">Fee Komisi Lapangan</div>
-                          <div className="text-[10px] text-muted-foreground">VOA / Pelaksana Visa / Kurir · dikreditkan ke wallet</div>
-                        </div>
-                      </div>
-                      <div className="text-sm font-extrabold font-mono text-purple-700">{fmtIDR(totalFieldFee)}</div>
-                    </div>
+                    </>
                   )}
-                  {(feeStats.total === 0 && totalFieldFee === 0) && (
+                  {bd.totalCredit === 0 && (
                     <p className="text-center text-[11px] text-muted-foreground italic py-1">
-                      Belum ada fee. Agen belum memiliki order dengan fee komisi.
+                      Belum ada fee dikreditkan. Agen belum memiliki order Completed dengan fee komisi.
                     </p>
                   )}
                 </div>
@@ -1503,61 +1499,45 @@ export default function AgentProfileOwnerView() {
           {tab === "komisi" && (
             <div className="space-y-4">
 
-              {/* Summary strip */}
+              {/* Summary strip — 4 kartu komisi + saldo */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Komisi Sales</span>
                     <Coins className="h-3.5 w-3.5 text-emerald-500" />
                   </div>
-                  <p className="text-base font-extrabold font-mono text-emerald-800">{fmtIDR(totalCommissionCredited)}</p>
+                  <p className="text-base font-extrabold font-mono text-emerald-800">{fmtIDR(bd.salesCommission)}</p>
                   <p className="text-[10px] text-emerald-600 mt-0.5">{orderBonusTxs.length} order selesai</p>
                 </div>
-                {totalFieldFee > 0 ? (
-                  <div className="rounded-2xl border border-purple-100 bg-purple-50 p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-purple-700">Fee Komisi Lapangan</span>
-                      <span className="text-sm">🗂️</span>
-                    </div>
-                    <p className="text-base font-extrabold font-mono text-purple-800">{fmtIDR(totalFieldFee)}</p>
-                    <p className="text-[10px] text-purple-600 mt-0.5">{fieldCommTxs.length} penugasan lapangan</p>
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-orange-100 bg-orange-50 p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-orange-700">Total Dicairkan</span>
-                      <ArrowDownToLine className="h-3.5 w-3.5 text-orange-500" />
-                    </div>
-                    <p className="text-base font-extrabold font-mono text-orange-800">{fmtIDR(totalPaidOut)}</p>
-                    <p className="text-[10px] text-orange-600 mt-0.5">{payoutTxs.length} pencairan</p>
-                  </div>
-                )}
-                <div className={`rounded-2xl border p-3 col-span-2 ${walletBal.netIDR >= 0 ? "border-sky-100 bg-sky-50" : "border-red-100 bg-red-50"}`}>
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[10px] font-semibold uppercase tracking-wide ${walletBal.netIDR >= 0 ? "text-sky-700" : "text-red-700"}`}>Saldo Wallet Saat Ini</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-indigo-700">Fee Lapangan</span>
+                    <span className="text-sm">🗂️</span>
+                  </div>
+                  <p className="text-base font-extrabold font-mono text-indigo-800">{fmtIDR(bd.fieldAgentFee + bd.pelaksanaFee + bd.kurirFee)}</p>
+                  <p className="text-[10px] text-indigo-600 mt-0.5">VOA · Pelaksana · Kurir</p>
+                </div>
+                <div className="rounded-2xl border border-violet-100 bg-violet-50 p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-700">Bonus / Manual</span>
+                    <Coins className="h-3.5 w-3.5 text-violet-500" />
+                  </div>
+                  <p className="text-base font-extrabold font-mono text-violet-800">{fmtIDR(bd.bonusManual)}</p>
+                  <p className="text-[10px] text-violet-600 mt-0.5">konversi poin · koreksi</p>
+                </div>
+                <div className={`rounded-2xl border p-3 ${walletBal.netIDR >= 0 ? "border-sky-100 bg-sky-50" : "border-red-100 bg-red-50"}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-[10px] font-semibold uppercase tracking-wide ${walletBal.netIDR >= 0 ? "text-sky-700" : "text-red-700"}`}>Saldo Wallet</span>
                     <Wallet className={`h-3.5 w-3.5 ${walletBal.netIDR >= 0 ? "text-sky-500" : "text-red-500"}`} />
                   </div>
                   <p className={`text-xl font-extrabold font-mono ${walletBal.netIDR >= 0 ? "text-sky-800" : "text-red-700"}`}>
                     {fmtIDR(walletBal.netIDR)}
                   </p>
                   <p className={`text-[10px] mt-0.5 ${walletBal.netIDR >= 0 ? "text-sky-600" : "text-red-600"}`}>
-                    Kredit {fmtIDR(walletBal.totalCreditIDR)} − Cair {fmtIDR(walletBal.totalDebitIDR)}
+                    Cair {fmtIDR(walletBal.totalDebitIDR)}
                   </p>
                 </div>
               </div>
-              {/* Pencairan row — tampil jika ada field fee DAN ada payout */}
-              {totalFieldFee > 0 && payoutTxs.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-orange-100 bg-orange-50 p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-orange-700">Total Dicairkan</span>
-                      <ArrowDownToLine className="h-3.5 w-3.5 text-orange-500" />
-                    </div>
-                    <p className="text-base font-extrabold font-mono text-orange-800">{fmtIDR(totalPaidOut)}</p>
-                    <p className="text-[10px] text-orange-600 mt-0.5">{payoutTxs.length} pencairan</p>
-                  </div>
-                </div>
-              )}
 
               {/* Per-order commission audit list */}
               <div className="rounded-2xl border bg-white overflow-hidden">

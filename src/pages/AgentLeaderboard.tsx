@@ -176,9 +176,10 @@ export default function AgentLeaderboard() {
       stats.set(o.createdByAgent, cur);
     }
     for (const o of periodOrders) {
+      if (o.status !== "Completed") continue;
       const meta = (o.metadata ?? {}) as Record<string, unknown>;
 
-      // VOA field agent fee
+      // VOA field agent fee — hanya order Completed
       if (o.type === "visa_voa") {
         const fieldAgentId = meta.voaFieldAgentId as string | undefined;
         if (fieldAgentId && agentIds.has(fieldAgentId)) {
@@ -191,7 +192,7 @@ export default function AgentLeaderboard() {
         }
       }
 
-      // Pelaksana visa_student fee
+      // Pelaksana visa_student fee — hanya order Completed
       if (o.type === "visa_student") {
         const pelaksanaId = meta.pelaksanaId as string | undefined;
         if (pelaksanaId && agentIds.has(pelaksanaId)) {
@@ -204,7 +205,7 @@ export default function AgentLeaderboard() {
         }
       }
 
-      // Kurir setoran fee (any order type)
+      // Kurir setoran fee — hanya order Completed
       const kurirAgentId = meta.kurirAgentId as string | undefined;
       if (kurirAgentId && agentIds.has(kurirAgentId)) {
         const kurirFee = Number(meta.kurirFee ?? 0);

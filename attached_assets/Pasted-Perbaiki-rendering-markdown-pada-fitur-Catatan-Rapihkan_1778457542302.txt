@@ -1,0 +1,154 @@
+Perbaiki rendering markdown pada fitur Catatan & Rapihkan AI.
+
+Masalah sekarang:
+
+semua teks terlihat bold
+hierarchy visual tidak jelas
+heading, paragraph, bullet, dan emphasis terlihat mirip
+hasil jadi capek dibaca dan tidak natural
+
+Saya ingin typography markdown tampil profesional, modern, dan readable seperti Notion / Medium / ChatGPT.
+
+TARGET TYPOGRAPHY
+Heading
+
+Gunakan hierarchy yang jelas:
+
+# → besar + bold
+## → medium bold
+### → sedikit lebih kecil
+
+Contoh:
+
+H1 → 32px / 700
+H2 → 24px / 700
+H3 → 20px / 600
+Paragraph biasa
+
+Gunakan regular weight.
+
+WAJIB:
+
+font-weight normal (400)
+line-height lega
+tidak bold
+
+Contoh:
+
+16px
+weight 400
+line-height 1.8
+Bold text (**text**)
+
+HARUS benar-benar terlihat lebih tebal dari paragraph.
+
+Contoh:
+
+paragraph: 400
+bold: 700
+
+Sekarang perbedaannya hampir tidak kelihatan.
+
+Italic (*text*)
+
+Harus benar-benar italic dan sedikit muted.
+
+Bullet list
+
+Perbaiki spacing bullet.
+
+Yang diinginkan:
+
+• Judul poin
+
+Penjelasan isi poin dengan jarak nyaman.
+
+Jangan dempet seperti sekarang.
+
+Tambahkan:
+
+margin bawah antar bullet
+spacing antara judul dan deskripsi
+Spacing Markdown
+
+Tambahkan vertical rhythm yang nyaman.
+
+WAJIB:
+
+setiap heading punya margin top-bottom
+paragraph punya spacing
+list punya spacing
+blockquote/code punya padding
+
+Sekarang semuanya terlalu rapat.
+
+IMPLEMENTASI CSS
+
+Cari global markdown renderer:
+
+.prose
+.markdown
+.note-content
+atau typography wrapper
+
+Lalu perbaiki style hierarchy.
+
+Contoh target:
+
+.markdown-content {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #1f2937;
+  font-weight: 400;
+}
+
+.markdown-content strong {
+  font-weight: 700;
+  color: #111827;
+}
+
+.markdown-content p {
+  margin-bottom: 1rem;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.8rem;
+  line-height: 1.3;
+}
+
+.markdown-content ul li {
+  margin-bottom: 0.75rem;
+}
+KHUSUS HASIL AI RAPIHKAN
+
+Saat AI menghasilkan:
+
+## Tahap 1 — Keluar Imigrasi
+
+Setelah keluar dari area imigrasi...
+
+Maka tampilannya HARUS:
+
+“Tahap 1” bold & besar
+deskripsi regular
+ada jarak bawah
+mudah discan mata
+
+Bukan semua tebal seperti sekarang.
+
+FINAL GOAL
+
+Hasil catatan harus:
+
+nyaman dibaca lama
+mirip dokumen profesional
+punya hierarchy jelas
+terlihat modern
+tidak seperti “semua teks bold”
+clean seperti Notion / Linear / ChatGPT docs
+
+Fokus utama:
+READABILITY dan VISUAL HIERARCHY.

@@ -1,0 +1,18 @@
+Sederhanakan total fitur upload gambar belakang kartu staff/member/agent. Jangan lagi pakai endpoint/API custom yang menyebabkan error 404 seperti `/api/upload`, `prepareUpload`, atau “get upload URL”. Saya hanya ingin flow simpel langsung ke Supabase: buat penyimpanan permanen untuk foto belakang kartu berdasarkan UUID user/staff/agent, resize gambar agar optimal, simpan URL/path ke database, lalu panggil gambar itu dengan cepat saat user membuka halaman belakang kartu.
+
+Buat tabel/kolom database yang jelas di Supabase, misalnya `card_back_images` dengan field: `id`, `owner_uuid`, `role_type` (`staff`, `agent`, `member`), `image_path`, `image_url`, `created_at`, `updated_at`. Setiap UUID hanya punya satu gambar belakang aktif, jadi gunakan upsert berdasarkan `owner_uuid + role_type`. Simpan file di Supabase Storage bucket khusus misalnya `card-back-images` dengan struktur path: `card-back-images/{role_type}/{uuid}/back.webp`.
+
+Flow wajib:
+
+1. user pilih gambar
+2. frontend resize/compress gambar menjadi WebP/JPEG optimal maksimal ±1200px dan ukuran file ringan
+3. upload langsung ke Supabase Storage
+4. upsert data ke tabel `card_back_images`
+5. simpan `owner_uuid`, `role_type`, `image_path`, dan `image_url`
+6. saat buka belakang kartu, fetch berdasarkan UUID + role
+7. tampilkan gambar dari Supabase, bukan dari local state/blob URL
+8. gambar tetap muncul setelah refresh, login ulang, dan beda device
+
+Hapus/hindari semua dependency ke route yang error 404. Kalau memakai Supabase client langsung, jangan panggil API upload custom. Tambahkan RLS policy: owner/admin boleh upload/update semua kartu, user biasa hanya boleh update kartu miliknya sendiri jika diizinkan. Jika upload storage berhasil tapi database gagal, hapus file yang baru diupload agar tidak jadi file orphan. Tambahkan loading, progress upload, error detail, dan fallback “Belum ada gambar” jika data belum tersedia.
+
+Target akhirnya simpel: setiap staff/agent/member punya foto belakang kartu yang disimpan permanen di Supabase berdasarkan UUID, gambar otomatis dioptimasi, cepat dipanggil saat halaman belakang kartu dibuka, dan tidak ada lagi error 404 upload URL.

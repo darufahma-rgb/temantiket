@@ -1,0 +1,94 @@
+Perbaiki generator teks itinerary WhatsApp/Travel Card agar hasilnya benar-benar mengikuti hasil parsing tiket Galileo secara detail dan natural. Saat itinerary adalah RETURN/PP, sistem wajib memisahkan dengan jelas bagian “Keberangkatan” dan “Kepulangan”, bukan hanya menumpuk semua informasi menjadi teks biasa.
+
+Untuk itinerary dengan 4 segment seperti:
+
+1. CAI → BAH
+2. BAH → GOI
+3. GOI → BAH
+4. BAH → CAI
+
+maka hasil itinerary harus otomatis dibagi menjadi:
+
+* PERJALANAN KEBERANGKATAN
+* PERJALANAN KEPULANGAN
+
+dan menampilkan semua detail tiap segment:
+
+* kota asal & tujuan
+* tanggal
+* hari
+* jam berangkat
+* jam tiba
+* kode penerbangan
+* maskapai
+* transit
+* durasi transit
+* transit panjang / short transit
+* overnight transit jika ada
+* total perjalanan
+
+Contoh format hasil yang benar:
+
+✈️ *Tiket Pesawat Cairo → Goa (Return)*
+*by Temantiket*
+
+━━━━━━━━━━
+🟢 *KEBERANGKATAN*
+📅 Sabtu, 03 Juni 2023
+
+🛫 *Flight 1*
+Cairo (CAI) → Bahrain (BAH)
+GF70 — Berangkat 17:15
+Tiba 20:15
+
+🛫 *Flight 2*
+Bahrain (BAH) → Goa (GOI)
+GF284 — Berangkat 21:15
+Tiba 04:30 (+1)
+
+⏳ Transit Bahrain: 1j
+✅ Bagasi langsung / tanpa check-in ulang
+
+━━━━━━━━━━
+🔵 *KEPULANGAN*
+📅 Minggu, 03 September 2023
+
+🛫 *Flight 3*
+Goa (GOI) → Bahrain (BAH)
+GF285 — Berangkat 04:40
+Tiba 06:10
+
+⏳ Transit Bahrain: 19j
+⚠️ Transit panjang — cek kebutuhan visa transit
+
+📅 Senin, 04 September 2023
+
+🛫 *Flight 4*
+Bahrain (BAH) → Cairo (CAI)
+GF79 — Berangkat 01:10
+Tiba 04:30
+
+━━━━━━━━━━
+💰 Harga: EGP 29,283.80
+
+Jangan lagi menggabungkan outbound dan inbound menjadi satu blok ambigu. Sistem harus mengerti:
+
+* mana perjalanan pergi
+* mana perjalanan pulang
+* kapan ganti hari
+* kapan overnight
+* kapan transit panjang
+
+Tambahkan logic:
+
+* jika segment kembali ke origin awal → otomatis RETURN/PP
+* jika hanya satu arah → ONEWAY
+* jika lebih kompleks → MULTI CITY
+
+Untuk transit:
+
+* <4 jam → transit singkat
+* 4–12 jam → transit normal
+* > 12 jam → transit panjang + warning
+
+Jika ada lebih dari 1 transit, tampilkan semuanya berurutan. Pastikan hasil itinerary WhatsApp, preview UI, Travel Card, dan export semua memakai source data parser yang sama agar sinkron dan tidak mismatch.

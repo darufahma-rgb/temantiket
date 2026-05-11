@@ -622,15 +622,24 @@ export default function AgentCommandCenter() {
     const totalProfit      = completedList.reduce((s, o) => s + Math.max(0, profitIDR(o)), 0);
     // netAgencyProfit = net profit setelah semua fee/opex (formula canonical netProfitIDR)
     const netAgencyProfit  = completedList.reduce((s, o) => s + netProfitIDR(o), 0);
-    // Hitung fee dari semua order (kecuali Cancelled) — baca dari meta.agentFee per order.
-    const billableOrders   = agentOrders.filter((o) => o.status !== "Cancelled");
-    const salesCommission  = billableOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0);
-    // Tambahkan fee lapangan VOA: order2 di mana agen ini adalah voaFieldAgentId
+    // Sales commission: hanya dari order Completed (fee sudah terkonfirmasi)
+    const salesCommission  = completedList.reduce((s, o) => s + agentFeeFromMeta(o), 0);
+    // Fee lapangan VOA: hanya order Completed
     const voaFieldOrders   = voaFieldOrdersByAgent.get(a.userId) ?? [];
     const voaFieldCommission = voaFieldOrders
-      .filter((o) => o.status !== "Cancelled")
+      .filter((o) => o.status === "Completed")
       .reduce((s, o) => s + Number(((o.metadata ?? {}) as Record<string, unknown>).voaAgentFee ?? 0), 0);
-    const commissionOwed   = salesCommission + voaFieldCommission;
+    // Fee kurir: hanya order Completed
+    const kurirCommission  = completedList
+      .reduce((s, o) => s + Number(((o.metadata ?? {}) as Record<string, unknown>).kurirFee ?? 0), 0);
+    // Fee pelaksana: hanya order Completed (visa_student)
+    const pelaksanaCommission = completedList
+      .filter((o) => o.type === "visa_student")
+      .reduce((s, o) => {
+        const meta = (o.metadata ?? {}) as Record<string, unknown>;
+        return meta.pelaksanaId === a.userId ? s + Number(meta.pelaksanaFee ?? 200_000) : s;
+      }, 0);
+    const commissionOwed   = salesCommission + voaFieldCommission + kurirCommission + pelaksanaCommission;
     return {
       ...a, totalPoints, tierInfo,
       totalOrders: agentOrders.length,

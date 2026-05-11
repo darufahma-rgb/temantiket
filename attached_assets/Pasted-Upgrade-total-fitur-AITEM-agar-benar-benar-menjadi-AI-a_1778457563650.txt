@@ -1,0 +1,44 @@
+Upgrade total fitur AITEM agar benar-benar menjadi AI assistant internal Temantiket yang paham konteks halaman, data sistem, dan bisa membantu aksi operasional, bukan hanya chatbot umum. Saat user sedang berada di halaman tertentu seperti Template Broadcast, Catatan, Order, Client, Agent, atau Laporan Keuangan, AITEM wajib membaca konteks halaman aktif dan menjawab sesuai data yang sedang terlihat.
+
+Masalah saat ini: AITEM tidak sinkron dengan konteks. Contoh saat user minta “tambahkan catatan harus legalisir tadaruj di wizaroh khoriji Mesir”, AITEM malah menolak karena menganggap itu di luar zona. Ini salah. Jika user berada di halaman Template Broadcast/Catatan, AITEM harus paham bahwa permintaan tersebut adalah edit konten Temantiket, bukan pertanyaan umum.
+
+Perbaiki flow AITEM:
+
+* kirim context halaman aktif ke AI
+* kirim selected item/card yang sedang dibuka
+* kirim isi catatan/template yang sedang aktif
+* kirim role user
+* kirim intent user
+* bedakan antara “tanya informasi”, “edit catatan”, “buat caption”, “cek order”, “ubah data”, dan “ambil data sistem”
+
+Tambahkan kemampuan AITEM:
+
+* edit catatan/template langsung
+* menambahkan poin baru ke catatan
+* merapikan markdown
+* membuat versi broadcast WA
+* mencari data klien/order/agent
+* menjelaskan status order
+* memberi ringkasan laporan
+* memberi saran operasional
+* membuka link/action terkait
+
+Jika user minta edit, AITEM jangan cuma menjawab teks. Berikan preview perubahan dan tombol:
+
+* Terapkan ke Catatan
+* Salin
+* Batalkan
+
+Contoh behavior yang benar:
+User: “tambahkan harus legalisir tadaruj di wizaroh khoriji Mesir”
+AITEM harus menjawab:
+“Siap, saya tambahkan ke bagian Syarat Dokumen.”
+Lalu update draft menjadi:
+
+* Tadaruj/Tasdiq terbaru
+* Wajib dilegalisir di Wizaroh Khoriji Mesir
+
+Pastikan AITEM tidak terlalu sering menolak. Selama request masih berkaitan dengan data, catatan, template, order, pelanggan, agent, itinerary, caption, atau operasional Temantiket, AITEM harus membantu. Tambahkan guardrail hanya untuk hal yang benar-benar di luar konteks atau berbahaya.
+
+Target akhir:
+AITEM terasa seperti asisten internal Temantiket yang paham halaman aktif, bisa membaca data yang sedang dibuka, bisa mengedit konten, dan memberi jawaban yang nyambung, praktis, serta langsung bisa diterapkan.
