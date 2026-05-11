@@ -1,0 +1,153 @@
+FINAL FIX TOTAL — redesign parser dan form Harga Tiket Galileo. Jangan patch lagi. Masalah ini sudah berkali-kali muncul: kode Galileo yang jelas tiket PP/Return selalu tampil sebagai Oneway di frontend.
+
+Saya ingin sistem Harga Tiket dirombak menjadi segment-based, bukan form flat.
+
+Input Galileo contoh:
+
+1 GF 70 N 03JUN CAI BAH 1715 2015 WE 32N
+2 GF 284 N 03JUN BAH GOI 2115 0340 # WE 32Q
+3 GF 285 O 03SEP GOI BAH 0440 0610 TH 32N
+4 GF 79 O 04SEP BAH CAI 0110 0430 FR 32N
+TOTAL AMOUNT 29283.80 EGP
+
+Ini WAJIB terbaca sebagai:
+
+Tipe Tiket: PP / Return
+Berangkat: CAI → BAH → GOI
+Pulang: GOI → BAH → CAI
+Transit pergi: Bahrain
+Transit pulang: Bahrain
+Flight: GF70, GF284, GF285, GF79
+Harga Modal: 29283.80 EGP
+
+Masalah utama sekarang:
+
+* frontend masih menampilkan field flat `Dari`, `Ke`, `ETD`, `ETA`
+* parser hanya mengambil 2 segment pertama
+* ticket type dihitung dari CAI → GOI lalu dianggap oneway
+* segment 3 dan 4 tidak masuk ke UI
+* hasil OCR tidak dipakai sebagai source data penuh
+
+ROMBAK FORM HASIL OCR:
+
+Jangan tampilkan form flat seperti sekarang sebagai tampilan utama.
+
+Ganti menjadi:
+
+1. Card Ringkasan
+
+* Maskapai: Gulf Air
+* Tipe Tiket: PP / Return
+* Rute: CAI → GOI → CAI
+* Total Segment: 4
+* Harga Modal: 29283.80 EGP
+* Harga Jual: hasil kurs + markup
+
+2. Section Keberangkatan
+   Segment 1:
+   GF70 — CAI → BAH
+   03 Jun
+   17:15 → 20:15
+
+Segment 2:
+GF284 — BAH → GOI
+03 Jun
+21:15 → 03:40 (+1)
+
+Transit:
+Bahrain — 1 jam
+
+3. Section Kepulangan
+   Segment 3:
+   GF285 — GOI → BAH
+   03 Sep
+   04:40 → 06:10
+
+Segment 4:
+GF79 — BAH → CAI
+04 Sep
+01:10 → 04:30
+
+Transit:
+Bahrain — 19 jam
+Tampilkan warning: transit panjang, cek visa transit jika perlu.
+
+LOGIKA WAJIB:
+
+Parser harus selalu menghasilkan:
+
+```ts
+{
+  ticketType: "return" | "oneway" | "multicity",
+  segments: [],
+  outboundSegments: [],
+  inboundSegments: [],
+  totalAmount,
+  currency
+}
+```
+
+Deteksi Return:
+
+```ts
+const firstOrigin = segments[0].from;
+const lastDestination = segments[segments.length - 1].to;
+
+if (segments.length >= 2 && lastDestination === firstOrigin) {
+  ticketType = "return";
+}
+```
+
+Untuk contoh:
+firstOrigin = CAI
+lastDestination = CAI
+maka hasil mutlak `return`.
+
+Jangan ada logic lain yang overwrite jadi oneway setelah ini.
+
+IMPORTANT:
+Kalau `segments.length >= 4` dan segment terakhir balik ke origin awal, paksa `ticketType = return`.
+
+Jika AI OCR hanya mengembalikan 2 segment, jangan percaya AI. Fallback ke regex parser dari raw OCR text. Parser regex harus membaca semua baris yang dimulai angka segment:
+`1 GF 70 ...`
+`2 GF 284 ...`
+`3 GF 285 ...`
+`4 GF 79 ...`
+
+Tambahkan debug panel di dev mode:
+
+* raw OCR text
+* parsed segments count
+* firstOrigin
+* lastDestination
+* detected ticketType
+* outbound segments
+* inbound segments
+
+Kalau `segmentsCount` kurang dari 4 untuk screenshot ini, tampilkan warning:
+“Parser gagal membaca semua segment Galileo.”
+
+SIMPAN DATABASE:
+Simpan data segment lengkap, bukan hanya form flat.
+
+Tambahkan field:
+
+* `ticket_type`
+* `segments_json`
+* `outbound_segments_json`
+* `inbound_segments_json`
+* `route_summary`
+* `total_amount`
+* `currency`
+
+Semua output lain harus pakai data ini:
+
+* Harga Tiket
+* Itinerary WhatsApp
+* Travel Card
+* Simpan Semua
+* Public ticket
+* Export
+
+Expected final:
+Screenshot Galileo 4 segment ini TIDAK BOLEH lagi tampil Oneway. Kalau masih tampil Oneway, berarti fix gagal. Frontend harus menunjukkan PP / Return dengan section Keberangkatan dan Kepulangan secara lengkap.

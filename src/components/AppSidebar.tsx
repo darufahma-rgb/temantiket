@@ -317,16 +317,13 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
       style={{ width: `${SIDEBAR_W}px`, background: "hsl(var(--card))", borderRight: "1px solid hsl(var(--border))" }}
     >
       {/* ── Logo ── */}
-      <div className="flex items-center gap-2.5 px-4 py-[14px] shrink-0">
-        <div className="h-7 w-7 shrink-0 icon-mark" role="img" aria-label="Temantiket" />
-        <div className="flex-1 min-w-0">
-          <p className="text-[13.5px] font-black text-[hsl(var(--foreground))] leading-none tracking-[-0.02em]">
-            Temantiket
-          </p>
-          <p className="text-[9.5px] text-[hsl(var(--muted-foreground))] mt-[3px] leading-none" style={{ opacity: 0.6 }}>
-            Travel Management
-          </p>
-        </div>
+      <div className="flex items-center px-4 py-[14px] shrink-0">
+        <img
+          src="/temantiket-logo.png"
+          alt="Temantiket"
+          className="h-7 w-auto object-contain"
+          style={{ maxWidth: 148 }}
+        />
       </div>
 
       {/* ── Thin divider ── */}
