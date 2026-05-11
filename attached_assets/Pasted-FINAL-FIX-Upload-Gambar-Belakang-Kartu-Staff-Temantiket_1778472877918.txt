@@ -1,0 +1,175 @@
+FINAL FIX — Upload Gambar Belakang Kartu Staff Temantiket
+
+Masalah sekarang SUDAH JELAS:
+Frontend dan API upload sebenarnya sudah jalan, tetapi bucket Supabase untuk menyimpan gambar belum dibuat.
+
+Error:
+Bucket 'card-back-images' belum ada.
+
+Jadi solusi finalnya:
+
+━━━━━━━━━━
+1. BUAT BUCKET SUPABASE
+━━━━━━━━━━
+
+Di Supabase Dashboard:
+
+Storage
+→ New Bucket
+
+Nama bucket:
+card-back-images
+
+Settings:
+✅ Public bucket = ON
+
+File size:
+10MB cukup
+
+Allowed MIME:
+- image/jpeg
+- image/png
+- image/webp
+
+━━━━━━━━━━
+2. BUAT TABLE DATABASE
+━━━━━━━━━━
+
+Buat table:
+
+staff_card_back_images
+
+Schema:
+
+id uuid primary key
+staff_id uuid
+agency_id uuid
+image_url text
+storage_path text
+file_size integer
+mime_type text
+uploaded_by uuid
+created_at timestamptz default now()
+updated_at timestamptz default now()
+
+Tambahkan unique:
+unique(staff_id)
+
+Karena 1 staff cukup 1 gambar belakang aktif.
+
+━━━━━━━━━━
+3. FLOW YANG BENAR
+━━━━━━━━━━
+
+Saat upload:
+
+1. user pilih gambar
+2. frontend resize otomatis:
+   - max width 1200px
+   - webp/jpeg compressed
+   - target 200–400kb
+3. upload ke:
+   card-back-images/{agency_id}/{staff_id}.webp
+
+4. simpan metadata ke DB:
+   - image_url
+   - storage_path
+   - size
+   - mime
+   - updated_at
+
+5. halaman kartu langsung refresh preview
+
+━━━━━━━━━━
+4. JANGAN PAKAI SIGNED URL
+━━━━━━━━━━
+
+Karena ini public bucket.
+
+Gunakan:
+supabase.storage
+.from('card-back-images')
+.getPublicUrl(path)
+
+Bukan:
+createSignedUrl()
+
+Karena signed URL bikin ribet dan sering gagal di Vercel.
+
+━━━━━━━━━━
+5. PERBAIKI API VERCEL
+━━━━━━━━━━
+
+Jangan lagi ada logic:
+- cek Replit
+- local filesystem
+- temp upload server
+
+Semua upload langsung:
+Frontend → Supabase Storage
+
+Vercel server cukup:
+- validasi auth
+- validasi agency ownership
+- resize optional
+- return public URL
+
+━━━━━━━━━━
+6. VALIDASI YANG WAJIB
+━━━━━━━━━━
+
+Sebelum upload:
+- cek login
+- cek owner/staff relation
+- cek ukuran file
+- cek mime image
+
+Jika gagal:
+toast error jelas.
+
+Contoh:
+❌ Format file tidak didukung
+❌ Ukuran file terlalu besar
+❌ Bucket belum tersedia
+
+━━━━━━━━━━
+7. OPTIMASI PREVIEW
+━━━━━━━━━━
+
+Saat buka halaman kartu:
+
+- load image dari CDN Supabase
+- lazy load
+- gunakan:
+  ?width=800&quality=75
+
+Contoh:
+storage/v1/object/public/card-back-images/...
+
+Supaya cepat dan hemat bandwidth.
+
+━━━━━━━━━━
+8. FALLBACK UI
+━━━━━━━━━━
+
+Jika belum ada gambar:
+tampilkan placeholder seperti sekarang.
+
+Jika upload berhasil:
+langsung auto flip preview kartu.
+
+━━━━━━━━━━
+9. TARGET AKHIR
+━━━━━━━━━━
+
+Owner upload gambar belakang kartu
+→ otomatis resize
+→ otomatis masuk Supabase
+→ otomatis tersimpan per UUID staff
+→ otomatis muncul di kartu belakang
+→ cepat di-load
+→ persistent
+→ aman di Vercel
+→ tidak bergantung server lokal
+
+Setelah bucket dibuat, fitur ini harus FIX TOTAL dan tidak error lagi.
