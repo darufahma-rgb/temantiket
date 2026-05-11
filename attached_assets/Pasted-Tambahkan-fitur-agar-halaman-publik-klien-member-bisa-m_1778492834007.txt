@@ -1,0 +1,104 @@
+Tambahkan fitur agar halaman publik klien/member bisa menampilkan proses pemesanan mereka secara jelas, rapi, dan realtime. Saat klien membuka halaman publik `/m/{memberId}` atau halaman public profile mereka, klien harus bisa melihat progress order yang sedang berjalan, bukan hanya riwayat transaksi singkat.
+
+Masalah sekarang:
+Di halaman publik klien hanya terlihat card “Riwayat Transaksi” dengan nama order dan status singkat seperti `CONFIRMED`, tetapi klien belum bisa melihat detail proses pemesanan mereka. Saya ingin klien bisa tahu pesanannya sudah sampai tahap mana tanpa harus tanya admin terus.
+
+Tambahkan section khusus:
+“Status Pemesanan Saya”
+atau
+“Progress Pesanan”
+
+Section ini harus muncul untuk setiap order aktif milik klien.
+
+Untuk tiap order tampilkan:
+
+* nama layanan/order
+* tanggal order
+* status pembayaran: Belum Bayar / DP / Lunas
+* status proses: Confirmed / Dalam Proses / Menunggu Dokumen / Diproses / Selesai
+* progress step visual
+* estimasi selesai jika ada
+* catatan terbaru dari admin
+* dokumen yang masih kurang jika ada
+* tombol hubungi admin via WhatsApp
+
+Buat progress step berbeda sesuai jenis produk.
+
+Untuk Visa Pelajar / Entry:
+
+1. Order Dibuat
+2. Pembayaran / DP
+3. Dokumen Diterima
+4. Dokumen Dicek
+5. Proses Pengajuan
+6. Selesai
+
+Untuk VOA:
+
+1. Order Dibuat
+2. Pembayaran
+3. Data Penumpang Diterima
+4. Agent Lapangan Ditugaskan
+5. Menunggu Kedatangan
+6. Selesai
+
+Untuk Tiket Pesawat:
+
+1. Request Tiket
+2. Pencarian Jadwal
+3. Konfirmasi Harga
+4. Pembayaran
+5. Tiket Diterbitkan
+
+Untuk Umrah / Trip:
+
+1. Daftar Paket
+2. DP
+3. Kelengkapan Berkas
+4. Pelunasan
+5. Keberangkatan
+6. Selesai
+
+Data progress harus diambil dari database order yang sama dengan admin dashboard, bukan data dummy. Jika admin mengubah status order di dashboard, halaman publik klien otomatis ikut update.
+
+Tambahkan UI:
+
+* progress timeline horizontal untuk desktop
+* progress timeline vertical untuk mobile
+* badge status warna:
+
+  * merah = belum bayar / butuh tindakan
+  * kuning = DP / menunggu
+  * biru = dalam proses
+  * hijau = selesai
+* card compact tapi readable
+* desain estetik mengikuti style Temantiket
+
+Tambahkan “Yang Perlu Kamu Lakukan”:
+Jika ada kekurangan dokumen atau pembayaran belum lunas, tampilkan instruksi jelas:
+
+* “Silakan lengkapi paspor”
+* “Silakan lakukan pelunasan”
+* “Menunggu verifikasi admin”
+* “Tidak ada tindakan yang perlu dilakukan saat ini”
+
+Tambahkan tombol:
+
+* Hubungi Admin
+* Kirim Bukti Pembayaran
+* Lihat Detail Order
+* Salin Nomor Order
+
+Jangan tampilkan data internal seperti:
+
+* profit
+* modal
+* fee agent
+* komisi
+* catatan internal owner
+* data agent internal yang tidak perlu
+
+Hanya tampilkan informasi yang aman untuk klien.
+
+Expected result:
+Klien publik bisa melihat proses pemesanan mereka sendiri dengan jelas, update realtime, tahu apa yang harus dilakukan, dan tidak bingung menunggu proses. Halaman member publik jadi lebih informatif, profesional, dan mengurangi chat tanya progress ke admin.

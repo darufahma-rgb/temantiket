@@ -39,9 +39,10 @@ function openrouterHeaders() {
 
 // ── OpenAI — AITEM (Asisten AI) ──────────────────────────────────────────────
 // Digunakan HANYA untuk AITEM (AI Command Center / chat assistant).
-// Tidak ada fallback ke OpenRouter di sini.
-const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
-const OPENAI_BASE_URL = 'https://api.openai.com/v1';
+// Menggunakan Replit AI Integrations (AI_INTEGRATIONS_OPENAI_API_KEY) jika tersedia,
+// dengan fallback ke OPENAI_API_KEY yang di-set manual.
+const OPENAI_API_KEY = (process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '').trim();
+const OPENAI_BASE_URL = (process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || 'https://api.openai.com/v1').trim();
 const MODEL_ASSISTANT = 'gpt-4o-mini';  // AITEM
 
 // Header standar OpenAI
@@ -2159,8 +2160,9 @@ app.listen(PORT, '0.0.0.0', () => {
   } else {
     console.warn('[server] ⚠️  OPENROUTER_API_KEY tidak ditemukan — fitur OCR dan Caption Generator tidak akan berfungsi');
   }
-  console.log(`[server] ── AITEM / Asisten AI (OpenAI) ──`);
+  console.log(`[server] ── AITEM / Asisten AI (OpenAI via Replit AI Integrations) ──`);
   console.log(`[server]   OPENAI_API_KEY detected: ${!!OPENAI_API_KEY}`);
+  console.log(`[server]   OPENAI_BASE_URL: ${OPENAI_BASE_URL}`);
   if (OPENAI_API_KEY) {
     console.log(`[server]   Assistant model : ${MODEL_ASSISTANT}`);
   } else {
