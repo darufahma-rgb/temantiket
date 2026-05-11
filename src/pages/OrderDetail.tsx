@@ -41,6 +41,7 @@ import { addWalletTxAsync } from "@/lib/agentWallet";
 import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import { supabase } from "@/lib/supabase";
 import { VisaEntryPanel } from "@/components/VisaEntryPanel";
+import { useAIContextStore } from "@/store/aiContextStore";
 
 /** Award 20 poin ke agent penjual saat order → Completed (idempotent via upsert). */
 async function awardOrderCompletionPoints(agentId: string, orderId: string) {
@@ -129,6 +130,42 @@ export default function OrderDetail() {
   const [saving, setSaving] = useState(false);
   const [clientViewOpen, setClientViewOpen] = useState(false);
   const [members, setMembers] = useState<MemberInfo[]>([]);
+
+  const { setPageContext, setActiveItem, setOnApplyEdit, clearContext } = useAIContextStore();
+
+  useEffect(() => {
+    setPageContext({ pageId: "order-detail", pageTitle: "Detail Order" });
+    return () => clearContext();
+  }, [setPageContext, clearContext]);
+
+  useEffect(() => {
+    if (order) {
+      const client = clients.find((c) => c.id === order.clientId);
+      const contentLines = [
+        `Tipe: ${order.type}`,
+        `Status: ${order.status}`,
+        `Harga: ${order.currency} ${Number(order.totalPrice).toLocaleString("id-ID")}`,
+        `Modal: ${order.currency} ${Number(order.costPrice ?? 0).toLocaleString("id-ID")}`,
+        client ? `Klien: ${client.name} (${client.phone})` : null,
+        order.title ? `Judul: ${order.title}` : null,
+        order.notes ? `Catatan: ${order.notes}` : null,
+      ].filter(Boolean).join("\n");
+      setActiveItem({
+        id: order.id,
+        title: order.title ?? `Order ${order.type} — ${order.status}`,
+        content: contentLines,
+        type: "order",
+      });
+      setOnApplyEdit((newNotes: string) => {
+        setDraft((prev) => ({ ...prev, notes: newNotes }));
+        toast.success("Catatan order diperbarui oleh AITEM — klik Simpan untuk menyimpan 💾");
+      });
+    } else {
+      setActiveItem(null);
+      setOnApplyEdit(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id, order?.status, order?.notes, clients.length]);
 
   useEffect(() => {
     if (clients.length === 0) void fetchClients();

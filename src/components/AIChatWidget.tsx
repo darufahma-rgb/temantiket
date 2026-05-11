@@ -761,6 +761,7 @@ export function AIChatWidget() {
     setLoading(true);
 
     // Build page context from aiContextStore
+    const { pageData } = useAIContextStore.getState();
     const pageCtx: PageContext | undefined = page
       ? {
           pageId: page.pageId,
@@ -773,6 +774,7 @@ export function AIChatWidget() {
                 type: activeItem.type,
               }
             : null,
+          pageData: pageData ?? undefined,
         }
       : undefined;
 

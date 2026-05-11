@@ -32,6 +32,7 @@ import MemberCard from "@/components/MemberCard";
 import { ClientDocVault } from "@/components/ClientDocVault";
 import { buildMemberSlug, buildPublicMemberUrl } from "@/lib/memberSlug";
 import { decrementReferralStamp } from "@/features/clients/clientsRepo";
+import { useAIContextStore } from "@/store/aiContextStore";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const fmtIDR = (v: number) =>
@@ -1001,6 +1002,23 @@ export default function Clients() {
   const debouncedQ = useDebounce(q, 300);
   const [addOpen, setAddOpen] = useState(false);
   const [memberNameMap, setMemberNameMap] = useState<Map<string, string>>(new Map());
+
+  const { setPageContext, setPageData, clearContext } = useAIContextStore();
+  useEffect(() => {
+    setPageContext({ pageId: "clients", pageTitle: "Data Klien" });
+    return () => clearContext();
+  }, [setPageContext, clearContext]);
+
+  useEffect(() => {
+    setPageData({
+      totalClients: clients.length,
+      recentClients: clients.slice(0, 10).map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+      })),
+    });
+  }, [clients.length, setPageData]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

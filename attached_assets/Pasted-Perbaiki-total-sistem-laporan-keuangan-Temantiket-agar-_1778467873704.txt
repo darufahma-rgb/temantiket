@@ -1,0 +1,264 @@
+Perbaiki total sistem laporan keuangan Temantiket agar membedakan dengan jelas antara:
+
+* uang yang SUDAH diterima
+* uang yang MASIH piutang / belum dibayar
+* revenue kotor
+* cashflow masuk aktual
+* profit real
+* profit pending
+
+Saat ini ada cacat logika:
+Order yang status pembayarannya “Belum Bayar” masih ikut masuk ke laporan keuangan utama seolah uangnya sudah diterima. Ini salah secara akuntansi dan membuat dashboard profit jadi misleading.
+
+CONTOH KASUS:
+
+* Klien order Visa Student
+* Nilai order Rp 1.300.000
+* Status pembayaran: BELUM BAYAR
+* Tetapi revenue dan net profit sudah masuk ke dashboard utama
+
+Yang benar:
+Order seperti ini harus masuk ke:
+
+* Piutang
+* Pending Revenue
+* Unpaid Orders
+
+BUKAN ke:
+
+* cash masuk
+* net profit real
+* saldo agency aktual
+
+---
+
+## LOGIKA BARU YANG WAJIB DITERAPKAN
+
+### 1. Pisahkan Revenue Menjadi 2
+
+#### A. Revenue Aktual (Paid Revenue)
+
+Hanya order yang:
+
+* status pembayaran lunas
+* atau jumlah dibayar > 0
+
+yang boleh masuk ke:
+
+* Total Revenue
+* Net Profit
+* Cashflow
+* Ringkasan utama
+
+---
+
+#### B. Pending Revenue / Piutang
+
+Order yang:
+
+* belum bayar
+* DP sebagian
+* masih outstanding
+
+harus masuk ke section terpisah:
+
+* Piutang Klien
+* Pending Revenue
+* Outstanding Payment
+
+---
+
+## 2. Tambahkan Status Keuangan Order
+
+Buat enum jelas:
+
+```ts
+UNPAID
+PARTIAL
+PAID
+OVERDUE
+```
+
+Lalu tampilkan badge warna:
+
+* merah = belum bayar
+* kuning = sebagian
+* hijau = lunas
+
+---
+
+## 3. Dashboard Laporan Keuangan
+
+Tambahkan card baru:
+
+### Pending Revenue
+
+Contoh:
+
+* Rp 3.500.000
+* “belum diterima dari klien”
+
+### Total Piutang Aktif
+
+Jumlah seluruh tagihan outstanding.
+
+### Cash Received
+
+Uang yang benar-benar sudah masuk.
+
+### Net Profit Real
+
+Profit dari order yang sudah dibayar.
+
+### Profit Pending
+
+Estimasi profit dari order belum dibayar.
+
+---
+
+## 4. Buku Besar / Ledger
+
+Tambahkan label:
+
+```txt
+[UNPAID]
+[DP 50%]
+[LUNAS]
+```
+
+Dan pisahkan section:
+
+* transaksi masuk
+* transaksi pending
+
+---
+
+## 5. Order Detail
+
+Saat status belum bayar:
+
+* tampilkan banner merah/orange:
+  “Pembayaran belum diterima — order belum dihitung sebagai revenue aktual.”
+
+Jika partial:
+
+* tampilkan progress pembayaran
+* sisa tagihan
+* estimasi profit pending
+
+---
+
+## 6. Profit Calculation
+
+WAJIB:
+Net profit hanya dihitung jika pembayaran sudah masuk.
+
+Rumus:
+
+```txt
+REAL PROFIT =
+(total dibayar customer)
+- modal
+- komisi
+- fee lapangan
+```
+
+Bukan berdasarkan total order mentah.
+
+---
+
+## 7. Jika Customer Belum Bayar
+
+Tetap tampilkan:
+
+* estimasi profit
+* nilai order
+* HPP/modal
+
+Tetapi masuk ke:
+
+* Pending
+* Forecast
+* Piutang
+
+JANGAN masuk profit real.
+
+---
+
+## 8. Sinkronisasi Semua Modul
+
+Sesuaikan seluruh:
+
+* dashboard
+* laporan keuangan
+* buku besar
+* profile agent
+* komisi agent
+* wallet
+* leaderboard
+* analytics
+
+agar menggunakan:
+
+* paid amount
+* unpaid amount
+* outstanding balance
+
+bukan total order mentah.
+
+---
+
+## 9. Agent & Fee
+
+Jika order belum dibayar:
+
+* komisi agent jangan cair
+* fee lapangan jangan masuk wallet
+* payout status = pending
+
+Jika pembayaran lunas:
+
+* baru otomatis:
+
+  * masuk wallet agent
+  * masuk laporan fee
+  * update profit real
+
+---
+
+## 10. UI / UX
+
+Tambahkan visual yang jelas:
+
+Hijau:
+
+* uang sudah diterima
+
+Kuning:
+
+* DP/sebagian
+
+Merah:
+
+* belum bayar
+
+Tambahkan:
+
+* progress pembayaran
+* total outstanding
+* due reminder
+* tombol reminder WA otomatis
+
+---
+
+## TARGET AKHIR
+
+Sistem keuangan Temantiket harus:
+
+* realistis
+* akurat
+* berbasis cashflow nyata
+* tidak menghitung uang yang belum diterima sebagai profit
+* punya sistem piutang yang jelas
+* sinkron dengan order, agent, dan wallet
+* cocok dipakai owner untuk decision making real bisnis

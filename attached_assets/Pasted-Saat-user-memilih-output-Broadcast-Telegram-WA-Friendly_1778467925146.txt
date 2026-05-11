@@ -1,0 +1,133 @@
+Saat user memilih output:
+- Broadcast Telegram/WA
+- Friendly WhatsApp
+- Announcement Style
+- atau format yang ditujukan untuk WhatsApp
+
+MAKA format markdown WA wajib menggunakan SINTAKS WHATSAPP ASLI, BUKAN markdown web/html.
+
+JANGAN gunakan:
+# Heading
+## Heading
+### Heading
+- bullet markdown web
+render heading besar HTML
+atau styling rich text web lainnya.
+
+Karena output akan dipakai langsung di WhatsApp.
+
+Gunakan format WhatsApp native berikut:
+
+FORMAT BOLD:
+*teks bold*
+
+FORMAT ITALIC:
+_teks italic_
+
+FORMAT STRIKE:
+~teks~
+
+FORMAT MONOSPACE:
+```teks```
+
+Bullet gunakan:
+• atau -
+bukan markdown nested aneh.
+
+Separator gunakan:
+──────────
+atau
+———
+
+JANGAN gunakan:
+# ##
+render heading besar
+HTML heading
+auto typography web
+
+Karena akan rusak saat dicopy ke WhatsApp.
+
+---
+
+ATURAN FORMAT WA TEMANTIKET
+
+Style:
+- clean
+- profesional
+- readable
+- khas broadcast admin travel
+- tidak terlalu ramai
+- tidak terlalu banyak emoji
+
+Emoji maksimal:
+- 1 emoji per section
+- gunakan hanya jika membantu visual
+
+Contoh:
+📢 Pengumuman
+📌 Catatan
+✅ Benefit
+⚠️ Penting
+
+Hindari spam emoji:
+❌ ✨🔥💥🌈🎉🚀💫
+
+---
+
+CONTOH FORMAT YANG BENAR
+
+*📢 PENGUMUMAN SISTEM TERBARU*
+
+Kami sedang melakukan beberapa peningkatan sistem untuk meningkatkan performa dan kenyamanan penggunaan Temantiket.
+
+──────────
+
+*Optimasi Caption Generator*
+
+• OCR poster sekarang lebih cepat
+• Output caption difokuskan menjadi 1 hasil terbaik
+• Respons AI lebih ringan dan efisien
+
+──────────
+
+*Perbaikan Data Agent*
+
+• Penyimpanan data agent sedang ditingkatkan
+• Loading halaman agent-center dioptimalkan
+• Sinkronisasi database diperbaiki
+
+──────────
+
+Terima kasih atas dukungannya 🙏
+_Temantiket_
+
+---
+
+JIKA user memilih:
+- Elegant Clean Notes
+- Professional Formal
+- Admin Operasional
+
+maka boleh gunakan markdown preview internal.
+
+Tetapi jika target:
+- WhatsApp
+- Telegram
+- Broadcast
+- Copy WA
+
+WAJIB gunakan format WhatsApp asli.
+
+---
+
+Tambahkan logic renderer:
+
+mode === "whatsapp"
+→ gunakan WA markdown formatter
+
+mode === "web-preview"
+→ gunakan rich markdown renderer
+
+Pisahkan keduanya.
+
+Jangan gunakan renderer web untuk output WhatsApp.

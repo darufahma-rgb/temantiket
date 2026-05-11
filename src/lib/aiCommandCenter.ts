@@ -11,6 +11,7 @@
 
 import { listClients } from "@/features/clients/clientsRepo";
 import { listOrders, getOrder } from "@/features/orders/ordersRepo";
+import { listTemplates } from "@/features/bcTemplates/bcTemplatesRepo";
 import { listMissions, createMission } from "@/features/missions/missionsRepo";
 import { listAgentPoints, sumPointsByAgent } from "@/features/agentPoints/agentPointsRepo";
 import { extractItinerary } from "@/lib/itineraryAI";
@@ -51,6 +52,7 @@ export interface PageContext {
     type: string;
   } | null;
   userRole?: string;
+  pageData?: Record<string, unknown> | null;
 }
 
 // ── OpenAI tool definitions ──────────────────────────────────────────────────
@@ -252,6 +254,78 @@ const TOOLS: object[] = [
   {
     type: "function",
     function: {
+      name: "get_bc_templates",
+      description:
+        "List atau cari template broadcast WA. Gunakan ketika user tanya tentang template, minta daftar template, atau cari template tertentu berdasarkan kata kunci atau kategori.",
+      parameters: {
+        type: "object",
+        properties: {
+          search: {
+            type: "string",
+            description: "Kata kunci pencarian judul atau isi template (opsional)",
+          },
+          category: {
+            type: "string",
+            enum: ["umrah", "haji", "visa_on_arrival", "visa_pelajar", "tiket_pesawat", "general"],
+            description: "Filter kategori template (opsional)",
+          },
+          limit: {
+            type: "number",
+            description: "Jumlah maksimal hasil (default: 10)",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_order_detail",
+      description:
+        "Ambil detail lengkap satu order beserta info kliennya. Gunakan ketika user tanya detail spesifik satu order, status pembayaran, catatan order, atau data lengkap order tertentu.",
+      parameters: {
+        type: "object",
+        properties: {
+          orderId: {
+            type: "string",
+            description: "ID order (opsional jika tidak tahu ID-nya)",
+          },
+          clientName: {
+            type: "string",
+            description: "Nama klien — untuk mencari order milik klien tertentu (opsional)",
+          },
+          orderType: {
+            type: "string",
+            enum: ["umrah", "flight", "visa_voa", "visa_student"],
+            description: "Filter tipe order (opsional)",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_client_detail",
+      description:
+        "Ambil detail lengkap satu klien beserta semua riwayat ordernya. Gunakan ketika user tanya tentang klien tertentu, riwayat perjalanan klien, passport klien, atau data lengkap klien.",
+      parameters: {
+        type: "object",
+        properties: {
+          search: {
+            type: "string",
+            description: "Nama atau nomor HP klien",
+          },
+        },
+        required: ["search"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "edit_content",
       description: `Gunakan tool ini ketika user meminta edit, tambah, rapikan, perbarui, atau buat versi lain dari catatan/template yang sedang aktif.
 
@@ -308,7 +382,7 @@ function buildSystemPrompt(ctx?: PageContext): string {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📍 KONTEKS HALAMAN AKTIF
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-User sedang berada di: **${ctx.pageTitle}** (route: /${ctx.pageId})
+User sedang berada di: **${ctx.pageTitle}** (pageId: ${ctx.pageId})
 Role user: ${userRole}`;
 
     if (ctx.activeItem) {
@@ -327,6 +401,7 @@ Role user: ${userRole}`;
 
 ${typeLabel} yang sedang dibuka:
 • Judul: "${ctx.activeItem.title}"
+• ID: ${ctx.activeItem.id}
 • Tipe: ${ctx.activeItem.type}
 
 ISI SAAT INI:
@@ -347,6 +422,17 @@ PENTING: Jangan pernah menolak request edit konten Temantiket. Langsung eksekusi
       pageContextBlock += `
 
 Tidak ada item spesifik yang sedang dibuka. User bisa bertanya seputar halaman ${ctx.pageTitle} atau membuka item tertentu agar AITEM bisa membaca isinya.`;
+    }
+
+    if (ctx.pageData && Object.keys(ctx.pageData).length > 0) {
+      const pageDataStr = JSON.stringify(ctx.pageData, null, 2);
+      const truncated = pageDataStr.length > 2000 ? pageDataStr.slice(0, 2000) + "\n..." : pageDataStr;
+      pageContextBlock += `
+
+DATA HALAMAN (data yang tampil di layar user sekarang):
+\`\`\`json
+${truncated}
+\`\`\``;
     }
   }
 
@@ -785,6 +871,126 @@ async function executeTool(
             label,
             dataUrl,
           },
+          success: true,
+        };
+      }
+
+      case "get_bc_templates": {
+        const { search, category, limit = 10 } = args as {
+          search?: string;
+          category?: string;
+          limit?: number;
+        };
+        const all = await listTemplates();
+        const filtered = all.filter((t) => {
+          if (category && t.category !== category) return false;
+          if (search) {
+            const q = search.toLowerCase();
+            return t.title.toLowerCase().includes(q) || t.body.toLowerCase().includes(q);
+          }
+          return true;
+        });
+        const results = filtered.slice(0, limit).map((t) => ({
+          id: t.id,
+          title: t.title,
+          category: t.category,
+          bodyPreview: t.body.slice(0, 200),
+          variables: (t.body.match(/\{\{[A-Z_]+\}\}/g) ?? []).join(", "),
+        }));
+        return {
+          result: JSON.stringify({ total: filtered.length, templates: results }),
+          displayData: { type: "bc_templates_list", total: filtered.length, templates: results },
+          success: true,
+        };
+      }
+
+      case "get_order_detail": {
+        const { orderId, clientName, orderType } = args as {
+          orderId?: string;
+          clientName?: string;
+          orderType?: string;
+        };
+        let targetOrder = null;
+        let targetClient = null;
+
+        if (orderId) {
+          targetOrder = await getOrder(orderId);
+        }
+        if (!targetOrder) {
+          const [allOrders, allClients] = await Promise.all([listOrders(), listClients()]);
+          let filtered = allOrders;
+          if (orderType) filtered = filtered.filter((o) => o.type === orderType);
+          if (clientName) {
+            const matched = allClients.filter((c) => c.name.toLowerCase().includes(clientName.toLowerCase()));
+            if (matched.length > 0) {
+              targetClient = matched[0];
+              filtered = filtered.filter((o) => o.clientId === targetClient!.id);
+            }
+          }
+          if (filtered.length === 0) throw new Error("Order tidak ditemukan — coba dengan nama klien atau ID order yang lebih spesifik.");
+          targetOrder = filtered[0];
+        }
+        if (!targetOrder) throw new Error("Order tidak ditemukan.");
+        if (!targetClient && targetOrder.clientId) {
+          const allClients2 = await listClients();
+          targetClient = allClients2.find((c) => c.id === targetOrder!.clientId) ?? null;
+        }
+        const detail = {
+          id: targetOrder.id,
+          type: targetOrder.type,
+          title: targetOrder.title,
+          status: targetOrder.status,
+          totalPrice: targetOrder.totalPrice,
+          costPrice: targetOrder.costPrice,
+          currency: targetOrder.currency,
+          notes: targetOrder.notes ?? null,
+          createdAt: targetOrder.createdAt,
+          client: targetClient ? { name: targetClient.name, phone: targetClient.phone, passportNumber: targetClient.passportNumber ?? null } : null,
+        };
+        return {
+          result: JSON.stringify(detail),
+          displayData: { type: "order_detail", ...detail },
+          success: true,
+        };
+      }
+
+      case "get_client_detail": {
+        const { search } = args as { search: string };
+        if (!search?.trim()) throw new Error("Nama atau nomor HP klien tidak boleh kosong");
+        const [allClients, allOrders] = await Promise.all([listClients(), listOrders()]);
+        const matched = allClients.filter((c) =>
+          c.name.toLowerCase().includes(search.toLowerCase()) || c.phone.includes(search),
+        );
+        if (matched.length === 0) throw new Error(`Klien "${search}" tidak ditemukan di sistem.`);
+        const client = matched[0];
+        const clientOrders = allOrders
+          .filter((o) => o.clientId === client.id)
+          .map((o) => ({
+            id: o.id,
+            type: o.type,
+            status: o.status,
+            title: o.title,
+            totalPrice: o.totalPrice,
+            currency: o.currency,
+            createdAt: o.createdAt,
+          }));
+        const detail = {
+          id: client.id,
+          name: client.name,
+          phone: client.phone,
+          email: client.email ?? null,
+          gender: client.gender ?? null,
+          birthDate: client.birthDate ?? null,
+          birthPlace: client.birthPlace ?? null,
+          passportNumber: client.passportNumber ?? null,
+          passportExpiry: client.passportExpiry ?? null,
+          notes: client.notes ?? null,
+          totalOrders: clientOrders.length,
+          orders: clientOrders,
+        };
+        return {
+          result: JSON.stringify(detail),
+          displayData: { type: "client_detail", ...detail },
           success: true,
         };
       }

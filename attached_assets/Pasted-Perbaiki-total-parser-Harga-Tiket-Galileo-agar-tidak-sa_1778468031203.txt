@@ -1,0 +1,61 @@
+Perbaiki total parser Harga Tiket Galileo agar tidak salah mendeteksi tiket return sebagai oneway. Saat input berisi 4 segment seperti:
+
+1. GF70 03JUN CAI → BAH 17:15–20:15
+2. GF284 03JUN BAH → GOI 21:15–03:40(+1)
+3. GF285 03SEP GOI → BAH 04:40–06:10
+4. GF79 04SEP BAH → CAI 01:10–04:30
+
+maka sistem wajib mendeteksi tipe tiket sebagai `Return / PP`, bukan `Oneway`.
+
+Akar masalah yang harus diperbaiki: parser saat ini hanya membaca origin awal dan destination akhir outbound, lalu mengabaikan segment pulang. Jangan lagi menentukan tipe tiket hanya dari field `from` dan `to` utama. Deteksi tipe perjalanan harus berbasis seluruh segment.
+
+Rules:
+
+* Ambil origin pertama = `segments[0].from`
+* Ambil destination terakhir = `segments[segments.length - 1].to`
+* Jika destination terakhir sama dengan origin pertama, maka `ticketType = RETURN`
+* Jika hanya 1 arah dan tidak kembali ke origin, maka `ticketType = ONEWAY`
+* Jika segment kompleks tidak kembali ke origin tetapi lebih dari 2 kota, maka `ticketType = MULTICITY`
+
+Untuk contoh ini:
+
+* origin pertama: CAI
+* destination terakhir: CAI
+* berarti RETURN / PP
+
+Sistem juga harus memecah segment:
+
+* outbound = dari origin awal sampai tiba di kota tujuan utama pertama sebelum route balik
+* inbound = dari kota tujuan utama kembali ke origin awal
+
+Untuk contoh ini:
+
+* outbound: CAI → BAH → GOI
+* inbound: GOI → BAH → CAI
+
+Jangan gabungkan nomor penerbangan menjadi satu field ambigu saja. Simpan dan tampilkan detail setiap segment:
+
+* airline code
+* flight number
+* tanggal
+* from
+* to
+* departure time
+* arrival time
+* arrival next day jika ada `#` atau crossing date
+* transit airport
+* transit duration
+* aircraft/class jika tersedia
+
+Perbaiki UI hasil parse:
+
+* field “Tipe Tiket” harus otomatis tampil `Return / PP`
+* tampilkan section “Keberangkatan” dan “Kepulangan”
+* tampilkan tanggal berangkat 03 Juni dan tanggal pulang 03 September / 04 September sesuai segment
+* tampilkan transit Bahrain untuk pergi dan pulang
+* tampilkan total amount `29283.80 EGP`
+* jangan hilangkan segment 3 dan 4
+
+Pastikan hasil parse Harga Tiket, generator Itinerary WhatsApp, Travel Card, dan Simpan Semua memakai data segment yang sama agar tidak mismatch.
+
+Target akhir: input Galileo 4 baris return seperti screenshot tidak boleh lagi muncul sebagai oneway. Harus terbaca sebagai Return / PP dengan semua segment lengkap dan detail.

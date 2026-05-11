@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useAIContextStore } from "@/store/aiContextStore";
 import {
   Plus, Trash2, Edit3, Check, X, Sparkles, StickyNote, Copy, ClipboardCheck,
   Pin, PinOff, Search, Maximize2, Hash, AlignLeft,
@@ -217,6 +218,54 @@ export default function Notes() {
   // Gate: jangan push ke cloud sampai initial pull selesai. Tanpa ini,
   // first effect run akan kirim local empty + delete semua note di cloud.
   const pulledRef = useRef(!isSupabaseConfigured());
+
+  // ── AITEM context wiring ─────────────────────────────────────────────────
+  const { setPageContext, setActiveItem, setOnApplyEdit, setPageData, clearContext } = useAIContextStore();
+
+  useEffect(() => {
+    setPageContext({ pageId: "notes", pageTitle: "Catatan Operasional" });
+    return () => clearContext();
+  }, [setPageContext, clearContext]);
+
+  useEffect(() => {
+    if (expandedNote) {
+      setActiveItem({
+        id: expandedNote.id,
+        title: expandedNote.title,
+        content: expandedNote.content,
+        type: "note",
+      });
+      setOnApplyEdit((newContent: string) => {
+        const updatedAt = Date.now();
+        const updated: Note = { ...expandedNote, content: newContent, updatedAt };
+        setNotes((prev) => prev.map((n) => n.id === updated.id ? updated : n));
+        setExpandedNote(updated);
+        void upsertNote(updated as NoteCloud).catch(() => undefined);
+        toast.success("Catatan diperbarui oleh AITEM ✅");
+      });
+    } else {
+      setActiveItem(null);
+      setOnApplyEdit(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedNote?.id, expandedNote?.content]);
+
+  // ── AITEM page data — list of visible notes ───────────────────────────────
+  const updateAIPageData = useCallback(() => {
+    // filtered is computed below, use notes directly here
+    const all = notes.slice(0, 15).map((n) => ({
+      id: n.id,
+      title: n.title,
+      tags: n.tags ?? [],
+      preview: n.content.slice(0, 80),
+      pinned: n.pinned ?? false,
+    }));
+    setPageData({ totalNotes: notes.length, notes: all });
+  }, [notes, setPageData]);
+
+  useEffect(() => {
+    updateAIPageData();
+  }, [updateAIPageData]);
 
   // localStorage-only sync — cloud mutations happen explicitly in each action.
   useEffect(() => {

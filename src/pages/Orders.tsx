@@ -31,6 +31,7 @@ import { PassportScanButton } from "@/components/PassportScanButton";
 import { decidePassportSync } from "@/features/clients/passportSync";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAIContextStore } from "@/store/aiContextStore";
 
 function fmtIDRShort(n: number): string {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}M`;
@@ -76,6 +77,26 @@ export default function Orders() {
 
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+
+  const { setPageContext, setPageData, clearContext } = useAIContextStore();
+  useEffect(() => {
+    setPageContext({ pageId: "orders", pageTitle: "Manajemen Order" });
+    return () => clearContext();
+  }, [setPageContext, clearContext]);
+
+  useEffect(() => {
+    setPageData({
+      totalOrders: orders.length,
+      recentOrders: orders.slice(0, 10).map((o) => ({
+        id: o.id,
+        type: o.type,
+        status: o.status,
+        title: o.title ?? null,
+        totalPrice: o.totalPrice,
+        currency: o.currency,
+      })),
+    });
+  }, [orders.length, setPageData]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

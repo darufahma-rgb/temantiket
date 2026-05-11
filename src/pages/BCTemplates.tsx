@@ -29,6 +29,7 @@ import {
   BC_CATEGORIES, type BCTemplate, type BCTemplateDraft, type BCCategory,
 } from "@/features/bcTemplates/bcTemplatesRepo";
 import { useAuthStore } from "@/store/authStore";
+import { useAIContextStore } from "@/store/aiContextStore";
 
 const CATEGORY_ICONS: Record<string, ComponentType<LucideProps>> = {
   all:             LayoutGrid,
@@ -89,6 +90,41 @@ export default function BCTemplates() {
 
   const tabsRef = useRef<HTMLDivElement>(null);
 
+  // ── AITEM context wiring ─────────────────────────────────────────────────
+  const { setPageContext, setActiveItem, setOnApplyEdit, setPageData, clearContext } = useAIContextStore();
+
+  useEffect(() => {
+    setPageContext({ pageId: "bc-templates", pageTitle: "Template Broadcast" });
+    return () => clearContext();
+  }, [setPageContext, clearContext]);
+
+  useEffect(() => {
+    if (formOpen && editTarget) {
+      setActiveItem({
+        id: editTarget.id,
+        title: editTarget.title,
+        content: editTarget.body,
+        type: "bc_template",
+      });
+      setOnApplyEdit((newBody: string) => {
+        setDraft((prev) => ({ ...prev, body: newBody }));
+        toast.success("Template diperbarui oleh AITEM — klik Simpan untuk menyimpan 💾");
+      });
+    } else if (copyTarget) {
+      setActiveItem({
+        id: copyTarget.id,
+        title: copyTarget.title,
+        content: copyTarget.body,
+        type: "bc_template",
+      });
+      setOnApplyEdit(null);
+    } else {
+      setActiveItem(null);
+      setOnApplyEdit(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formOpen, editTarget?.id, copyTarget?.id]);
+
   const refresh = async () => {
     try {
       const list = await listTemplates();
@@ -101,6 +137,18 @@ export default function BCTemplates() {
   };
 
   useEffect(() => { void refresh(); }, []);
+
+  useEffect(() => {
+    setPageData({
+      totalTemplates: templates.length,
+      templates: templates.slice(0, 15).map((t) => ({
+        id: t.id,
+        title: t.title,
+        category: t.category,
+        bodyPreview: t.body.slice(0, 100),
+      })),
+    });
+  }, [templates.length, setPageData]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
