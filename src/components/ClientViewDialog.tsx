@@ -742,70 +742,88 @@ function buildTextSummary(
   formatDate: (s: string, m?: "short" | "full") => string,
 ): string {
   const lines: string[] = [];
+  const SEP = "──────────";
+
   if (data.kind === "flight") {
-    const m = data.meta;
-    lines.push(`✈️ *ITINERARY TIKET PESAWAT*`);
-    lines.push(`_${agencyName}_`);
+    const m   = data.meta;
+    const pax = m.passengerName?.trim() || data.client?.name;
+
+    const fromLabel = m.fromCity ? `${m.fromCity} (${m.fromCode ?? ""})` : (m.fromCode ?? "—");
+    const toLabel   = m.toCity   ? `${m.toCity} (${m.toCode ?? ""})`     : (m.toCode   ?? "—");
+
+    // For a single-leg FlightMeta, trip label based on whether it looks like a return
+    const hasReturn = !!(m.arriveDate && m.fromCode && m.toCode);
+    const tripLabel = hasReturn ? "Pulang Pergi" : "Sekali Jalan";
+
+    lines.push(`*Tiket Pesawat ${m.fromCode ?? "—"} → ${m.toCode ?? "—"} (${tripLabel})*`);
+    lines.push(`by ${agencyName}`);
     lines.push("");
-    if (data.title) lines.push(`📌 ${data.title}`);
-    if (m.passengerName || data.client?.name) {
-      lines.push(`👤 *Penumpang:* ${m.passengerName || data.client?.name}`);
-    }
-    if (m.pnr) lines.push(`🎫 *PNR:* \`${m.pnr}\``);
+    lines.push(SEP);
+    lines.push(`*KEBERANGKATAN*`);
+    if (m.departDate) lines.push(formatDate(m.departDate, "full"));
+    lines.push("");
+    lines.push(`*Flight 1*`);
+    lines.push(`${fromLabel} → ${toLabel}`);
     if (m.airline || m.flightNumber) {
-      lines.push(`🛫 *Maskapai:* ${[m.airline, m.flightNumber].filter(Boolean).join(" · ")}`);
+      lines.push([m.airline, m.flightNumber].filter(Boolean).join(" "));
     }
-    if (m.fromCode || m.toCode) {
-      const from = `${m.fromCode || "—"}${m.fromCity ? ` (${m.fromCity})` : ""}`;
-      const to = `${m.toCode || "—"}${m.toCity ? ` (${m.toCity})` : ""}`;
-      lines.push(`📍 *Rute:* ${from} → ${to}`);
+    if (m.departTime) lines.push(`Berangkat  ${m.departTime}`);
+    if (m.arriveTime) {
+      const nextDay = !!(m.arriveDate && m.departDate && m.arriveDate > m.departDate);
+      lines.push(`Tiba       ${m.arriveTime}${nextDay ? " (+1)" : ""}`);
     }
-    if (m.departDate) {
-      const t = m.departTime ? ` · ${m.departTime}` : "";
-      lines.push(`📅 *Berangkat:* ${formatDate(m.departDate, "full")}${t}`);
-    }
-    if (m.arriveDate || m.arriveTime) {
-      const date = m.arriveDate ? formatDate(m.arriveDate, "full") : "—";
-      const t = m.arriveTime ? ` · ${m.arriveTime}` : "";
-      lines.push(`🛬 *Tiba:* ${date}${t}`);
-    }
+
     const total = data.totalPrice ?? Number(m.sellPrice ?? 0);
-    if (total > 0) {
+    const hasMeta = pax || m.pnr || total > 0;
+    if (hasMeta) {
       lines.push("");
-      lines.push(`💰 *Harga:* ${fmtIDR(total)}`);
+      lines.push(SEP);
+      if (pax)       lines.push(`Penumpang: ${pax}`);
+      if (m.pnr)     lines.push(`PNR: ${m.pnr}`);
+      if (total > 0) lines.push(`Harga: ${fmtIDR(total)}`);
     }
+
     lines.push("");
-    lines.push(`📱 _Hubungi admin ${agencyName} untuk konfirmasi & perubahan jadwal._`);
+    lines.push(`_by ${agencyName} — mudah, cepat, amanah_`);
+
   } else {
-    const p = data.pkg;
-    lines.push(`🕋 *PAKET UMRAH/HAJI*`);
-    lines.push(`_${agencyName}_`);
-    lines.push("");
-    lines.push(`${p.emoji || "📦"} *${p.name}*`);
-    if (p.destination) lines.push(`📍 *Destinasi:* ${p.destination}`);
-    const dur = computeDuration(p.departureDate, p.returnDate, p.days);
-    if (dur) lines.push(`🗓 *Durasi:* ${dur}`);
-    if (p.departureDate) lines.push(`✈️ *Berangkat:* ${formatDate(p.departureDate, "full")}`);
-    if (p.returnDate) lines.push(`🛬 *Pulang:* ${formatDate(p.returnDate, "full")}`);
-    if (p.airline) lines.push(`🛫 *Maskapai:* ${p.airline}`);
-    if (p.hotelLevel) lines.push(`🏨 *Hotel:* ${p.hotelLevel}`);
+    const p        = data.pkg;
     const slotLeft = Math.max(0, p.people - (data.jamaahCount ?? 0));
-    lines.push(`👥 *Kuota:* ${data.jamaahCount ?? 0}/${p.people} pax${slotLeft > 0 ? ` · sisa ${slotLeft} seat` : " · PENUH"}`);
+    const dur      = computeDuration(p.departureDate, p.returnDate, p.days);
+
+    lines.push(`*Paket Umrah/Haji*`);
+    lines.push(`by ${agencyName}`);
+    lines.push("");
+    lines.push(SEP);
+    lines.push(`*${p.emoji ? `${p.emoji} ` : ""}${p.name}*`);
+    if (p.destination)   lines.push(`Destinasi: ${p.destination}`);
+    if (dur)             lines.push(`Durasi: ${dur}`);
+    if (p.departureDate) lines.push(`Berangkat: ${formatDate(p.departureDate, "full")}`);
+    if (p.returnDate)    lines.push(`Pulang: ${formatDate(p.returnDate, "full")}`);
+    if (p.airline)       lines.push(`Maskapai: ${p.airline}`);
+    if (p.hotelLevel)    lines.push(`Hotel: ${p.hotelLevel}`);
+    lines.push(`Kuota: ${data.jamaahCount ?? 0}/${p.people} pax${slotLeft > 0 ? ` (sisa ${slotLeft} seat)` : " — PENUH"}`);
+
     if (p.facilities && p.facilities.length > 0) {
       lines.push("");
-      lines.push(`✨ *Fasilitas:*`);
-      p.facilities.slice(0, 10).forEach((f) => lines.push(`  ✅ ${f}`));
+      lines.push(`Fasilitas:`);
+      p.facilities.slice(0, 8).forEach((f) => lines.push(`- ${f}`));
     }
+
     if (data.pricePerPax && data.pricePerPax > 0) {
       lines.push("");
-      lines.push(`💰 *Harga per Pax:* ${fmtIDR(data.pricePerPax)}`);
+      lines.push(SEP);
+      lines.push(`Harga per pax: ${fmtIDR(data.pricePerPax)}`);
     }
-    if (p.notes && p.notes.trim()) {
+
+    if (p.notes?.trim()) {
       lines.push("");
-      lines.push(`📝 *Catatan:* ${p.notes.trim()}`);
+      lines.push(`Catatan: ${p.notes.trim()}`);
     }
+
     lines.push("");
-    lines.push(`📱 _Info & pendaftaran: hubungi admin ${agencyName}._`);
+    lines.push(`_Info & pendaftaran: hubungi ${agencyName}_`);
   }
+
   return lines.join("\n");
 }

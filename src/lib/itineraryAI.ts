@@ -689,7 +689,7 @@ function fmtPrice(amount: number, currency: string): string {
 
 export function buildWhatsAppText(data: ItineraryData, _egpRate: number): string {
   const lines: string[] = [];
-  const SEP = "━━━━━━━━━━";
+  const SEP = "──────────";
 
   const allLegs = data.legs.filter((l) => l.fromCode || l.toCode || l.departTime);
   if (allLegs.length === 0) return "";
@@ -701,108 +701,93 @@ export function buildWhatsAppText(data: ItineraryData, _egpRate: number): string
   const lastLeg         = lastJourney[lastJourney.length - 1];
   const firstJourneyEnd = firstJourney[firstJourney.length - 1];
 
-  // ── Trip-type detection ────────────────────────────────────────────────────
-  // Return/PP: last destination == first origin
+  // Trip-type detection
   const isReturn = journeys.length >= 2 &&
     !!firstLeg?.fromCode && !!lastLeg?.toCode &&
     firstLeg.fromCode === lastLeg.toCode;
   const isMultiCity = journeys.length >= 2 && !isReturn;
 
-  // ── Header ────────────────────────────────────────────────────────────────
+  // Header
   const originCity = firstLeg?.fromCity ?? firstLeg?.fromCode ?? "";
   const destCity   = firstJourneyEnd?.toCity ?? firstJourneyEnd?.toCode ?? "";
-  const tripSuffix = isReturn ? " (Return)" : isMultiCity ? " (Multi-city)" : "";
+  const tripLabel  = isReturn ? "Pulang Pergi" : isMultiCity ? "Multi-city" : "Sekali Jalan";
 
-  lines.push(`✈️ *Tiket Pesawat ${originCity} → ${destCity}${tripSuffix}*`);
-  lines.push(`*by Temantiket*`);
+  lines.push(`*Tiket Pesawat ${originCity} → ${destCity} (${tripLabel})*`);
+  lines.push(`by Temantiket`);
   lines.push("");
 
-  // ── Section labels ────────────────────────────────────────────────────────
-  const sectionEmojis: string[] = isReturn
-    ? ["🟢", "🔵"]
-    : journeys.map((_, i) => (i === 0 ? "🟢" : "🟡"));
+  // Section labels
   const sectionLabels: string[] = isReturn
-    ? ["*KEBERANGKATAN*", "*KEPULANGAN*"]
+    ? ["KEBERANGKATAN", "KEPULANGAN"]
     : journeys.length === 1
-      ? ["*KEBERANGKATAN*"]
-      : journeys.map((_, i) => `*PERJALANAN ${i + 1}*`);
+      ? ["KEBERANGKATAN"]
+      : journeys.map((_, i) => i === 0 ? "KEBERANGKATAN" : `PERJALANAN ${i + 1}`);
 
   let flightCounter = 0;
 
   journeys.forEach((jLegs, jIdx) => {
-    // ── Section separator & label ──
     lines.push(SEP);
-    const emoji = sectionEmojis[jIdx] ?? "✈️";
-    const label = sectionLabels[jIdx] ?? `*PERJALANAN ${jIdx + 1}*`;
-    lines.push(`${emoji} ${label}`);
+    lines.push(`*${sectionLabels[jIdx] ?? `PERJALANAN ${jIdx + 1}`}*`);
 
     let lastShownDate: string | null = null;
 
     jLegs.forEach((leg, legIdx) => {
-      // ── Date header (show on first leg or when date changes) ──
+      // Date header (show on first leg or when date changes)
       const depDate = leg.departDate ?? null;
       if (depDate && depDate !== lastShownDate) {
-        lines.push(`📅 ${fmtDateLong(depDate)}`);
+        lines.push(fmtDateLong(depDate));
         lastShownDate = depDate;
       }
 
       lines.push("");
 
-      // ── Flight block ──
+      // Flight block
       flightCounter++;
-      lines.push(`🛫 *Flight ${flightCounter}*`);
-      lines.push(
-        `${fmtCityCode(leg.fromCity, leg.fromCode, null)} → ${fmtCityCode(leg.toCity, leg.toCode, null)}`
-      );
-      const fnPart = leg.flightNumber ? `${leg.flightNumber} — ` : "";
-      lines.push(`${fnPart}Berangkat ${leg.departTime ?? "—"}`);
+      lines.push(`*Flight ${flightCounter}*`);
+      lines.push(`${fmtCityCode(leg.fromCity, leg.fromCode, null)} → ${fmtCityCode(leg.toCity, leg.toCode, null)}`);
 
-      // Next-day arrival flag
-      const isNextDay =
-        !!leg.arriveDate && !!leg.departDate && leg.arriveDate > leg.departDate;
-      lines.push(`Tiba ${leg.arriveTime ?? "—"}${isNextDay ? " (+1)" : ""}`);
+      if (leg.airline || leg.flightNumber) {
+        lines.push([leg.airline, leg.flightNumber].filter(Boolean).join(" "));
+      }
 
-      // ── Transit info (between consecutive legs in same journey) ──
+      const isNextDay = !!leg.arriveDate && !!leg.departDate && leg.arriveDate > leg.departDate;
+      lines.push(`Berangkat  ${fmtTime(leg.departTime)}`);
+      lines.push(`Tiba       ${fmtTime(leg.arriveTime)}${isNextDay ? " (+1)" : ""}`);
+
+      // Transit info between consecutive legs in same journey
       if (legIdx < jLegs.length - 1) {
-        const nextLeg      = jLegs[legIdx + 1];
-        const transitMins  = calcTransitMinutes(leg, nextLeg);
-        const transitCity  = leg.toCity ?? leg.toCode ?? "transit";
+        const nextLeg     = jLegs[legIdx + 1];
+        const transitMins = calcTransitMinutes(leg, nextLeg);
+        const transitCity = leg.toCity ?? leg.toCode ?? "transit";
 
         lines.push("");
 
         if (transitMins !== null) {
-          lines.push(`⏳ Transit ${transitCity}: ${fmtMinutes(transitMins)}`);
-          if (transitMins < 4 * 60) {
-            // < 4 hours → short transit
-            lines.push(`✅ Bagasi langsung / tanpa check-in ulang`);
-          } else if (transitMins > 12 * 60) {
-            // > 12 hours → long transit with warning
-            lines.push(`⚠️ Transit panjang — cek kebutuhan visa transit`);
+          lines.push(`Transit di ${transitCity} — ${fmtMinutes(transitMins)}`);
+          if (transitMins > 12 * 60) {
+            lines.push(`(transit panjang — pastikan cek kebutuhan visa transit)`);
           }
-          // 4–12 h → normal transit, no extra note
         } else {
-          // No time data → generic note
-          lines.push(`🔄 Transit ${transitCity}`);
-          lines.push(`✅ Bagasi langsung / tanpa check-in ulang`);
+          lines.push(`Transit di ${transitCity}`);
         }
       }
     });
   });
 
-  // ── Price & baggage ────────────────────────────────────────────────────────
+  // Bagasi & harga
   lines.push("");
   lines.push(SEP);
 
   const currency = data.priceCurrency ?? "IDR";
-  if (data.totalPrice && data.totalPrice > 0) {
-    lines.push(`💰 Harga: ${fmtPrice(data.totalPrice, currency)}`);
-  }
   if (data.baggage) {
-    lines.push(`🧳 Bagasi: ${data.baggage}`);
+    lines.push(`Bagasi: ${data.baggage}`);
+  }
+  if (data.totalPrice && data.totalPrice > 0) {
+    lines.push(`Harga: ${fmtPrice(data.totalPrice, currency)}`);
   }
 
   lines.push("");
-  lines.push(`_by Temantiket_`);
+  lines.push(`_by Temantiket — mudah, cepat, amanah_`);
 
   return lines.join("\n");
 }
