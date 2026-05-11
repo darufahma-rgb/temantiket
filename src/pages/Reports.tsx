@@ -23,7 +23,16 @@ import {
 import {
   profitIDR, revenueIDR, costIDR, fmtIDR, voaOpCost, kurirOpCost,
   agentFeeFromMeta, pelaksanaFeeFromMeta, profitBreakdown,
+  paidAmountIDR, receivableIDR,
 } from "@/lib/profit";
+import {
+  type PaymentStatus,
+  PAYMENT_STATUS_LABEL,
+  PAYMENT_STATUS_STYLE,
+  PAYMENT_STATUS_EMOJI,
+  isReceivable,
+  fmtIDRShort,
+} from "@/lib/paymentStatus";
 import { useRatesStore } from "@/store/ratesStore";
 import { listAgentPoints, sumPointsByAgent, type AgentPoint } from "@/features/agentPoints/agentPointsRepo";
 import { buildLedgerEntries, ledgerSummary } from "@/lib/ledgerSync";
@@ -75,7 +84,7 @@ export default function Reports() {
   const [agentFilter, setAgentFilter] = useState<AgentFilter>("all");
   const [members, setMembers] = useState<MemberInfo[]>([]);
   const [points, setPoints] = useState<AgentPoint[]>([]);
-  const [activeTab, setActiveTab] = useState<"summary" | "ledger">("summary");
+  const [activeTab, setActiveTab] = useState<"summary" | "ledger" | "piutang">("summary");
   const [productCommissions, setProductCommissions] = useState<ProductCommissions>(() => loadProductCommissions());
 
   useEffect(() => {
@@ -236,6 +245,46 @@ export default function Reports() {
       totalCommission, totalFieldFee, totalTransportOpex, agentNetForAgency, netAgencyProfit,
     };
   }, [filtered, memberById, egpRate]);
+
+  // ── Piutang: ringkasan pembayaran klien (seluruh waktu, tidak filtered date) ──
+  const piutang = useMemo(() => {
+    // Build name lookup inline so this memo doesn't depend on byClient ordering
+    const nameById = new Map<string, string>();
+    for (const c of clients) nameById.set(c.id, c.name);
+
+    let totalTagihan   = 0; // sum totalPrice (IDR) semua non-Cancelled
+    let totalCair      = 0; // sum paidAmount (IDR) semua non-Cancelled
+    let totalPiutang   = 0; // sisa tagihan UNPAID + DP
+    let piutangCount   = 0;
+    const piutangOrders: Array<{
+      order: Order;
+      remaining: number;
+      clientName: string;
+    }> = [];
+
+    for (const o of orders) {
+      if (o.status === "Cancelled") continue;
+      totalTagihan += revenueIDR(o, egpRate);
+      totalCair    += paidAmountIDR(o, egpRate);
+      if (isReceivable(o.paymentStatus)) {
+        const rem = receivableIDR(o, egpRate);
+        if (rem > 0) {
+          totalPiutang += rem;
+          piutangCount += 1;
+          const cId = o.clientId ?? "__none";
+          piutangOrders.push({
+            order: o,
+            remaining: rem,
+            clientName: cId === "__none" ? "— Tanpa klien —" : (nameById.get(cId) ?? `Klien ${cId.slice(0, 6)}…`),
+          });
+        }
+      }
+    }
+
+    piutangOrders.sort((a, b) => b.remaining - a.remaining);
+
+    return { totalTagihan, totalCair, totalPiutang, piutangCount, piutangOrders };
+  }, [orders, clients, egpRate]);
 
   // Profit per type (utk pie chart) — pakai agency profit (sudah dikurangi komisi agen).
   const byType = useMemo(() => {
@@ -544,18 +593,18 @@ export default function Reports() {
         </div>
 
         {/* ── Tab pills (mobile) ── */}
-        <div className="flex gap-2 p-1 rounded-2xl bg-[hsl(var(--secondary))]">
-          {(["summary", "ledger"] as const).map((tab) => (
+        <div className="flex gap-1 p-1 rounded-2xl bg-[hsl(var(--secondary))]">
+          {(["summary", "ledger", "piutang"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 h-9 rounded-xl text-[12px] font-bold transition-all ${
+              className={`flex-1 h-9 rounded-xl text-[11px] font-bold transition-all ${
                 activeTab === tab
                   ? "bg-white text-[hsl(var(--foreground))] shadow-sm"
                   : "text-[hsl(var(--muted-foreground))]"
               }`}
             >
-              {tab === "summary" ? "📊 Ringkasan" : "📒 Buku Besar"}
+              {tab === "summary" ? "📊 Ringkasan" : tab === "ledger" ? "📒 Buku Besar" : "💳 Piutang"}
             </button>
           ))}
         </div>
@@ -617,7 +666,7 @@ export default function Reports() {
 
         {/* ── Desktop tab bar ── */}
         <div className="flex gap-1 border-b border-border pb-0">
-          {(["summary", "ledger"] as const).map((tab) => (
+          {(["summary", "ledger", "piutang"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -627,7 +676,7 @@ export default function Reports() {
                   : "bg-muted/30 border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab === "summary" ? "📊 Ringkasan" : "📒 Buku Besar"}
+              {tab === "summary" ? "📊 Ringkasan" : tab === "ledger" ? "📒 Buku Besar" : "💳 Piutang"}
             </button>
           ))}
         </div>
@@ -1455,6 +1504,136 @@ export default function Reports() {
                 Baris 🚴 = biaya kurir setoran uang tunai (fee kurir + ongkos transport + lainnya).
                 Baris 📋 = fee pelaksana visa student (dibaca dari data order).
               </p>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+           PIUTANG TAB
+      ══════════════════════════════════════════════════════ */}
+      {activeTab === "piutang" && (
+        <div className="space-y-5">
+          {/* Header */}
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">💳</span>
+            <div>
+              <h2 className="text-base font-bold">Ringkasan Piutang Klien</h2>
+              <p className="text-[11px] text-muted-foreground">
+                Mencakup seluruh order aktif (semua waktu, bukan filter periode).
+              </p>
+            </div>
+          </div>
+
+          {/* Stat cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-4">
+              <div className="text-[10.5px] uppercase tracking-wide text-muted-foreground">Total Tagihan</div>
+              <div className="text-xl font-extrabold font-mono mt-1">{fmtIDR(piutang.totalTagihan)}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Semua order non-Cancelled</div>
+            </div>
+            <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-4">
+              <div className="text-[10.5px] uppercase tracking-wide text-emerald-700">Kas Sudah Masuk</div>
+              <div className="text-xl font-extrabold font-mono mt-1 text-emerald-700">{fmtIDR(piutang.totalCair)}</div>
+              <div className="text-[10px] text-emerald-600 mt-0.5">
+                {piutang.totalTagihan > 0
+                  ? `${Math.round((piutang.totalCair / piutang.totalTagihan) * 100)}% dari total tagihan`
+                  : "—"}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-red-100 bg-gradient-to-br from-red-50 to-white p-4">
+              <div className="text-[10.5px] uppercase tracking-wide text-red-700">Piutang Aktif</div>
+              <div className="text-xl font-extrabold font-mono mt-1 text-red-700">{fmtIDR(piutang.totalPiutang)}</div>
+              <div className="text-[10px] text-red-500 mt-0.5">{piutang.piutangCount} order belum lunas</div>
+            </div>
+          </div>
+
+          {/* Progress bar: cash collected vs outstanding */}
+          {piutang.totalTagihan > 0 && (
+            <Card className="p-4 space-y-2">
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>Progres Koleksi Pembayaran</span>
+                <span className="font-mono font-bold">
+                  {fmtIDRShort(piutang.totalCair)} / {fmtIDRShort(piutang.totalTagihan)}
+                </span>
+              </div>
+              <div className="h-3 rounded-full bg-gray-100 overflow-hidden flex">
+                <div
+                  className="h-full bg-emerald-500 rounded-l-full transition-all"
+                  style={{ width: `${Math.min(100, (piutang.totalCair / piutang.totalTagihan) * 100)}%` }}
+                />
+                <div
+                  className="h-full bg-red-300 transition-all"
+                  style={{ width: `${Math.min(100, (piutang.totalPiutang / piutang.totalTagihan) * 100)}%` }}
+                />
+              </div>
+              <div className="flex gap-4 text-[10.5px]">
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />Sudah cair</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-300 inline-block" />Piutang</span>
+              </div>
+            </Card>
+          )}
+
+          {/* Piutang order list */}
+          {piutang.piutangOrders.length === 0 ? (
+            <Card className="p-10 text-center">
+              <span className="text-4xl">🟢</span>
+              <p className="font-semibold mt-3">Semua order sudah lunas!</p>
+              <p className="text-[12px] text-muted-foreground mt-1">Tidak ada piutang aktif saat ini.</p>
+            </Card>
+          ) : (
+            <Card className="overflow-hidden">
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                <h3 className="text-[13px] font-semibold">Order Belum Lunas</h3>
+                <span className="text-[10.5px] text-muted-foreground">{piutang.piutangCount} order</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="text-left py-2 px-3 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">Klien / Order</th>
+                      <th className="text-right py-2 px-3 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">Total</th>
+                      <th className="text-right py-2 px-3 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">Dibayar</th>
+                      <th className="text-right py-2 px-3 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">Sisa</th>
+                      <th className="text-center py-2 px-3 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {piutang.piutangOrders.map(({ order: o, remaining, clientName }) => {
+                      const totalIDR = revenueIDR(o, egpRate);
+                      const paidIDR  = paidAmountIDR(o, egpRate);
+                      const ps = o.paymentStatus;
+                      return (
+                        <tr key={o.id} className="hover:bg-muted/20 transition-colors">
+                          <td className="py-2.5 px-3">
+                            <div className="font-medium text-[12px] truncate max-w-[200px]">
+                              {ORDER_TYPE_EMOJI[o.type]} {o.title || ORDER_TYPE_LABEL[o.type]}
+                            </div>
+                            <div className="text-[10.5px] text-muted-foreground">{clientName}</div>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono text-[12px]">{fmtIDR(totalIDR)}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-[12px] text-emerald-700">{fmtIDR(paidIDR)}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-[12px] font-bold text-red-600">{fmtIDR(remaining)}</td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border ${PAYMENT_STATUS_STYLE[ps]}`}>
+                              {PAYMENT_STATUS_EMOJI[ps]} {PAYMENT_STATUS_LABEL[ps]}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-border bg-muted/20 font-bold">
+                      <td className="py-2.5 px-3 text-[11px]">TOTAL PIUTANG</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-[12px]">{fmtIDR(piutang.totalTagihan)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-[12px] text-emerald-700">{fmtIDR(piutang.totalCair)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-[12px] text-red-600">{fmtIDR(piutang.totalPiutang)}</td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </Card>
           )}
         </div>

@@ -26,6 +26,14 @@ import {
   type Order, type OrderStatus, type OrderType,
 } from "@/features/orders/ordersRepo";
 import { voaOpCost, kurirOpCost } from "@/lib/profit";
+import {
+  type PaymentStatus,
+  PAYMENT_STATUS_LABEL,
+  PAYMENT_STATUS_STYLE,
+  PAYMENT_STATUS_EMOJI,
+  derivePaymentStatus,
+  buildWhatsAppReminderUrl,
+} from "@/lib/paymentStatus";
 import { FlightOrderEditor, type FlightMeta } from "@/features/orders/FlightOrderEditor";
 import { toast } from "sonner";
 import { getCommissionForOrderType } from "@/lib/productCommissions";
@@ -189,7 +197,9 @@ export default function OrderDetail() {
       Number(draft.costPrice ?? 0) !== Number(order.costPrice) ||
       (draft.clientId ?? null) !== (order.clientId ?? null) ||
       (draft.notes ?? null) !== (order.notes ?? null) ||
-      JSON.stringify(draft.metadata ?? {}) !== JSON.stringify(order.metadata ?? {})
+      JSON.stringify(draft.metadata ?? {}) !== JSON.stringify(order.metadata ?? {}) ||
+      Number(draft.paidAmount ?? order.paidAmount ?? 0) !== Number(order.paidAmount ?? 0) ||
+      (draft.paymentStatus ?? order.paymentStatus ?? "UNPAID") !== (order.paymentStatus ?? "UNPAID")
     );
   }, [draft, order]);
 
@@ -273,14 +283,22 @@ export default function OrderDetail() {
       // ── Step 1: Save order WITHOUT "credited" flags ────────────────────────
       // Flags are only stamped AFTER Supabase confirms each wallet insert.
       // This prevents the flag being set while the wallet stays empty.
+      // Compute payment status from paid_amount (derive, then respect explicit REFUNDED)
+      const newPaidAmount = Number(draft.paidAmount ?? order.paidAmount ?? 0);
+      const newTotalForPayment = Number(draft.totalPrice ?? order.totalPrice ?? 0);
+      const explicitPS = (draft.paymentStatus ?? order.paymentStatus) as PaymentStatus | undefined;
+      const computedPS: PaymentStatus = derivePaymentStatus(newPaidAmount, newTotalForPayment, explicitPS);
+
       await patchOrder(order.id, {
-        title:      draft.title ?? null,
-        status:     newStatus,
-        totalPrice: Number(draft.totalPrice ?? 0),
-        costPrice:  Number(draft.costPrice ?? 0),
-        clientId:   (draft.clientId as string | null) ?? null,
-        notes:      (draft.notes as string | null) ?? null,
-        metadata:   metaPatch,
+        title:         draft.title ?? null,
+        status:        newStatus,
+        totalPrice:    Number(draft.totalPrice ?? 0),
+        costPrice:     Number(draft.costPrice ?? 0),
+        clientId:      (draft.clientId as string | null) ?? null,
+        notes:         (draft.notes as string | null) ?? null,
+        metadata:      metaPatch,
+        paidAmount:    newPaidAmount,
+        paymentStatus: computedPS,
       });
 
       // ── Step 2: Wallet credits — awaited & idempotent ──────────────────────
@@ -658,6 +676,131 @@ export default function OrderDetail() {
           </div>
         )}
       </Field>
+
+      {/* ── Pembayaran Klien ────────────────────────────────────────────────── */}
+      {currentUser?.role !== "staff" && (() => {
+        const totalPrice = Number(draft.totalPrice ?? order.totalPrice ?? 0);
+        const paidAmount = Number(draft.paidAmount ?? order.paidAmount ?? 0);
+        const remaining  = Math.max(0, totalPrice - paidAmount);
+        const ps: PaymentStatus = derivePaymentStatus(paidAmount, totalPrice, draft.paymentStatus ?? order.paymentStatus);
+        const currency   = order.currency;
+        const fmtNat = (v: number) => currency === "EGP" ? `EGP ${v.toLocaleString("en")}` : fmtIDR(v);
+
+        return (
+          <div className="rounded-2xl border border-green-100 bg-gradient-to-br from-green-50 to-white p-5 space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-base">💰</span>
+                <div>
+                  <div className="text-sm font-semibold">Status Pembayaran Klien</div>
+                  <div className="text-[11px] text-muted-foreground">Catat berapa yang sudah diterima dari klien</div>
+                </div>
+              </div>
+              <span className={`text-[11px] font-bold px-3 py-1 rounded-full border ${PAYMENT_STATUS_STYLE[ps]}`}>
+                {PAYMENT_STATUS_EMOJI[ps]} {PAYMENT_STATUS_LABEL[ps]}
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            {totalPrice > 0 && (
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10.5px] text-muted-foreground">
+                  <span>Progres Pembayaran</span>
+                  <span className="font-mono font-semibold">{Math.min(100, Math.round((paidAmount / totalPrice) * 100))}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      ps === "PAID" ? "bg-emerald-500" : ps === "DP" ? "bg-amber-400" : "bg-red-300"
+                    }`}
+                    style={{ width: `${Math.min(100, (paidAmount / totalPrice) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Breakdown */}
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-xl bg-white border border-border p-2.5">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Total Order</div>
+                <div className="text-[13px] font-extrabold font-mono text-foreground">{fmtNat(totalPrice)}</div>
+              </div>
+              <div className="rounded-xl bg-white border border-emerald-200 p-2.5">
+                <div className="text-[10px] text-emerald-700 uppercase tracking-wide mb-0.5">Sudah Dibayar</div>
+                <div className="text-[13px] font-extrabold font-mono text-emerald-700">{fmtNat(paidAmount)}</div>
+              </div>
+              <div className={`rounded-xl bg-white border p-2.5 ${remaining > 0 ? "border-red-200" : "border-emerald-200"}`}>
+                <div className={`text-[10px] uppercase tracking-wide mb-0.5 ${remaining > 0 ? "text-red-600" : "text-emerald-700"}`}>Sisa Tagihan</div>
+                <div className={`text-[13px] font-extrabold font-mono ${remaining > 0 ? "text-red-600" : "text-emerald-700"}`}>{fmtNat(remaining)}</div>
+              </div>
+            </div>
+
+            {/* Input: record payment */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                Total Diterima ({currency})
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max={totalPrice}
+                  step="1000"
+                  placeholder="0"
+                  value={String(paidAmount || 0)}
+                  onChange={(e) => {
+                    const v = Math.min(Number(e.target.value) || 0, totalPrice);
+                    const newPS = derivePaymentStatus(v, totalPrice, ps === "REFUNDED" ? "REFUNDED" : undefined);
+                    setDraft({ ...draft, paidAmount: v, paymentStatus: newPS });
+                  }}
+                  className="flex-1 rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setDraft({ ...draft, paidAmount: totalPrice, paymentStatus: "PAID" })}
+                  className="h-9 px-3 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200 transition-colors whitespace-nowrap"
+                >
+                  Lunas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDraft({ ...draft, paidAmount: 0, paymentStatus: "UNPAID" })}
+                  className="h-9 px-3 rounded-md text-[11px] font-bold bg-red-100 text-red-600 border border-red-200 hover:bg-red-200 transition-colors whitespace-nowrap"
+                >
+                  Reset
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Masukkan jumlah total yang sudah diterima, lalu klik Simpan untuk memperbarui status.
+              </p>
+            </div>
+
+            {/* WhatsApp reminder */}
+            {linkedClient?.phone && remaining > 0 && (
+              <div className="border-t border-green-100 pt-3">
+                <a
+                  href={buildWhatsAppReminderUrl(
+                    linkedClient.phone,
+                    linkedClient.name,
+                    order.title || ORDER_TYPE_LABEL[order.type],
+                    remaining,
+                    currentUser?.agencyName ?? undefined,
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-bold text-white bg-[#25D366] hover:bg-[#1ebe5b] transition-colors shadow-sm"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/>
+                  </svg>
+                  Ingatkan Pembayaran via WhatsApp
+                </a>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Linked entities */}
       {(linkedClient || order.packageId || order.tripId || order.jamaahId) && (

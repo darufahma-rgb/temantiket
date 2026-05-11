@@ -56,6 +56,25 @@ export function costIDR(order: Order, egpRate = EGP_TO_IDR): number {
   return toIDR(effectiveCostPrice(order), order.currency, egpRate);
 }
 
+/**
+ * Jumlah yang sudah diterima dari klien, dalam IDR.
+ * Gunakan ini untuk menghitung "Pendapatan Cair" (kas masuk nyata).
+ */
+export function paidAmountIDR(order: Order, egpRate = EGP_TO_IDR): number {
+  return toIDR(Number(order.paidAmount ?? 0), order.currency, egpRate);
+}
+
+/**
+ * Sisa tagihan klien (piutang) dalam IDR.
+ * = totalPrice − paidAmount, minimum 0.
+ * Hanya relevan untuk order UNPAID dan DP.
+ */
+export function receivableIDR(order: Order, egpRate = EGP_TO_IDR): number {
+  const total = Number(order.totalPrice ?? 0);
+  const paid  = Number(order.paidAmount ?? 0);
+  return toIDR(Math.max(0, total - paid), order.currency, egpRate);
+}
+
 export const fmtIDR = (v: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);
 

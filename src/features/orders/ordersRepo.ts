@@ -1,6 +1,9 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAgencyId, getCurrentAgencyId, useAuthStore } from "@/store/authStore";
 import { makePersistedCache } from "@/lib/persistedCache";
+import { type PaymentStatus, PAYMENT_STATUSES, coercePaymentStatus } from "@/lib/paymentStatus";
+
+export type { PaymentStatus };
 
 /**
  * Order = entity universal yg ngebungkus berbagai jenis transaksi:
@@ -18,6 +21,8 @@ export type OrderType = (typeof ORDER_TYPES)[number];
 
 export const ORDER_STATUSES = ["Draft", "Confirmed", "Paid", "Completed", "Cancelled"] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+export { PAYMENT_STATUSES };
 
 export interface Order {
   id: string;
@@ -42,6 +47,10 @@ export interface Order {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Status pembayaran klien: UNPAID | DP | PAID | REFUNDED */
+  paymentStatus: PaymentStatus;
+  /** Jumlah yang sudah diterima dari klien (dalam mata uang order). */
+  paidAmount: number;
 }
 
 export type OrderDraft = Omit<Order, "id" | "createdAt" | "updatedAt">;
@@ -85,6 +94,8 @@ const fromRow = (r: Record<string, unknown>): Order => ({
   notes: (r.notes as string) ?? null,
   createdAt: String(r.created_at ?? new Date().toISOString()),
   updatedAt: String(r.updated_at ?? r.created_at ?? new Date().toISOString()),
+  paymentStatus: coercePaymentStatus(r.payment_status),
+  paidAmount: r.paid_amount == null ? 0 : Number(r.paid_amount),
 });
 
 const toRow = (o: Partial<Order>, agencyId?: string) => ({
@@ -102,6 +113,8 @@ const toRow = (o: Partial<Order>, agencyId?: string) => ({
   ...(o.jamaahId !== undefined ? { jamaah_id: o.jamaahId } : {}),
   ...(o.createdByAgent !== undefined ? { created_by_agent: o.createdByAgent } : {}),
   ...(o.notes !== undefined ? { notes: o.notes } : {}),
+  ...(o.paymentStatus !== undefined ? { payment_status: o.paymentStatus } : {}),
+  ...(o.paidAmount !== undefined ? { paid_amount: o.paidAmount } : {}),
   ...(agencyId ? { agency_id: agencyId } : {}),
 });
 
@@ -110,7 +123,7 @@ export async function listOrders(filter?: { type?: OrderType; clientId?: string 
     try {
       let q = supabase!
         .from("orders")
-        .select("id,client_id,type,status,title,total_price,cost_price,currency,metadata,trip_id,package_id,jamaah_id,created_by_agent,notes,created_at,updated_at")
+        .select("id,client_id,type,status,title,total_price,cost_price,currency,metadata,trip_id,package_id,jamaah_id,created_by_agent,notes,created_at,updated_at,payment_status,paid_amount")
         .order("created_at", { ascending: false });
       if (filter?.type) q = q.eq("type", filter.type);
       if (filter?.clientId) q = q.eq("client_id", filter.clientId);
