@@ -319,7 +319,6 @@ export default function AgentProfileOwnerView() {
   const [isSaving, setIsSaving] = useState(false);
   const [walletTxs, setWalletTxs] = useState<WalletTransaction[]>([]);
   const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
-  const [backfilling, setBackfilling] = useState(false);
   const isOwner = user?.role === "owner";
   const canEdit = isOwner || user?.id === agentId;
 
@@ -402,14 +401,17 @@ export default function AgentProfileOwnerView() {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ agentId }),
         });
-        if (!res.ok) return;
-        const json = await res.json().catch(() => ({})) as { credited?: number };
+        const json = res.ok
+          ? await res.json().catch(() => ({})) as { credited?: number }
+          : {};
+        // Always refresh wallet — picks up both newly credited + previously existing txs
+        const fresh = await pullWalletTxs(agentId);
+        setWalletTxs(fresh);
         if ((json.credited ?? 0) > 0) {
-          const fresh = await pullWalletTxs(agentId);
-          setWalletTxs(fresh);
           toast.success(`${json.credited} fee lama berhasil disinkronkan ke wallet.`, { duration: 5000 });
         }
       } catch {
+        // silent — non-blocking background sync
       }
     })();
   }, [agentId, isOwner]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -584,76 +586,6 @@ export default function AgentProfileOwnerView() {
     }
   }
 
-  async function handleBackfillFees() {
-    if (!agentId || !isOwner) return;
-    setBackfilling(true);
-    try {
-      const { data: sess } = await supabase!.auth.getSession();
-      const token = sess?.session?.access_token;
-      if (!token) {
-        toast.error("Sesi tidak aktif.", { description: "Login ulang lalu coba lagi." });
-        return;
-      }
-
-      const res = await fetch("/api/backfill-field-fees", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ agentId }),
-      });
-
-      const json = await res.json().catch(() => ({})) as {
-        ok?: boolean;
-        credited?: number;
-        skipped?: number;
-        errors?: number;
-        errorSample?: string | null;
-        error?: string;
-        message?: string;
-      };
-
-      console.log("[handleBackfillFees] response:", res.status, json);
-
-      if (!res.ok) {
-        const detail = json?.error ?? json?.message ?? (res.statusText ? res.statusText : `HTTP ${res.status}`);
-        console.error("[handleBackfillFees] server error:", res.status, json);
-        toast.error(`Gagal sinkronkan fee (${res.status}).`, { description: detail, duration: 12000 });
-        return;
-      }
-
-      const { credited = 0, skipped = 0, errors = 0, errorSample } = json;
-
-      if (errors > 0 && credited === 0) {
-        // All attempts failed
-        toast.error(`${errors} fee gagal dikreditkan.`, {
-          description: errorSample ?? "Periksa console browser untuk detail error.",
-          duration: 12000,
-        });
-      } else if (errors === 0 && credited === 0) {
-        // Nothing to do
-        toast.success("Semua fee sudah tersinkronkan.", {
-          description: skipped > 0 ? `${skipped} entri sudah tercatat sebelumnya.` : "Tidak ada fee lapangan valid pada order Completed.",
-        });
-      } else {
-        // At least some credited
-        toast.success(`Sinkronisasi selesai: ${credited} fee dikreditkan!`, {
-          description: errors > 0
-            ? `${errors} gagal${errorSample ? ` — ${errorSample.slice(0, 120)}` : ""}, ${skipped} sudah ada.`
-            : `${skipped} sudah ada sebelumnya.`,
-          duration: 8000,
-        });
-      }
-      // Refresh wallet transactions so the UI reflects new credits immediately
-      void pullWalletTxs(agentId).then(setWalletTxs);
-    } catch (e) {
-      console.error("[handleBackfillFees] exception:", e);
-      toast.error("Error sinkronisasi fee.", { description: e instanceof Error ? e.message : "Coba lagi." });
-    } finally {
-      setBackfilling(false);
-    }
-  }
 
   async function handleReview(submissionId: string, action: "approved" | "rejected") {
     setReviewing(submissionId);
@@ -674,13 +606,18 @@ export default function AgentProfileOwnerView() {
     try {
       const order = agentOrders.find((o) => o.id === orderId);
       if (!order) return;
+      const meta = (order.metadata ?? {}) as Record<string, unknown>;
+      const orderId8 = order.id.slice(0, 8);
+
       await patchOrder(orderId, { status: "Completed" });
 
-      const feeAmount = agentFeeFromMeta(order);
+      const flagsPatch: Record<string, unknown> = {};
+      let totalCredited = 0;
 
-      if (feeAmount > 0) {
+      // ── 1. Sales agent commission (order_bonus) ──────────────────────────────
+      const salesFee = agentFeeFromMeta(order);
+      if (salesFee > 0 && !meta.agentFeeCredited) {
         const orderLabel = ORDER_TYPE_LABEL[order.type];
-        const orderId8 = order.id.slice(0, 8);
         const clientName = clientMap.get(order.clientId ?? "")?.name;
         const { persisted, error: walletErr } = await addWalletTxAsync(
           agentId,
@@ -688,18 +625,147 @@ export default function AgentProfileOwnerView() {
             agentId,
             type: "order_bonus",
             pointsDelta: 0,
-            amountIDR: feeAmount,
+            amountIDR: salesFee,
             description: `Komisi order ${orderLabel} #${orderId8}${clientName ? ` — ${clientName}` : order.title ? ` — ${order.title}` : ""}`,
             createdBy: ownerId,
           },
           `agent-${order.id}`,
         );
-        if (!persisted) {
-          console.warn("[AgentProfileOwnerView] wallet credit gagal:", walletErr);
+        if (persisted) {
+          flagsPatch.agentFeeCredited = true;
+          totalCredited += salesFee;
+        } else {
+          console.warn("[AgentProfileOwnerView] sales commission credit gagal:", walletErr);
         }
       }
 
-      // Award 20 poin ke agen via server endpoint (perlu service role key)
+      // ── 2. VOA field agent fee ────────────────────────────────────────────────
+      const voaAgentId = meta.voaFieldAgentId as string | undefined;
+      const voaFee = Number(meta.voaAgentFee ?? 0);
+      if (voaAgentId && voaFee > 0 && !meta.voaFeeCredited) {
+        const { persisted, error: walletErr } = await addWalletTxAsync(
+          voaAgentId,
+          {
+            agentId: voaAgentId,
+            type: "voa_agent_fee",
+            pointsDelta: 0,
+            amountIDR: voaFee,
+            description: `Fee Agent Lapangan VOA #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            createdBy: ownerId,
+          },
+          `voa-${order.id}`,
+        );
+        if (persisted) {
+          flagsPatch.voaFeeCredited = true;
+          if (voaAgentId === agentId) totalCredited += voaFee;
+        } else {
+          console.error("[AgentProfileOwnerView] VOA fee credit gagal:", walletErr);
+          toast.error(`Gagal catat fee VOA ke wallet agent lapangan`, { description: walletErr ?? "Coba lagi.", duration: 8000 });
+        }
+      }
+
+      // ── 3. Generic field agent fee ────────────────────────────────────────────
+      const fieldAgentId = meta.fieldAgentId as string | undefined;
+      const fieldFee = Number(meta.fieldAgentFee ?? 0);
+      if (fieldAgentId && fieldFee > 0 && !meta.fieldFeeCredited) {
+        const { persisted, error: walletErr } = await addWalletTxAsync(
+          fieldAgentId,
+          {
+            agentId: fieldAgentId,
+            type: "voa_agent_fee",
+            pointsDelta: 0,
+            amountIDR: fieldFee,
+            description: `Fee Agent Lapangan #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            createdBy: ownerId,
+          },
+          `field-${order.id}`,
+        );
+        if (persisted) {
+          flagsPatch.fieldFeeCredited = true;
+          if (fieldAgentId === agentId) totalCredited += fieldFee;
+        } else {
+          console.error("[AgentProfileOwnerView] field agent fee credit gagal:", walletErr);
+        }
+      }
+
+      // ── 4. Kurir fee ──────────────────────────────────────────────────────────
+      const kurirAgentId = meta.kurirAgentId as string | undefined;
+      const kurirFeeAmt = Number(meta.kurirFee ?? 0);
+      if (kurirAgentId && kurirFeeAmt > 0 && !meta.kurirFeeCredited) {
+        const { persisted, error: walletErr } = await addWalletTxAsync(
+          kurirAgentId,
+          {
+            agentId: kurirAgentId,
+            type: "kurir_fee",
+            pointsDelta: 0,
+            amountIDR: kurirFeeAmt,
+            description: `Fee Kurir Setoran #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            createdBy: ownerId,
+          },
+          `kurir-${order.id}`,
+        );
+        if (persisted) {
+          flagsPatch.kurirFeeCredited = true;
+          if (kurirAgentId === agentId) totalCredited += kurirFeeAmt;
+        } else {
+          console.error("[AgentProfileOwnerView] kurir fee credit gagal:", walletErr);
+          toast.error(`Gagal catat fee kurir`, { description: walletErr ?? "Coba lagi.", duration: 8000 });
+        }
+      }
+
+      // ── 5. Pelaksana fee (visa_student) ───────────────────────────────────────
+      const pelaksanaId = meta.pelaksanaId as string | undefined;
+      const pelFee = Number(meta.pelaksanaFee ?? (order.type === "visa_student" && pelaksanaId ? 200_000 : 0));
+      if (order.type === "visa_student" && pelaksanaId && pelFee > 0 && !meta.pelaksanaFeeCredited) {
+        const { persisted, error: walletErr } = await addWalletTxAsync(
+          pelaksanaId,
+          {
+            agentId: pelaksanaId,
+            type: "pelaksana_fee",
+            pointsDelta: 0,
+            amountIDR: pelFee,
+            description: `Fee Pelaksana Visa Student #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            createdBy: ownerId,
+          },
+          `pelaksana-${order.id}`,
+        );
+        if (persisted) {
+          flagsPatch.pelaksanaFeeCredited = true;
+          if (pelaksanaId === agentId) totalCredited += pelFee;
+        } else {
+          console.error("[AgentProfileOwnerView] pelaksana fee credit gagal:", walletErr);
+          toast.error(`Gagal catat fee pelaksana`, { description: walletErr ?? "Coba lagi.", duration: 8000 });
+        }
+      }
+
+      // ── 6. Operational agent fee ──────────────────────────────────────────────
+      const opAgentId = meta.assignedOperationalAgentId as string | undefined;
+      const opFee = Number(meta.operationalAgentFee ?? 0);
+      if (opAgentId && opFee > 0 && !meta.operationalFeeCredited) {
+        const { persisted } = await addWalletTxAsync(
+          opAgentId,
+          {
+            agentId: opAgentId,
+            type: "voa_agent_fee",
+            pointsDelta: 0,
+            amountIDR: opFee,
+            description: `Fee Agent Operasional #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
+            createdBy: ownerId,
+          },
+          `op-${order.id}`,
+        );
+        if (persisted) {
+          flagsPatch.operationalFeeCredited = true;
+          if (opAgentId === agentId) totalCredited += opFee;
+        }
+      }
+
+      // ── Stamp credited flags in order metadata ────────────────────────────────
+      if (Object.keys(flagsPatch).length > 0) {
+        await patchOrder(orderId, { metadata: { ...meta, ...flagsPatch } });
+      }
+
+      // ── Award 20 poin ke agen penjual via server ──────────────────────────────
       try {
         const { data: sess } = await supabase!.auth.getSession();
         const token = sess?.session?.access_token;
@@ -712,35 +778,21 @@ export default function AgentProfileOwnerView() {
           body: JSON.stringify({ orderId, agentId }),
         });
         if (pointsRes.ok) {
-          // Refresh points display
           const fresh = await listAgentPointsWithOrders();
           setAllPoints(fresh);
-          toast.success(feeAmount > 0 ? `Order selesai! Komisi dicatat: ${fmtIDR(feeAmount)}` : "Order ditandai Selesai.", {
-            description: `+20 poin diberikan ke agen 🎉`,
-            duration: 5000,
-          });
-        } else {
-          if (feeAmount > 0) {
-            toast.success(`Order selesai! Komisi dicatat: ${fmtIDR(feeAmount)}`, {
-              description: "Wallet agen diperbarui.",
-              duration: 4500,
-            });
-          } else {
-            toast.success("Order ditandai Selesai.");
-          }
         }
       } catch {
-        if (feeAmount > 0) {
-          toast.success(`Order selesai! Komisi dicatat: ${fmtIDR(feeAmount)}`, {
-            description: "Wallet agen diperbarui.",
-            duration: 4500,
-          });
-        } else {
-          toast.success("Order ditandai Selesai.");
-        }
+        // non-critical — points can be re-awarded via backfill
       }
 
-      void pullWalletTxs(agentId).then(setWalletTxs);
+      const summary = totalCredited > 0
+        ? `Order selesai! Total fee dikreditkan: ${fmtIDR(totalCredited)}`
+        : "Order ditandai Selesai.";
+      toast.success(summary, { description: "+20 poin diberikan ke agen 🎉", duration: 5000 });
+
+      // Refresh wallet display
+      const freshTxs = await pullWalletTxs(agentId);
+      setWalletTxs(freshTxs);
     } catch (e) {
       toast.error("Gagal memperbarui order.", { description: e instanceof Error ? e.message : "Coba lagi." });
     } finally {
@@ -1744,34 +1796,14 @@ export default function AgentProfileOwnerView() {
                 </div>
               )}
 
-              {/* Sinkronkan Fee — backfill uncredited field fees */}
-              {isOwner && (
-                <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4 space-y-2.5">
-                  <div className="flex items-start gap-2.5">
-                    <div className="h-7 w-7 rounded-lg bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
-                      <RefreshCw className="h-3.5 w-3.5 text-violet-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-violet-900">Sinkronkan Fee Lapangan</p>
-                      <p className="text-[11px] text-violet-700 mt-0.5">
-                        Kredit otomatis semua fee VOA / pelaksana / kurir yang belum masuk wallet.
-                        Aman dijalankan berkali-kali — sudah idempoten.
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => void handleBackfillFees()}
-                    disabled={backfilling}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-violet-300 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 transition-colors py-2.5 text-[12px] font-bold text-white"
-                  >
-                    {backfilling ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Menyinkronkan…</>
-                    ) : (
-                      <><RefreshCw className="h-3.5 w-3.5" /> Sinkronkan Fee Sekarang</>
-                    )}
-                  </button>
-                </div>
-              )}
+              {/* Fee auto-credit info note */}
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 flex items-start gap-2.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Fee lapangan (VOA · Kurir · Pelaksana) otomatis tercatat saat order <strong>Completed</strong>.
+                  Data lama disinkronkan otomatis saat halaman ini dibuka.
+                </p>
+              </div>
 
               {/* Navigate to Agent Center wallet button */}
               <button

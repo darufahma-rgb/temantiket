@@ -1,0 +1,94 @@
+Perbaiki total halaman “Akumulasi Fee Komisi Agen” agar angka yang tampil 100% sama dan sinkron dengan data fee agent di Laporan Keuangan. Saat ini halaman Pengaturan > Akumulasi Fee masih hanya menampilkan sebagian fee, misalnya Rafi muncul Rp150.000 dari closing, tetapi Fairuz yang seharusnya punya fee lapangan/VOA Rp200.000 masih Rp0. Ini salah karena sumber data fee agent belum disatukan.
+
+Target utama:
+Akumulasi Fee Komisi Agen harus membaca dari single source of truth yang sama dengan Laporan Keuangan dan Profile Agent, yaitu ledger pendapatan agent/komisi yang sudah final, bukan dari kalkulasi lokal atau field order terpisah.
+
+Sumber fee yang wajib dihitung:
+
+* Komisi closing/sales agent
+* Fee Agent Lapangan VOA
+* Fee Pelaksana Visa
+* Fee Kurir
+* Bonus/manual adjustment
+* Koreksi/payout jika ada
+
+Jangan hanya hitung “closing commission”. Jika di Laporan Keuangan ada potongan/biaya:
+
+* Komisi Agent Rp150.000
+* Fee Lapangan/Pelaksana Rp200.000
+* Fee Kurir Rp100.000
+
+maka di Akumulasi Fee Agen juga harus muncul ke agent yang benar sesuai assignment-nya:
+
+* agent closing menerima komisi closing
+* agent lapangan menerima fee lapangan
+* pelaksana visa menerima fee pelaksana
+* kurir menerima fee kurir
+
+Contoh kasus wajib:
+Jika sebuah order Completed punya:
+`voaFieldAgentId = Fairuz`
+`voaAgentFee = 200000`
+
+Maka pada Akumulasi Fee:
+Fairuz harus tampil:
+
+* Total akumulasi: Rp200.000
+* Breakdown: “Fee Agent Lapangan VOA: Rp200.000”
+* Jumlah order dengan fee: 1
+* Status: sudah dikreditkan / pending payout sesuai ledger
+
+Sedangkan jika Rafi adalah agent closing dengan komisi Rp150.000:
+Rafi tetap tampil:
+
+* Dari Closing: Rp150.000
+
+Rules penting:
+
+1. Halaman Akumulasi Fee tidak boleh menghitung ulang dengan rumus sendiri.
+2. Ambil data dari ledger yang sama dengan Profile Agent dan Laporan Keuangan.
+3. Group by `agent_id`.
+4. Pisahkan breakdown per `type/source`.
+5. Jangan double count.
+6. Gunakan unique key `order_id + agent_id + type`.
+7. Jangan masukkan transport/operational cost sebagai pendapatan agent.
+8. Fee hanya boleh masuk jika memang field tersebut adalah fee agent.
+9. Jika order belum dibayar / belum lunas, tampilkan sebagai pending, jangan masuk “sudah dikreditkan” jika policy payout menunggu pembayaran.
+10. Jika order Completed dan pembayaran valid, fee harus masuk otomatis tanpa tombol sync manual.
+
+UI yang diinginkan:
+Di setiap agent, tampilkan:
+
+* Total Akumulasi Fee
+* Jumlah order dengan fee
+* Breakdown:
+
+  * Dari Closing
+  * Dari Fee Lapangan VOA
+  * Dari Fee Pelaksana Visa
+  * Dari Fee Kurir
+  * Bonus / Manual
+* Sudah dikreditkan
+* Pending payout
+* Saldo wallet
+* Riwayat transaksi fee per order
+
+Tambahkan link/detail kecil:
+“Lihat sumber fee”
+yang membuka daftar order penyumbang fee:
+
+* nama klien
+* jenis order
+* role agent
+* nominal fee
+* status pembayaran
+* status order
+* tanggal credited
+
+Backfill:
+Cari semua order lama yang sudah Completed dan memiliki fee agent tetapi belum masuk ledger. Buat backfill idempotent agar data lama muncul juga di Akumulasi Fee. Contoh Fairuz dengan VOA Rp200.000 harus otomatis masuk setelah backfill.
+
+Hapus ketergantungan pada tombol manual “Sinkronkan Fee” yang gagal 404. Semua harus otomatis saat order Completed / payment valid, dan halaman Akumulasi Fee cukup membaca ledger final.
+
+Expected result:
+Angka di Akumulasi Fee Komisi Agen, Profile Agent, Wallet Agent, Manajemen Agen, Leaderboard, dan Laporan Keuangan harus sama. Tidak boleh ada kasus fee muncul di laporan keuangan sebagai biaya agent tapi tidak muncul di akumulasi agent penerima fee.

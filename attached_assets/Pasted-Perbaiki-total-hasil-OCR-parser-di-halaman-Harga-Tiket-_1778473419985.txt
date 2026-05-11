@@ -1,0 +1,159 @@
+Perbaiki total hasil OCR parser di halaman Harga Tiket karena saat ini hasil form tidak sinkron dengan gambar/kode sistem yang di-upload. Kasus paling fatal: tiket return/PP dari Galileo masih terbaca sebagai oneway di hasil form.
+
+Contoh input OCR dari gambar:
+1 GF 70 N 03JUN CAI BAH 1715 2015
+2 GF 284 N 03JUN BAH GOI 2115 0340+1
+3 GF 285 O 03SEP GOI BAH 0440 0610
+4 GF 79 O 04SEP BAH CAI 0110 0430
+
+Ini jelas tiket RETURN / PP karena:
+
+* perjalanan berangkat: CAI → GOI
+* perjalanan pulang: GOI → CAI
+* total ada 4 segment
+* segment terakhir kembali ke origin awal (CAI)
+
+Tetapi hasil form OCR sekarang salah:
+
+* Tipe tiket masih “Oneway”
+* hanya membaca CAI → GOI
+* segment pulang diabaikan
+* itinerary jadi tidak sinkron
+* transit dan durasi jadi salah
+* data UI tidak sesuai gambar OCR asli
+
+Perbaiki parser OCR agar membaca seluruh segment, bukan hanya 2 segment pertama.
+
+Rules parsing wajib:
+
+1. Parse semua baris flight segment dari OCR.
+2. Jangan stop setelah menemukan tujuan pertama.
+3. Simpan seluruh segment ke array `segments[]`.
+4. Tentukan tipe tiket dari keseluruhan route.
+
+Rules deteksi tipe tiket:
+
+* origin awal = segment pertama `.from`
+* destination akhir = segment terakhir `.to`
+
+Jika:
+
+* destination akhir == origin awal
+  → `RETURN / PP`
+
+Jika:
+
+* tidak kembali ke origin
+  → `ONEWAY`
+
+Jika:
+
+* multi kota kompleks
+  → `MULTICITY`
+
+Untuk contoh ini:
+
+* first origin = CAI
+* final destination = CAI
+  → wajib RETURN / PP
+
+Expected hasil parse:
+Outbound:
+
+* GF70 CAI → BAH
+* GF284 BAH → GOI
+
+Inbound:
+
+* GF285 GOI → BAH
+* GF79 BAH → CAI
+
+Perbaiki UI hasil OCR:
+Jangan lagi tampil:
+`→ Oneway`
+
+Harus tampil:
+`↔ Return / PP`
+
+Tambahkan section:
+
+* Keberangkatan
+* Kepulangan
+
+Tampilkan detail:
+
+* maskapai
+* nomor flight per segment
+* tanggal tiap segment
+* ETD/ETA tiap segment
+* transit
+* transit duration
+* next day arrival (+1)
+* kota transit
+* total route
+
+Perbaiki field:
+
+* Dari
+* Ke
+* ETD
+* ETA
+* Transit
+
+karena sekarang field tersebut cuma mengambil segment awal dan mengabaikan perjalanan pulang.
+
+Expected UI:
+Dari:
+CAI
+
+Ke:
+GOI
+
+Tipe:
+Return / PP
+
+Keberangkatan:
+CAI → BAH → GOI
+
+Kepulangan:
+GOI → BAH → CAI
+
+Transit:
+Bahrain
+
+Segment:
+GF70 / GF284 / GF285 / GF79
+
+Jangan gabungkan data return menjadi satu arah saja.
+
+Perbaiki juga sinkronisasi dengan:
+
+* Itinerary Generator
+* WhatsApp itinerary
+* Travel Card
+* Simpan Semua
+* Export ticket data
+
+Supaya semua memakai source segment OCR yang sama dan tidak mismatch.
+
+Tambahkan validasi parser:
+Jika:
+
+* jumlah segment >= 4
+* dan final destination kembali ke origin awal
+
+maka force classify:
+`RETURN / PP`
+
+meskipun OCR agak berantakan.
+
+Tambahkan OCR normalization:
+
+* `0340+1`
+* `0340#`
+* `03:40(+1)`
+
+harus dikenali sebagai next day arrival.
+
+Target akhir:
+Apa yang tampil di form hasil OCR harus benar-benar sesuai dengan gambar kode sistem yang diupload user. Jika gambar menunjukkan tiket PP/return 4 segment, sistem tidak boleh lagi membaca sebagai oneway.
