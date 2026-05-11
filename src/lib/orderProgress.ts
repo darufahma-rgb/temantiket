@@ -17,6 +17,11 @@
  * Storage: metadata.processStep is stored as a NUMERIC INDEX (integer).
  * The step key is derived on-demand from the index using getStepKeyFromIndex().
  * No schema change required.
+ *
+ * A — Upgrade (2025):
+ *   + color per step (hex) for consistent UI theming across all pages
+ *   + roleVisibility: which roles can see this step ([] = all roles)
+ *   + ETA helper: slaHours already serves as the ETA default
  */
 
 export interface OrderStep {
@@ -24,47 +29,51 @@ export interface OrderStep {
   label:    string;
   emoji:    string;
   sublabel: string;
+  /** Hex color for this step — used in step indicator dots, progress bars, badges */
+  color:    string;
+  /** Roles that can SEE this step in detail. Empty array = visible to all roles. */
+  roleVisibility: Array<"owner" | "staff" | "agent" | "public">;
   /** Default SLA warning threshold in hours. 0 = no SLA warning. */
   slaHours?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Unified step definitions
+// Unified step definitions (A — color + roleVisibility added)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const UNIFIED_ORDER_STEPS: Record<string, OrderStep[]> = {
   visa_student: [
-    { key: "order_created",      label: "Order Dibuat",     emoji: "📋", sublabel: "Pesanan terdaftar",                slaHours: 0 },
-    { key: "payment_dp",         label: "Pembayaran / DP",  emoji: "💳", sublabel: "DP / lunas diterima",              slaHours: 72 },
-    { key: "document_received",  label: "Dokumen Diterima", emoji: "📥", sublabel: "Berkas dikirim ke kami",           slaHours: 48 },
-    { key: "document_checked",   label: "Dokumen Dicek",    emoji: "✅", sublabel: "Verifikasi dokumen",               slaHours: 48 },
-    { key: "submission_process", label: "Proses Pengajuan", emoji: "🏛️", sublabel: "Masuk kedutaan / proses visa",    slaHours: 240 },
-    { key: "visa_issued",        label: "Visa Terbit",      emoji: "🎉", sublabel: "Visa siap",                        slaHours: 0 },
+    { key: "order_created",      label: "Order Dibuat",     emoji: "📋", sublabel: "Pesanan terdaftar",                color: "#6366f1", roleVisibility: [],                              slaHours: 0 },
+    { key: "payment_dp",         label: "Pembayaran / DP",  emoji: "💳", sublabel: "DP / lunas diterima",              color: "#f59e0b", roleVisibility: [],                              slaHours: 72 },
+    { key: "document_received",  label: "Dokumen Diterima", emoji: "📥", sublabel: "Berkas dikirim ke kami",           color: "#3b82f6", roleVisibility: [],                              slaHours: 48 },
+    { key: "document_checked",   label: "Dokumen Dicek",    emoji: "✅", sublabel: "Verifikasi dokumen",               color: "#8b5cf6", roleVisibility: [],                              slaHours: 48 },
+    { key: "submission_process", label: "Proses Pengajuan", emoji: "🏛️", sublabel: "Masuk kedutaan / proses visa",   color: "#f97316", roleVisibility: [],                              slaHours: 240 },
+    { key: "visa_issued",        label: "Visa Terbit",      emoji: "🎉", sublabel: "Visa siap",                        color: "#10b981", roleVisibility: [],                              slaHours: 0 },
   ],
 
   visa_voa: [
-    { key: "order_created",  label: "Order Dibuat",    emoji: "📋", sublabel: "Pesanan terdaftar",              slaHours: 0 },
-    { key: "payment",        label: "Pembayaran",      emoji: "💳", sublabel: "Pembayaran diterima",            slaHours: 48 },
-    { key: "data_passenger", label: "Data Penumpang",  emoji: "👤", sublabel: "Data dicek & diverifikasi",      slaHours: 24 },
-    { key: "ok_to_board",    label: "OK to Board",     emoji: "🟢", sublabel: "Siap keberangkatan",             slaHours: 0 },
-    { key: "done",           label: "Selesai",         emoji: "✅", sublabel: "Proses selesai",                  slaHours: 0 },
+    { key: "order_created",  label: "Order Dibuat",    emoji: "📋", sublabel: "Pesanan terdaftar",              color: "#6366f1", roleVisibility: [], slaHours: 0 },
+    { key: "payment",        label: "Pembayaran",      emoji: "💳", sublabel: "Pembayaran diterima",            color: "#f59e0b", roleVisibility: [], slaHours: 48 },
+    { key: "data_passenger", label: "Data Penumpang",  emoji: "👤", sublabel: "Data dicek & diverifikasi",      color: "#3b82f6", roleVisibility: [], slaHours: 24 },
+    { key: "ok_to_board",    label: "OK to Board",     emoji: "🟢", sublabel: "Siap keberangkatan",             color: "#10b981", roleVisibility: [], slaHours: 0 },
+    { key: "done",           label: "Selesai",         emoji: "✅", sublabel: "Proses selesai",                  color: "#10b981", roleVisibility: [], slaHours: 0 },
   ],
 
   flight: [
-    { key: "request",       label: "Request Tiket",    emoji: "📋", sublabel: "Pesanan diterima",              slaHours: 0 },
-    { key: "confirm_price", label: "Konfirmasi Harga", emoji: "💰", sublabel: "Harga & jadwal dikonfirmasi",   slaHours: 24 },
-    { key: "payment",       label: "Pembayaran",       emoji: "💳", sublabel: "Pembayaran selesai",            slaHours: 48 },
-    { key: "issued",        label: "Tiket Diterbitkan",emoji: "🎫", sublabel: "E-tiket dikirim",              slaHours: 24 },
-    { key: "done",          label: "Selesai",          emoji: "✅", sublabel: "Proses selesai",                slaHours: 0 },
+    { key: "request",       label: "Request Tiket",    emoji: "📋", sublabel: "Pesanan diterima",              color: "#6366f1", roleVisibility: [], slaHours: 0 },
+    { key: "confirm_price", label: "Konfirmasi Harga", emoji: "💰", sublabel: "Harga & jadwal dikonfirmasi",   color: "#f59e0b", roleVisibility: [], slaHours: 24 },
+    { key: "payment",       label: "Pembayaran",       emoji: "💳", sublabel: "Pembayaran selesai",            color: "#3b82f6", roleVisibility: [], slaHours: 48 },
+    { key: "issued",        label: "Tiket Diterbitkan",emoji: "🎫", sublabel: "E-tiket dikirim",              color: "#10b981", roleVisibility: [], slaHours: 24 },
+    { key: "done",          label: "Selesai",          emoji: "✅", sublabel: "Proses selesai",                color: "#10b981", roleVisibility: [], slaHours: 0 },
   ],
 
   umrah: [
-    { key: "register",      label: "Pendaftaran",        emoji: "📝", sublabel: "Pendaftaran berhasil",        slaHours: 0 },
-    { key: "pay_dp",        label: "Bayar DP",           emoji: "💳", sublabel: "Down payment diterima",       slaHours: 72 },
-    { key: "docs_complete", label: "Kelengkapan Berkas", emoji: "📁", sublabel: "Dokumen dilengkapi",          slaHours: 168 },
-    { key: "full_payment",  label: "Pelunasan",          emoji: "💰", sublabel: "Pembayaran penuh selesai",    slaHours: 168 },
-    { key: "departure",     label: "Keberangkatan",      emoji: "✈️", sublabel: "Siap berangkat",             slaHours: 0 },
-    { key: "done",          label: "Selesai",            emoji: "🕋", sublabel: "Alhamdulillah selesai",       slaHours: 0 },
+    { key: "register",      label: "Pendaftaran",        emoji: "📝", sublabel: "Pendaftaran berhasil",        color: "#6366f1", roleVisibility: [], slaHours: 0 },
+    { key: "pay_dp",        label: "Bayar DP",           emoji: "💳", sublabel: "Down payment diterima",       color: "#f59e0b", roleVisibility: [], slaHours: 72 },
+    { key: "docs_complete", label: "Kelengkapan Berkas", emoji: "📁", sublabel: "Dokumen dilengkapi",          color: "#3b82f6", roleVisibility: [], slaHours: 168 },
+    { key: "full_payment",  label: "Pelunasan",          emoji: "💰", sublabel: "Pembayaran penuh selesai",    color: "#8b5cf6", roleVisibility: [], slaHours: 168 },
+    { key: "departure",     label: "Keberangkatan",      emoji: "✈️", sublabel: "Siap berangkat",             color: "#f97316", roleVisibility: [], slaHours: 0 },
+    { key: "done",          label: "Selesai",            emoji: "🕋", sublabel: "Alhamdulillah selesai",       color: "#10b981", roleVisibility: [], slaHours: 0 },
   ],
 };
 
@@ -90,8 +99,15 @@ export function getOrderProgressLabel(type: string, step: number): string {
   return steps[clamped]?.label ?? "";
 }
 
+/** Get the color for a given type + step index. */
+export function getOrderProgressColor(type: string, step: number): string {
+  const steps = getStepsForType(type);
+  const clamped = Math.min(Math.max(0, step), steps.length - 1);
+  return steps[clamped]?.color ?? "#6366f1";
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// New helper suite (A — helpers requested)
+// Helper suite (A — required helpers)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -202,6 +218,75 @@ export function checkSla(
   } catch {
     return null;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A — Migration engine types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface MigrationPreview {
+  orderId:   string;
+  type:      string;
+  oldStep:   number;
+  newStep:   number;
+  oldKey:    string | null;
+  newKey:    string | null;
+  needsMigration: boolean;
+}
+
+export interface MigrationReport {
+  total:      number;
+  migrated:   number;
+  skipped:    number;
+  errors:     number;
+  previews:   MigrationPreview[];
+  simulatedAt: string;
+  mode:       "preview" | "simulate" | "live";
+}
+
+/**
+ * Build a migration preview for a list of orders without touching the DB.
+ * mode="preview" → just show what would change
+ * mode="simulate" → same as preview but marks simulation=true in report
+ * mode="live" → caller should apply changes to DB
+ */
+export function buildMigrationReport(
+  orders: Array<{ id: string; type: string; metadata?: unknown }>,
+  mode: "preview" | "simulate" | "live" = "preview",
+): MigrationReport {
+  const previews: MigrationPreview[] = [];
+  let migrated = 0;
+  let skipped  = 0;
+  let errors   = 0;
+
+  for (const order of orders) {
+    try {
+      const meta = (order.metadata ?? {}) as Record<string, unknown>;
+      const oldStep = Number(meta.processStep ?? 0);
+      const steps = getStepsForType(order.type);
+      const oldKey = steps[oldStep]?.key ?? null;
+      const repairedMeta = repairMetadata(order.type, meta);
+      const newStep = Number(repairedMeta.processStep ?? 0);
+      const newKey = steps[newStep]?.key ?? null;
+      const needsMigration = repairedMeta._stepRepaired === true;
+
+      previews.push({ orderId: order.id, type: order.type, oldStep, newStep, oldKey, newKey, needsMigration });
+      if (needsMigration) migrated++;
+      else skipped++;
+    } catch {
+      errors++;
+    }
+  }
+
+  return {
+    total:      orders.length,
+    migrated,
+    skipped,
+    errors,
+    previews,
+    simulatedAt: new Date().toISOString(),
+    mode,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -594,6 +594,33 @@ export default function Reports() {
           </div>
         </div>
 
+        {/* ── G. Cashflow Accuracy Widget ── */}
+        {(() => {
+          const accuracy = totals.revenue > 0
+            ? Math.round((cashflow.cashReceived / totals.revenue) * 100)
+            : 100;
+          const acColor = accuracy >= 80 ? "#10b981" : accuracy >= 50 ? "#f59e0b" : "#ef4444";
+          return (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-[hsl(var(--border))] bg-white px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-gray-800">Akurasi Cashflow</p>
+                  <p className="text-[9.5px] text-gray-400">% revenue sudah diterima tunai</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${accuracy}%`, background: acColor }} />
+                </div>
+                <span className="text-sm font-black tabular-nums" style={{ color: acColor }}>{accuracy}%</span>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* ── Filter pills ── */}
         <div className="space-y-2">
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none">

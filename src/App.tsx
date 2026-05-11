@@ -16,7 +16,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useRegionalStore } from "@/store/regionalStore";
 import { applyAppearanceSettings, loadAppearanceSettings, pullAppearanceSettings } from "@/lib/appearance";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { startRealtimeSync } from "@/lib/supabaseRealtime";
+import { startManagedRealtime, onRealtimeStatusChange } from "@/lib/realtimeManager";
 import { initSyncStatusListeners } from "@/store/syncStatusStore";
 import { toast } from "sonner";
 import { pullIghAdminSettings } from "@/lib/ighSettings";
@@ -61,6 +61,7 @@ import StaffProfile from "./pages/StaffProfile";
 import StaffManagementCenter from "./pages/StaffManagementCenter";
 import OwnerVisaTrackerPage from "./pages/OwnerVisaTrackerPage";
 import StaffProfileOwnerView from "./pages/StaffProfileOwnerView";
+import AuditCenterPage from "./pages/AuditCenterPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -103,9 +104,20 @@ function StoreBootstrap() {
 
   useEffect(() => {
     if (!isAuthenticated || !isSupabaseConfigured() || !user?.agencyId) return;
-    const unsubscribe = startRealtimeSync(user.agencyId);
+    const unsubscribe = startManagedRealtime(user.agencyId);
     return unsubscribe;
   }, [isAuthenticated, user?.agencyId]);
+
+  useEffect(() => {
+    let prevStatus = "offline";
+    const unsub = onRealtimeStatusChange((status) => {
+      if (prevStatus !== "live" && status === "live" && prevStatus !== "offline") {
+        toast.success("Data baru saja diperbarui", { duration: 2000, id: "rt-update" });
+      }
+      prevStatus = status;
+    });
+    return unsub;
+  }, []);
 
   return null;
 }
@@ -337,6 +349,7 @@ function AnimatedRoutes() {
           }
         />
         <Route path="/settings" element={<RequireAuth><DashboardLayout><Settings /></DashboardLayout></RequireAuth>} />
+        <Route path="/audit" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><AuditCenterPage /></DashboardLayout></RequireRole></RequireAuth>} />
         <Route path="/auth" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

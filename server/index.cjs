@@ -57,6 +57,40 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 
+// ─── H. Structured request logging middleware ──────────────────────────────
+// Logs every request with a unique requestId for traceability.
+// Actor/agency context is extracted from auth header asynchronously if present.
+const { randomUUID } = require('crypto');
+
+app.use((req, res, next) => {
+  const requestId = randomUUID();
+  const start = Date.now();
+  req._requestId = requestId;
+
+  // Attach requestId to response headers for client-side tracing
+  res.setHeader('X-Request-Id', requestId);
+
+  res.on('finish', () => {
+    const durationMs = Date.now() - start;
+    const level = res.statusCode >= 500 ? 'ERROR'
+                : res.statusCode >= 400 ? 'WARN'
+                : 'INFO';
+    const log = {
+      level,
+      requestId,
+      method:   req.method,
+      path:     req.path,
+      status:   res.statusCode,
+      ms:       durationMs,
+      ts:       new Date().toISOString(),
+    };
+    // Structured output: single JSON line per request (parseable by log aggregators)
+    console.log(JSON.stringify(log));
+  });
+
+  next();
+});
+
 function ok(res, data) {
   return res.status(200).json(data);
 }

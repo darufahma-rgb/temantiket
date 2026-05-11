@@ -45,12 +45,16 @@ export function computeFeeBreakdown(txs: WalletTransaction[]): FeeBreakdown {
         salesCommission += tx.amountIDR;
         break;
       case "voa_agent_fee":
+      case "field_agent_fee":
         fieldAgentFee += tx.amountIDR;
         break;
       case "pelaksana_fee":
         pelaksanaFee += tx.amountIDR;
         break;
       case "kurir_fee":
+        kurirFee += tx.amountIDR;
+        break;
+      case "operational_fee":
         kurirFee += tx.amountIDR;
         break;
       case "mission_conversion":

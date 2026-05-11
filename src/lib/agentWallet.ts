@@ -1,5 +1,5 @@
 /**
- * Agent Wallet — Fase 29 + B Hardening
+ * Agent Wallet — B Hardening (Production-Grade)
  *
  * Converts approved mission points → commission IDR credit.
  * localStorage = instant cache; setiap mutasi juga di-push ke Supabase
@@ -7,11 +7,13 @@
  *
  * Tabel Supabase: public.agent_wallet_transactions
  *
- * B — Hardening additions:
- *  - `field_agent_fee` added to WalletTxType
+ * B — Hardening:
+ *  - `field_agent_fee`, `operational_fee` added to WalletTxType
  *  - IDEMPOTENCY_KEYS: deterministic key constants per fee type
  *  - detectDuplicateRoles: find agents appearing in multiple roles
  *  - reconcileWalletTxs: detect orphan/missing/duplicate/mismatch issues
+ *  - resolveAssignments: canonical assignment resolver
+ *  - translateWalletError: intelligent error translator (C)
  */
 
 import { supabase, isSupabaseConfigured } from "./supabase";
@@ -24,10 +26,11 @@ export type WalletTxType =
   | "mission_conversion"
   | "mission_fee"
   | "order_bonus"
-  | "pelaksana_fee"    // fee pelaksana visa pelajar (role=staff)
-  | "voa_agent_fee"   // fee agent lapangan VOA (role=agent, bertugas di bandara)
-  | "field_agent_fee" // fee agent lapangan generik (bukan VOA-spesifik)
-  | "kurir_fee"       // fee kurir setoran uang
+  | "pelaksana_fee"      // fee pelaksana visa pelajar (role=staff)
+  | "voa_agent_fee"      // fee agent lapangan VOA (role=agent, bertugas di bandara)
+  | "field_agent_fee"    // fee agent lapangan generik (bukan VOA-spesifik)
+  | "kurir_fee"          // fee kurir setoran uang
+  | "operational_fee"    // fee operasional (transport, akomodasi lapangan)
   | "payout"
   | "adjustment";
 
@@ -71,6 +74,55 @@ export const ROLE_PRIORITY: Record<string, number> = {
   pelaksana:   6,
   operational: 7,
 };
+
+// ─── B — Assignment resolver ───────────────────────────────────────────────────
+
+export interface OrderAssignments {
+  salesAgentId?:       string | null;
+  assignedAgentId?:    string | null;
+  handlerAgentId?:     string | null;
+  courierAgentId?:     string | null;
+  fieldAgentId?:       string | null;
+  pelaksanaId?:        string | null;
+  operationalAgentId?: string | null;
+}
+
+export interface ResolvedAssignment {
+  agentId:   string;
+  role:      string;
+  priority:  number;
+}
+
+/**
+ * Resolve all agent assignments for an order into a flat list.
+ * Handles deduplication: if same agent appears in multiple roles, keeps highest-priority role.
+ * Returns sorted by priority (lowest number first = highest priority).
+ */
+export function resolveAssignments(
+  assignments: OrderAssignments,
+): ResolvedAssignment[] {
+  const raw: Array<{ agentId: string; role: string }> = [
+    { agentId: assignments.salesAgentId      ?? "", role: "sales" },
+    { agentId: assignments.assignedAgentId   ?? "", role: "assigned" },
+    { agentId: assignments.handlerAgentId    ?? "", role: "handler" },
+    { agentId: assignments.courierAgentId    ?? "", role: "courier" },
+    { agentId: assignments.fieldAgentId      ?? "", role: "field" },
+    { agentId: assignments.pelaksanaId       ?? "", role: "pelaksana" },
+    { agentId: assignments.operationalAgentId ?? "", role: "operational" },
+  ].filter((a) => !!a.agentId);
+
+  // Deduplicate: keep highest-priority role per agent
+  const byAgent = new Map<string, ResolvedAssignment>();
+  for (const { agentId, role } of raw) {
+    const priority = ROLE_PRIORITY[role] ?? 99;
+    const existing = byAgent.get(agentId);
+    if (!existing || priority < existing.priority) {
+      byAgent.set(agentId, { agentId, role, priority });
+    }
+  }
+
+  return [...byAgent.values()].sort((a, b) => a.priority - b.priority);
+}
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
@@ -433,6 +485,7 @@ export interface ReconciliationIssue {
 
 /**
  * Reconcile a single agent's wallet transactions against expected fees.
+ * NEVER trusts *FeeCredited flags alone — always checks actual tx existence.
  *
  * @param agentId        - the agent being reconciled
  * @param txs            - actual wallet transactions from Supabase
@@ -453,13 +506,6 @@ export function reconcileWalletTxs(
 
   // Index txs by id for O(1) lookup
   const txById  = new Map<string, WalletTransaction>(txs.map((t) => [t.id, t]));
-  // Index txs by type+orderId prefix for duplicate detection
-  const txByKey = new Map<string, WalletTransaction[]>();
-  for (const tx of txs) {
-    const key = tx.id;
-    if (!txByKey.has(key)) txByKey.set(key, []);
-    txByKey.get(key)!.push(tx);
-  }
 
   // Check each expected fee
   const expectedIds = new Set<string>();
@@ -502,7 +548,7 @@ export function reconcileWalletTxs(
     if (tx.amountIDR <= 0) continue; // skip payouts/adjustments
     if (expectedIds.has(tx.id)) continue;
     // Only flag fee types (not mission_conversion, payout, adjustment)
-    const feeTypes: WalletTxType[] = ["order_bonus", "voa_agent_fee", "field_agent_fee", "pelaksana_fee", "kurir_fee"];
+    const feeTypes: WalletTxType[] = ["order_bonus", "voa_agent_fee", "field_agent_fee", "pelaksana_fee", "kurir_fee", "operational_fee"];
     if (!feeTypes.includes(tx.type)) continue;
     issues.push({
       type:        "orphan_fee",
@@ -567,6 +613,12 @@ export function translateWalletError(rawError: string): string {
   }
   if (e.includes("jwt") || e.includes("token") || e.includes("auth")) {
     return "Sesi tidak valid. Coba logout dan login kembali.";
+  }
+  if (e.includes("42703") || e.includes("column")) {
+    return "Kolom database belum ada. Jalankan migration SQL terbaru di Supabase SQL Editor.";
+  }
+  if (e.includes("storage") || e.includes("bucket")) {
+    return "Storage Supabase bermasalah. Cek bucket dan RLS policy di dashboard Supabase.";
   }
   return rawError;
 }
