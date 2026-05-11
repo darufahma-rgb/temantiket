@@ -6,8 +6,9 @@ import {
   LayoutDashboard, ShoppingBag, Users, Settings, Package,
   Ticket, Calculator, StickyNote, FileSpreadsheet, BarChart3,
   MessageSquare, Megaphone, BookUser, Trophy, MoreHorizontal, LogOut,
-  Landmark, Wallet,
+  Landmark, Wallet, ShieldCheck,
 } from "lucide-react";
+import { RealtimeIndicator } from "./RealtimeIndicator";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -65,6 +66,7 @@ const OWNER_MORE_ITEMS: NavItem[] = [
   { icon: StickyNote,      label: "Catatan",      path: "/notes"             },
   { icon: BookUser,        label: "Mgt. Agen",    path: "/agent-center"      },
   { icon: Trophy,          label: "Leaderboard",  path: "/agent/leaderboard" },
+  { icon: ShieldCheck,     label: "Audit",        path: "/audit"             },
   { icon: Settings,        label: "Pengaturan",   path: "/settings"          },
 ];
 
@@ -301,6 +303,12 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 </span>
                 <span className="hidden lg:block text-[10px] font-semibold text-[hsl(var(--muted-foreground))] leading-none">{syncInfo.label}</span>
               </div>
+
+              <RealtimeIndicator
+                showLabel={false}
+                compact
+                className="hidden xl:inline-block"
+              />
 
               <NotificationBell />
 

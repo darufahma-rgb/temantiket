@@ -15,7 +15,7 @@ import {
   ChevronDown, AlertTriangle, Info, FileText, CalendarClock,
 } from "lucide-react";
 import type { PublicOrderData } from "@/features/portal/memberCardRepo";
-import { getStepsForType } from "@/lib/orderProgress";
+import { getStepsForType, checkSla } from "@/lib/orderProgress";
 import type { OrderStep } from "@/lib/orderProgress";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -178,6 +178,10 @@ function OrderProgressCard({
     } catch { /* silent */ }
   };
 
+  const sla = checkSla(order.type, current, order.stepChangedAt ?? order.createdAt);
+  const slaExceeded  = sla?.exceeded === true;
+  const slaWarning   = sla && !sla.exceeded && sla.hoursElapsed >= Math.max(1, sla.slaHours * 0.75);
+
   const needsAction: string[] = [];
   if (order.paymentStatus === "UNPAID") needsAction.push("Lakukan pembayaran untuk melanjutkan proses pesanan Anda.");
   if (order.paymentStatus === "DP")     needsAction.push("Segera lunasi sisa pembayaran agar proses dapat dilanjutkan.");
@@ -239,6 +243,29 @@ function OrderProgressCard({
                   </span>
                 )}
               </div>
+
+              {/* ── SLA warning banner ── */}
+              {(slaExceeded || slaWarning) && sla && (
+                <div className={`rounded-xl px-3.5 py-3 border flex items-start gap-2.5 ${
+                  slaExceeded
+                    ? "bg-red-50 border-red-200"
+                    : "bg-amber-50 border-amber-200"
+                }`}>
+                  <AlertTriangle className={`h-4 w-4 shrink-0 mt-0.5 ${slaExceeded ? "text-red-500" : "text-amber-500"}`} />
+                  <div className="min-w-0">
+                    <p className={`text-xs font-bold ${slaExceeded ? "text-red-700" : "text-amber-700"}`}>
+                      {slaExceeded
+                        ? "Proses Melebihi Estimasi Waktu"
+                        : "Segera Diproses"}
+                    </p>
+                    <p className={`text-xs mt-0.5 leading-relaxed ${slaExceeded ? "text-red-600" : "text-amber-600"}`}>
+                      {slaExceeded
+                        ? `Tahap ini sudah berjalan ${sla.hoursElapsed} jam (estimasi: ${sla.slaHours} jam). Hubungi admin jika ada kendala.`
+                        : `Tahap ini sudah berjalan ${sla.hoursElapsed} jam dari estimasi ${sla.slaHours} jam. Segera selesai.`}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* ── Progress track ── */}
               <div className="bg-gray-50 rounded-xl px-3 py-3 border border-gray-100">

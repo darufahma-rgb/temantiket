@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Calculator, Package, LogOut, Settings,
   StickyNote, FileSpreadsheet, Users, ShoppingBag,
   MessageSquare, Sparkles, Ticket,
-  Command, Trophy, BookUser, Megaphone, BarChart3, Landmark, Wallet, Activity,
+  Command, Trophy, BookUser, Megaphone, BarChart3, Landmark, Wallet, Activity, ShieldCheck,
 } from "lucide-react";
 
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -90,6 +90,7 @@ const OWNER_SECTIONS: SectionDef[] = [
       { title: "Manajemen Agen",      url: "/agent-center",        icon: BookUser },
       { title: "Leaderboard",         url: "/agent/leaderboard",   icon: Trophy },
       { title: "Manajemen Staff",      url: "/staff-performance",  icon: Activity, ownerOnly: true },
+      { title: "Audit & Debug",        url: "/audit",              icon: ShieldCheck, ownerOnly: true },
     ],
   },
   {

@@ -17,6 +17,8 @@ export interface PublicOrderData {
   missingDocs: string | null;
   /** Estimasi selesai (metadata.estimatedCompletion) */
   estimatedCompletion: string | null;
+  /** ISO timestamp saat step terakhir berubah — untuk SLA check (E) */
+  stepChangedAt: string | null;
   createdAt: string;
 }
 
@@ -49,6 +51,7 @@ export async function fetchPublicClientOrders(clientId: string): Promise<PublicO
         adminNotes:          (meta.adminNotes as string) || null,
         missingDocs:         (meta.missingDocs as string) || null,
         estimatedCompletion: (meta.estimatedCompletion as string) || null,
+        stepChangedAt:       (meta.stepChangedAt as string) || null,
         createdAt:           String(r.created_at ?? new Date().toISOString()),
       };
     });
