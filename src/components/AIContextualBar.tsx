@@ -23,8 +23,8 @@ const PAGE_CONFIGS: { match: (p: string) => boolean; config: PageConfig }[] = [
     config: {
       label: "Beranda",
       chips: [
-        "Gimana performa bisnis hari ini?",
-        "Siapa agen terbaik bulan ini?",
+        "Laporan keuangan semua waktu",
+        "Siapa saja agen di Temantiket?",
         "Buat misi harian untuk agen",
         "Ada order yang belum Completed?",
       ],
@@ -83,10 +83,10 @@ const PAGE_CONFIGS: { match: (p: string) => boolean; config: PageConfig }[] = [
     config: {
       label: "Laporan Keuangan",
       chips: [
-        "Berapa total revenue & profit semua order?",
-        "Gimana ringkasan performa bisnis?",
-        "Siapa agen dengan order terbanyak?",
-        "List order Completed bulan ini",
+        "Laporan keuangan semua waktu",
+        "Net profit & revenue bulan ini",
+        "Daftar lengkap agen & total komisi mereka",
+        "Laporan keuangan tahun ini",
       ],
     },
   },
@@ -95,10 +95,10 @@ const PAGE_CONFIGS: { match: (p: string) => boolean; config: PageConfig }[] = [
     config: {
       label: "Agent Command Center",
       chips: [
+        "Daftar lengkap semua agen & komisinya",
+        "Siapa agen dengan poin & order terbanyak?",
         "Buat misi: share promo umrah ke 5 kontak, reward 20 poin, deadline besok",
-        "Siapa agen dengan poin terbanyak?",
-        "List performa semua agen",
-        "Buat misi: update foto profil agen reward 15 poin",
+        "Berapa total komisi yang sudah dibayar ke agen?",
       ],
     },
   },

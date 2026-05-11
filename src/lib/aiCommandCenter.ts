@@ -23,6 +23,9 @@ import { generateInvoicePdfRemote } from "@/lib/exportPdfApi";
 import { useInvoiceStore } from "@/store/invoiceStore";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
 import { callAIAssistant } from "@/lib/aiFetch";
+import { listWalletTxs, walletBalance } from "@/lib/agentWallet";
+import { buildLedgerEntries, ledgerSummary } from "@/lib/ledgerSync";
+import { loadProductCommissions } from "@/lib/productCommissions";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -326,6 +329,43 @@ const TOOLS: object[] = [
   {
     type: "function",
     function: {
+      name: "get_agents",
+      description:
+        "Dapatkan daftar lengkap semua agen di agency beserta nama asli, email, komisi %, total order, total poin, dan saldo wallet/komisi. Gunakan ketika user tanya: 'siapa saja agen', 'daftar agen', 'berapa agen aktif', 'performa agen', 'komisi agen berapa', 'ranking agen', 'agen mana yang paling banyak order', dll. SELALU gunakan tool ini (bukan get_agent_performance) untuk pertanyaan tentang daftar atau profil agen.",
+      parameters: {
+        type: "object",
+        properties: {
+          search: {
+            type: "string",
+            description: "Filter by nama atau email agen (opsional)",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_financial_report",
+      description:
+        "Baca laporan keuangan real dari ledger Temantiket — data identik dengan halaman Laporan Keuangan (Buku Besar). Gunakan ketika user tanya: total revenue, total profit, net profit, biaya operasional, fee komisi agen, laporan keuangan, performa finansial, ringkasan keuangan, total transaksi lunas, dll.",
+      parameters: {
+        type: "object",
+        properties: {
+          range: {
+            type: "string",
+            enum: ["this_month", "last_month", "this_year", "all"],
+            description: "Rentang waktu laporan (default: all = semua waktu)",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "edit_content",
       description: `Gunakan tool ini ketika user meminta edit, tambah, rapikan, perbarui, atau buat versi lain dari catatan/template yang sedang aktif.
 
@@ -391,7 +431,8 @@ Role user: ${userRole}`;
         ctx.activeItem.type === "bc_template" ? "Template Broadcast" :
         ctx.activeItem.type === "order" ? "Order" :
         ctx.activeItem.type === "client" ? "Data Klien" :
-        ctx.activeItem.type === "itinerary" ? "Itinerary" : "Item";
+        ctx.activeItem.type === "itinerary" ? "Itinerary" :
+        ctx.activeItem.type === "agent" ? "Profil Agen" : "Item";
 
       const contentPreview = ctx.activeItem.content.length > 3000
         ? ctx.activeItem.content.slice(0, 3000) + "\n\n[... konten terpotong ...]"
@@ -436,7 +477,7 @@ ${truncated}
     }
   }
 
-  return `Lo adalah AITEM — AI Agent internal super cerdas milik Temantiket, platform manajemen perjalanan umrah & haji kelas dunia.
+  return `Lo adalah AITEM — AI Assistant internal eksklusif milik Temantiket, platform manajemen perjalanan umrah & haji kelas dunia. Lo bukan chatbot umum. Lo adalah asisten operasional yang benar-benar paham isi sistem, database, alur kerja, dan semua fitur Temantiket.
 
 WAKTU SEKARANG: ${tanggal}, pukul ${jam} WIB${pageContextBlock}
 
@@ -445,64 +486,136 @@ WAKTU SEKARANG: ${tanggal}, pukul ${jam} WIB${pageContextBlock}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Lo ngomong kayak sahabat Gen Z yang cerdas banget tapi tetep bisa diandalkan buat urusan bisnis. Gaya lo:
 - Pakai "gue/lo" secara natural, bukan "saya/kamu/Anda"
-- Slang yang wajar: "gasken", "mantul", "no cap", "fr", "wkwk", "oke bet", "valid", "on it", "lowkey", "literally"
-- Tapi TETAP akurat, informatif, dan profesional dalam substansi
-- Singkat dan padat, jangan bertele-tele. Kalau jawaban butuh detail, pakai bullet points yang clean
+- Slang yang wajar: "gasken", "mantul", "no cap", "fr", "wkwk", "oke bet", "valid", "on it", "lowkey"
+- TETAP akurat, informatif, dan profesional dalam substansi — gaya santai, isi serius
+- Singkat dan padat, jangan bertele-tele. Pakai bullet points yang clean untuk data
 - Selalu proaktif: kasih insight tambahan yang relevan meski tidak diminta
+- JANGAN pernah tampilkan UUID mentah ke user — selalu resolusi ke nama asli
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 DETEKSI INTENT USER
+🎯 INTENT ROUTER — DETEKSI DAN EKSEKUSI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Lo WAJIB memahami intent user dan langsung bertindak:
+Lo WAJIB mendeteksi intent dan langsung eksekusi tool yang tepat:
 
-📊 TANYA INFO → jawab langsung atau ambil data sistem
-   Contoh: "revenue berapa?", "klien siapa aja?", "status order Ahmad?"
+👥 TANYA DATA AGEN → gunakan get_agents (BUKAN get_agent_performance)
+   Trigger: "siapa agen", "daftar agen", "berapa agen", "agen aktif", "komisi agen", "ranking agen", "performa agen", "agen mana", "agen paling"
+   Output: nama asli + email + total order + poin + saldo komisi IDR + link profil
+
+👤 TANYA DATA KLIEN → gunakan get_clients atau get_client_detail
+   Trigger: "siapa klien", "cari klien", "klien Ahmad", "total klien", "klien yang..."
+   Output: nama + HP + email + total order
+
+📦 TANYA ORDER → gunakan get_orders atau get_order_detail
+   Trigger: "order flight", "order umrah", "status order", "order si Ahmad", "total order"
+   Output: judul + status + total price + klien + tanggal
+
+💰 TANYA LAPORAN KEUANGAN → gunakan get_financial_report
+   Trigger: "revenue", "profit", "laporan keuangan", "net profit", "total transaksi", "biaya ops", "fee komisi", "performa finansial", "buku besar"
+   Output: angka real dari ledger — totalRevenue, totalProfit, netProfit, fee breakdown
 
 ✏️ EDIT KONTEN → panggil edit_content LANGSUNG tanpa konfirmasi
-   Contoh: "tambahkan poin X", "rapikan", "singkatkan", "tambah syarat...", "buat versi WA"
-   → Ini WAJIB ditangani jika ada konteks halaman aktif. JANGAN DITOLAK.
+   Trigger: "tambahkan poin", "rapikan", "singkatkan", "buat versi WA", "edit", "tambah syarat"
+   → WAJIB ditangani jika ada konteks halaman aktif. JANGAN DITOLAK.
 
 🔨 BUAT BARU → eksekusi tool yang sesuai
-   Contoh: "bikin misi", "buat invoice", "bikin itinerary"
+   Trigger: "bikin misi", "buat invoice", "bikin itinerary", "create"
 
-🔍 CEK DATA → ambil data dari sistem
-   Contoh: "cek order flight", "cari klien Ahmad", "performa agen"
+📝 UPDATE DATA → eksekusi tool yang sesuai
+   Trigger: "update kurs EGP", "set SAR ke", "ubah kurs"
 
-📝 UBAH DATA → eksekusi tool yang sesuai
-   Contoh: "update kurs EGP ke 520", "set SAR ke 4300"
+📱 TANYA TEMPLATE BROADCAST → get_bc_templates
+   Trigger: "template WA", "template broadcast", "cari template"
+
+🎯 TANYA MISI AGEN → get_dashboard_summary atau create_daily_mission
+   Trigger: "bikin misi", "misi aktif", "misi agen"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚡ ATURAN EKSEKUSI TOOL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. LANGSUNG EKSEKUSI kalau parameternya sudah jelas — jangan tanya konfirmasi yang tidak perlu
-2. TANYA DULU kalau info krusial benar-benar kurang (misal: "bikin misi" tapi tidak ada judul sama sekali)
+1. LANGSUNG EKSEKUSI kalau parameternya sudah jelas — jangan tanya konfirmasi tidak perlu
+2. TANYA DULU hanya kalau info krusial benar-benar kurang (misal: "bikin misi" tapi tidak ada judul)
 3. PARALEL: Kalau butuh banyak data, panggil multiple tools sekaligus
 4. CHAINING: Hasil satu tool bisa jadi input tool berikutnya dalam 1 percakapan
 5. Setelah sukses → ringkasan singkat yang informatif + satu insight/saran relevan
+6. JANGAN tampilkan UUID/ID teknis ke user — tampilkan nama, email, atau judul
 
 Contoh pemahaman cerdas:
-- "tambahkan harus legalisir tadaruj di wizaroh khoriji Mesir" (di halaman Catatan) → edit_content dengan poin baru
+- "siapa agen di Temantiket?" → get_agents → tampilkan tabel nama, order, poin, komisi
+- "total revenue bulan ini?" → get_financial_report(range="this_month")
+- "tambahkan harus legalisir tadaruj" (di Catatan) → edit_content langsung
 - "rapikan ini jadi broadcast WA" → edit_content dengan targetType=broadcast_wa
-- "egp brp?" → get_dashboard_summary
 - "buat invoice si Ahmad" → get_clients + get_orders + generate_invoice
 - "gasken bikin misi 20 poin deadline besok" → create_daily_mission
+- "agen mana yang paling banyak poin?" → get_agents → sort by totalPoints
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🗺️ STRUKTUR APLIKASI TEMANTIKET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HALAMAN & ROUTE:
+• / atau /dashboard — Beranda: ringkasan bisnis, order terbaru, top agen, kurs
+• /clients — Manajemen Klien (Jamaah): CRUD data jamaah, paspor, dokumen
+• /orders — Order Hub: semua order umrah/flight/visa dalam satu tempat
+• /orders/:id — Detail Order: status, pembayaran, catatan, invoice
+• /packages — Paket Trip: manajemen paket umrah & haji
+• /reports — Laporan Keuangan: buku besar, cashflow, breakdown per agen
+• /agent-center — Agent Command Center: kelola agen, misi, poin, commission tracker
+• /agents/:id — Profil Agen Owner View: detail performa + wallet + fee per agen
+• /agent-leaderboard — Leaderboard agen berdasarkan poin
+• /staff-management — Manajemen Staff: undang/hapus member
+• /itinerary — Generator Itinerary: ekstrak PNR → itinerary visual
+• /ticket-prices — Harga Tiket: database harga + OCR screenshot tiket
+• /bc-templates — Template Broadcast WA: kelola template pesan massal
+• /notes — Catatan Operasional: catatan internal bebas format
+• /calculator — Kalkulator & Kurs: hitung profit, konversi mata uang
+• /exports — Export Center: ekspor data klien, order ke Excel/PDF
+• /settings — Pengaturan: kurs manual, akumulasi fee, data agensi
+
+DATABASE SUPABASE (tabel utama):
+• agency_members — daftar anggota agensi (userId, role, commissionPct, displayName via profiles)
+• profiles — nama & email user (full_name, email, photo_url)
+• orders — semua order (type, status, totalPrice, costPrice, currency, clientId, createdByAgent, metadata)
+• clients — data jamaah (name, phone, email, passportNumber, passportExpiry)
+• agent_points — poin gamifikasi agen (agentId, orderId, points, reason)
+• agent_wallet_transactions — wallet/komisi agen (agentId, type, amountIDR, pointsDelta)
+• missions — misi harian agen (title, description, rewardPoints, deadline)
+• packages — paket umrah/haji
+• ticket_prices — database harga tiket pesawat
+
+ROLES:
+• owner — akses penuh, bisa undang/hapus member, lihat semua laporan
+• staff — akses operasional, bisa buat/edit order dan klien
+• agent — akses terbatas, lihat dashboard sendiri, buat order via referral
+
+ORDER TYPES & STATUS:
+• Types: umrah | flight | visa_voa | visa_student
+• Status flow: Draft → Confirmed → Paid → Completed (atau Cancelled)
+• Hanya order Paid + Completed yang masuk ke laporan keuangan/ledger
+
+WALLET & KOMISI AGEN:
+• Rate konversi poin → IDR: 1 poin = Rp 1.000
+• Tipe transaksi wallet: mission_conversion, mission_fee, order_bonus, voa_agent_fee, kurir_fee, pelaksana_fee, payout, adjustment
+• Saldo wallet = totalCreditIDR - totalDebitIDR (net IDR)
+• Owner bisa lihat profil agen di /agents/:userId
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 KONTEKS BISNIS TEMANTIKET
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Mata uang: IDR (default), EGP (tiket pesawat rute Timur Tengah, kurs ~515), SAR (~4.300), USD (~16.500)
-Order types: umrah | flight | visa_voa | visa_student
-Order status flow: Draft → Confirmed → Paid → Completed (atau Cancelled)
-Poin agen: diberikan otomatis saat order status jadi Completed
+Mata uang: IDR (default), EGP (tiket Timur Tengah, kurs ~515), SAR (~4.300), USD (~16.500)
+Poin agen: diberikan otomatis saat order → Completed (20 poin/order)
 Misi agen: cara owner boost motivasi dan produktivitas tim agen
+1 EGP ≈ Rp 515 | 1 SAR ≈ Rp 4.300 | 1 USD ≈ Rp 16.500
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💬 FORMAT RESPONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Pakai markdown ringan (bold, bullet points) untuk keterbacaan
+- Pakai markdown ringan (bold, bullet points, tabel) untuk keterbacaan
 - Angka keuangan: format IDR yang rapi (Rp 15.000.000 bukan 15000000)
 - Kalau ada data kosong: tetap informatif, jangan cuma bilang "tidak ada data"
 - Emoji boleh tapi tidak berlebihan — gunakan untuk emphasis, bukan dekorasi
+- NAMA BUKAN UUID: Selalu tampilkan nama asli. UUID hanya untuk kebutuhan teknis jika diminta
+- Untuk data agen: tampilkan dalam bentuk tabel atau list yang rapi dengan semua kolom relevan
+- Untuk navigasi: sertakan link internal seperti "/agents/UUID" hanya di teks markdown, jangan expose UUID mentah
+- Sertakan "next step" atau rekomendasi tindakan setelah menampilkan data
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚫 GUARDRAILS — BATAS TOPIK
@@ -510,10 +623,10 @@ Misi agen: cara owner boost motivasi dan produktivitas tim agen
 Lo BOLEH membantu semua hal yang berkaitan dengan Temantiket:
 - Data sistem: klien, order, agen, kurs, profit, invoice, misi, poin, wallet, visa
 - Operasional: umrah, haji, tiket penerbangan, visa student, visa VOA
-- Konten bisnis: catatan operasional, template broadcast WA/Telegram, itinerary, caption marketing
+- Konten bisnis: catatan operasional, template broadcast WA, itinerary, caption marketing
 - Edit & format konten: rapikan catatan, tambah poin, buat versi broadcast, modifikasi template
 - Kalkulasi bisnis: profit, margin, konversi mata uang
-- Cara penggunaan fitur sistem
+- Cara penggunaan fitur sistem, penjelasan alur, debugging flow
 
 Lo TIDAK membantu:
 - Politik, berita nasional/internasional yang tidak terkait bisnis travel
@@ -539,12 +652,14 @@ async function executeTool(
   try {
     switch (toolName) {
       case "get_dashboard_summary": {
-        const [clients, orders, missions, agentPoints] = await Promise.all([
+        const [clients, orders, missions, agentPoints, members] = await Promise.all([
           listClients(),
           listOrders(),
           listMissions(agencyId),
           listAgentPoints(),
+          useAuthStore.getState().listMembers(),
         ]);
+        const memberNameById = new Map(members.map((m) => [m.userId, m.displayName]));
         const completedOrders = orders.filter((o) => o.status === "Completed");
         const totalRevIDR = completedOrders.reduce((s, o) => s + revenueIDR(o, egpRate), 0);
         const totalProfitIDR = completedOrders.reduce((s, o) => s + netProfitIDR(o, egpRate), 0);
@@ -552,7 +667,7 @@ async function executeTool(
           (m) => new Date(m.deadline) > new Date(),
         );
         const pointMap = sumPointsByAgent(agentPoints);
-        const topAgent = Array.from(pointMap.entries()).sort((a, b) => b[1] - a[1])[0];
+        const topAgentEntry = Array.from(pointMap.entries()).sort((a, b) => b[1] - a[1])[0];
 
         const summary = {
           totalClients: clients.length,
@@ -566,8 +681,8 @@ async function executeTool(
             SAR: ratesStore.rates.SAR,
             USD: ratesStore.rates.USD,
           },
-          topAgent: topAgent
-            ? { agentId: topAgent[0], points: topAgent[1] }
+          topAgent: topAgentEntry
+            ? { name: memberNameById.get(topAgentEntry[0]) ?? "Agen", points: topAgentEntry[1] }
             : null,
         };
 
@@ -750,10 +865,12 @@ async function executeTool(
       }
 
       case "get_agent_performance": {
-        const [orders, agentPoints] = await Promise.all([
+        const [orders, agentPoints, members] = await Promise.all([
           listOrders(),
           listAgentPoints(),
+          useAuthStore.getState().listMembers(),
         ]);
+        const memberNameById = new Map(members.map((m) => [m.userId, m.displayName]));
         const pointMap = sumPointsByAgent(agentPoints);
         const ordersByAgent = new Map<string, number>();
         for (const o of orders) {
@@ -766,6 +883,7 @@ async function executeTool(
         }
         const agentList = Array.from(pointMap.entries())
           .map(([agentId, points]) => ({
+            name: memberNameById.get(agentId) ?? `Agen (${agentId.slice(0, 6)})`,
             agentId,
             points,
             totalOrders: ordersByAgent.get(agentId) ?? 0,
@@ -991,6 +1109,134 @@ async function executeTool(
         return {
           result: JSON.stringify(detail),
           displayData: { type: "client_detail", ...detail },
+          success: true,
+        };
+      }
+
+      case "get_agents": {
+        const { search } = args as { search?: string };
+        const [members, orders, agentPoints] = await Promise.all([
+          useAuthStore.getState().listMembers(),
+          listOrders(),
+          listAgentPoints(),
+        ]);
+        const agents = members.filter((m) => m.role === "agent");
+        const pointMap = sumPointsByAgent(agentPoints);
+        const ordersByAgent = new Map<string, number>();
+        const completedByAgent = new Map<string, number>();
+        const revenueByAgent = new Map<string, number>();
+        for (const o of orders) {
+          if (o.createdByAgent) {
+            ordersByAgent.set(o.createdByAgent, (ordersByAgent.get(o.createdByAgent) ?? 0) + 1);
+            if (o.status === "Completed" || o.status === "Paid") {
+              completedByAgent.set(o.createdByAgent, (completedByAgent.get(o.createdByAgent) ?? 0) + 1);
+              revenueByAgent.set(o.createdByAgent, (revenueByAgent.get(o.createdByAgent) ?? 0) + revenueIDR(o, egpRate));
+            }
+          }
+        }
+        let filteredAgents = agents;
+        if (search) {
+          const q = search.toLowerCase();
+          filteredAgents = agents.filter((a) =>
+            a.displayName.toLowerCase().includes(q) || a.email.toLowerCase().includes(q),
+          );
+        }
+        const agentList = filteredAgents.map((a) => {
+          const txs = listWalletTxs(a.userId);
+          const bal = walletBalance(txs);
+          return {
+            name: a.displayName,
+            email: a.email,
+            commissionPct: a.commissionPct,
+            totalOrders: ordersByAgent.get(a.userId) ?? 0,
+            completedOrders: completedByAgent.get(a.userId) ?? 0,
+            totalRevenue: fmtIDR(revenueByAgent.get(a.userId) ?? 0),
+            totalPoints: pointMap.get(a.userId) ?? 0,
+            walletCreditIDR: fmtIDR(bal.totalCreditIDR),
+            walletNetIDR: fmtIDR(bal.netIDR),
+            profileLink: `/agents/${a.userId}`,
+          };
+        }).sort((a, b) => b.totalPoints - a.totalPoints);
+
+        if (agentList.length === 0) {
+          return {
+            result: JSON.stringify({ total: 0, agents: [] }),
+            displayData: { type: "agents_list", total: 0, agents: [], message: search ? `Agen dengan nama "${search}" tidak ditemukan.` : "Belum ada agen terdaftar di agency ini." },
+            success: true,
+          };
+        }
+        return {
+          result: JSON.stringify({ total: agentList.length, agents: agentList }),
+          displayData: { type: "agents_list", total: agentList.length, agents: agentList },
+          success: true,
+        };
+      }
+
+      case "get_financial_report": {
+        const { range = "all" } = args as { range?: string };
+        const [orders, allClients, members] = await Promise.all([
+          listOrders(),
+          listClients(),
+          useAuthStore.getState().listMembers(),
+        ]);
+        const egpRateVal = ratesStore.rates.EGP ?? 515;
+        const sarRateVal = ratesStore.rates.SAR ?? 4250;
+
+        const now = new Date();
+        const y = now.getFullYear();
+        const mo = now.getMonth();
+        let fromDate: Date | null = null;
+        let toDate: Date | null = null;
+        if (range === "this_month") { fromDate = new Date(y, mo, 1); toDate = new Date(y, mo + 1, 1); }
+        else if (range === "last_month") { fromDate = new Date(y, mo - 1, 1); toDate = new Date(y, mo, 1); }
+        else if (range === "this_year") { fromDate = new Date(y, 0, 1); toDate = new Date(y + 1, 0, 1); }
+
+        const paidOrders = orders.filter((o) => {
+          if (o.status !== "Paid" && o.status !== "Completed") return false;
+          if (fromDate || toDate) {
+            const d = new Date((o.metadata as Record<string,unknown>)?.paidAt as string ?? o.updatedAt ?? o.createdAt);
+            if (fromDate && d < fromDate) return false;
+            if (toDate && d >= toDate) return false;
+          }
+          return true;
+        });
+
+        const clientNameById = new Map(allClients.map((c) => [c.id, c.name]));
+        const memberById = new Map(members.map((m) => [m.userId, { role: m.role, displayName: m.displayName, commissionPct: m.commissionPct }]));
+        const productComm = loadProductCommissions();
+        const entries = buildLedgerEntries(paidOrders, clientNameById, egpRateVal, sarRateVal, memberById, productComm);
+        const stats = ledgerSummary(entries);
+
+        // Per-agent commission breakdown
+        const agentCommissions: Array<{ name: string; commission: string }> = [];
+        const agentCommMap = new Map<string, number>();
+        for (const e of entries) {
+          if (e.isCommission && e.agentId) {
+            agentCommMap.set(e.agentId, (agentCommMap.get(e.agentId) ?? 0) + Math.abs(e.profitIDR));
+          }
+        }
+        for (const [id, amount] of agentCommMap.entries()) {
+          const name = memberById.get(id)?.displayName ?? `Agen (${id.slice(0, 6)})`;
+          agentCommissions.push({ name, commission: fmtIDR(amount) });
+        }
+
+        const rangeLabel: Record<string, string> = { this_month: "Bulan Ini", last_month: "Bulan Lalu", this_year: "Tahun Ini", all: "Semua Waktu" };
+        return {
+          result: JSON.stringify({ range, rangeLabel: rangeLabel[range], stats, agentCommissions }),
+          displayData: {
+            type: "financial_report",
+            rangeLabel: rangeLabel[range] ?? "Semua Waktu",
+            transactionCount: stats.count,
+            totalRevenue: fmtIDR(stats.totalRevenue),
+            totalGrossProfit: fmtIDR(stats.totalProfit),
+            totalCommission: fmtIDR(stats.totalCommission),
+            totalVoaOpex: fmtIDR(stats.totalVoaOpex),
+            totalKurirOpex: fmtIDR(stats.totalKurirOpex),
+            totalPelaksana: fmtIDR(stats.totalPelaksana),
+            netProfit: fmtIDR(stats.netProfit),
+            avgMarginPct: `${stats.avgMargin.toFixed(1)}%`,
+            agentCommissions,
+          },
           success: true,
         };
       }

@@ -37,12 +37,12 @@ const PAGE_SUGGESTIONS: PageSuggestions[] = [
   {
     match: (p) => p === "/" || p === "/dashboard",
     chips: [
-      "Performa bisnis hari ini gimana?",
-      "Siapa top agen bulan ini?",
+      "Laporan keuangan semua waktu dong",
+      "Siapa saja agen di Temantiket?",
+      "Net profit bulan ini berapa?",
       "Gasken bikin misi harian buat agen",
-      "Order yang masih Draft ada berapa?",
-      "Total revenue sekarang berapa?",
-      "Kasih gue 5 order terbaru",
+      "Siapa top agen berdasarkan poin?",
+      "Total revenue & order Completed sekarang?",
     ],
   },
   {
@@ -92,23 +92,23 @@ const PAGE_SUGGESTIONS: PageSuggestions[] = [
   {
     match: (p) => p.startsWith("/reports"),
     chips: [
-      "Total revenue & profit kita berapa?",
-      "Performa bisnis hari ini gimana?",
-      "Agen dengan order terbanyak siapa?",
-      "Order Completed bulan ini ada berapa?",
-      "Breakdown profit semua order dong",
+      "Laporan keuangan semua waktu",
+      "Net profit bulan ini berapa?",
+      "Laporan keuangan bulan lalu",
+      "Total fee komisi agen yang dibayar?",
+      "Daftar lengkap semua agen & komisinya",
       "Ranking agen berdasarkan performa",
     ],
   },
   {
     match: (p) => p.startsWith("/agent-center"),
     chips: [
-      "Bikin misi: share promo umrah, 20 poin, deadline besok",
+      "Daftar lengkap semua agen & komisinya",
       "Siapa agen paling banyak poin?",
-      "Ranking performa semua agen dong",
+      "Bikin misi: share promo umrah, 20 poin, deadline besok",
+      "Agen mana yang paling banyak order?",
+      "Berapa total komisi yang sudah dibayar ke agen?",
       "Bikin misi: follow up klien, 15 poin",
-      "Berapa total agen yang aktif?",
-      "Agen mana yang poinnya masih nol?",
     ],
   },
   {
@@ -169,12 +169,12 @@ const PAGE_SUGGESTIONS: PageSuggestions[] = [
 ];
 
 const DEFAULT_SUGGESTIONS = [
-  "Performa bisnis hari ini gimana?",
-  "5 klien terbaru gasken",
-  "Update kurs EGP ke 520",
+  "Laporan keuangan semua waktu dong",
+  "Siapa saja agen di Temantiket?",
+  "Net profit bulan ini berapa?",
   "Gasken bikin misi buat agen",
-  "Profit tiket EGP 1500 modal 1200?",
-  "Siapa top agen bulan ini?",
+  "Siapa top agen berdasarkan poin?",
+  "Update kurs EGP ke 520",
 ];
 
 function getPageSuggestions(pathname: string): string[] {
