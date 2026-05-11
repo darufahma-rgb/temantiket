@@ -170,9 +170,9 @@ export default function AgentLeaderboard() {
     for (const o of periodOrders) {
       if (!o.createdByAgent || !agentIds.has(o.createdByAgent)) continue;
       const cur = stats.get(o.createdByAgent) ?? { revenue: 0, orders: 0, commission: 0 };
-      cur.revenue    += revenueIDR(o);
-      cur.orders     += 1;
-      cur.commission += agentFeeFromMeta(o);
+      cur.revenue += revenueIDR(o);
+      cur.orders  += 1;
+      if (o.status === "Completed") cur.commission += agentFeeFromMeta(o);
       stats.set(o.createdByAgent, cur);
     }
     for (const o of periodOrders) {

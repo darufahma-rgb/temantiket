@@ -629,8 +629,21 @@ export default function AgentCommandCenter() {
     const voaFieldCommission = voaFieldOrders
       .filter((o) => o.status === "Completed")
       .reduce((s, o) => s + Number(((o.metadata ?? {}) as Record<string, unknown>).voaAgentFee ?? 0), 0);
-    // Fee kurir: hanya order Completed
-    const kurirCommission  = completedList
+    // Fee lapangan generik (fieldAgentId): hanya order Completed
+    const fieldCommission = orders
+      .filter((o) => o.status === "Completed" && ((o.metadata ?? {}) as Record<string, unknown>).fieldAgentId === a.userId)
+      .reduce((s, o) => s + Number(((o.metadata ?? {}) as Record<string, unknown>).fieldAgentFee ?? 0), 0);
+    // Fee operasional (assignedOperationalAgentId): hanya order Completed
+    const opCommission = orders
+      .filter((o) => o.status === "Completed" && ((o.metadata ?? {}) as Record<string, unknown>).assignedOperationalAgentId === a.userId)
+      .reduce((s, o) => s + Number(((o.metadata ?? {}) as Record<string, unknown>).operationalAgentFee ?? 0), 0);
+    // Fee visa executor (visaExecutorId): hanya order Completed
+    const executorCommission = orders
+      .filter((o) => o.status === "Completed" && ((o.metadata ?? {}) as Record<string, unknown>).visaExecutorId === a.userId)
+      .reduce((s, o) => s + Number(((o.metadata ?? {}) as Record<string, unknown>).executorFee ?? 0), 0);
+    // Fee kurir: hanya order Completed di mana agen ini adalah kurirAgentId
+    const kurirCommission = orders
+      .filter((o) => o.status === "Completed" && ((o.metadata ?? {}) as Record<string, unknown>).kurirAgentId === a.userId)
       .reduce((s, o) => s + Number(((o.metadata ?? {}) as Record<string, unknown>).kurirFee ?? 0), 0);
     // Fee pelaksana: hanya order Completed (visa_student)
     const pelaksanaCommission = completedList
@@ -639,7 +652,7 @@ export default function AgentCommandCenter() {
         const meta = (o.metadata ?? {}) as Record<string, unknown>;
         return meta.pelaksanaId === a.userId ? s + Number(meta.pelaksanaFee ?? 200_000) : s;
       }, 0);
-    const commissionOwed   = salesCommission + voaFieldCommission + kurirCommission + pelaksanaCommission;
+    const commissionOwed = salesCommission + voaFieldCommission + fieldCommission + opCommission + executorCommission + kurirCommission + pelaksanaCommission;
     return {
       ...a, totalPoints, tierInfo,
       totalOrders: agentOrders.length,
@@ -649,7 +662,7 @@ export default function AgentCommandCenter() {
       totalRevenue, totalProfit, netAgencyProfit, commissionOwed,
       color: AGENT_COLORS[idx % AGENT_COLORS.length],
     };
-  }).sort((a, b) => b.totalPoints - a.totalPoints), [agentMembers, pointsByAgent, ordersByAgent, voaFieldOrdersByAgent, clientCountByAgent]);
+  }).sort((a, b) => b.totalPoints - a.totalPoints), [agentMembers, pointsByAgent, ordersByAgent, voaFieldOrdersByAgent, clientCountByAgent, orders]);
 
   // Filtered for directory search
   const filteredRows = useMemo(() => {

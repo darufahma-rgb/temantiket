@@ -1690,13 +1690,28 @@ export default function Settings() {
                       const salesPending = salesPendingOrders.reduce((s, o) => s + agentFeeFromMeta(o), 0);
 
                       const fieldPendingOrders = orders.filter((o) => {
+                        if (o.status === "Completed") return false;
                         const meta = (o.metadata ?? {}) as Record<string, unknown>;
-                        return meta.voaFieldAgentId === agent.userId
-                          && voaAgentFeeFromMeta(o) > 0
-                          && !meta.voaFeeCredited
-                          && o.status !== "Completed";
+                        return (
+                          (meta.voaFieldAgentId === agent.userId && !meta.voaFeeCredited && voaAgentFeeFromMeta(o) > 0) ||
+                          (meta.fieldAgentId === agent.userId && !meta.fieldFeeCredited && Number(meta.fieldAgentFee ?? 0) > 0) ||
+                          (meta.assignedOperationalAgentId === agent.userId && !meta.operationalFeeCredited && Number(meta.operationalAgentFee ?? 0) > 0) ||
+                          (meta.visaExecutorId === agent.userId && !meta.executorFeeCredited && Number(meta.executorFee ?? 0) > 0) ||
+                          (o.type === "visa_student" && meta.pelaksanaId === agent.userId && !meta.pelaksanaFeeCredited && Number(meta.pelaksanaFee ?? 200_000) > 0) ||
+                          (meta.kurirAgentId === agent.userId && !meta.kurirFeeCredited && Number(meta.kurirFee ?? 0) > 0)
+                        );
                       });
-                      const fieldPending = fieldPendingOrders.reduce((s, o) => s + voaAgentFeeFromMeta(o), 0);
+                      const fieldPending = fieldPendingOrders.reduce((s, o) => {
+                        const meta = (o.metadata ?? {}) as Record<string, unknown>;
+                        let fee = 0;
+                        if (meta.voaFieldAgentId === agent.userId && !meta.voaFeeCredited) fee += voaAgentFeeFromMeta(o);
+                        if (meta.fieldAgentId === agent.userId && !meta.fieldFeeCredited) fee += Number(meta.fieldAgentFee ?? 0);
+                        if (meta.assignedOperationalAgentId === agent.userId && !meta.operationalFeeCredited) fee += Number(meta.operationalAgentFee ?? 0);
+                        if (meta.visaExecutorId === agent.userId && !meta.executorFeeCredited) fee += Number(meta.executorFee ?? 0);
+                        if (o.type === "visa_student" && meta.pelaksanaId === agent.userId && !meta.pelaksanaFeeCredited) fee += Number(meta.pelaksanaFee ?? 200_000);
+                        if (meta.kurirAgentId === agent.userId && !meta.kurirFeeCredited) fee += Number(meta.kurirFee ?? 0);
+                        return s + fee;
+                      }, 0);
 
                       const totalPending = salesPending + fieldPending;
 
