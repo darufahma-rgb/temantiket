@@ -1850,7 +1850,7 @@ app.post('/api/backfill-field-fees', async (req, res) => {
     // ── Fetch all Completed orders for this agency ────────────────────────────
     const { data: orders, error: ordersErr } = await withTimeout(
       admin.from('orders')
-        .select('id, type, status, metadata')
+        .select('id, type, status, metadata, created_by_agent')
         .eq('agency_id', agencyId)
         .eq('status', 'Completed'),
       20000, 'Timeout saat fetch orders untuk backfill'
@@ -2023,6 +2023,90 @@ app.post('/api/backfill-field-fees', async (req, res) => {
               .update({ metadata: { ...meta, kurirFeeCredited: true } })
               .eq('id', order.id);
           }
+          results.credited++;
+        }
+      }
+
+      // ── 7. Sales commission from createdByAgent (order_bonus) ─────────────
+      // Backfill komisi sales untuk agen yang membuat order (createdByAgent).
+      // Idempotent: tx ID = `agent-{orderId}` (sama dengan saat real-time credit).
+      const createdByAgent = order.created_by_agent;
+      const salesFee       = Number(meta.agentFee ?? 0);
+      if (createdByAgent && salesFee > 0 && (!filterAgentId || filterAgentId === createdByAgent)) {
+        const txErr = await upsertTx(
+          `agent-${order.id}`, createdByAgent, 'order_bonus', salesFee,
+          `Komisi Sales ${order.type} — order #${oid8}`
+        );
+        if (txErr) {
+          collectErr(`sales #${oid8}`, txErr);
+        } else {
+          if (!meta.agentFeeCredited) {
+            await admin.from('orders')
+              .update({ metadata: { ...meta, agentFeeCredited: true } })
+              .eq('id', order.id);
+          }
+          results.credited++;
+        }
+      }
+
+      // ── 8. salesAgentId + salesCommission (alternate field names) ──────────
+      const salesAgentId = meta.salesAgentId;
+      const salesComm    = Number(meta.salesCommission ?? meta.agentCommission ?? 0);
+      if (salesAgentId && salesComm > 0 && salesAgentId !== createdByAgent &&
+          (!filterAgentId || filterAgentId === salesAgentId)) {
+        const txErr = await upsertTx(
+          `salesagent-${order.id}`, salesAgentId, 'order_bonus', salesComm,
+          `Komisi Sales Agent — order #${oid8}`
+        );
+        if (txErr) {
+          collectErr(`salesAgent #${oid8}`, txErr);
+        } else {
+          results.credited++;
+        }
+      }
+
+      // ── 9. assignedAgentId (generic field assignment fee) ─────────────────
+      const assignedAgentId  = meta.assignedAgentId;
+      const assignedAgentFee = Number(meta.assignedAgentFee ?? 0);
+      if (assignedAgentId && assignedAgentFee > 0 && (!filterAgentId || filterAgentId === assignedAgentId)) {
+        const txErr = await upsertTx(
+          `assigned-${order.id}`, assignedAgentId, 'voa_agent_fee', assignedAgentFee,
+          `Fee Agent Ditugaskan — order #${oid8}`
+        );
+        if (txErr) {
+          collectErr(`assigned #${oid8}`, txErr);
+        } else {
+          results.credited++;
+        }
+      }
+
+      // ── 10. handlerAgentId + handlerFee ───────────────────────────────────
+      const handlerAgentId = meta.handlerAgentId;
+      const handlerFee     = Number(meta.handlerFee ?? 0);
+      if (handlerAgentId && handlerFee > 0 && (!filterAgentId || filterAgentId === handlerAgentId)) {
+        const txErr = await upsertTx(
+          `handler-${order.id}`, handlerAgentId, 'voa_agent_fee', handlerFee,
+          `Fee Handler — order #${oid8}`
+        );
+        if (txErr) {
+          collectErr(`handler #${oid8}`, txErr);
+        } else {
+          results.credited++;
+        }
+      }
+
+      // ── 11. courierAgentId + courierFee (alternate kurir field name) ───────
+      const courierAgentId = meta.courierAgentId;
+      const courierFee     = Number(meta.courierFee ?? 0);
+      if (courierAgentId && courierFee > 0 && courierAgentId !== kurirAgentId &&
+          (!filterAgentId || filterAgentId === courierAgentId)) {
+        const txErr = await upsertTx(
+          `courier-${order.id}`, courierAgentId, 'kurir_fee', courierFee,
+          `Fee Kurir — order #${oid8}`
+        );
+        if (txErr) {
+          collectErr(`courier #${oid8}`, txErr);
+        } else {
           results.credited++;
         }
       }

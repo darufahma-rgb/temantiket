@@ -320,6 +320,9 @@ export default function AgentProfileOwnerView() {
   const [walletTxs, setWalletTxs] = useState<WalletTransaction[]>([]);
   const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
   const [syncingFee, setSyncingFee] = useState(false);
+  const [lastBackfillDebug, setLastBackfillDebug] = useState<{
+    credited: number; errors: number; errorSample?: string | null;
+  } | null>(null);
   const isOwner = user?.role === "owner";
   const canEdit = isOwner || user?.id === agentId;
 
@@ -417,6 +420,7 @@ export default function AgentProfileOwnerView() {
       if (!res.ok) {
         const msg = json.error ?? `Server error ${res.status}`;
         console.error("[AgentProfileOwnerView] backfill failed:", msg);
+        setLastBackfillDebug({ credited: 0, errors: 1, errorSample: msg });
         if (!silent) {
           toast.error("Sinkronisasi fee gagal", {
             description: msg,
@@ -424,6 +428,11 @@ export default function AgentProfileOwnerView() {
           });
         }
       } else {
+        setLastBackfillDebug({
+          credited: json.credited ?? 0,
+          errors: json.errors ?? 0,
+          errorSample: json.errorSample,
+        });
         if ((json.errors ?? 0) > 0 && json.errorSample) {
           console.error("[AgentProfileOwnerView] backfill partial errors:", json.errorSample);
           toast.warning(`Sebagian fee gagal disinkronkan`, {
@@ -509,6 +518,26 @@ export default function AgentProfileOwnerView() {
   }, [allAgentsPts, agentId]);
 
   const bd = useMemo(() => computeFeeBreakdown(walletTxs), [walletTxs]);
+
+  const orderAssignmentCount = useMemo(() => {
+    if (!agentId) return 0;
+    return orders.filter((o) => {
+      const meta = (o.metadata ?? {}) as Record<string, unknown>;
+      return (
+        o.createdByAgent === agentId ||
+        meta.voaFieldAgentId === agentId ||
+        meta.fieldAgentId === agentId ||
+        meta.visaExecutorId === agentId ||
+        meta.assignedOperationalAgentId === agentId ||
+        meta.pelaksanaId === agentId ||
+        meta.kurirAgentId === agentId ||
+        meta.salesAgentId === agentId ||
+        meta.assignedAgentId === agentId ||
+        meta.handlerAgentId === agentId ||
+        meta.courierAgentId === agentId
+      );
+    }).length;
+  }, [orders, agentId]);
 
   const portfolio = useMemo(() => {
     const types: OrderType[] = ["umrah", "flight", "visa_voa", "visa_student"];
@@ -1648,6 +1677,59 @@ export default function AgentProfileOwnerView() {
                     )}
                   </Button>
                 </div>
+              )}
+
+              {/* Debug Panel — owner only */}
+              {isOwner && (
+                <details className="rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden">
+                  <summary className="flex items-center gap-2 px-4 py-2.5 cursor-pointer text-[11px] font-semibold text-slate-600 hover:bg-slate-100 transition-colors select-none">
+                    <AlertCircle className="h-3.5 w-3.5 text-slate-400" />
+                    Debug Info — Kenapa Angka Rp0?
+                  </summary>
+                  <div className="px-4 pb-4 pt-2 space-y-2 font-mono text-[10px]">
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { label: "Agent ID (URL)", value: agentId ?? "—" },
+                        { label: "Ledger entries (wallet)", value: String(walletTxs.length) },
+                        { label: "Order assignments (semua peran)", value: String(orderAssignmentCount) },
+                        { label: "Sales orders (createdByAgent)", value: String(agentOrders.length) },
+                      ].map((row) => (
+                        <div key={row.label} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                          <p className="text-muted-foreground uppercase tracking-wide text-[9px] font-semibold">{row.label}</p>
+                          <p className="text-slate-800 font-bold mt-0.5 break-all">{row.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 space-y-1">
+                      <p className="text-muted-foreground uppercase tracking-wide text-[9px] font-semibold mb-1">Breakdown Ledger per Tipe</p>
+                      {(["order_bonus", "voa_agent_fee", "kurir_fee", "pelaksana_fee", "mission_conversion", "mission_fee", "adjustment", "payout"] as const).map((type) => {
+                        const count = walletTxs.filter((t) => t.type === type).length;
+                        const total = walletTxs.filter((t) => t.type === type).reduce((s, t) => s + t.amountIDR, 0);
+                        return count > 0 ? (
+                          <div key={type} className="flex justify-between gap-2">
+                            <span className="text-slate-500">{type}</span>
+                            <span className="text-slate-800 font-semibold">{count}× · {fmtIDR(total)}</span>
+                          </div>
+                        ) : null;
+                      })}
+                      {walletTxs.length === 0 && (
+                        <p className="text-red-500 font-semibold">⚠ Tidak ada ledger entry — klik Sinkronkan Fee</p>
+                      )}
+                    </div>
+                    {lastBackfillDebug !== null && (
+                      <div className={`rounded-lg border px-3 py-2 ${lastBackfillDebug.errors > 0 ? "border-red-200 bg-red-50" : "border-emerald-200 bg-emerald-50"}`}>
+                        <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 mb-1">Hasil Sinkronisasi Terakhir</p>
+                        <p className={lastBackfillDebug.errors > 0 ? "text-red-700" : "text-emerald-700"}>
+                          credited={lastBackfillDebug.credited} errors={lastBackfillDebug.errors}
+                          {lastBackfillDebug.errorSample ? ` — ${lastBackfillDebug.errorSample}` : ""}
+                        </p>
+                      </div>
+                    )}
+                    <p className="text-muted-foreground text-[9px] italic pt-1">
+                      Jika ledger=0 & assignment &gt; 0: tekan Sinkronkan. Jika assignment=0: cek apakah ID agen cocok dengan field voaFieldAgentId / fieldAgentId / kurirAgentId di metadata order.
+                    </p>
+                  </div>
+                </details>
               )}
 
               {/* Per-order commission audit list */}

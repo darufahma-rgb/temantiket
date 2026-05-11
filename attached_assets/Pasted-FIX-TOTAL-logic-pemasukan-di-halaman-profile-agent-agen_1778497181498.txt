@@ -1,0 +1,133 @@
+FIX TOTAL logic pemasukan di halaman profile agent `/agents/:id`.
+
+Masalah utama:
+Halaman profile agent masih menampilkan semua pemasukan Rp0, padahal agent tersebut sudah pernah menerima fee dari tugas lapangan/bandara/VOA/kurir/pelaksana. Contoh Fairuz sudah ditugaskan ke bandara/VOA dengan fee, tetapi di profile agent:
+
+* Komisi Sales Rp0
+* Fee Agent Lapangan Rp0
+* Fee Kurir Rp0
+* Fee Pelaksana Rp0
+* Total Komisi Rp0
+
+Ini salah total. Profile agent harus menampilkan semua pemasukan agent, bukan hanya komisi sales.
+
+Audit akar masalah:
+
+1. Cek query di halaman `/agents/:id`.
+2. Cek apakah profile agent hanya membaca `orders.agent_id` / closing agent.
+3. Cek apakah fee lapangan disimpan di field order tapi tidak pernah masuk ledger.
+4. Cek apakah ledger sudah ada tapi query profile agent tidak mengambil type fee lapangan.
+5. Cek mismatch ID: `agent.id`, `agency_member.id`, `user_id`, `profile_id`.
+6. Cek apakah Fairuz yang ditugaskan memakai UUID berbeda dari UUID profile agent.
+7. Cek apakah fee hanya muncul di laporan keuangan sebagai cost, tapi tidak dikreditkan ke agent penerima.
+
+Buat satu function pusat:
+
+`getAgentIncomeSummary(agentId)`
+
+Function ini wajib mengambil semua income agent dari seluruh sumber yang valid:
+
+* komisi sales/closing
+* fee agent lapangan VOA/bandara
+* fee pelaksana visa
+* fee kurir
+* bonus/manual
+* adjustment/koreksi
+
+Source of truth utama harus ledger, misalnya:
+`agent_income_ledger`
+atau table ledger komisi/wallet existing yang paling benar.
+
+Jika ledger belum lengkap, buat backfill otomatis dari orders lama.
+
+Mapping field order yang wajib dicek:
+
+* `agentId`
+* `salesAgentId`
+* `assignedAgentId`
+* `voaFieldAgentId`
+* `fieldAgentId`
+* `assignedOperationalAgentId`
+* `visaExecutorId`
+* `courierAgentId`
+* `handlerAgentId`
+
+Mapping nominal fee:
+
+* `agentCommission`
+* `salesCommission`
+* `voaAgentFee`
+* `fieldAgentFee`
+* `operationalAgentFee`
+* `executorFee`
+* `courierFee`
+* `handlerFee`
+
+Rules:
+Jika order sudah `Completed` dan ada agent assignment + nominal fee, maka buat ledger:
+
+* `agent_id`
+* `order_id`
+* `type`
+* `amount`
+* `source`
+* `status`
+* `credited_at`
+
+Gunakan idempotency:
+`order_id + agent_id + type`
+
+Jangan double count.
+
+Jangan masukkan:
+
+* transport
+* operational cost
+* modal
+* HPP
+  sebagai pemasukan agent.
+
+Transport/operasional hanya biaya bisnis owner, bukan income agent.
+
+Di profile agent `/agents/:id`, tab Komisi harus membaca dari `getAgentIncomeSummary(agentId)` dan menampilkan:
+
+* Komisi Sales
+* Fee Agent Lapangan
+* Fee Kurir
+* Fee Pelaksana
+* Bonus / Manual
+* Total Komisi
+* Saldo Wallet
+
+Tambahkan daftar riwayat pemasukan:
+
+* nama klien
+* jenis order
+* role agent di order itu
+* nominal
+* status order
+* status payment
+* tanggal credited
+
+Expected untuk Fairuz:
+Jika Fairuz pernah ditugaskan ke bandara/VOA dengan fee Rp200.000, maka halaman profile Fairuz wajib menampilkan:
+
+* Fee Agent Lapangan: Rp200.000
+* Total Komisi: Rp200.000
+* Riwayat: Fee Agent Lapangan VOA/Bandara — Rp200.000
+
+Hapus semua kalkulasi lokal yang beda-beda antar halaman. Profile Agent, Akumulasi Fee Agen, Wallet, Laporan Keuangan, Manajemen Agen, dan Leaderboard harus membaca dari ledger/source yang sama.
+
+Tambahkan debug panel sementara khusus dev:
+
+* agentId halaman
+* matched ledger count
+* matched order assignment count
+* total sales fee
+* total field fee
+* total courier fee
+* total executor fee
+  Supaya terlihat kenapa angka masih Rp0.
+
+Target akhir:
+Semua pemasukan agent di profile masing-masing muncul otomatis dan akurat. Kalau agent menerima fee lapangan/bandara/VOA/kurir/pelaksana, angka tidak boleh lagi Rp0.

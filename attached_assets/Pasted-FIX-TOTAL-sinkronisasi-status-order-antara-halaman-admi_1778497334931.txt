@@ -1,0 +1,87 @@
+FIX TOTAL sinkronisasi status order antara halaman admin/internal dan halaman publik klien. Saat ini status proses tidak sama: di admin order sudah sampai “Proses Visa”, tetapi di halaman publik klien masih tampil “Dokumen Dicek”. Ini tidak boleh terjadi. Semua halaman harus membaca status order dari satu source of truth yang sama.
+
+Masalah yang harus diaudit:
+
+* admin progress memakai field/status berbeda dari public progress
+* public page masih pakai mapping lama
+* status internal dan status publik tidak di-normalize
+* ada cached/local state yang belum refetch
+* step index admin dan public berbeda
+* label “Confirmed” berbeda makna dengan progress step
+* halaman public menghitung progress sendiri dari pembayaran/dokumen, bukan dari status order utama
+
+Target:
+Kalau admin menandai order berada di step “Proses Visa”, maka halaman publik klien juga harus langsung menampilkan “Proses Visa” dengan step yang sama. Tidak boleh admin dan public beda tahap.
+
+Buat satu source of truth:
+`order_progress_status`
+atau gunakan field progress existing yang paling benar, tapi wajib dipakai oleh semua halaman.
+
+Standarkan enum progress untuk Visa Pelajar:
+
+1. `order_created` = Order Dibuat
+2. `payment_dp` = Pembayaran / DP
+3. `document_received` = Dokumen Diterima
+4. `document_checked` = Dokumen Dicek
+5. `submission_process` = Proses Pengajuan / Proses Visa
+6. `visa_issued` = Visa Terbit
+
+Mapping admin dan public harus sama:
+
+* Admin label “Berkas Dikirim” jangan beda sendiri dari public “Dokumen Diterima” kecuali memang dimapping jelas.
+* Admin “Masuk Kedutaan” atau “Proses Visa” harus map ke public step yang sama, bukan mundur ke “Dokumen Dicek”.
+* Tombol next step di admin harus update field progress yang sama yang dibaca public.
+
+Tambahkan helper pusat:
+`getOrderProgress(order)`
+`updateOrderProgress(orderId, nextStatus)`
+`mapOrderProgressToPublic(orderProgressStatus)`
+
+Jangan ada kalkulasi progress tersebar di banyak komponen.
+
+Semua halaman wajib memakai helper yang sama:
+
+* Order detail admin
+* Client profile internal
+* Visa Tracker
+* Public member page
+* Status Pemesanan publik
+* Riwayat Transaksi
+* Dashboard/summary jika menampilkan status
+
+Tambahkan realtime/refetch:
+
+* setelah admin update progress, refetch order
+* public page harus baca data terbaru dari Supabase
+* jangan pakai stale cache/localStorage untuk progress
+* kalau pakai React Query/SWR, invalidate query order yang terkait
+* jika memungkinkan aktifkan Supabase realtime untuk order progress
+
+Tambahkan debug sementara:
+Di dev mode tampilkan:
+
+* order_id
+* internal_status
+* public_status
+* progress_status
+* current_step_index
+* source field yang dipakai
+
+Ini supaya kelihatan kalau ada field yang mismatch.
+
+Expected result untuk kasus screenshot:
+Jika admin menunjukkan order “Visa Pelajar - Siti Fakhriyanti” sudah di step:
+`Proses Visa`
+
+Maka halaman publik klien harus tampil:
+
+* judul progress: “Proses Visa”
+* step aktif berada di Proses Visa / Proses Pengajuan
+* step sebelumnya sudah hijau
+* next step: “Visa Terbit”
+
+Tidak boleh public masih tampil:
+“Dokumen Dicek”
+
+Target akhir:
+Semua progress order di seluruh website sinkron 100%. Admin, client internal, visa tracker, dan public client page harus selalu menunjukkan status proses yang sama dari database yang sama.
