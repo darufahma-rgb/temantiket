@@ -473,8 +473,9 @@ function mergeTransitChains(tickets: ParsedTicketPrice[]): ParsedTicketPrice[] {
         // Safety: don't chain if candidate's origin equals first ticket's origin (would loop)
         const noLoop          = candidate.fromCode !== tickets[chain[0]].fromCode;
         // Only chain legs that depart within 3 days of each other (short layover, not return trip)
+        // IMPORTANT: if both dates are known we enforce the gap; if either is null we skip
         const gap             = daysBetween(lastInChain.departDate, candidate.departDate);
-        const closeInTime     = gap === null || (gap >= 0 && gap <= 3);
+        const closeInTime     = gap !== null && gap >= 0 && gap <= 3;
 
         if (isTransitLink && sameAirline && matchPrice && noLoop && closeInTime) {
           chain.push(j);
@@ -493,6 +494,132 @@ function mergeTransitChains(tickets: ParsedTicketPrice[]): ParsedTicketPrice[] {
   }
 
   return result;
+}
+
+/**
+ * groupGalileoLegsSequentially — dedicated grouper for Galileo display/PNR output.
+ *
+ * Galileo always lists segments in journey order (1, 2, 3, 4…).
+ * Instead of the generic greedy mergeTransitChains (which can mis-chain when dates
+ * are null or when the 92-day gap is not detected), this function:
+ *
+ *   1. Walks segments sequentially and groups consecutive ones into "direction chains"
+ *      when they share a transit link AND departure dates are within 2 days of each other.
+ *      A large date gap (or no date available) starts a new chain.
+ *
+ *   2. After building per-direction chains, checks whether exactly 2 chains form a
+ *      round-trip (chain[1].lastSegment.toCode == chain[0].firstSegment.fromCode)
+ *      and merges them into a single return multi-leg ticket.
+ *
+ * Example (4-segment CAI→BAH→GOI / GOI→BAH→CAI):
+ *   Seg1 CAI→BAH 03JUN, Seg2 BAH→GOI 03JUN → chain A (gap=0, transit BAH→BAH)
+ *   Seg3 GOI→BAH 03SEP                      → gap=92 → new chain B starts
+ *   Seg4 BAH→CAI 04SEP                      → chain B (gap=1, transit BAH→BAH)
+ *   Chain A (CAI→GOI) + Chain B (GOI→CAI) → reversed route → RETURN ticket
+ */
+function groupGalileoLegsSequentially(rawTickets: ParsedTicketPrice[]): ParsedTicketPrice[] {
+  if (rawTickets.length <= 1) return rawTickets;
+
+  // ── Phase 1: sequential direction-chain split ────────────────────────────
+  const directionChains: ParsedTicketPrice[][] = [];
+  let currentChain: ParsedTicketPrice[] = [rawTickets[0]];
+
+  for (let i = 1; i < rawTickets.length; i++) {
+    const prev = rawTickets[i - 1];
+    const curr = rawTickets[i];
+
+    // Two legs belong to the SAME direction when:
+    //   (a) the arrival airport of prev == departure airport of curr (transit link), AND
+    //   (b) both departure dates are known AND within 2 days (same-day or overnight).
+    const isTransitLink = prev.toCode === curr.fromCode;
+    const gap           = daysBetween(prev.departDate, curr.departDate);
+    // Require BOTH departure dates to be known and within 2 calendar days (same-day
+    // or next-day connection).  When either date is missing we start a new chain —
+    // safer than accidentally merging a return journey into the outbound chain.
+    const sameDayOrNext = gap !== null && gap >= 0 && gap <= 2;
+
+    if (isTransitLink && sameDayOrNext) {
+      currentChain.push(curr);
+    } else {
+      directionChains.push(currentChain);
+      currentChain = [curr];
+    }
+  }
+  directionChains.push(currentChain);
+
+  // ── Phase 2: build a multi-leg ticket per direction chain ────────────────
+  const chainTickets: ParsedTicketPrice[] = directionChains.map((chain) =>
+    chain.length === 1 ? chain[0] : buildMultiLegTicket(chain)
+  );
+
+  // ── Phase 3: round-trip detection ───────────────────────────────────────
+  // If we have exactly 2 direction chains and they form a reversed route,
+  // merge into one return multi-leg ticket.
+  if (chainTickets.length === 2) {
+    const [outbound, ret] = chainTickets;
+    const isRoundTrip =
+      outbound.fromCode === ret.toCode &&
+      outbound.toCode   === ret.fromCode;
+
+    if (isRoundTrip && priceMatch(outbound, ret)) {
+      // Build merged MultiLegData with both outbound and return legs
+      const outLegs: LegInfo[] = directionChains[0].map((t) => ({
+        fromCode: t.fromCode, toCode: t.toCode,
+        fromCity: t.fromCity || null, toCity: t.toCity || null,
+        flightNumber: t.flightNumber || null,
+        etd: t.etd || null, eta: t.eta || null,
+        date: t.departDate || null,
+      }));
+      const retLegs: LegInfo[] = directionChains[1].map((t) => ({
+        fromCode: t.fromCode, toCode: t.toCode,
+        fromCity: t.fromCity || null, toCity: t.toCity || null,
+        flightNumber: t.flightNumber || null,
+        etd: t.etd || null, eta: t.eta || null,
+        date: t.departDate || null,
+      }));
+      const transitCodes       = directionChains[0].slice(0, -1).map((t) => t.toCode);
+      const returnTransitCodes = directionChains[1].slice(0, -1).map((t) => t.toCode);
+
+      const mergedML: MultiLegData = {
+        v: 1,
+        outboundLegs: outLegs,
+        returnLegs:   retLegs,
+        transitCodes,
+        returnTransitCodes,
+        returnDate: ret.departDate ?? null,
+      };
+
+      const outFlightNumber = outLegs.map((l) => l.flightNumber).filter(Boolean).join("/");
+      const retFlightNumber = retLegs.map((l) => l.flightNumber).filter(Boolean).join("/");
+
+      const merged: ParsedTicketPrice = {
+        ...outbound,
+        tripType:             "return",
+        toCode:               outLegs[outLegs.length - 1].toCode,
+        toCity:               outLegs[outLegs.length - 1].toCity ?? outbound.toCity,
+        flightNumber:         outFlightNumber || outbound.flightNumber,
+        transitCode:          transitCodes[0] ?? null,
+        transitCity:          transitCodes.length > 0 ? transitCodes.join(", ") : null,
+        transitDuration:      null,
+        returnFromCode:       ret.fromCode,
+        returnToCode:         ret.toCode,
+        returnFromCity:       ret.fromCity ?? null,
+        returnToCity:         ret.toCity ?? null,
+        returnDate:           ret.departDate,
+        returnFlightNumber:   retFlightNumber || ret.flightNumber,
+        returnEtd:            retLegs[0]?.etd ?? null,
+        returnEta:            retLegs[retLegs.length - 1]?.eta ?? null,
+        returnTransitCode:    returnTransitCodes[0] ?? null,
+        returnTransitCity:    returnTransitCodes.length > 0 ? returnTransitCodes.join(", ") : null,
+        returnTransitDuration: null,
+        multiLeg:             mergedML,
+      };
+      return [merged];
+    }
+  }
+
+  // ── Fallback: run generic groupRoundTrips on the already-chained tickets ─
+  return groupRoundTrips(chainTickets);
 }
 
 // ── Fallback client-side round-trip grouper ───────────────────────────────────
@@ -765,7 +892,7 @@ export function parseGalileoTextToTickets(text: string): ScanResult {
       if (!data || data.legs.length === 0) continue;
 
       const rawTickets = itineraryLegsToRawTickets(data);
-      const tickets    = groupRoundTrips(rawTickets);
+      const tickets    = groupGalileoLegsSequentially(rawTickets);
       totalGrouped    += tickets.filter((t) => t.tripType === "return" || !!t.multiLeg).length;
       allTickets.push(...tickets);
     }
@@ -795,7 +922,7 @@ export function parseGalileoTextToTickets(text: string): ScanResult {
   }
 
   const rawTickets = itineraryLegsToRawTickets(data);
-  const tickets    = groupRoundTrips(rawTickets);
+  const tickets    = groupGalileoLegsSequentially(rawTickets);
   const grouped    = tickets.filter((t) => t.tripType === "return" || !!t.multiLeg).length;
   return { tickets, usedAI: false, grouped };
 }
