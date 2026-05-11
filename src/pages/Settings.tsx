@@ -241,6 +241,7 @@ export default function Settings() {
   // ── Wallet transactions per agent (authoritative credited source) ──────────
   const [agentWalletMap, setAgentWalletMap] = useState<Map<string, WalletTransaction[]>>(new Map());
   const [walletLoading, setWalletLoading] = useState(false);
+  const [walletRefreshing, setWalletRefreshing] = useState(false);
 
   // ── Komisi per produk ────────────────────────────────────────────────────
   const [productCommissions, setProductCommissions] = useState(() => loadProdComm());
@@ -310,26 +311,45 @@ export default function Settings() {
     }
   }, [user?.id]);
 
+  // Backfill all agents then pull fresh wallet txs — called on tab load and on manual refresh
+  const refreshAllAgentWallets = async (agentMs: import("@/store/authStore").MemberInfo[], isManual = false) => {
+    if (agentMs.length === 0) return;
+    isManual ? setWalletRefreshing(true) : setWalletLoading(true);
+    try {
+      // 1. Global backfill — no agentId = all agents in agency, idempotent
+      if (supabase) {
+        const { data: sess } = await supabase.auth.getSession();
+        const token = sess?.session?.access_token;
+        if (token) {
+          await fetch("/api/backfill-field-fees", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({}),
+          }).catch(() => { /* silent — non-blocking */ });
+        }
+      }
+      // 2. Pull fresh wallet txs for all agents after backfill
+      const entries = await Promise.all(
+        agentMs.map(async (m) => {
+          const txs = await pullWalletTxs(m.userId);
+          return [m.userId, txs] as [string, WalletTransaction[]];
+        }),
+      );
+      setAgentWalletMap(new Map(entries));
+      if (isManual) toast.success("Data wallet diperbarui.");
+    } catch (e) {
+      toast.error(`Gagal refresh wallet: ${(e as Error).message}`);
+    } finally {
+      isManual ? setWalletRefreshing(false) : setWalletLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (tab === "agents") {
       listMembers().then(async (allMembers) => {
         setMembers(allMembers);
-        // Pull wallet txs for all agents — authoritative credited fee source
         const agentMs = allMembers.filter((m) => m.role === "agent");
-        if (agentMs.length > 0) {
-          setWalletLoading(true);
-          try {
-            const entries = await Promise.all(
-              agentMs.map(async (m) => {
-                const txs = await pullWalletTxs(m.userId);
-                return [m.userId, txs] as [string, WalletTransaction[]];
-              }),
-            );
-            setAgentWalletMap(new Map(entries));
-          } finally {
-            setWalletLoading(false);
-          }
-        }
+        await refreshAllAgentWallets(agentMs);
       }).catch((e) => toast.error(`Gagal load member: ${e.message}`));
       if (orders.length === 0) void fetchOrders();
       // Pull from cloud to ensure latest data
@@ -337,7 +357,7 @@ export default function Settings() {
       void pullAgentPhones().then(setAgentPhones);
       void pullProductCommissions().then((remote) => { if (remote) setProductCommissions(remote); });
     }
-  }, [tab, listMembers]);
+  }, [tab, listMembers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (tab === "security") {
@@ -1656,15 +1676,21 @@ export default function Settings() {
                     <div>
                       <p className="text-sm font-semibold">Akumulasi Fee Komisi Agen</p>
                       <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">
-                        Total fee per agen (closing + lapangan + bonus) · simpan nomor WA & kirim notifikasi.
+                        Sumber: ledger wallet agent · sama dengan Laporan Keuangan & Profil Agen.
                       </p>
                     </div>
-                    {walletLoading && (
-                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground shrink-0">
-                        <RefreshCw className="h-3 w-3 animate-spin" />
-                        Memuat…
-                      </div>
-                    )}
+                    <button
+                      onClick={() => {
+                        const agentMs = members.filter((m) => m.role === "agent");
+                        void refreshAllAgentWallets(agentMs, true);
+                      }}
+                      disabled={walletLoading || walletRefreshing}
+                      className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0 disabled:opacity-50"
+                      title="Sinkronkan & refresh data wallet semua agen"
+                    >
+                      <RefreshCw className={`h-3 w-3 ${walletLoading || walletRefreshing ? "animate-spin" : ""}`} />
+                      {walletLoading ? "Memuat…" : walletRefreshing ? "Menyinkronkan…" : "Refresh"}
+                    </button>
                   </div>
                   <div className="divide-y divide-[hsl(var(--border))]">
                     {agentMembers.map((agent) => {
@@ -1877,29 +1903,44 @@ export default function Settings() {
                               </Button>
                             </div>
 
-                            {/* Riwayat wallet txs + pembayaran toggle */}
+                            {/* Lihat sumber fee — riwayat wallet txs + pembayaran toggle */}
                             {(walletTxs.length > 0 || feePayments.filter((p) => p.agentId === agent.userId).length > 0) && (
                               <button
                                 onClick={() => setExpandedAgent(isExpanded ? null : agent.userId)}
                                 className="flex items-center gap-1 text-[10.5px] text-muted-foreground hover:text-foreground transition-colors"
                               >
                                 {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                {isExpanded ? "Sembunyikan" : "Lihat"} riwayat ({walletTxs.length} wallet tx · {feePayments.filter((p) => p.agentId === agent.userId).length} pembayaran)
+                                {isExpanded ? "Sembunyikan" : "Lihat sumber fee"} ({walletTxs.length} tx dikreditkan · {feePayments.filter((p) => p.agentId === agent.userId).length} manual)
                               </button>
                             )}
                             {isExpanded && (
-                              <div className="rounded-xl border bg-muted/30 divide-y text-[11px] max-h-64 overflow-y-auto">
+                              <div className="rounded-xl border bg-muted/30 divide-y text-[11px] max-h-80 overflow-y-auto">
+                                {/* Header labels */}
+                                <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-1.5 bg-slate-100/60">
+                                  <span className="text-[9px] font-bold uppercase tracking-wide text-slate-500">Sumber / Deskripsi</span>
+                                  <span className="text-[9px] font-bold uppercase tracking-wide text-slate-500">Role</span>
+                                  <span className="text-[9px] font-bold uppercase tracking-wide text-slate-500 text-right">Nominal</span>
+                                </div>
                                 {walletTxs.filter((t) => t.amountIDR > 0).map((t) => {
                                   const typeLabel: Record<string, string> = {
                                     order_bonus:       "Closing",
                                     voa_agent_fee:     "Agent Lapangan",
                                     pelaksana_fee:     "Pelaksana",
                                     kurir_fee:         "Kurir",
-                                    mission_conversion:"Misi",
-                                    mission_fee:       "Misi",
-                                    adjustment:        "Bonus",
+                                    mission_conversion:"Misi/Poin",
+                                    mission_fee:       "Misi/Poin",
+                                    adjustment:        "Bonus/Adj",
                                   };
-                                  const typeColor: Record<string, string> = {
+                                  const typeBadgeColor: Record<string, string> = {
+                                    order_bonus:       "bg-emerald-100 text-emerald-700",
+                                    voa_agent_fee:     "bg-indigo-100 text-indigo-700",
+                                    pelaksana_fee:     "bg-purple-100 text-purple-700",
+                                    kurir_fee:         "bg-cyan-100 text-cyan-700",
+                                    mission_conversion:"bg-blue-100 text-blue-700",
+                                    mission_fee:       "bg-blue-100 text-blue-700",
+                                    adjustment:        "bg-yellow-100 text-yellow-700",
+                                  };
+                                  const typeAmtColor: Record<string, string> = {
                                     order_bonus:   "text-emerald-700",
                                     voa_agent_fee: "text-indigo-700",
                                     pelaksana_fee: "text-purple-700",
@@ -1907,28 +1948,43 @@ export default function Settings() {
                                     adjustment:    "text-yellow-700",
                                   };
                                   return (
-                                    <div key={t.id} className="flex items-center justify-between px-3 py-2 gap-2">
-                                      <div className="min-w-0 flex-1">
-                                        <span className={`font-mono font-semibold ${typeColor[t.type] ?? "text-slate-700"}`}>{fmtRp(t.amountIDR)}</span>
-                                        <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full">{typeLabel[t.type] ?? t.type}</span>
-                                        <p className="text-muted-foreground truncate mt-0.5">{t.description}</p>
+                                    <div key={t.id} className="grid grid-cols-[1fr_auto_auto] gap-2 items-start px-3 py-2">
+                                      <div className="min-w-0">
+                                        <p className="text-muted-foreground truncate">{t.description}</p>
+                                        <p className="text-[9px] text-emerald-600 flex items-center gap-0.5 mt-0.5">
+                                          <CheckCircle2 className="h-2.5 w-2.5" />
+                                          Dikreditkan {new Date(t.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                                        </p>
                                       </div>
-                                      <span className="text-muted-foreground shrink-0">
-                                        {new Date(t.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                                      <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0 ${typeBadgeColor[t.type] ?? "bg-slate-100 text-slate-600"}`}>
+                                        {typeLabel[t.type] ?? t.type}
                                       </span>
+                                      <span className={`font-mono font-semibold shrink-0 text-right ${typeAmtColor[t.type] ?? "text-slate-700"}`}>{fmtRp(t.amountIDR)}</span>
                                     </div>
                                   );
                                 })}
-                                {feePayments.filter((p) => p.agentId === agent.userId).map((p) => (
-                                  <div key={p.id} className="flex items-center justify-between px-3 py-2 gap-2 bg-rose-50/40">
-                                    <div>
-                                      <span className="font-mono font-semibold text-rose-700">{fmtRp(p.amount)}</span>
-                                      <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-full">Manual</span>
-                                      {p.note && <span className="text-muted-foreground ml-1.5">— {p.note}</span>}
+                                {walletTxs.filter((t) => t.amountIDR < 0).map((t) => (
+                                  <div key={t.id} className="grid grid-cols-[1fr_auto_auto] gap-2 items-start px-3 py-2 bg-rose-50/30">
+                                    <div className="min-w-0">
+                                      <p className="text-muted-foreground truncate">{t.description || "Pencairan wallet"}</p>
+                                      <p className="text-[9px] text-muted-foreground mt-0.5">
+                                        {new Date(t.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                                      </p>
                                     </div>
-                                    <span className="text-muted-foreground shrink-0">
-                                      {new Date(p.paidAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
-                                    </span>
+                                    <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0 bg-rose-100 text-rose-700">Dicairkan</span>
+                                    <span className="font-mono font-semibold shrink-0 text-right text-rose-700">{fmtRp(Math.abs(t.amountIDR))}</span>
+                                  </div>
+                                ))}
+                                {feePayments.filter((p) => p.agentId === agent.userId).map((p) => (
+                                  <div key={p.id} className="grid grid-cols-[1fr_auto_auto] gap-2 items-start px-3 py-2 bg-rose-50/40">
+                                    <div>
+                                      {p.note && <p className="text-muted-foreground truncate">{p.note}</p>}
+                                      <p className="text-[9px] text-muted-foreground mt-0.5">
+                                        {new Date(p.paidAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                                      </p>
+                                    </div>
+                                    <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0 bg-rose-100 text-rose-700">Manual</span>
+                                    <span className="font-mono font-semibold shrink-0 text-right text-rose-700">{fmtRp(p.amount)}</span>
                                   </div>
                                 ))}
                               </div>

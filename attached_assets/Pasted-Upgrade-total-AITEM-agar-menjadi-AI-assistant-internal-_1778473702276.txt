@@ -1,0 +1,28 @@
+Upgrade total AITEM agar menjadi AI assistant internal Temantiket yang benar-benar paham isi repo, struktur website, database, fitur, dan data realtime. Saat user bertanya “siapa saja agent di Temantiket”, AITEM jangan menampilkan UUID mentah atau jawaban generic. AITEM harus mengambil data agent dari database/app state dan menjawab dengan nama asli, email, role, status, order, poin, komisi, dan ringkasan yang relevan.
+
+Hubungkan AITEM dengan knowledge/context dari repo `https://github.com/darufahma-rgb/temantiket.git` dan website Temantiket. AITEM harus paham struktur halaman, route, komponen, tabel Supabase, flow order, agent, staff, klien, wallet, komisi, laporan keuangan, itinerary, catatan, template broadcast, dan pengaturan. Buat context provider khusus yang mengirim data halaman aktif, user role, agency id, selected record, dan query intent ke AITEM sebelum request AI dikirim.
+
+Jika user bertanya data sistem, AITEM wajib melakukan lookup ke database, bukan menebak. Contoh: “siapa saja agent?” → query daftar agent aktif di agency, tampilkan nama agent, email, role, total order, poin, total komisi. Jangan tampilkan UUID kecuali diminta teknis. Jika data tidak ditemukan, jawab jelas “belum ada data agent”, bukan membuat data palsu.
+
+Tambahkan intent router:
+
+* tanya data agent
+* tanya klien
+* tanya order
+* tanya laporan keuangan
+* edit catatan/template
+* buat caption
+* cek bug/flow
+* rekomendasi operasional
+
+AITEM juga harus context-aware terhadap halaman aktif. Jika sedang di halaman Agent Center, jawab berdasarkan agent. Jika di Template Broadcast, bantu edit template. Jika di Catatan, bantu rapihkan atau tambah isi catatan. Jika di Laporan Keuangan, baca angka real dari laporan. Jika di Order, baca status order dan pembayaran.
+
+Output AITEM harus manusiawi dan operasional:
+
+* gunakan nama, bukan UUID
+* tampilkan ringkas tapi jelas
+* berikan action next step jika relevan
+* kalau bisa edit, tampilkan preview + tombol Terapkan
+* kalau bisa buka detail, tampilkan CTA/link internal
+
+Target akhir: AITEM menjadi asisten internal Temantiket yang paham repo, website, database, dan konteks halaman. Bukan chatbot umum. Semua jawaban harus sinkron dengan data asli sistem dan membantu owner bekerja lebih cepat.
