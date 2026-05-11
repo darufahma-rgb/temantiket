@@ -1,68 +1,40 @@
 /**
  * OrderProgressTracker — visual step-by-step transaction progress per product type.
  *
- * Steps per product:
- *  - flight      : Booking → Issued → Pembayaran Selesai
- *  - visa_student: Berkas Dikirim → Berkas Lengkap → Masuk Kedutaan → Proses Visa → Visa Terbit
- *  - visa_voa    : Berkas Masuk → OK to Board → Mendekati Keberangkatan → Selesai
- *  - umrah       : Pendaftaran → Dokumen Lengkap → Pelunasan → Keberangkatan → Selesai
- *
- * Stored in order.metadata.processStep (0-based index).
+ * Uses UNIFIED_ORDER_STEPS from orderProgress.ts — the single source of truth.
+ * Admin and public pages both read metadata.processStep with the same step array,
+ * so the displayed step is always identical.
  */
 
 import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { UNIFIED_ORDER_STEPS, getStepsForType } from "@/lib/orderProgress";
+import type { OrderStep } from "@/lib/orderProgress";
 
-export interface ProcessStep {
-  label: string;
-  emoji: string;
-}
-
-export const ORDER_PROCESS_STEPS: Record<string, ProcessStep[]> = {
-  flight: [
-    { label: "Booking",             emoji: "📋" },
-    { label: "Tiket Issued",        emoji: "🎫" },
-    { label: "Selesai",             emoji: "✅" },
-  ],
-  visa_student: [
-    { label: "Berkas Dikirim",      emoji: "📤" },
-    { label: "Berkas Lengkap",      emoji: "📁" },
-    { label: "Masuk Kedutaan",      emoji: "🏛️" },
-    { label: "Proses Visa",         emoji: "⏳" },
-    { label: "Visa Terbit",         emoji: "🎉" },
-  ],
-  visa_voa: [
-    { label: "Berkas Masuk",        emoji: "📥" },
-    { label: "OK to Board",         emoji: "🟢" },
-    { label: "Mendekati\nBerangkat", emoji: "✈️" },
-    { label: "Selesai",             emoji: "✅" },
-  ],
-  umrah: [
-    { label: "Pendaftaran",         emoji: "📝" },
-    { label: "Dok. Lengkap",        emoji: "📁" },
-    { label: "Pelunasan",           emoji: "💳" },
-    { label: "Keberangkatan",       emoji: "✈️" },
-    { label: "Selesai",             emoji: "🕋" },
-  ],
-};
+// Re-export for backwards-compat with existing imports
+export type { OrderStep as ProcessStep };
+export const ORDER_PROCESS_STEPS = UNIFIED_ORDER_STEPS;
 
 export function OrderProgressTracker({
   type,
   currentStep = 0,
   onAdvance,
+  onGoBack,
   isAdvancing = false,
   readOnly = false,
 }: {
   type: string;
   currentStep?: number;
   onAdvance?: () => void;
+  onGoBack?: () => void;
   isAdvancing?: boolean;
   readOnly?: boolean;
 }) {
-  const steps = ORDER_PROCESS_STEPS[type] ?? ORDER_PROCESS_STEPS.umrah;
+  const steps = getStepsForType(type);
   const safeStep = Math.min(Math.max(0, currentStep), steps.length - 1);
   const isComplete = safeStep >= steps.length - 1;
   const canAdvance = !readOnly && !isComplete && !!onAdvance;
+  const canGoBack  = !readOnly && safeStep > 0 && !!onGoBack;
   const currentLabel = steps[safeStep]?.label ?? "";
   const nextLabel = !isComplete ? steps[safeStep + 1]?.label : null;
 
@@ -75,10 +47,9 @@ export function OrderProgressTracker({
           const active = i === safeStep;
           return (
             <div key={i} className="flex-1 flex flex-col items-center relative">
-              {/* Connector line — spans from center of previous to center of this */}
               {i > 0 && (
                 <div
-                  className={`absolute top-[13px] h-0.5 -translate-y-px`}
+                  className="absolute top-[13px] h-0.5 -translate-y-px"
                   style={{
                     left: "-50%",
                     width: "100%",
@@ -87,7 +58,6 @@ export function OrderProgressTracker({
                 />
               )}
 
-              {/* Circle */}
               <div
                 className={`relative z-10 h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 ${
                   done
@@ -106,7 +76,6 @@ export function OrderProgressTracker({
                 )}
               </div>
 
-              {/* Label */}
               <p
                 className={`mt-1 text-center leading-tight whitespace-pre-line ${
                   active
@@ -128,30 +97,44 @@ export function OrderProgressTracker({
       <div className="flex items-center justify-between gap-2 pt-0.5">
         <div className="min-w-0">
           <p className={`text-[11px] font-semibold leading-tight ${isComplete ? "text-emerald-700" : "text-sky-700"}`}>
-            {isComplete ? "✅ Proses Selesai" : `📍 ${currentLabel.replace("\n", " ")}`}
+            {isComplete ? "✅ Proses Selesai" : `📍 ${currentLabel}`}
           </p>
           {!isComplete && nextLabel && !readOnly && (
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              Berikutnya: {nextLabel.replace("\n", " ")}
+              Berikutnya: {nextLabel}
             </p>
           )}
         </div>
 
-        {canAdvance && (
-          <Button
-            size="sm"
-            className="h-7 text-[11px] px-2.5 shrink-0 bg-sky-600 hover:bg-sky-700 text-white"
-            disabled={isAdvancing}
-            onClick={onAdvance}
-          >
-            {isAdvancing ? (
-              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5 mr-0.5" />
-            )}
-            {(nextLabel ?? "").replace("\n", " ")}
-          </Button>
-        )}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {canGoBack && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px] px-2 border-slate-200 text-slate-500"
+              onClick={onGoBack}
+              disabled={isAdvancing}
+            >
+              ← Mundur
+            </Button>
+          )}
+
+          {canAdvance && (
+            <Button
+              size="sm"
+              className="h-7 text-[11px] px-2.5 bg-sky-600 hover:bg-sky-700 text-white"
+              disabled={isAdvancing}
+              onClick={onAdvance}
+            >
+              {isAdvancing ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5 mr-0.5" />
+              )}
+              {nextLabel ?? ""}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,6 +16,7 @@ import { PublicOrderProgressSection } from "@/components/PublicOrderProgressSect
 import { fetchPublicPromoPosters, type PromoPost } from "@/lib/promoPostersSettings";
 import { buildPublicMemberUrl, buildReferralUrl, normalizePhoneForWa } from "@/lib/memberSlug";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
+import { supabase } from "@/lib/supabase";
 
 const AGENT_THRESHOLD = 8;
 const AGENT_RECRUIT_WA = "6281311506025";
@@ -197,13 +198,25 @@ export default function PublicMemberCardPage() {
   const [showRewards,         setShowRewards]         = useState(false);
   const [publicOrders,        setPublicOrders]        = useState<PublicOrderData[]>([]);
   const [loadingPublicOrders, setLoadingPublicOrders] = useState(false);
+  const [clientIdResolved,    setClientIdResolved]    = useState<string | null>(null);
+
+  // Stable refetch callback — called on initial load and on realtime update
+  const refetchOrders = useCallback(async (clientId: string, silent = false) => {
+    if (!silent) setLoadingPublicOrders(true);
+    try {
+      const orders = await fetchPublicClientOrders(clientId);
+      setPublicOrders(orders);
+    } finally {
+      if (!silent) setLoadingPublicOrders(false);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!slug) { setErr("invalid_slug"); setLoading(false); return; }
       setLoading(true); setErr(null); setData(null); setRefData(null); setPosters([]);
-      setPublicOrders([]); setLoadingPublicOrders(false);
+      setPublicOrders([]); setLoadingPublicOrders(false); setClientIdResolved(null);
       const [res, refRes, posterData] = await Promise.all([
         lookupMemberCard(slug),
         isReferralView && refSlug ? lookupMemberCard(refSlug) : Promise.resolve(null),
@@ -212,9 +225,9 @@ export default function PublicMemberCardPage() {
       if (cancelled) return;
       if (res.ok) {
         setData(res.data);
-        // If we resolved a clientId via secondary enrichment, fetch active orders
         const clientId = res.data.client.clientId;
         if (clientId) {
+          setClientIdResolved(clientId);
           setLoadingPublicOrders(true);
           fetchPublicClientOrders(clientId)
             .then((orders) => { if (!cancelled) setPublicOrders(orders); })
@@ -229,6 +242,28 @@ export default function PublicMemberCardPage() {
     })();
     return () => { cancelled = true; };
   }, [slug, refSlug, isReferralView]);
+
+  // ── Supabase Realtime: refetch orders when admin updates processStep ────────
+  useEffect(() => {
+    if (!clientIdResolved || !supabase) return;
+    const channel = supabase
+      .channel(`public-orders-${clientIdResolved}`)
+      .on(
+        "postgres_changes",
+        {
+          event:  "*",
+          schema: "public",
+          table:  "orders",
+          filter: `client_id=eq.${clientIdResolved}`,
+        },
+        () => {
+          // Admin changed something — silently refetch to get latest processStep
+          void refetchOrders(clientIdResolved, true);
+        }
+      )
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [clientIdResolved, refetchOrders]);
 
   useEffect(() => {
     const prev = document.title;

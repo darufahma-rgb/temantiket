@@ -2123,6 +2123,126 @@ app.post('/api/backfill-field-fees', async (req, res) => {
   }
 });
 
+/* ──────────────────────────────────────────────
+   POST /api/migrate-progress-steps
+   One-time migration: converts old per-component processStep indices to the
+   new unified step indices (single source of truth across admin & public pages).
+
+   Migration maps (old admin step → new unified step):
+     visa_student : {0→2, 1→3, 2→4, 3→4, 4→5}
+     flight       : {0→0, 1→3, 2→4}
+     visa_voa     : {0→2, 1→3, 2→3, 3→4}
+     umrah        : {0→0, 1→2, 2→3, 3→4, 4→5}
+
+   Only updates orders whose processStep is explicitly stored in metadata
+   (not null/undefined). Idempotent — safe to call multiple times.
+   Returns { ok, migrated, skipped, errors }.
+────────────────────────────────────────────── */
+app.post('/api/migrate-progress-steps', async (req, res) => {
+  const ROUTE = '[migrate-progress-steps]';
+  if (!SERVICE_ROLE_KEY || !SUPABASE_URL) {
+    return err(res, 503, 'SUPABASE_SERVICE_ROLE_KEY atau VITE_SUPABASE_URL belum dikonfigurasi');
+  }
+  try {
+    const admin = makeAdminClient();
+
+    // Optional auth check — allow owner/staff only
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: authErr } = await admin.auth.getUser(token);
+      if (authErr || !user) return err(res, 401, 'Unauthorized');
+      const { data: memberRow } = await admin
+        .from('agency_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      if (!memberRow || !['owner', 'staff'].includes(memberRow.role)) {
+        return err(res, 403, 'Hanya owner/staff yang dapat menjalankan migrasi');
+      }
+    }
+
+    const MIGRATIONS = {
+      visa_student: { 0: 2, 1: 3, 2: 4, 3: 4, 4: 5 },
+      flight:       { 0: 0, 1: 3, 2: 4 },
+      visa_voa:     { 0: 2, 1: 3, 2: 3, 3: 4 },
+      umrah:        { 0: 0, 1: 2, 2: 3, 3: 4, 4: 5 },
+    };
+
+    // Unified step counts (new system) — used to detect already-migrated orders
+    const NEW_MAX = { visa_student: 5, flight: 4, visa_voa: 4, umrah: 5 };
+
+    const types = Object.keys(MIGRATIONS);
+    const { data: orders, error: fetchErr } = await admin
+      .from('orders')
+      .select('id, type, metadata')
+      .in('type', types);
+
+    if (fetchErr) return err(res, 500, fetchErr.message);
+
+    let migrated = 0, skipped = 0, errors = 0;
+    const errorSamples = [];
+
+    for (const order of (orders || [])) {
+      const map = MIGRATIONS[order.type];
+      if (!map) { skipped++; continue; }
+
+      const meta = (order.metadata && typeof order.metadata === 'object') ? order.metadata : {};
+      if (!('processStep' in meta) || meta.processStep == null) {
+        // No processStep stored — nothing to migrate (will default to 0 = Order Dibuat)
+        skipped++;
+        continue;
+      }
+
+      const oldStep = Number(meta.processStep);
+      const newMax  = NEW_MAX[order.type] ?? 5;
+
+      // Already migrated if stored value is in the new unified range (> old max keys)
+      const oldMaxKey = Math.max(...Object.keys(map).map(Number));
+      if (oldStep > oldMaxKey) {
+        skipped++;
+        continue;
+      }
+
+      const newStep = map[oldStep];
+      if (newStep === undefined || newStep === oldStep) {
+        // No change needed or no mapping (e.g. umrah step 0 → 0)
+        if (newStep === oldStep) { skipped++; continue; }
+        skipped++;
+        continue;
+      }
+
+      // Clamp to new max
+      const clampedStep = Math.min(newStep, newMax);
+
+      try {
+        const { error: updateErr } = await admin
+          .from('orders')
+          .update({ metadata: { ...meta, processStep: clampedStep } })
+          .eq('id', order.id);
+
+        if (updateErr) {
+          errors++;
+          if (errorSamples.length < 3) errorSamples.push({ id: order.id, error: updateErr.message });
+        } else {
+          migrated++;
+          console.log(`${ROUTE} migrated order ${order.id} type=${order.type} ${oldStep}→${clampedStep}`);
+        }
+      } catch (e) {
+        errors++;
+        if (errorSamples.length < 3) errorSamples.push({ id: order.id, error: String(e) });
+      }
+    }
+
+    console.log(`${ROUTE} DONE — migrated=${migrated} skipped=${skipped} errors=${errors}`);
+    return ok(res, { ok: true, migrated, skipped, errors, errorSamples });
+
+  } catch (e) {
+    console.error(`${ROUTE} unhandled exception:`, e);
+    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
+  }
+});
+
 const isProd = process.env.NODE_ENV === 'production';
 if (isProd) {
   const staticDir = __dirname;

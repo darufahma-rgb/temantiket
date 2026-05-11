@@ -1,8 +1,8 @@
 /**
  * PublicOrderProgressSection — "Status Pemesanan Saya" block on the public member card page.
  *
- * Shows per-order progress timeline, payment badge, admin notes, missing-doc alert,
- * and action buttons (WhatsApp admin, copy order ID).
+ * Uses UNIFIED_ORDER_STEPS from orderProgress.ts — the single source of truth.
+ * This guarantees the public step index is always identical to what admin sets.
  *
  * Safe for public / unauthenticated display — never exposes profit, cost, agent, or
  * internal operator notes.
@@ -15,52 +15,8 @@ import {
   ChevronDown, AlertTriangle, Info, FileText, CalendarClock,
 } from "lucide-react";
 import type { PublicOrderData } from "@/features/portal/memberCardRepo";
-
-// ── Public-facing step definitions ───────────────────────────────────────────
-
-interface PublicStep {
-  label:    string;
-  emoji:    string;
-  sublabel: string;
-}
-
-const PUBLIC_ORDER_STEPS: Record<string, PublicStep[]> = {
-  visa_student: [
-    { label: "Order Dibuat",      emoji: "📋", sublabel: "Pesanan terdaftar" },
-    { label: "Pembayaran / DP",   emoji: "💳", sublabel: "DP / lunas diterima" },
-    { label: "Dokumen Diterima",  emoji: "📥", sublabel: "Berkas dikirim ke kami" },
-    { label: "Dokumen Dicek",     emoji: "✅", sublabel: "Verifikasi dokumen" },
-    { label: "Proses Pengajuan",  emoji: "🏛️", sublabel: "Masuk kedutaan" },
-    { label: "Visa Terbit",       emoji: "🎉", sublabel: "Visa siap" },
-  ],
-  visa_voa: [
-    { label: "Order Dibuat",       emoji: "📋", sublabel: "Pesanan terdaftar" },
-    { label: "Pembayaran",         emoji: "💳", sublabel: "Pembayaran diterima" },
-    { label: "Data Penumpang",     emoji: "👤", sublabel: "Data dicek & diverifikasi" },
-    { label: "Agent Ditugaskan",   emoji: "👷", sublabel: "Agent lapangan ready" },
-    { label: "Mendekati Berangkat",emoji: "✈️", sublabel: "Siap keberangkatan" },
-    { label: "Selesai",            emoji: "✅", sublabel: "Proses selesai" },
-  ],
-  flight: [
-    { label: "Request Tiket",      emoji: "📋", sublabel: "Pesanan diterima" },
-    { label: "Pencarian Jadwal",   emoji: "🔍", sublabel: "Cek ketersediaan kursi" },
-    { label: "Konfirmasi Harga",   emoji: "💰", sublabel: "Harga & jadwal dikonfirmasi" },
-    { label: "Pembayaran",         emoji: "💳", sublabel: "Pembayaran selesai" },
-    { label: "Tiket Diterbitkan",  emoji: "🎫", sublabel: "E-tiket dikirim" },
-  ],
-  umrah: [
-    { label: "Daftar Paket",       emoji: "📝", sublabel: "Pendaftaran berhasil" },
-    { label: "Bayar DP",           emoji: "💳", sublabel: "Down payment diterima" },
-    { label: "Kelengkapan Berkas", emoji: "📁", sublabel: "Dokumen dilengkapi" },
-    { label: "Pelunasan",          emoji: "💰", sublabel: "Pembayaran penuh selesai" },
-    { label: "Keberangkatan",      emoji: "✈️", sublabel: "Siap berangkat" },
-    { label: "Selesai",            emoji: "🕋", sublabel: "Alhamdulillah selesai" },
-  ],
-};
-
-function getSteps(type: string): PublicStep[] {
-  return PUBLIC_ORDER_STEPS[type] ?? PUBLIC_ORDER_STEPS.umrah;
-}
+import { getStepsForType } from "@/lib/orderProgress";
+import type { OrderStep } from "@/lib/orderProgress";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -95,10 +51,11 @@ function fmtIDR(n: number): string {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
 }
 
+const IS_DEV = import.meta.env.DEV;
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-/** Horizontal step track — desktop */
-function StepTrackHorizontal({ steps, current }: { steps: PublicStep[]; current: number }) {
+function StepTrackHorizontal({ steps, current }: { steps: OrderStep[]; current: number }) {
   return (
     <div className="hidden sm:flex items-start justify-between relative">
       {steps.map((step, i) => {
@@ -141,8 +98,7 @@ function StepTrackHorizontal({ steps, current }: { steps: PublicStep[]; current:
   );
 }
 
-/** Vertical step track — mobile */
-function StepTrackVertical({ steps, current }: { steps: PublicStep[]; current: number }) {
+function StepTrackVertical({ steps, current }: { steps: OrderStep[]; current: number }) {
   return (
     <div className="sm:hidden flex flex-col gap-0">
       {steps.map((step, i) => {
@@ -151,13 +107,11 @@ function StepTrackVertical({ steps, current }: { steps: PublicStep[]; current: n
         const isLast = i === steps.length - 1;
         return (
           <div key={i} className="flex items-start gap-3 relative">
-            {/* Vertical connector */}
             {!isLast && (
               <div className="absolute left-[13px] top-7 w-0.5 h-[calc(100%-4px)]"
                 style={{ background: done ? "#10b981" : "#e2e8f0" }}
               />
             )}
-            {/* Circle */}
             <div className={`relative z-10 h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 mt-0.5 ${
               done   ? "bg-emerald-500 border-emerald-500 text-white"
               : active ? "bg-blue-500 border-blue-500 text-white ring-2 ring-blue-200"
@@ -167,7 +121,6 @@ function StepTrackVertical({ steps, current }: { steps: PublicStep[]; current: n
                : active ? <span className="text-[11px]">{step.emoji}</span>
                : <Circle className="h-3 w-3" />}
             </div>
-            {/* Label */}
             <div className={`pb-4 min-w-0 ${isLast ? "pb-0" : ""}`}>
               <p className={`text-[12px] leading-tight font-semibold ${
                 active ? "text-blue-700" : done ? "text-emerald-700" : "text-slate-400"
@@ -198,10 +151,10 @@ function OrderProgressCard({
   clientName:  string;
   memberIdStr: string;
 }) {
-  const [copied,    setCopied]    = useState(false);
-  const [expanded,  setExpanded]  = useState(true);
+  const [copied,   setCopied]   = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
-  const steps   = getSteps(order.type);
+  const steps   = getStepsForType(order.type);
   const current = Math.min(Math.max(0, order.processStep), steps.length - 1);
 
   const payBadge  = PAYMENT_BADGE[order.paymentStatus] ?? PAYMENT_BADGE.UNPAID;
@@ -228,7 +181,7 @@ function OrderProgressCard({
   const needsAction: string[] = [];
   if (order.paymentStatus === "UNPAID") needsAction.push("Lakukan pembayaran untuk melanjutkan proses pesanan Anda.");
   if (order.paymentStatus === "DP")     needsAction.push("Segera lunasi sisa pembayaran agar proses dapat dilanjutkan.");
-  if (order.missingDocs)       needsAction.push(`Dokumen kurang: ${order.missingDocs}`);
+  if (order.missingDocs)               needsAction.push(`Dokumen kurang: ${order.missingDocs}`);
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
@@ -292,6 +245,26 @@ function OrderProgressCard({
                 <StepTrackHorizontal steps={steps} current={current} />
                 <StepTrackVertical   steps={steps} current={current} />
               </div>
+
+              {/* ── Dev debug panel (dev mode only) ── */}
+              {IS_DEV && (
+                <details className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-[10px] font-mono text-slate-500">
+                  <summary className="cursor-pointer font-bold text-slate-600 text-[11px]">
+                    🛠 Debug: Progress Sync
+                  </summary>
+                  <div className="mt-2 space-y-0.5">
+                    <div>order_id: {order.id}</div>
+                    <div>type: {order.type}</div>
+                    <div>payment_status: {order.paymentStatus}</div>
+                    <div>stored processStep: {order.processStep}</div>
+                    <div>clamped step index: {current}</div>
+                    <div>step label (public): {steps[current]?.label ?? "—"}</div>
+                    <div>step key: {steps[current]?.key ?? "—"}</div>
+                    <div>total steps: {steps.length}</div>
+                    <div>source: metadata.processStep (unified)</div>
+                  </div>
+                </details>
+              )}
 
               {/* ── Aksi yang perlu dilakukan ── */}
               {needsAction.length > 0 && (
@@ -400,7 +373,6 @@ export function PublicOrderProgressSection({
 
   return (
     <section className="space-y-3">
-      {/* Section header */}
       <div className="flex items-center gap-3">
         <div className="h-9 w-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
           <FileText className="h-4 w-4 text-blue-600" />
@@ -411,7 +383,6 @@ export function PublicOrderProgressSection({
         </div>
       </div>
 
-      {/* Cards per order */}
       {orders.map((order) => (
         <OrderProgressCard
           key={order.id}

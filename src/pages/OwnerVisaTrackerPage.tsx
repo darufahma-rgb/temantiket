@@ -67,6 +67,8 @@ export default function OwnerVisaTrackerPage() {
   const [members, setMembers] = useState<MemberInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [migrating, setMigrating] = useState(false);
+  const [migrateResult, setMigrateResult] = useState<{ migrated: number; skipped: number; errors: number } | null>(null);
 
   // Per-row action states
   const [assigningId, setAssigningId] = useState<string | null>(null);
@@ -169,6 +171,26 @@ export default function OwnerVisaTrackerPage() {
     setRefreshing(false);
   }
 
+  async function handleMigrateProgressSteps() {
+    setMigrating(true);
+    setMigrateResult(null);
+    try {
+      const res = await fetch("/api/migrate-progress-steps", { method: "POST" });
+      const json = await res.json();
+      if (json.ok) {
+        setMigrateResult({ migrated: json.migrated, skipped: json.skipped, errors: json.errors });
+        toast.success(`✅ Migrasi selesai: ${json.migrated} order diperbarui, ${json.skipped} skip, ${json.errors} error`);
+        await fetchOrders();
+      } else {
+        toast.error("Gagal migrasi: " + (json.message ?? "unknown error"));
+      }
+    } catch {
+      toast.error("Gagal terhubung ke server untuk migrasi.");
+    } finally {
+      setMigrating(false);
+    }
+  }
+
   async function handleAssign(order: Order, memberId: string) {
     setAssigningId(order.id);
     try {
@@ -225,20 +247,49 @@ export default function OwnerVisaTrackerPage() {
     <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-lg font-extrabold text-foreground">Laporan Visa Student Entry</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Monitoring & kontrol semua berkas visa pelajar</p>
         </div>
-        <button
-          onClick={() => void handleRefresh()}
-          disabled={refreshing}
-          className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* One-time migration button — converts old 5-step progress to new unified 6-step */}
+          <button
+            onClick={() => void handleMigrateProgressSteps()}
+            disabled={migrating}
+            title="Sinkronkan data processStep lama ke sistem langkah terpadu (jalankan sekali)"
+            className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600 hover:text-amber-700 transition-colors border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg px-2.5 py-1.5"
+          >
+            {migrating
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <RefreshCw className="h-3.5 w-3.5" />
+            }
+            {migrating ? "Migrasi…" : "Sinkron Progress"}
+          </button>
+          <button
+            onClick={() => void handleRefresh()}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {/* ── Migration result banner ── */}
+      {migrateResult && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex items-center gap-3 text-sm">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+          <p className="text-emerald-800 font-medium">
+            Sinkronisasi selesai: <strong>{migrateResult.migrated}</strong> order diperbarui,{" "}
+            <strong>{migrateResult.skipped}</strong> sudah sinkron, <strong>{migrateResult.errors}</strong> error.
+          </p>
+          <button onClick={() => setMigrateResult(null)} className="ml-auto text-emerald-600 hover:text-emerald-800">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* ── Stats grid ── */}
       <motion.div

@@ -3,9 +3,9 @@ import { useAuthStore } from "@/store/authStore";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
 import { pullWalletTxs, walletBalance, type WalletTransaction } from "@/lib/agentWallet";
-import { ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
+import { UNIFIED_ORDER_STEPS } from "@/lib/orderProgress";
 
-const VISA_STEPS = ORDER_PROCESS_STEPS["visa_student"];
+const VISA_STEPS = UNIFIED_ORDER_STEPS["visa_student"];
 export const DEFAULT_PELAKSANA_FEE = 200_000;
 
 export function useStaffData() {
@@ -45,7 +45,6 @@ export function useStaffData() {
   );
 
   const walletBal = useMemo(() => {
-    // Sertakan mission_fee (konversi poin misi ke IDR) agar balance staff lengkap.
     const pelaksanaTxs = walletTxs.filter(
       (t) => t.type === "pelaksana_fee" || t.type === "mission_fee" || t.type === "payout",
     );
