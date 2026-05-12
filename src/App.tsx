@@ -15,7 +15,6 @@ import { useOrdersStore } from "@/store/ordersStore";
 import { useAuthStore } from "@/store/authStore";
 import { useRegionalStore } from "@/store/regionalStore";
 import { applyAppearanceSettings, loadAppearanceSettings, pullAppearanceSettings } from "@/lib/appearance";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { startManagedRealtime, onRealtimeStatusChange } from "@/lib/realtimeManager";
 import { initSyncStatusListeners } from "@/store/syncStatusStore";
 import { toast } from "sonner";
@@ -87,7 +86,7 @@ function StoreBootstrap() {
 
   useEffect(() => {
     refreshRates();
-    if (!isAuthenticated || !isSupabaseConfigured()) return;
+    if (!isAuthenticated) return;
     void Promise.all([
       refreshPackages(),
       fetchTrips(),
@@ -103,7 +102,7 @@ function StoreBootstrap() {
   }, [refreshRates, refreshPackages, fetchTrips, fetchClients, fetchOrders, isAuthenticated, user?.id, pullRates]);
 
   useEffect(() => {
-    if (!isAuthenticated || !isSupabaseConfigured() || !user?.agencyId) return;
+    if (!isAuthenticated || !user?.agencyId) return;
     const unsubscribe = startManagedRealtime(user.agencyId);
     return unsubscribe;
   }, [isAuthenticated, user?.agencyId]);

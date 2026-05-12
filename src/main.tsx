@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { registerSW } from "virtual:pwa-register";
-import { isSupabaseConfigured } from "@/lib/supabase";
 
 // Di dev mode: matikan & buang semua service worker yang udah terlanjur
 // ke-install. SW caching bundle Vite (yg hash-nya berubah tiap restart) bikin
@@ -69,20 +68,8 @@ const rootEl = document.getElementById("root")!;
 // Notify the inline boot fallback in index.html that React is mounting.
 window.dispatchEvent(new Event("igh:booted"));
 
-if (!isSupabaseConfigured()) {
-  // Render pesan jelas — bukan layar putih — kalau env Supabase belum ada.
-  createRoot(rootEl).render(
-    <ConfigErrorScreen
-      title="Konfigurasi server belum lengkap"
-      detail={
-        "Variabel VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY belum di-set di environment.\n\nBuka panel Secrets di Replit, tambahkan kedua variabel tersebut, lalu restart aplikasi."
-      }
-    />,
-  );
-} else {
-  createRoot(rootEl).render(
-    <AppErrorBoundary>
-      <App />
-    </AppErrorBoundary>,
-  );
-}
+createRoot(rootEl).render(
+  <AppErrorBoundary>
+    <App />
+  </AppErrorBoundary>,
+);

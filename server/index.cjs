@@ -2,15 +2,20 @@
 
 const express = require('express');
 const cors = require('cors');
-const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 const fs = require('fs');
-const ws = require('ws');
 
 const PORT = process.env.PORT || 3001;
-const SUPABASE_URL = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
-const SUPABASE_ANON_KEY = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
-const SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+
+// Legacy Supabase constants — kept only for graceful no-ops in older routes
+// that haven't been fully migrated yet. New routes use pg directly.
+const SUPABASE_URL = '';
+const SERVICE_ROLE_KEY = '';
+
+// Replit Auth + data routes
+const { setupAuth, isAuthenticated, registerAuthRoutes } = require('./replitAuth.cjs');
+const { registerDataRoutes, requireMember, getCallerAgency } = require('./routes/data.cjs');
+const { pool, query: dbQuery } = require('./db.cjs');
 
 // ── OpenRouter — Caption Generator & OCR ────────────────────────────────────
 // Digunakan untuk: Caption Generator (marketing), OCR Paspor, teks ringan.
@@ -54,8 +59,21 @@ function openaiHeaders() {
 }
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
+
+// ── Replit Auth (must be wired BEFORE routes) ────────────────────────────────
+// setupAuth is async — we start it immediately and let Express handle requests
+// after the promise resolves. The server listen() call is inside the then().
+let _authReady = false;
+const _authSetup = setupAuth(app).then(() => {
+  _authReady = true;
+  registerAuthRoutes(app);
+  registerDataRoutes(app);
+}).catch((e) => {
+  console.error('[server] Auth setup failed (continuing without auth):', e.message);
+  _authReady = true; // allow server to start even if OIDC discovery fails
+});
 
 // ─── H. Structured request logging middleware ──────────────────────────────
 // Logs every request with a unique requestId for traceability.
@@ -129,147 +147,70 @@ function err(res, status, message) {
   return res.status(status).json({ error: message });
 }
 
-function makeAdminClient() {
-  if (!SUPABASE_URL) throw new Error('VITE_SUPABASE_URL tidak dikonfigurasi di server');
-  if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY belum di-set. Tambahkan di Secrets panel Replit.');
-  return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false }, realtime: { transport: ws } });
+// ── DB helpers replacing legacy Supabase admin client ────────────────────────
+
+/** Get caller's agency row from session (for authenticated routes). */
+async function getCallerAgencyFromSession(req) {
+  if (!req.user?.id) return null;
+  const { rows } = await pool.query(
+    'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
+    [req.user.id],
+  );
+  return rows[0] ?? null;
 }
 
-// Race a Supabase (or any) promise against a hard timeout so requests
-// never hang indefinitely when the Supabase network is slow.
+/** Legacy: attempt to get user from auth header (no-op now — always returns null). */
+async function getCallerUser(_authHeader) {
+  return null; // Auth is session-based now
+}
+
 function withTimeout(promise, ms, message) {
   return Promise.race([
     promise,
     new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(message || `Operasi timeout setelah ${ms / 1000}s — coba lagi`)), ms)
+      setTimeout(() => reject(new Error(message || `Operasi timeout setelah ${ms / 1000}s`)), ms)
     ),
   ]);
 }
 
-// Extract raw JWT from "Bearer <token>" or plain token string.
-function extractToken(authHeader) {
-  if (!authHeader) return null;
-  const t = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
-  return t || null;
-}
-
-// Validate a caller JWT using the admin (service-role) client.
-// Using admin.auth.getUser(token) is the correct server-side approach in
-// @supabase/supabase-js v2 — it passes the JWT explicitly, bypassing the
-// (empty) session store that caused "NOT_FOUND sin1::..." errors when the
-// old approach relied on global headers + getUser() with no argument.
-async function getCallerUser(authHeader, timeoutMs = 8000) {
-  if (!authHeader || !SUPABASE_URL || !SERVICE_ROLE_KEY) return null;
-  const token = extractToken(authHeader);
-  if (!token) return null;
-  try {
-    const admin = makeAdminClient();
-    const { data, error } = await Promise.race([
-      admin.auth.getUser(token),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Auth check timed out')), timeoutMs)
-      ),
-    ]);
-    if (error || !data?.user) {
-      console.warn('[getCallerUser] auth.getUser gagal:', error?.message ?? 'user null');
-      return null;
-    }
-    return data.user;
-  } catch (e) {
-    console.warn('[getCallerUser] exception:', e instanceof Error ? e.message : e);
-    return null;
-  }
-}
-
-// Classify a Supabase DB/storage error and return a human-readable hint.
-function classifySupabaseError(err, context) {
-  if (!err) return null;
-  const msg  = (err.message  ?? '').toLowerCase();
-  const code = (err.code     ?? '').toLowerCase();
-  const hint = (err.hint     ?? '').toLowerCase();
-  const details = (err.details ?? '').toLowerCase();
-
-  // API-gateway 404 — usually means wrong SERVICE_ROLE_KEY (different project)
-  // or the Supabase project is paused / URL is wrong.
-  if (
-    msg.includes('not_found') || msg.includes('not found') ||
-    code === 'not_found' || code === 'pgrst301' ||
-    details.includes('not found') || hint.includes('not found')
-  ) {
-    return (
-      `[${context}] Supabase API returned NOT_FOUND. ` +
-      `Kemungkinan penyebab: (1) SUPABASE_SERVICE_ROLE_KEY bukan dari project yang sama dengan VITE_SUPABASE_URL, ` +
-      `atau (2) project Supabase sedang di-pause. ` +
-      `Cek Secrets Replit — SUPABASE_SERVICE_ROLE_KEY harus dari project ${SUPABASE_URL}.`
-    );
-  }
-
-  // Column missing (migration belum dijalankan)
-  if (
-    msg.includes('card_back_image_url') || msg.includes('column') ||
-    code === '42703' || code === 'pgrst204'
-  ) {
-    return (
-      `[${context}] Kolom card_back_image_url belum ada di tabel agency_members. ` +
-      `Jalankan supabase/card-back-image-migration.sql di Supabase SQL Editor.`
-    );
-  }
-
-  return null;
-}
+/** @deprecated — Supabase removed. Kept as a no-op to avoid reference errors. */
+function classifySupabaseError() { return null; }
 
 /* ──────────────────────────────────────────────
    POST /api/bootstrap
-   One-time setup: buat user + agency + owner membership
+   One-time setup: authenticated Replit user creates their agency.
+   With Replit Auth, users are already created via OIDC — no password needed.
 ────────────────────────────────────────────── */
 app.post('/api/bootstrap', async (req, res) => {
   try {
-    const { email, password, agencyName, displayName } = req.body || {};
-    if (!email || !password || !agencyName) {
-      return err(res, 400, 'email, password, agencyName required');
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+      return err(res, 401, 'Login dulu melalui Replit Auth');
     }
-    if (typeof password !== 'string' || password.length < 8) {
-      return err(res, 400, 'Password minimal 8 karakter');
-    }
-
-    const admin = makeAdminClient();
-
-    const { count, error: countErr } = await admin
-      .from('agencies').select('*', { count: 'exact', head: true });
-    if (countErr) return err(res, 500, countErr.message);
-    if ((count ?? 0) > 0) {
-      return err(res, 403, 'Bootstrap sudah dilakukan. Mintalah owner untuk invite.');
+    const userId = req.user.id;
+    const { agencyName } = req.body || {};
+    if (!agencyName || typeof agencyName !== 'string' || !agencyName.trim()) {
+      return err(res, 400, 'agencyName required');
     }
 
-    const fullName = (displayName ?? '').trim() || email.split('@')[0];
-    const { data: created, error: createErr } = await admin.auth.admin.createUser({
-      email, password, email_confirm: true,
-      user_metadata: { display_name: fullName },
-    });
-    if (createErr || !created.user) {
-      return err(res, 500, createErr?.message ?? 'Gagal buat user');
-    }
-    const userId = created.user.id;
-
-    const { data: agency, error: agencyErr } = await admin
-      .from('agencies').insert({ name: agencyName, owner_id: userId }).select().single();
-    if (agencyErr || !agency) {
-      await admin.auth.admin.deleteUser(userId).catch(() => {});
-      return err(res, 500, agencyErr?.message ?? 'Gagal buat agency');
+    // Check user already has a membership (prevent duplicate bootstrap)
+    const { rows: existing } = await pool.query(
+      'SELECT agency_id FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [userId],
+    );
+    if (existing.length > 0) {
+      return err(res, 403, 'Anda sudah terdaftar di sebuah agency.');
     }
 
-    const { error: memberErr } = await admin.from('agency_members').insert({
-      agency_id: agency.id, user_id: userId, role: 'owner',
-    });
-    if (memberErr) {
-      await admin.from('agencies').delete().eq('id', agency.id);
-      await admin.auth.admin.deleteUser(userId).catch(() => {});
-      return err(res, 500, memberErr.message);
-    }
+    // Create agency + membership in one transaction
+    const { rows: agencyRows } = await pool.query(
+      'INSERT INTO agencies (name, owner_id) VALUES ($1, $2) RETURNING *',
+      [agencyName.trim(), userId],
+    );
+    const agency = agencyRows[0];
 
-    await admin.from('profiles').upsert(
-      { id: userId, email, full_name: fullName },
-      { onConflict: 'id' }
+    await pool.query(
+      'INSERT INTO agency_members (user_id, agency_id, role) VALUES ($1, $2, $3)',
+      [userId, agency.id, 'owner'],
     );
 
     return ok(res, { ok: true, agencyId: agency.id, userId });
@@ -280,122 +221,71 @@ app.post('/api/bootstrap', async (req, res) => {
 
 /* ──────────────────────────────────────────────
    POST /api/invite-member
-   Owner invites staff/agent: buat auth user + profiles + agency_members
+   Owner adds a member by Replit userId or creates a pending record.
+   With Replit Auth, users authenticate via Replit OAuth — no passwords.
 ────────────────────────────────────────────── */
 app.post('/api/invite-member', async (req, res) => {
   try {
-    // Check prerequisites FIRST — before any network calls — so we fail fast
-    // with a clear error instead of hanging forever waiting for getCallerUser.
-    if (!SERVICE_ROLE_KEY) {
-      return err(res, 503,
-        'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. ' +
-        'Tambahkan key ini di Secrets / Environment Variables Replit, lalu restart server.'
-      );
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+      return err(res, 401, 'Login dulu melalui Replit Auth');
     }
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return err(res, 401, 'Missing Authorization header');
-
-    const caller = await getCallerUser(authHeader).catch(() => null);
-    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
-
-    const admin = makeAdminClient();
-
-    const { data: callerMembership, error: memberErr } = await withTimeout(
-      admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle(),
-      10000, 'DB timeout — cek koneksi Supabase dan coba lagi'
+    const { rows: callerRows } = await pool.query(
+      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [req.user.id],
     );
-    if (memberErr) return err(res, 500, `DB error: ${memberErr.message}`);
-    if (!callerMembership) return err(res, 403, 'Caller belum ter-link ke agency manapun');
+    const callerMembership = callerRows[0];
+    if (!callerMembership) return err(res, 403, 'Caller belum terdaftar di agency');
     if (callerMembership.role !== 'owner') return err(res, 403, 'Hanya owner yang bisa invite');
 
-    const { email, password, displayName } = req.body || {};
-    const rawRole = req.body.role;
+    const rawRole = req.body?.role;
     const role = rawRole === 'agent' ? 'agent' : rawRole === 'owner' ? 'owner' : 'staff';
+    const commissionPct = typeof req.body?.commissionPct === 'number'
+      ? Math.max(0, Math.min(100, req.body.commissionPct)) : 0;
+    const whatsappNumber = (req.body?.whatsappNumber ?? '').toString().trim() || null;
+    const agentNotes     = (req.body?.agentNotes ?? '').toString().trim() || null;
+    const agentStatus    = req.body?.agentStatus === 'inactive' ? 'inactive' : 'active';
 
-    // Extra agent fields (agent-only, optional)
-    const commissionPct = typeof req.body.commissionPct === 'number'
-      ? Math.max(0, Math.min(100, req.body.commissionPct)) : null;
-    const whatsappNumber = (req.body.whatsappNumber ?? '').toString().trim() || null;
-    const agentStatus    = req.body.agentStatus === 'inactive' ? 'inactive' : 'active';
-    const agentNotes     = (req.body.agentNotes ?? '').toString().trim() || null;
+    // Accept either a Replit userId directly (preferred) or display name
+    const { userId: targetUserId, displayName } = req.body || {};
 
-    if (!email || !password) return err(res, 400, 'email & password wajib diisi');
-    if (typeof password !== 'string' || password.length < 8) {
-      return err(res, 400, 'Password minimal 8 karakter');
+    if (!targetUserId) {
+      return err(res, 400, 'userId diperlukan — minta calon anggota untuk membagikan Replit user ID-nya');
     }
 
-    const fullName = (displayName ?? '').trim() || email.split('@')[0];
-    const { data: created, error: createErr } = await withTimeout(
-      admin.auth.admin.createUser({
-        email, password, email_confirm: true,
-        user_metadata: { display_name: fullName },
-      }),
-      15000, 'Timeout saat membuat user — coba lagi'
+    // Ensure user row exists (create stub if it doesn't — they'll log in later)
+    await pool.query(
+      `INSERT INTO users (id, first_name, created_at, updated_at)
+       VALUES ($1, $2, now(), now())
+       ON CONFLICT (id) DO NOTHING`,
+      [targetUserId, (displayName ?? '').trim() || null],
     );
-    if (createErr || !created.user) {
-      // Supabase returns "User already registered" when email is taken
-      const isDuplicate = createErr?.message?.toLowerCase().includes('already registered')
-        || createErr?.message?.toLowerCase().includes('already exists');
-      if (isDuplicate) {
-        return err(res, 409, `Email "${email}" sudah terdaftar sebagai user lain`);
-      }
-      return err(res, 500, `Gagal buat user: ${createErr?.message ?? 'unknown'}`);
-    }
-    const newUserId = created.user.id;
 
-    // Insert membership — include commission_pct if provided
-    const membershipRow = {
-      agency_id: callerMembership.agency_id, user_id: newUserId, role,
-      ...(commissionPct !== null ? { commission_pct: commissionPct } : {}),
-    };
-    const { error: addErr } = await withTimeout(
-      admin.from('agency_members').insert(membershipRow),
-      10000, 'Timeout saat menyimpan membership'
+    // Insert membership
+    const { rows: inserted } = await pool.query(
+      `INSERT INTO agency_members (user_id, agency_id, role, commission_pct, phone_wa, agent_notes, agent_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (user_id, agency_id) DO UPDATE SET role = EXCLUDED.role,
+         commission_pct = EXCLUDED.commission_pct, phone_wa = EXCLUDED.phone_wa,
+         agent_notes = EXCLUDED.agent_notes, agent_status = EXCLUDED.agent_status
+       RETURNING *`,
+      [targetUserId, callerMembership.agency_id, role, commissionPct,
+       whatsappNumber, agentNotes, agentStatus],
     );
-    if (addErr) {
-      await admin.auth.admin.deleteUser(newUserId).catch(() => {});
-      return err(res, 500, `Gagal tambah membership (auth user di-rollback): ${addErr.message}`);
-    }
 
-    // Upsert profile — include extra agent fields gracefully
-    const profileRow = { id: newUserId, email, full_name: fullName };
-    if (whatsappNumber) profileRow.phone_wa = whatsappNumber;
-    if (agentNotes)     profileRow.notes    = agentNotes;
-    if (role === 'agent') profileRow.is_active = (agentStatus !== 'inactive');
-
-    const { error: profileErr } = await withTimeout(
-      admin.from('profiles').upsert(profileRow, { onConflict: 'id' }),
-      10000, 'Timeout saat menyimpan profil'
-    );
-    const warnings = [];
-    if (profileErr) warnings.push(`profile: ${profileErr.message}`);
-
-    // Auto-create wallet seed record for new agents so their wallet exists
-    // in the database immediately. Non-critical: failure only adds a warning.
+    // Auto-create wallet seed for new agents
     if (role === 'agent') {
       const walletSeedId = `wtx-reg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const { error: walletErr } = await withTimeout(
-        admin.from('agent_wallet_transactions').insert({
-          id:           walletSeedId,
-          agency_id:    callerMembership.agency_id,
-          agent_id:     newUserId,
-          type:         'adjustment',
-          points_delta: 0,
-          amount_idr:   0,
-          description:  'Wallet dibuat otomatis saat registrasi agen',
-          created_by:   caller.id,
-          created_at:   new Date().toISOString(),
-        }),
-        10000, 'Timeout saat membuat wallet agen'
-      );
-      if (walletErr) warnings.push(`wallet_seed: ${walletErr.message}`);
+      await pool.query(
+        `INSERT INTO agent_wallet_transactions
+           (id, agency_id, agent_id, type, points_delta, amount_idr, description, created_by, created_at)
+         VALUES ($1, $2, $3, 'adjustment', 0, 0, 'Wallet dibuat otomatis saat registrasi agen', $4, now())
+         ON CONFLICT DO NOTHING`,
+        [walletSeedId, callerMembership.agency_id, targetUserId, req.user.id],
+      ).catch(() => {}); // non-critical
     }
 
-    return ok(res, {
-      ok: true, userId: newUserId, email, role, fullName,
-      ...(warnings.length ? { warnings } : {}),
-    });
+    return ok(res, { ok: true, userId: targetUserId, role, member: inserted[0] });
   } catch (e) {
     return err(res, 500, e?.message || 'Terjadi kesalahan internal');
   }
@@ -403,42 +293,37 @@ app.post('/api/invite-member', async (req, res) => {
 
 /* ──────────────────────────────────────────────
    POST /api/remove-member
-   Owner removes staff/agent dari agency
+   Owner removes staff/agent dari agency (membership only — Replit account unchanged)
 ────────────────────────────────────────────── */
 app.post('/api/remove-member', async (req, res) => {
   try {
-    if (!SERVICE_ROLE_KEY) {
-      return err(res, 503,
-        'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. ' +
-        'Tambahkan key ini di Secrets / Environment Variables Replit, lalu restart server.'
-      );
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+      return err(res, 401, 'Login dulu');
     }
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return err(res, 401, 'Missing Authorization header');
-
-    const caller = await getCallerUser(authHeader).catch(() => null);
-    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
-
-    const admin = makeAdminClient();
-
-    const { data: callerMembership, error: memberErr } = await admin
-      .from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle();
-    if (memberErr || !callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
+    const { rows: callerRows } = await pool.query(
+      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [req.user.id],
+    );
+    const callerMembership = callerRows[0];
+    if (!callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
     if (callerMembership.role !== 'owner') return err(res, 403, 'Hanya owner yang bisa hapus anggota');
 
     const { userId } = req.body || {};
     if (!userId || typeof userId !== 'string') return err(res, 400, 'userId required');
-    if (userId === caller.id) return err(res, 400, 'Tidak bisa hapus diri sendiri');
+    if (userId === req.user.id) return err(res, 400, 'Tidak bisa hapus diri sendiri');
 
-    const { data: target, error: targetErr } = await admin
-      .from('agency_members').select('role')
-      .eq('agency_id', callerMembership.agency_id).eq('user_id', userId).maybeSingle();
-    if (targetErr || !target) return err(res, 404, 'User tidak ditemukan di agency ini');
-    if (target.role === 'owner') return err(res, 400, 'Tidak bisa hapus sesama owner');
+    const { rows: targetRows } = await pool.query(
+      'SELECT role FROM agency_members WHERE agency_id = $1 AND user_id = $2',
+      [callerMembership.agency_id, userId],
+    );
+    if (!targetRows[0]) return err(res, 404, 'User tidak ditemukan di agency ini');
+    if (targetRows[0].role === 'owner') return err(res, 400, 'Tidak bisa hapus sesama owner');
 
-    const { error: delErr } = await admin.auth.admin.deleteUser(userId);
-    if (delErr) return err(res, 500, delErr.message);
+    await pool.query(
+      'DELETE FROM agency_members WHERE agency_id = $1 AND user_id = $2',
+      [callerMembership.agency_id, userId],
+    );
 
     return ok(res, { ok: true });
   } catch (e) {
@@ -449,29 +334,17 @@ app.post('/api/remove-member', async (req, res) => {
 /* ──────────────────────────────────────────────
    POST /api/award-completion-points
    Owner menandai order selesai → agen mendapat 20 poin di agent_points.
-   Menggunakan service role untuk upsert karena RLS hanya izinkan trigger.
 ────────────────────────────────────────────── */
 app.post('/api/award-completion-points', async (req, res) => {
   try {
-    if (!SERVICE_ROLE_KEY) {
-      return err(res, 503,
-        'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi. Tambahkan di Secrets Replit lalu restart server.'
-      );
-    }
+    if (!req.isAuthenticated || !req.isAuthenticated()) return err(res, 401, 'Unauthorized');
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return err(res, 401, 'Missing Authorization header');
-
-    const caller = await getCallerUser(authHeader).catch(() => null);
-    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
-
-    const admin = makeAdminClient();
-
-    const { data: callerMembership, error: memberErr } = await withTimeout(
-      admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle(),
-      10000, 'DB timeout — cek koneksi Supabase'
+    const { rows: callerRows } = await pool.query(
+      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [req.user.id],
     );
-    if (memberErr || !callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
+    const callerMembership = callerRows[0];
+    if (!callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
     if (!['owner', 'staff'].includes(callerMembership.role)) {
       return err(res, 403, 'Hanya owner atau staff yang bisa award poin');
     }
@@ -481,24 +354,21 @@ app.post('/api/award-completion-points', async (req, res) => {
 
     const agencyId = callerMembership.agency_id;
 
-    // Validasi: agentId harus role "agent" di agency ini
-    const { data: targetMember, error: targetErr } = await withTimeout(
-      admin.from('agency_members').select('role').eq('user_id', agentId).eq('agency_id', agencyId).maybeSingle(),
-      8000, 'DB timeout saat verifikasi agen'
+    const { rows: targetRows } = await pool.query(
+      'SELECT role FROM agency_members WHERE user_id = $1 AND agency_id = $2',
+      [agentId, agencyId],
     );
-    if (targetErr || !targetMember) return err(res, 404, 'Agen tidak ditemukan di agency ini');
-    if (targetMember.role !== 'agent') {
-      return ok(res, { ok: true, awarded: 0, reason: 'not_agent', role: targetMember.role });
+    if (!targetRows[0]) return err(res, 404, 'Agen tidak ditemukan di agency ini');
+    if (targetRows[0].role !== 'agent') {
+      return ok(res, { ok: true, awarded: 0, reason: 'not_agent', role: targetRows[0].role });
     }
 
-    const { error: upsertErr } = await withTimeout(
-      admin.from('agent_points').upsert(
-        { agency_id: agencyId, agent_id: agentId, order_id: orderId, points: 20, reason: 'order_completed' },
-        { onConflict: 'order_id' }
-      ),
-      10000, 'DB timeout saat upsert poin'
+    await pool.query(
+      `INSERT INTO agent_points (agency_id, agent_id, order_id, points, reason, awarded_at)
+       VALUES ($1, $2, $3, 20, 'order_completed', now())
+       ON CONFLICT (order_id) DO NOTHING`,
+      [agencyId, agentId, orderId],
     );
-    if (upsertErr) return err(res, 500, upsertErr.message);
 
     return ok(res, { ok: true, points: 20 });
   } catch (e) {
@@ -509,27 +379,17 @@ app.post('/api/award-completion-points', async (req, res) => {
 /* ──────────────────────────────────────────────
    POST /api/revoke-order-points
    Cabut poin agen jika order dikembalikan dari status Completed.
-   Hanya owner/staff yang bisa. Menggunakan service role untuk DELETE.
 ────────────────────────────────────────────── */
 app.post('/api/revoke-order-points', async (req, res) => {
   try {
-    if (!SERVICE_ROLE_KEY) {
-      return err(res, 503, 'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi');
-    }
+    if (!req.isAuthenticated || !req.isAuthenticated()) return err(res, 401, 'Unauthorized');
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return err(res, 401, 'Missing Authorization header');
-
-    const caller = await getCallerUser(authHeader).catch(() => null);
-    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
-
-    const admin = makeAdminClient();
-
-    const { data: callerMembership, error: memberErr } = await withTimeout(
-      admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle(),
-      10000, 'DB timeout'
+    const { rows: callerRows } = await pool.query(
+      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [req.user.id],
     );
-    if (memberErr || !callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
+    const callerMembership = callerRows[0];
+    if (!callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
     if (!['owner', 'staff'].includes(callerMembership.role)) {
       return err(res, 403, 'Hanya owner atau staff yang bisa revoke poin');
     }
@@ -537,14 +397,10 @@ app.post('/api/revoke-order-points', async (req, res) => {
     const { orderId } = req.body || {};
     if (!orderId) return err(res, 400, 'orderId diperlukan');
 
-    const { error: delErr } = await withTimeout(
-      admin.from('agent_points')
-        .delete()
-        .eq('order_id', orderId)
-        .eq('agency_id', callerMembership.agency_id),
-      10000, 'DB timeout saat revoke poin'
+    await pool.query(
+      'DELETE FROM agent_points WHERE order_id = $1 AND agency_id = $2',
+      [orderId, callerMembership.agency_id],
     );
-    if (delErr) return err(res, 500, delErr.message);
 
     return ok(res, { ok: true, revoked: orderId });
   } catch (e) {
@@ -850,8 +706,8 @@ app.post('/api/export/igh', async (req, res) => {
 
 /* ──────────────────────────────────────────────
    POST /api/ocr-passport
-   Dedicated passport OCR via OpenAI vision.
-   Requires valid Supabase JWT + agency membership.
+   Dedicated passport OCR via OpenRouter vision.
+   Requires Replit session + agency membership.
 ────────────────────────────────────────────── */
 app.post('/api/ocr-passport', async (req, res) => {
   try {
@@ -860,16 +716,15 @@ app.post('/api/ocr-passport', async (req, res) => {
       return err(res, 503, 'OPENROUTER_API_KEY tidak ditemukan. Pastikan sudah diset di environment variables.');
     }
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return err(res, 401, 'Missing Authorization header');
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+      return err(res, 401, 'Login dulu');
+    }
 
-    const caller = await getCallerUser(authHeader);
-    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
-
-    const admin = makeAdminClient();
-    const { data: membership, error: memErr } = await admin
-      .from('agency_members').select('agency_id').eq('user_id', caller.id).maybeSingle();
-    if (memErr || !membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
+    const { rows: memRows } = await pool.query(
+      'SELECT agency_id FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [req.user.id],
+    );
+    if (!memRows[0]) return err(res, 403, 'Tidak terdaftar di agency manapun');
 
     const { imageDataUrl } = req.body || {};
     if (!imageDataUrl || typeof imageDataUrl !== 'string') {
@@ -1113,83 +968,39 @@ app.post('/api/ai/assistant', async (req, res) => {
 
 /* ──────────────────────────────────────────────
    POST /api/credit-wallet-tx
-   Insert a wallet transaction using service-role key so RLS never blocks
-   cross-agent credits (e.g. owner crediting a field agent's wallet).
-   Validates the caller is an authenticated member of the agency, then
-   upserts to agent_wallet_transactions. Idempotent via tx ID conflict.
+   Insert a wallet transaction using pg directly (Replit PostgreSQL).
 ────────────────────────────────────────────── */
 app.post('/api/credit-wallet-tx', async (req, res) => {
   try {
-    if (!SERVICE_ROLE_KEY) {
-      return err(res, 503, 'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. Tambahkan di Secrets Replit lalu restart server.');
-    }
+    if (!req.isAuthenticated || !req.isAuthenticated()) return err(res, 401, 'Unauthorized');
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return err(res, 401, 'Missing Authorization header');
-
-    const caller = await getCallerUser(authHeader, 8000).catch(() => null);
-    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
-
-    const admin = makeAdminClient();
-
-    // Verify caller belongs to the stated agency
-    const { data: membership, error: memErr } = await withTimeout(
-      admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle(),
-      8000, 'DB timeout saat verifikasi membership'
+    const { rows: memberRows } = await pool.query(
+      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [req.user.id],
     );
-    if (memErr || !membership) {
-      console.error('[credit-wallet-tx] membership lookup error:', memErr?.message);
-      return err(res, 403, 'Tidak terdaftar di agency manapun');
-    }
+    const membership = memberRows[0];
+    if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
 
     const { id, agencyId, agentId, type, pointsDelta, amountIDR, description, createdBy, createdAt } = req.body ?? {};
-
-    // Basic field validation
     if (!id || !agencyId || !agentId || !type || amountIDR === undefined) {
       return err(res, 400, 'Field wajib: id, agencyId, agentId, type, amountIDR');
     }
-
-    // Agency must match the caller's agency (prevent cross-tenant abuse)
-    if (membership.agency_id !== agencyId) {
-      console.error(`[credit-wallet-tx] agency mismatch: caller=${membership.agency_id} req=${agencyId}`);
-      return err(res, 403, 'Agency ID tidak sesuai dengan akun yang login');
-    }
-
-    // Role guard: agent hanya boleh kredit wallet sendiri (bukan wallet orang lain).
-    // Owner dan staff boleh kredit wallet siapapun di agency yang sama.
-    if (membership.role === 'agent' && agentId !== caller.id) {
-      console.error(`[credit-wallet-tx] agent ${caller.id} mencoba kredit wallet ${agentId}`);
+    if (membership.agency_id !== agencyId) return err(res, 403, 'Agency ID tidak sesuai');
+    if (membership.role === 'agent' && agentId !== req.user.id) {
       return err(res, 403, 'Agen hanya bisa mengkreditkan wallet sendiri');
     }
 
-    // Upsert — idempotent on tx id
-    const { error: upsertErr } = await withTimeout(
-      admin.from('agent_wallet_transactions').upsert(
-        {
-          id,
-          agency_id:    agencyId,
-          agent_id:     agentId,
-          type,
-          points_delta: pointsDelta ?? 0,
-          amount_idr:   amountIDR,
-          description:  description ?? '',
-          created_by:   createdBy ?? caller.id,
-          created_at:   createdAt ?? new Date().toISOString(),
-        },
-        { onConflict: 'id' }
-      ),
-      12000, 'Timeout saat insert wallet transaction ke Supabase'
+    await pool.query(
+      `INSERT INTO agent_wallet_transactions
+         (id, agency_id, agent_id, type, points_delta, amount_idr, description, created_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (id) DO NOTHING`,
+      [id, agencyId, agentId, type, pointsDelta ?? 0, amountIDR,
+       description ?? '', createdBy ?? req.user.id, createdAt ?? new Date().toISOString()],
     );
 
-    if (upsertErr) {
-      console.error('[credit-wallet-tx] upsert error:', upsertErr.message, upsertErr);
-      return err(res, 500, `Gagal insert wallet: ${upsertErr.message}`);
-    }
-
-    console.log(`[credit-wallet-tx] OK — id=${id} agent=${agentId} amount=${amountIDR} type=${type}`);
     return ok(res, { ok: true, id });
   } catch (e) {
-    console.error('[credit-wallet-tx] exception:', e);
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }
 });
@@ -1197,648 +1008,102 @@ app.post('/api/credit-wallet-tx', async (req, res) => {
 /* ──────────────────────────────────────────────
    POST /api/award-commission-points
    Award 20 points to agent when commission is earned.
-   Uses service-role key to bypass RLS (agent_points is INSERT-only via trigger).
 ────────────────────────────────────────────── */
 app.post('/api/award-commission-points', async (req, res) => {
   try {
-    const caller = await getCallerUser(req.headers.authorization, 8000);
-    if (!caller) return err(res, 401, 'Unauthorized');
+    if (!req.isAuthenticated || !req.isAuthenticated()) return err(res, 401, 'Unauthorized');
 
     const { agencyId, agentId, orderId } = req.body ?? {};
     if (!agencyId || !agentId || !orderId) {
       return err(res, 400, 'agencyId, agentId, dan orderId wajib diisi');
     }
 
-    const adminClient = makeAdminClient();
-
-    // Verifikasi bahwa agentId benar-benar berperan "agent" di agency ini.
-    // Mencegah owner/staff mendapat poin komisi secara tidak sengaja.
-    const { data: memberRow, error: memberErr } = await withTimeout(
-      adminClient
-        .from('agency_members')
-        .select('role')
-        .eq('user_id', agentId)
-        .eq('agency_id', agencyId)
-        .single(),
-      6000,
-      'Timeout saat verifikasi role agen'
+    const { rows: memberRows } = await pool.query(
+      'SELECT role FROM agency_members WHERE user_id = $1 AND agency_id = $2',
+      [agentId, agencyId],
     );
-    if (memberErr || !memberRow) {
-      console.warn('[award-commission-points] member tidak ditemukan:', agentId);
-      return err(res, 404, 'Member tidak ditemukan di agency ini');
-    }
-    if (memberRow.role !== 'agent') {
-      console.warn('[award-commission-points] user bukan agent, diabaikan:', agentId, memberRow.role);
-      return ok(res, { awarded: 0, reason: 'not_agent', role: memberRow.role });
+    if (!memberRows[0]) return err(res, 404, 'Member tidak ditemukan di agency ini');
+    if (memberRows[0].role !== 'agent') {
+      return ok(res, { awarded: 0, reason: 'not_agent', role: memberRows[0].role });
     }
 
-    // Gunakan upsert (bukan insert) dengan onConflict 'order_id' agar idempoten —
-    // pemanggilan ganda untuk order yang sama tidak menyebabkan poin double-credit.
-    const { error: insertErr } = await withTimeout(
-      adminClient.from('agent_points').upsert(
-        {
-          agency_id:  agencyId,
-          agent_id:   agentId,
-          order_id:   orderId,
-          points:     20,
-          reason:     'commission_received',
-          awarded_at: new Date().toISOString(),
-        },
-        { onConflict: 'order_id' }
-      ),
-      10000,
-      'Timeout saat award commission points'
+    await pool.query(
+      `INSERT INTO agent_points (agency_id, agent_id, order_id, points, reason, awarded_at)
+       VALUES ($1, $2, $3, 20, 'commission_received', now())
+       ON CONFLICT (order_id) DO NOTHING`,
+      [agencyId, agentId, orderId],
     );
-
-    if (insertErr) {
-      console.warn('[award-commission-points] upsert gagal:', insertErr.message);
-      return err(res, 500, insertErr.message);
-    }
 
     return ok(res, { awarded: 20, reason: 'commission_received' });
   } catch (e) {
-    console.error('[award-commission-points] error:', e);
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }
 });
 
-/* ──────────────────────────────────────────────
-   POST /api/upload-card-back
-   Upload gambar belakang kartu langsung ke Storage menggunakan service-role key.
-   - Auto-creates bucket 'card-backs' jika belum ada
-   - Uploads image buffer (dari base64) via admin client — tidak butuh storage RLS
-   - Updates agency_members.card_back_image_url via admin client — tidak butuh DB RLS
-   - Single round-trip: tidak ada signed URL dance
-
-   Authorization: Bearer <access_token>
-   Body: { targetUserId, agencyId, imageBase64 }  (imageBase64 = data URL from FileReader)
-   Returns: { ok: true, url: "<canonical public URL>" }
-────────────────────────────────────────────── */
-app.post('/api/upload-card-back', async (req, res) => {
-  const ROUTE = '[upload-card-back]';
-  try {
-    if (!SERVICE_ROLE_KEY) {
-      return err(res, 503, 'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. Tambahkan di Secrets Replit lalu restart server.');
-    }
-    if (!SUPABASE_URL) {
-      return err(res, 503, 'VITE_SUPABASE_URL belum dikonfigurasi di server.');
-    }
-
-    // ── Auth ─────────────────────────────────────────────────────────────────
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return err(res, 401, 'Missing Authorization header');
-    const caller = await getCallerUser(authHeader, 8000).catch(() => null);
-    if (!caller) return err(res, 401, 'Sesi tidak valid atau expired — silakan login ulang.');
-    console.log(`${ROUTE} caller validated — caller.id=${caller.id}`);
-
-    // ── Validate body ─────────────────────────────────────────────────────────
-    const { targetUserId, agencyId, imageBase64 } = req.body ?? {};
-    if (!targetUserId || !agencyId || !imageBase64) {
-      return err(res, 400, 'targetUserId, agencyId, dan imageBase64 wajib diisi');
-    }
-    if (typeof imageBase64 !== 'string' || !imageBase64.startsWith('data:image/')) {
-      return err(res, 400, 'imageBase64 harus berupa data URL (data:image/...)');
-    }
-
-    const admin = makeAdminClient();
-
-    // ── Verify caller is member of the agency ─────────────────────────────────
-    const { data: callerMembership, error: memErr } = await withTimeout(
-      admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).eq('agency_id', agencyId).maybeSingle(),
-      8000, 'DB timeout saat verifikasi membership'
-    );
-    if (memErr || !callerMembership) {
-      console.error(`${ROUTE} membership error:`, memErr?.message);
-      return err(res, 403, 'Tidak terdaftar di agency yang diminta');
-    }
-
-    // ── Role guard ────────────────────────────────────────────────────────────
-    if (callerMembership.role !== 'owner' && targetUserId !== caller.id) {
-      return err(res, 403, 'Hanya owner yang bisa upload gambar kartu member lain');
-    }
-
-    // ── Verify target user exists ─────────────────────────────────────────────
-    const { data: targetRow, error: targetErr } = await withTimeout(
-      admin.from('agency_members').select('user_id').eq('user_id', targetUserId).eq('agency_id', agencyId).maybeSingle(),
-      8000, 'DB timeout saat verifikasi target user'
-    );
-    if (targetErr || !targetRow) {
-      console.error(`${ROUTE} target lookup:`, targetErr?.message);
-      return err(res, 404, `User ${targetUserId} tidak ditemukan di agency ini. Pastikan targetUserId adalah Supabase auth UUID.`);
-    }
-
-    // ── Auto-create bucket if missing ────────────────────────────────────────
-    const BUCKET = 'card-backs';
-    try {
-      const { error: bucketErr } = await withTimeout(
-        admin.storage.createBucket(BUCKET, {
-          public: true,
-          fileSizeLimit: 10485760,
-          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-        }),
-        8000, 'Timeout saat membuat bucket'
-      );
-      if (bucketErr) {
-        const msg = bucketErr.message ?? '';
-        const alreadyExists = msg.toLowerCase().includes('already exist') || msg.toLowerCase().includes('duplicate');
-        if (!alreadyExists) {
-          console.warn(`${ROUTE} createBucket warning (continuing):`, msg);
-        } else {
-          console.log(`${ROUTE} bucket already exists — OK`);
-        }
-      } else {
-        console.log(`${ROUTE} bucket '${BUCKET}' created`);
-      }
-    } catch (bucketEx) {
-      console.warn(`${ROUTE} createBucket exception (continuing):`, bucketEx?.message ?? bucketEx);
-    }
-
-    // ── Decode base64 image ────────────────────────────────────────────────────
-    // Strip the data URL prefix: "data:image/jpeg;base64,/9j/4AA..."
-    const commaIdx = imageBase64.indexOf(',');
-    if (commaIdx === -1) return err(res, 400, 'imageBase64 format tidak valid — koma tidak ditemukan');
-    const base64Data = imageBase64.slice(commaIdx + 1);
-    const imageBuffer = Buffer.from(base64Data, 'base64');
-    if (imageBuffer.length === 0) return err(res, 400, 'Gambar kosong setelah decode base64');
-    console.log(`${ROUTE} image decoded — byteLength=${imageBuffer.length}`);
-
-    // ── Upload to Storage via admin client (bypasses all storage RLS) ─────────
-    const storagePath = `${targetUserId}/card-back.jpg`;
-    console.log(`${ROUTE} uploading to storage — bucket=${BUCKET} path=${storagePath}`);
-    const { error: uploadErr } = await withTimeout(
-      admin.storage.from(BUCKET).upload(storagePath, imageBuffer, {
-        contentType: 'image/jpeg',
-        upsert: true,
-      }),
-      25000, 'Storage upload timeout'
-    );
-    if (uploadErr) {
-      console.error(`${ROUTE} storage upload error:`, uploadErr.message);
-      return err(res, 500, `Storage upload gagal: ${uploadErr.message}`);
-    }
-    console.log(`${ROUTE} storage upload OK`);
-
-    // ── Build canonical public URL ─────────────────────────────────────────────
-    const canonicalUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${storagePath}`;
-
-    // ── Update agency_members.card_back_image_url via admin (bypasses DB RLS) ─
-    console.log(`${ROUTE} updating DB — table=agency_members user_id=${targetUserId}`);
-    const { data: updateData, error: updateErr } = await withTimeout(
-      admin.from('agency_members')
-        .update({ card_back_image_url: canonicalUrl })
-        .eq('user_id', targetUserId)
-        .eq('agency_id', agencyId)
-        .select('user_id, card_back_image_url'),
-      12000, 'DB timeout saat update card_back_image_url'
-    );
-    if (updateErr) {
-      const isColMissing = updateErr.code === '42703' || (updateErr.message ?? '').toLowerCase().includes('column');
-      console.error(`${ROUTE} DB update error code=${updateErr.code}:`, updateErr.message);
-      if (isColMissing) {
-        return err(res, 500,
-          'Kolom card_back_image_url belum ada di tabel agency_members. ' +
-          'Jalankan SQL berikut di Supabase SQL Editor:\n' +
-          'ALTER TABLE public.agency_members ADD COLUMN IF NOT EXISTS card_back_image_url TEXT;'
-        );
-      }
-      return err(res, 500, `DB update gagal: ${updateErr.message}`);
-    }
-    if (!updateData || updateData.length === 0) {
-      console.error(`${ROUTE} 0 rows updated — kemungkinan kolom card_back_image_url belum ada`);
-      return err(res, 500,
-        'Gambar terupload tapi database tidak diperbarui (0 baris). ' +
-        'Kemungkinan kolom card_back_image_url belum ada. Jalankan di Supabase SQL Editor:\n' +
-        'ALTER TABLE public.agency_members ADD COLUMN IF NOT EXISTS card_back_image_url TEXT;'
-      );
-    }
-
-    const savedRow = updateData[0];
-    console.log(`${ROUTE} SUCCESS — user_id=${savedRow.user_id} url=${savedRow.card_back_image_url}`);
-    return ok(res, { ok: true, url: savedRow.card_back_image_url ?? canonicalUrl });
-
-  } catch (e) {
-    console.error(`${ROUTE} unhandled exception:`, e);
-    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
-  }
-});
+/* upload-card-back-legacy: removed — data.cjs handles /api/upload-card-back */
 
 /* ──────────────────────────────────────────────
-   POST /api/card-back-signed-url
-   DEPRECATED — kept for backward compatibility only.
-   New flow uses /api/upload-card-back (server-side upload, no signed URL needed).
-   Buat Supabase Storage signed upload URL untuk card-backs/{targetUserId}/card-back.jpg
-   menggunakan service-role key (bypass storage RLS policy).
-
-   Mengapa diperlukan:
-   - Storage bucket 'card-backs' mungkin tidak punya INSERT policy untuk anon/auth user.
-   - Dengan signed upload URL dari service-role, client bisa upload langsung ke Storage
-     tanpa perlu storage RLS policy sama sekali.
-   - Permission check tetap dilakukan di sini (caller harus member agency + role guard).
-
-   Authorization: Bearer <access_token>
-   Body: { targetUserId, agencyId }
-   Returns: { signedUrl, token, path }
+   POST /api/card-back-signed-url  (DEPRECATED — Supabase Storage removed)
+   Storage is now handled by saving base64 in agency_members.card_back_image_url.
 ────────────────────────────────────────────── */
-app.post('/api/card-back-signed-url', async (req, res) => {
-  const ROUTE = '[card-back-signed-url]';
-  try {
-    if (!SERVICE_ROLE_KEY) {
-      return err(res, 503,
-        'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. ' +
-        'Tambahkan di Secrets Replit lalu restart server.'
-      );
-    }
-    if (!SUPABASE_URL) {
-      return err(res, 503, 'VITE_SUPABASE_URL belum dikonfigurasi di server.');
-    }
-
-    // ── Auth ─────────────────────────────────────────────────────────────────
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return err(res, 401, 'Missing Authorization header');
-
-    const caller = await getCallerUser(authHeader, 8000).catch(() => null);
-    if (!caller) {
-      return err(res, 401,
-        'Sesi tidak valid atau expired — silakan login ulang. ' +
-        'Pastikan SUPABASE_SERVICE_ROLE_KEY dan VITE_SUPABASE_URL dari project Supabase yang sama.'
-      );
-    }
-    console.log(`${ROUTE} caller validated — caller.id=${caller.id}`);
-
-    // ── Validate request body ─────────────────────────────────────────────────
-    const { targetUserId, agencyId, role } = req.body ?? {};
-    if (!targetUserId || !agencyId) {
-      return err(res, 400, 'targetUserId dan agencyId wajib diisi');
-    }
-    const safeRole = ['agent', 'staff', 'owner'].includes(role) ? role : 'agent';
-
-    const admin = makeAdminClient();
-
-    // ── Verify caller is member of the agency ─────────────────────────────────
-    const { data: callerMembership, error: memErr } = await withTimeout(
-      admin.from('agency_members')
-        .select('agency_id, role')
-        .eq('user_id', caller.id)
-        .eq('agency_id', agencyId)
-        .maybeSingle(),
-      8000, 'DB timeout saat verifikasi membership'
-    );
-    if (memErr) {
-      console.error(`${ROUTE} membership lookup error:`, memErr.message);
-      return err(res, 500, `DB error (membership): ${memErr.message}`);
-    }
-    if (!callerMembership) {
-      return err(res, 403, 'Tidak terdaftar di agency yang diminta');
-    }
-
-    // ── Role guard ────────────────────────────────────────────────────────────
-    if (callerMembership.role !== 'owner' && targetUserId !== caller.id) {
-      return err(res, 403, 'Hanya owner yang bisa upload gambar kartu member lain');
-    }
-
-    // ── Verify target user exists in this agency ──────────────────────────────
-    const { data: targetRow, error: targetErr } = await withTimeout(
-      admin.from('agency_members')
-        .select('user_id')
-        .eq('user_id', targetUserId)
-        .eq('agency_id', agencyId)
-        .maybeSingle(),
-      8000, 'DB timeout saat verifikasi target user'
-    );
-    if (targetErr) {
-      console.error(`${ROUTE} target lookup error:`, targetErr.message);
-      return err(res, 500, `DB error (target): ${targetErr.message}`);
-    }
-    if (!targetRow) {
-      return err(res, 404,
-        `User ${targetUserId} tidak ditemukan di agency ini. ` +
-        'Pastikan targetUserId adalah Supabase auth UUID dari tabel agency_members.'
-      );
-    }
-
-    // ── Auto-create bucket if missing ─────────────────────────────────────────
-    const SIGNED_BUCKET = 'card-backs';
-    try {
-      const { error: bucketErr } = await withTimeout(
-        admin.storage.createBucket(SIGNED_BUCKET, {
-          public: true,
-          fileSizeLimit: 10485760,
-          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-        }),
-        8000, 'Timeout saat membuat bucket'
-      );
-      if (bucketErr) {
-        const msg = bucketErr.message ?? '';
-        if (!msg.toLowerCase().includes('already exist') && !msg.toLowerCase().includes('duplicate')) {
-          console.warn(`${ROUTE} createBucket warning:`, msg);
-        }
-      } else {
-        console.log(`${ROUTE} bucket '${SIGNED_BUCKET}' created`);
-      }
-    } catch (bucketEx) {
-      console.warn(`${ROUTE} createBucket exception (continuing):`, bucketEx?.message ?? bucketEx);
-    }
-
-    // ── Create signed upload URL (service-role bypasses storage RLS) ──────────
-    const storagePath = `${safeRole}/${targetUserId}/card-back.jpg`;
-    console.log(`${ROUTE} creating signed upload URL — bucket=${SIGNED_BUCKET} path=${storagePath} role=${safeRole}`);
-
-    const { data: signedData, error: signedErr } = await withTimeout(
-      admin.storage.from('card-backs').createSignedUploadUrl(storagePath, { upsert: true }),
-      8000, 'Storage timeout saat membuat signed upload URL'
-    );
-
-    if (signedErr || !signedData) {
-      console.error(`${ROUTE} createSignedUploadUrl FAILED:`, signedErr?.message);
-      // Provide actionable error message
-      const isNoPolicy = signedErr?.message?.includes('row-level security') ||
-                         signedErr?.message?.includes('policy');
-      const isMissing  = signedErr?.message?.toLowerCase().includes('not found') ||
-                         signedErr?.message?.toLowerCase().includes('bucket');
-      const detail = isMissing
-        ? "Bucket 'card-backs' belum dibuat di Supabase Storage dashboard."
-        : isNoPolicy
-          ? "Storage policy untuk bucket 'card-backs' belum dikonfigurasi."
-          : signedErr?.message ?? 'Unknown error';
-      return err(res, 500, `Gagal membuat upload URL: ${detail}`);
-    }
-
-    console.log(`${ROUTE} signed upload URL created — path=${signedData.path} storagePath=${storagePath}`);
-    return ok(res, {
-      signedUrl:   signedData.signedUrl,
-      token:       signedData.token,
-      path:        signedData.path,
-      storagePath,
-    });
-
-  } catch (e) {
-    console.error(`${ROUTE} unhandled exception:`, e);
-    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
-  }
+app.post('/api/card-back-signed-url', (req, res) => {
+  return err(res, 410, 'Endpoint ini sudah tidak digunakan. Gunakan /api/upload-card-back dengan imageBase64.');
 });
 
 /* ──────────────────────────────────────────────
    POST /api/save-card-back-url
-   Simpan card_back_image_url ke agency_members menggunakan service-role key
-   sehingga RLS tidak memblokir staff/agent yang update milik sendiri.
-
-   Authorization: Bearer <access_token>
-   Body: { targetUserId, agencyId }
-   - targetUserId: UUID pemilik kartu (boleh beda dari caller jika caller = owner)
-   - agencyId: UUID agency
-
-   Rules:
-   - Caller harus authenticated member di agencyId yang sama.
-   - Agent/staff hanya boleh update card_back_image_url milik sendiri.
-   - Owner boleh update card_back_image_url siapapun di agency-nya.
+   Simpan card_back_image_url ke agency_members (pg version).
 ────────────────────────────────────────────── */
 app.post('/api/save-card-back-url', async (req, res) => {
   const ROUTE = '[save-card-back-url]';
   try {
-    // ── 1. Prerequisites ───────────────────────────────────────────────────
-    if (!SERVICE_ROLE_KEY) {
-      return err(res, 503,
-        'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. ' +
-        'Tambahkan di Secrets Replit lalu restart server.'
-      );
-    }
-    if (!SUPABASE_URL) {
-      return err(res, 503, 'VITE_SUPABASE_URL belum dikonfigurasi di server.');
-    }
+    if (!req.isAuthenticated || !req.isAuthenticated()) return err(res, 401, 'Login dulu');
 
-    // ── 2. Auth: validate caller JWT ───────────────────────────────────────
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return err(res, 401, 'Missing Authorization header');
-
-    const caller = await getCallerUser(authHeader, 8000).catch(() => null);
-    if (!caller) {
-      console.error(`${ROUTE} JWT validation gagal — caller null`);
-      return err(res, 401,
-        'Sesi tidak valid atau expired — silakan login ulang. ' +
-        'Jika masalah berlanjut, pastikan SUPABASE_SERVICE_ROLE_KEY dan VITE_SUPABASE_URL berasal dari project Supabase yang sama.'
-      );
-    }
-    console.log(`${ROUTE} caller validated — caller.id=${caller.id}`);
-
-    // ── 3. Validate request body ────────────────────────────────────────────
     const { targetUserId, agencyId, storagePath: clientStoragePath } = req.body ?? {};
-    if (!targetUserId || !agencyId) {
-      return err(res, 400, 'targetUserId dan agencyId wajib diisi');
-    }
-    console.log(`${ROUTE} table=agency_members targetUserId=${targetUserId} agencyId=${agencyId} storagePath=${clientStoragePath ?? 'auto'}`);
+    if (!targetUserId || !agencyId) return err(res, 400, 'targetUserId dan agencyId wajib diisi');
 
-    const admin = makeAdminClient();
-
-    // ── 4. Verify caller is a member of the requested agency ───────────────
-    const { data: callerMembership, error: memErr } = await withTimeout(
-      admin.from('agency_members')
-        .select('agency_id, role')
-        .eq('user_id', caller.id)
-        .eq('agency_id', agencyId)
-        .maybeSingle(),
-      8000, 'DB timeout saat verifikasi membership'
+    const { rows: memberRows } = await pool.query(
+      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 AND agency_id = $2',
+      [req.user.id, agencyId],
     );
-    if (memErr) {
-      const hint = classifySupabaseError(memErr, ROUTE + ' membership');
-      console.error(`${ROUTE} membership lookup error — code=${memErr.code} msg=${memErr.message}`, memErr);
-      return err(res, 500, hint ?? `DB error (membership): ${memErr.message}`);
-    }
-    if (!callerMembership) {
-      console.error(`${ROUTE} caller ${caller.id} bukan member di agency ${agencyId}`);
-      return err(res, 403, 'Tidak terdaftar di agency yang diminta');
-    }
-
-    // ── 5. Role guard: staff/agent can only update their own card ──────────
-    if (callerMembership.role !== 'owner' && targetUserId !== caller.id) {
-      console.error(`${ROUTE} role=${callerMembership.role} caller=${caller.id} mencoba update card back milik ${targetUserId}`);
+    if (!memberRows[0]) return err(res, 403, 'Tidak terdaftar di agency yang diminta');
+    if (memberRows[0].role !== 'owner' && targetUserId !== req.user.id) {
       return err(res, 403, 'Hanya owner yang bisa update gambar kartu member lain');
     }
 
-    // ── 6. Verify target user exists in this agency ────────────────────────
-    // Note: we already checked targetUserId format — now confirm the DB row.
-    const { data: targetMembership, error: targetErr } = await withTimeout(
-      admin.from('agency_members')
-        .select('user_id, card_back_image_url')
-        .eq('user_id', targetUserId)
-        .eq('agency_id', agencyId)
-        .maybeSingle(),
-      8000, 'DB timeout saat verifikasi target user'
+    const url = clientStoragePath ?? null;
+    const { rows: updated } = await pool.query(
+      'UPDATE agency_members SET card_back_image_url = $3 WHERE user_id = $1 AND agency_id = $2 RETURNING user_id, card_back_image_url',
+      [targetUserId, agencyId, url],
     );
-    if (targetErr) {
-      const hint = classifySupabaseError(targetErr, ROUTE + ' target');
-      console.error(`${ROUTE} target lookup error — code=${targetErr.code} msg=${targetErr.message}`, targetErr);
-      return err(res, 500, hint ?? `DB error (target): ${targetErr.message}`);
-    }
-    if (!targetMembership) {
-      console.error(`${ROUTE} target userId=${targetUserId} tidak ada di agency_members untuk agencyId=${agencyId}`);
-      return err(res, 404,
-        `User dengan ID ${targetUserId} tidak ditemukan di agency ini. ` +
-        `Pastikan ID yang dikirim adalah user_id asli dari tabel agency_members, bukan route slug atau request ID.`
-      );
-    }
-    console.log(`${ROUTE} target row confirmed — user_id=${targetMembership.user_id}`);
+    if (!updated[0]) return err(res, 404, 'User tidak ditemukan di agency ini');
 
-    // ── 7. Build canonical Storage URL ────────────────────────────────────
-    // If client provided storagePath (new flow), use it directly.
-    // Otherwise fall back to legacy path for backward compatibility.
-    const storagePath  = clientStoragePath || `${targetUserId}/card-back.jpg`;
-    const canonicalUrl = `${SUPABASE_URL}/storage/v1/object/public/card-backs/${storagePath}`;
-    console.log(`${ROUTE} table=agency_members column=card_back_image_url storageUrl=${canonicalUrl}`);
-
-    // ── 8. UPDATE agency_members.card_back_image_url ───────────────────────
-    const { data: updateData, error: updateErr } = await withTimeout(
-      admin.from('agency_members')
-        .update({ card_back_image_url: canonicalUrl })
-        .eq('user_id', targetUserId)
-        .eq('agency_id', agencyId)
-        .select('user_id, card_back_image_url'),
-      10000, 'DB timeout saat update card_back_image_url'
-    );
-
-    if (updateErr) {
-      const hint = classifySupabaseError(updateErr, ROUTE + ' update');
-      console.error(`${ROUTE} UPDATE error — table=agency_members column=card_back_image_url user_id=${targetUserId} code=${updateErr.code} msg=${updateErr.message}`, updateErr);
-      return err(res, 500, hint ?? `Gagal update database: ${updateErr.message}`);
-    }
-
-    // 0 rows updated means the WHERE clause matched nothing — row exists (we
-    // verified above) but the UPDATE still returned empty. Most likely the
-    // card_back_image_url column is missing (migration not run yet).
-    if (!updateData || updateData.length === 0) {
-      console.error(`${ROUTE} 0 rows updated — table=agency_members user_id=${targetUserId} agencyId=${agencyId}. Kolom card_back_image_url mungkin belum ada.`);
-      return err(res, 500,
-        'Database update dikirim tapi 0 baris yang diperbarui. ' +
-        'Kemungkinan kolom card_back_image_url belum ada di tabel agency_members. ' +
-        'Jalankan supabase/card-back-image-migration.sql di Supabase SQL Editor lalu coba lagi.'
-      );
-    }
-
-    const savedRow = updateData[0];
-    console.log(`${ROUTE} SUCCESS — table=agency_members user_id=${savedRow.user_id} card_back_image_url=${savedRow.card_back_image_url}`);
-    return ok(res, { ok: true, url: savedRow.card_back_image_url ?? canonicalUrl });
-
+    return ok(res, { ok: true, url: updated[0].card_back_image_url });
   } catch (e) {
-    console.error(`${ROUTE} unhandled exception:`, e);
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }
 });
 
 /* ──────────────────────────────────────────────
-   GET /api/health-check
-   Provider-agnostic health check: Vercel / Replit / Local.
-   Validates Supabase config + DB + storage connectivity.
-   Safe to call from frontend — never leaks service-role key.
-   Returns: { ok, provider, serviceRole, projectUrl, database, storage, bucketStatus, errors }
+   GET /api/health-check — Replit PostgreSQL connectivity
 ────────────────────────────────────────────── */
-function detectProvider() {
-  if (process.env.VERCEL || process.env.VERCEL_ENV || process.env.VERCEL_URL) return 'vercel';
-  if (process.env.REPL_ID || process.env.REPLIT_DB_URL || process.env.REPL_SLUG) return 'replit';
-  return 'local';
-}
-function envLabel(provider) {
-  if (provider === 'vercel') return 'Vercel Environment Variables';
-  if (provider === 'replit') return 'Replit Secrets';
-  return 'environment variables';
-}
-
 app.get('/api/health-check', async (req, res) => {
-  const ROUTE = '[health-check]';
-  const BUCKETS_TO_CHECK = ['jamaah-photos', 'jamaah-docs', 'card-backs', 'pdf-templates'];
-  const provider = detectProvider();
-  const label = envLabel(provider);
-
   const result = {
-    ok:           true,
-    provider,
-    serviceRole:  false,
-    projectUrl:   null,    // VITE_ var — already in frontend bundle, safe to expose
-    database:     false,
-    storage:      false,
-    bucketStatus: {},      // { bucketName: 'ok' | 'missing' }
-    errors:       [],
+    ok: true,
+    provider: 'replit',
+    database: false,
+    auth: false,
+    errors: [],
   };
-
-  // ── 1. Environment / config check ────────────────────────────────────────
-  if (!SUPABASE_URL) {
-    result.ok = false;
-    result.errors.push(`VITE_SUPABASE_URL tidak dikonfigurasi di ${label}.`);
-  } else {
-    result.projectUrl = SUPABASE_URL;
-  }
-
-  if (!SERVICE_ROLE_KEY) {
-    result.ok = false;
-    result.errors.push(`SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di ${label}.`);
-  } else {
-    result.serviceRole = true;
-  }
-
-  if (!result.serviceRole || !result.projectUrl) {
-    console.warn(`${ROUTE} config invalid (provider: ${provider}) — skip DB/storage checks`);
-    return res.status(503).json(result);
-  }
-
-  // ── 2. Database connectivity check ───────────────────────────────────────
   try {
-    const admin = makeAdminClient();
-    const { error: dbErr } = await withTimeout(
-      admin.from('agencies').select('id').limit(1),
-      8000,
-      'DB health check timed out setelah 8s — cek koneksi Supabase',
-    );
-    if (dbErr) {
-      result.ok = false;
-      const hint = classifySupabaseError(dbErr, 'health-check/db');
-      result.errors.push(`Database tidak bisa diakses: ${dbErr.message}`);
-      if (hint) result.errors.push(hint);
-      console.error(`${ROUTE} DB check FAILED:`, dbErr.message);
-    } else {
-      result.database = true;
-      console.log(`${ROUTE} DB check OK`);
-    }
+    await pool.query('SELECT 1');
+    result.database = true;
   } catch (e) {
     result.ok = false;
-    const msg = e instanceof Error ? e.message : String(e);
-    result.errors.push(`Database exception: ${msg}`);
-    console.error(`${ROUTE} DB check exception:`, msg);
+    result.errors.push(`Database: ${e.message}`);
   }
-
-  // ── 3. Storage bucket check ───────────────────────────────────────────────
-  try {
-    const admin = makeAdminClient();
-    const { data: buckets, error: listErr } = await withTimeout(
-      admin.storage.listBuckets(),
-      8000,
-      'Storage health check timed out setelah 8s',
-    );
-    if (listErr) {
-      result.ok = false;
-      result.errors.push(`Storage tidak bisa diakses: ${listErr.message}`);
-      console.error(`${ROUTE} storage list FAILED:`, listErr.message);
-    } else {
-      const bucketIds = new Set((buckets ?? []).map((b) => b.id));
-      let allOk = true;
-      for (const name of BUCKETS_TO_CHECK) {
-        const exists = bucketIds.has(name);
-        result.bucketStatus[name] = exists ? 'ok' : 'missing';
-        if (!exists) {
-          allOk = false;
-          result.errors.push(`Bucket '${name}' tidak ditemukan — buat di Supabase Storage dashboard`);
-          console.warn(`${ROUTE} bucket MISSING: ${name}`);
-        }
-      }
-      result.storage = allOk;
-      if (!allOk) result.ok = false;
-      console.log(`${ROUTE} storage check — buckets: ${JSON.stringify(result.bucketStatus)}`);
-    }
-  } catch (e) {
-    result.ok = false;
-    const msg = e instanceof Error ? e.message : String(e);
-    result.errors.push(`Storage exception: ${msg}`);
-    console.error(`${ROUTE} storage check exception:`, msg);
-  }
-
-  console.log(`${ROUTE} done — ok=${result.ok} db=${result.database} storage=${result.storage} errors=${result.errors.length}`);
+  result.auth = !!(process.env.REPL_ID);
+  if (!result.auth) result.errors.push('REPL_ID tidak ditemukan — Replit Auth mungkin tidak berfungsi');
   return res.status(result.ok ? 200 : 503).json(result);
 });
 
@@ -1858,330 +1123,91 @@ app.get('/api/health-check', async (req, res) => {
 app.post('/api/backfill-field-fees', async (req, res) => {
   const ROUTE = '[backfill-field-fees]';
   try {
-    if (!SERVICE_ROLE_KEY) {
-      return err(res, 503,
-        'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di server. ' +
-        'Tambahkan di Replit Secrets lalu restart server.'
-      );
-    }
-    if (!SUPABASE_URL) {
-      return err(res, 503, 'VITE_SUPABASE_URL belum dikonfigurasi di server.');
-    }
+    if (!req.isAuthenticated || !req.isAuthenticated()) return err(res, 401, 'Login dulu');
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return err(res, 401, 'Missing Authorization header');
-
-    const caller = await getCallerUser(authHeader, 8000).catch(() => null);
-    if (!caller) return err(res, 401, 'Sesi tidak valid — login ulang dulu');
-
-    const admin = makeAdminClient();
-
-    const { data: membership, error: memErr } = await withTimeout(
-      admin.from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle(),
-      8000, 'DB timeout saat verifikasi membership'
+    const { rows: memRows } = await pool.query(
+      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [req.user.id],
     );
-    if (memErr) {
-      console.error(`${ROUTE} membership lookup error:`, memErr.message);
-      return err(res, 500, `DB error saat verifikasi membership: ${memErr.message}`);
-    }
-    if (!membership) {
-      return err(res, 403, `Caller ${caller.id} tidak terdaftar di agency manapun`);
-    }
-    if (membership.role === 'agent') {
-      return err(res, 403, 'Hanya owner/staff yang dapat melakukan backfill fee');
-    }
+    if (!memRows[0]) return err(res, 403, 'Tidak terdaftar di agency manapun');
+    if (memRows[0].role === 'agent') return err(res, 403, 'Hanya owner/staff yang dapat melakukan backfill fee');
 
-    const agencyId = membership.agency_id;
+    const agencyId = memRows[0].agency_id;
     const { agentId: filterAgentId } = req.body ?? {};
-    console.log(`${ROUTE} caller=${caller.id} agency=${agencyId} filter=${filterAgentId ?? 'semua'}`);
+    console.log(`${ROUTE} caller=${req.user.id} agency=${agencyId} filter=${filterAgentId ?? 'semua'}`);
 
-    // ── Preflight: verify agent_wallet_transactions table is accessible ───────
-    const { error: preflightErr } = await withTimeout(
-      admin.from('agent_wallet_transactions').select('id').limit(1),
-      6000, 'Timeout saat preflight check agent_wallet_transactions'
+    const { rows: orders } = await pool.query(
+      `SELECT id, type, status, metadata, created_by_agent
+       FROM orders WHERE agency_id = $1 AND status = 'Completed'`,
+      [agencyId],
     );
-    if (preflightErr) {
-      const isNotFound = preflightErr.code === '42P01' ||
-                         (preflightErr.message ?? '').includes('does not exist') ||
-                         (preflightErr.message ?? '').includes('relation');
-      const fix = isNotFound
-        ? 'Tabel agent_wallet_transactions belum ada. Jalankan supabase/migrations/2026_05_04_cloud_sync_tables.sql di Supabase SQL Editor.'
-        : `Tabel agent_wallet_transactions tidak dapat diakses: ${preflightErr.message}`;
-      console.error(`${ROUTE} preflight FAILED (code=${preflightErr.code}):`, preflightErr.message);
-      return err(res, 500, fix);
-    }
-    console.log(`${ROUTE} preflight OK`);
-
-    // ── Fetch all Completed orders for this agency ────────────────────────────
-    const { data: orders, error: ordersErr } = await withTimeout(
-      admin.from('orders')
-        .select('id, type, status, metadata, created_by_agent')
-        .eq('agency_id', agencyId)
-        .eq('status', 'Completed'),
-      20000, 'Timeout saat fetch orders untuk backfill'
-    );
-    if (ordersErr) {
-      console.error(`${ROUTE} orders fetch error:`, ordersErr.message);
-      return err(res, 500, `Gagal fetch orders: ${ordersErr.message}`);
-    }
-    console.log(`${ROUTE} fetched ${(orders ?? []).length} Completed orders`);
+    console.log(`${ROUTE} fetched ${orders.length} Completed orders`);
 
     const results = { credited: 0, skipped: 0, errors: 0 };
     const errorSamples = [];
     const now = new Date().toISOString();
 
-    /** Classify and collect an error; detect CHECK constraint violations. */
-    function collectErr(label, txErr) {
+    function collectErr(label, e) {
       results.errors++;
-      const msg = txErr?.message ?? String(txErr);
-      const isConstraint =
-        msg.includes('violates check constraint') ||
-        msg.includes('_type_check') ||
-        txErr?.code === '23514';
-      const detail = isConstraint
-        ? `CHECK constraint violation untuk type — jalankan supabase/wallet-sync-fix.sql di Supabase SQL Editor`
-        : msg;
-      console.error(`${ROUTE} tx error [${label}]:`, detail);
-      if (errorSamples.length < 5) errorSamples.push(`[${label}] ${detail}`);
+      const msg = e?.message ?? String(e);
+      console.error(`${ROUTE} tx error [${label}]:`, msg);
+      if (errorSamples.length < 5) errorSamples.push(`[${label}] ${msg}`);
     }
 
-    /** Upsert one wallet tx; returns true on success. */
     async function upsertTx(txId, agentId, type, amountIdr, description) {
-      const { error: txErr } = await admin.from('agent_wallet_transactions').upsert(
-        {
-          id:           txId,
-          agency_id:    agencyId,
-          agent_id:     agentId,
-          type,
-          points_delta: 0,
-          amount_idr:   amountIdr,
-          description,
-          created_by:   caller.id,
-          created_at:   now,
-        },
-        { onConflict: 'id' }
-      );
-      return txErr ? txErr : null;
+      try {
+        await pool.query(
+          `INSERT INTO agent_wallet_transactions
+             (id, agency_id, agent_id, type, points_delta, amount_idr, description, created_by, created_at)
+           VALUES ($1,$2,$3,$4,0,$5,$6,$7,$8)
+           ON CONFLICT (id) DO NOTHING`,
+          [txId, agencyId, agentId, type, amountIdr, description, req.user.id, now],
+        );
+        return null;
+      } catch (e) { return e; }
     }
 
-    for (const order of (orders ?? [])) {
+    async function markMeta(orderId, meta, patch) {
+      const updated = { ...meta, ...patch };
+      await pool.query('UPDATE orders SET metadata = $2 WHERE id = $1', [orderId, JSON.stringify(updated)]).catch(() => {});
+    }
+
+    for (const order of orders) {
       const meta = order.metadata ?? {};
       const oid8 = String(order.id).slice(0, 8);
 
-      // ── 1. VOA field agent fee (voaFieldAgentId + voaAgentFee) ────────────
-      // NOTE: do NOT skip when voaFeeCredited=true — rely on the idempotency
-      // key (voa-{orderId}) instead. This ensures that if the flag was ever
-      // set without the wallet tx actually being written (race condition /
-      // prior bug), the backfill still repairs the gap.
-      const voaAgentId = meta.voaFieldAgentId;
-      const voaFee     = Number(meta.voaAgentFee ?? 0);
-      if (voaAgentId && voaFee > 0 && (!filterAgentId || filterAgentId === voaAgentId)) {
-        const txErr = await upsertTx(
-          `voa-${order.id}`, voaAgentId, 'voa_agent_fee', voaFee,
-          `Fee Agent Lapangan VOA — order #${oid8}`
-        );
+      const checks = [
+        [meta.voaFieldAgentId,              Number(meta.voaAgentFee ?? 0),        'voa_agent_fee',  `Fee Agent Lapangan VOA — order #${oid8}`,       `voa-${order.id}`,        'voaFeeCredited'],
+        [meta.fieldAgentId,                 Number(meta.fieldAgentFee ?? 0),       'voa_agent_fee',  `Fee Agent Lapangan — order #${oid8}`,           `field-${order.id}`,      'fieldFeeCredited'],
+        [meta.visaExecutorId,               Number(meta.executorFee ?? 0),         'pelaksana_fee',  `Fee Pelaksana Visa — order #${oid8}`,           `executor-${order.id}`,   'executorFeeCredited'],
+        [meta.assignedOperationalAgentId,   Number(meta.operationalAgentFee ?? 0), 'voa_agent_fee',  `Fee Agent Operasional — order #${oid8}`,        `op-${order.id}`,         'operationalFeeCredited'],
+        [order.type === 'visa_student' ? meta.pelaksanaId : null, Number(meta.pelaksanaFee ?? (order.type === 'visa_student' && meta.pelaksanaId ? 200000 : 0)), 'pelaksana_fee', `Fee Pelaksana Visa Student — order #${oid8}`, `pelaksana-${order.id}`, 'pelaksanaFeeCredited'],
+        [meta.kurirAgentId,                 Number(meta.kurirFee ?? 0),            'kurir_fee',      `Fee Kurir Setoran — order #${oid8}`,            `kurir-${order.id}`,      'kurirFeeCredited'],
+        [order.created_by_agent,            Number(meta.agentFee ?? 0),            'order_bonus',    `Komisi Sales ${order.type} — order #${oid8}`,   `agent-${order.id}`,      'agentFeeCredited'],
+        [meta.salesAgentId && meta.salesAgentId !== order.created_by_agent ? meta.salesAgentId : null, Number(meta.salesCommission ?? meta.agentCommission ?? 0), 'order_bonus', `Komisi Sales Agent — order #${oid8}`, `salesagent-${order.id}`, null],
+        [meta.assignedAgentId,              Number(meta.assignedAgentFee ?? 0),    'voa_agent_fee',  `Fee Agent Ditugaskan — order #${oid8}`,         `assigned-${order.id}`,   null],
+        [meta.handlerAgentId,               Number(meta.handlerFee ?? 0),          'voa_agent_fee',  `Fee Handler — order #${oid8}`,                  `handler-${order.id}`,    null],
+        [meta.courierAgentId && meta.courierAgentId !== meta.kurirAgentId ? meta.courierAgentId : null, Number(meta.courierFee ?? 0), 'kurir_fee', `Fee Kurir — order #${oid8}`, `courier-${order.id}`, null],
+      ];
+
+      for (const [agentId, fee, type, desc, txId, creditedFlag] of checks) {
+        if (!agentId || fee <= 0) continue;
+        if (filterAgentId && filterAgentId !== agentId) continue;
+        const txErr = await upsertTx(txId, agentId, type, fee, desc);
         if (txErr) {
-          collectErr(`VOA #${oid8}`, txErr);
+          collectErr(`${txId}`, txErr);
         } else {
-          if (!meta.voaFeeCredited) {
-            await admin.from('orders')
-              .update({ metadata: { ...meta, voaFeeCredited: true } })
-              .eq('id', order.id);
+          if (creditedFlag && !meta[creditedFlag]) {
+            await markMeta(order.id, meta, { [creditedFlag]: true });
           }
-          results.credited++;
-        }
-      }
-
-      // ── 2. Generic field agent fee (fieldAgentId + fieldAgentFee) ─────────
-      const fieldAgentId = meta.fieldAgentId;
-      const fieldFee     = Number(meta.fieldAgentFee ?? 0);
-      if (fieldAgentId && fieldFee > 0 && (!filterAgentId || filterAgentId === fieldAgentId)) {
-        const txErr = await upsertTx(
-          `field-${order.id}`, fieldAgentId, 'voa_agent_fee', fieldFee,
-          `Fee Agent Lapangan — order #${oid8}`
-        );
-        if (txErr) {
-          collectErr(`field #${oid8}`, txErr);
-        } else {
-          if (!meta.fieldFeeCredited) {
-            await admin.from('orders')
-              .update({ metadata: { ...meta, fieldFeeCredited: true } })
-              .eq('id', order.id);
-          }
-          results.credited++;
-        }
-      }
-
-      // ── 3. Visa executor fee (visaExecutorId + executorFee) ───────────────
-      const executorId  = meta.visaExecutorId;
-      const executorFee = Number(meta.executorFee ?? 0);
-      if (executorId && executorFee > 0 && (!filterAgentId || filterAgentId === executorId)) {
-        const txErr = await upsertTx(
-          `executor-${order.id}`, executorId, 'pelaksana_fee', executorFee,
-          `Fee Pelaksana Visa — order #${oid8}`
-        );
-        if (txErr) {
-          collectErr(`executor #${oid8}`, txErr);
-        } else {
-          if (!meta.executorFeeCredited) {
-            await admin.from('orders')
-              .update({ metadata: { ...meta, executorFeeCredited: true } })
-              .eq('id', order.id);
-          }
-          results.credited++;
-        }
-      }
-
-      // ── 4. Operational agent fee (assignedOperationalAgentId + operationalAgentFee)
-      const opAgentId = meta.assignedOperationalAgentId;
-      const opFee     = Number(meta.operationalAgentFee ?? 0);
-      if (opAgentId && opFee > 0 && (!filterAgentId || filterAgentId === opAgentId)) {
-        const txErr = await upsertTx(
-          `op-${order.id}`, opAgentId, 'voa_agent_fee', opFee,
-          `Fee Agent Operasional — order #${oid8}`
-        );
-        if (txErr) {
-          collectErr(`op #${oid8}`, txErr);
-        } else {
-          if (!meta.operationalFeeCredited) {
-            await admin.from('orders')
-              .update({ metadata: { ...meta, operationalFeeCredited: true } })
-              .eq('id', order.id);
-          }
-          results.credited++;
-        }
-      }
-
-      // ── 5. Pelaksana visa_student fee (pelaksanaId + pelaksanaFee) ────────
-      const pelaksanaId = meta.pelaksanaId;
-      const pelFee      = Number(meta.pelaksanaFee ?? (order.type === 'visa_student' && pelaksanaId ? 200000 : 0));
-      if (order.type === 'visa_student' && pelaksanaId && pelFee > 0 && (!filterAgentId || filterAgentId === pelaksanaId)) {
-        const txErr = await upsertTx(
-          `pelaksana-${order.id}`, pelaksanaId, 'pelaksana_fee', pelFee,
-          `Fee Pelaksana Visa Student — order #${oid8}`
-        );
-        if (txErr) {
-          collectErr(`pelaksana #${oid8}`, txErr);
-        } else {
-          if (!meta.pelaksanaFeeCredited) {
-            await admin.from('orders')
-              .update({ metadata: { ...meta, pelaksanaFeeCredited: true } })
-              .eq('id', order.id);
-          }
-          results.credited++;
-        }
-      }
-
-      // ── 6. Kurir setoran fee (kurirAgentId + kurirFee) ────────────────────
-      const kurirAgentId = meta.kurirAgentId;
-      const kurirFee     = Number(meta.kurirFee ?? 0);
-      if (kurirAgentId && kurirFee > 0 && (!filterAgentId || filterAgentId === kurirAgentId)) {
-        const txErr = await upsertTx(
-          `kurir-${order.id}`, kurirAgentId, 'kurir_fee', kurirFee,
-          `Fee Kurir Setoran — order #${oid8}`
-        );
-        if (txErr) {
-          collectErr(`kurir #${oid8}`, txErr);
-        } else {
-          if (!meta.kurirFeeCredited) {
-            await admin.from('orders')
-              .update({ metadata: { ...meta, kurirFeeCredited: true } })
-              .eq('id', order.id);
-          }
-          results.credited++;
-        }
-      }
-
-      // ── 7. Sales commission from createdByAgent (order_bonus) ─────────────
-      // Backfill komisi sales untuk agen yang membuat order (createdByAgent).
-      // Idempotent: tx ID = `agent-{orderId}` (sama dengan saat real-time credit).
-      const createdByAgent = order.created_by_agent;
-      const salesFee       = Number(meta.agentFee ?? 0);
-      if (createdByAgent && salesFee > 0 && (!filterAgentId || filterAgentId === createdByAgent)) {
-        const txErr = await upsertTx(
-          `agent-${order.id}`, createdByAgent, 'order_bonus', salesFee,
-          `Komisi Sales ${order.type} — order #${oid8}`
-        );
-        if (txErr) {
-          collectErr(`sales #${oid8}`, txErr);
-        } else {
-          if (!meta.agentFeeCredited) {
-            await admin.from('orders')
-              .update({ metadata: { ...meta, agentFeeCredited: true } })
-              .eq('id', order.id);
-          }
-          results.credited++;
-        }
-      }
-
-      // ── 8. salesAgentId + salesCommission (alternate field names) ──────────
-      const salesAgentId = meta.salesAgentId;
-      const salesComm    = Number(meta.salesCommission ?? meta.agentCommission ?? 0);
-      if (salesAgentId && salesComm > 0 && salesAgentId !== createdByAgent &&
-          (!filterAgentId || filterAgentId === salesAgentId)) {
-        const txErr = await upsertTx(
-          `salesagent-${order.id}`, salesAgentId, 'order_bonus', salesComm,
-          `Komisi Sales Agent — order #${oid8}`
-        );
-        if (txErr) {
-          collectErr(`salesAgent #${oid8}`, txErr);
-        } else {
-          results.credited++;
-        }
-      }
-
-      // ── 9. assignedAgentId (generic field assignment fee) ─────────────────
-      const assignedAgentId  = meta.assignedAgentId;
-      const assignedAgentFee = Number(meta.assignedAgentFee ?? 0);
-      if (assignedAgentId && assignedAgentFee > 0 && (!filterAgentId || filterAgentId === assignedAgentId)) {
-        const txErr = await upsertTx(
-          `assigned-${order.id}`, assignedAgentId, 'voa_agent_fee', assignedAgentFee,
-          `Fee Agent Ditugaskan — order #${oid8}`
-        );
-        if (txErr) {
-          collectErr(`assigned #${oid8}`, txErr);
-        } else {
-          results.credited++;
-        }
-      }
-
-      // ── 10. handlerAgentId + handlerFee ───────────────────────────────────
-      const handlerAgentId = meta.handlerAgentId;
-      const handlerFee     = Number(meta.handlerFee ?? 0);
-      if (handlerAgentId && handlerFee > 0 && (!filterAgentId || filterAgentId === handlerAgentId)) {
-        const txErr = await upsertTx(
-          `handler-${order.id}`, handlerAgentId, 'voa_agent_fee', handlerFee,
-          `Fee Handler — order #${oid8}`
-        );
-        if (txErr) {
-          collectErr(`handler #${oid8}`, txErr);
-        } else {
-          results.credited++;
-        }
-      }
-
-      // ── 11. courierAgentId + courierFee (alternate kurir field name) ───────
-      const courierAgentId = meta.courierAgentId;
-      const courierFee     = Number(meta.courierFee ?? 0);
-      if (courierAgentId && courierFee > 0 && courierAgentId !== kurirAgentId &&
-          (!filterAgentId || filterAgentId === courierAgentId)) {
-        const txErr = await upsertTx(
-          `courier-${order.id}`, courierAgentId, 'kurir_fee', courierFee,
-          `Fee Kurir — order #${oid8}`
-        );
-        if (txErr) {
-          collectErr(`courier #${oid8}`, txErr);
-        } else {
           results.credited++;
         }
       }
     }
 
-    const errorSample = errorSamples.length > 0 ? errorSamples[0] : null;
+    const errorSample = errorSamples[0] ?? null;
     console.log(`${ROUTE} DONE — credited=${results.credited} skipped=${results.skipped} errors=${results.errors}`);
-    if (errorSamples.length > 0) console.error(`${ROUTE} error samples:`, errorSamples);
     return ok(res, { ok: true, ...results, errorSample });
-
   } catch (e) {
     console.error(`${ROUTE} unhandled exception:`, e);
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
@@ -2205,24 +1231,13 @@ app.post('/api/backfill-field-fees', async (req, res) => {
 ────────────────────────────────────────────── */
 app.post('/api/migrate-progress-steps', async (req, res) => {
   const ROUTE = '[migrate-progress-steps]';
-  if (!SERVICE_ROLE_KEY || !SUPABASE_URL) {
-    return err(res, 503, 'SUPABASE_SERVICE_ROLE_KEY atau VITE_SUPABASE_URL belum dikonfigurasi');
-  }
   try {
-    const admin = makeAdminClient();
-
-    // Optional auth check — allow owner/staff only
-    const authHeader = req.headers.authorization;
-    if (authHeader) {
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user }, error: authErr } = await admin.auth.getUser(token);
-      if (authErr || !user) return err(res, 401, 'Unauthorized');
-      const { data: memberRow } = await admin
-        .from('agency_members')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
-      if (!memberRow || !['owner', 'staff'].includes(memberRow.role)) {
+    if (req.isAuthenticated && req.isAuthenticated()) {
+      const { rows: memberRows } = await pool.query(
+        'SELECT role FROM agency_members WHERE user_id = $1 LIMIT 1',
+        [req.user.id],
+      );
+      if (!memberRows[0] || !['owner', 'staff'].includes(memberRows[0].role)) {
         return err(res, 403, 'Hanya owner/staff yang dapat menjalankan migrasi');
       }
     }
@@ -2233,66 +1248,36 @@ app.post('/api/migrate-progress-steps', async (req, res) => {
       visa_voa:     { 0: 2, 1: 3, 2: 3, 3: 4 },
       umrah:        { 0: 0, 1: 2, 2: 3, 3: 4, 4: 5 },
     };
-
-    // Unified step counts (new system) — used to detect already-migrated orders
     const NEW_MAX = { visa_student: 5, flight: 4, visa_voa: 4, umrah: 5 };
-
     const types = Object.keys(MIGRATIONS);
-    const { data: orders, error: fetchErr } = await admin
-      .from('orders')
-      .select('id, type, metadata')
-      .in('type', types);
 
-    if (fetchErr) return err(res, 500, fetchErr.message);
+    const { rows: orders } = await pool.query(
+      `SELECT id, type, metadata FROM orders WHERE type = ANY($1)`,
+      [types],
+    );
 
     let migrated = 0, skipped = 0, errors = 0;
     const errorSamples = [];
 
-    for (const order of (orders || [])) {
+    for (const order of orders) {
       const map = MIGRATIONS[order.type];
       if (!map) { skipped++; continue; }
-
       const meta = (order.metadata && typeof order.metadata === 'object') ? order.metadata : {};
-      if (!('processStep' in meta) || meta.processStep == null) {
-        // No processStep stored — nothing to migrate (will default to 0 = Order Dibuat)
-        skipped++;
-        continue;
-      }
-
+      if (!('processStep' in meta) || meta.processStep == null) { skipped++; continue; }
       const oldStep = Number(meta.processStep);
       const newMax  = NEW_MAX[order.type] ?? 5;
-
-      // Already migrated if stored value is in the new unified range (> old max keys)
       const oldMaxKey = Math.max(...Object.keys(map).map(Number));
-      if (oldStep > oldMaxKey) {
-        skipped++;
-        continue;
-      }
-
+      if (oldStep > oldMaxKey) { skipped++; continue; }
       const newStep = map[oldStep];
-      if (newStep === undefined || newStep === oldStep) {
-        // No change needed or no mapping (e.g. umrah step 0 → 0)
-        if (newStep === oldStep) { skipped++; continue; }
-        skipped++;
-        continue;
-      }
-
-      // Clamp to new max
+      if (newStep === undefined || newStep === oldStep) { skipped++; continue; }
       const clampedStep = Math.min(newStep, newMax);
-
       try {
-        const { error: updateErr } = await admin
-          .from('orders')
-          .update({ metadata: { ...meta, processStep: clampedStep } })
-          .eq('id', order.id);
-
-        if (updateErr) {
-          errors++;
-          if (errorSamples.length < 3) errorSamples.push({ id: order.id, error: updateErr.message });
-        } else {
-          migrated++;
-          console.log(`${ROUTE} migrated order ${order.id} type=${order.type} ${oldStep}→${clampedStep}`);
-        }
+        await pool.query(
+          'UPDATE orders SET metadata = $2 WHERE id = $1',
+          [order.id, JSON.stringify({ ...meta, processStep: clampedStep })],
+        );
+        migrated++;
+        console.log(`${ROUTE} migrated order ${order.id} type=${order.type} ${oldStep}→${clampedStep}`);
       } catch (e) {
         errors++;
         if (errorSamples.length < 3) errorSamples.push({ id: order.id, error: String(e) });
@@ -2301,7 +1286,6 @@ app.post('/api/migrate-progress-steps', async (req, res) => {
 
     console.log(`${ROUTE} DONE — migrated=${migrated} skipped=${skipped} errors=${errors}`);
     return ok(res, { ok: true, migrated, skipped, errors, errorSamples });
-
   } catch (e) {
     console.error(`${ROUTE} unhandled exception:`, e);
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
@@ -2323,95 +1307,17 @@ if (isProd) {
 }
 
 /* ──────────────────────────────────────────────
-   POST /api/setup-card-back
-   Auto-create bucket 'card-back-images' (public) via service-role key.
-   Called by frontend when upload fails with "bucket not found".
-   Returns: { ok, bucket, message }
+   POST /api/setup-card-back  (Supabase Storage removed — no-op)
 ────────────────────────────────────────────── */
-app.post('/api/setup-card-back', async (req, res) => {
-  const ROUTE = '[setup-card-back]';
-  if (!SERVICE_ROLE_KEY || !SUPABASE_URL) {
-    return err(res, 503, 'SUPABASE_SERVICE_ROLE_KEY atau VITE_SUPABASE_URL belum dikonfigurasi');
-  }
-  try {
-    const admin = makeAdminClient();
-    const BUCKET = 'card-back-images';
-
-    const { data: existing } = await admin.storage.getBucket(BUCKET);
-    if (existing) {
-      console.log(`${ROUTE} bucket '${BUCKET}' already exists`);
-      return ok(res, { ok: true, bucket: BUCKET, message: `Bucket '${BUCKET}' sudah ada.` });
-    }
-
-    const { error: createErr } = await admin.storage.createBucket(BUCKET, {
-      public: true,
-      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-      fileSizeLimit: 10 * 1024 * 1024,
-    });
-
-    if (createErr) {
-      const already = createErr.message?.toLowerCase().includes('already exists')
-        || createErr.message?.toLowerCase().includes('duplicate');
-      if (already) {
-        console.log(`${ROUTE} bucket '${BUCKET}' already exists (race)`);
-        return ok(res, { ok: true, bucket: BUCKET, message: `Bucket '${BUCKET}' sudah ada.` });
-      }
-      console.error(`${ROUTE} createBucket error:`, createErr.message);
-      return err(res, 500, `Gagal membuat bucket: ${createErr.message}`);
-    }
-
-    console.log(`${ROUTE} bucket '${BUCKET}' created successfully`);
-    return ok(res, { ok: true, bucket: BUCKET, message: `Bucket '${BUCKET}' berhasil dibuat.` });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error(`${ROUTE} exception:`, msg);
-    return err(res, 500, `Setup bucket gagal: ${msg}`);
-  }
+app.post('/api/setup-card-back', (req, res) => {
+  return ok(res, { ok: true, message: 'Storage bucket tidak diperlukan — gambar disimpan di database.' });
 });
-
-/* ──────────────────────────────────────────────
-   Auto-setup: create card-back-images bucket on startup (non-blocking).
-────────────────────────────────────────────── */
-async function ensureCardBackBucket() {
-  if (!SERVICE_ROLE_KEY || !SUPABASE_URL) return;
-  const BUCKET = 'card-back-images';
-  try {
-    const admin = makeAdminClient();
-    const { data: existing } = await admin.storage.getBucket(BUCKET);
-    if (existing) {
-      console.log(`[server] bucket '${BUCKET}' ✓ already exists`);
-      return;
-    }
-    const { error: createErr } = await admin.storage.createBucket(BUCKET, {
-      public: true,
-      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-      fileSizeLimit: 10 * 1024 * 1024,
-    });
-    if (createErr) {
-      const already = createErr.message?.toLowerCase().includes('already exists')
-        || createErr.message?.toLowerCase().includes('duplicate');
-      if (already) {
-        console.log(`[server] bucket '${BUCKET}' ✓ already exists (race)`);
-      } else {
-        console.warn(`[server] ⚠️  Gagal membuat bucket '${BUCKET}': ${createErr.message}`);
-        console.warn(`[server]    → Buat manual di Supabase Dashboard → Storage → New Bucket → "${BUCKET}" (Public)`);
-      }
-    } else {
-      console.log(`[server] bucket '${BUCKET}' ✓ dibuat otomatis`);
-    }
-  } catch (e) {
-    console.warn(`[server] ⚠️  ensureCardBackBucket exception:`, e?.message ?? e);
-  }
-}
-
-// Keep the event loop alive — @supabase/auth-js calls .unref() on its internal
-// timers, which would otherwise allow Node to exit when there are no active
-// HTTP connections.
-setInterval(() => {}, 1 << 30);
 
 app.listen(PORT, '0.0.0.0', () => {
   const mode = isProd ? 'production' : 'development';
   console.log(`[server] API running on port ${PORT} (${mode})`);
+  console.log(`[server] Auth: Replit OIDC`);
+  console.log(`[server] Database: Replit PostgreSQL`);
   console.log(`[server] ── Caption Generator & OCR (OpenRouter) ──`);
   console.log(`[server]   OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
   if (OPENROUTER_API_KEY) {
@@ -2419,21 +1325,13 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`[server]   Caption model : ${MODEL_CHAT}`);
     console.log(`[server]   Text model    : ${MODEL_TEXT}`);
   } else {
-    console.warn('[server] ⚠️  OPENROUTER_API_KEY tidak ditemukan — fitur OCR dan Caption Generator tidak akan berfungsi');
+    console.warn('[server] OPENROUTER_API_KEY tidak ditemukan — fitur OCR dan Caption Generator tidak akan berfungsi');
   }
-  console.log(`[server] ── AITEM / Asisten AI (OpenAI via Replit AI Integrations) ──`);
+  console.log(`[server] ── AITEM / Asisten AI ──`);
   console.log(`[server]   OPENAI_API_KEY detected: ${!!OPENAI_API_KEY}`);
-  console.log(`[server]   OPENAI_BASE_URL: ${OPENAI_BASE_URL}`);
   if (OPENAI_API_KEY) {
     console.log(`[server]   Assistant model : ${MODEL_ASSISTANT}`);
   } else {
-    console.warn('[server] ⚠️  OPENAI_API_KEY tidak ditemukan — fitur AITEM tidak akan berfungsi');
+    console.warn('[server] OPENAI_API_KEY tidak ditemukan — fitur AITEM tidak akan berfungsi');
   }
-  if (!SERVICE_ROLE_KEY) {
-    console.warn('[server] ⚠️  SUPABASE_SERVICE_ROLE_KEY tidak di-set — fitur invite/remove member tidak akan berfungsi');
-  }
-  if (!SUPABASE_URL) {
-    console.warn('[server] ⚠️  VITE_SUPABASE_URL tidak ditemukan');
-  }
-  ensureCardBackBucket().catch(() => {});
 });
