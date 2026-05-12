@@ -43,7 +43,9 @@ export const useRegionalStore = create<RegionalState>((set) => ({
       try {
         const { language, timezone, currency, dateFormat } = next;
         localStorage.setItem(LS_KEY, JSON.stringify({ language, timezone, currency, dateFormat }));
-      } catch {}
+      } catch {
+        // intentionally ignored — localStorage may be unavailable (private browsing / quota exceeded)
+      }
       return next;
     });
   },

@@ -57,6 +57,7 @@ export async function savePhotoUrl(userId: string, url: string): Promise<void> {
       .from("profiles")
       .upsert({ id: userId, photo_url: url }, { onConflict: "id" });
   } catch {
+    // intentionally ignored — non-critical background upsert, caller does not need to know
   }
 }
 
@@ -65,6 +66,7 @@ export async function deleteAvatar(userId: string): Promise<void> {
   try {
     await supabase.storage.from(BUCKET).remove([`${userId}/profile.jpg`]);
   } catch {
+    // intentionally ignored — storage delete failure is non-critical
   }
 }
 
