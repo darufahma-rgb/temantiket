@@ -665,6 +665,37 @@ async function handleOcrPassport(req, res, admin, caller) {
   }
 }
 
+// ── Route path extraction ─────────────────────────────────────────────────────
+// Vercel catch-all (api/[...path].js) normally populates req.query.path, but
+// when cleanUrls:true or certain rewrite configs are active, req.query.path can
+// be undefined/empty. Parsing req.url directly is the reliable fallback.
+//
+// Examples:
+//   GET /api/agency-members          → ['agency-members']
+//   GET /api/agency-members?foo=bar  → ['agency-members']
+//   GET /api/auth/user               → ['auth', 'user']
+//   GET /api/health-check            → ['health-check']
+//   GET /api/agency-members/abc-123  → ['agency-members', 'abc-123']
+
+function extractPathSegments(req) {
+  // 1. Standard Vercel catch-all: req.query.path is string[] of path parts
+  const qp = req.query?.path;
+  if (Array.isArray(qp) && qp.length > 0 && qp[0]) return qp;
+  if (typeof qp === 'string' && qp)                  return qp.split('/').filter(Boolean);
+
+  // 2. Fallback: derive from req.url — works regardless of routing config
+  //    req.url in Vercel serverless functions is the full request path, e.g.
+  //    "/api/agency-members?foo=bar". We strip /api/ and the query string.
+  try {
+    const base = new URL(req.url, 'http://x');
+    const after = base.pathname.replace(/^\/api(\/|$)/, '');
+    const parts = after.split('/').filter(Boolean);
+    if (parts.length > 0) return parts;
+  } catch { /* ignore malformed URLs */ }
+
+  return [];
+}
+
 // ── Main router ────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -673,7 +704,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const segments = Array.isArray(req.query.path) ? req.query.path : [req.query.path].filter(Boolean);
+  const segments = extractPathSegments(req);
   const [resource, subId] = segments;
 
   // ── Public routes (no auth required) ───────────────────────────────────────

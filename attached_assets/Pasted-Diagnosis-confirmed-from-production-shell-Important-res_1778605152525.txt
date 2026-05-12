@@ -1,0 +1,62 @@
+Diagnosis confirmed from production shell.
+
+Important results:
+- Supabase login works: token status 200.
+- /api/auth/user with token works: 200 and returns agencyId e3acc1fd-3dcb-41e9-b50e-d7e8665ae707.
+- Database data is NOT lost:
+  - agency_members has owner/agent/staff rows.
+  - clients has data.
+  - orders has data.
+  - agent_points has data.
+  - profiles has data.
+- But /api/agency-members returns:
+  404 {"error":"Route tidak ditemukan: GET /api/"}
+- This means the Vercel catch-all API route is parsing /api/agency-members incorrectly as /api/.
+
+Fix only Vercel API route parsing and agency-members route.
+
+Tasks:
+1. Open api/[...path].js.
+2. Fix route path detection for Vercel catch-all.
+   - It must correctly detect:
+     GET /api/auth/user
+     GET /api/agency-members
+     GET /api/health-check
+     POST /api/invite-member
+     POST /api/remove-member
+   - Do not rely on a path parser that collapses /api/agency-members into /api/.
+   - Use req.url safely, including query strings.
+   - Example expected normalized path:
+     new URL(req.url, "http://localhost").pathname
+     should be "/api/agency-members" for /api/agency-members?agencyId=...
+3. Fix GET /api/agency-members.
+   - It must accept Authorization: Bearer Supabase token.
+   - It must use /api/auth/user logic or equivalent to identify caller.
+   - It must return members for caller agency.
+   - It must include owner, agent, and staff.
+   - It should enrich member display name/email from profiles table if possible.
+   - It should include phone_wa and agent_notes if available.
+   - It must return JSON, not "Route tidak ditemukan".
+4. Make /api/health-check return a useful JSON response.
+   - It should not return Vercel 404.
+   - If auth is required, return 401 JSON intentionally.
+   - But route must exist.
+5. Do not touch database data.
+6. Do not recreate agents/staff.
+7. Do not change login UI.
+8. Run:
+   npm run lint
+   npm run test
+   npm run build
+9. Add or update a small local route normalization test if possible:
+   - /api/agency-members
+   - /api/agency-members?agencyId=abc
+   - /api/auth/user
+   - /api/health-check
+   should normalize correctly.
+10. Return:
+   - root cause
+   - files changed
+   - final route matching logic
+   - sample response for GET /api/agency-members
+   - proof build is clean

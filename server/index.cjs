@@ -1370,7 +1370,7 @@ app.post('/api/setup-card-back', (req, res) => {
   return ok(res, { ok: true, message: 'Storage bucket tidak diperlukan — gambar disimpan di database.' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+const _server = app.listen(PORT, '0.0.0.0', () => {
   const mode = isProd ? 'production' : 'development';
   console.log(`[server] API running on port ${PORT} (${mode})`);
   const authMode = process.env.REPL_ID ? 'Replit OIDC + Bearer JWT' : 'Bearer JWT (Supabase)';
@@ -1391,5 +1391,14 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`[server]   Assistant model : ${MODEL_ASSISTANT}`);
   } else {
     console.warn('[server] OPENAI_API_KEY tidak ditemukan — fitur AITEM tidak akan berfungsi');
+  }
+});
+
+_server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[server] Port ${PORT} already in use — exiting with code 1 so the process manager can restart cleanly.`);
+    process.exit(1);
+  } else {
+    console.error('[server] HTTP server error:', err.message);
   }
 });
