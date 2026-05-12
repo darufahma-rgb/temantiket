@@ -61,6 +61,8 @@ export interface MemberInfo {
   commissionPct: number;
   createdAt: string;
   photoUrl?: string;
+  phoneWa?: string | null;
+  agentNotes?: string | null;
 }
 
 interface AuthState {
@@ -356,7 +358,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const rows = await apiFetch<Array<{
         user_id: string; role: string; commission_pct: number; created_at: string;
         email: string | null; first_name: string | null; last_name: string | null;
-        profile_image_url: string | null;
+        profile_image_url: string | null; phone_wa: string | null; agent_notes: string | null;
       }>>("/api/agency-members");
       return rows.map((m) => {
         const isMe = m.user_id === user.id;
@@ -371,6 +373,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           commissionPct: Number(m.commission_pct ?? 0) || 0,
           createdAt: m.created_at,
           photoUrl: m.profile_image_url ?? undefined,
+          phoneWa: m.phone_wa ?? null,
+          agentNotes: m.agent_notes ?? null,
         };
       });
     } catch { return []; }

@@ -787,36 +787,33 @@ export default function StaffManagementCenter() {
   const currentUserId = user?.id ?? "";
 
   async function loadData() {
-    if (!supabase || !agencyId) return;
+    if (!agencyId) return;
     try {
       const [members] = await Promise.all([listMembers(), fetchOrders(), fetchClients()]);
       const staffOnly = members.filter((m) => m.role === "staff");
       setStaffMembers(staffOnly);
 
-      // Fetch WA numbers + notes from agency_members
-      const { data: extras } = await supabase
-        .from("agency_members")
-        .select("user_id, whatsapp_number, agent_notes")
-        .eq("agency_id", agencyId);
-      if (extras) {
-        setExtraMap(new Map(extras.map((e: { user_id: string; whatsapp_number?: string; agent_notes?: string }) =>
-          [e.user_id, { whatsapp_number: e.whatsapp_number, agent_notes: e.agent_notes }]
-        )));
+      // Build extras from the already-fetched members (phone_wa / agent_notes
+      // are returned by /api/agency-members and mapped into MemberInfo).
+      setExtraMap(new Map(members.map((m) => [
+        m.userId,
+        { whatsapp_number: m.phoneWa ?? null, agent_notes: m.agentNotes ?? null },
+      ])));
+
+      // Tasks and notes are Supabase-only features — skip when not configured.
+      if (supabase) {
+        try {
+          const { data: taskData, error: taskErr } = await supabase
+            .from("staff_tasks").select("*").eq("agency_id", agencyId).order("created_at", { ascending: false });
+          if (!taskErr) setTasks((taskData ?? []) as StaffTask[]);
+        } catch { /* table may not exist yet */ }
+
+        try {
+          const { data: noteData, error: noteErr } = await supabase
+            .from("staff_internal_notes").select("*").eq("agency_id", agencyId).order("created_at", { ascending: false });
+          if (!noteErr) setNotes((noteData ?? []) as StaffNote[]);
+        } catch { /* table may not exist yet */ }
       }
-
-      // Fetch tasks (graceful fallback)
-      try {
-        const { data: taskData, error: taskErr } = await supabase
-          .from("staff_tasks").select("*").eq("agency_id", agencyId).order("created_at", { ascending: false });
-        if (!taskErr) setTasks((taskData ?? []) as StaffTask[]);
-      } catch { /* table may not exist yet */ }
-
-      // Fetch internal notes (graceful fallback)
-      try {
-        const { data: noteData, error: noteErr } = await supabase
-          .from("staff_internal_notes").select("*").eq("agency_id", agencyId).order("created_at", { ascending: false });
-        if (!noteErr) setNotes((noteData ?? []) as StaffNote[]);
-      } catch { /* table may not exist yet */ }
 
     } catch (e) {
       toast.error("Gagal memuat data: " + (e instanceof Error ? e.message : String(e)));

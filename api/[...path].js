@@ -190,21 +190,37 @@ async function handleRemoveMember(req, res, admin, caller) {
 
 async function handleAgencyMembersGet(req, res, admin, caller) {
   try {
-    const { data: callerMember, error: callerErr } = await admin
+    // Use admin client if available; fall back to caller-scoped anon client.
+    // This allows the endpoint to work even when SUPABASE_SERVICE_ROLE_KEY is
+    // not configured — members are returned without Supabase Auth profile data
+    // (email/name) but the membership list itself is always populated.
+    const client = admin || createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: req.headers.authorization } },
+      auth: { persistSession: false },
+    });
+
+    const { data: callerMember, error: callerErr } = await client
       .from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle();
     if (callerErr || !callerMember) return res.status(403).json({ error: 'Tidak terdaftar di agency manapun' });
 
-    const { data: members, error: membersErr } = await admin
+    const { data: members, error: membersErr } = await client
       .from('agency_members')
       .select('user_id, role, commission_pct, created_at, phone_wa, agent_notes, agent_status, card_back_image_url')
       .eq('agency_id', callerMember.agency_id)
       .order('created_at', { ascending: true });
     if (membersErr) return res.status(500).json({ error: membersErr.message });
 
-    const { data: { users }, error: usersErr } = await admin.auth.admin.listUsers({ perPage: 1000 });
-    if (usersErr) return res.status(500).json({ error: usersErr.message });
+    // Enrich with Supabase Auth profile data when admin client is available.
+    // If not (SERVICE_ROLE_KEY missing), email/name will be null — the member
+    // list still renders with fallback display names.
+    let userMap = {};
+    if (admin) {
+      try {
+        const { data: { users } } = await admin.auth.admin.listUsers({ perPage: 1000 });
+        userMap = Object.fromEntries((users || []).map((u) => [u.id, u]));
+      } catch { /* graceful — profile enrichment is best-effort */ }
+    }
 
-    const userMap = Object.fromEntries((users || []).map((u) => [u.id, u]));
     const result = (members || []).map((m) => {
       const u = userMap[m.user_id];
       const meta = u?.user_metadata ?? {};
@@ -675,13 +691,20 @@ export default async function handler(req, res) {
   // auth/user uses its own user-scoped client — no SERVICE_ROLE_KEY needed
   if (resource === 'auth' && subId === 'user' && req.method === 'GET') return handleAuthUser(req, res, caller, authHeader);
 
+  // agency-members GET works without SERVICE_ROLE_KEY (graceful degradation:
+  // member list is always returned; profile enrichment is skipped if no admin).
+  if (resource === 'agency-members' && req.method === 'GET') {
+    let admin = null;
+    try { admin = makeAdminClient(); } catch { /* proceed without admin */ }
+    return handleAgencyMembersGet(req, res, admin, caller);
+  }
+
   let admin;
   try { admin = makeAdminClient(); }
   catch (e) { return res.status(503).json({ error: e.message }); }
 
   if (resource === 'agency-members') {
-    if (req.method === 'GET')              return handleAgencyMembersGet(req, res, admin, caller);
-    if (req.method === 'PUT' && subId)     return handleAgencyMembersPut(req, res, admin, caller, subId);
+    if (req.method === 'PUT' && subId) return handleAgencyMembersPut(req, res, admin, caller, subId);
   }
   if (resource === 'invite-member'           && req.method === 'POST') return handleInviteMember(req, res, admin, caller);
   if (resource === 'remove-member'           && req.method === 'POST') return handleRemoveMember(req, res, admin, caller);
