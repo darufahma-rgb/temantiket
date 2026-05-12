@@ -28,7 +28,7 @@ import { MultiLegTimeline } from "@/components/MultiLegTimeline";
 import { useAuthStore } from "@/store/authStore";
 import { useRatesStore } from "@/store/ratesStore";
 import {
-  scanTicketPriceScreenshot, parseGalileoTextToTickets,
+  scanTicketPriceScreenshot, parseGalileoTextToTickets, scanTicketPriceTextWithAI,
   getAirlineLogoUrl, getAirlineGradient,
   encodeReturnLeg, decodeReturnLeg,
   encodeMultiLeg, decodeMultiLeg, buildRouteLabel,
@@ -78,7 +78,8 @@ function formFromParsed(p: ParsedTicketPrice): FormState {
     fromCode: p.fromCode, fromCity: p.fromCity,
     toCode: p.toCode, toCity: p.toCity,
     departDate: p.departDate, basePrice: p.basePrice ?? 0,
-    currency: p.currency, validUntil: null, notes, isPublished: true,
+    currency: p.currency, validUntil: null, notes,
+    isPublished: p.confidence !== "low" && (p.basePrice != null && p.basePrice > 0) && p.fromCode !== "???" && p.toCode !== "???",
     flightNumber: outboundFlightNumber ?? null,
     etd: p.etd ?? null, eta: p.eta ?? null,
     terminal: p.terminal ?? null,
@@ -1661,8 +1662,9 @@ export default function TicketPrices() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Galileo text paste state (Fase 20)
+  // BC / Kode Sistem text paste state
   const [pasteText, setPasteText] = useState("");
+  const [scanningText, setScanningText] = useState(false);
 
   // Edit dialog
   const [editOpen, setEditOpen] = useState(false);
@@ -1777,21 +1779,24 @@ export default function TicketPrices() {
     );
   }
 
-  // ── Galileo text paste (Fase 20) ─────────────────────────────────────────
-  function handleParseText() {
+  // ── BC / Kode Sistem text paste (local parser + AI fallback) ────────────────
+  async function handleParseText() {
     if (!pasteText.trim()) {
-      toast.error("Tempel dulu text Galileo di textarea");
+      toast.error("Tempel dulu teks BC atau kode sistem di textarea");
       return;
     }
     setScanError(null);
     setParsedTickets([]);
     setPendingForms([]);
     setScanDebugInfos([]);
+    setScanningText(true);
 
-    const result = parseGalileoTextToTickets(pasteText);
+    const result = await scanTicketPriceTextWithAI(pasteText);
+
+    setScanningText(false);
 
     if (result.error || result.tickets.length === 0) {
-      setScanError(result.error ?? "Tidak ada segmen penerbangan yang ditemukan di text ini.");
+      setScanError(result.error ?? "Tidak ada data penerbangan ditemukan. Coba paste teks BC atau kode sistem yang lebih lengkap.");
       return;
     }
 
@@ -1802,12 +1807,15 @@ export default function TicketPrices() {
     saveDraft(forms);
     setPasteText("");
     const rtCount = result.grouped ?? 0;
+    const usedAI = result.usedAI ?? false;
     toast.success(
-      `Parser menemukan ${result.tickets.length} entri tiket (tanpa AI)!`,
+      `${usedAI ? "AI" : "Parser"} menemukan ${result.tickets.length} entri tiket!`,
       {
         description: rtCount > 0
           ? `${rtCount} paket pulang-pergi otomatis digabung. Markup diterapkan sekali per paket.`
-          : "Periksa detail sebelum menyimpan.",
+          : usedAI
+            ? "Diproses via AI. Periksa dan edit detail sebelum menyimpan."
+            : "Periksa detail sebelum menyimpan.",
       }
     );
   }
@@ -2530,16 +2538,16 @@ export default function TicketPrices() {
               }}
             />
 
-            {/* ── Fase 20: Galileo text paste ── */}
+            {/* ── BC / Kode Sistem text paste ── */}
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5">
                 <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
-                  Atau paste text Galileo langsung (tanpa AI, instan):
+                  Atau paste BC / Kode Sistem (Galileo, WhatsApp BC, booking text):
                 </span>
               </div>
               <Textarea
                 placeholder={
-                  "Contoh format display:\n  1 GF  70  N  03JUN  CAI  BAH  1715  2015   WE\n  2 GF 284  N  03JUN  BAH  GOI  2115  0340#  WE\n  TOTAL AMOUNT 29283.80 EGP\n\nAtau format PNR:\n  1 GF  70N 03JUN 3 CAIBAH HK1  1715 2015\n  2 GF 284N 03JUN 3 BAHGOI HK1  2115 0340+1"
+                  "Contoh Galileo display:\n  1 GF  70  N  03JUN  CAI  BAH  1715  2015   WE\n  2 GF 284  N  03JUN  BAH  GOI  2115  0340#  WE\n  TOTAL AMOUNT 29283.80 EGP\n\nContoh WhatsApp BC:\n  ✈️ GF70 CAI→GOI via BAH | 03 Jun 2025\n  Harga: 29.283 EGP | ETD 17:15"
                 }
                 className="font-mono text-[11px] min-h-[90px] resize-y bg-slate-50 border-slate-200 text-slate-700 placeholder:text-slate-300"
                 value={pasteText}
@@ -2549,11 +2557,13 @@ export default function TicketPrices() {
                 size="sm"
                 variant="outline"
                 className="w-full border-slate-300 text-slate-700 hover:bg-slate-100 text-[12px]"
-                disabled={!pasteText.trim()}
-                onClick={handleParseText}
+                disabled={!pasteText.trim() || scanningText}
+                onClick={() => void handleParseText()}
               >
-                <Sparkles className="w-3.5 h-3.5 mr-1.5 text-sky-500" />
-                Parse Text Galileo (Instan, Tanpa AI)
+                {scanningText
+                  ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Menganalisis via AI…</>
+                  : <><Sparkles className="w-3.5 h-3.5 mr-1.5 text-sky-500" />Analisis BC / Kode Sistem</>
+                }
               </Button>
             </div>
 
@@ -2647,6 +2657,15 @@ export default function TicketPrices() {
                               {isPPForm && <ArrowLeftRight className="w-2.5 h-2.5" />}
                               {typeLabel}
                             </span>
+                            {parsedTickets[idx]?.confidence === "high" && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">✓ Lengkap</span>
+                            )}
+                            {parsedTickets[idx]?.confidence === "medium" && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">⚠ Perlu Cek</span>
+                            )}
+                            {parsedTickets[idx]?.confidence === "low" && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">✗ Data Kurang</span>
+                            )}
                           </div>
                           <p className="text-[9.5px] text-slate-500 font-mono mt-0.5 truncate">{routeSummary}</p>
                         </div>
@@ -2677,6 +2696,18 @@ export default function TicketPrices() {
                             </span>
                           )}
                         </div>
+
+                        {/* ── WARNINGS ── */}
+                        {(parsedTickets[idx]?.warnings?.length ?? 0) > 0 && (
+                          <div className="flex items-start gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1.5">
+                            <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                              {parsedTickets[idx]!.warnings!.map((w, wi) => (
+                                <span key={wi} className="text-[9.5px] text-amber-700">{w}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* ── MULTI-LEG: Keberangkatan + Kepulangan sections ── */}
                         {isMLForm && pendingML && (

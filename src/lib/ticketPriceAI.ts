@@ -108,6 +108,9 @@ export interface ParsedTicketPrice {
   returnTransitDuration: string | null;
   // Fase 19.5: multi-leg payload (populated by mergeTransitChains)
   multiLeg?: MultiLegData;
+  // Confidence & warnings (populated by normalizeTicket)
+  confidence?: "high" | "medium" | "low";
+  warnings?: string[];
 }
 
 // ── Image helpers ─────────────────────────────────────────────────────────────
@@ -291,18 +294,41 @@ function normalizeTicket(t: Partial<ParsedTicketPrice>): ParsedTicketPrice {
 
   const isReturn = tripType === "return" || tripType === "multi_city";
 
+  const airline     = String(t.airline ?? "").trim() || "Unknown Airline";
+  const airlineCode = String(t.airlineCode ?? "").trim().toUpperCase().slice(0, 2) || "??";
+  const fromCode    = String(t.fromCode ?? "").trim().toUpperCase().slice(0, 3) || "???";
+  const toCode      = String(t.toCode ?? "").trim().toUpperCase().slice(0, 3) || "???";
+  const basePrice   = t.basePrice != null && !isNaN(Number(t.basePrice)) ? Number(t.basePrice) : null;
+  const departDate  = /^\d{4}-\d{2}-\d{2}$/.test(String(t.departDate ?? "")) ? String(t.departDate) : null;
+  const flightNumber = t.flightNumber ? String(t.flightNumber).trim().toUpperCase() : null;
+
+  // ── Confidence & warnings ──────────────────────────────────────────────────
+  const warnings: string[] = [];
+  if (!basePrice)                  warnings.push("Harga tidak terdeteksi");
+  if (airlineCode === "??")        warnings.push("Kode maskapai tidak dikenali");
+  if (fromCode === "???")          warnings.push("Kode bandara asal tidak valid");
+  if (toCode === "???")            warnings.push("Kode bandara tujuan tidak valid");
+  if (!departDate)                 warnings.push("Tanggal keberangkatan tidak ditemukan");
+  if (!flightNumber)               warnings.push("Nomor penerbangan tidak ditemukan");
+
+  const criticalCount = [fromCode === "???", toCode === "???"].filter(Boolean).length;
+  const majorCount    = [!basePrice, airlineCode === "??"].filter(Boolean).length;
+  const confidence: "high" | "medium" | "low" =
+    criticalCount > 0 ? "low" :
+    majorCount > 0    ? "medium" : "high";
+
   return {
-    airline:         String(t.airline ?? "").trim() || "Unknown Airline",
-    airlineCode:     String(t.airlineCode ?? "").trim().toUpperCase().slice(0, 2) || "??",
-    fromCode:        String(t.fromCode ?? "").trim().toUpperCase().slice(0, 3) || "???",
+    airline,
+    airlineCode,
+    fromCode,
     fromCity:        String(t.fromCity ?? "").trim(),
-    toCode:          String(t.toCode ?? "").trim().toUpperCase().slice(0, 3) || "???",
+    toCode,
     toCity:          String(t.toCity ?? "").trim(),
-    departDate:      /^\d{4}-\d{2}-\d{2}$/.test(String(t.departDate ?? "")) ? String(t.departDate) : null,
-    basePrice:       t.basePrice != null && !isNaN(Number(t.basePrice)) ? Number(t.basePrice) : null,
+    departDate,
+    basePrice,
     currency:        (["IDR","EGP","USD","SAR"].includes(String(t.currency ?? "")) ? t.currency : "IDR") as ParsedTicketPrice["currency"],
     tripType,
-    flightNumber:    t.flightNumber ? String(t.flightNumber).trim().toUpperCase() : null,
+    flightNumber,
     etd:             normalizeTime(t.etd as string | null),
     eta:             normalizeTime(t.eta as string | null),
     terminal:        t.terminal ? String(t.terminal).trim() : null,
@@ -320,6 +346,8 @@ function normalizeTicket(t: Partial<ParsedTicketPrice>): ParsedTicketPrice {
     returnTransitCode:   isReturn && t.returnTransitCode ? String(t.returnTransitCode).trim().toUpperCase().slice(0, 3) : null,
     returnTransitCity:   isReturn && t.returnTransitCity ? String(t.returnTransitCity).trim()                          : null,
     returnTransitDuration: isReturn && t.returnTransitDuration ? String(t.returnTransitDuration).trim()                : null,
+    confidence,
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
 
@@ -1126,6 +1154,95 @@ export function parseGalileoTextToTickets(text: string): ScanResult {
     source: "text",
   };
   return { tickets, usedAI: false, grouped, debug };
+}
+
+// ── AI text parser (BC / Kode Sistem fallback) ───────────────────────────────
+
+async function callAITextParser(text: string): Promise<ParsedTicketPrice[]> {
+  const resp = await callAI({
+    model: "openai/gpt-4.1-mini",
+    temperature: 0.05,
+    max_tokens: 4000,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: `Parse the following pasted TEXT (not an image) and extract ALL flight ticket options. The text may be a WhatsApp BC promo, booking confirmation, GDS itinerary, or any flight-related text. Return only JSON with a "tickets" array.\n\nTEXT TO PARSE:\n\n${text}`,
+      },
+    ],
+  }, { timeoutMs: 60_000 });
+
+  const json = await resp.json() as { choices: { message: { content: string } }[] };
+  const raw = json.choices?.[0]?.message?.content ?? "{}";
+
+  let parsed: { tickets?: ParsedTicketPrice[] } | ParsedTicketPrice[];
+  try {
+    const cleaned = raw.replace(/^```json?\s*/i, "").replace(/\s*```$/, "").trim();
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error("AI mengembalikan format JSON yang tidak valid.");
+  }
+
+  const tickets = Array.isArray(parsed)
+    ? parsed
+    : ((parsed as { tickets?: ParsedTicketPrice[] }).tickets ?? []);
+
+  return tickets.map(normalizeTicket);
+}
+
+/**
+ * scanTicketPriceTextWithAI — BC / Kode Sistem text parser with AI fallback.
+ *
+ * Flow:
+ *   1. Try parseGalileoTextToTickets(text) — fast local regex parser, no AI
+ *   2. If local parser finds tickets → return immediately
+ *   3. Otherwise fallback to AI text parser (handles BC WhatsApp, booking text, etc.)
+ */
+export async function scanTicketPriceTextWithAI(text: string): Promise<ScanResult> {
+  // Phase 1: local Galileo/GDS parser (instant, no AI cost)
+  const localResult = parseGalileoTextToTickets(text);
+  if (localResult.tickets.length > 0) {
+    return { ...localResult };
+  }
+
+  // Phase 2: AI text fallback
+  try {
+    const rawTickets = await callAITextParser(text);
+
+    if (rawTickets.length === 0) {
+      return {
+        tickets: [],
+        usedAI: true,
+        grouped: 0,
+        error: "AI tidak menemukan data penerbangan dari teks ini. Coba paste BC atau kode sistem yang lebih lengkap (maskapai, rute, jam, harga).",
+      };
+    }
+
+    const tickets = groupGalileoLegsSequentially(rawTickets);
+    const grouped = tickets.filter((t) => t.tripType === "return" || !!t.multiLeg).length;
+    const debug: ScanDebugInfo = {
+      rawSegmentsCount: rawTickets.length,
+      rawSegments: rawTickets.map((t) => ({
+        from: t.fromCode, to: t.toCode, flight: t.flightNumber ?? null,
+        date: t.departDate ?? null, tripType: t.tripType,
+      })),
+      firstOrigin: rawTickets[0]?.fromCode ?? null,
+      lastDestination: rawTickets[rawTickets.length - 1]?.toCode ?? null,
+      detectedType: tickets[0]?.tripType ?? "unknown",
+      groupedCount: tickets.length,
+      source: "ai",
+    };
+
+    return { tickets, usedAI: true, grouped, debug };
+  } catch (err) {
+    return {
+      tickets: [],
+      usedAI: true,
+      grouped: 0,
+      error: `AI gagal memproses teks: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -1,0 +1,53 @@
+Fungsikan import BC / kode sistem di fitur harga tiket dengan AI.
+
+Target file:
+- src/pages/TicketPrices.tsx
+- src/lib/ticketPriceAI.ts
+- src/features/ticketPrices/ticketPricesRepo.ts
+
+Requirement:
+1. Tambahkan input “Paste BC / Kode Sistem” di halaman TicketPrices.
+2. Saat user paste teks, kirim teks itu ke AI melalui helper existing callAI.
+3. AI harus mengekstrak data menjadi ParsedTicketPrice[].
+4. Support format:
+   - BC WhatsApp promo tiket
+   - Galileo/GDS text
+   - PNR itinerary
+   - teks bebas dari sistem booking
+5. Jika format Galileo/GDS sudah bisa diparse lokal, gunakan parseGalileoTextToTickets dulu.
+6. Jika parser lokal gagal / hasil kosong, fallback ke AI text parser.
+7. AI output wajib JSON valid:
+   {
+     "tickets": [...]
+   }
+8. Normalize hasil pakai normalizeTicket.
+9. Tampilkan preview hasil AI sebelum disimpan.
+10. User bisa edit hasil preview.
+11. Saat klik Import, convert ke TicketPriceDraft via formFromParsed lalu save pakai createTicketPrice.
+12. Jangan auto-publish kalau confidence rendah atau field penting kosong.
+13. Tambahkan confidence + warnings per tiket.
+14. Jangan merusak fitur upload screenshot existing.
+15. Pastikan npm run build lolos.
+
+Tambahkan fungsi baru di ticketPriceAI.ts:
+
+- scanTicketPriceTextWithAI(text: string): Promise<ParsedTicketPrice[]>
+
+Flow:
+- Coba parseGalileoTextToTickets(text)
+- Jika hasil ada, return hasil
+- Jika kosong, callAI dengan model text
+- AI membaca teks BC dan mengembalikan JSON
+- Parse JSON
+- Normalize
+- Return ParsedTicketPrice[]
+
+Prompt AI harus jelas:
+“You are a flight ticket BC parser for Indonesian travel agency Temantiket. Extract every ticket option from pasted text. Return only valid JSON.”
+
+Efek yang diinginkan:
+- Admin bisa paste BC tiket langsung.
+- AI membaca maskapai, rute, tanggal, jam, transit, harga, currency, tipe trip.
+- Hasil masuk ke preview.
+- Setelah disimpan, harga muncul di katalog harga tiket.
+- Input manual berkurang drastis.
