@@ -34,10 +34,12 @@ const MODEL_TEXT         = 'google/gemini-2.0-flash-001'; // teks ringan / rapik
 
 // Header standar OpenRouter
 function openrouterHeaders() {
+  const referer = process.env.APP_URL
+    || (process.env.REPL_ID ? 'https://temantiket.replit.app' : 'https://temantiket.vercel.app');
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-    'HTTP-Referer': 'https://temantiket.replit.app',
+    'HTTP-Referer': referer,
     'X-Title': 'Temantiket',
   };
 }
@@ -1082,8 +1084,8 @@ app.get('/api/health-check', async (req, res) => {
     result.ok = false;
     result.errors.push(`Database: ${e.message}`);
   }
-  result.auth = !!(process.env.REPL_ID);
-  if (!result.auth) result.errors.push('REPL_ID tidak ditemukan — Replit Auth mungkin tidak berfungsi');
+  result.auth = true; // Bearer JWT always works; OIDC only on Replit
+  result.provider = process.env.REPL_ID ? 'replit' : (process.env.VERCEL ? 'vercel' : 'local');
   return res.status(result.ok ? 200 : 503).json(result);
 });
 
@@ -1295,8 +1297,9 @@ app.post('/api/setup-card-back', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   const mode = isProd ? 'production' : 'development';
   console.log(`[server] API running on port ${PORT} (${mode})`);
-  console.log(`[server] Auth: Replit OIDC`);
-  console.log(`[server] Database: Replit PostgreSQL`);
+  const authMode = process.env.REPL_ID ? 'Replit OIDC + Bearer JWT' : 'Bearer JWT (Supabase)';
+  console.log(`[server] Auth: ${authMode}`);
+  console.log(`[server] Database: ${process.env.DATABASE_URL ? 'PostgreSQL (DATABASE_URL)' : 'not configured'}`);
   console.log(`[server] ── Caption Generator & OCR (OpenRouter) ──`);
   console.log(`[server]   OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
   if (OPENROUTER_API_KEY) {

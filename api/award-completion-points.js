@@ -1,0 +1,79 @@
+'use strict';
+
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL      = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
+const SUPABASE_ANON_KEY = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
+const SERVICE_ROLE_KEY  = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+
+function makeAdminClient() {
+  if (!SUPABASE_URL) throw new Error('VITE_SUPABASE_URL tidak dikonfigurasi');
+  if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY belum di-set');
+  return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+}
+
+async function getCallerUser(authHeader) {
+  if (!authHeader || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false },
+  });
+  const { data, error } = await client.auth.getUser();
+  if (error || !data.user) return null;
+  return data.user;
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Missing Authorization header' });
+
+    const caller = await getCallerUser(authHeader);
+    if (!caller) return res.status(401).json({ error: 'Sesi tidak valid — login ulang dulu' });
+
+    const admin = makeAdminClient();
+
+    const { data: callerMember, error: callerErr } = await admin
+      .from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle();
+    if (callerErr || !callerMember) return res.status(403).json({ error: 'Tidak terdaftar di agency' });
+    if (!['owner', 'staff'].includes(callerMember.role)) {
+      return res.status(403).json({ error: 'Hanya owner atau staff yang bisa award poin' });
+    }
+
+    const { orderId, agentId } = req.body || {};
+    if (!orderId || !agentId) return res.status(400).json({ error: 'orderId dan agentId diperlukan' });
+
+    const agencyId = callerMember.agency_id;
+
+    const { data: targetMember, error: targetErr } = await admin
+      .from('agency_members').select('role')
+      .eq('user_id', agentId).eq('agency_id', agencyId).maybeSingle();
+    if (targetErr || !targetMember) return res.status(404).json({ error: 'Agen tidak ditemukan di agency ini' });
+    if (targetMember.role !== 'agent') {
+      return res.status(200).json({ ok: true, awarded: 0, reason: 'not_agent', role: targetMember.role });
+    }
+
+    const { error: insertErr } = await admin.from('agent_points').upsert({
+      agency_id:  agencyId,
+      agent_id:   agentId,
+      order_id:   orderId,
+      points:     20,
+      reason:     'order_completed',
+      awarded_at: new Date().toISOString(),
+    }, { onConflict: 'order_id', ignoreDuplicates: true });
+
+    if (insertErr) return res.status(500).json({ error: insertErr.message });
+
+    return res.status(200).json({ ok: true, points: 20 });
+  } catch (e) {
+    console.error('[award-completion-points]', e);
+    return res.status(500).json({ error: e.message });
+  }
+}
