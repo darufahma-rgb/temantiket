@@ -461,6 +461,34 @@ Rules:
 - gender must be exactly "L" (laki-laki) or "P" (perempuan), null if unreadable.
 - Return ONLY the JSON object, nothing else.`;
 
+async function handleAuthUser(req, res, admin, caller) {
+  try {
+    const { data: membership, error: memErr } = await admin
+      .from('agency_members')
+      .select('agency_id, role, commission_pct, agencies(name)')
+      .eq('user_id', caller.id)
+      .maybeSingle();
+    if (memErr) return res.status(500).json({ error: memErr.message });
+
+    const meta = caller.user_metadata ?? {};
+    const fullName = (meta.full_name ?? meta.display_name ?? '').trim();
+    const displayName = fullName || caller.email?.split('@')[0] || 'User';
+
+    return res.status(200).json({
+      id:              caller.id,
+      email:           caller.email ?? '',
+      displayName,
+      profileImageUrl: meta.avatar_url ?? meta.profile_image_url ?? null,
+      role:            membership?.role ?? null,
+      agencyId:        membership?.agency_id ?? null,
+      agencyName:      membership?.agencies?.name ?? null,
+      commissionPct:   Number(membership?.commission_pct ?? 0),
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+}
+
 async function handleOcrPassport(req, res, admin, caller) {
   try {
     if (!OPENAI_API_KEY) return res.status(503).json({ error: 'OPENAI_API_KEY belum di-set di Vercel Environment Variables.' });
@@ -543,6 +571,8 @@ export default async function handler(req, res) {
   let admin;
   try { admin = makeAdminClient(); }
   catch (e) { return res.status(503).json({ error: e.message }); }
+
+  if (resource === 'auth' && subId === 'user' && req.method === 'GET') return handleAuthUser(req, res, admin, caller);
 
   if (resource === 'agency-members') {
     if (req.method === 'GET')              return handleAgencyMembersGet(req, res, admin, caller);
