@@ -48,6 +48,7 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: "Temantiket - Manajemen Umrah & Haji",
         short_name: "Temantiket",
+        version: "2.1.0",
         description: "Aplikasi manajemen trip, jamaah, paket, kalkulasi biaya, dan dokumen untuk Umrah dan Haji.",
         theme_color: "#1a44d4",
         background_color: "#1a44d4",

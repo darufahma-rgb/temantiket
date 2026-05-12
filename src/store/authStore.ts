@@ -141,56 +141,22 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return json as T;
 }
 
+// ── fetchCurrentUser via /api/auth/user ──────────────────────────────────────
+//
+// Selalu memanggil /api/auth/user dengan Bearer token Supabase.
+// Server-side handler melakukan safe-linking akun lama berdasarkan email
+// bila user_id di agency_members berbeda dengan Supabase JWT sub.
+// Ini menghindari query langsung ke tabel Supabase dari frontend yang
+// berpotensi gagal karena RLS atau user_id lama (dari Replit bootstrap).
+
 async function fetchCurrentUser(): Promise<AuthUser | null> {
-  // Primary path: query Supabase directly — no server round-trip needed
-  if (isSupabaseConfigured() && supabase) {
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (!user || error) return null;
-
-      const { data: membership } = await supabase
-        .from("agency_members")
-        .select("agency_id, role, commission_pct, agencies(name)")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (!membership) return null;
-
-      const m = membership as {
-        agency_id: string;
-        role: string;
-        commission_pct: number;
-        agencies: { name: string } | null;
-      };
-
-      const displayName =
-        (user.user_metadata?.display_name as string) ||
-        (user.user_metadata?.full_name as string) ||
-        user.email?.split("@")[0] ||
-        "User";
-
-      return {
-        id: user.id,
-        email: user.email ?? "",
-        displayName,
-        role: m.role as UserRole,
-        agencyId: m.agency_id,
-        agencyName: m.agencies?.name ?? "Agency",
-        commissionPct: Number(m.commission_pct ?? 0),
-        profileImageUrl: (user.user_metadata?.avatar_url as string) ?? null,
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  // Fallback: server session (Replit OIDC) — only if we already have a token/session
   if (!_accessToken) return null;
   try {
     const data = await apiFetch<{
       id: string; email: string; displayName: string;
       role: UserRole | null; agencyId: string | null; agencyName: string | null;
       commissionPct: number; profileImageUrl?: string | null;
+      code?: string;
     }>("/api/auth/user");
     if (!data.agencyId || !data.role) return null;
     return {
@@ -259,16 +225,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             set({ user, isAuthenticated: true, needsBootstrap: false, isInitialized: true, isLoading: false });
             return;
           } else {
-            // Logged in to Supabase but no agency/membership yet
+            // Logged in to Supabase but no agency/membership — needs bootstrap
             set({ user: null, isAuthenticated: false, needsBootstrap: true, isInitialized: true, isLoading: false });
             return;
           }
         }
-      } else {
-        // Supabase not configured — cannot authenticate, stay on login page
-        set({ user: null, isAuthenticated: false, needsBootstrap: false, isInitialized: true, isLoading: false });
-        return;
       }
+      // No session or Supabase not configured — go to login page
       set({ user: null, isAuthenticated: false, isInitialized: true, isLoading: false });
     } catch {
       set({ user: null, isAuthenticated: false, isInitialized: true, isLoading: false });
@@ -358,9 +321,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     _accessToken = null;
     if (isSupabaseConfigured() && supabase) {
       await supabase.auth.signOut().catch(() => { /* ignore errors */ });
-    } else {
-      // Fallback: session-based logout
-      await fetch("/api/logout", { credentials: "include" }).catch(() => { /* ignore */ });
     }
     set({
       user: null,

@@ -1,0 +1,121 @@
+Bereskan total masalah login production yang masih nyasar ke /api/login, dan pastikan akun/agency lama yang sebelumnya sudah bisa login tetap bisa dipakai tanpa membuat ulang dari awal.
+
+Konteks:
+- Production target adalah Vercel.
+- Auth yang benar sekarang adalah Supabase Auth email + password.
+- Frontend tidak boleh lagi memanggil /api/login atau /api/logout.
+- User lama pernah dibuat lewat /bootstrap dan sebelumnya sudah bisa login.
+- Jangan paksa user membuat agency baru kalau membership/agency lama sebenarnya sudah ada.
+- Masalah saat ini: setelah login, app masih stuck/nyasar ke login karena legacy Replit Auth/cache/bundle lama atau profile endpoint tidak mengembalikan membership dengan benar.
+
+Tugas utama:
+
+1. Bersihkan legacy Replit Auth dari frontend:
+   - Cari semua referensi:
+     - /api/login
+     - /api/logout
+     - api/login
+     - api/logout
+     - Replit Auth
+     - setupAuth
+     - isAuthenticated
+     - window.location.href = "/api/login"
+     - window.location.assign("/api/login")
+     - fetch("/api/logout")
+   - Di frontend src/, hapus semua pemanggilan /api/login dan /api/logout.
+   - Pastikan Login.tsx hanya memakai Supabase email/password.
+   - Pastikan authStore.ts login(email, password) hanya memakai supabase.auth.signInWithPassword().
+   - Pastikan logout hanya memakai supabase.auth.signOut() dan membersihkan state lokal.
+   - Jangan redirect ke Replit Auth.
+   - Jangan fetch /api/logout.
+
+2. Pastikan akun lama tidak perlu dibuat ulang:
+   - Setelah login Supabase sukses, panggil /api/auth/user dengan Authorization: Bearer <supabase_access_token>.
+   - /api/auth/user harus mencari user berdasarkan Supabase JWT sub dan email.
+   - Jika user row lama ditemukan berdasarkan email tapi user_id berbeda karena sebelumnya dibuat lewat Replit/bootstrap lama, lakukan safe linking:
+     - Jangan buat agency baru.
+     - Jangan duplikasi membership.
+     - Update/link user lama ke Supabase auth user id bila aman.
+     - Pastikan agency_members lama ikut tersambung ke Supabase user id.
+   - Jika agency_members ada dengan email yang sama tapi user_id lama berbeda, migrasikan/link ke Supabase user id.
+   - Kalau membership/agency lama sudah ada, return profile lengkap dan arahkan user ke dashboard.
+   - Hanya arahkan ke /bootstrap jika benar-benar tidak ada agency/membership lama yang bisa ditemukan.
+   - Tambahkan logging aman untuk kasus linking/migration, tanpa membocorkan token/password.
+
+3. Perbaiki /api/auth/user di Vercel API:
+   - Pastikan api/[...path].js punya handler GET /api/auth/user.
+   - Handler ini harus jalan tanpa SERVICE_ROLE_KEY untuk basic profile lookup bila memungkinkan.
+   - Namun untuk safe linking/migration user lama, jika butuh update database, gunakan SERVICE_ROLE_KEY hanya bila tersedia.
+   - Jika SERVICE_ROLE_KEY tidak tersedia dan butuh migration, return error jelas:
+     "Akun ditemukan tapi perlu admin migration. Set SUPABASE_SERVICE_ROLE_KEY lalu redeploy."
+   - Gunakan Authorization: Bearer token dari Supabase.
+   - Return profile lengkap:
+     id, email, name, agencyId, agencyName, role, commission, dan field lain yang dipakai frontend.
+   - Kalau token tidak ada atau invalid, return 401 JSON jelas.
+   - Kalau membership benar-benar tidak ada, return 404 JSON jelas dengan code: "NO_MEMBERSHIP".
+   - Jangan redirect ke /api/login dalam handler Vercel.
+
+4. Pastikan frontend tidak stuck:
+   - Kalau /api/auth/user sukses dan user punya agency/role, navigate ke dashboard sesuai role.
+   - Kalau /api/auth/user return NO_MEMBERSHIP, baru arahkan ke /bootstrap.
+   - Kalau /api/auth/user return migration-needed, tampilkan pesan jelas, jangan stuck di login page.
+   - Kalau /api/auth/user gagal karena 401/500, tampilkan error jelas di login page.
+   - Jangan biarkan loading tanpa akhir.
+
+5. Legacy Replit Auth:
+   - Jika file server/replitAuth.cjs atau server/replit_integrations/auth/* masih dibutuhkan untuk local/Replit dev, biarkan tapi pastikan tidak diimport/dipakai oleh Vercel API dan tidak dipanggil frontend.
+   - Jika tidak dibutuhkan untuk production, jangan biarkan memengaruhi build Vercel.
+   - Jangan hapus file secara membabi buta kalau masih dipakai local server, tapi boleh hapus reference production/frontend yang menyebabkan /api/login.
+
+6. PWA/cache:
+   - Pastikan build baru tidak mengandung string /api/login atau /api/logout di dist.
+   - Jika service worker/PWA bisa menyimpan bundle lama, bump cache/version atau pastikan service worker autoUpdate mengambil bundle baru.
+   - Pastikan registerSW/workbox tidak mempertahankan bundle login lama.
+
+7. Verifikasi wajib:
+   Jalankan:
+   npm run lint
+   npm run test
+   npm run build
+
+   Lalu jalankan:
+   grep -R "/api/login\|/api/logout" -n src dist api
+
+   Target:
+   - Tidak ada hasil di src/
+   - Tidak ada hasil di dist/
+   - api/ boleh hanya jika route legacy sengaja ada, tapi tidak boleh dipakai frontend
+   - Kalau masih ada hasil di dist, fix sampai bersih
+
+8. Berikan laporan akhir:
+   - file yang diubah
+   - root cause
+   - apakah akun lama dari bootstrap bisa dipakai lagi
+   - bagaimana linking akun lama ke Supabase user dilakukan
+   - bukti grep src/dist bersih dari /api/login dan /api/logout
+   - hasil lint/test/build
+   - langkah deploy ulang Vercel
+   - langkah clear PWA cache/browser
+
+Penting:
+- Jangan ubah UI besar.
+- Jangan ubah fitur lain.
+- Jangan hapus data agency lama.
+- Jangan buat agency baru kalau agency lama bisa ditemukan.
+- Fokus hanya auth production Supabase, recovery akun lama, dan menghilangkan legacy /api/login dan /api/logout dari frontend/build.
+- Jangan biarkan user stuck di login page tanpa error.
+
+Intinya yang lo tambahin adalah ini:
+
+Kalau akun lama sudah pernah dibuat lewat /bootstrap,
+jangan bikin ulang.
+Cari berdasarkan email / user lama,
+link ke Supabase user baru,
+lalu masukin user ke agency lama.
+
+Setelah AI selesai, yang paling penting lo cek dari laporannya:
+
+1. src dan dist sudah bersih dari /api/login
+2. /api/auth/user return profile lama yang benar
+3. user lama masuk dashboard, bukan bootstrap
+4. agency lama tidak diduplikasi

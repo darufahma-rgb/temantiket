@@ -1,0 +1,169 @@
+Buat laporan detail setelah perbaikan auth production selesai.
+
+Jangan edit file dulu kecuali perlu untuk verifikasi kecil. Fokus buat laporan yang bisa saya baca dan pahami.
+
+Saya butuh laporan lengkap dengan format berikut:
+
+# Laporan Detail Fix Login Production Temantiket
+
+## 1. Ringkasan Masalah
+Jelaskan dengan bahasa sederhana:
+- kenapa user sebelumnya stuck di login page
+- kenapa masih ada request ke /api/login
+- apakah penyebabnya source code, build lama, service worker cache, Vercel deployment, atau API route
+- apakah masalah berkaitan dengan Replit Auth legacy
+
+## 2. Root Cause Teknis
+Jelaskan secara teknis:
+- file mana yang menyebabkan masalah
+- flow lama yang salah
+- flow baru yang benar
+- apakah /api/auth/user sudah benar-benar dipakai setelah login Supabase
+- apakah frontend masih punya referensi ke /api/login atau /api/logout
+
+## 3. File yang Diubah
+Buat tabel:
+| File | Perubahan | Alasan | Risiko |
+Untuk setiap file yang diubah, jelaskan:
+- perubahan apa
+- kenapa perlu
+- efeknya ke login
+- apakah berpengaruh ke fitur lain
+
+## 4. Status Legacy Replit Auth
+Jelaskan:
+- file Replit Auth mana yang masih ada
+- apakah masih dipakai di frontend
+- apakah masih masuk ke build production
+- apakah aman dibiarkan untuk local/Replit dev
+- bukti bahwa production Vercel tidak lagi bergantung ke /api/login
+
+## 5. Status Supabase Auth
+Jelaskan:
+- Login.tsx sekarang pakai apa
+- authStore.ts sekarang pakai apa
+- logout sekarang pakai apa
+- bagaimana access token Supabase disimpan/dipakai
+- bagaimana /api/auth/user dipanggil
+- response apa yang diharapkan dari /api/auth/user
+
+## 6. Recovery Akun Lama / Bootstrap Lama
+Ini bagian paling penting.
+Jelaskan:
+- apakah akun lama yang dibuat lewat /bootstrap masih bisa dipakai
+- bagaimana sistem mencari akun lama
+- apakah pencarian berdasarkan Supabase user id, email, atau agency_members
+- apakah ada safe linking/migration user lama ke Supabase user id
+- apakah agency lama tetap dipakai
+- apakah sistem mencegah agency/member duplikat
+- kapan user diarahkan ke dashboard
+- kapan user diarahkan ke /bootstrap
+- apakah perlu SUPABASE_SERVICE_ROLE_KEY untuk migration/linking
+- kalau perlu, tulis env apa yang harus diset di Vercel
+
+## 7. Detail /api/auth/user
+Jelaskan:
+- route ini ada di file mana
+- method dan path exact-nya
+- apakah route ini butuh SERVICE_ROLE_KEY atau tidak
+- bagaimana route membaca Authorization: Bearer token
+- apa yang terjadi kalau token invalid
+- apa yang terjadi kalau membership ditemukan
+- apa yang terjadi kalau membership tidak ditemukan
+- contoh response sukses JSON
+- contoh response NO_MEMBERSHIP JSON
+- contoh response error JSON
+
+## 8. Bukti Grep Bersih
+Jalankan dan tampilkan output command ini:
+
+grep -R "/api/login\|/api/logout" -n src dist api
+
+Lalu jelaskan:
+- apakah src bersih
+- apakah dist bersih
+- apakah api masih punya legacy route
+- apakah legacy route tersebut dipakai frontend atau tidak
+
+Target:
+- src/ tidak boleh ada /api/login atau /api/logout
+- dist/ tidak boleh ada /api/login atau /api/logout
+- api/ boleh ada hanya kalau sengaja untuk fallback, tapi frontend tidak boleh memanggilnya
+
+## 9. Hasil Quality Check
+Jalankan:
+
+npm run lint
+npm run test
+npm run build
+
+Laporkan:
+- lint: sukses/gagal, jumlah error/warning
+- test: sukses/gagal, jumlah test
+- build: sukses/gagal, durasi build
+- apakah ada warning penting
+- apakah warning chunk/PWA masih non-blocking
+
+## 10. Cara Deploy ke Vercel
+Tuliskan langkah yang harus saya lakukan:
+1. push ke GitHub
+2. redeploy Vercel
+3. pastikan env vars
+4. clear cache/service worker
+
+Sertakan daftar env yang harus ada:
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+- SUPABASE_URL jika dipakai serverless
+- SUPABASE_ANON_KEY jika dipakai serverless
+- SUPABASE_SERVICE_ROLE_KEY jika perlu migration/admin action
+
+## 11. Cara Clear Cache / PWA Lama
+Jelaskan langkah mudah:
+- incognito
+- hard refresh
+- DevTools Application → Service Workers → Unregister
+- DevTools Application → Storage → Clear site data
+- deploy tanpa cache jika tersedia
+
+## 12. Test Manual Setelah Deploy
+Buat checklist:
+- buka website live
+- login pakai akun lama
+- pastikan tidak ada request /api/login
+- pastikan /api/auth/user status 200
+- pastikan masuk dashboard
+- pastikan tidak masuk /bootstrap kalau agency lama ada
+- logout
+- login ulang
+- refresh dashboard
+- cek role owner/agent/staff
+- cek data agency lama masih muncul
+
+## 13. Jika Masih Gagal
+Buat tabel diagnosis:
+| Gejala | Kemungkinan Penyebab | Cara Cek | Fix |
+Contoh gejala:
+- masih request /api/login
+- /api/auth/user 401
+- /api/auth/user 404
+- /api/auth/user 500
+- login berhasil tapi masuk /bootstrap
+- login sukses tapi stuck loading
+- dashboard kosong
+- role salah
+
+## 14. Kesimpulan Final
+Beri jawaban tegas:
+- apakah issue /api/login sudah selesai
+- apakah akun lama bisa dipakai lagi
+- apakah sudah aman redeploy
+- apakah perlu migration manual
+- apa risiko tersisa
+
+Penting:
+- Jangan jawab pendek.
+- Jangan cuma bilang "done".
+- Sertakan command output penting.
+- Sertakan file path yang spesifik.
+- Jelaskan dengan bahasa sederhana tapi tetap detail.

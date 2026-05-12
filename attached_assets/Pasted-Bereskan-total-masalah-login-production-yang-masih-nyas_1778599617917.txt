@@ -1,0 +1,90 @@
+Bereskan total masalah login production yang masih nyasar ke /api/login.
+
+Konteks:
+- Production target adalah Vercel.
+- Auth yang benar sekarang adalah Supabase Auth email + password.
+- Frontend tidak boleh lagi memanggil /api/login atau /api/logout.
+- Masalah saat ini: setelah login, app masih stuck/nyasar ke login karena legacy Replit Auth/cache/bundle lama.
+- Hapus atau isolasi semua legacy Replit Auth yang bisa memengaruhi frontend/Vercel production.
+
+Tugas utama:
+1. Cari semua referensi:
+   - /api/login
+   - /api/logout
+   - api/login
+   - api/logout
+   - Replit Auth
+   - setupAuth
+   - isAuthenticated
+   - window.location.href = "/api/login"
+   - window.location.assign("/api/login")
+   - fetch("/api/logout")
+
+2. Di frontend src/:
+   - Hapus semua pemanggilan /api/login dan /api/logout.
+   - Pastikan Login.tsx hanya memakai Supabase email/password.
+   - Pastikan authStore.ts login(email, password) hanya memakai supabase.auth.signInWithPassword().
+   - Pastikan logout hanya memakai supabase.auth.signOut() dan membersihkan state lokal.
+   - Jangan redirect ke Replit Auth.
+   - Jangan fetch /api/logout.
+   - Setelah login sukses, panggil /api/auth/user dengan Authorization: Bearer <supabase_access_token>.
+   - Kalau /api/auth/user sukses dan user punya agency/role, navigate ke dashboard sesuai role.
+   - Kalau membership tidak ada, baru arahkan ke /bootstrap dengan pesan jelas.
+   - Kalau /api/auth/user gagal, tampilkan error jelas, jangan stuck di login loading.
+
+3. Di Vercel API:
+   - Pastikan api/[...path].js punya handler GET /api/auth/user.
+   - Handler ini harus jalan tanpa SERVICE_ROLE_KEY.
+   - Gunakan Supabase user-scoped client dari Authorization: Bearer token.
+   - Return profile lengkap: id, email, name, agencyId, agencyName, role, commission, dan field lain yang dipakai frontend.
+   - Kalau token tidak ada atau invalid, return 401 JSON jelas.
+   - Kalau membership tidak ditemukan, return 404 JSON jelas, bukan redirect.
+   - Jangan redirect ke /api/login dalam handler Vercel.
+
+4. Legacy Replit Auth:
+   - Jika file server/replitAuth.cjs atau server/replit_integrations/auth/* masih dibutuhkan untuk local/Replit dev, biarkan tapi pastikan tidak diimport/dipakai oleh Vercel API dan tidak dipanggil frontend.
+   - Jika tidak dibutuhkan untuk production, jangan biarkan memengaruhi build Vercel.
+   - Jangan hapus file secara membabi buta kalau masih dipakai local server, tapi boleh hapus reference production/frontend yang menyebabkan /api/login.
+
+5. PWA/cache:
+   - Pastikan build baru tidak mengandung string /api/login atau /api/logout di dist.
+   - Jika ada service worker/PWA yang bisa menyimpan bundle lama, ubah cache version atau pastikan service worker update otomatis.
+   - Pastikan registerSW/workbox tidak mempertahankan bundle login lama.
+
+6. Verifikasi wajib:
+   Jalankan:
+   npm run lint
+   npm run test
+   npm run build
+
+   Lalu jalankan:
+   grep -R "/api/login\|/api/logout" -n src dist api
+
+   Target:
+   - Tidak ada hasil di src/
+   - Tidak ada hasil di dist/
+   - api/ boleh hanya jika route legacy sengaja ada, tapi tidak boleh dipakai frontend
+   - Kalau masih ada hasil di dist, fix sampai bersih
+
+7. Berikan laporan akhir:
+   - file yang diubah
+   - root cause
+   - bukti grep src/dist bersih dari /api/login dan /api/logout
+   - hasil lint/test/build
+   - langkah deploy ulang Vercel
+   - langkah clear PWA cache/browser
+
+Penting:
+- Jangan ubah UI besar.
+- Jangan ubah fitur lain.
+- Fokus hanya auth production Supabase + menghilangkan legacy /api/login dan /api/logout dari frontend/build.
+- Jangan biarkan user stuck di login page tanpa error.
+
+Setelah Replit AI selesai, minta dia kasih hasil ini:
+
+grep -R "/api/login\|/api/logout" -n src dist api
+
+Target yang paling penting:
+
+src/  = bersih
+dist/ = bersih

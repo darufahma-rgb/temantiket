@@ -466,31 +466,127 @@ async function handleAuthUser(req, res, caller, authHeader) {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       return res.status(503).json({ error: 'Supabase tidak dikonfigurasi' });
     }
+
+    const meta = caller.user_metadata ?? {};
+    const fullName = (meta.full_name ?? meta.display_name ?? '').trim();
+    const displayName = fullName || caller.email?.split('@')[0] || 'User';
+
+    // ── Step 1: cari membership by Supabase UID (caller.id) ─────────────────
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
       auth: { persistSession: false },
     });
 
-    const { data: membership, error: memErr } = await userClient
+    const { data: memberByUid, error: memErr } = await userClient
       .from('agency_members')
       .select('agency_id, role, commission_pct, agencies(name)')
       .eq('user_id', caller.id)
       .maybeSingle();
     if (memErr) return res.status(500).json({ error: memErr.message });
 
-    const meta = caller.user_metadata ?? {};
-    const fullName = (meta.full_name ?? meta.display_name ?? '').trim();
-    const displayName = fullName || caller.email?.split('@')[0] || 'User';
+    if (memberByUid) {
+      // Found by current UID — normal happy path
+      return res.status(200).json({
+        id:              caller.id,
+        email:           caller.email ?? '',
+        displayName,
+        profileImageUrl: meta.avatar_url ?? meta.profile_image_url ?? null,
+        role:            memberByUid.role ?? null,
+        agencyId:        memberByUid.agency_id ?? null,
+        agencyName:      memberByUid.agencies?.name ?? null,
+        commissionPct:   Number(memberByUid.commission_pct ?? 0),
+      });
+    }
+
+    // ── Step 2: tidak ditemukan by UID — coba safe-link by email ────────────
+    //
+    // Akun lama dibuat via Replit bootstrap dengan user_id berbeda dari
+    // Supabase Auth UUID. Cari di profiles/agency_members berdasarkan email,
+    // lalu migrate user_id ke Supabase UUID agar akun lama tetap bisa dipakai.
+
+    if (!caller.email) {
+      return res.status(404).json({ code: 'NO_MEMBERSHIP', error: 'Tidak ada agency/membership yang terhubung ke akun ini.' });
+    }
+
+    if (!SERVICE_ROLE_KEY) {
+      return res.status(404).json({
+        code: 'NEEDS_SERVICE_ROLE',
+        error: 'Akun ditemukan tapi perlu admin migration. Set SUPABASE_SERVICE_ROLE_KEY lalu redeploy.',
+      });
+    }
+
+    const admin = makeAdminClient();
+
+    // Cari old user_id lewat profiles.email
+    const { data: profileByEmail } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('email', caller.email)
+      .maybeSingle();
+
+    let oldUserId = profileByEmail?.id ?? null;
+
+    // Fallback: cari langsung di agency_members lewat auth.users email (butuh admin)
+    if (!oldUserId) {
+      // Cek apakah ada user lain di auth.users dengan email yang sama
+      const { data: authUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      const matchUser = authUsers?.users?.find(
+        (u) => u.email?.toLowerCase() === caller.email.toLowerCase() && u.id !== caller.id,
+      );
+      if (matchUser) oldUserId = matchUser.id;
+    }
+
+    if (!oldUserId || oldUserId === caller.id) {
+      return res.status(404).json({ code: 'NO_MEMBERSHIP', error: 'Tidak ada agency/membership yang terhubung ke akun ini.' });
+    }
+
+    // Cek apakah old user punya membership
+    const { data: oldMembership } = await admin
+      .from('agency_members')
+      .select('agency_id, role, commission_pct, agencies(name)')
+      .eq('user_id', oldUserId)
+      .maybeSingle();
+
+    if (!oldMembership) {
+      return res.status(404).json({ code: 'NO_MEMBERSHIP', error: 'Tidak ada agency/membership yang terhubung ke akun ini.' });
+    }
+
+    console.log(`[auth/user] Safe-linking legacy account: email=${caller.email}, oldId=${oldUserId}, newId=${caller.id}`);
+
+    // Migrasikan agency_members: update user_id lama ke Supabase UID baru
+    const { error: updateErr } = await admin
+      .from('agency_members')
+      .update({ user_id: caller.id })
+      .eq('user_id', oldUserId);
+
+    if (updateErr) {
+      console.error('[auth/user] Failed to migrate agency_members:', updateErr.message);
+      return res.status(500).json({ error: `Gagal migrasi membership: ${updateErr.message}` });
+    }
+
+    // Update / buat profile baru dengan Supabase UID
+    await admin.from('profiles').upsert({
+      id: caller.id,
+      email: caller.email,
+      full_name: fullName || caller.email.split('@')[0],
+    }, { onConflict: 'id' });
+
+    // Hapus profile lama (jika beda dengan caller.id)
+    if (oldUserId !== caller.id) {
+      await admin.from('profiles').delete().eq('id', oldUserId);
+    }
+
+    console.log(`[auth/user] Migration complete for email=${caller.email}`);
 
     return res.status(200).json({
       id:              caller.id,
       email:           caller.email ?? '',
       displayName,
       profileImageUrl: meta.avatar_url ?? meta.profile_image_url ?? null,
-      role:            membership?.role ?? null,
-      agencyId:        membership?.agency_id ?? null,
-      agencyName:      membership?.agencies?.name ?? null,
-      commissionPct:   Number(membership?.commission_pct ?? 0),
+      role:            oldMembership.role ?? null,
+      agencyId:        oldMembership.agency_id ?? null,
+      agencyName:      oldMembership.agencies?.name ?? null,
+      commissionPct:   Number(oldMembership.commission_pct ?? 0),
     });
   } catch (e) {
     return res.status(500).json({ error: e.message });
