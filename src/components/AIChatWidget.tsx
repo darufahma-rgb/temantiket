@@ -585,7 +585,7 @@ function MessageBubble({ msg, toolResults }: { msg: ChatMessage; toolResults?: T
       {/* Text bubble */}
       {msg.content && (
         <div className={cn(
-          "max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed",
+          "max-w-[85%] min-w-0 overflow-hidden px-3 py-2 rounded-2xl text-sm leading-relaxed",
           isUser
             ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-br-sm"
             : "bg-white border border-border/60 text-foreground rounded-bl-sm shadow-sm",
@@ -593,6 +593,7 @@ function MessageBubble({ msg, toolResults }: { msg: ChatMessage; toolResults?: T
           {isUser ? (
             msg.content
           ) : (
+            <div className="min-w-0 max-w-full overflow-hidden">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
@@ -653,10 +654,37 @@ function MessageBubble({ msg, toolResults }: { msg: ChatMessage; toolResults?: T
                     {children}
                   </a>
                 ),
+                table: ({ children }) => (
+                  <div className="max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white my-2">
+                    <table className="w-max min-w-full border-collapse text-[11px] md:text-xs">
+                      {children}
+                    </table>
+                  </div>
+                ),
+                thead: ({ children }) => (
+                  <thead>{children}</thead>
+                ),
+                tbody: ({ children }) => (
+                  <tbody>{children}</tbody>
+                ),
+                tr: ({ children }) => (
+                  <tr className="border-b border-slate-100 last:border-0">{children}</tr>
+                ),
+                th: ({ children }) => (
+                  <th className="px-2 py-1.5 text-left font-bold bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                    {children}
+                  </th>
+                ),
+                td: ({ children }) => (
+                  <td className="px-2 py-1.5 border-b border-slate-100 align-top max-w-[160px] md:max-w-[220px] [overflow-wrap:anywhere]">
+                    {children}
+                  </td>
+                ),
               }}
             >
               {msg.content}
             </ReactMarkdown>
+            </div>
           )}
         </div>
       )}
