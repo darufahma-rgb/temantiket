@@ -13,7 +13,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, MapPin, Calendar as CalendarIcon, Trash2, Plane, Camera, Calculator, Users, CheckCircle, TrendingUp, ArrowRight, FileBarChart, Bus, Train, AlertCircle, Clock, Star, ChevronRight, Wallet, RefreshCw, ShoppingBag, Package, Sparkles, SlidersHorizontal } from "lucide-react";
+import { Plus, MapPin, Calendar as CalendarIcon, Trash2, Plane, Camera, Calculator, Users, CheckCircle, TrendingUp, ArrowRight, FileBarChart, Bus, Train, AlertCircle, Clock, Star, ChevronRight, Wallet, RefreshCw, ShoppingBag, Package, Sparkles, SlidersHorizontal, Ticket, StickyNote, BookUser, Settings } from "lucide-react";
+import {
+  TravelMobileShell,
+  TravelHeroCard,
+  TravelSearchBar,
+  TravelServiceGrid,
+  TravelPromoCarousel,
+  TravelStatCard,
+  TravelSection,
+  TravelListCard,
+} from "@/components/mobile";
 import { useTripsStore, type Trip } from "@/store/tripsStore";
 import { listAllAgencyJamaah, countAllAgencyJamaah } from "@/features/trips/tripsRepo";
 import { listAllAgencyPayments, sumPaid, type Payment } from "@/features/payments/paymentsRepo";
@@ -797,251 +807,318 @@ export default function Dashboard() {
   return (
     <div className="xl:flex xl:min-h-0 xl:gap-5 pt-4 md:pt-2">
       {/* ══════════════════════════════════════════════════════════════
-           MOBILE LAYOUT  (hidden on md+)
+           MOBILE LAYOUT  (hidden on md+) — Travel Super-App Style
       ══════════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
-        <div className="pb-4 px-5 space-y-5">
+        <TravelMobileShell>
+          <div className="pb-28 space-y-5">
 
-          {/* ── Greeting row ── */}
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl flex items-center justify-center text-white text-[12px] font-extrabold shrink-0 shadow-sm" style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}>
-              {(user?.displayName ?? "A").charAt(0).toUpperCase()}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[9px] text-[hsl(var(--muted-foreground))] leading-none font-medium">Selamat datang 👋</p>
-              <h1 className="text-[13px] font-extrabold text-[hsl(var(--foreground))] leading-tight truncate mt-0.5">
-                {user?.displayName?.split(" ")[0] ?? "Admin"}!
-              </h1>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <p className="text-[8.5px] text-[hsl(var(--muted-foreground))] capitalize text-right leading-tight max-w-[72px]">
-                {formatTodayFull(locale)}
-              </p>
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="h-8 w-8 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60 shrink-0"
+            {/* ── Hero card ── */}
+            <div className="px-4 pt-1">
+              <TravelHeroCard
+                greeting="Assalamu'alaikum,"
+                title={(user?.displayName?.split(" ")[0] ?? "Admin") + "!"}
+                subtitle={user?.agencyName ?? "Mau kelola apa hari ini?"}
+                rightSlot={
+                  <button
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="h-9 w-9 rounded-full bg-white/15 border border-white/25 flex items-center justify-center active:opacity-60 transition-opacity disabled:opacity-40"
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                  >
+                    <RefreshCw strokeWidth={2} className={cn("h-4 w-4 text-white", refreshing && "animate-spin")} />
+                  </button>
+                }
               >
-                <RefreshCw strokeWidth={2} className={cn("h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]", refreshing && "animate-spin")} />
-              </button>
-            </div>
-          </div>
-
-          {/* ── Hero card ── */}
-          <div
-            className="rounded-2xl p-3.5 relative overflow-hidden"
-            style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 55%,#1a44d4 100%)" }}
-          >
-            {/* Decorative */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              <div className="absolute -top-10 -right-10 h-44 w-44 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,255,255,0.07) 0%, transparent 65%)" }} />
-              <div className="absolute -bottom-8 left-0 right-0 h-24" style={{ background: "radial-gradient(ellipse at 50% 100%, rgba(26,68,212,0.3) 0%, transparent 70%)" }} />
-              <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "20px 20px" }} />
-            </div>
-
-            {/* Header */}
-            <div className="relative flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-semibold uppercase tracking-widest text-sky-400/70 mb-1">
-                  Penjualan
-                </p>
-                <h2 className="text-[13px] font-bold text-white leading-tight">
-                  Tiket Pesawat, Visa &amp; VOA
-                </h2>
-              </div>
-              <span className="shrink-0 text-[10px] font-semibold text-white/80 bg-white/10 border border-white/15 rounded-xl px-2.5 py-1 whitespace-nowrap">
-                {totalSalesOrders} Total
-              </span>
-            </div>
-
-            {/* Stats: 3 columns */}
-            <div className="relative flex items-stretch mt-3 pt-2.5 border-t border-white/10 gap-0">
-              {[
-                { label: "Tiket Pesawat", value: flightOrders,    icon: "✈️" },
-                { label: "Visa Mesir",    value: visaMesirOrders, icon: "🇪🇬" },
-                { label: "VOA",           value: voaOrders,       icon: "🛂" },
-              ].map((s, i) => (
-                <div key={s.label} className={cn("flex-1 text-center flex flex-col items-center gap-0.5", i > 0 && "border-l border-white/10")}>
-                  <span className="text-[13px] leading-none">{s.icon}</span>
-                  <p className="text-[20px] font-black text-white tabular-nums leading-none mt-0.5">{s.value}</p>
-                  <p className="text-[7px] text-sky-300/60 uppercase tracking-wide font-semibold leading-tight mt-0.5 px-1">{s.label}</p>
+                {/* Sales stats row inside hero */}
+                <div className="flex mt-3 pt-3 border-t border-white/15">
+                  {[
+                    { label: "Tiket Pesawat", value: flightOrders,    emoji: "✈️" },
+                    { label: "Visa Mesir",    value: visaMesirOrders, emoji: "🇪🇬" },
+                    { label: "VOA",           value: voaOrders,       emoji: "🛂" },
+                  ].map((s, i) => (
+                    <div key={s.label} className={cn("flex-1 text-center flex flex-col items-center gap-0.5", i > 0 && "border-l border-white/15")}>
+                      <span className="text-[15px] leading-none">{s.emoji}</span>
+                      <p className="text-[22px] font-black text-white tabular-nums leading-none mt-0.5">{s.value}</p>
+                      <p className="text-[7px] text-sky-200/70 uppercase tracking-wide font-semibold leading-tight mt-0.5 px-1">{s.label}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+                <button
+                  onClick={() => navigate("/orders")}
+                  className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-sky-200 active:opacity-60 transition-opacity"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  Lihat Semua Order <ArrowRight className="h-3 w-3" />
+                </button>
+              </TravelHeroCard>
             </div>
 
-            {/* CTA link */}
-            <button
-              onClick={() => navigate("/orders")}
-              className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-sky-300 active:opacity-60 transition-opacity"
-            >
-              Lihat Semua Order
-              <ArrowRight className="h-3 w-3" />
-            </button>
-          </div>
-
-          {/* ── Menu Utama ── */}
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <h3 className="text-[11.5px] font-bold text-[hsl(var(--foreground))]">Menu Utama</h3>
-              <button onClick={() => setAddOpen(true)} className="text-[9.5px] text-sky-500 font-semibold active:opacity-70">+ Trip Baru</button>
+            {/* ── Search bar ── */}
+            <div className="px-4">
+              <TravelSearchBar
+                placeholder="Cari order, klien, tiket..."
+                onClick={() => navigate("/clients")}
+              />
             </div>
-            <div className="flex gap-3.5 overflow-x-auto scrollbar-none pb-1 -mx-4 px-4">
+
+            {/* ── Service grid ── */}
+            <div className="px-4">
+              <TravelSection title="Menu Utama" onSeeAll={() => setAddOpen(true)} seeAllLabel="+ Trip Baru">
+                <TravelServiceGrid
+                  cols={4}
+                  onNavigate={navigate}
+                  items={[
+                    { icon: ShoppingBag,  label: "Pesanan",    path: "/orders",        color: "#8b5cf6", bg: "rgba(139,92,246,0.09)"  },
+                    { icon: Users,        label: "Klien",      path: "/clients",       color: "#0ea5e9", bg: "rgba(14,165,233,0.09)"   },
+                    { icon: Ticket,       label: "Harga Tiket",path: "/ticket-prices", color: "#f59e0b", bg: "rgba(245,158,11,0.09)"   },
+                    { icon: Package,      label: "Paket/Trip", path: "/packages",      color: "#10b981", bg: "rgba(16,185,129,0.09)"   },
+                    { icon: StickyNote,   label: "Catatan",    path: "/notes",         color: "#ec4899", bg: "rgba(236,72,153,0.09)"   },
+                    { icon: Calculator,   label: "Kalkulator", path: "/calculator",    color: "#0066FF", bg: "rgba(0,102,255,0.09)"    },
+                    { icon: BookUser,     label: "Agen/Staff", path: "/agent-center",  color: "#f97316", bg: "rgba(249,115,22,0.09)"   },
+                    { icon: Settings,     label: "Pengaturan", path: "/settings",      color: "#667085", bg: "rgba(102,112,133,0.09)"  },
+                  ]}
+                />
+              </TravelSection>
+            </div>
+
+            {/* ── Quick stats 2×2 grid ── */}
+            <div className="px-4">
+              <TravelSection title="Ringkasan">
+                <div className="grid grid-cols-2 gap-3">
+                  <TravelStatCard
+                    label="Total Order"
+                    value={orders.length}
+                    subtitle={`${totalSalesOrders} tiket & visa`}
+                    icon={<ShoppingBag className="h-4 w-4" strokeWidth={1.8} />}
+                    tone="blue"
+                    onClick={() => navigate("/orders")}
+                  />
+                  <TravelStatCard
+                    label="Total Klien"
+                    value={clients.length}
+                    icon={<Users className="h-4 w-4" strokeWidth={1.8} />}
+                    tone="green"
+                    onClick={() => navigate("/clients")}
+                  />
+                  <TravelStatCard
+                    label="Paket Trip"
+                    value={packages.length}
+                    subtitle={pendingPackages.length > 0 ? `${pendingPackages.length} perlu tindakan` : `${activeTrips} aktif`}
+                    icon={<Package className="h-4 w-4" strokeWidth={1.8} />}
+                    tone="yellow"
+                    onClick={() => navigate("/packages")}
+                  />
+                  <TravelStatCard
+                    label="Total Jamaah"
+                    value={totalJamaah}
+                    icon={<Users className="h-4 w-4" strokeWidth={1.8} />}
+                    tone="navy"
+                  />
+                </div>
+              </TravelSection>
+            </div>
+
+            {/* ── Promo / quick action carousel ── */}
+            <div>
+              <div className="px-4 mb-3">
+                <h3 className="text-[14px] font-bold text-[#071133]">Aksi Cepat</h3>
+              </div>
+              <TravelPromoCarousel
+                items={[
+                  {
+                    title: "Follow Up Order Pending",
+                    subtitle: `${orders.filter(o => ["Draft","Confirmed","Processing"].includes(o.status ?? "")).length} order perlu tindak lanjut`,
+                    cta: "Buka Order",
+                    emoji: "📋",
+                    gradient: "linear-gradient(135deg, #0057E7 0%, #33A6FF 100%)",
+                    onClick: () => navigate("/orders"),
+                  },
+                  {
+                    title: "Cek Harga Tiket",
+                    subtitle: "Harga tiket pesawat terbaru untuk klien",
+                    cta: "Lihat Tiket",
+                    emoji: "✈️",
+                    gradient: "linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)",
+                    onClick: () => navigate("/ticket-prices"),
+                  },
+                  {
+                    title: "Broadcast Promo",
+                    subtitle: "Kirim template promo ke klien via WhatsApp",
+                    cta: "Buat Template",
+                    emoji: "📣",
+                    gradient: "linear-gradient(135deg, #059669 0%, #34D399 100%)",
+                    onClick: () => navigate("/bc-templates"),
+                  },
+                  pendingPackages.length > 0
+                    ? {
+                        title: "Paket Perlu Tindakan",
+                        subtitle: `${pendingPackages.length} paket butuh perhatian segera`,
+                        cta: "Lihat Paket",
+                        emoji: "⚠️",
+                        gradient: "linear-gradient(135deg, #D97706 0%, #FCD34D 100%)",
+                        onClick: () => navigate("/packages"),
+                      }
+                    : {
+                        title: "Kalkulator Paket",
+                        subtitle: "Hitung biaya umrah & trip dengan kalkulator cepat",
+                        cta: "Buka Kalkulator",
+                        emoji: "🧮",
+                        gradient: "linear-gradient(135deg, #0F766E 0%, #2DD4BF 100%)",
+                        onClick: () => navigate("/calculator"),
+                      },
+                ]}
+              />
+            </div>
+
+            {/* ── Alerts ── */}
+            <div className="px-4 space-y-3">
+              <DepartureTodayAlert packages={packages} orders={orders} clients={clients} />
+              <PaymentAlerts trips={trips} />
+            </div>
+
+            {/* ── Owner-only widgets ── */}
+            {user?.role === "owner" && (
+              <div className="px-4 space-y-3">
+                <MitraLeaderboardCard />
+                <CeoDailyQuest />
+              </div>
+            )}
+
+            {/* ── PNR + Admin WA ── */}
+            <div className="px-4 space-y-3">
+              <PNRCommandCenter />
+              <AdminWhatsappCard />
+            </div>
+
+            {/* ── Recent orders ── */}
+            {orders.length > 0 && (
+              <div className="px-4">
+                <TravelSection title="Order Terbaru" onSeeAll={() => navigate("/orders")}>
+                  <div className="space-y-2.5">
+                    {[...orders]
+                      .sort((a, b) => new Date(b.createdAt ?? "").getTime() - new Date(a.createdAt ?? "").getTime())
+                      .slice(0, 4)
+                      .map((order) => {
+                        const client = clients.find((c) => c.id === order.clientId);
+                        const TYPE_LABEL: Record<string, string> = {
+                          flight: "✈️ Tiket Pesawat",
+                          visa_student: "🇪🇬 Visa Mesir",
+                          visa_voa: "🛂 VOA",
+                          other: "📋 Lainnya",
+                        };
+                        const STATUS_TONE: Record<string, "blue" | "green" | "yellow" | "red" | "gray" | "purple"> = {
+                          Draft: "gray", Confirmed: "yellow", Processing: "blue",
+                          Completed: "green", Cancelled: "red", Paid: "purple",
+                        };
+                        return (
+                          <TravelListCard
+                            key={order.id}
+                            title={order.title ?? TYPE_LABEL[order.type] ?? "Order"}
+                            subtitle={client?.name}
+                            meta={TYPE_LABEL[order.type]}
+                            badge={order.status}
+                            badgeTone={STATUS_TONE[order.status ?? ""] ?? "gray"}
+                            avatar={
+                              <div className="h-10 w-10 rounded-xl bg-[#F0F4FF] flex items-center justify-center shrink-0">
+                                <ShoppingBag className="h-[18px] w-[18px] text-[#0066FF]" strokeWidth={1.8} />
+                              </div>
+                            }
+                            onClick={() => navigate(`/orders/${order.id}`)}
+                          />
+                        );
+                      })}
+                  </div>
+                </TravelSection>
+              </div>
+            )}
+
+            {/* ── LiveClock ── */}
+            <div className="px-4">
+              <LiveClock compact />
+            </div>
+
+            {/* ── Package status chips ── */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5 px-4">
               {([
-                { icon: Package,     label: "Paket",      path: "/packages",   gradient: "linear-gradient(135deg,#f97316,#ea580c)" },
-                { icon: Users,       label: "Jamaah",     path: "/progress",   gradient: "linear-gradient(135deg,#0ea5e9,#0284c7)" },
-                { icon: ShoppingBag, label: "Order",      path: "/orders",     gradient: "linear-gradient(135deg,#8b5cf6,#6d28d9)" },
-                { icon: Calculator,  label: "Kalkulator", path: "/calculator", gradient: "linear-gradient(135deg,#10b981,#059669)" },
-                { icon: FileBarChart,label: "Laporan",    path: "/reports",    gradient: "linear-gradient(135deg,#f59e0b,#d97706)" },
-                { icon: Sparkles,    label: "Itinerary",  path: "/itinerary",  gradient: "linear-gradient(135deg,#ec4899,#9333ea)" },
+                { icon: Star,        label: t.dash_total_packages,     value: packages.length,                                       color: "text-amber-600 bg-amber-50 border-amber-200"  },
+                { icon: AlertCircle, label: t.dash_need_action,        value: pendingPackages.length,                                color: pendingPackages.length > 0 ? "text-red-600 bg-red-50 border-red-200" : "text-gray-400 bg-gray-50 border-gray-200" },
+                { icon: Clock,       label: t.dash_paid_packages,      value: packages.filter(p => p.status === "Paid").length,      color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
+                { icon: CheckCircle, label: t.dash_completed_packages, value: packages.filter(p => p.status === "Completed").length, color: "text-purple-600 bg-purple-50 border-purple-200" },
               ] as const).map((item) => (
                 <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className="flex flex-col items-center gap-1.5 min-w-[48px] shrink-0 active:scale-90 transition-transform"
+                  key={item.label}
+                  onClick={() => navigate("/packages")}
+                  className={cn("shrink-0 flex items-center gap-1 h-7 px-2.5 rounded-full border text-[10px] font-semibold active:scale-95 transition-transform", item.color)}
                 >
-                  <div className="h-[44px] w-[44px] rounded-[13px] flex items-center justify-center" style={{ border: "1.5px solid rgba(26,68,212,0.22)", background: "rgba(26,68,212,0.06)" }}>
-                    <item.icon strokeWidth={1.8} className="h-[19px] w-[19px] text-[#1a44d4]" />
-                  </div>
-                  <span className="text-[9px] font-semibold text-[hsl(var(--foreground))] text-center leading-tight">{item.label}</span>
+                  <item.icon strokeWidth={2} className="h-3.5 w-3.5" />
+                  <span className="tabular-nums font-extrabold">{item.value}</span>
+                  <span className="opacity-75">{item.label}</span>
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* ── Alerts ── */}
-          <DepartureTodayAlert packages={packages} orders={orders} clients={clients} />
-          <PaymentAlerts trips={trips} />
-
-          {/* ── Pending packages quick-action row ── */}
-          {pendingPackages.length > 0 && (
-            <button
-              onClick={() => navigate("/packages")}
-              className="w-full flex items-center gap-3 bg-amber-50 rounded-2xl border border-amber-200 px-3.5 py-3 active:scale-[0.98] transition-transform text-left"
-            >
-              <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                <AlertCircle strokeWidth={1.8} className="h-5 w-5 text-amber-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12.5px] font-bold text-[hsl(var(--foreground))]">Perlu Perhatian</p>
-                <p className="text-[10px] text-[hsl(var(--muted-foreground))] leading-tight">{pendingPackages.length} paket butuh tindakan segera</p>
-              </div>
-              <span className="text-[13px] font-extrabold text-amber-600 shrink-0 tabular-nums">{pendingPackages.length}</span>
-              <ChevronRight className="h-4 w-4 text-[hsl(var(--muted-foreground))] shrink-0" />
-            </button>
-          )}
-
-          {/* ── PNR ── */}
-          <PNRCommandCenter />
-
-          {/* ── Admin WA Card ── */}
-          <AdminWhatsappCard />
-
-          {/* ── Owner-only widgets ── */}
-          {user?.role === "owner" && (
-            <>
-              <MitraLeaderboardCard />
-              <CeoDailyQuest />
-            </>
-          )}
-
-          {/* ── LiveClock ── */}
-          <LiveClock compact />
-
-          {/* ── Package status chips ── */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5 -mx-4 px-4">
-            {([
-              { icon: Star,        label: t.dash_total_packages,     value: packages.length,                                       color: "text-amber-600 bg-amber-50 border-amber-200"  },
-              { icon: AlertCircle, label: t.dash_need_action,        value: pendingPackages.length,                                color: pendingPackages.length > 0 ? "text-red-600 bg-red-50 border-red-200" : "text-gray-400 bg-gray-50 border-gray-200" },
-              { icon: Clock,       label: t.dash_paid_packages,      value: packages.filter(p => p.status === "Paid").length,      color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
-              { icon: CheckCircle, label: t.dash_completed_packages, value: packages.filter(p => p.status === "Completed").length, color: "text-purple-600 bg-purple-50 border-purple-200" },
-            ] as const).map((item) => (
-              <button
-                key={item.label}
-                onClick={() => navigate("/packages")}
-                className={cn("shrink-0 flex items-center gap-1 h-7 px-2.5 rounded-full border text-[10px] font-semibold active:scale-95 transition-transform", item.color)}
-              >
-                <item.icon strokeWidth={2} className="h-3.5 w-3.5" />
-                <span className="tabular-nums font-extrabold">{item.value}</span>
-                <span className="opacity-75">{item.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* ── Shortcut bar ── */}
-          <div className="grid grid-cols-3 gap-1.5">
-            {([
-              { icon: Calculator,   label: t.dash_open_calculator, path: "/calculator" },
-              { icon: ShoppingBag,  label: "Order Hub",             path: "/orders"     },
-              { icon: FileBarChart, label: t.dash_progress_report,  path: "/progress"   },
-            ] as const).map((btn) => (
-              <button
-                key={btn.path}
-                onClick={() => navigate(btn.path)}
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-2 py-2.5 hover:border-sky-400 hover:bg-sky-50 transition-colors active:scale-[0.97]"
-              >
-                <btn.icon strokeWidth={1.5} className="h-3.5 w-3.5 text-sky-500 shrink-0" />
-                <span className="text-[10px] font-semibold text-[hsl(var(--foreground))] truncate">{btn.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* ── Trip section ── */}
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-[12px] font-bold text-[hsl(var(--foreground))]">{t.dash_packages_title}</h2>
-            <div className="flex gap-2.5">
-              {(["all", "upcoming", "done"] as const).map((key) => {
-                const labels = { all: t.dash_filter_all, upcoming: t.dash_filter_active, done: t.dash_filter_done };
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setTab(key)}
-                    className={cn("text-[9px] font-semibold pb-0.5 border-b-2 transition-colors", tab === key ? "border-sky-500 text-sky-500" : "border-transparent text-[hsl(var(--muted-foreground))]")}
-                  >{labels[key]}</button>
-                );
-              })}
-            </div>
-          </div>
-
-          {loadingTrips ? (
-            <div className="grid gap-2 grid-cols-2">
-              {[1, 2].map(i => (
-                <div key={i} className="rounded-xl border overflow-hidden animate-pulse">
-                  <div className="h-16 bg-[hsl(var(--secondary))]" />
-                  <div className="p-2 space-y-1.5">
-                    <div className="h-3 bg-[hsl(var(--secondary))] rounded w-3/4" />
-                    <div className="h-2.5 bg-[hsl(var(--secondary))] rounded w-1/2" />
-                  </div>
+            {/* ── Trip / Packages section ── */}
+            <div className="px-4">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h2 className="text-[14px] font-bold text-[#071133]">{t.dash_packages_title}</h2>
+                <div className="flex gap-2.5">
+                  {(["all", "upcoming", "done"] as const).map((key) => {
+                    const labels = { all: t.dash_filter_all, upcoming: t.dash_filter_active, done: t.dash_filter_done };
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setTab(key)}
+                        className={cn("text-[9px] font-semibold pb-0.5 border-b-2 transition-colors", tab === key ? "border-[#0066FF] text-[#0066FF]" : "border-transparent text-[#667085]")}
+                      >{labels[key]}</button>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-white via-sky-50/40 to-sky-100/60 px-4 py-8 text-center flex flex-col items-center">
-              <div className="h-14 w-14 rounded-2xl bg-white flex items-center justify-center shadow-sm border border-sky-100 mb-3">
-                <Plane strokeWidth={1.5} className="h-7 w-7 text-sky-500" />
               </div>
-              <p className="text-[13px] font-bold text-[hsl(var(--foreground))]">{t.dash_no_packages}</p>
-              <p className="text-[10.5px] text-[hsl(var(--muted-foreground))] mt-1 leading-snug max-w-[200px]">{t.dash_no_packages_desc}</p>
-              <button
-                onClick={() => setAddOpen(true)}
-                className="mt-4 inline-flex items-center gap-1.5 h-9 px-5 rounded-full text-[11.5px] font-bold text-white shadow-md active:scale-95 transition-transform"
-                style={{ background: "linear-gradient(135deg,#0ea5e9,#1a44d4)" }}
-              >
-                <Plus strokeWidth={2} className="h-3.5 w-3.5" /> {t.dash_create_first}
-              </button>
+
+              {loadingTrips ? (
+                <div className="grid gap-2.5 grid-cols-2">
+                  {[1, 2].map(i => (
+                    <div key={i} className="rounded-2xl border border-[#E5EAF3] overflow-hidden animate-pulse bg-white">
+                      <div className="h-16 bg-[#F5F7FB]" />
+                      <div className="p-2.5 space-y-1.5">
+                        <div className="h-3 bg-[#E5EAF3] rounded-full w-3/4" />
+                        <div className="h-2.5 bg-[#E5EAF3] rounded-full w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="rounded-2xl border border-[#E5EAF3] bg-white px-4 py-8 text-center flex flex-col items-center" style={{ boxShadow: "0 8px 24px rgba(10,31,68,0.08)" }}>
+                  <div className="h-14 w-14 rounded-2xl bg-[#F0F4FF] flex items-center justify-center mb-3">
+                    <Plane strokeWidth={1.5} className="h-7 w-7 text-[#0066FF]" />
+                  </div>
+                  <p className="text-[13px] font-bold text-[#071133]">{t.dash_no_packages}</p>
+                  <p className="text-[10.5px] text-[#667085] mt-1 leading-snug max-w-[200px]">{t.dash_no_packages_desc}</p>
+                  <button
+                    onClick={() => setAddOpen(true)}
+                    className="mt-4 inline-flex items-center gap-1.5 h-9 px-5 rounded-full text-[11.5px] font-bold text-white shadow-md active:scale-95 transition-transform"
+                    style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+                  >
+                    <Plus strokeWidth={2} className="h-3.5 w-3.5" /> {t.dash_create_first}
+                  </button>
+                </div>
+              ) : (
+                <div className="grid gap-2.5 grid-cols-2">
+                  {filtered.map((trip) => <TripCard key={trip.id} trip={trip} onDelete={setDeleteTarget} />)}
+                  <button
+                    onClick={() => setAddOpen(true)}
+                    className="rounded-2xl border-2 border-dashed border-[#E5EAF3] flex flex-col items-center justify-center gap-2 min-h-[80px] hover:border-[#0066FF] hover:bg-[#F0F4FF] transition-all group active:scale-[0.98]"
+                  >
+                    <Plus strokeWidth={1.5} className="h-4 w-4 text-[#667085] group-hover:text-[#0066FF]" />
+                    <span className="text-[10.5px] text-[#667085] group-hover:text-[#0066FF] font-medium">{t.dash_add_package}</span>
+                  </button>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="grid gap-2 grid-cols-2">
-              {filtered.map((trip) => <TripCard key={trip.id} trip={trip} onDelete={setDeleteTarget} />)}
-              <button
-                onClick={() => setAddOpen(true)}
-                className="rounded-xl border-2 border-dashed border-[hsl(var(--border))] flex flex-col items-center justify-center gap-2 min-h-[80px] hover:border-sky-400 hover:bg-sky-50/50 transition-all group active:scale-[0.98]"
-              >
-                <Plus strokeWidth={1.5} className="h-4 w-4 text-[hsl(var(--muted-foreground))] group-hover:text-sky-500" />
-                <span className="text-[10.5px] text-[hsl(var(--muted-foreground))] group-hover:text-sky-500 font-medium">{t.dash_add_package}</span>
-              </button>
-            </div>
-          )}
-        </div>
+
+          </div>
+        </TravelMobileShell>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
