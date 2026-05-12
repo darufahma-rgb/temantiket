@@ -1,13 +1,7 @@
 import { useEffect, useState } from "react";
 import { AppSidebar } from "./AppSidebar";
 import { AIChatWidget } from "./AIChatWidget";
-import {
-  RefreshCw, Sparkles, Search, Bell, X,
-  LayoutDashboard, ShoppingBag, Users, Settings, Package,
-  Ticket, Calculator, StickyNote, FileSpreadsheet, BarChart3,
-  MessageSquare, Megaphone, BookUser, Trophy, MoreHorizontal, LogOut,
-  Landmark, Wallet, ShieldCheck,
-} from "lucide-react";
+import { RefreshCw, Search, X, LogOut } from "lucide-react";
 import { RealtimeIndicator } from "./RealtimeIndicator";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -17,6 +11,12 @@ import { useAuthStore } from "@/store/authStore";
 import { useSyncStatusStore, type SyncStatus } from "@/store/syncStatusStore";
 import { usePresenceStore } from "@/store/presenceStore";
 import { NotificationBell } from "./NotificationBell";
+import {
+  OWNER_BOTTOM_NAV, OWNER_MORE_ITEMS,
+  AGENT_BOTTOM_NAV, AGENT_MORE_ITEMS,
+  STAFF_BOTTOM_NAV, STAFF_MORE_ITEMS,
+  type MobileNavItem,
+} from "@/config/navMenu";
 
 const SYNC_DOT: Record<SyncStatus, { color: string; glow: string; label: string }> = {
   ok:      { color: "#10b981", glow: "0 0 5px #10b981", label: "Tersinkron" },
@@ -38,65 +38,6 @@ interface DashboardLayoutProps {
   noPadding?: boolean;
 }
 
-interface NavItem {
-  icon: React.ElementType;
-  label: string;
-  path: string | null;
-  exact?: boolean;
-  navigateTo?: string;
-  isActiveFn?: (pathname: string, search: string) => boolean;
-}
-
-/* ── Owner ── */
-const OWNER_BOTTOM_NAV: NavItem[] = [
-  { icon: LayoutDashboard, label: "Home",    path: "/",         exact: true },
-  { icon: ShoppingBag,     label: "Order",   path: "/orders"               },
-  { icon: Users,           label: "Klien",   path: "/clients"              },
-  { icon: Package,         label: "Paket",   path: "/packages"             },
-  { icon: MoreHorizontal,  label: "Lainnya", path: null                    },
-];
-const OWNER_MORE_ITEMS: NavItem[] = [
-  { icon: Calculator,      label: "Kalkulator",   path: "/calculator"        },
-  { icon: Sparkles,        label: "Itinerary AI", path: "/itinerary"         },
-  { icon: Ticket,          label: "Harga Tiket",  path: "/ticket-prices"     },
-  { icon: BarChart3,       label: "Laporan",      path: "/reports"           },
-  { icon: FileSpreadsheet, label: "Export",       path: "/exports"           },
-  { icon: MessageSquare,   label: "Broadcast",    path: "/bc-templates"      },
-  { icon: Megaphone,       label: "Caption Gen",  path: "/agent/marketing"   },
-  { icon: StickyNote,      label: "Catatan",      path: "/notes"             },
-  { icon: BookUser,        label: "Mgt. Agen",    path: "/agent-center"      },
-  { icon: Trophy,          label: "Leaderboard",  path: "/agent/leaderboard" },
-  { icon: ShieldCheck,     label: "Audit",        path: "/audit"             },
-  { icon: Settings,        label: "Pengaturan",   path: "/settings"          },
-];
-
-/* ── Agent ── */
-const AGENT_BOTTOM_NAV: NavItem[] = [
-  { icon: Trophy,         label: "Home",    path: "/agent",    exact: true },
-  { icon: Package,        label: "Paket",   path: "/packages"              },
-  { icon: ShoppingBag,    label: "Order",   path: "/orders"                },
-  { icon: Users,          label: "Klien",   path: "/clients"               },
-  { icon: MoreHorizontal, label: "Lainnya", path: null                     },
-];
-const AGENT_MORE_ITEMS: NavItem[] = [
-  { icon: MessageSquare, label: "Broadcast",    path: "/bc-templates"      },
-  { icon: Megaphone,     label: "Caption Gen",  path: "/agent/marketing"   },
-  { icon: Trophy,        label: "Leaderboard",  path: "/agent/leaderboard" },
-  { icon: Settings,      label: "Pengaturan",   path: "/settings"          },
-];
-
-/* ── Staff ── */
-const STAFF_BOTTOM_NAV: NavItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/staff/dashboard", exact: true },
-  { icon: Landmark,        label: "Visa",      path: "/staff/visa",      exact: true },
-  { icon: Wallet,          label: "Komisi",    path: "/staff/commission", exact: true },
-  { icon: BookUser,        label: "Profil",    path: "/staff/profile" },
-  { icon: MoreHorizontal,  label: "Lainnya",   path: null             },
-];
-const STAFF_MORE_ITEMS: NavItem[] = [
-  { icon: Calculator, label: "Kalkulator", path: "/calculator" },
-  { icon: Settings,   label: "Pengaturan", path: "/settings"   },
-];
 
 export function DashboardLayout({ children, noPadding = false }: DashboardLayoutProps) {
   const [searchOpen, setSearchOpen] = useState(false);

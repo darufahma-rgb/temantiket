@@ -1,14 +1,12 @@
-import {
-  LayoutDashboard, Calculator, Package, LogOut, Settings,
-  StickyNote, FileSpreadsheet, Users, ShoppingBag,
-  MessageSquare, Sparkles, Ticket,
-  Command, Trophy, BookUser, Megaphone, BarChart3, Landmark, Wallet, Activity, ShieldCheck,
-} from "lucide-react";
-
+import { LogOut, Sparkles } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
+import {
+  OWNER_SIDEBAR_SECTIONS, AGENT_SIDEBAR_SECTIONS, STAFF_SIDEBAR_SECTIONS,
+  type NavItemConfig, type SidebarSectionConfig,
+} from "@/config/navMenu";
 
 function ChatGPTIcon({ className }: { className?: string }) {
   return (
@@ -21,168 +19,14 @@ function ChatGPTIcon({ className }: { className?: string }) {
 const ACCENT = "#1a44d4";
 const SIDEBAR_W = 224;
 
-interface NavItemDef {
-  title: string;
-  url: string;
-  icon: React.ElementType;
-  end?: boolean;
-  badge?: string;
-  ownerOnly?: boolean;
-}
-
-interface SectionDef {
-  key: string;
-  label: string;
-  items: NavItemDef[];
-  ownerOnly?: boolean;
-  agentOnly?: boolean;
-  collapsible?: boolean;
-}
-
-const OWNER_SECTIONS: SectionDef[] = [
-  {
-    key: "home",
-    label: "",
-    items: [
-      { title: "Dashboard", url: "/", icon: LayoutDashboard, end: true },
-    ],
-  },
-  {
-    key: "bisnis",
-    label: "Bisnis",
-    items: [
-      { title: "Klien & Jamaah", url: "/clients", icon: Users },
-      { title: "Order Hub",      url: "/orders",  icon: ShoppingBag },
-    ],
-  },
-  {
-    key: "tools",
-    label: "Tools",
-    items: [
-      { title: "Harga Tiket",    url: "/ticket-prices", icon: Ticket },
-      { title: "Itinerary",      url: "/itinerary",     icon: Sparkles, badge: "AI" },
-      { title: "Kalkulator & Kurs", url: "/calculator", icon: Calculator },
-      { title: "Paket & Trip",   url: "/packages",      icon: Package },
-    ],
-  },
-  {
-    key: "konten",
-    label: "Konten",
-    items: [
-      { title: "Template Broadcast", url: "/bc-templates",    icon: MessageSquare },
-      { title: "Caption Generator",  url: "/agent/marketing", icon: Megaphone },
-      { title: "Catatan",            url: "/notes",           icon: StickyNote },
-    ],
-  },
-  {
-    key: "keuangan",
-    label: "Keuangan",
-    items: [
-      { title: "Laporan Keuangan", url: "/reports",  icon: BarChart3 },
-      { title: "Export Center",    url: "/exports",  icon: FileSpreadsheet },
-    ],
-  },
-  {
-    key: "manajemen",
-    label: "Manajemen",
-    items: [
-      { title: "Visa Tracker",        url: "/visa-tracker",        icon: Landmark },
-      { title: "Manajemen Agen",      url: "/agent-center",        icon: BookUser },
-      { title: "Leaderboard",         url: "/agent/leaderboard",   icon: Trophy },
-      { title: "Manajemen Staff",      url: "/staff-performance",  icon: Activity, ownerOnly: true },
-      { title: "Audit & Debug",        url: "/audit",              icon: ShieldCheck, ownerOnly: true },
-    ],
-  },
-  {
-    key: "settings",
-    label: "",
-    items: [
-      { title: "Pengaturan", url: "/settings", icon: Settings },
-    ],
-  },
-];
-
-const STAFF_SECTIONS: SectionDef[] = [
-  {
-    key: "home",
-    label: "",
-    items: [
-      { title: "Dashboard",   url: "/staff/dashboard", icon: LayoutDashboard, end: true },
-      { title: "Profil Staff", url: "/staff/profile",  icon: BookUser,        end: true },
-    ],
-  },
-  {
-    key: "tugas",
-    label: "Tugas Saya",
-    items: [
-      { title: "Visa Saya",   url: "/staff/visa",       icon: Landmark, end: true },
-      { title: "Komisi Saya", url: "/staff/commission", icon: Wallet,   end: true },
-    ],
-  },
-  {
-    key: "operasional",
-    label: "Operasional",
-    items: [
-      { title: "Kalkulator Visa", url: "/calculator", icon: Calculator },
-    ],
-  },
-  {
-    key: "settings",
-    label: "",
-    items: [
-      { title: "Pengaturan", url: "/settings", icon: Settings },
-    ],
-  },
-];
-
-const AGENT_SECTIONS: SectionDef[] = [
-  {
-    key: "home",
-    label: "",
-    items: [
-      { title: "Mitra Dashboard", url: "/agent", icon: Trophy, end: true },
-    ],
-  },
-  {
-    key: "bisnis",
-    label: "Bisnis",
-    items: [
-      { title: "Klien & Jamaah", url: "/clients", icon: Users },
-      { title: "Order Hub",      url: "/orders",  icon: ShoppingBag },
-    ],
-  },
-  {
-    key: "konten",
-    label: "Konten",
-    items: [
-      { title: "Template Broadcast", url: "/bc-templates",       icon: MessageSquare },
-      { title: "Caption Generator",   url: "/agent/marketing",    icon: Megaphone },
-    ],
-  },
-  {
-    key: "agen",
-    label: "Agen",
-    items: [
-      { title: "Leaderboard", url: "/agent/leaderboard", icon: Trophy },
-    ],
-  },
-  {
-    key: "settings",
-    label: "",
-    items: [
-      { title: "Pengaturan", url: "/settings", icon: Settings },
-    ],
-  },
-];
-
-function useIsAnyActive(items: NavItemDef[]): boolean {
+function useIsAnyActive(items: NavItemConfig[]): boolean {
   const location = useLocation();
   return items.some((item) =>
     item.end ? location.pathname === item.url : location.pathname.startsWith(item.url)
   );
 }
 
-function SidebarNavItem({ item, onClose }: { item: NavItemDef; onClose?: () => void }) {
+function SidebarNavItem({ item, onClose }: { item: NavItemConfig; onClose?: () => void }) {
   const Icon = item.icon;
   return (
     <NavLink
@@ -251,7 +95,7 @@ function SidebarSection({
   isOwner,
   onClose,
 }: {
-  section: SectionDef;
+  section: SidebarSectionConfig;
   isOwner: boolean;
   onClose?: () => void;
 }) {
@@ -277,7 +121,7 @@ function SidebarSection({
 
       <div className="space-y-1">
         {visibleItems.map((item) => (
-          <SidebarNavItem key={item.title} item={item} onClose={onClose} />
+          <SidebarNavItem key={item.url} item={item} onClose={onClose} />
         ))}
       </div>
     </div>
@@ -294,13 +138,13 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
   const navigate = useNavigate();
   const isOwner = user?.role === "owner";
   const isAgent = user?.role === "agent";
-
   const isStaff = user?.role === "staff";
+
   const sections = (
-    isAgent ? AGENT_SECTIONS :
-    isStaff ? STAFF_SECTIONS :
-    OWNER_SECTIONS
-  ).filter((s) => !s.ownerOnly || isOwner);
+    isAgent ? AGENT_SIDEBAR_SECTIONS :
+    isStaff ? STAFF_SIDEBAR_SECTIONS :
+    OWNER_SIDEBAR_SECTIONS
+  );
 
   const handleLogout = () => { logout(); onClose?.(); navigate("/login"); };
 
@@ -380,27 +224,27 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
       >
         {/* AI CTA — owner/agent only */}
         {!isStaff && (
-        <button
-          onClick={() => { navigate("/itinerary"); onClose?.(); }}
-          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-150 hover:scale-[1.01] active:scale-[0.99]"
-          style={{ background: `linear-gradient(135deg, ${ACCENT}18 0%, #0a247215 100%)`, border: `1px solid ${ACCENT}22` }}
-        >
-          <div
-            className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: `linear-gradient(135deg, ${ACCENT}, #0a2472)` }}
+          <button
+            onClick={() => { navigate("/itinerary"); onClose?.(); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-150 hover:scale-[1.01] active:scale-[0.99]"
+            style={{ background: `linear-gradient(135deg, ${ACCENT}18 0%, #0a247215 100%)`, border: `1px solid ${ACCENT}22` }}
           >
-            <ChatGPTIcon className="h-3.5 w-3.5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[11.5px] font-bold leading-tight" style={{ color: ACCENT }}>
-              Itinerary
-            </p>
-            <p className="text-[9.5px] text-[hsl(var(--muted-foreground))] leading-tight mt-[1px]" style={{ opacity: 0.7 }}>
-              Buat program perjalanan otomatis
-            </p>
-          </div>
-          <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: ACCENT, opacity: 0.6 }} strokeWidth={2} />
-        </button>
+            <div
+              className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: `linear-gradient(135deg, ${ACCENT}, #0a2472)` }}
+            >
+              <ChatGPTIcon className="h-3.5 w-3.5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11.5px] font-bold leading-tight" style={{ color: ACCENT }}>
+                Itinerary
+              </p>
+              <p className="text-[9.5px] text-[hsl(var(--muted-foreground))] leading-tight mt-[1px]" style={{ opacity: 0.7 }}>
+                Buat program perjalanan otomatis
+              </p>
+            </div>
+            <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: ACCENT, opacity: 0.6 }} strokeWidth={2} />
+          </button>
         )}
 
         {/* Logout */}
