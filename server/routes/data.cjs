@@ -52,12 +52,42 @@ function resolveUserId(req) {
 async function getCallerAgency(req) {
   const userId = resolveUserId(req);
   if (!userId) return null;
-  const { rows } = await pool.query(
-    `SELECT am.agency_id, am.role, am.commission_pct
-     FROM agency_members am WHERE am.user_id = $1 LIMIT 1`,
-    [userId],
-  );
-  return rows[0] ?? null;
+
+  // 1. Try Replit PostgreSQL first (fast, local)
+  try {
+    const { rows } = await pool.query(
+      `SELECT am.agency_id, am.role, am.commission_pct
+       FROM agency_members am WHERE am.user_id = $1 LIMIT 1`,
+      [userId],
+    );
+    if (rows[0]) return rows[0];
+  } catch (_) { /* fall through to Supabase */ }
+
+  // 2. Fallback: query Supabase REST API using the user's own Bearer JWT (RLS applies)
+  const authHeader = req.headers['authorization'] ?? '';
+  const supabaseUrl = process.env.VITE_SUPABASE_URL ?? '';
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY ?? '';
+
+  if (authHeader.startsWith('Bearer ') && supabaseUrl && anonKey) {
+    try {
+      const sbRes = await fetch(
+        `${supabaseUrl}/rest/v1/agency_members?user_id=eq.${encodeURIComponent(userId)}&select=agency_id,role,commission_pct&limit=1`,
+        {
+          headers: {
+            'apikey': anonKey,
+            'Authorization': authHeader,
+            'Accept': 'application/json',
+          },
+        },
+      );
+      if (sbRes.ok) {
+        const rows = await sbRes.json();
+        return rows[0] ?? null;
+      }
+    } catch (_) { /* ignore */ }
+  }
+
+  return null;
 }
 
 /** Middleware: require authenticated (session or Bearer) + agency membership. */

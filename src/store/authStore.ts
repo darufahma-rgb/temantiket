@@ -142,6 +142,50 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 async function fetchCurrentUser(): Promise<AuthUser | null> {
+  // Primary path: query Supabase directly — no server round-trip needed
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (!user || error) return null;
+
+      const { data: membership } = await supabase
+        .from("agency_members")
+        .select("agency_id, role, commission_pct, agencies(name)")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!membership) return null;
+
+      const m = membership as {
+        agency_id: string;
+        role: string;
+        commission_pct: number;
+        agencies: { name: string } | null;
+      };
+
+      const displayName =
+        (user.user_metadata?.display_name as string) ||
+        (user.user_metadata?.full_name as string) ||
+        user.email?.split("@")[0] ||
+        "User";
+
+      return {
+        id: user.id,
+        email: user.email ?? "",
+        displayName,
+        role: m.role as UserRole,
+        agencyId: m.agency_id,
+        agencyName: m.agencies?.name ?? "Agency",
+        commissionPct: Number(m.commission_pct ?? 0),
+        profileImageUrl: (user.user_metadata?.avatar_url as string) ?? null,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  // Fallback: server session (Replit OIDC) — only if we already have a token/session
+  if (!_accessToken) return null;
   try {
     const data = await apiFetch<{
       id: string; email: string; displayName: string;
@@ -221,18 +265,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
         }
       } else {
-        // Fallback: session-based auth (Replit OIDC, local dev)
-        const user = await fetchCurrentUser();
-        if (user) {
-          recordLoginEvent(user.id);
-          set({ user, isAuthenticated: true, needsBootstrap: false, isInitialized: true, isLoading: false });
-          return;
-        } else {
-          const sessionRes = await fetch("/api/auth/user", { credentials: "include" });
-          const needsBootstrap = sessionRes.status !== 401;
-          set({ user: null, isAuthenticated: false, needsBootstrap, isInitialized: true, isLoading: false });
-          return;
-        }
+        // Supabase not configured — cannot authenticate, stay on login page
+        set({ user: null, isAuthenticated: false, needsBootstrap: false, isInitialized: true, isLoading: false });
+        return;
       }
       set({ user: null, isAuthenticated: false, isInitialized: true, isLoading: false });
     } catch {

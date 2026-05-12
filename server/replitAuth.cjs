@@ -272,34 +272,72 @@ function registerAuthRoutes(app) {
     try {
       const userId = req.user.id;
 
-      const { rows: memberRows } = await pool.query(
-        `SELECT am.agency_id, am.role, am.commission_pct,
-                a.name AS agency_name
-         FROM agency_members am
-         JOIN agencies a ON a.id = am.agency_id
-         WHERE am.user_id = $1
-         LIMIT 1`,
-        [userId],
-      );
+      // 1. Try Replit PostgreSQL
+      let membership = null;
+      let userRow = null;
+      try {
+        const { rows: memberRows } = await pool.query(
+          `SELECT am.agency_id, am.role, am.commission_pct,
+                  a.name AS agency_name
+           FROM agency_members am
+           JOIN agencies a ON a.id = am.agency_id
+           WHERE am.user_id = $1
+           LIMIT 1`,
+          [userId],
+        );
+        membership = memberRows[0] ?? null;
 
-      const membership = memberRows[0] ?? null;
+        const { rows: userRows } = await pool.query(
+          'SELECT * FROM users WHERE id = $1', [userId],
+        );
+        userRow = userRows[0] ?? null;
+      } catch (_) { /* fall through to Supabase */ }
 
-      const { rows: userRows } = await pool.query(
-        'SELECT * FROM users WHERE id = $1', [userId],
-      );
-      const user = userRows[0];
+      // 2. Fallback: query Supabase REST API when Replit PG has no data
+      if (!membership) {
+        const authHeader = req.headers['authorization'] ?? '';
+        const supabaseUrl = process.env.VITE_SUPABASE_URL ?? '';
+        const anonKey = process.env.VITE_SUPABASE_ANON_KEY ?? '';
 
-      const firstName   = user?.first_name ?? '';
-      const lastName    = user?.last_name  ?? '';
+        if (authHeader.startsWith('Bearer ') && supabaseUrl && anonKey) {
+          try {
+            const sbRes = await fetch(
+              `${supabaseUrl}/rest/v1/agency_members?user_id=eq.${encodeURIComponent(userId)}&select=agency_id,role,commission_pct,agencies(name)&limit=1`,
+              {
+                headers: {
+                  'apikey': anonKey,
+                  'Authorization': authHeader,
+                  'Accept': 'application/json',
+                },
+              },
+            );
+            if (sbRes.ok) {
+              const rows = await sbRes.json();
+              if (rows[0]) {
+                membership = {
+                  agency_id: rows[0].agency_id,
+                  role: rows[0].role,
+                  commission_pct: rows[0].commission_pct,
+                  agency_name: rows[0].agencies?.name ?? null,
+                };
+              }
+            }
+          } catch (_) { /* ignore */ }
+        }
+      }
+
+      const firstName   = userRow?.first_name ?? '';
+      const lastName    = userRow?.last_name  ?? '';
       const displayName = [firstName, lastName].filter(Boolean).join(' ')
-        || user?.email?.split('@')[0]
+        || userRow?.email?.split('@')[0]
+        || req.user?.email?.split('@')[0]
         || 'User';
 
       return res.json({
         id:              userId,
-        email:           user?.email ?? '',
+        email:           userRow?.email ?? req.user?.email ?? '',
         displayName,
-        profileImageUrl: user?.profile_image_url ?? null,
+        profileImageUrl: userRow?.profile_image_url ?? null,
         role:            membership?.role ?? null,
         agencyId:        membership?.agency_id ?? null,
         agencyName:      membership?.agency_name ?? null,
