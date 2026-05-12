@@ -182,8 +182,8 @@ export default function Settings() {
       });
       setIghAdmin(next);
       toast.success("Kontak admin disimpan. Akan muncul di footer PDF penawaran berikutnya.");
-    } catch (e: any) {
-      toast.error(`Gagal menyimpan: ${e?.message ?? e}`);
+    } catch (e: unknown) {
+      toast.error(`Gagal menyimpan: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSavingIghAdmin(false);
     }
@@ -277,8 +277,8 @@ export default function Settings() {
       localStorage.setItem(photoKey, dataUrl);
       setProfilePhoto(dataUrl);
       toast.success("Foto profil diperbarui.");
-    } catch (e: any) {
-      toast.error(`Gagal memproses foto: ${e?.message ?? e}`);
+    } catch (e: unknown) {
+      toast.error(`Gagal memproses foto: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setPhotoUploading(false);
     }
@@ -309,12 +309,12 @@ export default function Settings() {
         agency: p.agency || user.agencyName || "",
       }));
     }
-  }, [user?.id]);
+  }, [user]);
 
   // Backfill all agents then pull fresh wallet txs — called on tab load and on manual refresh
   const refreshAllAgentWallets = async (agentMs: import("@/store/authStore").MemberInfo[], isManual = false) => {
     if (agentMs.length === 0) return;
-    isManual ? setWalletRefreshing(true) : setWalletLoading(true);
+    if (isManual) { setWalletRefreshing(true); } else { setWalletLoading(true); }
     try {
       // 1. Global backfill — no agentId = all agents in agency, idempotent
       if (supabase) {
@@ -340,7 +340,7 @@ export default function Settings() {
     } catch (e) {
       toast.error(`Gagal refresh wallet: ${(e as Error).message}`);
     } finally {
-      isManual ? setWalletRefreshing(false) : setWalletLoading(false);
+      if (isManual) { setWalletRefreshing(false); } else { setWalletLoading(false); }
     }
   };
 
@@ -365,7 +365,7 @@ export default function Settings() {
       setSecurity((s) => ({ ...s, twoFactor: sec.twoFactor, loginAlert: sec.loginAlert }));
       setLoginHistory(getLoginHistory());
     }
-  }, [tab]);
+  }, [tab, getSecuritySettings, getLoginHistory]);
 
   const handleSaveProfileName = async () => {
     const newName = profile.name.trim();
@@ -394,8 +394,8 @@ export default function Settings() {
       );
 
       toast.success("Nama profil berhasil disimpan.");
-    } catch (e: any) {
-      toast.error(`Gagal menyimpan nama: ${e?.message ?? e}`);
+    } catch (e: unknown) {
+      toast.error(`Gagal menyimpan nama: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSavingName(false);
     }
@@ -454,8 +454,8 @@ export default function Settings() {
       setNewMemberEmail(""); setNewMemberName(""); setNewMemberPass("");
       setNewMemberRole("staff"); setNewMemberCommission(10);
       toast.success(`"${nameIn}" diundang sbg ${newMemberRole}. Bagikan password-nya secara aman.`);
-    } catch (e: any) {
-      toast.error(`Undang gagal: ${e?.message ?? "unknown error"}`);
+    } catch (e: unknown) {
+      toast.error(`Undang gagal: ${e instanceof Error ? e.message : "unknown error"}`);
     } finally {
       // PASTIKAN selalu reset, walaupun ada exception/halt di tengah jalan.
       setInvitingMember(false);
@@ -468,8 +468,8 @@ export default function Settings() {
       await removeMember(userId);
       try { setMembers(await listMembers()); } catch { /* ignore — owner bisa refresh manual */ }
       toast.success("Member dihapus.");
-    } catch (e: any) {
-      toast.error(`Hapus gagal: ${e?.message ?? "unknown error"}`);
+    } catch (e: unknown) {
+      toast.error(`Hapus gagal: ${e instanceof Error ? e.message : "unknown error"}`);
     }
   };
 
@@ -494,8 +494,8 @@ export default function Settings() {
           ].filter(Boolean).join(" • ") || "Semua sudah di Storage.",
         });
       }
-    } catch (e: any) {
-      toast.error(`Migrasi gagal: ${e.message}`);
+    } catch (e: unknown) {
+      toast.error(`Migrasi gagal: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setMigrating(false);
       setMigrateProgress(null);
@@ -508,7 +508,7 @@ export default function Settings() {
   useEffect(() => {
     applyAppearanceSettings(appearance);
     saveAppearanceSettings(appearance, user?.id);
-  }, [appearance]);
+  }, [appearance, user?.id]);
 
   const handleSave = () => {
     applyAppearanceSettings(appearance);
@@ -526,8 +526,8 @@ export default function Settings() {
       await changePassword(security.currentPw, security.newPw);
       setSecurity((s) => ({ ...s, currentPw: "", newPw: "", confirmPw: "" }));
       toast.success("Kata sandi berhasil diubah.");
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
     setSavingPassword(false);
   };
@@ -2349,7 +2349,7 @@ function ConnectionHealthPanel() {
     setRunning(false);
   };
 
-  useEffect(() => { runChecks(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { runChecks(); }, []);
 
   const overall: CheckStatus = checks.some((c) => c.status === "fail")
     ? "fail"
@@ -2496,8 +2496,8 @@ function PromoPostersPanel() {
       setPosts(normalized);
       savePromoPosters(normalized);
       toast.success("Poster promo disimpan & akan muncul di halaman publik member card.");
-    } catch (e: any) {
-      toast.error(`Gagal menyimpan: ${e?.message ?? e}`);
+    } catch (e: unknown) {
+      toast.error(`Gagal menyimpan: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSaving(false);
     }
@@ -2521,8 +2521,8 @@ function PromoPostersPanel() {
       const url = await uploadPromoImage(file);
       handleChange(id, "imageUrl", url);
       toast.success("Gambar poster berhasil diunggah.");
-    } catch (e: any) {
-      toast.error(`Gagal upload: ${e?.message ?? e}`);
+    } catch (e: unknown) {
+      toast.error(`Gagal upload: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setUploading(null);
     }
