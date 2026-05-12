@@ -990,7 +990,6 @@ function ClientCard({
 // ── Main list page ──────────────────────────────────────────────────────────
 export default function Clients() {
   const params = useParams<{ id?: string }>();
-  if (params.id) return <ClientDetailInner id={params.id} />;
 
   const navigate = useNavigate();
   const { clients, loadingClients, fetchClients, addClient } = useClientsStore();
@@ -1066,6 +1065,8 @@ export default function Clients() {
   }, [debouncedQ, clients]);
 
   const isLoading = loadingClients && clients.length === 0;
+
+  if (params.id) return <ClientDetailInner id={params.id} />;
 
   return (
     <div className="flex flex-col h-full">
