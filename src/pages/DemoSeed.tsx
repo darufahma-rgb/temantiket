@@ -618,7 +618,7 @@ export default function DemoSeed() {
   // ── BASIC CLEANUP ────────────────────────────────────────────────────────────
   async function runBasicCleanup() {
     if (!agencyId) { toast.error("Login dulu ya!"); return; }
-    setCleaning: setCleaningBasic(true);
+    setCleaningBasic(true);
     setBasicCleanItems(toItems(BASIC_ITEMS, "idle"));
 
     try {

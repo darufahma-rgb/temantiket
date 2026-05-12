@@ -35,7 +35,7 @@ export default function Auth() {
           ),
         ]);
         if (!active) return;
-        const { count, error: e } = result as { count: number | null; error: any };
+        const { count, error: e } = result as { count: number | null; error: { message: string } | null };
         if (e) {
           setAlreadyBootstrapped(false);
         } else {
