@@ -461,9 +461,17 @@ Rules:
 - gender must be exactly "L" (laki-laki) or "P" (perempuan), null if unreadable.
 - Return ONLY the JSON object, nothing else.`;
 
-async function handleAuthUser(req, res, admin, caller) {
+async function handleAuthUser(req, res, caller, authHeader) {
   try {
-    const { data: membership, error: memErr } = await admin
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return res.status(503).json({ error: 'Supabase tidak dikonfigurasi' });
+    }
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
+    });
+
+    const { data: membership, error: memErr } = await userClient
       .from('agency_members')
       .select('agency_id, role, commission_pct, agencies(name)')
       .eq('user_id', caller.id)
@@ -568,11 +576,12 @@ export default async function handler(req, res) {
   const caller = await getCallerUser(authHeader);
   if (!caller) return res.status(401).json({ error: 'Sesi tidak valid — login ulang dulu' });
 
+  // auth/user uses its own user-scoped client — no SERVICE_ROLE_KEY needed
+  if (resource === 'auth' && subId === 'user' && req.method === 'GET') return handleAuthUser(req, res, caller, authHeader);
+
   let admin;
   try { admin = makeAdminClient(); }
   catch (e) { return res.status(503).json({ error: e.message }); }
-
-  if (resource === 'auth' && subId === 'user' && req.method === 'GET') return handleAuthUser(req, res, admin, caller);
 
   if (resource === 'agency-members') {
     if (req.method === 'GET')              return handleAgencyMembersGet(req, res, admin, caller);
