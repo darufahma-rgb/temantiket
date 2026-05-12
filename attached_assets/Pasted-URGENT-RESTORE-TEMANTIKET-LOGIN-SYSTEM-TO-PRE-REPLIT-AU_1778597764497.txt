@@ -1,0 +1,159 @@
+URGENT — RESTORE TEMANTIKET LOGIN SYSTEM TO PRE-REPLIT AUTH VERSION
+
+Problem:
+Temantiket login became broken after Replit Auth / OIDC migration.
+Current production on Vercel redirects to /api/login and causes 404.
+I want to restore the older stable login system that existed BEFORE Replit Auth integration.
+
+Goal:
+Rollback auth architecture to the previous stable email/password system using Supabase Auth only.
+
+IMPORTANT:
+Do NOT rewrite the entire app.
+Do NOT change unrelated business logic.
+Focus ONLY on restoring stable login/session/auth behavior.
+
+==================================================
+STEP 1 — FIND PRE-REPLIT AUTH LOGIN FLOW
+==================================================
+
+Audit git history and identify:
+- when Replit Auth was introduced
+- files changed during auth migration
+- original login implementation before Replit Auth
+
+Search for:
+- /api/login
+- Replit Auth
+- OIDC
+- express-session
+- replitAuth.cjs
+- window.location.href="/api/login"
+
+Identify:
+- previous authStore implementation
+- previous Supabase login flow
+- previous session restore flow
+
+==================================================
+STEP 2 — REMOVE REPLIT AUTH FROM PRODUCTION
+==================================================
+
+Remove production dependency on:
+- replitAuth.cjs
+- /api/login
+- /api/logout
+- /api/callback
+- express-session
+- OIDC redirects
+
+Do NOT use:
+window.location.href="/api/login"
+
+==================================================
+STEP 3 — RESTORE SUPABASE AUTH LOGIN
+==================================================
+
+Restore email/password login using Supabase Auth.
+
+Requirements:
+1. login(email, password):
+   - use supabase.auth.signInWithPassword
+   - return proper errors
+   - restore user session
+2. logout():
+   - use supabase.auth.signOut
+3. init():
+   - restore session after refresh
+4. preserve:
+   - owner/staff/agent roles
+   - agency membership logic
+   - local PIN/2FA
+5. preserve bootstrap/new agency flow
+
+==================================================
+STEP 4 — FIX AUTH STORE
+==================================================
+
+Audit:
+- src/store/authStore.ts
+- src/pages/Login.tsx
+
+Fix:
+1. Login.tsx should stay as normal email/password form.
+2. authStore.login() must NOT redirect anywhere.
+3. Use async Supabase login directly.
+4. Set:
+   - user
+   - isAuthenticated
+   - isInitialized
+   - needsBootstrap
+   correctly.
+
+==================================================
+STEP 5 — CLEANUP OLD REPLIT AUTH CODE
+==================================================
+
+Remove or disable:
+- unused Replit auth redirects
+- broken middleware
+- broken auth API routes
+- unused session logic
+
+But:
+DO NOT break other API features like:
+- invoice export
+- OCR
+- AI tools
+- uploads
+
+==================================================
+STEP 6 — VERCEL COMPATIBILITY
+==================================================
+
+Ensure:
+1. App works fully on:
+   - Vercel
+   - Supabase
+2. No dependency on Replit runtime.
+3. Add/fix vercel.json SPA routing.
+4. Ensure refresh works on protected routes.
+
+==================================================
+STEP 7 — VALIDATION
+==================================================
+
+Test:
+1. Owner login
+2. Staff login
+3. Agent login
+4. Refresh session
+5. Mobile login
+6. Desktop login
+7. Logout
+8. Protected routes
+9. Session persistence
+10. Wrong password handling
+
+==================================================
+STEP 8 — SAFETY
+==================================================
+
+Before changing anything:
+1. Create backup branch.
+2. Minimize code changes.
+3. Prefer rollback/revert over massive rewrite.
+4. Avoid creating many Vercel API functions.
+5. Keep deployment compatible with Vercel Hobby plan.
+
+==================================================
+FINAL OUTPUT
+==================================================
+
+After completion provide:
+- files changed
+- Replit-auth-related files removed/disabled
+- restored auth flow explanation
+- remaining risks
+- confirmation login works again
+- confirmation Vercel deploy succeeds
