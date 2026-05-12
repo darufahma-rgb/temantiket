@@ -1,0 +1,64 @@
+Diagnosis is now confirmed from production shell test.
+
+Production results:
+- / = 200
+- /login = 404
+- /dashboard = 404
+- /bootstrap = 404
+- /api/auth/user = 404
+- Supabase /token?grant_type=password = 200
+
+This proves:
+1. Supabase login works.
+2. Vercel deep-link SPA routing is broken.
+3. Vercel /api/auth/user route is missing or not routed.
+4. This is not a password/account issue.
+
+Fix only Vercel routing and API routing.
+
+Tasks:
+
+1. Fix vercel.json for Vite + React Router SPA:
+   - All non-API routes must rewrite to /index.html.
+   - /login, /dashboard, /bootstrap, /orders, /clients, /packages must return the app HTML, not Vercel 404.
+   - /api/* must NOT rewrite to /index.html.
+   - Static files /assets/*, /sw.js, /registerSW.js, manifest, icons must still serve normally.
+   - Use a simple reliable Vercel config.
+
+2. Fix /api/auth/user on Vercel:
+   - Confirm api/[...path].js actually exists and is committed.
+   - Confirm it handles GET /api/auth/user.
+   - Confirm Vercel routes /api/auth/user to this function.
+   - If catch-all syntax is wrong for Vercel, replace it with a working Vercel-compatible route.
+   - Add explicit api/auth/user.js if needed. It is better to have one extra function than broken login.
+   - The endpoint must accept Authorization: Bearer <Supabase access token>.
+   - It must return JSON, never Vercel NOT_FOUND.
+   - It must return:
+     - 401 JSON if token missing/invalid
+     - 404 JSON with code NO_MEMBERSHIP if login succeeds but no agency membership
+     - 200 JSON with user profile, role, agencyId, agencyName, commission if membership exists.
+
+3. Verify locally/build:
+   - npm run lint
+   - npm run test
+   - npm run build
+
+4. Verify production-like routing after build:
+   - Check that final vercel.json is valid.
+   - Check that api route files exist in api/.
+   - Explain exactly which file handles /api/auth/user.
+   - Explain why /login /dashboard /bootstrap will no longer 404 after deploy.
+
+5. Give me a final checklist:
+   - files changed
+   - final vercel.json content
+   - API file that handles /api/auth/user
+   - whether I need to push/redeploy Vercel
+   - whether I need to clear service worker/cache
+
+Important:
+- Do not change login UI.
+- Do not change Supabase credentials.
+- Do not create a new account.
+- Do not modify unrelated features.
+- Focus only on Vercel SPA rewrite and /api/auth/user availability.

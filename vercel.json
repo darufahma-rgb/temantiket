@@ -3,16 +3,16 @@
   "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "vite",
   "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
     "api/[...path].js":      { "maxDuration": 30 },
+    "api/auth/user.js":      { "maxDuration": 30 },
     "api/export/[type].js":  { "maxDuration": 30 },
     "api/ai/[action].js":    { "maxDuration": 30 }
   },
   "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
