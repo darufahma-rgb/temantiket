@@ -2,6 +2,10 @@ import express, { type Express, type Request, type Response } from "express";
 import { chatStorage } from "../chat/storage";
 import { openai, speechToText, ensureCompatibleFormat } from "./client";
 
+interface AudioDelta {
+  audio?: { transcript?: string; data?: string };
+}
+
 // Body parser with 50MB limit for audio payloads
 const audioBodyParser = express.json({ limit: "50mb" });
 
@@ -105,7 +109,7 @@ export function registerAudioRoutes(app: Express): void {
       let assistantTranscript = "";
 
       for await (const chunk of stream) {
-        const delta = chunk.choices?.[0]?.delta as any;
+        const delta = chunk.choices?.[0]?.delta as unknown as AudioDelta;
         if (!delta) continue;
 
         if (delta?.audio?.transcript) {

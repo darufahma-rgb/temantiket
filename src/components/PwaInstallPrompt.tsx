@@ -14,7 +14,7 @@ function isIos(): boolean {
 
 function isInStandaloneMode(): boolean {
   return (
-    ("standalone" in window.navigator && (window.navigator as any).standalone) ||
+    ("standalone" in window.navigator && (window.navigator as { standalone?: boolean }).standalone) ||
     window.matchMedia("(display-mode: standalone)").matches
   );
 }
