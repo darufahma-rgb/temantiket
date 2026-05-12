@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, LogIn, AlertCircle, KeyRound } from "lucide-react";
+import { LogIn, AlertCircle, KeyRound } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { AnimatePresence, motion } from "framer-motion";
 import splashBackground from "@assets/image_1777530688079.png";
 
-// ── Stagger animation variants ────────────────────────────────────────────────
 const cardVariants = {
   hidden: {},
   show: {
@@ -22,10 +21,7 @@ const itemVariants = {
   },
 };
 
-// Pre-computed sparkle positions — di-define di luar komponen supaya gak
-// re-randomize tiap render (yg bikin posisi kelihatan "loncat" pas state berubah).
 const SPARKLES = Array.from({ length: 22 }, (_, i) => {
-  // Determinisitik via seed sederhana — biar konsisten antar re-render.
   const seed = (i + 1) * 9301 + 49297;
   const r1 = ((seed * 1103515245) % 1000) / 1000;
   const r2 = ((seed * 214013) % 1000) / 1000;
@@ -40,12 +36,8 @@ const SPARKLES = Array.from({ length: 22 }, (_, i) => {
 });
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [phase, setPhase] = useState<"loading" | "form" | "pin">("loading");
   const [pin, setPin] = useState("");
-  const usernameRef = useRef<HTMLInputElement>(null);
   const pinRef = useRef<HTMLInputElement>(null);
 
   const { login, completePinLogin, isLoading, error, isAuthenticated, clearError } = useAuthStore();
@@ -56,27 +48,20 @@ export default function Login() {
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
-    // 1050ms — lets the 0.85s progress bar finish + brief rest before form reveals
-    const timer = setTimeout(() => setPhase("form"), 1050);
+    const timer = setTimeout(() => setPhase("form"), 400);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    if (phase === "form") {
-      setTimeout(() => usernameRef.current?.focus(), 80);
-    }
     if (phase === "pin") {
       setTimeout(() => pinRef.current?.focus(), 80);
     }
   }, [phase]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     clearError();
-    if (!email.trim() || !password.trim()) return;
-    const result = await login(email.trim(), password);
-    if (result === "ok") navigate("/", { replace: true });
-    else if (result === "needs_pin") setPhase("pin");
+    const result = await login();
+    if (result === "needs_pin") setPhase("pin");
   };
 
   const handlePinSubmit = async (e: React.FormEvent) => {
@@ -92,7 +77,6 @@ export default function Login() {
       className="h-fill relative flex items-center justify-center overflow-hidden"
       style={{ backgroundColor: "#020617" }}
     >
-      {/* Animated wallpaper — Ken Burns slow zoom + drift biar gak statis */}
       <motion.div
         className="absolute inset-0"
         style={{
@@ -111,10 +95,8 @@ export default function Login() {
         }}
       />
 
-      {/* Vignette gradient supaya teks tetap kebaca */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/70" />
 
-      {/* Aurora glow blob 1 — pulse perlahan */}
       <motion.div
         className="pointer-events-none absolute -top-32 -left-32 h-[420px] w-[420px] rounded-full"
         style={{
@@ -130,7 +112,6 @@ export default function Login() {
         transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      {/* Aurora glow blob 2 — counter-pulse, fase beda biar gak sinkron */}
       <motion.div
         className="pointer-events-none absolute -bottom-40 -right-24 h-[480px] w-[480px] rounded-full"
         style={{
@@ -146,7 +127,6 @@ export default function Login() {
         transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
       />
 
-      {/* Sparkle layer — titik-titik kecil yg mengambang */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {SPARKLES.map((s, i) => (
           <motion.span
@@ -173,7 +153,6 @@ export default function Login() {
         ))}
       </div>
 
-      {/* Shimmer sweep — garis cahaya diagonal yg melintas lambat */}
       <motion.div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -183,6 +162,7 @@ export default function Login() {
         animate={{ backgroundPosition: ["-200% 0%", "200% 0%"] }}
         transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
       />
+
       <motion.div
         className="relative z-10 flex w-full max-w-sm flex-col items-center px-6"
         initial={{ opacity: 0, y: -16 }}
@@ -235,10 +215,9 @@ export default function Login() {
                   variants={cardVariants}
                   initial="hidden"
                   animate="show"
-                  className="space-y-4"
+                  className="space-y-5"
                 >
-                  {/* Title */}
-                  <motion.div variants={itemVariants} className="mb-6 text-center">
+                  <motion.div variants={itemVariants} className="mb-2 text-center">
                     <h1 className="text-xl font-extrabold tracking-tight text-white">
                       Portal Admin
                     </h1>
@@ -247,88 +226,52 @@ export default function Login() {
                     </p>
                   </motion.div>
 
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <AnimatePresence>
-                      {error && (
-                        <motion.div
-                          className="flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/20 px-3.5 py-2.5"
-                          initial={{ opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                        >
-                          <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-300" />
-                          <p className="text-[12px] font-medium text-red-200">{error}</p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <motion.div variants={itemVariants} className="space-y-1.5">
-                      <label className="pl-1 text-[11px] font-bold uppercase tracking-widest text-white/70">
-                        Email
-                      </label>
-                      <input
-                        ref={usernameRef}
-                        type="email"
-                        autoComplete="email"
-                        placeholder="owner@agency.com"
-                        value={email}
-                        onChange={(e) => { setEmail(e.target.value); clearError(); }}
-                        disabled={isLoading}
-                        className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-medium text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
-                      />
-                    </motion.div>
-
-                    <motion.div variants={itemVariants} className="space-y-1.5">
-                      <label className="pl-1 text-[11px] font-bold uppercase tracking-widest text-white/70">
-                        Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          autoComplete="current-password"
-                          placeholder="••••••••"
-                          value={password}
-                          onChange={(e) => { setPassword(e.target.value); clearError(); }}
-                          disabled={isLoading}
-                          className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 pr-11 text-sm font-medium text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
-                        />
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          onClick={() => setShowPassword((v) => !v)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 transition-colors hover:text-white/80"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </motion.div>
-
-                    <motion.div variants={itemVariants}>
-                      <motion.button
-                        type="submit"
-                        disabled={isLoading || !email.trim() || !password.trim()}
-                        className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
-                        style={{
-                          background: "linear-gradient(135deg, #123499 0%, #1a44d4 60%, #6694ff 100%)",
-                          boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
-                        }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div
+                        className="flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/20 px-3.5 py-2.5"
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
                       >
-                        {isLoading ? (
-                          <>
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                            Masuk…
-                          </>
-                        ) : (
-                          <>
-                            <LogIn className="h-4 w-4" />
-                            Masuk
-                          </>
-                        )}
-                      </motion.button>
-                    </motion.div>
-                  </form>
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-300" />
+                        <p className="text-[12px] font-medium text-red-200">{error}</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <motion.div variants={itemVariants}>
+                    <motion.button
+                      type="button"
+                      onClick={handleLogin}
+                      disabled={isLoading}
+                      className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
+                      style={{
+                        background: "linear-gradient(135deg, #123499 0%, #1a44d4 60%, #6694ff 100%)",
+                        boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
+                      }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                          Mengarahkan…
+                        </>
+                      ) : (
+                        <>
+                          <LogIn className="h-4 w-4" />
+                          Masuk dengan Replit
+                        </>
+                      )}
+                    </motion.button>
+                  </motion.div>
+
+                  <motion.div variants={itemVariants}>
+                    <p className="text-center text-[11px] text-white/40 leading-relaxed">
+                      Gunakan akun Replit Anda untuk masuk ke portal ini.
+                    </p>
+                  </motion.div>
                 </motion.div>
               </div>
             </motion.div>
@@ -428,7 +371,7 @@ export default function Login() {
                         onClick={() => { setPhase("form"); setPin(""); clearError(); }}
                         className="w-full text-center text-[12px] text-white/50 hover:text-white/80 transition-colors mt-1"
                       >
-                        Kembali ke login
+                        Kembali
                       </button>
                     </motion.div>
                   </form>

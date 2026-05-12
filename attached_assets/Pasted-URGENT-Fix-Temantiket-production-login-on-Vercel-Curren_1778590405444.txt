@@ -1,0 +1,64 @@
+URGENT: Fix Temantiket production login on Vercel.
+
+Current bug:
+When user opens /login, enters email + password, and clicks Masuk, the app redirects to /api/login. On Vercel this returns 404 NOT_FOUND.
+
+Root cause:
+src/store/authStore.ts login() ignores email/password and does:
+window.location.href = "/api/login";
+
+That route belongs to Replit Auth / Express backend, but Vercel production does not run that Express auth route.
+
+Goal:
+Make email/password login work again on Vercel using Supabase Auth. Do not redirect to /api/login in production.
+
+Files to inspect:
+- src/store/authStore.ts
+- src/pages/Login.tsx
+- src/lib/supabase.ts
+- src/App.tsx
+- server/replitAuth.cjs
+- server/index.cjs
+
+Required changes:
+1. In src/store/authStore.ts, replace login(email, password) implementation.
+2. login(email, password) must:
+   - require non-empty email and password
+   - use Supabase Auth signInWithPassword when Supabase is configured
+   - fetch the current user membership/agency data after successful auth
+   - set:
+     user
+     isAuthenticated=true
+     isLoading=false
+     error=null
+     needsBootstrap=false
+   - return "ok"
+3. Do not redirect to /api/login on Vercel.
+4. Keep Replit Auth only as development fallback if needed, but never use it when running on Vercel production.
+5. logout() must use Supabase Auth signOut in production. Do not redirect to /api/logout on Vercel.
+6. init() must restore Supabase session on refresh.
+7. If user is authenticated but has no agency/member row, set needsBootstrap=true.
+8. Preserve existing local 2FA/PIN behavior:
+   - after successful password login, check local security settings
+   - if twoFactor is enabled and pinHash exists, set pendingLoginUser and return "needs_pin"
+   - otherwise record login event and return "ok"
+9. Login.tsx should continue using the existing email/password form.
+10. Show friendly error messages:
+   - invalid credentials
+   - Supabase not configured
+   - membership not found
+11. Make sure owner account redirects to "/" after login.
+12. Make sure mobile and desktop both work.
+13. Make sure /login renders normally.
+14. Make sure direct /api/login does not affect normal app login anymore.
+15. Run:
+   npm run build
+   npm run lint
+   npm run test
+   if available.
+
+Important:
+Do not remove existing app routes.
+Do not break role guards.
+Do not break staff/agent login.
+Do not break bootstrap flow.
