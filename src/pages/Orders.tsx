@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { ShoppingBag, Plus, Search, ArrowLeft, ChevronRight, TrendingUp, Wallet, AlertTriangle } from "lucide-react";
+import { MobileFAB } from "@/components/MobileFAB";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -524,6 +525,8 @@ export default function Orders() {
           navigate(`/orders/detail/${o.id}`);
         }}
       />
+
+      <MobileFAB onClick={() => setAddOpen(true)} label="Order Baru" />
     </>
   );
 }

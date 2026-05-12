@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { MobileFAB } from "@/components/MobileFAB";
 import ProgressTracker from "@/pages/ProgressTracker";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -634,6 +635,8 @@ export default function Packages() {
               </motion.div>
             </>
           )}
+
+          <MobileFAB onClick={openCreate} label="Tambah Paket" />
 
           <PackageFormDialog
             open={formOpen}

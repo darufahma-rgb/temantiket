@@ -6,8 +6,9 @@ import {
   Tag, RefreshCw, Settings2, ImagePlus, Plane, Share2, Copy,
   Clock, MapPin, ArrowRight, ExternalLink, Instagram, Link2,
   ArrowLeftRight, RotateCcw, Search, Calendar, SlidersHorizontal, ArrowUpDown,
-  FlaskConical,
+  FlaskConical, ClipboardPaste,
 } from "lucide-react";
+import { MobileFAB } from "@/components/MobileFAB";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -2539,7 +2540,7 @@ export default function TicketPrices() {
             />
 
             {/* ── BC / Kode Sistem text paste ── */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-bc-paste-section>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
                   Atau paste BC / Kode Sistem (Galileo, WhatsApp BC, booking text):
@@ -3013,6 +3014,24 @@ export default function TicketPrices() {
       )}
 
       </div>{/* end hidden md:block */}
+
+      <MobileFAB
+        actions={[
+          {
+            icon: <Plus className="h-4 w-4" />,
+            label: "Tambah BC",
+            onClick: openAdd,
+          },
+          {
+            icon: <ClipboardPaste className="h-4 w-4" />,
+            label: "Import BC",
+            onClick: () => {
+              const el = document.querySelector("[data-bc-paste-section]");
+              el?.scrollIntoView({ behavior: "smooth", block: "start" });
+            },
+          },
+        ]}
+      />
 
       {/* ── Edit / Add Dialog — rendered at root level for both mobile & desktop ── */}
       <TicketFormDialog

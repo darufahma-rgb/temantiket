@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import { MobileFAB } from "@/components/MobileFAB";
 import {
   Users, Plus, Search, Phone, Mail, Pencil, Trash2,
   ArrowLeft, ShoppingBag, X, MessageCircle, FileText,
@@ -1152,6 +1153,8 @@ export default function Clients() {
         {/* Bottom padding for mobile nav */}
         <div className="h-6" />
       </div>
+
+      <MobileFAB onClick={() => setAddOpen(true)} label="Tambah Klien" />
 
       <ClientFormDialog
         open={addOpen}
