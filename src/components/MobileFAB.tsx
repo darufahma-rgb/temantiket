@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export interface FABAction {
   icon: React.ReactNode;
@@ -20,13 +20,36 @@ const FAB_BOTTOM = "calc(78px + env(safe-area-inset-bottom, 0px))";
 const GRADIENT = "linear-gradient(135deg, #1a44d4, #0a2472)";
 const SHADOW   = "0 8px 24px -4px rgba(26,68,212,0.48)";
 
+function useKeyboardOpen() {
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const vp = window.visualViewport;
+    if (!vp) return;
+    const check = () => setKeyboardOpen(window.innerHeight - vp.height > 150);
+    vp.addEventListener("resize", check);
+    vp.addEventListener("scroll", check);
+    return () => { vp.removeEventListener("resize", check); vp.removeEventListener("scroll", check); };
+  }, []);
+  return keyboardOpen;
+}
+
 export function MobileFAB({ onClick, icon, label, actions }: MobileFABProps) {
   const [open, setOpen] = useState(false);
+  const keyboardOpen = useKeyboardOpen();
   const hasActions = actions && actions.length > 0;
 
   if (hasActions) {
     return (
-      <div className="md:hidden fixed z-40 right-4" style={{ bottom: FAB_BOTTOM }}>
+      <div
+        className="md:hidden fixed z-40 right-4"
+        style={{
+          bottom: FAB_BOTTOM,
+          transform: keyboardOpen ? "translateY(200%)" : "translateY(0)",
+          transition: "transform 300ms cubic-bezier(0.16, 1, 0.3, 1)",
+          pointerEvents: keyboardOpen ? "none" : undefined,
+          willChange: "transform",
+        }}
+      >
         <AnimatePresence>
           {open && (
             <motion.div
@@ -88,7 +111,15 @@ export function MobileFAB({ onClick, icon, label, actions }: MobileFABProps) {
   return (
     <motion.button
       className="md:hidden fixed z-40 right-4 h-14 rounded-full flex items-center gap-2 px-5 text-white text-[13px] font-bold"
-      style={{ bottom: FAB_BOTTOM, background: GRADIENT, boxShadow: SHADOW }}
+      style={{
+        bottom: FAB_BOTTOM,
+        background: GRADIENT,
+        boxShadow: SHADOW,
+        transform: keyboardOpen ? "translateY(200%)" : undefined,
+        transition: "transform 300ms cubic-bezier(0.16, 1, 0.3, 1)",
+        pointerEvents: keyboardOpen ? "none" : undefined,
+        willChange: "transform",
+      }}
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: "spring", stiffness: 340, damping: 24, delay: 0.12 }}

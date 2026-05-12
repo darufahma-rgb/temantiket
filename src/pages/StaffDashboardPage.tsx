@@ -1,9 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { MobileStaffDashboardSkeleton } from "@/components/MobileSkeletons";
 import { motion } from "framer-motion";
 import {
   ClipboardList, Clock, CheckCircle2, AlertTriangle,
-  Wallet, FileText, RefreshCw, Loader2,
+  Wallet, FileText, RefreshCw,
   ArrowUpRight, UserCircle, Calculator, Settings,
   Target, ChevronRight, BadgeCheck,
 } from "lucide-react";
@@ -61,12 +62,7 @@ export default function StaffDashboardPage() {
   }, [user?.id, user?.agencyId]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] gap-3 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="text-sm">Memuat dashboard…</span>
-      </div>
-    );
+    return <MobileStaffDashboardSkeleton />;
   }
 
   const recentOrders = [...myOrders]

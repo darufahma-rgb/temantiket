@@ -43,6 +43,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [moreOpen, setMoreOpen]     = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -62,6 +63,25 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
     }
     return () => { leavePresence(); };
   }, [currentUser?.id, currentUser?.agencyId, joinPresence, leavePresence]);
+
+  // Keyboard detection via visualViewport — hides bottom nav when on-screen
+  // keyboard opens on iOS / Android to prevent overlap with focused input.
+  useEffect(() => {
+    const vp = window.visualViewport;
+    if (!vp) return;
+    const check = () => {
+      const shrinkage = window.innerHeight - vp.height;
+      const open = shrinkage > 150;
+      setKeyboardOpen(open);
+      if (open) setMoreOpen(false);
+    };
+    vp.addEventListener("resize", check);
+    vp.addEventListener("scroll", check);
+    return () => {
+      vp.removeEventListener("resize", check);
+      vp.removeEventListener("scroll", check);
+    };
+  }, []);
 
   const syncStatus = useSyncStatusStore((s) => s.status);
   const lastSync   = useSyncStatusStore((s) => s.lastSync);
@@ -275,6 +295,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                     ? "md:pt-0 md:pb-0"
                     : "px-4 md:pl-10 md:pr-8 md:py-7"
                 }`}
+                style={{ overscrollBehavior: "contain" }}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
@@ -291,7 +312,10 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
 
       {/* ── Mobile floating bottom nav ── */}
       <nav
-        className="md:hidden fixed z-50 flex items-center px-1"
+        className={cn(
+          "md:hidden fixed z-50 flex items-center px-1",
+          keyboardOpen ? "pointer-events-none" : "",
+        )}
         style={{
           bottom: "calc(8px + env(safe-area-inset-bottom, 0px))",
           left: "8px",
@@ -302,6 +326,9 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
           backdropFilter: "blur(28px) saturate(2)",
           WebkitBackdropFilter: "blur(28px) saturate(2)",
           boxShadow: "0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06), inset 0 0.5px 0 rgba(255,255,255,0.22)",
+          willChange: "transform",
+          transform: keyboardOpen ? "translateY(200%)" : "translateY(0)",
+          transition: "transform 300ms cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
         {bottomNav.map((item) => {

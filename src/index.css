@@ -205,6 +205,11 @@
   .layout-safe-inset {
     padding-top: calc(64px + env(safe-area-inset-top, 0px));
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    overscroll-behavior: contain;
+    /* Smooth momentum scroll on iOS */
+    -webkit-overflow-scrolling: touch;
+    /* Leave room for focused input to scroll into view above keyboard */
+    scroll-padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 
   @media (min-width: 768px) {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
+import { MobilePackageCardSkeleton } from "@/components/MobileSkeletons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { MobileFAB } from "@/components/MobileFAB";
 import ProgressTracker from "@/pages/ProgressTracker";
@@ -319,9 +320,10 @@ export default function Packages() {
 
           {/* ── Content ── */}
           {loading ? (
-            <div className="py-12 text-center space-y-2">
-              <div className="h-6 w-6 rounded-full border-2 border-sky-400 border-t-transparent animate-spin mx-auto" />
-              <p className="text-[12px] text-[hsl(var(--muted-foreground))]">Memuat paket…</p>
+            <div className="space-y-3">
+              <MobilePackageCardSkeleton />
+              <MobilePackageCardSkeleton />
+              <MobilePackageCardSkeleton />
             </div>
           ) : filtered.length === 0 ? (
             <div className="rounded-2xl border-2 border-dashed border-[hsl(var(--border))] py-7 text-center space-y-2 mx-0">
