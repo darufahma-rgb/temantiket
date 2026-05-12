@@ -43,6 +43,7 @@ export interface WalletTransaction {
   description: string;
   createdAt:   string;
   createdBy:   string;
+  orderId?:    string | null;
 }
 
 // ─── Deterministic idempotency key builders (B — idempotency hardening) ───────
@@ -237,28 +238,14 @@ export async function addWalletTxAsync(
   // Write to localStorage first — instant cache, deduplicating by id
   saveTxsCache(agentId, [full, ...listWalletTxs(agentId).filter((t) => t.id !== full.id)]);
 
-  if (!isSupabaseConfigured()) {
-    return { tx: full, persisted: false, error: "Supabase tidak dikonfigurasi" };
-  }
-
-  // ── Primary path: server endpoint (service role key — bypasses RLS) ────────
+  // ── Primary path: server endpoint (Replit Auth session — no Supabase needed) ─
   try {
     const agencyId = requireAgencyId();
-    const session = (await supabase!.auth.getSession()).data.session;
-    const token = session?.access_token;
-
-    if (!token) {
-      const msg = "Tidak ada sesi aktif — login ulang dulu";
-      console.error("[agentWallet] credit-wallet-tx: no auth token");
-      return { tx: full, persisted: false, error: msg };
-    }
 
     const res = await fetch("/api/credit-wallet-tx", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id:          full.id,
         agencyId,
@@ -269,6 +256,7 @@ export async function addWalletTxAsync(
         description: full.description,
         createdBy:   full.createdBy,
         createdAt:   full.createdAt,
+        orderId:     full.orderId ?? null,
       }),
     });
 
@@ -282,38 +270,7 @@ export async function addWalletTxAsync(
     const body = await res.json().catch(() => ({})) as { error?: string };
     const serverError = body?.error ?? `HTTP ${res.status}`;
     console.error(`[agentWallet] credit-wallet-tx server error (${res.status}):`, serverError);
-
-    // ── Fallback: try direct anon-client upsert ────────────────────────────
-    console.warn("[agentWallet] falling back to anon-client upsert after server error");
-    const { error: anonErr } = await supabase!
-      .from("agent_wallet_transactions")
-      .upsert(
-        {
-          id:           full.id,
-          agency_id:    agencyId,
-          agent_id:     full.agentId,
-          type:         full.type,
-          points_delta: full.pointsDelta,
-          amount_idr:   full.amountIDR,
-          description:  full.description,
-          created_by:   full.createdBy,
-          created_at:   full.createdAt,
-        },
-        { onConflict: "id" },
-      );
-
-    if (!anonErr) {
-      console.log("[agentWallet] anon-client fallback upsert succeeded");
-      const syncKey = walletSyncKey(agentId);
-      resolveFeatureSync(syncKey);
-      return { tx: full, persisted: true };
-    }
-
-    console.error("[agentWallet] anon-client fallback upsert juga gagal:", anonErr.message);
-    const finalError = anonErr.message
-      ? `${anonErr.message} (server: ${serverError})`
-      : serverError;
-    return { tx: full, persisted: false, error: finalError };
+    return { tx: full, persisted: false, error: serverError };
 
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -322,22 +279,20 @@ export async function addWalletTxAsync(
   }
 }
 
-/** Pull wallet txs dari Supabase → update localStorage cache → return list. */
+/** Pull wallet txs dari server API → update localStorage cache → return list. */
 export async function pullWalletTxs(agentId: string): Promise<WalletTransaction[]> {
-  if (!isSupabaseConfigured()) return listWalletTxs(agentId);
   try {
     const agencyId = getCurrentAgencyId();
     if (!agencyId) return listWalletTxs(agentId);
-    const { data, error } = await supabase!
-      .from("agent_wallet_transactions")
-      .select("*")
-      .eq("agency_id", agencyId)
-      .eq("agent_id", agentId)
-      .order("created_at", { ascending: false });
-    if (error) {
-      console.warn("[agentWallet] pull gagal:", error.message);
+
+    const res = await fetch(`/api/wallet-txs/${agentId}`, {
+      credentials: "include",
+    });
+    if (!res.ok) {
+      console.warn("[agentWallet] pull gagal:", res.status);
       return listWalletTxs(agentId);
     }
+    const data = await res.json() as Array<Record<string, unknown>>;
     const txs: WalletTransaction[] = (data ?? []).map((r) => ({
       id:          String(r.id),
       agentId:     String(r.agent_id),
@@ -347,12 +302,56 @@ export async function pullWalletTxs(agentId: string): Promise<WalletTransaction[
       description: String(r.description ?? ""),
       createdAt:   String(r.created_at),
       createdBy:   String(r.created_by ?? ""),
+      orderId:     r.order_id ? String(r.order_id) : null,
     }));
+
+    // Warn about duplicates (same type+orderId combo)
+    const seen = new Map<string, string>();
+    for (const tx of txs) {
+      if (!tx.orderId) continue;
+      const key = `${tx.type}:${tx.orderId}`;
+      if (seen.has(key)) {
+        console.warn(`[agentWallet] DUPLICATE wallet tx detected: type=${tx.type} orderId=${tx.orderId} ids=${seen.get(key)},${tx.id}`);
+      } else {
+        seen.set(key, tx.id);
+      }
+    }
+
     saveTxsCache(agentId, txs);
     return txs;
   } catch (e) {
     console.warn("[agentWallet] pull exception:", e);
     return listWalletTxs(agentId);
+  }
+}
+
+/**
+ * Delete all wallet transactions linked to a given orderId.
+ * Called when an order is deleted to prevent orphan commission rows.
+ */
+export async function deleteWalletTxsForOrder(orderId: string): Promise<void> {
+  // Remove from localStorage across all cached agents
+  try {
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith("igh.agent_wallet."));
+    for (const key of keys) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const txs = JSON.parse(raw) as WalletTransaction[];
+      const filtered = txs.filter((t) => t.orderId !== orderId);
+      if (filtered.length !== txs.length) {
+        localStorage.setItem(key, JSON.stringify(filtered));
+      }
+    }
+  } catch { /* ignore localStorage errors */ }
+
+  // Remove from server DB
+  try {
+    await fetch(`/api/wallet-txs-for-order/${orderId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+  } catch (e) {
+    console.warn("[agentWallet] deleteWalletTxsForOrder server call failed:", e);
   }
 }
 

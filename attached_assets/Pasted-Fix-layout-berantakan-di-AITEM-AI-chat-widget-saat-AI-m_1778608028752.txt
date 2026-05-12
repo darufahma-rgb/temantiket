@@ -1,0 +1,62 @@
+Fix layout berantakan di AITEM AI chat widget saat AI menjawab dengan tabel markdown.
+
+Evidence:
+- src/components/AIChatWidget.tsx uses ReactMarkdown + remark-gfm.
+- It has custom renderers for p, strong, ul, li, h1/h2/h3, code, pre, blockquote.
+- But it does not have custom responsive renderers for table, thead, tbody, tr, th, td.
+- Therefore markdown tables overflow outside the chat bubble on mobile.
+- src/components/MarkdownContent.tsx already has better table wrapper styling, but AIChatWidget uses its own renderer.
+
+Goal:
+AITEM chat message must stay neat on mobile and desktop, even when AI returns wide tables with long emails.
+
+Tasks:
+1. Open src/components/AIChatWidget.tsx.
+2. In the ReactMarkdown components prop for assistant messages, add responsive renderers:
+   - table
+   - thead
+   - tbody
+   - tr
+   - th
+   - td
+3. Wrap tables in a max-width-safe horizontal scroll container:
+   - max-w-full
+   - overflow-x-auto
+   - rounded-xl
+   - border
+   - bg-white
+4. Use table styling:
+   - table className: "w-max min-w-full border-collapse text-[11px] md:text-xs"
+   - th className: "px-2 py-1.5 text-left font-bold bg-slate-50 border-b border-slate-200 whitespace-nowrap"
+   - td className: "px-2 py-1.5 border-b border-slate-100 align-top break-words"
+5. Long emails/URLs must not break the bubble:
+   - for td, use max-w-[160px] md:max-w-[220px]
+   - use break-words or [overflow-wrap:anywhere]
+6. Ensure the assistant bubble container itself has:
+   - min-w-0
+   - max-w-full
+   - overflow-hidden
+7. Ensure the rendered markdown content wrapper has:
+   - min-w-0
+   - max-w-full
+   - overflow-hidden
+8. Only the table wrapper may scroll horizontally, not the whole modal.
+9. Do not change AI API/data logic.
+10. Do not change response content.
+11. Test with this markdown message inside AITEM:
+   | Nama Agen | Email | Komisi (%) | Total Order | Total Komisi |
+   |---|---|---:|---:|---:|
+   | Rafi Ibnu Mirwan | miwon@temantiket.com | 10 | 1 | Rp 130.000 |
+   | Fairuz Azri Afif A | fairuz@temantiket.com | 10 | 0 | Rp 0 |
+   | Chusnul Chuluq | unung@temantiket.com | 10 | 0 | Rp 0 |
+12. Run:
+   npm run lint
+   npm run test
+   npm run build
+
+Return:
+- root cause
+- file changed
+- exact table renderer added
+- before/after behavior
+- lint/test/build result

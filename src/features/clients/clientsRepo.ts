@@ -249,6 +249,12 @@ export async function updateClient(id: string, patch: Partial<Client>): Promise<
 }
 
 export async function deleteClient(id: string): Promise<void> {
+  // Clean up wallet transactions for all orders belonging to this client (best-effort)
+  void fetch(`/api/wallet-txs-for-client/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  }).catch((e) => console.warn("[clients] deleteWalletTxsForClient failed:", e));
+
   if (isSupabaseConfigured()) {
     const { data, error } = await withTimeout(
       supabase!

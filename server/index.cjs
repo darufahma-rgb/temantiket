@@ -1029,7 +1029,7 @@ app.post('/api/credit-wallet-tx', isAuthenticatedOrBearer, async (req, res) => {
     const membership = memberRows[0];
     if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
 
-    const { id, agencyId, agentId, type, pointsDelta, amountIDR, description, createdBy, createdAt } = req.body ?? {};
+    const { id, agencyId, agentId, type, pointsDelta, amountIDR, description, createdBy, createdAt, orderId } = req.body ?? {};
     if (!id || !agencyId || !agentId || !type || amountIDR === undefined) {
       return err(res, 400, 'Field wajib: id, agencyId, agentId, type, amountIDR');
     }
@@ -1040,14 +1040,107 @@ app.post('/api/credit-wallet-tx', isAuthenticatedOrBearer, async (req, res) => {
 
     await pool.query(
       `INSERT INTO agent_wallet_transactions
-         (id, agency_id, agent_id, type, points_delta, amount_idr, description, created_by, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         (id, agency_id, agent_id, type, points_delta, amount_idr, description, created_by, created_at, order_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        ON CONFLICT (id) DO NOTHING`,
       [id, agencyId, agentId, type, pointsDelta ?? 0, amountIDR,
-       description ?? '', createdBy ?? req.user.id, createdAt ?? new Date().toISOString()],
+       description ?? '', createdBy ?? req.user.id, createdAt ?? new Date().toISOString(),
+       orderId ?? null],
     );
 
     return ok(res, { ok: true, id });
+  } catch (e) {
+    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
+  }
+});
+
+/* ──────────────────────────────────────────────
+   GET /api/wallet-txs/:agentId
+   Fetch wallet transactions for an agent.
+────────────────────────────────────────────── */
+app.get('/api/wallet-txs/:agentId', isAuthenticatedOrBearer, async (req, res) => {
+  try {
+    const { rows: memberRows } = await pool.query(
+      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [req.user.id],
+    );
+    const membership = memberRows[0];
+    if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
+
+    const { agentId } = req.params;
+    if (membership.role === 'agent' && agentId !== req.user.id) {
+      return err(res, 403, 'Agen hanya bisa melihat wallet sendiri');
+    }
+
+    const { rows } = await pool.query(
+      `SELECT id, agency_id, agent_id, type, points_delta, amount_idr, description, created_by, created_at, order_id
+       FROM agent_wallet_transactions
+       WHERE agency_id = $1 AND agent_id = $2
+       ORDER BY created_at DESC`,
+      [membership.agency_id, agentId],
+    );
+
+    return ok(res, rows);
+  } catch (e) {
+    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
+  }
+});
+
+/* ──────────────────────────────────────────────
+   DELETE /api/wallet-txs-for-order/:orderId
+   Remove all wallet transactions linked to a deleted order.
+────────────────────────────────────────────── */
+app.delete('/api/wallet-txs-for-order/:orderId', isAuthenticatedOrBearer, async (req, res) => {
+  try {
+    const { rows: memberRows } = await pool.query(
+      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [req.user.id],
+    );
+    const membership = memberRows[0];
+    if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
+    if (membership.role === 'agent') return err(res, 403, 'Hanya owner/staff yang bisa hapus wallet tx');
+
+    const { orderId } = req.params;
+    const { rowCount } = await pool.query(
+      `DELETE FROM agent_wallet_transactions
+       WHERE agency_id = $1 AND order_id = $2
+         AND type NOT IN ('payout', 'adjustment')`,
+      [membership.agency_id, orderId],
+    );
+
+    return ok(res, { deleted: rowCount ?? 0 });
+  } catch (e) {
+    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
+  }
+});
+
+/* ──────────────────────────────────────────────
+   DELETE /api/wallet-txs-for-client/:clientId
+   Remove all wallet transactions linked to orders belonging to a deleted client.
+────────────────────────────────────────────── */
+app.delete('/api/wallet-txs-for-client/:clientId', isAuthenticatedOrBearer, async (req, res) => {
+  try {
+    const { rows: memberRows } = await pool.query(
+      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [req.user.id],
+    );
+    const membership = memberRows[0];
+    if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
+    if (membership.role === 'agent') return err(res, 403, 'Hanya owner/staff yang bisa hapus wallet tx');
+
+    const { clientId } = req.params;
+    // Delete wallet txs for all orders belonging to this client
+    const { rowCount } = await pool.query(
+      `DELETE FROM agent_wallet_transactions
+       WHERE agency_id = $1
+         AND order_id IN (
+           SELECT id FROM orders WHERE agency_id = $1 AND client_id = $2
+         )
+         AND type NOT IN ('payout', 'adjustment')`,
+      [membership.agency_id, clientId],
+    );
+
+    return ok(res, { deleted: rowCount ?? 0 });
   } catch (e) {
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }
@@ -1369,6 +1462,25 @@ if (isProd) {
 app.post('/api/setup-card-back', (req, res) => {
   return ok(res, { ok: true, message: 'Storage bucket tidak diperlukan — gambar disimpan di database.' });
 });
+
+// ── Startup DB migration: add order_id column + unique constraint ─────────────
+async function runWalletMigration() {
+  try {
+    await pool.query(`
+      ALTER TABLE agent_wallet_transactions
+        ADD COLUMN IF NOT EXISTS order_id TEXT;
+    `);
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uniq_wallet_tx_order_fee
+        ON agent_wallet_transactions (agency_id, agent_id, order_id, type)
+        WHERE order_id IS NOT NULL;
+    `);
+    console.log('[server] wallet migration OK — order_id column + unique index ready');
+  } catch (e) {
+    console.warn('[server] wallet migration warning:', e.message);
+  }
+}
+void runWalletMigration();
 
 const _server = app.listen(PORT, '0.0.0.0', () => {
   const mode = isProd ? 'production' : 'development';

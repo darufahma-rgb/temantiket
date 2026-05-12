@@ -697,6 +697,7 @@ export default function AgentProfileOwnerView() {
             amountIDR: salesFee,
             description: `Komisi order ${orderLabel} #${orderId8}${clientName ? ` — ${clientName}` : order.title ? ` — ${order.title}` : ""}`,
             createdBy: ownerId,
+            orderId: order.id,
           },
           `agent-${order.id}`,
         );
@@ -721,6 +722,7 @@ export default function AgentProfileOwnerView() {
             amountIDR: voaFee,
             description: `Fee Agent Lapangan VOA #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy: ownerId,
+            orderId: order.id,
           },
           `voa-${order.id}`,
         );
@@ -746,6 +748,7 @@ export default function AgentProfileOwnerView() {
             amountIDR: fieldFee,
             description: `Fee Agent Lapangan #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy: ownerId,
+            orderId: order.id,
           },
           `field-${order.id}`,
         );
@@ -770,6 +773,7 @@ export default function AgentProfileOwnerView() {
             amountIDR: kurirFeeAmt,
             description: `Fee Kurir Setoran #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy: ownerId,
+            orderId: order.id,
           },
           `kurir-${order.id}`,
         );
@@ -795,6 +799,7 @@ export default function AgentProfileOwnerView() {
             amountIDR: pelFee,
             description: `Fee Pelaksana Visa Student #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy: ownerId,
+            orderId: order.id,
           },
           `pelaksana-${order.id}`,
         );
@@ -820,6 +825,7 @@ export default function AgentProfileOwnerView() {
             amountIDR: opFee,
             description: `Fee Agent Operasional #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy: ownerId,
+            orderId: order.id,
           },
           `op-${order.id}`,
         );

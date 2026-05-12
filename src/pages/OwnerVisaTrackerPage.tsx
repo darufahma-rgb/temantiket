@@ -23,7 +23,7 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
-import { addWalletTx } from "@/lib/agentWallet";
+import { addWalletTxAsync } from "@/lib/agentWallet";
 import { ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
 import { fmtIDR } from "@/lib/profit";
 import { toast } from "sonner";
@@ -212,17 +212,30 @@ export default function OwnerVisaTrackerPage() {
     const m = meta(order);
     const pelaksanaId = m.pelaksanaId as string | null;
     if (!pelaksanaId) return;
+    if (m.pelaksanaFeeCredited) {
+      toast.info("Fee pelaksana sudah pernah dikreditkan untuk order ini.");
+      return;
+    }
     const fee = Number(m.pelaksanaFee ?? DEFAULT_FEE);
     setCreditingId(order.id);
     try {
-      addWalletTx(pelaksanaId, {
-        agentId: pelaksanaId,
-        type: "pelaksana_fee",
-        pointsDelta: 0,
-        amountIDR: fee,
-        description: `Fee Pelaksana Visa Student #${order.id.slice(0, 8)}${order.title ? ` — ${order.title}` : ""}`,
-        createdBy: user?.id ?? "owner",
-      });
+      const { persisted, error: walletErr } = await addWalletTxAsync(
+        pelaksanaId,
+        {
+          agentId:     pelaksanaId,
+          type:        "pelaksana_fee",
+          pointsDelta: 0,
+          amountIDR:   fee,
+          description: `Fee Pelaksana Visa Student #${order.id.slice(0, 8)}${order.title ? ` — ${order.title}` : ""}`,
+          createdBy:   user?.id ?? "owner",
+          orderId:     order.id,
+        },
+        `pelaksana-${order.id}`,
+      );
+      if (!persisted) {
+        toast.error("Gagal catat fee pelaksana.", { description: walletErr ?? "Coba lagi." });
+        return;
+      }
       await patchOrder(order.id, {
         metadata: { ...m, pelaksanaFeeCredited: true },
       });

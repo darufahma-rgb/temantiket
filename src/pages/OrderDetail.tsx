@@ -360,6 +360,7 @@ export default function OrderDetail() {
             amountIDR:   voaFieldFee,
             description: `Fee Agent Lapangan VOA #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy:   currentUser?.id ?? "system",
+            orderId:     order.id,
           },
           `voa-${order.id}`,
         );
@@ -392,6 +393,7 @@ export default function OrderDetail() {
             amountIDR:   kurirFeeAmountPre,
             description: `Fee Kurir Setoran #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy:   currentUser?.id ?? "system",
+            orderId:     order.id,
           },
           `kurir-${order.id}`,
         );
@@ -423,6 +425,7 @@ export default function OrderDetail() {
             amountIDR:   agentFeeAmount,
             description: `Komisi order ${orderLabel} #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy:   currentUser?.id ?? "system",
+            orderId:     order.id,
           },
           `agent-${order.id}`,
         );
@@ -473,6 +476,7 @@ export default function OrderDetail() {
             amountIDR:   pelaksanaFeeForCredit,
             description: `Fee Pelaksana Visa Student #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy:   currentUser?.id ?? "system",
+            orderId:     order.id,
           },
           `pelaksana-${order.id}`,
         );

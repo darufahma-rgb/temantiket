@@ -230,6 +230,12 @@ export async function updateOrder(id: string, patch: Partial<Order>): Promise<Or
 }
 
 export async function deleteOrder(id: string): Promise<void> {
+  // Delete related wallet transactions first (best-effort, non-blocking)
+  void fetch(`/api/wallet-txs-for-order/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  }).catch((e) => console.warn("[orders] deleteWalletTxs failed:", e));
+
   if (isSupabaseConfigured()) {
     const { data, error } = await withTimeout(
       supabase!.from("orders").delete().eq("id", id).select("id"),
@@ -242,6 +248,15 @@ export async function deleteOrder(id: string): Promise<void> {
       throw new Error(
         `Hapus order gagal — server tidak menghapus baris (kemungkinan RLS DELETE policy nge-blok). Cek policy "orders_delete" di Supabase.`,
       );
+    }
+  } else {
+    const res = await fetch(`/api/orders/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      throw new Error(body.error ?? `Hapus order gagal (HTTP ${res.status})`);
     }
   }
   saveCache(loadCache().filter((o) => o.id !== id));

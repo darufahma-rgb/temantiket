@@ -360,8 +360,12 @@ export const agentWalletTransactions = pgTable(
     description: text("description").notNull().default(""),
     createdBy: text("created_by").notNull().default(""),
     createdAt: timestamp("created_at").defaultNow(),
+    orderId: text("order_id"),
   },
-  (t) => [index("wallet_tx_agent_idx").on(t.agentId)],
+  (t) => [
+    index("wallet_tx_agent_idx").on(t.agentId),
+    index("wallet_tx_order_idx").on(t.orderId),
+  ],
 );
 
 // ── Daily Missions ────────────────────────────────────────────────────────────
