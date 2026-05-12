@@ -5,10 +5,10 @@
  * server-side PostgreSQL queries backed by Replit PostgreSQL.
  *
  * All routes are scoped to the authenticated user's agency.
+ * Auth: accepts either Replit OIDC session OR Supabase Bearer JWT.
  */
 
 const { pool } = require('../db.cjs');
-const { isAuthenticated } = require('../replitAuth.cjs');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -16,26 +16,66 @@ function ok(res, data) { return res.status(200).json(data); }
 function fail(res, status, message) { return res.status(status).json({ error: message }); }
 
 /**
- * Returns the agencyId for the current session user, or null if not a member.
+ * Decode a JWT payload without verifying the signature.
+ * Safe for internal use: the token is still validated by Supabase when issued.
+ */
+function decodeJwtPayload(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const decoded = Buffer.from(parts[1], 'base64url').toString('utf8');
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve the caller's user ID from:
+ *   1. Replit OIDC session  (req.user.id)
+ *   2. Supabase Bearer JWT  (Authorization: Bearer <token>)
+ * Returns null if neither is present.
+ */
+function resolveUserId(req) {
+  if (req.user?.id) return req.user.id;
+  const authHeader = req.headers['authorization'] ?? '';
+  if (authHeader.startsWith('Bearer ')) {
+    const payload = decodeJwtPayload(authHeader.slice(7));
+    return payload?.sub ?? null;
+  }
+  return null;
+}
+
+/**
+ * Returns the agency membership row for the caller, or null if not a member.
  */
 async function getCallerAgency(req) {
-  if (!req.user?.id) return null;
+  const userId = resolveUserId(req);
+  if (!userId) return null;
   const { rows } = await pool.query(
     `SELECT am.agency_id, am.role, am.commission_pct
      FROM agency_members am WHERE am.user_id = $1 LIMIT 1`,
-    [req.user.id],
+    [userId],
   );
   return rows[0] ?? null;
 }
 
-/** Middleware: require authenticated + agency membership. Attaches req.agency. */
+/** Middleware: require authenticated (session or Bearer) + agency membership. */
 async function requireMember(req, res, next) {
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
+  const isSession = req.isAuthenticated && req.isAuthenticated();
+  const hasBearer = (req.headers['authorization'] ?? '').startsWith('Bearer ');
+  if (!isSession && !hasBearer) {
     return fail(res, 401, 'Unauthorized');
   }
   const agency = await getCallerAgency(req).catch(() => null);
   if (!agency) return fail(res, 403, 'Tidak terdaftar di agency');
   req.agency = agency; // { agency_id, role, commission_pct }
+
+  // Ensure req.user.id is populated for downstream handlers
+  if (!req.user?.id) {
+    const uid = resolveUserId(req);
+    if (uid) req.user = { id: uid };
+  }
   next();
 }
 

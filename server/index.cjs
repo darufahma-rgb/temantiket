@@ -13,7 +13,7 @@ const SUPABASE_URL = '';
 const SERVICE_ROLE_KEY = '';
 
 // Replit Auth + data routes
-const { setupAuth, isAuthenticated, registerAuthRoutes } = require('./replitAuth.cjs');
+const { setupAuth, isAuthenticated, isAuthenticatedOrBearer, registerAuthRoutes } = require('./replitAuth.cjs');
 const { registerDataRoutes, requireMember, getCallerAgency } = require('./routes/data.cjs');
 const { pool, query: dbQuery } = require('./db.cjs');
 
@@ -181,11 +181,8 @@ function classifySupabaseError() { return null; }
    One-time setup: authenticated Replit user creates their agency.
    With Replit Auth, users are already created via OIDC — no password needed.
 ────────────────────────────────────────────── */
-app.post('/api/bootstrap', async (req, res) => {
+app.post('/api/bootstrap', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    if (!req.isAuthenticated || !req.isAuthenticated()) {
-      return err(res, 401, 'Login dulu melalui Replit Auth');
-    }
     const userId = req.user.id;
     const { agencyName } = req.body || {};
     if (!agencyName || typeof agencyName !== 'string' || !agencyName.trim()) {
@@ -224,12 +221,8 @@ app.post('/api/bootstrap', async (req, res) => {
    Owner adds a member by Replit userId or creates a pending record.
    With Replit Auth, users authenticate via Replit OAuth — no passwords.
 ────────────────────────────────────────────── */
-app.post('/api/invite-member', async (req, res) => {
+app.post('/api/invite-member', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    if (!req.isAuthenticated || !req.isAuthenticated()) {
-      return err(res, 401, 'Login dulu melalui Replit Auth');
-    }
-
     const { rows: callerRows } = await pool.query(
       'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
       [req.user.id],
@@ -295,12 +288,8 @@ app.post('/api/invite-member', async (req, res) => {
    POST /api/remove-member
    Owner removes staff/agent dari agency (membership only — Replit account unchanged)
 ────────────────────────────────────────────── */
-app.post('/api/remove-member', async (req, res) => {
+app.post('/api/remove-member', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    if (!req.isAuthenticated || !req.isAuthenticated()) {
-      return err(res, 401, 'Login dulu');
-    }
-
     const { rows: callerRows } = await pool.query(
       'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
       [req.user.id],
@@ -335,9 +324,8 @@ app.post('/api/remove-member', async (req, res) => {
    POST /api/award-completion-points
    Owner menandai order selesai → agen mendapat 20 poin di agent_points.
 ────────────────────────────────────────────── */
-app.post('/api/award-completion-points', async (req, res) => {
+app.post('/api/award-completion-points', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    if (!req.isAuthenticated || !req.isAuthenticated()) return err(res, 401, 'Unauthorized');
 
     const { rows: callerRows } = await pool.query(
       'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
@@ -380,9 +368,8 @@ app.post('/api/award-completion-points', async (req, res) => {
    POST /api/revoke-order-points
    Cabut poin agen jika order dikembalikan dari status Completed.
 ────────────────────────────────────────────── */
-app.post('/api/revoke-order-points', async (req, res) => {
+app.post('/api/revoke-order-points', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    if (!req.isAuthenticated || !req.isAuthenticated()) return err(res, 401, 'Unauthorized');
 
     const { rows: callerRows } = await pool.query(
       'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
@@ -709,15 +696,11 @@ app.post('/api/export/igh', async (req, res) => {
    Dedicated passport OCR via OpenRouter vision.
    Requires Replit session + agency membership.
 ────────────────────────────────────────────── */
-app.post('/api/ocr-passport', async (req, res) => {
+app.post('/api/ocr-passport', isAuthenticatedOrBearer, async (req, res) => {
   try {
     console.log(`[ocr-passport] OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
     if (!OPENROUTER_API_KEY) {
       return err(res, 503, 'OPENROUTER_API_KEY tidak ditemukan. Pastikan sudah diset di environment variables.');
-    }
-
-    if (!req.isAuthenticated || !req.isAuthenticated()) {
-      return err(res, 401, 'Login dulu');
     }
 
     const { rows: memRows } = await pool.query(
@@ -970,9 +953,8 @@ app.post('/api/ai/assistant', async (req, res) => {
    POST /api/credit-wallet-tx
    Insert a wallet transaction using pg directly (Replit PostgreSQL).
 ────────────────────────────────────────────── */
-app.post('/api/credit-wallet-tx', async (req, res) => {
+app.post('/api/credit-wallet-tx', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    if (!req.isAuthenticated || !req.isAuthenticated()) return err(res, 401, 'Unauthorized');
 
     const { rows: memberRows } = await pool.query(
       'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
@@ -1009,9 +991,8 @@ app.post('/api/credit-wallet-tx', async (req, res) => {
    POST /api/award-commission-points
    Award 20 points to agent when commission is earned.
 ────────────────────────────────────────────── */
-app.post('/api/award-commission-points', async (req, res) => {
+app.post('/api/award-commission-points', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    if (!req.isAuthenticated || !req.isAuthenticated()) return err(res, 401, 'Unauthorized');
 
     const { agencyId, agentId, orderId } = req.body ?? {};
     if (!agencyId || !agentId || !orderId) {
@@ -1054,10 +1035,9 @@ app.post('/api/card-back-signed-url', (req, res) => {
    POST /api/save-card-back-url
    Simpan card_back_image_url ke agency_members (pg version).
 ────────────────────────────────────────────── */
-app.post('/api/save-card-back-url', async (req, res) => {
+app.post('/api/save-card-back-url', isAuthenticatedOrBearer, async (req, res) => {
   const ROUTE = '[save-card-back-url]';
   try {
-    if (!req.isAuthenticated || !req.isAuthenticated()) return err(res, 401, 'Login dulu');
 
     const { targetUserId, agencyId, storagePath: clientStoragePath } = req.body ?? {};
     if (!targetUserId || !agencyId) return err(res, 400, 'targetUserId dan agencyId wajib diisi');
@@ -1120,10 +1100,9 @@ app.get('/api/health-check', async (req, res) => {
    Body: { agentId? }  — optional, filter to one agent only.
    Returns: { ok, credited, skipped, errors, errorSample? }
 ────────────────────────────────────────────── */
-app.post('/api/backfill-field-fees', async (req, res) => {
+app.post('/api/backfill-field-fees', isAuthenticatedOrBearer, async (req, res) => {
   const ROUTE = '[backfill-field-fees]';
   try {
-    if (!req.isAuthenticated || !req.isAuthenticated()) return err(res, 401, 'Login dulu');
 
     const { rows: memRows } = await pool.query(
       'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',

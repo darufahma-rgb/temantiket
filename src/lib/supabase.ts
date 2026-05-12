@@ -1,18 +1,27 @@
-/**
- * Supabase stub — all database access now goes through the server-side REST API.
- * This file is kept for backward-compatibility with existing imports, but the
- * client is always null so repos fall back to localStorage / API calls.
- */
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-export const supabase = null;
+export const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL ?? "";
+export const SUPABASE_ANON_KEY: string = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
 
 export function isSupabaseConfigured(): boolean {
-  return false;
+  return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
 
-export function requireSupabase(): never {
-  throw new Error("Supabase tidak dikonfigurasi — gunakan REST API server");
-}
+export const supabase: SupabaseClient | null = isSupabaseConfigured()
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    })
+  : null;
 
-export const SUPABASE_URL = "";
-export const SUPABASE_ANON_KEY = "";
+export function requireSupabase(): SupabaseClient {
+  if (!supabase) {
+    throw new Error(
+      "Supabase belum dikonfigurasi. Pastikan VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY sudah diset.",
+    );
+  }
+  return supabase;
+}

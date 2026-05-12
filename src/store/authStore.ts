@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // ── Local-only security settings (PIN/2FA + login history) ──────────────────
 
@@ -97,12 +98,38 @@ interface AuthState {
   getLoginHistory: () => LoginEvent[];
 }
 
+// ── Module-level token cache (kept in sync with Supabase session) ────────────
+
+let _accessToken: string | null = null;
+
+export function getAccessToken(): string | null {
+  return _accessToken;
+}
+
+// Subscribe to Supabase auth state changes to keep token fresh
+if (supabase) {
+  supabase.auth.onAuthStateChange((_event, session) => {
+    _accessToken = session?.access_token ?? null;
+  });
+}
+
 // ── API helpers ─────────────────────────────────────────────────────────────
+
+function buildHeaders(extra?: Record<string, string>): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...extra,
+  };
+  if (_accessToken) {
+    headers["Authorization"] = `Bearer ${_accessToken}`;
+  }
+  return headers;
+}
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...((options?.headers) ?? {}) },
+    headers: buildHeaders((options?.headers ?? {}) as Record<string, string>),
     ...options,
   });
   const text = await res.text();
@@ -141,6 +168,29 @@ async function callApi(path: string, body: unknown): Promise<unknown> {
   return apiFetch(path, { method: "POST", body: JSON.stringify(body) });
 }
 
+// ── Friendly error messages ─────────────────────────────────────────────────
+
+function translateSupabaseError(msg: string): string {
+  if (msg.includes("Invalid login credentials") || msg.includes("invalid_credentials")) {
+    return "Email atau password salah. Silakan periksa kembali.";
+  }
+  if (msg.includes("Email not confirmed")) {
+    return "Email belum dikonfirmasi. Cek inbox Anda dan klik link verifikasi.";
+  }
+  if (msg.includes("Too many requests") || msg.includes("rate limit")) {
+    return "Terlalu banyak percobaan login. Coba lagi beberapa saat.";
+  }
+  if (msg.includes("User not found")) {
+    return "Akun tidak ditemukan. Periksa kembali email Anda.";
+  }
+  if (msg.includes("network") || msg.includes("fetch")) {
+    return "Tidak dapat terhubung ke server. Periksa koneksi internet Anda.";
+  }
+  return msg;
+}
+
+// ── Store ───────────────────────────────────────────────────────────────────
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
@@ -154,25 +204,99 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   init: async () => {
     set({ isLoading: true });
     try {
-      const user = await fetchCurrentUser();
-      if (user) {
-        recordLoginEvent(user.id);
-        set({ user, isAuthenticated: true, needsBootstrap: false, isInitialized: true, isLoading: false });
+      if (isSupabaseConfigured() && supabase) {
+        // Restore existing Supabase session from localStorage
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          _accessToken = session.access_token;
+          const user = await fetchCurrentUser();
+          if (user) {
+            recordLoginEvent(user.id);
+            set({ user, isAuthenticated: true, needsBootstrap: false, isInitialized: true, isLoading: false });
+            return;
+          } else {
+            // Logged in to Supabase but no agency/membership yet
+            set({ user: null, isAuthenticated: false, needsBootstrap: true, isInitialized: true, isLoading: false });
+            return;
+          }
+        }
       } else {
-        // Check if session exists but no agency (needs bootstrap)
-        const sessionRes = await fetch("/api/auth/user", { credentials: "include" });
-        const needsBootstrap = sessionRes.status !== 401; // 401 = not logged in, else = logged in but no agency
-        set({ user: null, isAuthenticated: false, needsBootstrap, isInitialized: true, isLoading: false });
+        // Fallback: session-based auth (Replit OIDC, local dev)
+        const user = await fetchCurrentUser();
+        if (user) {
+          recordLoginEvent(user.id);
+          set({ user, isAuthenticated: true, needsBootstrap: false, isInitialized: true, isLoading: false });
+          return;
+        } else {
+          const sessionRes = await fetch("/api/auth/user", { credentials: "include" });
+          const needsBootstrap = sessionRes.status !== 401;
+          set({ user: null, isAuthenticated: false, needsBootstrap, isInitialized: true, isLoading: false });
+          return;
+        }
       }
+      set({ user: null, isAuthenticated: false, isInitialized: true, isLoading: false });
     } catch {
       set({ user: null, isAuthenticated: false, isInitialized: true, isLoading: false });
     }
   },
 
-  login: async (_email?: string, _password?: string) => {
-    // With Replit Auth, login redirects to the OIDC provider.
-    window.location.href = "/api/login";
-    return "ok";
+  login: async (email?: string, password?: string) => {
+    if (!email?.trim() || !password?.trim()) {
+      set({ error: "Email dan password wajib diisi.", isLoading: false });
+      return false;
+    }
+
+    if (!isSupabaseConfigured() || !supabase) {
+      set({ error: "Supabase belum dikonfigurasi. Hubungi administrator.", isLoading: false });
+      return false;
+    }
+
+    set({ isLoading: true, error: null });
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (authError) {
+        set({ isLoading: false, error: translateSupabaseError(authError.message) });
+        return false;
+      }
+
+      _accessToken = authData.session?.access_token ?? null;
+
+      const user = await fetchCurrentUser();
+
+      if (!user) {
+        // Authenticated with Supabase but no agency membership
+        set({ isLoading: false, isInitialized: true, needsBootstrap: true, isAuthenticated: false });
+        return false;
+      }
+
+      // Check local 2FA / PIN
+      const sec = loadSecuritySettings(user.id);
+      if (sec.twoFactor && sec.pinHash) {
+        set({ pendingLoginUser: user, isLoading: false, error: null });
+        return "needs_pin";
+      }
+
+      const previous = loadLoginHistory(user.id);
+      recordLoginEvent(user.id);
+      const newLoginAt = sec.loginAlert && previous.length > 0 ? previous[0].at : null;
+      set({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        newLoginAt,
+        needsBootstrap: false,
+      });
+      return "ok";
+    } catch (e) {
+      set({ isLoading: false, error: translateSupabaseError((e as Error).message) });
+      return false;
+    }
   },
 
   completePinLogin: async (pin) => {
@@ -196,7 +320,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    window.location.href = "/api/logout";
+    _accessToken = null;
+    if (isSupabaseConfigured() && supabase) {
+      await supabase.auth.signOut().catch(() => { /* ignore errors */ });
+    } else {
+      // Fallback: session-based logout
+      await fetch("/api/logout", { credentials: "include" }).catch(() => { /* ignore */ });
+    }
+    set({
+      user: null,
+      isAuthenticated: false,
+      pendingLoginUser: null,
+      newLoginAt: null,
+      needsBootstrap: false,
+    });
   },
 
   clearError: () => set({ error: null }),
@@ -254,9 +391,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
-  changePassword: async (_currentPw, _newPw) => {
-    // With Replit Auth passwords are managed by Replit — not applicable.
-    throw new Error("Ganti password dilakukan di akun Replit Anda.");
+  changePassword: async (_currentPw, newPw) => {
+    if (!isSupabaseConfigured() || !supabase) {
+      throw new Error("Ganti password tidak tersedia karena Supabase belum dikonfigurasi.");
+    }
+    const { error } = await supabase.auth.updateUser({ password: newPw });
+    if (error) throw new Error(translateSupabaseError(error.message));
   },
 
   getSecuritySettings: () => {
@@ -285,7 +425,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 }));
 
-// Helper buat dipanggil di repo layer
+// ── Helpers buat dipanggil di repo layer ─────────────────────────────────────
+
 export function getCurrentAgencyId(): string | null {
   return useAuthStore.getState().user?.agencyId ?? null;
 }
@@ -296,16 +437,37 @@ export function requireAgencyId(): string {
   return id;
 }
 
-// Bootstrap helper — with Replit Auth, user is already created via OIDC.
-// This just creates the agency + membership for a new user.
+// Bootstrap helper — creates agency + membership for a new user.
 export async function bootstrapFirstOwner(input: {
-  agencyName: string; displayName?: string;
+  agencyName: string; displayName?: string; email?: string; password?: string;
 }): Promise<void> {
+  // If Supabase configured and email/password provided, sign up first
+  if (isSupabaseConfigured() && supabase && input.email && input.password) {
+    const { error: signUpError } = await supabase.auth.signUp({
+      email: input.email,
+      password: input.password,
+      options: { data: { display_name: input.displayName } },
+    });
+    if (signUpError && !signUpError.message.includes("already registered")) {
+      throw new Error(signUpError.message);
+    }
+    // Sign in to get token
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: input.email,
+      password: input.password,
+    });
+    if (signInError) throw new Error(signInError.message);
+    _accessToken = signInData.session?.access_token ?? null;
+  }
+
   const res = await fetch("/api/bootstrap", {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    headers: {
+      "Content-Type": "application/json",
+      ...(_accessToken ? { "Authorization": `Bearer ${_accessToken}` } : {}),
+    },
+    body: JSON.stringify({ agencyName: input.agencyName, displayName: input.displayName }),
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error ?? "Bootstrap gagal");

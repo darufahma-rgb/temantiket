@@ -108,10 +108,74 @@ async function setupAuth(app) {
   }
 }
 
+// ── JWT helper (Supabase Bearer tokens) ─────────────────────────────────────
+
+function decodeJwtPayload(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const decoded = Buffer.from(parts[1], 'base64url').toString('utf8');
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Upsert a Supabase JWT user into the local users table.
+ * Supabase JWTs carry: sub (UUID), email, user_metadata.{full_name,display_name}
+ */
+async function upsertSupabaseUser(payload) {
+  const id        = payload.sub;
+  const email     = payload.email ?? null;
+  const meta      = payload.user_metadata ?? {};
+  const fullName  = (meta.full_name ?? meta.display_name ?? '').trim();
+  const firstName = fullName.split(' ')[0] || null;
+  const lastName  = fullName.split(' ').slice(1).join(' ') || null;
+  await pool.query(
+    `INSERT INTO users (id, email, first_name, last_name, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, now(), now())
+     ON CONFLICT (id) DO UPDATE SET
+       email      = COALESCE(EXCLUDED.email, users.email),
+       first_name = COALESCE(EXCLUDED.first_name, users.first_name),
+       last_name  = COALESCE(EXCLUDED.last_name, users.last_name),
+       updated_at = now()`,
+    [id, email, firstName, lastName],
+  );
+  const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+  return rows[0];
+}
+
 // ── isAuthenticated middleware ───────────────────────────────────────────────
 
 function isAuthenticated(req, res, next) {
   if (req.isAuthenticated && req.isAuthenticated()) return next();
+  return res.status(401).json({ error: 'Unauthorized — silakan login' });
+}
+
+/**
+ * Middleware: accept EITHER Replit session OR Supabase Bearer JWT.
+ * Populates req.user.id for downstream handlers.
+ */
+async function isAuthenticatedOrBearer(req, res, next) {
+  // 1. Session-based (Replit OIDC)
+  if (req.isAuthenticated && req.isAuthenticated()) return next();
+
+  // 2. Supabase Bearer JWT
+  const authHeader = req.headers['authorization'] ?? '';
+  if (authHeader.startsWith('Bearer ')) {
+    const payload = decodeJwtPayload(authHeader.slice(7));
+    if (payload?.sub) {
+      try {
+        const user = await upsertSupabaseUser(payload);
+        req.user = { id: user.id, ...user };
+        return next();
+      } catch (e) {
+        console.error('[replitAuth] Bearer user upsert failed:', e.message);
+      }
+    }
+  }
+
   return res.status(401).json({ error: 'Unauthorized — silakan login' });
 }
 
@@ -203,7 +267,8 @@ function registerAuthRoutes(app) {
   });
 
   // ── GET /api/auth/user ─────────────────────────────────────────────────────
-  app.get('/api/auth/user', isAuthenticated, async (req, res) => {
+  // Accepts both Replit OIDC session and Supabase Bearer JWT.
+  app.get('/api/auth/user', isAuthenticatedOrBearer, async (req, res) => {
     try {
       const userId = req.user.id;
 
@@ -247,4 +312,4 @@ function registerAuthRoutes(app) {
   });
 }
 
-module.exports = { setupAuth, isAuthenticated, registerAuthRoutes };
+module.exports = { setupAuth, isAuthenticated, isAuthenticatedOrBearer, registerAuthRoutes };
