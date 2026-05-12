@@ -786,17 +786,6 @@ export default function StaffManagementCenter() {
   const agencyId = user?.agencyId ?? "";
   const currentUserId = user?.id ?? "";
 
-  // Owner guard
-  if (user && user.role !== "owner") {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <AlertTriangle className="h-10 w-10 text-amber-400" />
-        <p className="text-sm font-semibold text-muted-foreground">Halaman ini hanya untuk owner.</p>
-        <Button size="sm" onClick={() => navigate(-1)}>Kembali</Button>
-      </div>
-    );
-  }
-
   async function loadData() {
     if (!supabase || !agencyId) return;
     try {
@@ -938,6 +927,16 @@ export default function StaffManagementCenter() {
     { id: "top",    label: "⭐ Top" },  { id: "alert",  label: "⚠️ Alert" },
     { id: "idle",   label: "😴 Idle" },
   ];
+
+  if (user && user.role !== "owner") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <AlertTriangle className="h-10 w-10 text-amber-400" />
+        <p className="text-sm font-semibold text-muted-foreground">Halaman ini hanya untuk owner.</p>
+        <Button size="sm" onClick={() => navigate(-1)}>Kembali</Button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

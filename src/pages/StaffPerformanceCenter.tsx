@@ -200,17 +200,6 @@ export default function StaffPerformanceCenter() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "completed" | "fee" | "active">("completed");
 
-  // Owner guard
-  if (user && user.role !== "owner") {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <AlertTriangle className="h-10 w-10 text-amber-400" />
-        <p className="text-sm font-semibold text-muted-foreground">Halaman ini hanya untuk owner.</p>
-        <Button size="sm" onClick={() => navigate(-1)}>Kembali</Button>
-      </div>
-    );
-  }
-
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -273,6 +262,16 @@ export default function StaffPerformanceCenter() {
     { id: "month", label: "30 Hari" },
     { id: "all",   label: "Semua" },
   ];
+
+  if (user && user.role !== "owner") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <AlertTriangle className="h-10 w-10 text-amber-400" />
+        <p className="text-sm font-semibold text-muted-foreground">Halaman ini hanya untuk owner.</p>
+        <Button size="sm" onClick={() => navigate(-1)}>Kembali</Button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
