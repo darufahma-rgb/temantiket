@@ -7,15 +7,9 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
-    "api/bootstrap.js":         { "maxDuration": 15 },
-    "api/invite-member.js":     { "maxDuration": 15 },
-    "api/remove-member.js":     { "maxDuration": 15 },
-    "api/ocr-passport.js":      { "maxDuration": 30 },
-    "api/health-check.js":      { "maxDuration": 15 },
-    "api/export/igh.js":        { "maxDuration": 30 },
-    "api/export/invoice.js":    { "maxDuration": 30 },
-    "api/ai/chat.js":           { "maxDuration": 30 },
-    "api/ai/assistant.js":      { "maxDuration": 30 }
+    "api/[...path].js":      { "maxDuration": 30 },
+    "api/export/[type].js":  { "maxDuration": 30 },
+    "api/ai/[action].js":    { "maxDuration": 30 }
   },
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
