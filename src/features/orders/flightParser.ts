@@ -189,12 +189,12 @@ function parseDateLoose(raw: string, fallbackYear?: number): string | undefined 
     return `${yy}-${pad2(mon)}-${pad2(dd)}`;
   }
   // 2026-03-15 / 2026/03/15
-  const iso = cleaned.match(/^(\d{4})[\-/.](\d{1,2})[\-/.](\d{1,2})$/);
+  const iso = cleaned.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
   if (iso) {
     return `${iso[1]}-${pad2(parseInt(iso[2], 10))}-${pad2(parseInt(iso[3], 10))}`;
   }
   // 15/03/2026 / 15-03-2026
-  const dmy = cleaned.match(/^(\d{1,2})[\-/.](\d{1,2})[\-/.](\d{2,4})$/);
+  const dmy = cleaned.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
   if (dmy) {
     let yy = parseInt(dmy[3], 10);
     if (yy < 100) yy = 2000 + yy;
@@ -314,14 +314,14 @@ function extractDateAndTime(text: string): {
 
   // ── Generic e-ticket: "Departure: 15 Mar 2026, 14:30" ──
   const depLine = text.match(
-    /(?:depart(?:ure)?|berangkat|tgl\s*berangkat)\s*[:\-]?\s*([0-9]{1,2}[\s\-/A-Za-z0-9]{2,18}\d{2,4})[,\s]+(?:at\s*)?([\d:APMapm]{4,8})/i,
+    /(?:depart(?:ure)?|berangkat|tgl\s*berangkat)\s*[:-]?\s*([0-9]{1,2}[\s\-/A-Za-z0-9]{2,18}\d{2,4})[,\s]+(?:at\s*)?([\d:APMapm]{4,8})/i,
   );
   if (depLine) {
     out.departDate = parseDateLoose(depLine[1]);
     out.departTime = parseTimeLoose(depLine[2]);
   }
   const arrLine = text.match(
-    /(?:arriv(?:e|al)|tiba|sampai)\s*[:\-]?\s*([0-9]{1,2}[\s\-/A-Za-z0-9]{2,18}\d{2,4})[,\s]+(?:at\s*)?([\d:APMapm]{4,8})/i,
+    /(?:arriv(?:e|al)|tiba|sampai)\s*[:-]?\s*([0-9]{1,2}[\s\-/A-Za-z0-9]{2,18}\d{2,4})[,\s]+(?:at\s*)?([\d:APMapm]{4,8})/i,
   );
   if (arrLine) {
     out.arriveDate = parseDateLoose(arrLine[1]);
@@ -344,11 +344,11 @@ function extractDateAndTime(text: string): {
 function extractPrices(text: string): { costPrice?: number; sellPrice?: number } {
   const out: ReturnType<typeof extractPrices> = {};
   // Cost price (modal): label "Modal", "HPP", "Cost"
-  const cost = text.match(/(?:harga\s*modal|modal|HPP|cost(?:\s*price)?)\s*[:\-]?\s*(?:Rp|IDR)?\s*([\d.,]+)/i);
+  const cost = text.match(/(?:harga\s*modal|modal|HPP|cost(?:\s*price)?)\s*[:-]?\s*(?:Rp|IDR)?\s*([\d.,]+)/i);
   if (cost) out.costPrice = parseMoney(cost[1]);
 
   // Sell price (jual): label "Jual", "Total", "Selling", "Price", "Harga"
-  const sell = text.match(/(?:harga\s*jual|jual|total\s*(?:price|harga|bayar)?|selling\s*price|price)\s*[:\-]?\s*(?:Rp|IDR)?\s*([\d.,]+)/i);
+  const sell = text.match(/(?:harga\s*jual|jual|total\s*(?:price|harga|bayar)?|selling\s*price|price)\s*[:-]?\s*(?:Rp|IDR)?\s*([\d.,]+)/i);
   if (sell) out.sellPrice = parseMoney(sell[1]);
 
   return out;
@@ -356,7 +356,7 @@ function extractPrices(text: string): { costPrice?: number; sellPrice?: number }
 
 function extractPassengerName(text: string): string | undefined {
   // Trip.com: "Passenger: SMITH/JOHN MR" atau "Nama Penumpang: ..."
-  const m = text.match(/(?:passenger|penumpang|nama\s*penumpang|nama)\s*[:\-]\s*([A-Za-z][A-Za-z\s/.,'-]{2,60})/i);
+  const m = text.match(/(?:passenger|penumpang|nama\s*penumpang|nama)\s*[:-]\s*([A-Za-z][A-Za-z\s/.,'-]{2,60})/i);
   if (m) {
     let name = m[1].trim().split(/\n/)[0].trim();
     // Galileo format "SMITH/JOHN MR" → "JOHN SMITH"

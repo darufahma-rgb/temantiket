@@ -106,7 +106,7 @@ function smartFormat(text: string): string {
     line = line.replace(/^\s*[-*•·]\s+/, "- ");
 
     // Capitalize first real character of non-emoji, non-markdown lines
-    line = line.replace(/^([-•\d.\s📌🔹✅⚠️➡️]*)?([a-z])/, (_m, prefix, ch) =>
+    line = line.replace(/^([-•\d.\s📌🔹✅⚠➡]*)?([a-z])/u, (_m, prefix, ch) =>
       (prefix ?? "") + ch.toUpperCase()
     );
 

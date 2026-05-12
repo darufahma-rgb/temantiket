@@ -695,12 +695,12 @@ Sebelum menulis, tentukan tipe konten:
 - Setelah ### SELALU ada satu baris kosong sebelum konten pertama
 - Sebelum ### SELALU ada satu baris kosong (kecuali di awal dokumen setelah ##)
 
-**Bold (\*\*teks\*\*)** — gunakan HEMAT: angka uang, nama dokumen penting, istilah kunci, label field
+**Bold (**teks**)** — gunakan HEMAT: angka uang, nama dokumen penting, istilah kunci, label field
 - BUKAN untuk semua kalimat. BUKAN untuk semua poin bullet.
 - Contoh benar: **Rp 1.300.000**, **Paspor Asli**, **Tahap 1**
 - Contoh salah: **Pergi ke kantor untuk mengurus dokumen ini**
 
-**Italic (\_teks\_)** — keterangan ringan, catatan opsional, penjelasan dalam kurung
+**Italic (_teks_)** — keterangan ringan, catatan opsional, penjelasan dalam kurung
 - Contoh: _(opsional)_, _(jika baru, sertakan juga yang lama)_, _By Temantiket_
 
 **Blockquote (> teks)** — nomor kontak, kode referral, kutipan penting

@@ -194,14 +194,14 @@ const PNR_SEG_C =
   /^\s*(\d+)\s+\.\s+([A-Z]{2})\s+(\d{1,4})\s+([A-Z])\s+(\d{1,2}[A-Z]{3})\s+([A-Z]{3})([A-Z]{3})\s+[A-Z]{2,3}\d+\s+(\d{4})\s+(#?)(\d{4})/;
 
 // RLOC patterns
-const RLOC_RE = /(?:RLOC|RECORD\s+LOCATOR|PNR|LOCATOR)\s*[:\-]?\s*([A-Z0-9]{5,8})/i;
+const RLOC_RE = /(?:RLOC|RECORD\s+LOCATOR|PNR|LOCATOR)\s*[:-]?\s*([A-Z0-9]{5,8})/i;
 // Fallback: standalone 6-char alphanum line (Galileo RLOC style)
 const RLOC_STANDALONE_RE = /^\s*([A-Z]{1,2}[A-Z0-9]{4,5})\s*$/;
 
 // Passenger name patterns
 // "1.1SMITH/JOHN MR"  "2.1JONES/JANE MRS"  "1SMITH/JOHNMR"
-const PAX_LINE_RE = /^\s*\d+[\.\-]\d+\s*([A-Z]{2,30})\/([A-Z][A-Z\s]{1,28}?)(?:\s+(?:MR|MRS|MS|MISS|MSTR|CHD|INF|JR|SR)\.?)?\s*$/;
-const PAX_NAME_RE = /\b(?:NAME|PENUMPANG|PASSENGER)\s*[:\-]\s*([A-Z]{2,30}\/[A-Z][A-Z\s]{1,28})/i;
+const PAX_LINE_RE = /^\s*\d+[.-]\d+\s*([A-Z]{2,30})\/([A-Z][A-Z\s]{1,28}?)(?:\s+(?:MR|MRS|MS|MISS|MSTR|CHD|INF|JR|SR)\.?)?\s*$/;
+const PAX_NAME_RE = /\b(?:NAME|PENUMPANG|PASSENGER)\s*[:-]\s*([A-Z]{2,30}\/[A-Z][A-Z\s]{1,28})/i;
 
 function parsePNRPassengers(lines: string[]): string | undefined {
   const names: string[] = [];
