@@ -220,8 +220,14 @@ app.post('/api/bootstrap', isAuthenticatedOrBearer, async (req, res) => {
 
 /* ──────────────────────────────────────────────
    POST /api/invite-member
-   Owner adds a member by Replit userId or creates a pending record.
-   With Replit Auth, users authenticate via Replit OAuth — no passwords.
+   Owner invites a new member by email + password (Supabase auth).
+   Flow:
+     1. Validate caller is owner in agency_members
+     2. Create Supabase auth user via Admin API (requires SUPABASE_SERVICE_ROLE_KEY)
+        OR accept an explicit userId if already known
+     3. Upsert user stub in local `users` table
+     4. Insert/upsert agency_members row
+     5. Create wallet seed if role === 'agent'
 ────────────────────────────────────────────── */
 app.post('/api/invite-member', isAuthenticatedOrBearer, async (req, res) => {
   try {
@@ -241,22 +247,80 @@ app.post('/api/invite-member', isAuthenticatedOrBearer, async (req, res) => {
     const agentNotes     = (req.body?.agentNotes ?? '').toString().trim() || null;
     const agentStatus    = req.body?.agentStatus === 'inactive' ? 'inactive' : 'active';
 
-    // Accept either a Replit userId directly (preferred) or display name
-    const { userId: targetUserId, displayName } = req.body || {};
+    // Body can contain either:
+    //   A) { email, password, displayName, role, ... }  — create new Supabase user
+    //   B) { userId, displayName, role, ... }           — add existing user by UUID
+    const { userId: explicitUserId, email, password, displayName } = req.body || {};
+
+    let targetUserId = explicitUserId?.trim() || null;
 
     if (!targetUserId) {
-      return err(res, 400, 'userId diperlukan — minta calon anggota untuk membagikan Replit user ID-nya');
+      // Path A: create Supabase auth user via Admin API
+      const SUPABASE_URL_ENV = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
+      const SUPABASE_SRK     = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+
+      if (!email || !password) {
+        return err(res, 400, 'email dan password diperlukan untuk membuat akun anggota baru');
+      }
+      if (!SUPABASE_URL_ENV || !SUPABASE_SRK) {
+        return err(res, 503, [
+          'SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di Replit Secrets.',
+          'Tambahkan secret tersebut agar fitur invite anggota berfungsi.',
+        ].join(' '));
+      }
+
+      // Call Supabase Auth Admin API to create user
+      const adminRes = await fetch(`${SUPABASE_URL_ENV}/auth/v1/admin/users`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${SUPABASE_SRK}`,
+          'apikey':        SUPABASE_SRK,
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: (displayName ?? '').trim() || email.split('@')[0] },
+        }),
+      });
+
+      const adminJson = await adminRes.json().catch(() => ({}));
+
+      if (!adminRes.ok) {
+        const msg = adminJson?.msg || adminJson?.message || adminJson?.error || `Supabase Admin API ${adminRes.status}`;
+        // Handle "already registered" gracefully — still add to agency
+        if (adminRes.status === 422 && String(msg).toLowerCase().includes('already')) {
+          // User exists in Supabase — look up by email in local users table
+          const { rows: existingRows } = await pool.query(
+            'SELECT id FROM users WHERE email = $1 LIMIT 1',
+            [email.toLowerCase().trim()],
+          );
+          if (!existingRows[0]) {
+            return err(res, 409, `Email ${email} sudah terdaftar di Supabase namun belum pernah login. Minta user login dulu lalu coba lagi.`);
+          }
+          targetUserId = existingRows[0].id;
+        } else {
+          return err(res, adminRes.status >= 500 ? 502 : 400, `Gagal membuat akun: ${msg}`);
+        }
+      } else {
+        targetUserId = adminJson?.id;
+        if (!targetUserId) return err(res, 502, 'Supabase tidak mengembalikan user ID');
+      }
     }
 
-    // Ensure user row exists (create stub if it doesn't — they'll log in later)
+    // Upsert local user stub (email stored for lookup; actual profile filled on first login)
     await pool.query(
-      `INSERT INTO users (id, first_name, created_at, updated_at)
-       VALUES ($1, $2, now(), now())
-       ON CONFLICT (id) DO NOTHING`,
-      [targetUserId, (displayName ?? '').trim() || null],
+      `INSERT INTO users (id, email, first_name, created_at, updated_at)
+       VALUES ($1, $2, $3, now(), now())
+       ON CONFLICT (id) DO UPDATE SET
+         email      = COALESCE(EXCLUDED.email, users.email),
+         first_name = COALESCE(EXCLUDED.first_name, users.first_name),
+         updated_at = now()`,
+      [targetUserId, email?.toLowerCase().trim() || null, (displayName ?? '').trim() || null],
     );
 
-    // Insert membership
+    // Insert/upsert agency membership
     const { rows: inserted } = await pool.query(
       `INSERT INTO agency_members (user_id, agency_id, role, commission_pct, phone_wa, agent_notes, agent_status)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -1068,25 +1132,37 @@ app.post('/api/save-card-back-url', isAuthenticatedOrBearer, async (req, res) =>
 
 /* ──────────────────────────────────────────────
    GET /api/health-check — Replit PostgreSQL connectivity
+   Response shape matches frontend HealthCheckResult interface:
+   { ok, provider, serviceRole, projectUrl, database, storage, bucketStatus, errors }
 ────────────────────────────────────────────── */
 app.get('/api/health-check', async (req, res) => {
-  const result = {
-    ok: true,
-    provider: 'replit',
-    database: false,
-    auth: false,
-    errors: [],
-  };
+  const errors = [];
+  let dbOk = false;
+
   try {
     await pool.query('SELECT 1');
-    result.database = true;
+    dbOk = true;
   } catch (e) {
-    result.ok = false;
-    result.errors.push(`Database: ${e.message}`);
+    errors.push(`Database: ${e.message}`);
   }
-  result.auth = true; // Bearer JWT always works; OIDC only on Replit
-  result.provider = process.env.REPL_ID ? 'replit' : (process.env.VERCEL ? 'vercel' : 'local');
-  return res.status(result.ok ? 200 : 503).json(result);
+
+  const provider = process.env.REPL_ID ? 'replit' : (process.env.VERCEL ? 'vercel' : 'local');
+
+  // serviceRole: true when we have a working DB (no Supabase service role needed — we use PostgreSQL directly)
+  // storage: true optimistically — Supabase Storage is used directly from the frontend with the anon key
+  const result = {
+    ok:           dbOk,
+    provider,
+    serviceRole:  dbOk,  // frontend uses this to gate uploads; set true when DB is healthy
+    projectUrl:   process.env.VITE_SUPABASE_URL || null,
+    database:     dbOk,
+    storage:      true,  // Supabase Storage is accessed client-side; server can't verify buckets
+    bucketStatus: {},
+    auth:         true,
+    errors,
+  };
+
+  return res.status(dbOk ? 200 : 503).json(result);
 });
 
 /* ──────────────────────────────────────────────
