@@ -1,0 +1,77 @@
+
+> vite_react_shadcn_ts@0.0.0 build
+> vite build && cp server/index.cjs dist/index.cjs
+
+vite v5.4.21 building for production...
+transforming...
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 4380 modules transformed.
+rendering chunks...
+warnings when minifying css:
+▲ [WARNING] Unexpected "p" [css-syntax-error]
+
+    <stdin>:19268:85:
+      19268 │ ....\[\&_\[cmdk-group-heading\]\]\:text-xs [cmdk-group-heading]p {
+            ╵                                                                ^
+
+
+▲ [WARNING] Unexpected "p" [css-syntax-error]
+
+    <stdin>:19318:85:
+      19318 │ ....\[\&_\[cmdk-group-heading\]\]\:text-xs [cmdk-group-heading]p {
+            ╵                                                                ^
+
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /home/runner/workspace/node_modules/sonner/dist/index.mjs is dynamically imported by /home/runner/workspace/src/pages/AgentProfile.tsx, /home/runner/workspace/src/pages/AgentProfile.tsx, /home/runner/workspace/src/pages/AgentProfile.tsx, /home/runner/workspace/src/pages/AgentProfile.tsx, /home/runner/workspace/src/pages/StaffProfile.tsx, /home/runner/workspace/src/pages/StaffProfile.tsx, /home/runner/workspace/src/pages/StaffProfile.tsx, /home/runner/workspace/src/pages/StaffProfile.tsx but also statically imported by /home/runner/workspace/src/App.tsx, /home/runner/workspace/src/components/AdminWhatsappCard.tsx, /home/runner/workspace/src/components/AgentWalletCard.tsx, /home/runner/workspace/src/components/BulkOcrDialog.tsx, /home/runner/workspace/src/components/ClientDocVault.tsx, /home/runner/workspace/src/components/ClientViewDialog.tsx, /home/runner/workspace/src/components/FlyerDialog.tsx, /home/runner/workspace/src/components/InvoiceButton.tsx, /home/runner/workspace/src/components/InvoiceTemplateUploader.tsx, /home/runner/workspace/src/components/MarketingKitGenerator.tsx, /home/runner/workspace/src/components/MemberCard.tsx, /home/runner/workspace/src/components/NotificationBell.tsx, /home/runner/workspace/src/components/PNRCommandCenter.tsx, /home/runner/workspace/src/components/PassportScanButton.tsx, /home/runner/workspace/src/components/PdfLayoutTuner.tsx, /home/runner/workspace/src/components/PdfPreviewDialog.tsx, /home/runner/workspace/src/components/RewardCatalog.tsx, /home/runner/workspace/src/components/VisaEntryPanel.tsx, /home/runner/workspace/src/components/WaShareButton.tsx, /home/runner/workspace/src/components/ui/sonner.tsx, /home/runner/workspace/src/features/calculator/QuotationMetaSection.tsx, /home/runner/workspace/src/features/calculator/VisaCalculatorTab.tsx, /home/runner/workspace/src/features/missions/AgentMissionWidget.tsx, /home/runner/workspace/src/features/missions/MissionCreatorSection.tsx, /home/runner/workspace/src/features/orders/FlightOrderEditor.tsx, /home/runner/workspace/src/features/packages/PackageFormDialog.tsx, /home/runner/workspace/src/pages/AgentCommandCenter.tsx, /home/runner/workspace/src/pages/AgentProfileOwnerView.tsx, /home/runner/workspace/src/pages/BCTemplates.tsx, /home/runner/workspace/src/pages/Calculator.tsx, /home/runner/workspace/src/pages/Clients.tsx, /home/runner/workspace/src/pages/Dashboard.tsx, /home/runner/workspace/src/pages/DemoSeed.tsx, /home/runner/workspace/src/pages/ExportCenter.tsx, /home/runner/workspace/src/pages/ItineraryGenerator.tsx, /home/runner/workspace/src/pages/JamaahProfile.tsx, /home/runner/workspace/src/pages/Notes.tsx, /home/runner/workspace/src/pages/OrderDetail.tsx, /home/runner/workspace/src/pages/Orders.tsx, /home/runner/workspace/src/pages/OwnerVisaTrackerPage.tsx, /home/runner/workspace/src/pages/PackageDetail.tsx, /home/runner/workspace/src/pages/Packages.tsx, /home/runner/workspace/src/pages/ProgressTracker.tsx, /home/runner/workspace/src/pages/Settings.tsx, /home/runner/workspace/src/pages/StaffManagementCenter.tsx, /home/runner/workspace/src/pages/StaffProfileOwnerView.tsx, /home/runner/workspace/src/pages/TicketPrices.tsx, /home/runner/workspace/src/pages/TripDetail.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /home/runner/workspace/src/lib/supabase.ts is dynamically imported by /home/runner/workspace/src/lib/ocrPassport.ts but also statically imported by /home/runner/workspace/src/App.tsx, /home/runner/workspace/src/features/agentPoints/agentPointsRepo.ts, /home/runner/workspace/src/features/audit/auditRepo.ts, /home/runner/workspace/src/features/bcTemplates/bcTemplatesRepo.ts, /home/runner/workspace/src/features/calculator/visaCalcsRepo.ts, /home/runner/workspace/src/features/clients/clientDocsRepo.ts, /home/runner/workspace/src/features/clients/clientsRepo.ts, /home/runner/workspace/src/features/missions/missionsRepo.ts, /home/runner/workspace/src/features/orders/ordersRepo.ts, /home/runner/workspace/src/features/packages/packagesRepo.ts, /home/runner/workspace/src/features/payments/paymentsRepo.ts, /home/runner/workspace/src/features/portal/leaderboardRepo.ts, /home/runner/workspace/src/features/portal/memberCardRepo.ts, /home/runner/workspace/src/features/portal/portalRepo.ts, /home/runner/workspace/src/features/rewards/rewardsRepo.ts, /home/runner/workspace/src/features/ticketPrices/ticketPricesRepo.ts, /home/runner/workspace/src/features/trips/tripsRepo.ts, /home/runner/workspace/src/lib/agentFeePayments.ts, /home/runner/workspace/src/lib/agentWallet.ts, /home/runner/workspace/src/lib/aiFetch.ts, /home/runner/workspace/src/lib/avatarStorage.ts, /home/runner/workspace/src/lib/cardBackStorage.ts, /home/runner/workspace/src/lib/cloudSync.ts, /home/runner/workspace/src/lib/migrateBase64ToStorage.ts, /home/runner/workspace/src/lib/packageCalcStorage.ts, /home/runner/workspace/src/lib/promoPostersSettings.ts, /home/runner/workspace/src/lib/settingsSync.ts, /home/runner/workspace/src/lib/supabaseRealtime.ts, /home/runner/workspace/src/lib/supabaseStorage.ts, /home/runner/workspace/src/main.tsx, /home/runner/workspace/src/pages/AgentProfile.tsx, /home/runner/workspace/src/pages/AgentProfileOwnerView.tsx, /home/runner/workspace/src/pages/Auth.tsx, /home/runner/workspace/src/pages/Notes.tsx, /home/runner/workspace/src/pages/OrderDetail.tsx, /home/runner/workspace/src/pages/PackageDetail.tsx, /home/runner/workspace/src/pages/PublicMemberCard.tsx, /home/runner/workspace/src/pages/Settings.tsx, /home/runner/workspace/src/pages/StaffDashboardPage.tsx, /home/runner/workspace/src/pages/StaffManagementCenter.tsx, /home/runner/workspace/src/pages/StaffProfile.tsx, /home/runner/workspace/src/store/authStore.ts, /home/runner/workspace/src/store/featureSyncStore.ts, /home/runner/workspace/src/store/notificationStore.ts, /home/runner/workspace/src/store/presenceStore.ts, /home/runner/workspace/src/store/syncStatusStore.ts, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /home/runner/workspace/src/features/clients/clientsRepo.ts is dynamically imported by /home/runner/workspace/src/pages/Clients.tsx but also statically imported by /home/runner/workspace/src/lib/aiCommandCenter.ts, /home/runner/workspace/src/lib/supabaseRealtime.ts, /home/runner/workspace/src/pages/Clients.tsx, /home/runner/workspace/src/pages/DemoSeed.tsx, /home/runner/workspace/src/pages/ExportCenter.tsx, /home/runner/workspace/src/store/clientsStore.ts, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /home/runner/workspace/src/features/missions/missionsRepo.ts is dynamically imported by /home/runner/workspace/src/pages/AgentProfileOwnerView.tsx but also statically imported by /home/runner/workspace/src/features/missions/AgentMissionWidget.tsx, /home/runner/workspace/src/features/missions/MissionCreatorSection.tsx, /home/runner/workspace/src/lib/aiCommandCenter.ts, /home/runner/workspace/src/pages/AgentCommandCenter.tsx, /home/runner/workspace/src/pages/AgentDashboard.tsx, /home/runner/workspace/src/pages/AgentProfile.tsx, /home/runner/workspace/src/pages/AgentProfileOwnerView.tsx, /home/runner/workspace/src/pages/DemoSeed.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /home/runner/workspace/src/store/clientsStore.ts is dynamically imported by /home/runner/workspace/src/features/orders/ordersRepo.ts but also statically imported by /home/runner/workspace/src/App.tsx, /home/runner/workspace/src/components/PNRCommandCenter.tsx, /home/runner/workspace/src/features/orders/FlightOrderEditor.tsx, /home/runner/workspace/src/hooks/useStaffData.ts, /home/runner/workspace/src/lib/supabaseRealtime.ts, /home/runner/workspace/src/pages/AgentCommandCenter.tsx, /home/runner/workspace/src/pages/AgentDashboard.tsx, /home/runner/workspace/src/pages/AgentProfile.tsx, /home/runner/workspace/src/pages/AgentProfileOwnerView.tsx, /home/runner/workspace/src/pages/Clients.tsx, /home/runner/workspace/src/pages/Dashboard.tsx, /home/runner/workspace/src/pages/OrderDetail.tsx, /home/runner/workspace/src/pages/Orders.tsx, /home/runner/workspace/src/pages/OwnerVisaTrackerPage.tsx, /home/runner/workspace/src/pages/Reports.tsx, /home/runner/workspace/src/pages/StaffManagementCenter.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /home/runner/workspace/node_modules/date-fns/index.mjs is dynamically imported by /home/runner/workspace/src/pages/AgentDashboard.tsx but also statically imported by /home/runner/workspace/node_modules/react-day-picker/dist/index.esm.js, /home/runner/workspace/src/components/ui/date-range-picker.tsx, /home/runner/workspace/src/features/missions/AgentMissionWidget.tsx, /home/runner/workspace/src/features/missions/MissionCreatorSection.tsx, /home/runner/workspace/src/features/missions/MissionPopupNotification.tsx, /home/runner/workspace/src/pages/AgentCommandCenter.tsx, /home/runner/workspace/src/pages/AgentProfileOwnerView.tsx, /home/runner/workspace/src/pages/Calculator.tsx, /home/runner/workspace/src/pages/OwnerVisaTrackerPage.tsx, /home/runner/workspace/src/pages/StaffCommissionPage.tsx, /home/runner/workspace/src/pages/StaffDashboardPage.tsx, /home/runner/workspace/src/pages/StaffProfileOwnerView.tsx, /home/runner/workspace/src/pages/StaffVisaDashboard.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/registerSW.js                                                              0.13 kB
+dist/manifest.webmanifest                                                       1.46 kB
+dist/index.html                                                                 6.62 kB │ gzip:     2.38 kB
+dist/assets/image_1777530688079-BXvQUZqs.png                                  377.08 kB
+dist/assets/Polosan_Member_Card_Temantiket_Back_1777540855822-DIN_yYI8.png  1,645.90 kB
+dist/assets/Polosan_Member_Card_Temantiket_1777540855821-BE3US3Lz.png       1,662.45 kB
+dist/assets/pdf.worker-xSiVJ7U_.mjs                                         2,186.23 kB
+dist/assets/index-C1vyBWD9.css                                                240.99 kB │ gzip:    37.03 kB
+dist/assets/pdf.worker-Da3rbj2e.js                                              0.06 kB │ gzip:     0.08 kB
+dist/assets/workbox-window.prod.es5-vqzQaGvo.js                                 5.72 kB │ gzip:     2.35 kB
+dist/assets/pdf-CTZ9Q1jI.js                                                   453.46 kB │ gzip:   134.74 kB
+dist/assets/index-B04jOWHf.js                                               6,655.93 kB │ gzip: 1,788.81 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 25.82s
+error during build:
+Error: 
+  Configure "workbox.maximumFileSizeToCacheInBytes" to change the limit: the default value is 2 MiB.
+  Check https://vite-pwa-org.netlify.app/guide/faq.html#missing-assets-from-sw-precache-manifest for more information.
+  Assets exceeding the limit:
+  - assets/index-B04jOWHf.js is 6.8 MB, and won't be precached.
+
+    at logWorkboxResult (file:///home/runner/workspace/node_modules/vite-plugin-pwa/dist/chunk-G4TAN34B.js:44:13)
+    at generateServiceWorker (file:///home/runner/workspace/node_modules/vite-plugin-pwa/dist/index.js:209:3)
+    at async _generateSW (file:///home/runner/workspace/node_modules/vite-plugin-pwa/dist/index.js:234:5)
+    at async Object.handler (file:///home/runner/workspace/node_modules/vite-plugin-pwa/dist/index.js:427:13)
+    at async PluginDriver.hookParallel (file:///home/runner/workspace/node_modules/rollup/dist/es/shared/node-entry.js:20652:17)
+    at async Object.close (file:///home/runner/workspace/node_modules/rollup/dist/es/shared/node-entry.js:21627:13)
+    at async build (file:///home/runner/workspace/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65732:17)
+    at async CAC.<anonymous> (file:///home/runner/workspace/node_modules/vite/dist/node/cli.js:829:5)
