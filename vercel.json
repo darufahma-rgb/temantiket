@@ -3,7 +3,6 @@
   "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
     "api/[...path].js":      { "maxDuration": 30 },

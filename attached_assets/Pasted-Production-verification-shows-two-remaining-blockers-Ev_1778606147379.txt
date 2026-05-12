@@ -1,0 +1,98 @@
+Production verification shows two remaining blockers.
+
+Evidence:
+1. SPA routes still return Vercel 404:
+   /login = 404
+   /dashboard = 404
+   /bootstrap = 404
+   /orders = 404
+   /clients = 404
+   /packages = 404
+   /ticket-prices = 404
+
+2. Auth works:
+   Supabase /token = 200
+   /api/auth/user with token = 200 and returns:
+   agencyId = e3acc1fd-3dcb-41e9-b50e-d7e8665ae707
+   role = owner
+
+3. Data is not lost:
+   agency_members, profiles, clients, orders, agent_points all return data from Supabase REST.
+
+4. /api/agency-members currently fails with:
+   500 {"error":"column agency_members.phone_wa does not exist"}
+
+Fix these exact issues only.
+
+TASK A — Fix Vercel SPA routing:
+1. Open vercel.json.
+2. Make direct React routes return index.html:
+   - /login
+   - /dashboard
+   - /bootstrap
+   - /orders
+   - /clients
+   - /packages
+   - /ticket-prices
+3. Ensure /api/* is never rewritten to index.html.
+4. Ensure static files still serve normally:
+   - /assets/*
+   - /sw.js
+   - /registerSW.js
+   - /manifest.webmanifest
+   - icons
+5. If current rewrite does not work on Vercel, replace with a Vercel-proven config.
+6. If cleanUrls or trailingSlash is interfering, adjust or remove them.
+7. Final target:
+   /login, /dashboard, /bootstrap must return 200 text/html after deploy.
+
+TASK B — Fix /api/agency-members schema mismatch:
+1. Open api/[...path].js.
+2. Find GET /api/agency-members handler.
+3. Stop selecting agency_members.phone_wa or agency_members.agent_notes because those columns do not exist.
+4. Select only real columns from agency_members:
+   - agency_id
+   - user_id
+   - role
+   - created_at
+   - commission_pct
+   - card_back_image_url
+5. Enrich user display data from profiles table instead:
+   profiles has:
+   - id
+   - email
+   - full_name
+   - photo_url
+6. Return member objects using safe fallback fields:
+   - user_id
+   - role
+   - commission_pct
+   - card_back_image_url
+   - email from profiles.email if available
+   - full_name/displayName from profiles.full_name if available
+   - phone_wa: null
+   - agent_notes: null
+7. Do not crash if optional fields are missing.
+8. /api/agency-members with valid Bearer token must return 200 JSON array with owner/agent/staff.
+9. Do not modify database schema.
+10. Do not recreate members.
+11. Do not touch unrelated features.
+
+TASK C — Verify:
+Run:
+npm run lint
+npm run test
+npm run build
+
+Add or update tests if possible for:
+- /api/agency-members handler does not request non-existent phone_wa column
+- member enrichment uses profiles table
+- route normalization still handles /api/agency-members?agencyId=...
+
+Return:
+1. final vercel.json
+2. files changed
+3. exact selected columns for agency_members
+4. sample /api/agency-members response
+5. lint/test/build result
+6. reminder that I must redeploy Vercel after this fix

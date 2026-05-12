@@ -203,35 +203,67 @@ async function handleAgencyMembersGet(req, res, admin, caller) {
       .from('agency_members').select('agency_id, role').eq('user_id', caller.id).maybeSingle();
     if (callerErr || !callerMember) return res.status(403).json({ error: 'Tidak terdaftar di agency manapun' });
 
+    // Select only columns that are confirmed to exist in agency_members.
+    // phone_wa, agent_notes, agent_status are NOT in the Supabase schema —
+    // we return safe null defaults for them instead of crashing.
     const { data: members, error: membersErr } = await client
       .from('agency_members')
-      .select('user_id, role, commission_pct, created_at, phone_wa, agent_notes, agent_status, card_back_image_url')
+      .select('user_id, role, commission_pct, created_at, card_back_image_url')
       .eq('agency_id', callerMember.agency_id)
       .order('created_at', { ascending: true });
     if (membersErr) return res.status(500).json({ error: membersErr.message });
 
-    // Enrich with Supabase Auth profile data when admin client is available.
-    // If not (SERVICE_ROLE_KEY missing), email/name will be null — the member
-    // list still renders with fallback display names.
-    let userMap = {};
+    // Enrich with profile data from the profiles table (id, email, full_name, photo_url).
+    // Falls back to Supabase Auth admin.listUsers() when admin client is available.
+    // Either way, the member list is returned even if profile enrichment fails.
+    const memberIds = (members || []).map((m) => m.user_id);
+    let profileMap = {};
+
+    // Strategy 1: profiles table (readable with anon key via RLS or admin)
+    try {
+      const { data: profiles } = await client
+        .from('profiles')
+        .select('id, email, full_name, photo_url')
+        .in('id', memberIds);
+      if (profiles && profiles.length > 0) {
+        profileMap = Object.fromEntries(profiles.map((p) => [p.id, p]));
+      }
+    } catch { /* profiles table may have restrictive RLS — fall through */ }
+
+    // Strategy 2: Supabase Auth admin.listUsers() as supplemental enrichment
+    let authUserMap = {};
     if (admin) {
       try {
         const { data: { users } } = await admin.auth.admin.listUsers({ perPage: 1000 });
-        userMap = Object.fromEntries((users || []).map((u) => [u.id, u]));
-      } catch { /* graceful — profile enrichment is best-effort */ }
+        authUserMap = Object.fromEntries((users || []).map((u) => [u.id, u]));
+      } catch { /* graceful — admin enrichment is best-effort */ }
     }
 
     const result = (members || []).map((m) => {
-      const u = userMap[m.user_id];
-      const meta = u?.user_metadata ?? {};
-      const fullName = (meta.full_name ?? meta.display_name ?? '').trim();
+      const profile = profileMap[m.user_id];
+      const authUser = authUserMap[m.user_id];
+      const meta = authUser?.user_metadata ?? {};
+
+      // Prefer profiles table; fall back to auth user_metadata
+      const email = profile?.email ?? authUser?.email ?? null;
+      const rawFullName = profile?.full_name ?? meta.full_name ?? meta.display_name ?? '';
+      const fullName = rawFullName.trim();
+      const photoUrl = profile?.photo_url ?? meta.avatar_url ?? meta.profile_image_url ?? null;
+
       return {
-        user_id: m.user_id, role: m.role, commission_pct: m.commission_pct, created_at: m.created_at,
-        phone_wa: m.phone_wa ?? null, agent_notes: m.agent_notes ?? null, agent_status: m.agent_status ?? null,
-        card_back_image_url: m.card_back_image_url ?? null, email: u?.email ?? null,
+        user_id: m.user_id,
+        role: m.role,
+        commission_pct: m.commission_pct ?? 0,
+        created_at: m.created_at,
+        card_back_image_url: m.card_back_image_url ?? null,
+        email,
         first_name: meta.first_name ?? fullName.split(' ')[0] ?? null,
         last_name: meta.last_name ?? fullName.split(' ').slice(1).join(' ') ?? null,
-        profile_image_url: meta.avatar_url ?? meta.profile_image_url ?? null,
+        profile_image_url: photoUrl,
+        // Safe null defaults — columns not present in this Supabase schema
+        phone_wa: null,
+        agent_notes: null,
+        agent_status: null,
       };
     });
     return res.status(200).json(result);

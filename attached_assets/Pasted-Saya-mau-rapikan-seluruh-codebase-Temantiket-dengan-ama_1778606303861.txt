@@ -1,0 +1,121 @@
+Saya mau rapikan seluruh codebase Temantiket dengan aman, bukan tambal sulam.
+
+Tujuan:
+- Tidak ada error production blocker.
+- Tidak ada API route rusak.
+- Tidak ada query ke kolom/tabel yang tidak ada.
+- Tidak ada frontend stuck tanpa error.
+- Tidak ada legacy Replit Auth yang memengaruhi production Vercel.
+- Code tetap rapi, modular, dan mudah dirawat.
+- Jangan mengubah fitur atau UI besar tanpa alasan.
+
+Kerjakan dengan prinsip:
+1. Audit dulu, jangan langsung edit membabi buta.
+2. Fix hanya masalah yang terbukti.
+3. Jangan hapus data.
+4. Jangan recreate agency/member/client/order.
+5. Jangan bikin workaround kotor.
+6. Jangan biarkan catch kosong tanpa alasan.
+7. Jangan biarkan promise/fetch gagal tanpa pesan.
+8. Jangan biarkan route API return Vercel NOT_FOUND untuk endpoint yang dipakai app.
+9. Jangan biarkan query Supabase memilih kolom yang tidak ada.
+10. Setelah setiap perubahan penting, jalankan test/build.
+
+Prioritas audit dan perbaikan:
+
+A. Production routing Vercel
+- Pastikan vercel.json benar untuk Vite + React Router.
+- Semua route React harus return index.html:
+  /login
+  /dashboard
+  /bootstrap
+  /orders
+  /clients
+  /packages
+  /ticket-prices
+- /api/* tidak boleh rewrite ke index.html.
+- Static assets tetap aman.
+
+B. Vercel API routing
+- Pastikan api/[...path].js route parsing bersih dan tested.
+- Pastikan endpoint berikut ada dan return JSON yang benar:
+  GET /api/auth/user
+  GET /api/agency-members
+  GET /api/health-check
+  POST /api/invite-member
+  POST /api/remove-member
+- Jangan sampai /api/agency-members kebaca sebagai /api/.
+- Tambahkan/pertahankan test route normalization.
+
+C. Supabase schema safety
+- Audit semua query Supabase.
+- Pastikan tidak ada select/update/filter ke kolom yang tidak ada.
+- Khusus agency_members, jangan select phone_wa atau agent_notes jika kolom tidak ada.
+- Gunakan profiles untuk email/full_name/photo_url.
+- Optional field harus fallback aman, misalnya phone_wa: null dan agent_notes: null.
+- Jangan ubah schema tanpa diminta.
+
+D. Auth production
+- Login harus pakai Supabase email/password.
+- Frontend tidak boleh memanggil /api/login atau /api/logout.
+- Logout harus pakai supabase.auth.signOut dan clear local state.
+- /api/auth/user harus pakai Authorization: Bearer token.
+- Kalau token invalid, return 401 JSON.
+- Kalau membership tidak ada, return 404 JSON code NO_MEMBERSHIP.
+- Kalau sukses, return profile lengkap: id, email, displayName, role, agencyId, agencyName, commissionPct.
+
+E. Owner dashboard data
+- Pastikan owner dashboard membaca agencyId dari authStore.
+- Pastikan clients/orders/agent_points/notes/ticket_prices yang sudah ada di database muncul.
+- Jangan anggap data kosong kalau API gagal.
+- Jika fetch gagal, tampilkan toast/error jelas.
+- Jangan swallow error diam-diam.
+
+F. Agent/staff list
+- /api/agency-members harus return owner/agent/staff dari agency_members.
+- Enrich email/full_name dari profiles.
+- Jangan query agent_profiles/staff_profiles jika tabel itu tidak ada.
+- StaffManagementCenter harus memakai listMembers sebagai sumber utama.
+- Jangan block listMembers hanya karena supabase client belum siap.
+
+G. Code quality
+- Jalankan:
+  npm run lint
+  npm run test
+  npm run build
+- Jika lint error dari app source muncul, fix.
+- Warning boleh hanya jika non-blocking dan dijelaskan.
+- Jangan edit .local/skills/artifacts atau scaffold Replit Agent.
+- Bersihkan unused imports.
+- Pastikan TypeScript tidak error.
+- Pastikan tidak ada hardcoded credential/password.
+
+H. Verification script
+Setelah fix, jalankan atau buat script verifikasi production yang mengecek:
+- /login => 200 text/html
+- /dashboard => 200 text/html
+- /bootstrap => 200 text/html
+- /api/auth/user tanpa token => 401 JSON
+- Supabase login => 200
+- /api/auth/user dengan token => 200 JSON + agencyId
+- /api/agency-members dengan token => 200 JSON array berisi owner/agent/staff
+- direct Supabase REST agency_members/profiles/clients/orders masih ada
+
+Laporan akhir wajib berisi:
+1. root cause masalah terakhir
+2. file yang diubah
+3. kenapa setiap perubahan diperlukan
+4. final vercel.json
+5. final selected columns untuk /api/agency-members
+6. hasil lint/test/build
+7. hasil test route normalization
+8. instruksi redeploy Vercel
+9. instruksi clear cache/service worker
+10. hal yang masih warning/non-blocking jika ada
+
+Penting:
+- Jangan jawab “done” doang.
+- Jangan klaim selesai kalau belum ada bukti lint/test/build.
+- Jangan ubah fitur besar.
+- Jangan bikin code hacky.
+- Fokus bikin production stabil dan code rapi.
