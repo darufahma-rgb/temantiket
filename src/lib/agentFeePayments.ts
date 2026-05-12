@@ -88,6 +88,7 @@ export function recordFeePayment(agentId: string, amount: number, note = ""): Fe
 
   if (canSync) {
     void (async () => {
+      if (!isSupabaseConfigured()) { resolveFeatureSync(FEE_PAYMENT_SYNC_KEY); return; }
       try {
         const agencyId = requireAgencyId();
         const { error } = await supabase!.from("agent_fee_payments").insert({

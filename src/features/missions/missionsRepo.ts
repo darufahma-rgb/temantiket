@@ -67,8 +67,9 @@ export async function createMission(
 
 export async function deleteMission(missionId: string): Promise<boolean> {
   if (!isSupabaseConfigured() || !supabase) return false;
-  const { error } = await supabase.from("daily_missions").delete().eq("id", missionId);
+  const { data, error } = await supabase.from("daily_missions").delete().eq("id", missionId).select("id");
   if (error) { console.warn("[missions] deleteMission:", error.message); return false; }
+  if (!data || data.length === 0) { console.warn("[missions] deleteMission: RLS mungkin memblokir DELETE id=", missionId); return false; }
   return true;
 }
 
@@ -209,8 +210,9 @@ export async function createTemplate(
 
 export async function deleteTemplate(templateId: string): Promise<boolean> {
   if (!isSupabaseConfigured() || !supabase) return false;
-  const { error } = await supabase.from("mission_templates").delete().eq("id", templateId);
+  const { data, error } = await supabase.from("mission_templates").delete().eq("id", templateId).select("id");
   if (error) { console.warn("[missions] deleteTemplate:", error.message); return false; }
+  if (!data || data.length === 0) { console.warn("[missions] deleteTemplate: RLS mungkin memblokir DELETE id=", templateId); return false; }
   return true;
 }
 

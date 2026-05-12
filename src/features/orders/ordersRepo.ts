@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAgencyId, getCurrentAgencyId, useAuthStore } from "@/store/authStore";
 import { makePersistedCache } from "@/lib/persistedCache";
 import { type PaymentStatus, PAYMENT_STATUSES, coercePaymentStatus } from "@/lib/paymentStatus";
+import { withTimeout } from "@/lib/supabaseTimeout";
 
 export type { PaymentStatus };
 
@@ -150,7 +151,9 @@ export async function listOrders(filter?: { type?: OrderType; clientId?: string 
 
 export async function getOrder(id: string): Promise<Order | null> {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabase!.from("orders").select("*").eq("id", id).maybeSingle();
+    const { data, error } = await withTimeout(
+      supabase!.from("orders").select("*").eq("id", id).maybeSingle(),
+    );
     if (error) throw error;
     return data ? fromRow(data) : null;
   }
@@ -209,12 +212,9 @@ export async function createOrder(draft: OrderDraft): Promise<Order> {
 
 export async function updateOrder(id: string, patch: Partial<Order>): Promise<Order> {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabase!
-      .from("orders")
-      .update(toRow(patch))
-      .eq("id", id)
-      .select("*")
-      .single();
+    const { data, error } = await withTimeout(
+      supabase!.from("orders").update(toRow(patch)).eq("id", id).select("*").single(),
+    );
     if (error) throw error;
     const o = fromRow(data);
     saveCache(loadCache().map((x) => (x.id === id ? o : x)));
@@ -231,11 +231,9 @@ export async function updateOrder(id: string, patch: Partial<Order>): Promise<Or
 
 export async function deleteOrder(id: string): Promise<void> {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabase!
-      .from("orders")
-      .delete()
-      .eq("id", id)
-      .select("id");
+    const { data, error } = await withTimeout(
+      supabase!.from("orders").delete().eq("id", id).select("id"),
+    );
     if (error) {
       console.error(`[orders] DELETE id=${id} gagal:`, error);
       throw error;

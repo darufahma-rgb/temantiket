@@ -10,6 +10,7 @@ async function getToken(): Promise<string | null> {
   const now = Date.now();
   if (_cachedToken && now < _tokenExpiry) return _cachedToken;
   try {
+    if (!supabase) { _cachedToken = null; return _cachedToken; }
     const { data } = await supabase.auth.getSession();
     _cachedToken = data.session?.access_token ?? null;
     _tokenExpiry = now + 50_000;

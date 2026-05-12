@@ -181,6 +181,7 @@ export function addWalletTx(
 
   if (canSync) {
     void (async () => {
+      if (!isSupabaseConfigured()) { resolveFeatureSync(syncKey); return; }
       try {
         const agencyId = requireAgencyId();
         const { error } = await supabase!.from("agent_wallet_transactions").insert({

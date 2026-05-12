@@ -44,6 +44,7 @@ export async function pullAgencySetting<T>(key: string): Promise<T | null> {
 export async function pushAgencySetting(key: string, value: unknown): Promise<void> {
   const canSync = beginFeatureSync(key);
   if (!canSync) return;
+  if (!isSupabaseConfigured()) { resolveFeatureSync(key); return; }
   try {
     const agencyId = requireAgencyId();
     const { error } = await supabase!
@@ -87,6 +88,7 @@ export async function pullUserSetting<T>(userId: string, key: string): Promise<T
 export async function pushUserSetting(userId: string, key: string, value: unknown): Promise<void> {
   const canSync = beginFeatureSync(key);
   if (!canSync) return;
+  if (!isSupabaseConfigured() || !userId) { resolveFeatureSync(key); return; }
   try {
     const { error } = await supabase!
       .from("user_settings")

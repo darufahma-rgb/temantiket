@@ -92,7 +92,7 @@ export async function listPaymentsByJamaah(jamaahId: string): Promise<Payment[]>
 export async function listPaymentsByTrip(tripId: string): Promise<Payment[]> {
   if (!isSupabaseConfigured()) return [];
   const { data, error } = await supabase!
-    .from("payments").select("*").eq("trip_id", tripId);
+    .from("payments").select("*").eq("trip_id", tripId).order("paid_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(fromRow);
 }
@@ -109,11 +109,15 @@ export async function createPayment(draft: Omit<Payment, "id" | "createdAt">): P
 
 export async function deletePayment(id: string): Promise<void> {
   if (isSupabaseConfigured()) {
-    // fetch proof_url first to clean up storage
-    const { data } = await supabase!.from("payments").select("proof_url").eq("id", id).maybeSingle();
-    const proofPath = (data?.proof_url as string) || "";
-    const { error } = await supabase!.from("payments").delete().eq("id", id);
+    const { data: proofRow } = await supabase!.from("payments").select("proof_url").eq("id", id).maybeSingle();
+    const proofPath = (proofRow?.proof_url as string) || "";
+    const { data, error } = await supabase!.from("payments").delete().eq("id", id).select("id");
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error(
+        "Hapus pembayaran gagal — server tidak menghapus baris (kemungkinan RLS DELETE policy nge-blok). Cek policy \"payments_delete\" di Supabase.",
+      );
+    }
     if (proofPath) await deletePaymentProof(proofPath);
   }
 }
