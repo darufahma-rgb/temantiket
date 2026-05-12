@@ -6,3 +6,9 @@ id = "kaTAqlflhiZDNdYQQBiJy"
 uri = "file://AUDIT_REPORT.md"
 type = "text"
 title = "Laporan Audit Komprehensif Temantiket"
+
+[[outputs]]
+id = "J-1kxzOHNUr-nR4bLakgb"
+uri = "file://PRD_Temantiket.md"
+type = "text"
+title = "PRD Temantiket — Platform Manajemen Umrah, Haji & Tour"
