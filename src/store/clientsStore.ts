@@ -3,6 +3,17 @@ import {
   listClients, createClient, updateClient, deleteClient, getClient,
   type Client, type ClientDraft,
 } from "@/features/clients/clientsRepo";
+import { toast } from "sonner";
+
+const FETCH_TIMEOUT = 25_000;
+function withTimeout<T>(p: Promise<T>): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Waktu koneksi habis. Periksa jaringan Anda.")), FETCH_TIMEOUT),
+    ),
+  ]);
+}
 
 interface ClientsState {
   clients: Client[];
@@ -21,11 +32,13 @@ export const useClientsStore = create<ClientsState>((set) => ({
   fetchClients: async () => {
     set({ loadingClients: true });
     try {
-      const data = await listClients();
+      const data = await withTimeout(listClients());
       set({ clients: data, loadingClients: false });
     } catch (err) {
       console.error("[clientsStore] fetchClients failed:", err);
       set((s) => ({ clients: s.clients, loadingClients: false }));
+      const msg = err instanceof Error ? err.message : "Gagal memuat klien.";
+      toast.error("Gagal memuat klien", { description: msg, duration: 4000, id: "clients-fetch-err" });
     }
   },
 

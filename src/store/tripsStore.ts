@@ -6,6 +6,17 @@ import {
   type Trip, type Jamaah, type JamaahDoc, type DocCategory,
 } from "@/features/trips/tripsRepo";
 import { syncBus } from "@/lib/syncBus";
+import { toast } from "sonner";
+
+const FETCH_TIMEOUT = 25_000;
+function withTimeout<T>(p: Promise<T>): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Waktu koneksi habis. Periksa jaringan Anda.")), FETCH_TIMEOUT),
+    ),
+  ]);
+}
 
 interface TripsState {
   trips: Trip[];
@@ -23,13 +34,14 @@ export const useTripsStore = create<TripsState>((set) => ({
   fetchTrips: async () => {
     set({ loadingTrips: true });
     try {
-      const data = await listTrips();
+      const data = await withTimeout(listTrips());
       set({ trips: data, loadingTrips: false });
     } catch (err) {
       // Jangan timpa trips jadi [] — biar UI tetap nampilin data lama (kalau ada)
-      // daripada keliatan "hilang" gara-gara hiccup network/RLS.
       console.error("[tripsStore] fetchTrips failed:", err);
       set((s) => ({ trips: s.trips, loadingTrips: false }));
+      const msg = err instanceof Error ? err.message : "Gagal memuat paket trip.";
+      toast.error("Gagal memuat paket trip", { description: msg, duration: 4000, id: "trips-fetch-err" });
     }
   },
 

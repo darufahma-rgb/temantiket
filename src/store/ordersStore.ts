@@ -3,6 +3,17 @@ import {
   listOrders, createOrder, updateOrder, deleteOrder, getOrder,
   type Order, type OrderDraft, type OrderType,
 } from "@/features/orders/ordersRepo";
+import { toast } from "sonner";
+
+const FETCH_TIMEOUT = 25_000;
+function withTimeout<T>(p: Promise<T>): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Waktu koneksi habis. Periksa jaringan Anda.")), FETCH_TIMEOUT),
+    ),
+  ]);
+}
 
 interface OrdersState {
   orders: Order[];
@@ -21,11 +32,13 @@ export const useOrdersStore = create<OrdersState>((set) => ({
   fetchOrders: async (filter) => {
     set({ loadingOrders: true });
     try {
-      const data = await listOrders(filter);
+      const data = await withTimeout(listOrders(filter));
       set({ orders: data, loadingOrders: false });
     } catch (err) {
       console.error("[ordersStore] fetchOrders failed:", err);
       set((s) => ({ orders: s.orders, loadingOrders: false }));
+      const msg = err instanceof Error ? err.message : "Gagal memuat order.";
+      toast.error("Gagal memuat order", { description: msg, duration: 4000, id: "orders-fetch-err" });
     }
   },
 
