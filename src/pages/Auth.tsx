@@ -52,7 +52,7 @@ export default function Auth() {
           </div>
           <h1 className="mt-4 text-xl font-extrabold text-white">Setup Agency</h1>
           <p className="mt-1 text-[12px] text-white/60">
-            Akun Replit Anda sudah terverifikasi. Buat nama agency untuk memulai.
+            Akun Anda sudah terverifikasi. Buat nama agency untuk memulai.
           </p>
         </div>
 
