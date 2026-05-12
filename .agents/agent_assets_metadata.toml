@@ -12,3 +12,9 @@ id = "J-1kxzOHNUr-nR4bLakgb"
 uri = "file://PRD_Temantiket.md"
 type = "text"
 title = "PRD Temantiket — Platform Manajemen Umrah, Haji & Tour"
+
+[[outputs]]
+id = "ga9RSiJ_Yd-WVHDII6FKG"
+uri = "file://attached_assets/PRD_Temantiket_UPDATED.md"
+type = "text"
+title = "PRD Temantiket v2.0 — Updated"
