@@ -117,7 +117,7 @@ export async function assertHealthy(context?: string): Promise<void> {
 
   const label   = context ? `${context}: ` : "";
   const primary = !result.serviceRole
-    ? `SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di ${providerLabel(result.provider)}`
+    ? `Server environment variable belum dikonfigurasi di ${providerLabel(result.provider)}`
     : !result.database
       ? "Database tidak bisa diakses — cek konfigurasi Supabase"
       : !result.storage
@@ -150,7 +150,7 @@ export function describeHealth(result: HealthCheckResult): {
   if (!result.serviceRole) {
     return {
       label:  "Service role key tidak ada",
-      detail: `Tambahkan SUPABASE_SERVICE_ROLE_KEY di ${providerLabel(result.provider)}`,
+      detail: `Tambahkan service role key di ${providerLabel(result.provider)} Secrets`,
       level:  "error",
     };
   }

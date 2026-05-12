@@ -1263,7 +1263,7 @@ export default function ItineraryGenerator() {
           </ol>
           <div className="mt-4 flex items-center justify-center gap-2 text-[11.5px] text-muted-foreground">
             <Info className="h-3 w-3" />
-            AI mode & OCR gambar aktif jika OPENAI_API_KEY telah dikonfigurasi di server
+            AI mode & OCR gambar aktif jika API key AI telah dikonfigurasi di server
           </div>
         </div>
       )}

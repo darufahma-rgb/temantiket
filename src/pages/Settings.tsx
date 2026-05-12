@@ -2326,7 +2326,7 @@ function ConnectionHealthPanel() {
                          : h.provider === "replit" ? "Replit Secrets"
                          : "environment variables";
             const primaryErr = !h.serviceRole
-              ? `SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi di ${pLabel}`
+              ? `Server environment variable belum dikonfigurasi di ${pLabel}`
               : !h.database
                 ? "Admin DB tidak bisa diakses (cek service role key & project URL)"
                 : bucketDetail ?? "Storage backend bermasalah";
@@ -2418,7 +2418,7 @@ function ConnectionHealthPanel() {
           <li><b>Agency Member gagal:</b> user belum punya row di tabel <code className="font-mono bg-white px-1 rounded">agency_members</code>.</li>
           <li><b>Database Read gagal:</b> biasanya RLS policy belum di-apply atau env vars salah.</li>
           <li><b>Storage (anon) gagal:</b> bucket belum dibuat atau storage policy salah.</li>
-          <li><b>Server Health gagal:</b> <code className="font-mono bg-white px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> belum dikonfigurasi di environment variables (Vercel / Replit / .env), atau bucket belum dibuat di Supabase Dashboard.</li>
+          <li><b>Server Health gagal:</b> service role key belum dikonfigurasi di environment variables server, atau bucket belum dibuat di Supabase Dashboard.</li>
         </ul>
       </div>
     </div>
