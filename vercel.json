@@ -4,19 +4,31 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "cleanUrls": true,
+  "trailingSlash": false,
   "functions": {
-    "api/export/igh.js":     { "maxDuration": 30 },
-    "api/export/invoice.js": { "maxDuration": 30 },
-    "api/ai/chat.js":        { "maxDuration": 30 },
-    "api/ocr-passport.js":   { "maxDuration": 30 },
-    "api/health-check.js":   { "maxDuration": 15 }
+    "api/bootstrap.js":         { "maxDuration": 15 },
+    "api/invite-member.js":     { "maxDuration": 15 },
+    "api/remove-member.js":     { "maxDuration": 15 },
+    "api/ocr-passport.js":      { "maxDuration": 30 },
+    "api/health-check.js":      { "maxDuration": 15 },
+    "api/export/igh.js":        { "maxDuration": 30 },
+    "api/export/invoice.js":    { "maxDuration": 30 },
+    "api/ai/chat.js":           { "maxDuration": 30 },
+    "api/ai/assistant.js":      { "maxDuration": 30 }
   },
   "rewrites": [
-    { "source": "/((?!api/|assets/|.*\\..*).*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
       "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/workbox-(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
@@ -29,6 +41,12 @@
     },
     {
       "source": "/manifest.webmanifest",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/registerSW.js",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
