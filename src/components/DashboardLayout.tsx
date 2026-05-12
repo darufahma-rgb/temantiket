@@ -73,7 +73,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
 
   const isAgent = currentUser?.role === "agent";
   const isStaff = currentUser?.role === "staff";
-  const homeRoute = isStaff ? "/staff/visa" : isAgent ? "/agent" : "/";
+  const homeRoute = isStaff ? "/staff/dashboard" : isAgent ? "/agent" : "/";
   const bottomNav = isStaff ? STAFF_BOTTOM_NAV : isAgent ? AGENT_BOTTOM_NAV : OWNER_BOTTOM_NAV;
   const moreItems = isStaff ? STAFF_MORE_ITEMS : isAgent ? AGENT_MORE_ITEMS : OWNER_MORE_ITEMS;
 
