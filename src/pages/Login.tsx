@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogIn, AlertCircle, KeyRound } from "lucide-react";
+import { LogIn, AlertCircle, KeyRound, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { AnimatePresence, motion } from "framer-motion";
 import splashBackground from "@assets/image_1777530688079.png";
-
-// ── Animation variants ────────────────────────────────────────────────────────
 
 const cardVariants = {
   hidden: {},
@@ -26,10 +24,13 @@ const SPARKLES = Array.from({ length: 22 }, (_, i) => {
 });
 
 export default function Login() {
-  const [pin, setPin]                   = useState("");
-  const [phase, setPhase]               = useState<"loading" | "replit" | "pin">("loading");
+  const [email, setEmail]           = useState("");
+  const [password, setPassword]     = useState("");
+  const [showPass, setShowPass]     = useState(false);
+  const [pin, setPin]               = useState("");
+  const [phase, setPhase]           = useState<"loading" | "form" | "pin">("loading");
 
-  const { completePinLogin, isLoading, error, isAuthenticated, clearError, pendingLoginUser } = useAuthStore();
+  const { login, completePinLogin, isLoading, error, isAuthenticated, clearError, pendingLoginUser } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,17 +39,18 @@ export default function Login() {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      if (pendingLoginUser) {
-        setPhase("pin");
-      } else {
-        setPhase("replit");
-      }
+      setPhase(pendingLoginUser ? "pin" : "form");
     }, 1050);
     return () => clearTimeout(t);
   }, [pendingLoginUser]);
 
-  const handleReplitLogin = () => {
-    window.location.href = "/api/login";
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearError();
+    if (!email.trim() || !password) return;
+    const result = await login(email.trim(), password);
+    if (result === "ok") navigate("/", { replace: true });
+    else if (result === "needs_pin") setPhase("pin");
   };
 
   const handlePinSubmit = async (e: React.FormEvent) => {
@@ -155,10 +157,10 @@ export default function Login() {
             </motion.div>
           )}
 
-          {/* ── Replit Login button ── */}
-          {phase === "replit" && (
+          {/* ── Email / Password form ── */}
+          {phase === "form" && (
             <motion.div
-              key="replit"
+              key="form"
               className="mt-4 w-full"
               initial={{ opacity: 0, y: 32, scale: 0.94, filter: "blur(10px)" }}
               animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
@@ -185,38 +187,70 @@ export default function Login() {
                     )}
                   </AnimatePresence>
 
-                  <motion.div variants={itemVariants}>
-                    <motion.button
-                      type="button"
-                      onClick={handleReplitLogin}
-                      disabled={isLoading}
-                      className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
-                      style={{
-                        background: "linear-gradient(135deg, #123499 0%, #1a44d4 60%, #6694ff 100%)",
-                        boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
-                      }}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      {isLoading ? (
-                        <>
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                          Masuk…
-                        </>
-                      ) : (
-                        <>
-                          <LogIn className="h-4 w-4" />
-                          Masuk dengan Replit
-                        </>
-                      )}
-                    </motion.button>
-                  </motion.div>
+                  <form onSubmit={handleLogin} className="space-y-3">
+                    <motion.div variants={itemVariants} className="space-y-1.5">
+                      <label className="pl-1 text-[11px] font-bold uppercase tracking-widest text-white/70">Email</label>
+                      <input
+                        type="email"
+                        autoComplete="email"
+                        placeholder="admin@agensi.com"
+                        value={email}
+                        onChange={(e) => { setEmail(e.target.value); clearError(); }}
+                        disabled={isLoading}
+                        className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-sm text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
+                      />
+                    </motion.div>
 
-                  <motion.div variants={itemVariants} className="text-center">
-                    <p className="text-[11px] text-white/40">
-                      Menggunakan autentikasi aman Replit
-                    </p>
-                  </motion.div>
+                    <motion.div variants={itemVariants} className="space-y-1.5">
+                      <label className="pl-1 text-[11px] font-bold uppercase tracking-widest text-white/70">Password</label>
+                      <div className="relative">
+                        <input
+                          type={showPass ? "text" : "password"}
+                          autoComplete="current-password"
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => { setPassword(e.target.value); clearError(); }}
+                          disabled={isLoading}
+                          className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 pr-11 text-sm text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPass((p) => !p)}
+                          tabIndex={-1}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
+                        >
+                          {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </motion.div>
+
+                    <motion.div variants={itemVariants} className="pt-1">
+                      <motion.button
+                        type="submit"
+                        disabled={isLoading || !email.trim() || !password}
+                        className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
+                        style={{
+                          background: "linear-gradient(135deg, #123499 0%, #1a44d4 60%, #6694ff 100%)",
+                          boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
+                        }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {isLoading ? (
+                          <>
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                            Masuk…
+                          </>
+                        ) : (
+                          <>
+                            <LogIn className="h-4 w-4" />
+                            Masuk
+                          </>
+                        )}
+                      </motion.button>
+                    </motion.div>
+                  </form>
+
                 </motion.div>
               </div>
             </motion.div>
@@ -300,7 +334,7 @@ export default function Login() {
                     <motion.div variants={itemVariants}>
                       <button
                         type="button"
-                        onClick={() => { setPhase("replit"); setPin(""); clearError(); }}
+                        onClick={() => { setPhase("form"); setPin(""); clearError(); }}
                         className="w-full text-center text-[12px] text-white/50 hover:text-white/80 transition-colors mt-1"
                       >
                         Kembali ke login
