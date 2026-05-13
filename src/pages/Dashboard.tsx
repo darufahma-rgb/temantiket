@@ -720,10 +720,10 @@ function PaymentAlerts({ trips }: { trips: Trip[] }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { trips, loadingTrips, fetchTrips, removeTrip } = useTripsStore();
+  const { trips, loadingTrips, fetchTrips, removeTrip, loaded: tripsLoaded } = useTripsStore();
   const { items: packages, loaded: packagesLoaded, refresh: refreshPackages } = usePackagesStore();
-  const { orders, fetchOrders } = useOrdersStore();
-  const { clients, fetchClients } = useClientsStore();
+  const { orders, fetchOrders, loaded: ordersLoaded } = useOrdersStore();
+  const { clients, fetchClients, loaded: clientsLoaded } = useClientsStore();
   const user = useAuthStore((s) => s.user);
   const { language } = useRegionalStore();
   const locale = getLocale(language);
@@ -742,10 +742,10 @@ export default function Dashboard() {
     Completed: t.status_completed,
   };
 
-  useEffect(() => { fetchTrips(); }, [fetchTrips]);
+  useEffect(() => { if (!tripsLoaded) fetchTrips(); }, [tripsLoaded, fetchTrips]);
   useEffect(() => { if (!packagesLoaded) refreshPackages(); }, [packagesLoaded, refreshPackages]);
-  useEffect(() => { void fetchOrders(); }, [fetchOrders]);
-  useEffect(() => { void fetchClients(); }, [fetchClients]);
+  useEffect(() => { if (!ordersLoaded) void fetchOrders(); }, [ordersLoaded, fetchOrders]);
+  useEffect(() => { if (!clientsLoaded) void fetchClients(); }, [clientsLoaded, fetchClients]);
   useEffect(() => {
     let alive = true;
     countAllAgencyJamaah()

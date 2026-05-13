@@ -71,8 +71,8 @@ export default function Orders() {
   const typeFilter: OrderType | undefined = isOrderType(params.type) ? params.type : undefined;
   const clientIdParam = searchParams.get("clientId") || undefined;
 
-  const { orders, loadingOrders, fetchOrders, addOrder } = useOrdersStore();
-  const { clients, fetchClients } = useClientsStore();
+  const { orders, loadingOrders, fetchOrders, addOrder, loaded: ordersLoaded } = useOrdersStore();
+  const { clients, fetchClients, loaded: clientsLoaded } = useClientsStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
 
@@ -101,9 +101,9 @@ export default function Orders() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    void fetchOrders();
-    if (clients.length === 0) void fetchClients();
-  }, [isAuthenticated, fetchOrders, fetchClients, clients.length]);
+    if (!ordersLoaded) void fetchOrders();
+    if (!clientsLoaded) void fetchClients();
+  }, [isAuthenticated, ordersLoaded, clientsLoaded, fetchOrders, fetchClients]);
 
   const clientNameById = useMemo(() => {
     const m = new Map<string, string>();

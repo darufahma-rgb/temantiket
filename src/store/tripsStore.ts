@@ -21,27 +21,34 @@ function withTimeout<T>(p: Promise<T>): Promise<T> {
 interface TripsState {
   trips: Trip[];
   loadingTrips: boolean;
+  /** True setelah fetch pertama berhasil. Selanjutnya fetch berjalan di background tanpa loading state. */
+  loaded: boolean;
   fetchTrips: () => Promise<void>;
   addTrip: (draft: Omit<Trip, "id" | "createdAt">) => Promise<Trip>;
   patchTrip: (id: string, patch: Partial<Trip>) => Promise<void>;
   removeTrip: (id: string) => Promise<void>;
 }
 
-export const useTripsStore = create<TripsState>((set) => ({
+export const useTripsStore = create<TripsState>((set, get) => ({
   trips: [],
   loadingTrips: false,
+  loaded: false,
 
   fetchTrips: async () => {
-    set({ loadingTrips: true });
+    const { loaded } = get();
+    // Hanya tampilkan loading spinner saat fetch pertama kali
+    if (!loaded) set({ loadingTrips: true });
     try {
       const data = await withTimeout(listTrips());
-      set({ trips: data, loadingTrips: false });
+      set({ trips: data, loadingTrips: false, loaded: true });
     } catch (err) {
       // Jangan timpa trips jadi [] — biar UI tetap nampilin data lama (kalau ada)
       console.error("[tripsStore] fetchTrips failed:", err);
       set((s) => ({ trips: s.trips, loadingTrips: false }));
-      const msg = err instanceof Error ? err.message : "Gagal memuat paket trip.";
-      toast.error("Gagal memuat paket trip", { description: msg, duration: 4000, id: "trips-fetch-err" });
+      if (!get().loaded) {
+        const msg = err instanceof Error ? err.message : "Gagal memuat paket trip.";
+        toast.error("Gagal memuat paket trip", { description: msg, duration: 4000, id: "trips-fetch-err" });
+      }
     }
   },
 
@@ -85,34 +92,35 @@ export const useJamaahStore = create<JamaahState>((set) => ({
 
   fetchJamaah: async (tripId) => {
     set({ loadingJamaah: true });
-    const data = await listJamaah(tripId);
-    set({ jamaah: data, loadingJamaah: false });
+    try {
+      const data = await listJamaah(tripId);
+      set({ jamaah: data, loadingJamaah: false });
+    } catch (err) {
+      console.error("[jamaahStore] fetchJamaah failed:", err);
+      set((s) => ({ jamaah: s.jamaah, loadingJamaah: false }));
+    }
   },
 
   addJamaah: async (draft) => {
     const j = await createJamaah(draft);
     set((s) => ({ jamaah: [...s.jamaah, j] }));
-    syncBus.emit({ type: "jamaah", action: "create", id: j.id });
     return j;
   },
 
   addJamaahBulk: async (drafts, onProgress) => {
-    const created = await createJamaahBulk(drafts, onProgress);
-    set((s) => ({ jamaah: [...s.jamaah, ...created] }));
-    for (const j of created) syncBus.emit({ type: "jamaah", action: "create", id: j.id });
-    return created;
+    const results = await createJamaahBulk(drafts, onProgress);
+    set((s) => ({ jamaah: [...s.jamaah, ...results] }));
+    return results;
   },
 
   patchJamaah: async (id, patch) => {
     const updated = await updateJamaah(id, patch);
     set((s) => ({ jamaah: s.jamaah.map((j) => (j.id === id ? updated : j)) }));
-    syncBus.emit({ type: "jamaah", action: "update", id });
   },
 
   removeJamaah: async (id) => {
     await deleteJamaah(id);
     set((s) => ({ jamaah: s.jamaah.filter((j) => j.id !== id) }));
-    syncBus.emit({ type: "jamaah", action: "delete", id });
   },
 
   getOne: getJamaah,
@@ -122,8 +130,8 @@ interface DocsState {
   docs: JamaahDoc[];
   loadingDocs: boolean;
   fetchDocs: (jamaahId: string) => Promise<void>;
-  addDocument: (draft: Omit<JamaahDoc, "id" | "createdAt">) => Promise<JamaahDoc>;
-  removeDoc: (id: string) => Promise<void>;
+  addJamaahDoc: (jamaahId: string, doc: Omit<JamaahDoc, "id" | "jamaahId" | "createdAt">) => Promise<JamaahDoc>;
+  removeDoc: (jamaahId: string, docId: string) => Promise<void>;
 }
 
 export const useDocsStore = create<DocsState>((set) => ({
@@ -132,21 +140,24 @@ export const useDocsStore = create<DocsState>((set) => ({
 
   fetchDocs: async (jamaahId) => {
     set({ loadingDocs: true });
-    const data = await listDocs(jamaahId);
-    set({ docs: data, loadingDocs: false });
+    try {
+      const data = await listDocs(jamaahId);
+      set({ docs: data, loadingDocs: false });
+    } catch (err) {
+      console.error("[docsStore] fetchDocs failed:", err);
+      set((s) => ({ docs: s.docs, loadingDocs: false }));
+    }
   },
 
-  addDocument: async (draft) => {
-    const d = await addDoc(draft);
+  addJamaahDoc: async (jamaahId, doc) => {
+    const d = await addDoc(jamaahId, doc);
     set((s) => ({ docs: [...s.docs, d] }));
-    syncBus.emit({ type: "docs", action: "create", id: d.id });
     return d;
   },
 
-  removeDoc: async (id) => {
-    await deleteDoc(id);
-    set((s) => ({ docs: s.docs.filter((d) => d.id !== id) }));
-    syncBus.emit({ type: "docs", action: "delete", id });
+  removeDoc: async (jamaahId, docId) => {
+    await deleteDoc(jamaahId, docId);
+    set((s) => ({ docs: s.docs.filter((d) => d.id !== docId) }));
   },
 }));
 

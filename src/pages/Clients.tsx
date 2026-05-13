@@ -993,8 +993,8 @@ export default function Clients() {
   const params = useParams<{ id?: string }>();
 
   const navigate = useNavigate();
-  const { clients, loadingClients, fetchClients, addClient } = useClientsStore();
-  const { orders, fetchOrders } = useOrdersStore();
+  const { clients, loadingClients, fetchClients, addClient, loaded: clientsLoaded } = useClientsStore();
+  const { orders, fetchOrders, loaded: ordersLoaded } = useOrdersStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const userRole = useAuthStore((s) => s.user?.role);
   const isOwner = userRole === "owner";
@@ -1022,9 +1022,9 @@ export default function Clients() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    void fetchClients();
-    void fetchOrders();
-  }, [isAuthenticated, fetchClients, fetchOrders]);
+    if (!clientsLoaded) void fetchClients();
+    if (!ordersLoaded) void fetchOrders();
+  }, [isAuthenticated, clientsLoaded, ordersLoaded, fetchClients, fetchOrders]);
 
   useEffect(() => {
     if (!isOwner) return;

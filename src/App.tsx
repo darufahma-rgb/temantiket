@@ -14,6 +14,7 @@ import { usePackagesStore } from "@/store/packagesStore";
 import { useTripsStore } from "@/store/tripsStore";
 import { useClientsStore } from "@/store/clientsStore";
 import { useOrdersStore } from "@/store/ordersStore";
+import { useTicketPricesStore } from "@/store/ticketPricesStore";
 import { useAuthStore } from "@/store/authStore";
 import { useRegionalStore } from "@/store/regionalStore";
 import { applyAppearanceSettings, loadAppearanceSettings, pullAppearanceSettings } from "@/lib/appearance";
@@ -79,14 +80,15 @@ const queryClient = new QueryClient({
 });
 
 function StoreBootstrap() {
-  const refreshRates    = useRatesStore((s) => s.refresh);
-  const pullRates       = useRatesStore((s) => s.pullFromCloud);
-  const refreshPackages = usePackagesStore((s) => s.refresh);
-  const fetchTrips      = useTripsStore((s) => s.fetchTrips);
-  const fetchClients    = useClientsStore((s) => s.fetchClients);
-  const fetchOrders     = useOrdersStore((s) => s.fetchOrders);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const user            = useAuthStore((s) => s.user);
+  const refreshRates          = useRatesStore((s) => s.refresh);
+  const pullRates             = useRatesStore((s) => s.pullFromCloud);
+  const refreshPackages       = usePackagesStore((s) => s.refresh);
+  const fetchTrips            = useTripsStore((s) => s.fetchTrips);
+  const fetchClients          = useClientsStore((s) => s.fetchClients);
+  const fetchOrders           = useOrdersStore((s) => s.fetchOrders);
+  const refreshTicketPrices   = useTicketPricesStore((s) => s.refresh);
+  const isAuthenticated       = useAuthStore((s) => s.isAuthenticated);
+  const user                  = useAuthStore((s) => s.user);
 
   useEffect(() => {
     refreshRates();
@@ -96,6 +98,7 @@ function StoreBootstrap() {
       fetchTrips(),
       fetchClients(),
       fetchOrders(),
+      refreshTicketPrices(),
       pullIghAdminSettings(),
       pullBannerTheme(),
       pullProductCommissions(),
@@ -103,7 +106,7 @@ function StoreBootstrap() {
       pullRates(),
       user?.id ? pullAppearanceSettings(user.id) : Promise.resolve(),
     ]);
-  }, [refreshRates, refreshPackages, fetchTrips, fetchClients, fetchOrders, isAuthenticated, user?.id, pullRates]);
+  }, [refreshRates, refreshPackages, fetchTrips, fetchClients, fetchOrders, refreshTicketPrices, isAuthenticated, user?.id, pullRates]);
 
   useEffect(() => {
     if (!isAuthenticated || !user?.agencyId) return;

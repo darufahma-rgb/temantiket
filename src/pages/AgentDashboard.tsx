@@ -45,8 +45,8 @@ const fadeUp = {
 export default function AgentDashboard() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const { orders, fetchOrders } = useOrdersStore();
-  const { clients, fetchClients } = useClientsStore();
+  const { orders, fetchOrders, loaded: ordersLoaded } = useOrdersStore();
+  const { clients, fetchClients, loaded: clientsLoaded } = useClientsStore();
 
   const [points, setPoints] = useState<AgentPoint[]>([]);
   const [missionSubs, setMissionSubs] = useState<MissionSubmission[]>([]);
@@ -55,8 +55,8 @@ export default function AgentDashboard() {
   const [walletTxs, setWalletTxs] = useState<WalletTransaction[]>([]);
 
   useEffect(() => {
-    void fetchOrders();
-    if (clients.length === 0) void fetchClients();
+    if (!ordersLoaded) void fetchOrders();
+    if (!clientsLoaded) void fetchClients();
     void (async () => {
       setLoadingPoints(true);
       const p = await listAgentPointsWithOrders();
@@ -67,7 +67,7 @@ export default function AgentDashboard() {
       }
       setLoadingPoints(false);
     })();
-  }, [fetchOrders, fetchClients, clients.length, user?.agencyId, user?.id]);
+  }, [ordersLoaded, clientsLoaded, fetchOrders, fetchClients, user?.agencyId, user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;

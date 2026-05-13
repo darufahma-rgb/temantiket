@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Upload, Sparkles, Plus, Trash2, Edit3, Eye, EyeOff, Loader2,
@@ -37,11 +37,12 @@ import {
   type ScanDebugInfo,
 } from "@/lib/ticketPriceAI";
 import {
-  listTicketPrices, createTicketPrice, updateTicketPrice, deleteTicketPrice,
+  createTicketPrice, updateTicketPrice, deleteTicketPrice,
   loadMarkup, saveMarkup, sellingPrice, isExpired, fmtIDR, fmtDate,
   CURRENCY_LABEL,
   type TicketPrice, type TicketPriceDraft, type TicketCurrency,
 } from "@/features/ticketPrices/ticketPricesRepo";
+import { useTicketPricesStore } from "@/store/ticketPricesStore";
 import { loadIghAdminSettings, whatsappUrl } from "@/lib/ighSettings";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -1617,8 +1618,7 @@ export default function TicketPrices() {
   const isAdmin = user?.role === "owner" || user?.role === "staff";
   const isOwner = user?.role === "owner";
 
-  const [prices, setPrices] = useState<TicketPrice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items: prices, loading, loaded: ticketPricesLoaded, refresh: refreshTicketPrices, setItems: setTicketPrices } = useTicketPricesStore();
   const [markup, setMarkupState] = useState(loadMarkup);
   const [markupInput, setMarkupInput] = useState(String(loadMarkup()));
   const [markupOpen, setMarkupOpen] = useState(false);
@@ -1707,19 +1707,9 @@ export default function TicketPrices() {
   // Public link for sharing
   const publicUrl = `${window.location.origin}/harga-tiket`;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const items = await listTicketPrices(false);
-      setPrices(items);
-    } catch (e) {
-      toast.error("Gagal memuat daftar harga: " + String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (!ticketPricesLoaded) void refreshTicketPrices();
+  }, [ticketPricesLoaded, refreshTicketPrices]);
 
   // ── Markup ──────────────────────────────────────────────────────────────
   function applyMarkup() {
@@ -1885,7 +1875,7 @@ export default function TicketPrices() {
     }
 
     if (savedItems.length > 0) {
-      setPrices((prev) => [...savedItems, ...prev]);
+      setTicketPrices((prev) => [...savedItems, ...prev]);
       toast.success(`${savedItems.length} harga tiket berhasil disimpan!`);
     }
 
@@ -1921,11 +1911,11 @@ export default function TicketPrices() {
     try {
       if (editId) {
         const updated = await updateTicketPrice(editId, { ...form, sortOrder: 0 });
-        setPrices((prev) => prev.map((p) => p.id === editId ? updated : p));
+        setTicketPrices((prev) => prev.map((p) => p.id === editId ? updated : p));
         toast.success("Harga tiket diperbarui!");
       } else {
         const item = await createTicketPrice({ ...form, sortOrder: 0 });
-        setPrices((prev) => [item, ...prev]);
+        setTicketPrices((prev) => [item, ...prev]);
         toast.success("Harga tiket ditambahkan!");
       }
       setEditOpen(false);
@@ -1963,7 +1953,7 @@ export default function TicketPrices() {
   async function handleDelete(id: string) {
     try {
       await deleteTicketPrice(id);
-      setPrices((prev) => prev.filter((p) => p.id !== id));
+      setTicketPrices((prev) => prev.filter((p) => p.id !== id));
       toast.success("Tiket dihapus.");
     } catch (e) { toast.error("Gagal hapus: " + String(e)); }
   }
@@ -2011,7 +2001,7 @@ export default function TicketPrices() {
         isPublished: true, sortOrder: 0,
       });
 
-      setPrices((prev) => [returntrip, oneway, ...prev]);
+      setTicketPrices((prev) => [returntrip, oneway, ...prev]);
       toast.success("2 contoh tiket berhasil ditambahkan!");
     } catch (e) {
       toast.error("Gagal inject: " + String(e));
@@ -2023,7 +2013,7 @@ export default function TicketPrices() {
   async function handleTogglePublish(id: string, val: boolean) {
     try {
       const updated = await updateTicketPrice(id, { isPublished: val });
-      setPrices((prev) => prev.map((p) => p.id === id ? updated : p));
+      setTicketPrices((prev) => prev.map((p) => p.id === id ? updated : p));
     } catch (e) { toast.error("Gagal update: " + String(e)); }
   }
 
@@ -2126,7 +2116,7 @@ export default function TicketPrices() {
           </div>
           {isAdmin && (
             <button
-              onClick={() => void load()} disabled={loading}
+              onClick={() => void refreshTicketPrices()} disabled={loading}
               className="h-9 w-9 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center justify-center active:scale-95 transition-transform shrink-0"
             >
               <RefreshCw className={cn("h-4 w-4 text-[hsl(var(--muted-foreground))]", loading && "animate-spin")} />
@@ -2435,7 +2425,7 @@ export default function TicketPrices() {
           </button>
           {isAdmin && (
             <>
-              <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
+              <Button size="sm" variant="outline" onClick={() => void refreshTicketPrices()} disabled={loading}>
                 <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
               </Button>
               <Button

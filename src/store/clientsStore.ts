@@ -18,6 +18,8 @@ function withTimeout<T>(p: Promise<T>): Promise<T> {
 interface ClientsState {
   clients: Client[];
   loadingClients: boolean;
+  /** True setelah fetch pertama berhasil. Selanjutnya fetch berjalan di background tanpa loading state. */
+  loaded: boolean;
   fetchClients: () => Promise<void>;
   addClient: (draft: ClientDraft) => Promise<Client>;
   patchClient: (id: string, patch: Partial<Client>) => Promise<void>;
@@ -25,20 +27,25 @@ interface ClientsState {
   getOneClient: (id: string) => Promise<Client | null>;
 }
 
-export const useClientsStore = create<ClientsState>((set) => ({
+export const useClientsStore = create<ClientsState>((set, get) => ({
   clients: [],
   loadingClients: false,
+  loaded: false,
 
   fetchClients: async () => {
-    set({ loadingClients: true });
+    const { loaded } = get();
+    // Hanya tampilkan loading spinner saat fetch pertama kali
+    if (!loaded) set({ loadingClients: true });
     try {
       const data = await withTimeout(listClients());
-      set({ clients: data, loadingClients: false });
+      set({ clients: data, loadingClients: false, loaded: true });
     } catch (err) {
       console.error("[clientsStore] fetchClients failed:", err);
       set((s) => ({ clients: s.clients, loadingClients: false }));
-      const msg = err instanceof Error ? err.message : "Gagal memuat klien.";
-      toast.error("Gagal memuat klien", { description: msg, duration: 4000, id: "clients-fetch-err" });
+      if (!get().loaded) {
+        const msg = err instanceof Error ? err.message : "Gagal memuat klien.";
+        toast.error("Gagal memuat klien", { description: msg, duration: 4000, id: "clients-fetch-err" });
+      }
     }
   },
 

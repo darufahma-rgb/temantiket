@@ -42,6 +42,7 @@ export default function ExportCenter() {
   // ── Trip manifest state ──────────────────────────────────────────────────────
   const trips = useTripsStore((s) => s.trips);
   const fetchTrips = useTripsStore((s) => s.fetchTrips);
+  const tripsLoaded = useTripsStore((s) => s.loaded);
   const [tripId, setTripId] = useState<string>("");
   const [jamaah, setJamaah] = useState<Jamaah[]>([]);
   const [loadingJamaah, setLoadingJamaah] = useState(false);
@@ -56,7 +57,7 @@ export default function ExportCenter() {
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const { templateDataUrl, setLastInvoice } = useInvoiceStore();
 
-  useEffect(() => { fetchTrips(); }, [fetchTrips]);
+  useEffect(() => { if (!tripsLoaded) fetchTrips(); }, [tripsLoaded, fetchTrips]);
 
   useEffect(() => {
     if (!tripId) { setJamaah([]); return; }

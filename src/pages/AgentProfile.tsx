@@ -58,8 +58,8 @@ const FIELD_CFG: Record<FieldTaskType, {
 export default function AgentProfile() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const { orders, fetchOrders } = useOrdersStore();
-  const { clients, fetchClients } = useClientsStore();
+  const { orders, fetchOrders, loaded: ordersLoaded } = useOrdersStore();
+  const { clients, fetchClients, loaded: clientsLoaded } = useClientsStore();
   const photoInputRef    = useRef<HTMLInputElement>(null);
   const cardBackInputRef = useRef<HTMLInputElement>(null);
   const [photoUrl,          setPhotoUrl]          = useState<string | null>(null);
@@ -80,8 +80,8 @@ export default function AgentProfile() {
   }, [user?.agencyId, user?.id]);
 
   useEffect(() => {
-    void fetchOrders();
-    if (clients.length === 0) void fetchClients();
+    if (!ordersLoaded) void fetchOrders();
+    if (!clientsLoaded) void fetchClients();
     void (async () => {
       setLoading(true);
       const [p, txs] = await Promise.all([
@@ -104,7 +104,7 @@ export default function AgentProfile() {
           if (data?.created_at) setJoinedAt(data.created_at as string);
         });
     }
-  }, [fetchOrders, fetchClients, clients.length, user?.agencyId, user?.id, refreshMissions]);
+  }, [ordersLoaded, clientsLoaded, fetchOrders, fetchClients, user?.agencyId, user?.id, refreshMissions]);
 
   useEffect(() => {
     const unsub = onMissionsChanged(() => { void refreshMissions(); });

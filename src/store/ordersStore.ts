@@ -18,6 +18,8 @@ function withTimeout<T>(p: Promise<T>): Promise<T> {
 interface OrdersState {
   orders: Order[];
   loadingOrders: boolean;
+  /** True setelah fetch pertama berhasil. Selanjutnya fetch berjalan di background tanpa loading state. */
+  loaded: boolean;
   fetchOrders: (filter?: { type?: OrderType; clientId?: string }) => Promise<void>;
   addOrder: (draft: OrderDraft) => Promise<Order>;
   patchOrder: (id: string, patch: Partial<Order>) => Promise<void>;
@@ -25,20 +27,42 @@ interface OrdersState {
   getOneOrder: (id: string) => Promise<Order | null>;
 }
 
-export const useOrdersStore = create<OrdersState>((set) => ({
+export const useOrdersStore = create<OrdersState>((set, get) => ({
   orders: [],
   loadingOrders: false,
+  loaded: false,
 
   fetchOrders: async (filter) => {
-    set({ loadingOrders: true });
+    const { loaded } = get();
+    // Hanya tampilkan loading spinner saat fetch PERTAMA KALI (belum ada data)
+    // Background refresh (sudah loaded) & filtered fetch → tidak ubah loading state
+    const showLoading = !loaded && !filter;
+    if (showLoading) set({ loadingOrders: true });
     try {
       const data = await withTimeout(listOrders(filter));
-      set({ orders: data, loadingOrders: false });
+      if (!filter) {
+        // Full fetch: ganti semua orders + tandai sudah loaded
+        set({ orders: data, loadingOrders: false, loaded: true });
+      } else {
+        // Filtered fetch: hanya update loading, jangan replace global list
+        // Merge: ganti orders yang sesuai filter, pertahankan sisanya
+        set((s) => {
+          const filtered = data;
+          const rest = s.orders.filter((o) => {
+            if (filter.clientId && o.clientId === filter.clientId) return false;
+            if (filter.type && o.type === filter.type) return false;
+            return true;
+          });
+          return { orders: [...rest, ...filtered], loadingOrders: false, loaded: s.loaded };
+        });
+      }
     } catch (err) {
       console.error("[ordersStore] fetchOrders failed:", err);
       set((s) => ({ orders: s.orders, loadingOrders: false }));
-      const msg = err instanceof Error ? err.message : "Gagal memuat order.";
-      toast.error("Gagal memuat order", { description: msg, duration: 4000, id: "orders-fetch-err" });
+      if (!get().loaded) {
+        const msg = err instanceof Error ? err.message : "Gagal memuat order.";
+        toast.error("Gagal memuat order", { description: msg, duration: 4000, id: "orders-fetch-err" });
+      }
     }
   },
 

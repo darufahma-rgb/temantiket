@@ -109,7 +109,7 @@ export default function AgentLeaderboard() {
   const navigate    = useNavigate();
   const me          = useAuthStore((s) => s.user);
   const listMembers = useAuthStore((s) => s.listMembers);
-  const { orders, fetchOrders } = useOrdersStore();
+  const { orders, fetchOrders, loaded: ordersLoaded } = useOrdersStore();
 
   const [range,   setRange]   = useState<RangeKey>("this_month");
   const [members, setMembers] = useState<MemberInfo[]>([]);
@@ -123,7 +123,7 @@ export default function AgentLeaderboard() {
   }, []);
 
   useEffect(() => {
-    void fetchOrders();
+    if (!ordersLoaded) void fetchOrders();
     void (async () => {
       try {
         const [m, p] = await Promise.all([listMembers(), listAgentPoints()]);
@@ -133,7 +133,7 @@ export default function AgentLeaderboard() {
     })();
     const unsub = onAgentPointsChanged(() => { void refreshPoints(); });
     return unsub;
-  }, [fetchOrders, listMembers, refreshPoints]);
+  }, [ordersLoaded, fetchOrders, listMembers, refreshPoints]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 6);
