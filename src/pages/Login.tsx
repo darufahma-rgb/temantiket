@@ -28,7 +28,7 @@ export default function Login() {
   const [password, setPassword]     = useState("");
   const [showPass, setShowPass]     = useState(false);
   const [pin, setPin]               = useState("");
-  const [phase, setPhase]           = useState<"loading" | "form" | "pin">("loading");
+  const [phase, setPhase]           = useState<"form" | "pin">("form");
 
   const { login, completePinLogin, isLoading, error, isAuthenticated, clearError, pendingLoginUser } = useAuthStore();
   const navigate = useNavigate();
@@ -38,10 +38,8 @@ export default function Login() {
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setPhase(pendingLoginUser ? "pin" : "form");
-    }, 1050);
-    return () => clearTimeout(t);
+    if (pendingLoginUser) setPhase("pin");
+    else setPhase("form");
   }, [pendingLoginUser]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -133,29 +131,6 @@ export default function Login() {
         />
 
         <AnimatePresence mode="wait">
-
-          {/* ── Loading splash ── */}
-          {phase === "loading" && (
-            <motion.div
-              key="loading"
-              className="mt-8 flex flex-col items-center gap-5"
-              initial={{ opacity: 0, y: 10, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -18, scale: 0.96, filter: "blur(4px)" }}
-              transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <div className="h-9 w-9 animate-spin rounded-full border-2 border-white/25 border-t-white" />
-              <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-white/80">Memuat…</p>
-              <div className="h-[2px] w-56 overflow-hidden rounded-full bg-white/20">
-                <motion.div
-                  className="h-full rounded-full bg-white"
-                  initial={{ width: "0%" }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 0.85, delay: 0.1, ease: "easeInOut" }}
-                />
-              </div>
-            </motion.div>
-          )}
 
           {/* ── Email / Password form ── */}
           {phase === "form" && (
