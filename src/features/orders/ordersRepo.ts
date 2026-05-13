@@ -3,6 +3,7 @@ import { requireAgencyId, getCurrentAgencyId, useAuthStore } from "@/store/authS
 import { makePersistedCache } from "@/lib/persistedCache";
 import { type PaymentStatus, PAYMENT_STATUSES, coercePaymentStatus } from "@/lib/paymentStatus";
 import { withTimeout } from "@/lib/supabaseTimeout";
+import { deleteWalletTxsForOrder } from "@/lib/agentWallet";
 
 export type { PaymentStatus };
 
@@ -230,11 +231,10 @@ export async function updateOrder(id: string, patch: Partial<Order>): Promise<Or
 }
 
 export async function deleteOrder(id: string): Promise<void> {
-  // Delete related wallet transactions first (best-effort, non-blocking)
-  void fetch(`/api/wallet-txs-for-order/${id}`, {
-    method: "DELETE",
-    credentials: "include",
-  }).catch((e) => console.warn("[orders] deleteWalletTxs failed:", e));
+  // Delete related wallet transactions first (best-effort, non-blocking).
+  // deleteWalletTxsForOrder cleans BOTH localStorage (all cached agents) AND the server DB,
+  // preventing ghost commissions from appearing in wallet views after order deletion.
+  void deleteWalletTxsForOrder(id);
 
   if (isSupabaseConfigured()) {
     const { data, error } = await withTimeout(

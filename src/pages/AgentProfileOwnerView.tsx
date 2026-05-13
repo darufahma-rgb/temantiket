@@ -21,7 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Trophy, ShoppingBag, TrendingUp, Users,
   Target, CheckCircle2, XCircle, Clock, Send, Eye,
-  Mail, Calendar, AlertCircle,
+  Mail, Calendar, AlertCircle, AlertTriangle,
   Crown, BarChart3, MessageCircle, ChevronRight, Loader2,
   Star, Camera, RefreshCw, Pencil, X, Save, Phone,
   Wallet, ArrowDownToLine, Coins, ExternalLink, Trash2,
@@ -54,7 +54,7 @@ import { uploadCardBack, saveCardBackUrl, loadCardBackUrl } from "@/lib/cardBack
 import { supabase } from "@/lib/supabase";
 import {
   pullWalletTxs, addWalletTxAsync, deleteWalletTxById,
-  type WalletTransaction,
+  type WalletTransaction, deduplicateTxs,
 } from "@/lib/agentWallet";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI, type OrderType } from "@/features/orders/ordersRepo";
 import { AgentCard } from "@/components/AgentCard";
@@ -589,15 +589,18 @@ export default function AgentProfileOwnerView() {
   );
 
   // ── Commission audit derived values ───────────────────────────────────────
+  // Deduplication is applied first so stale localStorage duplicates never inflate counts.
+  const dedupedWalletTxs = useMemo(() => deduplicateTxs(walletTxs), [walletTxs]);
+
   const orderBonusTxs = useMemo(
-    () => [...walletTxs]
+    () => [...dedupedWalletTxs]
       .filter((t) => t.type === "order_bonus")
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [walletTxs],
+    [dedupedWalletTxs],
   );
   /** Semua jenis komisi lapangan: VOA, generic field agent, pelaksana visa, kurir, operasional. */
   const fieldCommTxs = useMemo(
-    () => [...walletTxs]
+    () => [...dedupedWalletTxs]
       .filter((t) =>
         t.type === "voa_agent_fee"  ||
         t.type === "field_agent_fee" ||
@@ -606,11 +609,22 @@ export default function AgentProfileOwnerView() {
         t.type === "operational_fee"
       )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [walletTxs],
+    [dedupedWalletTxs],
   );
   const payoutTxs = useMemo(
     () => walletTxs.filter((t) => t.type === "payout"),
     [walletTxs],
+  );
+
+  // Unique order counts — a single order can produce multiple fee txs (different roles),
+  // so we count distinct orderIds instead of raw tx count for badge display.
+  const uniqueBonusOrderCount = useMemo(
+    () => new Set(orderBonusTxs.filter((t) => t.orderId).map((t) => t.orderId!)).size,
+    [orderBonusTxs],
+  );
+  const uniqueFieldOrderCount = useMemo(
+    () => new Set(fieldCommTxs.filter((t) => t.orderId).map((t) => t.orderId!)).size,
+    [fieldCommTxs],
   );
 
   const handleDeleteTx = async () => {
@@ -1660,7 +1674,7 @@ export default function AgentProfileOwnerView() {
                     <Coins className="h-3.5 w-3.5 text-emerald-500" />
                   </div>
                   <p className="text-base font-extrabold font-mono text-emerald-800">{fmtIDR(bd.salesCommission)}</p>
-                  <p className="text-[10px] text-emerald-600 mt-0.5">{orderBonusTxs.length} order selesai</p>
+                  <p className="text-[10px] text-emerald-600 mt-0.5">{uniqueBonusOrderCount > 0 ? uniqueBonusOrderCount : orderBonusTxs.length} order selesai</p>
                 </div>
                 <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-3">
                   <div className="flex items-center justify-between mb-1">
@@ -1740,7 +1754,7 @@ export default function AgentProfileOwnerView() {
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 space-y-1">
                       <p className="text-muted-foreground uppercase tracking-wide text-[9px] font-semibold mb-1">Breakdown Ledger per Tipe</p>
-                      {(["order_bonus", "voa_agent_fee", "kurir_fee", "pelaksana_fee", "mission_conversion", "mission_fee", "adjustment", "payout"] as const).map((type) => {
+                      {(["order_bonus", "voa_agent_fee", "field_agent_fee", "kurir_fee", "pelaksana_fee", "operational_fee", "mission_conversion", "mission_fee", "adjustment", "payout"] as const).map((type) => {
                         const count = walletTxs.filter((t) => t.type === type).length;
                         const total = walletTxs.filter((t) => t.type === type).reduce((s, t) => s + t.amountIDR, 0);
                         return count > 0 ? (
@@ -1812,10 +1826,14 @@ export default function AgentProfileOwnerView() {
                       const linkedClientName = linkedOrder
                         ? clientMap.get(linkedOrder.clientId ?? "")?.name
                         : null;
+                      const isOrphan = shortId !== null && linkedOrder === null;
                       return (
-                        <div key={tx.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
-                          <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
-                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        <div key={tx.id} className={`flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors ${isOrphan ? "opacity-70" : ""}`}>
+                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isOrphan ? "bg-orange-50 border border-orange-100" : "bg-emerald-50 border border-emerald-100"}`}>
+                            {isOrphan
+                              ? <AlertTriangle className="h-4 w-4 text-orange-500" />
+                              : <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            }
                           </div>
                           <div className="flex-1 min-w-0">
                             {linkedClientName && (
@@ -1831,6 +1849,12 @@ export default function AgentProfileOwnerView() {
                               {shortId && (
                                 <span className="text-[9px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
                                   #{shortId}
+                                </span>
+                              )}
+                              {isOrphan && (
+                                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 flex items-center gap-0.5">
+                                  <AlertTriangle className="h-2.5 w-2.5" />
+                                  Order dihapus
                                 </span>
                               )}
                             </div>
@@ -1888,7 +1912,7 @@ export default function AgentProfileOwnerView() {
                         </div>
                       </div>
                       <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
-                        {fieldCommTxs.length} penugasan
+                        {uniqueFieldOrderCount > 0 ? uniqueFieldOrderCount : fieldCommTxs.length} penugasan
                       </span>
                     </div>
                     <div className="divide-y">
@@ -1907,6 +1931,7 @@ export default function AgentProfileOwnerView() {
                         const isPaidOut = payoutTxs.some(
                           (pt) => pt.createdAt > tx.createdAt
                         );
+                        const isOrphan = shortId !== null && linkedOrder === null;
                         return (
                           <div
                             key={tx.id}
@@ -1934,6 +1959,12 @@ export default function AgentProfileOwnerView() {
                                 <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${isPaidOut ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500"}`}>
                                   {isPaidOut ? "Sudah Dicairkan" : "Belum Dicairkan"}
                                 </span>
+                                {isOrphan && (
+                                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 flex items-center gap-0.5">
+                                    <AlertTriangle className="h-2.5 w-2.5" />
+                                    Order dihapus
+                                  </span>
+                                )}
                                 <span className="text-[10px] text-muted-foreground">{fmtDateTime(tx.createdAt)}</span>
                               </div>
                             </div>

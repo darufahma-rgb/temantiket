@@ -174,6 +174,25 @@ export function deduplicateTxs(txs: WalletTransaction[]): WalletTransaction[] {
   return result;
 }
 
+/**
+ * Count the number of unique orders represented in a set of wallet transactions.
+ * Deduplication is applied first; only positive-amount txs with an orderId are counted.
+ * Use this for displaying "X order selesai / X penugasan" without double-counting.
+ *
+ * @param txs   - raw wallet transactions (deduplication is applied internally)
+ * @param types - optional filter; if omitted, all fee types with orderId are counted
+ */
+export function uniqueOrderCountFromTxs(
+  txs:   WalletTransaction[],
+  types?: WalletTxType[],
+): number {
+  const deduped  = deduplicateTxs(txs);
+  const filtered = types ? deduped.filter((t) => types.includes(t.type)) : deduped;
+  return new Set(
+    filtered.filter((t) => t.orderId && t.amountIDR > 0).map((t) => t.orderId!),
+  ).size;
+}
+
 // ─── Balance ──────────────────────────────────────────────────────────────────
 
 /**

@@ -22,7 +22,7 @@ import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, type OrderType } from "@/features/orders/ordersRepo";
 import { fmtIDR, agentFeeFromMeta } from "@/lib/profit";
 import { computeFeeBreakdown } from "@/lib/agentFeeBreakdown";
-import { pullWalletTxs, type WalletTransaction, extractFieldAgents } from "@/lib/agentWallet";
+import { pullWalletTxs, type WalletTransaction, extractFieldAgents, deduplicateTxs } from "@/lib/agentWallet";
 import { uploadAvatar, savePhotoUrl, loadPhotoUrl } from "@/lib/avatarStorage";
 import { uploadCardBack, saveCardBackUrl, loadCardBackUrl } from "@/lib/cardBackStorage";
 import { supabase } from "@/lib/supabase";
@@ -296,11 +296,12 @@ export default function AgentProfile() {
     [walletTxs],
   );
 
-  // fieldCommTxs: wallet-based history (for payout correlation)
+  // fieldCommTxs: wallet-based history (for payout correlation).
+  // Deduplication is applied first so duplicate localStorage entries are collapsed.
   // Covers all field fee types: voa_agent_fee, field_agent_fee, pelaksana_fee,
   // kurir_fee, operational_fee — matches all types written by backfill + OrderDetail
   const fieldCommTxs = useMemo(
-    () => [...walletTxs]
+    () => deduplicateTxs([...walletTxs])
       .filter((t) =>
         t.type === "voa_agent_fee"  ||
         t.type === "field_agent_fee" ||
@@ -310,6 +311,13 @@ export default function AgentProfile() {
       )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [walletTxs],
+  );
+
+  // Count of unique orders that generated field commission entries (avoids double-counting
+  // when an agent fills multiple roles on the same order).
+  const uniqueFieldCommOrderCount = useMemo(
+    () => new Set(fieldCommTxs.filter((t) => t.orderId).map((t) => t.orderId!)).size,
+    [fieldCommTxs],
   );
 
   // ── Debug panel: ID diagnosis for field-agent fee mismatch debugging ────────
@@ -823,15 +831,17 @@ export default function AgentProfile() {
               </div>
             </div>
             <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
-              {fieldCommTxs.length} kredit
+              {uniqueFieldCommOrderCount > 0 ? uniqueFieldCommOrderCount : fieldCommTxs.length} kredit
             </span>
           </div>
           <div className="divide-y">
             {fieldCommTxs.map((tx) => {
               const typeMap: Record<string, FieldTaskType> = {
-                voa_agent_fee:  "voa",
-                pelaksana_fee:  "pelaksana",
-                kurir_fee:      "kurir",
+                voa_agent_fee:   "voa",
+                field_agent_fee: "fieldAgent",
+                pelaksana_fee:   "pelaksana",
+                kurir_fee:       "kurir",
+                operational_fee: "operational",
               };
               const taskType = typeMap[tx.type] ?? "voa";
               const cfg = FIELD_CFG[taskType];
