@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Plus, MapPin, Calendar as CalendarIcon, Trash2, Plane, Camera, Calculator, Users, CheckCircle, TrendingUp, ArrowRight, FileBarChart, Bus, Train, AlertCircle, Clock, Star, ChevronRight, Wallet, RefreshCw, ShoppingBag, Package, Sparkles, SlidersHorizontal, Ticket, StickyNote, BookUser, Settings } from "lucide-react";
+import { MobileOwnerDashboard } from "@/components/mobile";
 import {
   TravelMobileShell,
   TravelHeroCard,
@@ -807,10 +808,12 @@ export default function Dashboard() {
   return (
     <div className="xl:flex xl:min-h-0 xl:gap-5 pt-4 md:pt-2">
       {/* ══════════════════════════════════════════════════════════════
-           MOBILE LAYOUT  (hidden on md+) — Travel Super-App Style
+           MOBILE LAYOUT  (hidden on md+) — Native App Style
       ══════════════════════════════════════════════════════════════ */}
       <div className="md:hidden">
-        <TravelMobileShell>
+        <MobileOwnerDashboard />
+        {/* Legacy shell kept for reference — hidden via parent wrapper */}
+        <div className="hidden"><TravelMobileShell>
           <div className="pb-28 space-y-5">
 
             {/* ── Hero card ── */}
@@ -1119,6 +1122,7 @@ export default function Dashboard() {
 
           </div>
         </TravelMobileShell>
+        </div>{/* end hidden legacy shell */}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════

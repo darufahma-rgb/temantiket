@@ -1,0 +1,94 @@
+Ubah dashboard mobile Temantiket agar layout-nya mengikuti desain native app pada referensi yang saya berikan.
+
+Target:
+- Mobile dashboard owner di halaman utama /
+- File utama: src/pages/Dashboard.tsx
+- Layout wrapper: src/components/DashboardLayout.tsx jika perlu
+- Jangan rusak desktop dashboard
+
+Desain yang harus dibuat:
+Mobile dashboard harus terasa seperti native iOS/Android app dengan background putih kebiruan, rounded cards besar, shadow lembut, spacing lega, dan bottom navigation floating.
+
+Struktur mobile dashboard:
+1. Top area:
+   - status safe-area support
+   - greeting: “Assalamu’alaikum,”
+   - nama user besar, misalnya “Darcia”
+   - badge role OWNER
+   - tombol menu kiri
+   - tombol notifikasi kanan dengan badge merah
+   - avatar kanan dengan online dot hijau
+
+2. Hero card biru:
+   - rounded besar
+   - gradient biru
+   - text:
+     “Selamat datang kembali!”
+     “Kelola bisnis perjalanan lebih mudah bersama Temantiket.”
+   - tombol “Lihat Ringkasan”
+   - visual pesawat / travel illustration
+   - carousel dots kecil
+
+3. Card “Ringkasan Hari Ini”:
+   - tanggal kanan
+   - 4 stat horizontal:
+     Order Baru
+     Klien Aktif
+     Tiket Terbit
+     Pendapatan
+   - tiap stat punya icon bulat pastel, angka besar, dan indikator naik %
+
+4. Section “Akses Cepat”:
+   - grid 2 kolom atau 4 kolom responsif sesuai lebar HP
+   - item:
+     Klien & Jamaah → /clients
+     Order Hub → /orders
+     Harga Tiket → /ticket-prices
+     Itinerary → /itinerary
+     Visa Tracker → /visa-tracker
+     Kalkulator & Kurs → /calculator
+     Paket & Trip → /packages
+     Lainnya → buka menu lengkap
+   - cards putih rounded, shadow soft, icon biru
+
+5. Section “Notifikasi Terbaru”:
+   - card putih rounded
+   - header “Notifikasi Terbaru” + “Lihat Semua”
+   - list 2-3 item terbaru
+   - icon status di kiri
+   - title, subtitle, time di kanan
+
+6. Bottom navigation:
+   - floating pill putih
+   - item Dashboard, Order, Plus tengah, Klien, Lainnya
+   - plus button besar biru circular di tengah
+   - active Dashboard biru
+   - safe-area bottom support
+
+Implementation requirements:
+- Mobile only menggunakan breakpoint md:hidden.
+- Desktop tetap pakai dashboard existing.
+- Jika perlu, buat komponen baru:
+  src/components/mobile/MobileOwnerDashboard.tsx
+  lalu render di Dashboard.tsx khusus mobile.
+- Gunakan data asli dari store yang sudah ada:
+  orders
+  clients
+  packages/trips
+  ticket prices jika tersedia
+  auth user
+- Kalau data belum tersedia, pakai fallback 0, jangan bikin crash.
+- Jangan hardcode Darcia kecuali sebagai fallback; pakai currentUser.displayName.
+- Gunakan lucide-react icons.
+- Gunakan Tailwind CSS.
+- Gunakan framer-motion secukupnya untuk fade/slide ringan.
+- Pastikan tidak ada horizontal scroll.
+- Pastikan content tidak ketutup bottom nav.
+- Pastikan mobile terasa seperti native app/PWA.
+- Jangan ubah auth.
+- Jangan ubah Supabase logic.
+- Jangan ubah routing utama.
+- Run npm run build dan fix error.
+
+Expected result:
+Saat dibuka di mobile, dashboard Temantiket harus terlihat sangat mirip referensi: premium, native-app style, card-based, clean, dan quick access jelas.

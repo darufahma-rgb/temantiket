@@ -1,0 +1,150 @@
+Ubah desain mobile halaman Klien & Jamaah agar seragam dengan desain mobile dashboard dan Order Hub native-app style yang baru.
+
+Target utama:
+- src/pages/Clients.tsx
+- mobile layout saja dengan md:hidden
+- desktop layout jangan dirusak
+
+Referensi desain:
+Halaman Klien & Jamaah mobile harus terlihat seperti native app premium:
+- background putih kebiruan / soft blue
+- cards putih rounded besar
+- shadow lembut
+- spacing lega
+- icon outline biru
+- typography tebal clean
+- bottom navigation floating konsisten dengan dashboard mobile dan Order Hub
+
+Struktur desain yang harus dibuat:
+
+1. Mobile header
+Buat header mobile seperti referensi:
+- tombol back kiri berbentuk square rounded putih
+- title besar: “Klien & Jamaah”
+- subtitle: “Kelola data klien, jamaah, dan riwayat perjalanan mereka.”
+- tombol search kanan rounded square putih
+- tombol utama biru “+ Tambah Klien”
+- gunakan safe-area top
+- jangan pakai header lama yang terlalu kecil
+
+2. Stats cards
+Tambahkan 4 stat card horizontal/scrollable atau grid sesuai lebar:
+- Total Klien
+- Klien Aktif
+- Jamaah Aktif
+- Klien Loyal
+
+Style masing-masing:
+- white card rounded besar
+- pastel circular icon
+- angka besar navy
+- green trend text
+- text “vs bulan lalu”
+
+Gunakan data asli:
+- Total Klien = clients.length
+- Klien Aktif = client yang punya order aktif / status valid
+- Jamaah Aktif = client yang punya order umrah/trip aktif atau fallback count terkait jamaah
+- Klien Loyal = client dengan lebih dari 1 order atau referral stamps
+Fallback 0 kalau data belum ada.
+
+3. Filter + sort row
+Buat row filter seperti referensi:
+- dropdown/pill “Semua Status”
+- dropdown/pill “Semua Kategori”
+- kanan “Urutkan: Terbaru”
+Style:
+- rounded white pill
+- border soft
+- chevron kecil
+
+4. Search + filter
+Tambahkan search bar besar:
+- placeholder: “Cari nama, email, atau nomor paspor…”
+- icon search kiri
+- tombol “Filter” kanan
+Gunakan search logic existing dari Clients.tsx.
+Filter button boleh membuka bottom sheet sederhana:
+- status
+- kategori
+- reset
+Kalau belum sempat, minimal pertahankan logic search existing dengan UI baru.
+
+5. Daftar Klien section
+Header:
+- kiri “Daftar Klien”
+- kanan total count, misalnya “128 Klien”
+
+List card:
+- rounded white card besar
+- avatar kiri:
+  - kalau ada foto pakai image
+  - kalau tidak ada pakai initials gradient/pastel
+- nama besar
+- email kecil
+- row passport + negara
+- kanan status badge:
+  - Aktif
+  - Jamaah Umrah
+  - Pending
+- kanan info “Terakhir Transaksi” + tanggal
+- chevron kanan
+- klik card navigate ke /clients/:id
+
+Gunakan data asli clients dan orders:
+- status aktif kalau client punya order Completed/Paid/Confirmed
+- jamaah umrah kalau punya order umrah
+- pending kalau belum ada order / Draft
+- last transaction dari order terbaru client
+Fallback “Belum ada transaksi”.
+
+6. Pagination visual
+Tambahkan pagination mobile seperti referensi:
+- prev button
+- nomor 1 2 3 4 5 ... total page
+- next button
+Gunakan pagination local client-side, misalnya 5-10 clients per page.
+Kalau search/filter berubah, reset ke page 1.
+
+7. Aksi Cepat
+Tambahkan section “Aksi Cepat”:
+- kanan “Lihat Semua”
+- 4 cards:
+  - Import Klien
+  - Export Data
+  - Grup Klien
+  - Tag Klien
+Style:
+- white rounded cards
+- pastel icon
+- text navy
+Untuk sementara action boleh toast “Segera hadir” kecuali Tambah Klien/import existing already exists.
+
+8. Bottom nav
+Pastikan bottom nav floating sama dengan dashboard dan Order Hub:
+- Dashboard
+- Order
+- Plus tengah
+- Klien active
+- Lainnya
+Jika sudah disediakan oleh DashboardLayout, jangan duplicate.
+Jika MobileFAB lama tabrakan, rapikan agar tidak double.
+
+9. Performance dan data
+- Jangan refetch dari nol tiap buka halaman kalau clients sudah ada.
+- Pakai clients store dan orders store.
+- Tampilkan cached data dulu, refresh background.
+- Skeleton hanya saat first load dan clients kosong.
+- Hindari blank screen.
+- Jangan ada horizontal overflow.
+
+10. Compatibility
+- Jangan ubah auth.
+- Jangan ubah Supabase schema.
+- Jangan ubah route utama.
+- Jangan membuat API Vercel baru.
+- Jangan rusak desktop layout.
+- Pastikan npm run build berhasil.
+
+Expected result:
+Saat user buka /clients di mobile, layout harus sangat mirip referensi Klien & Jamaah native app: header besar, stats cards, filter/search, list client card premium, pagination, quick actions, dan bottom nav active Klien.

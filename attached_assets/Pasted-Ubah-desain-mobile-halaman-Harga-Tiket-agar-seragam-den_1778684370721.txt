@@ -1,0 +1,129 @@
+Ubah desain mobile halaman Harga Tiket agar seragam dengan mobile dashboard, Order Hub, dan Klien & Jamaah native-app style.
+
+Target utama:
+- src/pages/TicketPrices.tsx
+- mobile layout saja dengan md:hidden
+- desktop layout jangan dirusak
+- pertahankan semua logic existing: upload screenshot, paste kode booking/GDS, AI extraction, preview, CRUD harga tiket, markup, publish/unpublish
+
+Desain mobile harus mengikuti referensi:
+- background putih kebiruan / soft blue
+- card putih rounded besar
+- shadow lembut
+- spacing lega
+- typography navy tebal
+- primary gradient blue
+- bottom nav floating konsisten
+
+Struktur mobile Harga Tiket:
+
+1. Header mobile:
+- tombol back kiri rounded square putih
+- title besar: “Harga Tiket”
+- subtitle: “Extract harga tiket dari screenshot atau kode booking dengan AI Deep Extraction.”
+- tombol kanan “Riwayat Extract” dengan icon clock
+- safe-area top
+- jangan pakai header lama yang kecil
+
+2. Hero card biru:
+- gradient biru besar rounded
+- title kecil: “Extract Harga Tiket dengan AI”
+- headline: “Cepat, Akurat, dan Otomatis ✨”
+- deskripsi pendek
+- tombol putih:
+  - “Screenshot Tiket”
+  - “Paste Kode Booking”
+- visual AI/chip/plane illustration boleh pakai gradient/icon lucide jika belum ada asset
+- tombol harus scroll/focus ke section terkait
+
+3. Section “1. Extract dari Screenshot”:
+- card putih rounded besar
+- kanan label “AI Deep Extraction”
+- upload box dashed border
+- icon image upload
+- text:
+  “Upload screenshot tiket Anda”
+  “Format: JPG, PNG • Maks. 10MB”
+- tombol biru “Pilih Gambar”
+- kanan/bawah tips card:
+  - Pastikan detail penerbangan terlihat jelas
+  - Foto/gambar tidak terpotong
+  - Pencahayaan cukup
+  - Hindari pantulan cahaya
+- gunakan fungsi upload/scan existing: scanTicketPriceScreenshot
+- jangan rusak flow preview hasil scan
+
+4. Section “2. Extract dari Kode Booking / Kode Sistem”:
+- card putih rounded besar
+- title sesuai referensi
+- kanan link “Manual Input”
+- input/textarea modern untuk kode booking / PNR / GDS
+- placeholder:
+  “Masukkan kode booking (PNR) / kode sistem (GDS)”
+- tombol biru gradient “Extract Sekarang”
+- gunakan parser/AI existing:
+  - parseGalileoTextToTickets
+  - scanTicketPriceTextWithAI jika sudah ada
+  - fallback AI parser jika tersedia
+- tampilkan loading state saat extract
+
+5. Divider “ATAU”
+- garis kiri kanan dan text tengah
+
+6. Section “3. Hasil Extract Terbaru”:
+- card putih rounded besar
+- kanan “Lihat Semua”
+- tampilkan hasil extract terbaru / ticket price terbaru
+- desain card seperti tiket:
+  - airline logo/name
+  - route besar contoh CGK → CAI
+  - city kecil
+  - tanggal
+  - jam ETD/ETA
+  - durasi/transit
+  - badge “Harga Terbaik”
+  - harga besar
+  - baggage info jika ada
+  - “Extracted x menit yang lalu” jika data tersedia
+- klik card buka detail/edit existing
+
+7. Section “Fitur Lainnya”:
+- 3 cards horizontal:
+  - Pencarian Manual
+  - Kalkulator & Kurs
+  - Notifikasi Harga
+- pakai icon pastel dan chevron
+- action boleh navigate ke fitur existing atau toast “Segera hadir”
+
+8. Bottom nav:
+- gunakan bottom nav floating yang sama dengan dashboard/order/clients
+- jangan duplicate jika sudah dari DashboardLayout
+- pastikan content tidak ketutup bottom nav
+- plus tengah tetap konsisten
+
+Data dan logic:
+- Gunakan data asli ticketPrices dari existing repo/store.
+- Kalau data kosong, tampilkan empty state premium.
+- Jangan refetch dari nol kalau data sudah ada.
+- Tampilkan cached data sambil refresh background.
+- Semua action admin tetap jalan:
+  - create
+  - edit
+  - delete
+  - publish/unpublish
+  - markup
+  - scan screenshot
+  - paste kode booking
+  - import hasil extract
+
+Compatibility:
+- Jangan ubah auth.
+- Jangan ubah Supabase schema.
+- Jangan ubah routing.
+- Jangan membuat API Vercel baru.
+- Jangan rusak desktop layout.
+- Jangan hapus existing parser Galileo/multi-leg/return-trip.
+- Pastikan npm run build berhasil.
+
+Expected result:
+Saat user buka /ticket-prices di mobile, layout harus sangat mirip referensi Harga Tiket native app: header besar, hero AI card, upload screenshot card, paste kode booking card, hasil extract terbaru, fitur lainnya, dan bottom nav konsisten dengan dashboard.

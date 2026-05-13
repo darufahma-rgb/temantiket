@@ -1,0 +1,127 @@
+Ubah desain mobile halaman Order Hub agar seragam dengan desain mobile dashboard native-app style yang baru.
+
+Target utama:
+- src/pages/Orders.tsx
+- gunakan style mobile-only dengan md:hidden
+- desktop layout jangan dirusak
+
+Referensi desain:
+Halaman Order Hub mobile harus terlihat seperti native app premium:
+- background putih kebiruan / soft blue
+- rounded cards besar
+- shadow lembut
+- spacing lega
+- icon outline biru
+- typography tebal dan clean
+- bottom nav floating konsisten dengan dashboard mobile
+
+Struktur desain yang harus dibuat:
+
+1. Mobile header
+Buat header mobile seperti referensi:
+- tombol back kiri berbentuk square rounded putih
+- title besar: “Order Hub”
+- subtitle: “Kelola semua pesanan dan permintaan dalam satu tempat.”
+- tombol search kanan berbentuk rounded square putih
+- tombol filter kanan dengan icon filter dan text “Filter”
+- gunakan safe-area top
+- jangan pakai header lama yang terlalu kecil
+
+2. Category tabs
+Tambahkan horizontal category tab tepat di bawah header:
+- Semua Order + count
+- Tiket Pesawat + count
+- Visa & Dokumen + count
+- Paket & Lainnya + count
+Style:
+- tab aktif berupa pill biru gradient
+- tab nonaktif text navy dengan badge count kecil
+- horizontal scroll aman di layar kecil
+Mapping:
+- Semua Order → /orders
+- Tiket Pesawat → flight
+- Visa & Dokumen → visa_voa + visa_student
+- Paket & Lainnya → umrah / package-related orders
+
+3. Ringkasan Order card
+Buat card putih besar dengan title “Ringkasan Order”.
+Di kanan ada date range selector visual:
+“20 Mei – 26 Mei 2025” atau gunakan current week dinamis.
+Di dalam card tampilkan 4 stat cards:
+- Total Order
+- Selesai
+- Diproses
+- Dibatalkan
+Masing-masing:
+- icon bulat pastel
+- angka besar
+- trend naik/turun %
+- text “vs pekan lalu”
+Gunakan data asli orders.
+Fallback 0 kalau data belum ada.
+Status mapping:
+- Selesai: Done, Paid, Completed
+- Diproses: Draft, Confirmed, Processing jika ada
+- Dibatalkan: Cancelled
+
+4. Daftar Order section
+Buat header:
+- “Daftar Order”
+- kanan: “Urutkan: Terbaru” dengan chevron
+List card harus mengikuti referensi:
+- rounded white card besar
+- icon kategori di kiri dalam pastel square
+- label kategori uppercase biru/oranye/hijau
+- order code/title besar
+- subtitle rute/deskripsi
+- row kecil tanggal + client name
+- kanan status badge
+- kanan harga besar
+- chevron
+Gunakan data asli dari orders dan clients.
+Klik card tetap navigate ke /orders/detail/:id.
+
+5. Order card style per tipe:
+- flight: icon Plane, label “TIKET PESAWAT”, pastel blue
+- visa_voa / visa_student: icon Passport/FileText, label “VISA ...”, pastel green/orange
+- umrah/package: icon Package, label “PAKET & TRIP”, pastel purple
+Status badge:
+- Draft/Confirmed/Processing → DIPROSES orange/blue
+- Done/Paid/Completed → SELESAI green
+- Cancelled → DIBATALKAN red
+
+6. Search/filter behavior
+- Search button membuka search input atau bottom sheet search.
+- Filter button membuka bottom sheet filter sederhana:
+  - status
+  - order type
+  - reset filter
+Kalau belum sempat buat full filter, minimal pertahankan existing q search logic tapi UI-nya native-style.
+
+7. Bottom nav
+Pastikan bottom navigation floating sama persis dengan dashboard mobile:
+- Dashboard
+- Order active
+- Plus tengah
+- Klien
+- Lainnya
+Jika sudah ada di DashboardLayout, jangan duplicate.
+Jika Orders masih pakai MobileFAB lama yang tabrakan dengan bottom nav, rapikan agar plus action tidak dobel atau tidak menutupi layout.
+
+8. Performance and data
+- Jangan refetch dari nol setiap pindah halaman.
+- Pakai data dari orders store dan clients store.
+- Jika loading tapi data sudah ada, tetap tampilkan data lama.
+- Skeleton hanya saat first load dan orders kosong.
+- Hindari blank screen.
+
+9. Compatibility
+- Jangan ubah auth.
+- Jangan ubah Supabase schema.
+- Jangan ubah route utama.
+- Jangan membuat API Vercel baru.
+- Jangan rusak desktop layout.
+- Pastikan npm run build berhasil.
+
+Expected result:
+Saat user buka /orders di mobile, layout harus sangat mirip referensi Order Hub native app: header besar, tabs, summary card, daftar order card premium, dan navigasi bawah konsisten dengan dashboard mobile.
