@@ -301,7 +301,7 @@ export default function AgentProfileOwnerView() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const listMembers = useAuthStore((s) => s.listMembers);
-  const { orders, fetchOrders, patchOrder } = useOrdersStore();
+  const { orders, fetchOrders, patchOrder, loaded: ordersLoaded } = useOrdersStore();
   const { clients, fetchClients } = useClientsStore();
 
   const [tab, setTab] = useState<Tab>("overview");
@@ -601,7 +601,7 @@ export default function AgentProfileOwnerView() {
   const orderBonusTxs = useMemo(
     () => [...dedupedWalletTxs]
       .filter((t) => t.type === "order_bonus")
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")),
     [dedupedWalletTxs],
   );
   /** Semua jenis komisi lapangan: VOA, generic field agent, pelaksana visa, kurir, operasional. */
@@ -614,7 +614,7 @@ export default function AgentProfileOwnerView() {
         t.type === "kurir_fee"      ||
         t.type === "operational_fee"
       )
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")),
     [dedupedWalletTxs],
   );
   const payoutTxs = useMemo(
@@ -1828,7 +1828,7 @@ export default function AgentProfileOwnerView() {
                       const linkedClientName = linkedOrder
                         ? clientMap.get(linkedOrder.clientId ?? "")?.name
                         : null;
-                      const isOrphan = shortId !== null && linkedOrder === null;
+                      const isOrphan = ordersLoaded && shortId !== null && linkedOrder === null;
                       return (
                         <div key={tx.id} className={`flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors ${isOrphan ? "opacity-70" : ""}`}>
                           <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isOrphan ? "bg-orange-50 border border-orange-100" : "bg-emerald-50 border border-emerald-100"}`}>
@@ -1933,7 +1933,7 @@ export default function AgentProfileOwnerView() {
                         const isPaidOut = payoutTxs.some(
                           (pt) => pt.createdAt > tx.createdAt
                         );
-                        const isOrphan = shortId !== null && linkedOrder === null;
+                        const isOrphan = ordersLoaded && shortId !== null && linkedOrder === null;
                         return (
                           <div
                             key={tx.id}

@@ -311,7 +311,7 @@ export default function AgentProfile() {
   // Covers all field fee types: voa_agent_fee, field_agent_fee, pelaksana_fee,
   // kurir_fee, operational_fee — matches all types written by backfill + OrderDetail
   const fieldCommTxs = useMemo(
-    () => deduplicateTxs([...walletTxs])
+    () => deduplicateTxs(walletTxs)
       .filter((t) =>
         t.type === "voa_agent_fee"  ||
         t.type === "field_agent_fee" ||
@@ -319,7 +319,7 @@ export default function AgentProfile() {
         t.type === "kurir_fee"      ||
         t.type === "operational_fee"
       )
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")),
     [walletTxs],
   );
 

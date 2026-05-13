@@ -33,8 +33,8 @@ export interface FeeBreakdown {
   netBalance:      number;
 }
 
-export function computeFeeBreakdown(txs: WalletTransaction[]): FeeBreakdown {
-  const dedupedTxs = deduplicateTxs(txs);
+export function computeFeeBreakdown(txs: WalletTransaction[] | null | undefined): FeeBreakdown {
+  const dedupedTxs = deduplicateTxs(txs ?? []);
 
   let salesCommission = 0;
   let fieldAgentFee   = 0;

@@ -159,11 +159,16 @@ export const WALLET_FEE_ORDER_TYPES: WalletTxType[] = [
 /**
  * Deduplicate wallet transactions by (type, orderId) — keeps the oldest entry.
  * UI-level safety net; the DB unique index is the primary guard.
+ *
+ * Accepts null/undefined gracefully (returns []) so callers never need to
+ * guard before calling — prevents TypeError crashes from stale localStorage
+ * entries where createdAt may be undefined.
  */
-export function deduplicateTxs(txs: WalletTransaction[]): WalletTransaction[] {
+export function deduplicateTxs(txs: WalletTransaction[] | null | undefined): WalletTransaction[] {
+  if (!txs) return [];
   const seen = new Map<string, true>();
   const result: WalletTransaction[] = [];
-  for (const tx of [...txs].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
+  for (const tx of [...txs].sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""))) {
     if (tx.orderId && WALLET_FEE_ORDER_TYPES.includes(tx.type)) {
       const key = `${tx.type}:${tx.orderId}`;
       if (seen.has(key)) continue;
@@ -183,7 +188,7 @@ export function deduplicateTxs(txs: WalletTransaction[]): WalletTransaction[] {
  * @param types - optional filter; if omitted, all fee types with orderId are counted
  */
 export function uniqueOrderCountFromTxs(
-  txs:   WalletTransaction[],
+  txs:   WalletTransaction[] | null | undefined,
   types?: WalletTxType[],
 ): number {
   const deduped  = deduplicateTxs(txs);
@@ -199,7 +204,7 @@ export function uniqueOrderCountFromTxs(
  * Raw wallet balance — deduplicated credit total minus all debits.
  * Consistent with computeFeeBreakdown.netBalance.
  */
-export function walletBalance(txs: WalletTransaction[]): {
+export function walletBalance(txs: WalletTransaction[] | null | undefined): {
   pointsConsumed: number;
   totalCreditIDR: number;
   totalDebitIDR:  number;
