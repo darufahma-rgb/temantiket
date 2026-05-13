@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
-import { ShoppingBag, Plus, Search, ArrowLeft, ChevronRight, TrendingUp, Wallet, AlertTriangle } from "lucide-react";
+import { ShoppingBag, Plus, Search, ArrowLeft, ChevronRight, TrendingUp, Wallet, AlertTriangle, Plane, FileText, Package, SlidersHorizontal, X, CheckCircle, Clock, XCircle } from "lucide-react";
 import { MobileFAB } from "@/components/MobileFAB";
+import { AnimatePresence } from "framer-motion";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,6 +79,10 @@ export default function Orders() {
 
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [mobileCat, setMobileCat] = useState<"all" | "flight" | "visa" | "paket">("all");
+  const [showSearch, setShowSearch] = useState(false);
+  const [showFilter, setShowFilter] = useState(false);
+  const [mobileStatus, setMobileStatus] = useState<string>("all");
 
   const { setPageContext, setPageData, clearContext } = useAIContextStore();
   useEffect(() => {
@@ -134,6 +139,30 @@ export default function Orders() {
   const draftCount   = useMemo(() => orders.filter(o => o.status === "Draft").length, [orders]);
   const doneCount    = useMemo(() => orders.filter(o => ["Done", "Paid", "Completed"].includes(o.status)).length, [orders]);
 
+  // Mobile-specific category filter
+  const mobileFiltered = useMemo(() => {
+    let out = orders;
+    if (mobileCat === "flight") out = out.filter(o => o.type === "flight");
+    else if (mobileCat === "visa") out = out.filter(o => ["visa_voa", "visa_student"].includes(o.type));
+    else if (mobileCat === "paket") out = out.filter(o => o.type === "umrah");
+    if (mobileStatus !== "all") {
+      if (mobileStatus === "selesai") out = out.filter(o => ["Done","Paid","Completed"].includes(o.status));
+      else if (mobileStatus === "diproses") out = out.filter(o => ["Draft","Confirmed","Processing"].includes(o.status));
+      else if (mobileStatus === "dibatalkan") out = out.filter(o => o.status === "Cancelled");
+    }
+    const s = q.trim().toLowerCase();
+    if (s) out = out.filter(o =>
+      (o.title ?? "").toLowerCase().includes(s) ||
+      (clientNameById.get(o.clientId ?? "") ?? "").toLowerCase().includes(s) ||
+      o.status.toLowerCase().includes(s),
+    );
+    return out;
+  }, [orders, mobileCat, mobileStatus, q, clientNameById]);
+
+  const mSelesai    = useMemo(() => orders.filter(o => ["Done","Paid","Completed"].includes(o.status)).length, [orders]);
+  const mDiproses   = useMemo(() => orders.filter(o => ["Draft","Confirmed","Processing"].includes(o.status)).length, [orders]);
+  const mDibatalkan = useMemo(() => orders.filter(o => o.status === "Cancelled").length, [orders]);
+
   const heading = typeFilter
     ? `Order — ${ORDER_TYPE_LABEL[typeFilter]}`
     : "Semua Order";
@@ -150,238 +179,374 @@ export default function Orders() {
   return (
     <>
       {/* ══════════════════════════════════════════════════════════
-           MOBILE LAYOUT  (md:hidden)
+           MOBILE LAYOUT  (md:hidden) — Native App Style
       ══════════════════════════════════════════════════════════ */}
-      <div className="md:hidden">
-        <div className="pb-6 px-4 space-y-4">
+      <div className="md:hidden min-h-screen bg-[#F0F4FB] pb-28">
 
-          {/* ── Header row ── */}
-          <div className="flex items-center gap-2.5">
-            {(typeFilter || clientIdParam) ? (
+        {/* ── TOP HEADER ── */}
+        <div className="bg-white px-4 pt-12 pb-4 shadow-sm">
+          <div className="flex items-start justify-between gap-3 mb-1">
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => navigate("/orders")}
-                className="h-9 w-9 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] flex items-center justify-center active:scale-95 transition-transform shrink-0"
+                onClick={() => navigate(-1)}
+                className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
+                style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                <ArrowLeft className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+                <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
               </button>
-            ) : (
-              <div
-                className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
-                style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
-              >
-                <ShoppingBag className="h-4 w-4 text-white" />
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="text-[8px] font-semibold uppercase tracking-widest text-[hsl(var(--muted-foreground))] leading-none">Order Hub</p>
-              <h1 className="text-[14px] font-extrabold text-[hsl(var(--foreground))] leading-tight truncate mt-0.5">
-                {typeFilter ? ORDER_TYPE_LABEL[typeFilter] : "Semua Order"}
-              </h1>
-            </div>
-            <button
-              onClick={() => setAddOpen(true)}
-              className="h-9 px-4 rounded-xl text-white text-[11px] font-bold flex items-center gap-1.5 active:scale-95 transition-transform shadow-sm shrink-0"
-              style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
-            >
-              <Plus className="h-3.5 w-3.5" /> Baru
-            </button>
-          </div>
-
-          {/* ── Hero stats banner ── */}
-          <div
-            className="rounded-2xl px-4 py-3.5 text-white relative overflow-hidden"
-            style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 55%,#1a44d4 100%)" }}
-          >
-            {/* Decorative circles */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              <div className="absolute -top-10 -right-10 h-44 w-44 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,255,255,0.07) 0%, transparent 65%)" }} />
-              <div className="absolute -bottom-8 left-0 right-0 h-24" style={{ background: "radial-gradient(ellipse at 50% 100%, rgba(26,68,212,0.3) 0%, transparent 70%)" }} />
-              <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "20px 20px" }} />
-            </div>
-
-            {/* Top row: label + total */}
-            <div className="relative flex items-start justify-between gap-3 mb-3">
               <div>
-                <p className="text-[8px] font-semibold uppercase tracking-widest text-sky-400/70 mb-0.5">Total Order</p>
-                <p className="text-[28px] font-black text-white leading-none tabular-nums">{orders.length}</p>
-              </div>
-              <div className="h-9 w-9 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 mt-0.5 backdrop-blur-sm">
-                <ShoppingBag className="h-5 w-5 text-white" />
+                <h1 className="text-[22px] font-extrabold text-[#0f1c3f] leading-tight">Order Hub</h1>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5">Kelola semua pesanan dalam satu tempat</p>
               </div>
             </div>
-
-            {/* Divider stat row */}
-            <div className="relative flex items-center pt-3 border-t border-white/10">
-              {[
-                { label: "Revenue",  value: `Rp ${fmtIDRShort(totalRevenue)}` },
-                { label: "Draft",    value: String(draftCount) },
-                { label: "Selesai",  value: String(doneCount) },
-              ].map((s, i) => (
-                <div key={s.label} className={cn("flex-1 text-center", i > 0 && "border-l border-white/10")}>
-                  <p className="text-[13px] font-black text-white tabular-nums leading-none">{s.value}</p>
-                  <p className="text-[7.5px] text-sky-300/60 uppercase tracking-wide mt-1 font-semibold">{s.label}</p>
-                </div>
-              ))}
+            <div className="flex items-center gap-2 shrink-0 mt-1">
+              <button
+                onClick={() => { setShowSearch((s) => !s); if (showSearch) setQ(""); }}
+                className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                {showSearch ? <X className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} /> : <Search className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />}
+              </button>
+              <button
+                onClick={() => setShowFilter((s) => !s)}
+                className={cn(
+                  "h-9 px-3 rounded-2xl flex items-center gap-1.5 text-[11px] font-bold active:opacity-60 transition-all",
+                  showFilter || mobileStatus !== "all" ? "bg-[#0066FF] text-white" : "bg-[#F0F4FB] text-[#0f1c3f]"
+                )}
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} />
+                Filter
+                {mobileStatus !== "all" && <span className="h-4 w-4 rounded-full bg-white text-[#0066FF] text-[9px] font-black flex items-center justify-center">1</span>}
+              </button>
+              <button
+                onClick={() => setAddOpen(true)}
+                className="h-9 w-9 rounded-2xl flex items-center justify-center text-white shadow-sm active:opacity-80 transition-opacity"
+                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+              >
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
+              </button>
             </div>
           </div>
 
-          {/* ── Type filter chips ── */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5 -mx-4 px-4">
-            <button
-              onClick={() => navigate(clientIdParam ? `/orders?clientId=${clientIdParam}` : "/orders")}
-              className={cn(
-                "shrink-0 h-8 px-3.5 rounded-full text-[11px] font-bold border transition-all active:scale-95 whitespace-nowrap",
-                !typeFilter
-                  ? "text-white border-transparent shadow-sm"
-                  : "bg-white text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
-              )}
-              style={!typeFilter ? { background: "linear-gradient(135deg,#1a44d4,#0a2472)" } : {}}
-            >Semua</button>
-            {ORDER_TYPES.map((t) => (
-              <button
-                key={t}
-                onClick={() => navigate(`/orders/${t}${clientIdParam ? `?clientId=${clientIdParam}` : ""}`)}
-                className={cn(
-                  "shrink-0 h-8 px-3.5 rounded-full text-[11px] font-bold border transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap",
-                  typeFilter === t
-                    ? "text-white border-transparent shadow-sm"
-                    : "bg-white text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
-                )}
-                style={typeFilter === t ? { background: "linear-gradient(135deg,#1a44d4,#0a2472)" } : {}}
+          {/* Search input (animated) */}
+          <AnimatePresence>
+            {showSearch && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.22 }}
+                className="overflow-hidden"
               >
-                <span className="text-[13px]">{ORDER_TYPE_EMOJI[t]}</span>
-                {ORDER_TYPE_LABEL[t]}
+                <div className="relative mt-3">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    autoFocus
+                    type="text"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Cari judul, klien, status…"
+                    className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-[#F0F4FB] border border-transparent text-[#0f1c3f] placeholder-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all"
+                  />
+                  {q && (
+                    <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-300/40 flex items-center justify-center active:opacity-60">
+                      <X className="h-3 w-3 text-slate-500" />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Filter bottom sheet */}
+          <AnimatePresence>
+            {showFilter && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.22 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Status Order</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: "all", label: "Semua", count: orders.length },
+                      { id: "diproses", label: "Diproses", count: mDiproses },
+                      { id: "selesai", label: "Selesai", count: mSelesai },
+                      { id: "dibatalkan", label: "Dibatalkan", count: mDibatalkan },
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => setMobileStatus(f.id)}
+                        className={cn(
+                          "h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95",
+                          mobileStatus === f.id ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200"
+                        )}
+                        style={{ WebkitTapHighlightColor: "transparent" }}
+                      >
+                        {f.label} <span className="opacity-70">({f.count})</span>
+                      </button>
+                    ))}
+                  </div>
+                  {mobileStatus !== "all" && (
+                    <button
+                      onClick={() => setMobileStatus("all")}
+                      className="mt-2 text-[11px] text-[#0066FF] font-semibold active:opacity-60"
+                    >
+                      Reset Filter
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ── CATEGORY TABS ── */}
+        <div className="bg-white mt-px px-4 pb-3 shadow-sm">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none pt-3">
+            {([
+              { id: "all",    label: "Semua Order",     count: orders.length },
+              { id: "flight", label: "Tiket Pesawat",   count: orders.filter(o => o.type === "flight").length },
+              { id: "visa",   label: "Visa & Dokumen",  count: orders.filter(o => ["visa_voa","visa_student"].includes(o.type)).length },
+              { id: "paket",  label: "Paket & Lainnya", count: orders.filter(o => o.type === "umrah").length },
+            ] as const).map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setMobileCat(tab.id)}
+                className={cn(
+                  "shrink-0 h-9 px-4 rounded-full text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95",
+                  mobileCat === tab.id
+                    ? "text-white shadow-md"
+                    : "bg-[#F0F4FB] text-slate-500"
+                )}
+                style={mobileCat === tab.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
+              >
+                {tab.label}
+                <span className={cn(
+                  "text-[9px] font-extrabold px-1.5 py-0.5 rounded-full",
+                  mobileCat === tab.id ? "bg-white/25 text-white" : "bg-slate-200 text-slate-500"
+                )}>
+                  {tab.count}
+                </span>
               </button>
             ))}
           </div>
+        </div>
 
-          {/* ── Search bar ── */}
-          <div className="relative">
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 h-6 w-6 rounded-lg flex items-center justify-center pointer-events-none shrink-0"
-              style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
-            >
-              <Search className="h-3 w-3 text-white" />
-            </div>
-            <input
-              type="text"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Cari judul / klien / status…"
-              className="w-full h-11 pl-12 pr-10 rounded-2xl text-[12.5px] outline-none bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all"
-            />
-            {q && (
-              <button
-                onClick={() => setQ("")}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-[hsl(var(--muted-foreground))]/20 flex items-center justify-center text-[hsl(var(--muted-foreground))] text-[10px] font-bold active:scale-90 transition-transform"
-              >✕</button>
-            )}
-          </div>
+        <div className="px-4 pt-5 space-y-5">
 
-          {/* ── Client filter badge ── */}
+          {/* ── CLIENT FILTER BADGE ── */}
           {clientIdParam && clientNameById.get(clientIdParam) && (
-            <div className="flex items-center gap-2.5 bg-sky-50 border border-sky-200 rounded-2xl px-3.5 py-2.5">
-              <div
-                className="h-7 w-7 rounded-xl flex items-center justify-center text-white text-[11px] font-extrabold shrink-0"
-                style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
-              >
+            <div className="flex items-center gap-2.5 bg-white border border-sky-200 rounded-2xl px-4 py-3 shadow-sm">
+              <div className="h-8 w-8 rounded-xl bg-[#dbeafe] flex items-center justify-center text-[#0066FF] text-[12px] font-extrabold shrink-0">
                 {clientNameById.get(clientIdParam)!.charAt(0).toUpperCase()}
               </div>
-              <p className="text-[11px] text-sky-800 font-semibold flex-1 truncate">
-                Klien: {clientNameById.get(clientIdParam)}
+              <p className="text-[12px] text-[#0f1c3f] font-semibold flex-1 truncate">
+                Klien: <span className="font-bold">{clientNameById.get(clientIdParam)}</span>
               </p>
-              <button onClick={() => navigate("/orders")} className="text-[10px] text-sky-500 font-bold active:opacity-70 shrink-0">Hapus ✕</button>
+              <button onClick={() => navigate("/orders")} className="text-[11px] text-[#0066FF] font-bold active:opacity-70 shrink-0 flex items-center gap-1">
+                <X className="h-3.5 w-3.5" /> Hapus
+              </button>
             </div>
           )}
 
-          {/* ── Order list ── */}
-          {loadingOrders && orders.length === 0 ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="rounded-2xl border border-[hsl(var(--border))] animate-pulse p-3.5 flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-[hsl(var(--secondary))] shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3 bg-[hsl(var(--secondary))] rounded-full w-3/4" />
-                    <div className="h-2.5 bg-[hsl(var(--secondary))] rounded-full w-1/2" />
+          {/* ── RINGKASAN ORDER CARD ── */}
+          <div className="bg-white rounded-3xl px-5 py-4 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Ringkasan Order</h3>
+              <span className="text-[11px] text-slate-400 font-medium">
+                {new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date())}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { label: "Total",      value: orders.length,  icon: <ShoppingBag className="h-4 w-4" style={{ color: "#0066FF" }} strokeWidth={1.8} />, iconBg: "#dbeafe", onClick: () => setMobileCat("all")       },
+                { label: "Selesai",    value: mSelesai,       icon: <CheckCircle  className="h-4 w-4" style={{ color: "#10b981" }} strokeWidth={1.8} />, iconBg: "#d1fae5", onClick: () => setMobileStatus("selesai")    },
+                { label: "Diproses",   value: mDiproses,      icon: <Clock        className="h-4 w-4" style={{ color: "#f59e0b" }} strokeWidth={1.8} />, iconBg: "#fef3c7", onClick: () => setMobileStatus("diproses")   },
+                { label: "Dibatalkan", value: mDibatalkan,    icon: <XCircle      className="h-4 w-4" style={{ color: "#ef4444" }} strokeWidth={1.8} />, iconBg: "#fee2e2", onClick: () => setMobileStatus("dibatalkan") },
+              ].map((stat) => (
+                <button
+                  key={stat.label}
+                  onClick={stat.onClick}
+                  className="flex flex-col items-center gap-1.5 active:opacity-70 transition-opacity"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <div className="h-9 w-9 rounded-2xl flex items-center justify-center" style={{ backgroundColor: stat.iconBg }}>
+                    {stat.icon}
                   </div>
-                  <div className="space-y-1.5 items-end flex flex-col shrink-0">
-                    <div className="h-3 bg-[hsl(var(--secondary))] rounded-full w-12" />
-                    <div className="h-2.5 bg-[hsl(var(--secondary))] rounded-full w-16" />
+                  <p className="text-[22px] font-black text-[#0f1c3f] tabular-nums leading-none">{stat.value}</p>
+                  <p className="text-[9px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide">{stat.label}</p>
+                  <div className="flex items-center gap-0.5">
+                    <TrendingUp className="h-2.5 w-2.5 text-emerald-400" strokeWidth={2.5} />
                   </div>
-                </div>
+                </button>
               ))}
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[hsl(var(--border))] px-4 py-10 text-center flex flex-col items-center">
-              <div
-                className="h-14 w-14 rounded-2xl flex items-center justify-center mb-3 shadow-sm"
-                style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
-              >
-                <ShoppingBag className="h-6 w-6 text-white" />
+          </div>
+
+          {/* ── DAFTAR ORDER ── */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Daftar Order</h3>
+              <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
+                Urutkan: Terbaru <ChevronRight className="h-3.5 w-3.5" />
               </div>
-              <p className="text-[13px] font-bold text-[hsl(var(--foreground))]">Belum ada order</p>
-              <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-1 leading-snug">Buat order baru untuk memulai.</p>
-              <button
-                onClick={() => setAddOpen(true)}
-                className="mt-4 inline-flex items-center gap-1.5 h-9 px-5 rounded-xl text-[12px] font-bold text-white shadow-sm active:scale-95 transition-transform"
-                style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
-              >
-                <Plus className="h-3.5 w-3.5" /> Order Baru
-              </button>
             </div>
-          ) : (
-            <motion.div
-              className="space-y-2"
-              initial="hidden"
-              animate="visible"
-              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04, delayChildren: 0.03 } } }}
-            >
-              {filtered.map((o) => {
-                const clientName = o.clientId ? clientNameById.get(o.clientId) : null;
-                return (
-                  <motion.button
-                    key={o.id}
-                    variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] } } }}
-                    whileTap={{ scale: 0.985 }}
-                    onClick={() => navigate(`/orders/detail/${o.id}`)}
-                    className="w-full flex items-center gap-3 rounded-2xl border border-[hsl(var(--border))] bg-white px-3.5 py-3 text-left hover:border-sky-200 hover:shadow-sm transition-colors"
+
+            {loadingOrders && orders.length === 0 ? (
+              <div className="space-y-3">
+                {[1,2,3].map((i) => (
+                  <div key={i} className="bg-white rounded-3xl p-4 animate-pulse flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-2xl bg-slate-100 shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-slate-100 rounded-full w-3/4" />
+                      <div className="h-2.5 bg-slate-100 rounded-full w-1/2" />
+                      <div className="h-2 bg-slate-100 rounded-full w-1/3" />
+                    </div>
+                    <div className="space-y-2 shrink-0">
+                      <div className="h-6 w-16 bg-slate-100 rounded-full" />
+                      <div className="h-3 bg-slate-100 rounded-full w-12" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : mobileFiltered.length === 0 ? (
+              <div className="bg-white rounded-3xl px-4 py-12 text-center flex flex-col items-center shadow-sm">
+                <div className="h-14 w-14 rounded-2xl bg-[#dbeafe] flex items-center justify-center mb-3">
+                  <ShoppingBag className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
+                </div>
+                <p className="text-[14px] font-bold text-[#0f1c3f]">Belum ada order</p>
+                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                  {q ? "Tidak ada hasil untuk pencarian ini." : "Buat order baru untuk memulai."}
+                </p>
+                {!q && (
+                  <button
+                    onClick={() => setAddOpen(true)}
+                    className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80 transition-opacity"
+                    style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
                   >
-                    <div
-                      className="h-10 w-10 rounded-xl flex items-center justify-center text-[18px] shrink-0 shadow-sm"
-                      style={{ background: "linear-gradient(135deg,#f0f4ff,#e0e8ff)" }}
+                    <Plus className="h-3.5 w-3.5" /> Order Baru
+                  </button>
+                )}
+              </div>
+            ) : (
+              <motion.div
+                className="space-y-3"
+                initial="hidden"
+                animate="visible"
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05, delayChildren: 0.03 } } }}
+              >
+                {[...mobileFiltered]
+                  .sort((a, b) => new Date(b.createdAt ?? "").getTime() - new Date(a.createdAt ?? "").getTime())
+                  .map((o) => {
+                  const clientName = o.clientId ? clientNameById.get(o.clientId) : null;
+                  const ps = derivePaymentStatus(o.paidAmount ?? 0, o.totalPrice, o.paymentStatus);
+
+                  // Type style
+                  const TYPE_CONFIG: Record<string, { label: string; icon: React.ReactNode; iconBg: string; labelColor: string }> = {
+                    flight: {
+                      label: "TIKET PESAWAT",
+                      icon: <Plane className="h-5 w-5 text-[#0066FF]" strokeWidth={1.8} />,
+                      iconBg: "#dbeafe",
+                      labelColor: "text-[#0066FF]",
+                    },
+                    visa_voa: {
+                      label: "VISA VOA",
+                      icon: <FileText className="h-5 w-5 text-[#10b981]" strokeWidth={1.8} />,
+                      iconBg: "#d1fae5",
+                      labelColor: "text-[#10b981]",
+                    },
+                    visa_student: {
+                      label: "VISA PELAJAR",
+                      icon: <FileText className="h-5 w-5 text-[#f59e0b]" strokeWidth={1.8} />,
+                      iconBg: "#fef3c7",
+                      labelColor: "text-[#f59e0b]",
+                    },
+                    umrah: {
+                      label: "PAKET & TRIP",
+                      icon: <Package className="h-5 w-5 text-[#8b5cf6]" strokeWidth={1.8} />,
+                      iconBg: "#ede9fe",
+                      labelColor: "text-[#8b5cf6]",
+                    },
+                  };
+                  const tc = TYPE_CONFIG[o.type] ?? {
+                    label: ORDER_TYPE_LABEL[o.type]?.toUpperCase() ?? "ORDER",
+                    icon: <ShoppingBag className="h-5 w-5 text-slate-500" strokeWidth={1.8} />,
+                    iconBg: "#f1f5f9",
+                    labelColor: "text-slate-500",
+                  };
+
+                  const STATUS_BADGE: Record<string, string> = {
+                    Draft:      "bg-slate-100 text-slate-600",
+                    Confirmed:  "bg-amber-100 text-amber-700",
+                    Processing: "bg-blue-100 text-blue-700",
+                    Done:       "bg-emerald-100 text-emerald-700",
+                    Paid:       "bg-emerald-100 text-emerald-700",
+                    Completed:  "bg-emerald-100 text-emerald-700",
+                    Cancelled:  "bg-red-100 text-red-600",
+                  };
+                  const STATUS_LABEL_MAP: Record<string, string> = {
+                    Draft: "DRAFT", Confirmed: "CONFIRMED", Processing: "DIPROSES",
+                    Done: "SELESAI", Paid: "DIBAYAR", Completed: "SELESAI", Cancelled: "DIBATALKAN",
+                  };
+
+                  return (
+                    <motion.button
+                      key={o.id}
+                      variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } } }}
+                      whileTap={{ scale: 0.985 }}
+                      onClick={() => navigate(`/orders/detail/${o.id}`)}
+                      className="w-full bg-white rounded-3xl p-4 shadow-sm text-left flex items-start gap-3.5 active:opacity-80 transition-opacity"
+                      style={{ WebkitTapHighlightColor: "transparent" }}
                     >
-                      {ORDER_TYPE_EMOJI[o.type]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12.5px] font-bold text-[hsl(var(--foreground))] truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</p>
-                      <p className="text-[10px] text-[hsl(var(--muted-foreground))] truncate mt-0.5">
-                        {ORDER_TYPE_LABEL[o.type]}{clientName ? ` · ${clientName}` : ""}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      <span className={cn("text-[9.5px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap", STATUS_STYLE[o.status] ?? "bg-gray-100 text-gray-500")}>
-                        {o.status}
-                      </span>
-                      {(() => {
-                        const ps = derivePaymentStatus(o.paidAmount ?? 0, o.totalPrice, o.paymentStatus);
-                        return (
+                      {/* Icon */}
+                      <div className="h-12 w-12 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: tc.iconBg }}>
+                        {tc.icon}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-[9px] font-extrabold uppercase tracking-wider mb-0.5", tc.labelColor)}>
+                          {tc.label}
+                        </p>
+                        <p className="text-[13px] font-extrabold text-[#0f1c3f] leading-snug truncate">
+                          {o.title || ORDER_TYPE_LABEL[o.type]}
+                        </p>
+                        {clientName && (
+                          <p className="text-[11px] text-slate-400 mt-0.5 truncate font-medium">{clientName}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          <span className={cn("text-[9.5px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap", STATUS_BADGE[o.status] ?? "bg-slate-100 text-slate-600")}>
+                            {STATUS_LABEL_MAP[o.status] ?? o.status}
+                          </span>
                           <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full border whitespace-nowrap", PAYMENT_STATUS_STYLE[ps])}>
                             {PAYMENT_STATUS_EMOJI[ps]} {PAYMENT_STATUS_LABEL[ps]}
                           </span>
-                        );
-                      })()}
-                      {user?.role !== "agent" && (!o.costPrice || o.costPrice === 0) && (
-                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
-                          <AlertTriangle className="h-2.5 w-2.5" />HPP belum diisi
-                        </span>
-                      )}
-                      <span className="text-[11.5px] font-extrabold text-[hsl(var(--foreground))] tabular-nums">{fmtOrderPrice(o.totalPrice, o.currency)}</span>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-[hsl(var(--muted-foreground))]/50 shrink-0 -ml-1" />
-                  </motion.button>
-                );
-              })}
-            </motion.div>
-          )}
+                          {user?.role !== "agent" && (!o.costPrice || o.costPrice === 0) && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
+                              <AlertTriangle className="h-2.5 w-2.5" />HPP
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Price + chevron */}
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <p className="text-[13px] font-extrabold text-[#0f1c3f] tabular-nums">
+                          {fmtOrderPrice(o.totalPrice, o.currency)}
+                        </p>
+                        <ChevronRight className="h-4 w-4 text-slate-300 mt-auto" />
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </div>
         </div>
       </div>
 
