@@ -175,7 +175,7 @@ export default function OwnerVisaTrackerPage() {
     setMigrating(true);
     setMigrateResult(null);
     try {
-      const res = await fetch("/api/migrate-progress-steps", { method: "POST" });
+      const res = await fetch("/api/migrate-progress-steps", { method: "POST", credentials: "include" });
       const json = await res.json();
       if (json.ok) {
         setMigrateResult({ migrated: json.migrated, skipped: json.skipped, errors: json.errors });

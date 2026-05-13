@@ -87,7 +87,7 @@ async function resizeToWebP(
  */
 async function triggerBucketSetup(): Promise<boolean> {
   try {
-    const res = await fetch("/api/setup-card-back", { method: "POST" });
+    const res = await fetch("/api/setup-card-back", { method: "POST", credentials: "include" });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       console.warn("[cardBackStorage] setup-card-back failed:", body?.error ?? res.status);

@@ -2013,7 +2013,7 @@ export default function AgentProfileOwnerView() {
                   </div>
                   <div className="divide-y">
                     {payoutTxs
-                      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+                      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
                       .map((tx) => (
                         <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
                           <div className="h-8 w-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">

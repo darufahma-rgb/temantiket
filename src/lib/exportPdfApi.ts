@@ -14,6 +14,7 @@ export async function generateInvoicePdfRemote(data: InvoiceData): Promise<Uint8
   try {
     const res = await fetch('/api/export/invoice', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
@@ -39,6 +40,7 @@ export async function downloadIghPdfRemote(
   try {
     const res = await fetch('/api/export/igh', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data, layout, adminSettings, baseUrl }),
     });
@@ -73,6 +75,7 @@ export async function buildIghPdfRemote(
   try {
     const res = await fetch('/api/export/igh', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data, layout, adminSettings, baseUrl }),
     });

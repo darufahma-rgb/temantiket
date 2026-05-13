@@ -792,7 +792,7 @@ export function reconcileWalletTxs(
 
   // Detect duplicate txs: same type + similar amount within 1 min
   const seen = new Map<string, WalletTransaction>();
-  for (const tx of [...txs].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
+  for (const tx of [...txs].sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""))) {
     const dedupeKey = `${tx.type}:${tx.amountIDR}`;
     const prev = seen.get(dedupeKey);
     if (prev) {
