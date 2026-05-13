@@ -145,18 +145,52 @@ function saveTxsCache(agentId: string, txs: WalletTransaction[]): void {
   try { localStorage.setItem(walletKey(agentId), JSON.stringify(txs)); } catch { /* quota */ }
 }
 
+// ─── Deduplication helper ─────────────────────────────────────────────────────
+
+/**
+ * Fee types tied to a specific order that must be deduplicated by (type, orderId).
+ * Transactions without an orderId are never deduplicated.
+ */
+export const WALLET_FEE_ORDER_TYPES: WalletTxType[] = [
+  "order_bonus", "voa_agent_fee", "field_agent_fee",
+  "pelaksana_fee", "kurir_fee", "operational_fee",
+];
+
+/**
+ * Deduplicate wallet transactions by (type, orderId) — keeps the oldest entry.
+ * UI-level safety net; the DB unique index is the primary guard.
+ */
+export function deduplicateTxs(txs: WalletTransaction[]): WalletTransaction[] {
+  const seen = new Map<string, true>();
+  const result: WalletTransaction[] = [];
+  for (const tx of [...txs].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
+    if (tx.orderId && WALLET_FEE_ORDER_TYPES.includes(tx.type)) {
+      const key = `${tx.type}:${tx.orderId}`;
+      if (seen.has(key)) continue;
+      seen.set(key, true);
+    }
+    result.push(tx);
+  }
+  return result;
+}
+
 // ─── Balance ──────────────────────────────────────────────────────────────────
 
+/**
+ * Raw wallet balance — deduplicated credit total minus all debits.
+ * Consistent with computeFeeBreakdown.netBalance.
+ */
 export function walletBalance(txs: WalletTransaction[]): {
   pointsConsumed: number;
   totalCreditIDR: number;
   totalDebitIDR:  number;
   netIDR:         number;
 } {
+  const dedupedTxs = deduplicateTxs(txs);
   let pointsConsumed = 0;
   let totalCreditIDR = 0;
   let totalDebitIDR  = 0;
-  for (const tx of txs) {
+  for (const tx of dedupedTxs) {
     pointsConsumed += Math.abs(tx.pointsDelta);
     if (tx.amountIDR >= 0) totalCreditIDR += tx.amountIDR;
     else                    totalDebitIDR  += Math.abs(tx.amountIDR);

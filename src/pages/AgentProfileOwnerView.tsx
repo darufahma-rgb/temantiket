@@ -53,7 +53,7 @@ import { uploadAvatar, savePhotoUrl } from "@/lib/avatarStorage";
 import { uploadCardBack, saveCardBackUrl, loadCardBackUrl } from "@/lib/cardBackStorage";
 import { supabase } from "@/lib/supabase";
 import {
-  pullWalletTxs, walletBalance, addWalletTxAsync, deleteWalletTxById,
+  pullWalletTxs, addWalletTxAsync, deleteWalletTxById,
   type WalletTransaction,
 } from "@/lib/agentWallet";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI, type OrderType } from "@/features/orders/ordersRepo";
@@ -608,7 +608,6 @@ export default function AgentProfileOwnerView() {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [walletTxs],
   );
-  const walletBal = useMemo(() => walletBalance(walletTxs), [walletTxs]);
   const payoutTxs = useMemo(
     () => walletTxs.filter((t) => t.type === "payout"),
     [walletTxs],
@@ -1679,16 +1678,16 @@ export default function AgentProfileOwnerView() {
                   <p className="text-base font-extrabold font-mono text-violet-800">{fmtIDR(bd.bonusManual)}</p>
                   <p className="text-[10px] text-violet-600 mt-0.5">konversi poin · koreksi</p>
                 </div>
-                <div className={`rounded-2xl border p-3 ${walletBal.netIDR >= 0 ? "border-sky-100 bg-sky-50" : "border-red-100 bg-red-50"}`}>
+                <div className={`rounded-2xl border p-3 ${bd.netBalance >= 0 ? "border-sky-100 bg-sky-50" : "border-red-100 bg-red-50"}`}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[10px] font-semibold uppercase tracking-wide ${walletBal.netIDR >= 0 ? "text-sky-700" : "text-red-700"}`}>Saldo Wallet</span>
-                    <Wallet className={`h-3.5 w-3.5 ${walletBal.netIDR >= 0 ? "text-sky-500" : "text-red-500"}`} />
+                    <span className={`text-[10px] font-semibold uppercase tracking-wide ${bd.netBalance >= 0 ? "text-sky-700" : "text-red-700"}`}>Saldo Wallet</span>
+                    <Wallet className={`h-3.5 w-3.5 ${bd.netBalance >= 0 ? "text-sky-500" : "text-red-500"}`} />
                   </div>
-                  <p className={`text-xl font-extrabold font-mono ${walletBal.netIDR >= 0 ? "text-sky-800" : "text-red-700"}`}>
-                    {fmtIDR(walletBal.netIDR)}
+                  <p className={`text-xl font-extrabold font-mono ${bd.netBalance >= 0 ? "text-sky-800" : "text-red-700"}`}>
+                    {fmtIDR(bd.netBalance)}
                   </p>
-                  <p className={`text-[10px] mt-0.5 ${walletBal.netIDR >= 0 ? "text-sky-600" : "text-red-600"}`}>
-                    Cair {fmtIDR(walletBal.totalDebitIDR)}
+                  <p className={`text-[10px] mt-0.5 ${bd.netBalance >= 0 ? "text-sky-600" : "text-red-600"}`}>
+                    Cair {fmtIDR(bd.totalPaidOut)}
                   </p>
                 </div>
               </div>

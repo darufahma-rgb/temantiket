@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { CloudSyncBadge } from "@/components/CloudSyncBadge";
 import { loadProductCommissions as loadProdComm, saveProductCommissions as saveProdComm, pullProductCommissions, type ProductCommissions } from "@/lib/productCommissions";
 import { agentFeeFromMeta, voaAgentFeeFromMeta } from "@/lib/profit";
+import { computeFeeBreakdown } from "@/lib/agentFeeBreakdown";
 import {
   loadAgentPhones, saveAgentPhone, recordFeePayment, loadFeePayments, openWaMessage,
   pullFeePayments, pullAgentPhones, FEE_PAYMENT_SYNC_KEY,
@@ -1696,14 +1697,7 @@ export default function Settings() {
                     {agentMembers.map((agent) => {
                       // ── Wallet txs (authoritative credited source) ──────────
                       const walletTxs = agentWalletMap.get(agent.userId) ?? [];
-                      const closingFee  = walletTxs.filter((t) => t.type === "order_bonus" && t.amountIDR > 0).reduce((s, t) => s + t.amountIDR, 0);
-                      const fieldFee    = walletTxs.filter((t) => t.type === "voa_agent_fee" && t.amountIDR > 0).reduce((s, t) => s + t.amountIDR, 0);
-                      const pelFee      = walletTxs.filter((t) => t.type === "pelaksana_fee" && t.amountIDR > 0).reduce((s, t) => s + t.amountIDR, 0);
-                      const kurirFee    = walletTxs.filter((t) => t.type === "kurir_fee" && t.amountIDR > 0).reduce((s, t) => s + t.amountIDR, 0);
-                      const missionFee  = walletTxs.filter((t) => (t.type === "mission_conversion" || t.type === "mission_fee") && t.amountIDR > 0).reduce((s, t) => s + t.amountIDR, 0);
-                      const bonusFee    = walletTxs.filter((t) => t.type === "adjustment" && t.amountIDR > 0).reduce((s, t) => s + t.amountIDR, 0);
-                      const totalPayout = walletTxs.filter((t) => t.amountIDR < 0).reduce((s, t) => s + Math.abs(t.amountIDR), 0);
-                      const totalCredited = closingFee + fieldFee + pelFee + kurirFee + missionFee + bonusFee;
+                      const bd = computeFeeBreakdown(walletTxs);
 
                       // ── Pending (assigned but order not yet Completed) ──────
                       const salesPendingOrders = orders.filter((o) => {
@@ -1742,14 +1736,13 @@ export default function Settings() {
                       const totalPending = salesPending + fieldPending;
 
                       // ── Totals ──────────────────────────────────────────────
-                      const totalAccumulated = totalCredited + totalPending;
-                      const netBalance = totalCredited - totalPayout;
+                      const totalAccumulated = bd.totalCredit + totalPending;
 
                       // ── Credited order count (all fee types from wallet) ────
                       const creditedOrderCount = new Set(
                         walletTxs
-                          .filter((t) => ["order_bonus", "voa_agent_fee", "pelaksana_fee", "kurir_fee"].includes(t.type) && t.amountIDR > 0)
-                          .map((t) => t.description)
+                          .filter((t) => ["order_bonus", "voa_agent_fee", "field_agent_fee", "pelaksana_fee", "kurir_fee", "operational_fee"].includes(t.type) && t.amountIDR > 0 && t.orderId)
+                          .map((t) => t.orderId)
                       ).size;
                       const pendingOrderCount = salesPendingOrders.length + fieldPendingOrders.length;
                       const orderCount = creditedOrderCount + pendingOrderCount;
@@ -1794,40 +1787,34 @@ export default function Settings() {
                           {/* ── Breakdown grid ── */}
                           {totalAccumulated > 0 && (
                             <div className="grid grid-cols-2 gap-1.5">
-                              {closingFee > 0 && (
+                              {bd.salesCommission > 0 && (
                                 <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2">
                                   <p className="text-[9px] text-emerald-700 font-bold uppercase tracking-wide">Dari Closing</p>
-                                  <p className="text-[12px] font-bold font-mono text-emerald-700 mt-0.5">{fmtRp(closingFee)}</p>
+                                  <p className="text-[12px] font-bold font-mono text-emerald-700 mt-0.5">{fmtRp(bd.salesCommission)}</p>
                                 </div>
                               )}
-                              {fieldFee > 0 && (
+                              {bd.fieldAgentFee > 0 && (
                                 <div className="rounded-xl bg-indigo-50 border border-indigo-100 px-3 py-2">
                                   <p className="text-[9px] text-indigo-700 font-bold uppercase tracking-wide">Agent Lapangan</p>
-                                  <p className="text-[12px] font-bold font-mono text-indigo-700 mt-0.5">{fmtRp(fieldFee)}</p>
+                                  <p className="text-[12px] font-bold font-mono text-indigo-700 mt-0.5">{fmtRp(bd.fieldAgentFee)}</p>
                                 </div>
                               )}
-                              {pelFee > 0 && (
+                              {bd.pelaksanaFee > 0 && (
                                 <div className="rounded-xl bg-purple-50 border border-purple-100 px-3 py-2">
                                   <p className="text-[9px] text-purple-700 font-bold uppercase tracking-wide">Pelaksana</p>
-                                  <p className="text-[12px] font-bold font-mono text-purple-700 mt-0.5">{fmtRp(pelFee)}</p>
+                                  <p className="text-[12px] font-bold font-mono text-purple-700 mt-0.5">{fmtRp(bd.pelaksanaFee)}</p>
                                 </div>
                               )}
-                              {kurirFee > 0 && (
+                              {bd.kurirFee > 0 && (
                                 <div className="rounded-xl bg-cyan-50 border border-cyan-100 px-3 py-2">
-                                  <p className="text-[9px] text-cyan-700 font-bold uppercase tracking-wide">Kurir</p>
-                                  <p className="text-[12px] font-bold font-mono text-cyan-700 mt-0.5">{fmtRp(kurirFee)}</p>
+                                  <p className="text-[9px] text-cyan-700 font-bold uppercase tracking-wide">Kurir / Ops</p>
+                                  <p className="text-[12px] font-bold font-mono text-cyan-700 mt-0.5">{fmtRp(bd.kurirFee)}</p>
                                 </div>
                               )}
-                              {missionFee > 0 && (
+                              {bd.bonusManual > 0 && (
                                 <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2">
-                                  <p className="text-[9px] text-blue-700 font-bold uppercase tracking-wide">Misi/Poin</p>
-                                  <p className="text-[12px] font-bold font-mono text-blue-700 mt-0.5">{fmtRp(missionFee)}</p>
-                                </div>
-                              )}
-                              {bonusFee > 0 && (
-                                <div className="rounded-xl bg-yellow-50 border border-yellow-100 px-3 py-2">
-                                  <p className="text-[9px] text-yellow-700 font-bold uppercase tracking-wide">Bonus/Adj</p>
-                                  <p className="text-[12px] font-bold font-mono text-yellow-700 mt-0.5">{fmtRp(bonusFee)}</p>
+                                  <p className="text-[9px] text-blue-700 font-bold uppercase tracking-wide">Bonus / Misi</p>
+                                  <p className="text-[12px] font-bold font-mono text-blue-700 mt-0.5">{fmtRp(bd.bonusManual)}</p>
                                 </div>
                               )}
                               {totalPending > 0 && (
@@ -1850,17 +1837,17 @@ export default function Settings() {
                             <div className="flex items-center gap-3 rounded-xl bg-slate-50 border px-3 py-2 text-[10px]">
                               <div className="flex-1">
                                 <span className="text-slate-500">Sudah dikreditkan: </span>
-                                <span className="font-bold font-mono text-emerald-700">{fmtRp(totalCredited)}</span>
+                                <span className="font-bold font-mono text-emerald-700">{fmtRp(bd.totalCredit)}</span>
                               </div>
-                              {totalPayout > 0 && (
+                              {bd.totalPaidOut > 0 && (
                                 <div className="flex-1">
                                   <span className="text-slate-500">Dicairkan: </span>
-                                  <span className="font-bold font-mono text-red-600">{fmtRp(totalPayout)}</span>
+                                  <span className="font-bold font-mono text-red-600">{fmtRp(bd.totalPaidOut)}</span>
                                 </div>
                               )}
                               <div className="flex-1 text-right">
                                 <span className="text-slate-500">Saldo wallet: </span>
-                                <span className={`font-bold font-mono ${netBalance >= 0 ? "text-blue-700" : "text-red-600"}`}>{fmtRp(netBalance)}</span>
+                                <span className={`font-bold font-mono ${bd.netBalance >= 0 ? "text-blue-700" : "text-red-600"}`}>{fmtRp(bd.netBalance)}</span>
                               </div>
                             </div>
                           )}
@@ -1893,7 +1880,7 @@ export default function Settings() {
                                 onClick={() => {
                                   setWaDialogAgent(agent);
                                   setWaPhone(savedPhone);
-                                  const unpaid = totalAccumulated - manuallyPaid - totalPayout;
+                                  const unpaid = totalAccumulated - manuallyPaid - bd.totalPaidOut;
                                   setWaAmount(String(unpaid > 0 ? unpaid : totalAccumulated));
                                   setWaNote("");
                                 }}
@@ -1925,8 +1912,10 @@ export default function Settings() {
                                   const typeLabel: Record<string, string> = {
                                     order_bonus:       "Closing",
                                     voa_agent_fee:     "Agent Lapangan",
+                                    field_agent_fee:   "Agent Lapangan",
                                     pelaksana_fee:     "Pelaksana",
                                     kurir_fee:         "Kurir",
+                                    operational_fee:   "Ops/Kurir",
                                     mission_conversion:"Misi/Poin",
                                     mission_fee:       "Misi/Poin",
                                     adjustment:        "Bonus/Adj",
@@ -1934,18 +1923,22 @@ export default function Settings() {
                                   const typeBadgeColor: Record<string, string> = {
                                     order_bonus:       "bg-emerald-100 text-emerald-700",
                                     voa_agent_fee:     "bg-indigo-100 text-indigo-700",
+                                    field_agent_fee:   "bg-indigo-100 text-indigo-700",
                                     pelaksana_fee:     "bg-purple-100 text-purple-700",
                                     kurir_fee:         "bg-cyan-100 text-cyan-700",
+                                    operational_fee:   "bg-cyan-100 text-cyan-700",
                                     mission_conversion:"bg-blue-100 text-blue-700",
                                     mission_fee:       "bg-blue-100 text-blue-700",
                                     adjustment:        "bg-yellow-100 text-yellow-700",
                                   };
                                   const typeAmtColor: Record<string, string> = {
-                                    order_bonus:   "text-emerald-700",
-                                    voa_agent_fee: "text-indigo-700",
-                                    pelaksana_fee: "text-purple-700",
-                                    kurir_fee:     "text-cyan-700",
-                                    adjustment:    "text-yellow-700",
+                                    order_bonus:     "text-emerald-700",
+                                    voa_agent_fee:   "text-indigo-700",
+                                    field_agent_fee: "text-indigo-700",
+                                    pelaksana_fee:   "text-purple-700",
+                                    kurir_fee:       "text-cyan-700",
+                                    operational_fee: "text-cyan-700",
+                                    adjustment:      "text-yellow-700",
                                   };
                                   return (
                                     <div key={t.id} className="grid grid-cols-[1fr_auto_auto] gap-2 items-start px-3 py-2">

@@ -7,14 +7,20 @@
  * WalletTxType → Breakdown category:
  *   order_bonus        → salesCommission   (fee dari order yang agen buat)
  *   voa_agent_fee      → fieldAgentFee     (fee agent lapangan VOA)
+ *   field_agent_fee    → fieldAgentFee     (fee agent lapangan generik)
  *   pelaksana_fee      → pelaksanaFee      (fee pelaksana visa pelajar)
  *   kurir_fee          → kurirFee          (fee kurir setoran uang)
+ *   operational_fee    → kurirFee          (fee operasional lapangan)
  *   mission_conversion │
  *   mission_fee        ├─→ bonusManual     (konversi poin, side job, koreksi)
  *   adjustment         │
  *   payout             → totalPaidOut      (pencairan — debit, tidak masuk kredit)
+ *
+ * NOTE: All negative amounts (payout + negative adjustments) are counted in
+ * totalPaidOut so that netBalance ≡ walletBalance.netIDR (both deduplicated).
  */
 import type { WalletTransaction } from "./agentWallet";
+import { deduplicateTxs } from "./agentWallet";
 
 export interface FeeBreakdown {
   salesCommission: number;
@@ -25,30 +31,6 @@ export interface FeeBreakdown {
   totalCredit:     number;
   totalPaidOut:    number;
   netBalance:      number;
-}
-
-const ORDER_FEE_TYPES: WalletTxType[] = [
-  "order_bonus", "voa_agent_fee", "field_agent_fee",
-  "pelaksana_fee", "kurir_fee", "operational_fee",
-];
-
-/**
- * Deduplicate wallet transactions by (type, orderId) — keeps the oldest entry.
- * Transactions without an orderId are never deduplicated.
- * This is a UI-level safety net; the DB unique index is the primary guard.
- */
-function deduplicateTxs(txs: WalletTransaction[]): WalletTransaction[] {
-  const seen = new Map<string, true>();
-  const result: WalletTransaction[] = [];
-  for (const tx of [...txs].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
-    if (tx.orderId && ORDER_FEE_TYPES.includes(tx.type)) {
-      const key = `${tx.type}:${tx.orderId}`;
-      if (seen.has(key)) continue;
-      seen.set(key, true);
-    }
-    result.push(tx);
-  }
-  return result;
 }
 
 export function computeFeeBreakdown(txs: WalletTransaction[]): FeeBreakdown {
@@ -63,7 +45,7 @@ export function computeFeeBreakdown(txs: WalletTransaction[]): FeeBreakdown {
 
   for (const tx of dedupedTxs) {
     if (tx.amountIDR < 0) {
-      if (tx.type === "payout") totalPaidOut += Math.abs(tx.amountIDR);
+      totalPaidOut += Math.abs(tx.amountIDR);
       continue;
     }
     switch (tx.type) {
@@ -78,8 +60,6 @@ export function computeFeeBreakdown(txs: WalletTransaction[]): FeeBreakdown {
         pelaksanaFee += tx.amountIDR;
         break;
       case "kurir_fee":
-        kurirFee += tx.amountIDR;
-        break;
       case "operational_fee":
         kurirFee += tx.amountIDR;
         break;
