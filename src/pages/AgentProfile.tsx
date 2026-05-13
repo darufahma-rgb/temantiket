@@ -16,7 +16,7 @@ import {
   listAgentPointsWithOrders, sumPointsByAgent, type AgentPoint, REASON_LABEL,
 } from "@/features/agentPoints/agentPointsRepo";
 import { listMySubmissions, sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
-import { onMissionsChanged } from "@/lib/supabaseRealtime";
+import { onMissionsChanged, onAgentPointsChanged } from "@/lib/supabaseRealtime";
 import type { MissionSubmission } from "@/features/missions/types";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { ORDER_TYPE_EMOJI, ORDER_TYPE_LABEL, type OrderType } from "@/features/orders/ordersRepo";
@@ -110,6 +110,16 @@ export default function AgentProfile() {
     const unsub = onMissionsChanged(() => { void refreshMissions(); });
     return unsub;
   }, [refreshMissions]);
+
+  const refreshPoints = useCallback(async () => {
+    const p = await listAgentPointsWithOrders();
+    setPoints(p);
+  }, []);
+
+  useEffect(() => {
+    const unsub = onAgentPointsChanged(() => { void refreshPoints(); });
+    return unsub;
+  }, [refreshPoints]);
 
   useEffect(() => {
     if (!user?.id) return;

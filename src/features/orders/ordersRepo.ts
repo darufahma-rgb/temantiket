@@ -4,6 +4,7 @@ import { makePersistedCache } from "@/lib/persistedCache";
 import { type PaymentStatus, PAYMENT_STATUSES, coercePaymentStatus } from "@/lib/paymentStatus";
 import { withTimeout } from "@/lib/supabaseTimeout";
 import { deleteWalletTxsForOrder } from "@/lib/agentWallet";
+import { revokeOrderPoints as revokeOrderPointsForOrder } from "@/features/agentPoints/agentPointsRepo";
 
 export type { PaymentStatus };
 
@@ -231,10 +232,11 @@ export async function updateOrder(id: string, patch: Partial<Order>): Promise<Or
 }
 
 export async function deleteOrder(id: string): Promise<void> {
-  // Delete related wallet transactions first (best-effort, non-blocking).
-  // deleteWalletTxsForOrder cleans BOTH localStorage (all cached agents) AND the server DB,
-  // preventing ghost commissions from appearing in wallet views after order deletion.
+  // Best-effort cleanup of linked financial records (non-blocking):
+  // 1. Wallet transactions — prevents ghost commissions in wallet views.
+  // 2. Agent points — prevents orphan point rows inflating leaderboard totals.
   void deleteWalletTxsForOrder(id);
+  void revokeOrderPointsForOrder(id);
 
   if (isSupabaseConfigured()) {
     const { data, error } = await withTimeout(

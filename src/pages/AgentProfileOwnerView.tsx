@@ -42,6 +42,7 @@ import {
 import {
   listMissions, listMySubmissions, reviewSubmission,
 } from "@/features/missions/missionsRepo";
+import { onAgentPointsChanged } from "@/lib/supabaseRealtime";
 import type { DailyMission, MissionSubmission, MissionStatus } from "@/features/missions/types";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
@@ -398,6 +399,16 @@ export default function AgentProfileOwnerView() {
       if (url) setCardBackUrl(url);
     });
   }, [agentId, agencyId]);
+
+  const refreshAllPoints = useCallback(async () => {
+    const fresh = await listAgentPointsWithOrders();
+    setAllPoints(fresh);
+  }, []);
+
+  useEffect(() => {
+    const unsub = onAgentPointsChanged(() => { void refreshAllPoints(); });
+    return unsub;
+  }, [refreshAllPoints]);
 
   // Reusable backfill runner — surfaces errors to admin; used by auto-run & manual button
   const runBackfill = async (silent = false) => {

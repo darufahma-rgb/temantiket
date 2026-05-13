@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -23,7 +23,7 @@ import { AgentMissionWidget } from "@/features/missions/AgentMissionWidget";
 import { listMySubmissions, sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
 import type { MissionSubmission } from "@/features/missions/types";
 import { MissionPopupNotification, type PopupMission } from "@/features/missions/MissionPopupNotification";
-import { onNewMissionInserted } from "@/lib/supabaseRealtime";
+import { onNewMissionInserted, onAgentPointsChanged } from "@/lib/supabaseRealtime";
 import { pullMissionMeta } from "@/lib/missionMeta";
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
@@ -73,6 +73,16 @@ export default function AgentDashboard() {
     if (!user?.id) return;
     void pullWalletTxs(user.id).then(setWalletTxs);
   }, [user?.id]);
+
+  const refreshPoints = useCallback(async () => {
+    const p = await listAgentPointsWithOrders();
+    setPoints(p);
+  }, []);
+
+  useEffect(() => {
+    const unsub = onAgentPointsChanged(() => { void refreshPoints(); });
+    return unsub;
+  }, [refreshPoints]);
 
   useEffect(() => {
     if (!user?.agencyId || !user?.id) return;

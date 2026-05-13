@@ -249,11 +249,17 @@ export async function updateClient(id: string, patch: Partial<Client>): Promise<
 }
 
 export async function deleteClient(id: string): Promise<void> {
-  // Clean up wallet transactions for all orders belonging to this client (best-effort)
+  // Best-effort cleanup of linked financial records for all orders of this client:
+  // 1. Wallet transactions — prevents ghost commissions in wallet views.
+  // 2. Agent points — prevents orphan point rows inflating leaderboard totals.
   void fetch(`/api/wallet-txs-for-client/${id}`, {
     method: "DELETE",
     credentials: "include",
   }).catch((e) => console.warn("[clients] deleteWalletTxsForClient failed:", e));
+  void fetch(`/api/agent-points-for-client/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  }).catch((e) => console.warn("[clients] deleteAgentPointsForClient failed:", e));
 
   if (isSupabaseConfigured()) {
     const { data, error } = await withTimeout(

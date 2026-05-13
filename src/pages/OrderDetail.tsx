@@ -43,51 +43,11 @@ import { supabase } from "@/lib/supabase";
 import { VisaEntryPanel } from "@/components/VisaEntryPanel";
 import { useAIContextStore } from "@/store/aiContextStore";
 
-/** Award 20 poin ke agent penjual saat order → Completed (idempotent via upsert). */
-async function awardOrderCompletionPoints(agentId: string, orderId: string) {
-  try {
-    const session = (await supabase?.auth.getSession())?.data.session;
-    const token = session?.access_token;
-    if (!token) return;
-    const res = await fetch("/api/award-completion-points", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ agentId, orderId }),
-    });
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      console.warn("[award-order-points] gagal:", j?.error ?? res.status);
-    }
-  } catch (e) {
-    console.warn("[award-order-points] exception:", e);
-  }
-}
-
-/** Cabut poin jika order diubah kembali dari Completed ke status lain. */
-async function revokeOrderPoints(orderId: string) {
-  try {
-    const session = (await supabase?.auth.getSession())?.data.session;
-    const token = session?.access_token;
-    if (!token) return;
-    const res = await fetch("/api/revoke-order-points", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ orderId }),
-    });
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      console.warn("[revoke-order-points] gagal:", j?.error ?? res.status);
-    }
-  } catch (e) {
-    console.warn("[revoke-order-points] exception:", e);
-  }
-}
+// Shared point helpers — imported from agentPointsRepo (idempotent, server-side)
+import {
+  awardOrderCompletionPoints,
+  revokeOrderPoints,
+} from "@/features/agentPoints/agentPointsRepo";
 
 const fmtIDR = (v: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(v);

@@ -462,6 +462,37 @@ app.post('/api/revoke-order-points', isAuthenticatedOrBearer, async (req, res) =
 });
 
 /* ──────────────────────────────────────────────
+   DELETE /api/agent-points-for-client/:clientId
+   Revoke all agent_points rows for every order belonging to a client.
+   Called from clientsRepo.deleteClient() to keep point totals clean.
+────────────────────────────────────────────── */
+app.delete('/api/agent-points-for-client/:clientId', isAuthenticatedOrBearer, async (req, res) => {
+  try {
+    const { rows: callerRows } = await pool.query(
+      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [req.user.id],
+    );
+    const membership = callerRows[0];
+    if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
+    if (!['owner', 'staff'].includes(membership.role)) {
+      return err(res, 403, 'Hanya owner/staff yang bisa hapus poin');
+    }
+    const { clientId } = req.params;
+    const { rowCount } = await pool.query(
+      `DELETE FROM agent_points
+       WHERE agency_id = $1
+         AND order_id IN (
+           SELECT id FROM orders WHERE agency_id = $1 AND client_id = $2
+         )`,
+      [membership.agency_id, clientId],
+    );
+    return ok(res, { deleted: rowCount ?? 0 });
+  } catch (e) {
+    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
+  }
+});
+
+/* ──────────────────────────────────────────────
    POST /api/export/invoice
    PDF invoice generation (ported from Vercel serverless function)
 ────────────────────────────────────────────── */

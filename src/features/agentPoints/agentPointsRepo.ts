@@ -87,3 +87,61 @@ export function sumPointsByAgent(rows: AgentPoint[]): Map<string, number> {
   }
   return m;
 }
+
+// ── Shared write helpers ──────────────────────────────────────────────────────
+
+/**
+ * Award 20 poin ke agent penjual saat order → Completed.
+ * Idempotent: server uses ON CONFLICT (order_id) DO NOTHING — safe to call
+ * multiple times for the same order.
+ */
+export async function awardOrderCompletionPoints(
+  agentId: string,
+  orderId: string,
+): Promise<void> {
+  try {
+    const session = (await supabase?.auth.getSession())?.data.session;
+    const token = session?.access_token;
+    if (!token) return;
+    const res = await fetch("/api/award-completion-points", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ agentId, orderId }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      console.warn("[agentPoints] award failed:", j?.error ?? res.status);
+    }
+  } catch (e) {
+    console.warn("[agentPoints] awardOrderCompletionPoints exception:", e);
+  }
+}
+
+/**
+ * Cabut poin agen jika order dihapus atau dikembalikan dari Completed.
+ * Idempotent: server deletes by order_id — safe to call even if no row exists.
+ */
+export async function revokeOrderPoints(orderId: string): Promise<void> {
+  try {
+    const session = (await supabase?.auth.getSession())?.data.session;
+    const token = session?.access_token;
+    if (!token) return;
+    const res = await fetch("/api/revoke-order-points", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ orderId }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      console.warn("[agentPoints] revoke failed:", j?.error ?? res.status);
+    }
+  } catch (e) {
+    console.warn("[agentPoints] revokeOrderPoints exception:", e);
+  }
+}
