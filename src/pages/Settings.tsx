@@ -318,17 +318,12 @@ export default function Settings() {
     if (isManual) { setWalletRefreshing(true); } else { setWalletLoading(true); }
     try {
       // 1. Global backfill — no agentId = all agents in agency, idempotent
-      if (supabase) {
-        const { data: sess } = await supabase.auth.getSession();
-        const token = sess?.session?.access_token;
-        if (token) {
-          await fetch("/api/backfill-field-fees", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({}),
-          }).catch(() => { /* silent — non-blocking */ });
-        }
-      }
+      await fetch("/api/backfill-field-fees", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }).catch(() => { /* silent — non-blocking */ });
       // 2. Pull fresh wallet txs for all agents after backfill
       const entries = await Promise.all(
         agentMs.map(async (m) => {

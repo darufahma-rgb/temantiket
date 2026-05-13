@@ -1,35 +1,9 @@
-import { supabase } from "@/lib/supabase";
-
-// ── Token cache ───────────────────────────────────────────────────────────────
-// Reuse the JWT for up to 50 s to avoid a Supabase network roundtrip before
-// every single AI call. Tokens are valid for ~1 hour so 50 s is safe.
-let _cachedToken: string | null = null;
-let _tokenExpiry = 0;
-
-async function getToken(): Promise<string | null> {
-  const now = Date.now();
-  if (_cachedToken && now < _tokenExpiry) return _cachedToken;
-  try {
-    if (!supabase) { _cachedToken = null; return _cachedToken; }
-    const { data } = await supabase.auth.getSession();
-    _cachedToken = data.session?.access_token ?? null;
-    _tokenExpiry = now + 50_000;
-  } catch {
-    _cachedToken = null;
-  }
-  return _cachedToken;
-}
-
 /**
- * Returns headers for /api/ai/chat (and other authenticated AI routes).
- * Uses a 50-second in-memory token cache so Supabase is not called before
- * every single AI request.
+ * Returns base headers for /api/ai/chat and other AI routes.
+ * Auth is handled via cookie session (credentials: "include") — no Bearer token needed.
  */
 export async function getAIHeaders(): Promise<Record<string, string>> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = await getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  return headers;
+  return { "Content-Type": "application/json" };
 }
 
 // ── Central AI caller ─────────────────────────────────────────────────────────
@@ -96,6 +70,7 @@ async function _callEndpoint(
     try {
       const res = await fetch(endpoint, {
         method: "POST",
+        credentials: "include",
         headers,
         body: JSON.stringify(body),
         signal: controller.signal,

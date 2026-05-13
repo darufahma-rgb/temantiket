@@ -1,0 +1,123 @@
+Fix agent_points consistency and realtime updates.
+
+Root causes found:
+1. supabaseRealtime.ts only subscribes to INSERT on agent_points, not DELETE or UPDATE.
+2. Only AgentLeaderboard subscribes to onAgentPointsChanged.
+   AgentProfile, AgentDashboard, and AgentProfileOwnerView fetch once on mount and do not update when points change from another tab/device.
+3. deleteOrder cleans wallet transactions but does not revoke agent_points, leaving orphan points.
+4. deleteClient can delete clients/orders path without revoking related agent_points.
+5. awardOrderCompletionPoints / revokeOrderPoints are local functions in OrderDetail.tsx, not shared.
+6. There is no server route to revoke points by client.
+
+Goals:
+- Agent points must be consistent with orders.
+- Deleting an order must remove/revoke points tied to that order.
+- Deleting a client must remove/revoke points tied to that client's orders.
+- Downgrading an order from Completed must revoke points.
+- Realtime should update all affected agent pages.
+- Do not create duplicate points.
+- Do not break wallet/commission cleanup.
+
+Tasks:
+
+A. Shared points service
+1. Create or update a shared module, e.g. src/features/agentPoints/agentPointsService.ts or src/features/agentPoints/agentPointsRepo.ts.
+2. Move award/revoke logic out of OrderDetail.tsx into reusable functions:
+   - awardOrderCompletionPoints(order)
+   - revokeOrderPoints(orderId)
+   - revokePointsForOrders(orderIds)
+   - revokePointsForClient(clientId)
+3. Ensure revoke functions are idempotent.
+   - Calling revoke twice should not crash.
+   - If no points exist, return success/no-op.
+4. Ensure award is idempotent.
+   - Same order should not create duplicate points.
+   - Use existing unique(order_id) behavior if present, or upsert by order_id.
+5. Keep reason fields consistent:
+   - order_completed
+   - commission_received if applicable
+6. Return useful result objects for logging/UI.
+
+B. Server/API support
+1. Add Vercel API routes in api/[...path].js if needed:
+   - POST /api/revoke-order-points
+   - POST /api/revoke-client-points
+2. If server/index.cjs has equivalent local routes, keep them aligned.
+3. Routes must require Authorization Bearer token.
+4. Only owner/staff should be able to revoke broadly; agent should not revoke arbitrary points.
+5. Return JSON:
+   - { ok: true, deleted: number }
+   - or clear error JSON.
+6. Do not rely only on localStorage.
+
+C. Delete order cleanup
+1. In src/features/orders/ordersRepo.ts deleteOrder:
+   - continue cleaning wallet txs via deleteWalletTxsForOrder()
+   - also revoke agent_points for that order
+2. Make cleanup robust:
+   - if points revoke fails, surface warning/error clearly
+   - avoid leaving silent orphan points
+3. Order deletion should not leave:
+   - wallet txs for deleted order
+   - agent_points for deleted order
+
+D. Delete client cleanup
+1. In src/features/clients/clientsRepo.ts deleteClient:
+   - find orders for that client before deletion if needed
+   - revoke agent_points for those order ids
+   - clean wallet txs for those order ids if applicable
+2. If database cascades orders, still revoke points before deleting client.
+3. Do not delete unrelated agent points.
+
+E. Status downgrade cleanup
+1. In OrderDetail.tsx or shared order update path:
+   - when status changes from Completed to non-Completed, call revokeOrderPoints(order.id)
+   - when status changes to Completed, call awardOrderCompletionPoints(order)
+2. Remove duplicated local award/revoke functions from OrderDetail.tsx and import shared functions instead.
+
+F. Realtime
+1. Update supabaseRealtime.ts:
+   - subscribe to INSERT, UPDATE, DELETE on agent_points
+   - emit onAgentPointsChanged for all three events
+2. Ensure cleanup/removeChannel still works.
+3. Update pages to subscribe to agent point changes:
+   - AgentLeaderboard
+   - AgentProfile
+   - AgentDashboard
+   - AgentProfileOwnerView
+4. On signal, refetch agent points / relevant profile data.
+5. Avoid memory leaks and duplicate subscriptions.
+
+G. UI consistency
+1. Any page showing rank/points should update after:
+   - order completed
+   - order downgraded
+   - order deleted
+   - client deleted
+   - points revoked on another device/tab
+2. If realtime fails, pages should still refresh on mount/focus if possible.
+
+H. Verification
+Run:
+npm run lint
+npm run test
+npm run build
+
+Add tests if practical:
+1. awardOrderCompletionPoints called twice creates one point record.
+2. revokeOrderPoints called twice is no-op on second call.
+3. deleteOrder cleanup calls revoke points and wallet cleanup.
+4. realtime handler emits for INSERT/UPDATE/DELETE.
+
+I. Report
+Return:
+1. root cause summary
+2. files changed
+3. shared points service functions created
+4. server routes added/updated
+5. how deleteOrder and deleteClient clean points
+6. how status downgrade revokes points
+7. realtime events supported
+8. pages now subscribing
+9. lint/test/build result
+10. any remaining risks

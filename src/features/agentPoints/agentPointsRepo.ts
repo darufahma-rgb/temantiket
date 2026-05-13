@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getCurrentAgencyId } from "@/store/authStore";
 
 /**
  * agent_points = log poin gamification yg di-award otomatis lewat trigger
@@ -100,16 +101,12 @@ export async function awardOrderCompletionPoints(
   orderId: string,
 ): Promise<void> {
   try {
-    const session = (await supabase?.auth.getSession())?.data.session;
-    const token = session?.access_token;
-    if (!token) return;
+    const agencyId = getCurrentAgencyId();
     const res = await fetch("/api/award-completion-points", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ agentId, orderId }),
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agentId, orderId, agencyId }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
@@ -126,15 +123,10 @@ export async function awardOrderCompletionPoints(
  */
 export async function revokeOrderPoints(orderId: string): Promise<void> {
   try {
-    const session = (await supabase?.auth.getSession())?.data.session;
-    const token = session?.access_token;
-    if (!token) return;
     const res = await fetch("/api/revoke-order-points", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderId }),
     });
     if (!res.ok) {

@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // ── Local-only security settings (PIN/2FA + login history) ──────────────────
 
@@ -100,19 +99,14 @@ interface AuthState {
   getLoginHistory: () => LoginEvent[];
 }
 
-// ── Module-level token cache (kept in sync with Supabase session) ────────────
+// ── Module-level token cache ─────────────────────────────────────────────────
+// With Replit Auth, the session is managed server-side via cookies.
+// No client-side access token needed — credentials: "include" handles auth.
 
 let _accessToken: string | null = null;
 
 export function getAccessToken(): string | null {
   return _accessToken;
-}
-
-// Subscribe to Supabase auth state changes to keep token fresh
-if (supabase) {
-  supabase.auth.onAuthStateChange((_event, session) => {
-    _accessToken = session?.access_token ?? null;
-  });
 }
 
 // ── API helpers ─────────────────────────────────────────────────────────────
@@ -122,9 +116,6 @@ function buildHeaders(extra?: Record<string, string>): Record<string, string> {
     "Content-Type": "application/json",
     ...extra,
   };
-  if (_accessToken) {
-    headers["Authorization"] = `Bearer ${_accessToken}`;
-  }
   return headers;
 }
 
@@ -144,15 +135,9 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 // ── fetchCurrentUser via /api/auth/user ──────────────────────────────────────
-//
-// Selalu memanggil /api/auth/user dengan Bearer token Supabase.
-// Server-side handler melakukan safe-linking akun lama berdasarkan email
-// bila user_id di agency_members berbeda dengan Supabase JWT sub.
-// Ini menghindari query langsung ke tabel Supabase dari frontend yang
-// berpotensi gagal karena RLS atau user_id lama (dari Replit bootstrap).
+// Calls /api/auth/user with session cookie. Server checks Replit OIDC session.
 
 async function fetchCurrentUser(): Promise<AuthUser | null> {
-  if (!_accessToken) return null;
   try {
     const data = await apiFetch<{
       id: string; email: string; displayName: string;
@@ -180,27 +165,6 @@ async function callApi(path: string, body: unknown): Promise<unknown> {
   return apiFetch(path, { method: "POST", body: JSON.stringify(body) });
 }
 
-// ── Friendly error messages ─────────────────────────────────────────────────
-
-function translateSupabaseError(msg: string): string {
-  if (msg.includes("Invalid login credentials") || msg.includes("invalid_credentials")) {
-    return "Email atau password salah. Silakan periksa kembali.";
-  }
-  if (msg.includes("Email not confirmed")) {
-    return "Email belum dikonfirmasi. Cek inbox Anda dan klik link verifikasi.";
-  }
-  if (msg.includes("Too many requests") || msg.includes("rate limit")) {
-    return "Terlalu banyak percobaan login. Coba lagi beberapa saat.";
-  }
-  if (msg.includes("User not found")) {
-    return "Akun tidak ditemukan. Periksa kembali email Anda.";
-  }
-  if (msg.includes("network") || msg.includes("fetch")) {
-    return "Tidak dapat terhubung ke server. Periksa koneksi internet Anda.";
-  }
-  return msg;
-}
-
 // ── Store ───────────────────────────────────────────────────────────────────
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -216,85 +180,60 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   init: async () => {
     set({ isLoading: true });
     try {
-      if (isSupabaseConfigured() && supabase) {
-        // Restore existing Supabase session from localStorage
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          _accessToken = session.access_token;
-          const user = await fetchCurrentUser();
-          if (user) {
-            recordLoginEvent(user.id);
-            set({ user, isAuthenticated: true, needsBootstrap: false, isInitialized: true, isLoading: false });
-            return;
-          } else {
-            // Logged in to Supabase but no agency/membership — needs bootstrap
+      // Check Replit OIDC session via server (cookie-based)
+      const user = await fetchCurrentUser();
+      if (user) {
+        recordLoginEvent(user.id);
+        set({ user, isAuthenticated: true, needsBootstrap: false, isInitialized: true, isLoading: false });
+        return;
+      }
+
+      // Check if user is authenticated with Replit but has no agency yet
+      try {
+        const sessionCheck = await fetch("/api/auth/user", { credentials: "include" });
+        if (sessionCheck.status === 200) {
+          const data = await sessionCheck.json();
+          if (data.id && !data.agencyId) {
+            // Logged in via Replit but no agency — needs bootstrap
             set({ user: null, isAuthenticated: false, needsBootstrap: true, isInitialized: true, isLoading: false });
             return;
           }
         }
-      }
-      // No session or Supabase not configured — go to login page
+      } catch { /* ignore */ }
+
+      // No session — go to login page
       set({ user: null, isAuthenticated: false, isInitialized: true, isLoading: false });
     } catch {
       set({ user: null, isAuthenticated: false, isInitialized: true, isLoading: false });
     }
   },
 
-  login: async (email?: string, password?: string) => {
-    if (!email?.trim() || !password?.trim()) {
-      set({ error: "Email dan password wajib diisi.", isLoading: false });
-      return false;
-    }
-
-    if (!isSupabaseConfigured() || !supabase) {
-      set({ error: "Supabase belum dikonfigurasi. Hubungi administrator.", isLoading: false });
-      return false;
-    }
-
+  // With Replit Auth, login redirects to /api/login (OIDC flow).
+  // This function is kept for PIN verification flow after OIDC completes.
+  login: async (_email?: string, _password?: string) => {
     set({ isLoading: true, error: null });
-
     try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-
-      if (authError) {
-        set({ isLoading: false, error: translateSupabaseError(authError.message) });
-        return false;
-      }
-
-      _accessToken = authData.session?.access_token ?? null;
-
+      // Try to get current user from Replit session
       const user = await fetchCurrentUser();
-
-      if (!user) {
-        // Authenticated with Supabase but no agency membership
-        set({ isLoading: false, isInitialized: true, needsBootstrap: true, isAuthenticated: false });
-        return false;
+      if (user) {
+        const sec = loadSecuritySettings(user.id);
+        if (sec.twoFactor && sec.pinHash) {
+          set({ pendingLoginUser: user, isLoading: false, error: null });
+          return "needs_pin";
+        }
+        const previous = loadLoginHistory(user.id);
+        recordLoginEvent(user.id);
+        const newLoginAt = sec.loginAlert && previous.length > 0 ? previous[0].at : null;
+        set({ user, isAuthenticated: true, isLoading: false, error: null, newLoginAt, needsBootstrap: false });
+        return "ok";
       }
 
-      // Check local 2FA / PIN
-      const sec = loadSecuritySettings(user.id);
-      if (sec.twoFactor && sec.pinHash) {
-        set({ pendingLoginUser: user, isLoading: false, error: null });
-        return "needs_pin";
-      }
-
-      const previous = loadLoginHistory(user.id);
-      recordLoginEvent(user.id);
-      const newLoginAt = sec.loginAlert && previous.length > 0 ? previous[0].at : null;
-      set({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-        newLoginAt,
-        needsBootstrap: false,
-      });
-      return "ok";
+      // Not logged in — redirect to Replit OIDC login
+      set({ isLoading: false });
+      window.location.href = "/api/login";
+      return false;
     } catch (e) {
-      set({ isLoading: false, error: translateSupabaseError((e as Error).message) });
+      set({ isLoading: false, error: (e as Error).message });
       return false;
     }
   },
@@ -321,9 +260,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     _accessToken = null;
-    if (isSupabaseConfigured() && supabase) {
-      await supabase.auth.signOut().catch(() => { /* ignore errors */ });
-    }
     set({
       user: null,
       isAuthenticated: false,
@@ -331,6 +267,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       newLoginAt: null,
       needsBootstrap: false,
     });
+    window.location.href = "/api/logout";
   },
 
   clearError: () => set({ error: null }),
@@ -390,12 +327,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
-  changePassword: async (_currentPw, newPw) => {
-    if (!isSupabaseConfigured() || !supabase) {
-      throw new Error("Ganti password tidak tersedia karena Supabase belum dikonfigurasi.");
-    }
-    const { error } = await supabase.auth.updateUser({ password: newPw });
-    if (error) throw new Error(translateSupabaseError(error.message));
+  changePassword: async (_currentPw, _newPw) => {
+    throw new Error("Ganti password tidak tersedia dengan Replit Auth. Gunakan pengaturan akun Replit Anda.");
   },
 
   getSecuritySettings: () => {
@@ -436,36 +369,14 @@ export function requireAgencyId(): string {
   return id;
 }
 
-// Bootstrap helper — creates agency + membership for a new user.
+// Bootstrap helper — creates agency + membership for a new Replit-authenticated user.
 export async function bootstrapFirstOwner(input: {
   agencyName: string; displayName?: string; email?: string; password?: string;
 }): Promise<void> {
-  // If Supabase configured and email/password provided, sign up first
-  if (isSupabaseConfigured() && supabase && input.email && input.password) {
-    const { error: signUpError } = await supabase.auth.signUp({
-      email: input.email,
-      password: input.password,
-      options: { data: { display_name: input.displayName } },
-    });
-    if (signUpError && !signUpError.message.includes("already registered")) {
-      throw new Error(signUpError.message);
-    }
-    // Sign in to get token
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: input.email,
-      password: input.password,
-    });
-    if (signInError) throw new Error(signInError.message);
-    _accessToken = signInData.session?.access_token ?? null;
-  }
-
   const res = await fetch("/api/bootstrap", {
     method: "POST",
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(_accessToken ? { "Authorization": `Bearer ${_accessToken}` } : {}),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ agencyName: input.agencyName, displayName: input.displayName }),
   });
   const json = await res.json();

@@ -251,6 +251,12 @@ export function startRealtimeSync(
       for (const fn of agentPointsListeners) fn();
     })
     .on("postgres_changes", {
+      event: "UPDATE", schema: "public", table: "agent_points",
+      filter: agencyFilter,
+    }, () => {
+      for (const fn of agentPointsListeners) fn();
+    })
+    .on("postgres_changes", {
       event: "DELETE", schema: "public", table: "agent_points",
       filter: agencyFilter,
     }, () => {

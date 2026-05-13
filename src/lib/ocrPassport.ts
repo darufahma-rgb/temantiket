@@ -501,32 +501,14 @@ async function compressForAI(dataUrl: string, maxEdge = 1280): Promise<string> {
 /* ── OpenAI OCR via /api/ocr-passport (server-side, authenticated) ──────── */
 
 /**
- * Get the current Supabase access token without importing the full auth store
- * (avoids circular dep: ocrPassport → authStore → supabase → ocrPassport).
- */
-async function getAccessToken(): Promise<string | null> {
-  try {
-    const { supabase } = await import("@/lib/supabase");
-    if (!supabase) return null;
-    const { data } = await supabase.auth.getSession();
-    return data.session?.access_token ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Call the dedicated /api/ocr-passport server route.
- * Sends only the imageDataUrl; the server owns the OpenAI prompt and auth check.
+ * Auth via cookie session (credentials: "include") — no Bearer token needed.
  */
 async function callOpenAIDirect(dataUrl: string): Promise<PassportData> {
-  const token = await getAccessToken();
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
   const res = await fetch("/api/ocr-passport", {
     method: "POST",
-    headers,
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ imageDataUrl: dataUrl }),
   });
 

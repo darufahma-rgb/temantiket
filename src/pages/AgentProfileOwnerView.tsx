@@ -412,18 +412,13 @@ export default function AgentProfileOwnerView() {
 
   // Reusable backfill runner — surfaces errors to admin; used by auto-run & manual button
   const runBackfill = async (silent = false) => {
-    if (!agentId || !supabase) return;
+    if (!agentId) return;
     setSyncingFee(true);
     try {
-      const { data: sess } = await supabase!.auth.getSession();
-      const token = sess?.session?.access_token;
-      if (!token) {
-        if (!silent) toast.error("Sesi tidak valid — login ulang dulu.");
-        return;
-      }
       const res = await fetch("/api/backfill-field-fees", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ agentId }),
       });
       const json = await res.json().catch(() => ({})) as {
@@ -893,14 +888,10 @@ export default function AgentProfileOwnerView() {
 
       // ── Award 20 poin ke agen penjual via server ──────────────────────────────
       try {
-        const { data: sess } = await supabase!.auth.getSession();
-        const token = sess?.session?.access_token;
         const pointsRes = await fetch("/api/award-completion-points", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ orderId, agentId }),
         });
         if (pointsRes.ok) {
