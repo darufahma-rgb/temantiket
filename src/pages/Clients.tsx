@@ -8,7 +8,8 @@ import {
   ChevronRight, BookOpen, User, CreditCard, Calendar,
   MapPin, CalendarClock, CalendarCheck, Building2 as BuildingOffice,
   UserCheck, AlertTriangle, ScanLine, Loader2, ShieldCheck,
-  ExternalLink,
+  ExternalLink, TrendingUp, Download, Upload, Tag, Star,
+  CheckCircle, ChevronLeft, ChevronDown, Zap,
 } from "lucide-react";
 import { OrderProgressTracker, ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
 import { MarkdownContent } from "@/components/MarkdownContent";
@@ -1002,6 +1003,10 @@ export default function Clients() {
   const debouncedQ = useDebounce(q, 300);
   const [addOpen, setAddOpen] = useState(false);
   const [memberNameMap, setMemberNameMap] = useState<Map<string, string>>(new Map());
+  const [showSearch, setShowSearch] = useState(false);
+  const [mobilePage, setMobilePage] = useState(1);
+  const [mobileStatusFilter, setMobileStatusFilter] = useState<"all" | "aktif" | "jamaah" | "loyal">("all");
+  const MOBILE_PAGE_SIZE = 10;
 
   const { setPageContext, setPageData, clearContext } = useAIContextStore();
   useEffect(() => {
@@ -1067,122 +1072,503 @@ export default function Clients() {
 
   const isLoading = loadingClients && clients.length === 0;
 
+  // Mobile stats
+  const clientIdsWithActiveOrder = useMemo(() => {
+    const s = new Set<string>();
+    for (const o of orders) {
+      if (o.clientId && ["Confirmed","Paid","Done","Completed"].includes(o.status)) s.add(o.clientId);
+    }
+    return s;
+  }, [orders]);
+  const clientIdsWithUmrah = useMemo(() => {
+    const s = new Set<string>();
+    for (const o of orders) {
+      if (o.clientId && o.type === "umrah") s.add(o.clientId);
+    }
+    return s;
+  }, [orders]);
+  const klienAktif    = useMemo(() => clients.filter(c => clientIdsWithActiveOrder.has(c.id)).length, [clients, clientIdsWithActiveOrder]);
+  const jamaahAktif   = useMemo(() => clients.filter(c => clientIdsWithUmrah.has(c.id)).length, [clients, clientIdsWithUmrah]);
+  const klienLoyal    = useMemo(() => clients.filter(c => (clientOrderSummary.get(c.id)?.count ?? 0) > 1 || (c.referralStamps ?? 0) > 0).length, [clients, clientOrderSummary]);
+
+  // Mobile filtered + paginated
+  const mobileFiltered = useMemo(() => {
+    let out = filtered;
+    if (mobileStatusFilter === "aktif")  out = out.filter(c => clientIdsWithActiveOrder.has(c.id));
+    if (mobileStatusFilter === "jamaah") out = out.filter(c => clientIdsWithUmrah.has(c.id));
+    if (mobileStatusFilter === "loyal")  out = out.filter(c => (clientOrderSummary.get(c.id)?.count ?? 0) > 1 || (c.referralStamps ?? 0) > 0);
+    return out;
+  }, [filtered, mobileStatusFilter, clientIdsWithActiveOrder, clientIdsWithUmrah, clientOrderSummary]);
+  const totalMobilePages = Math.max(1, Math.ceil(mobileFiltered.length / MOBILE_PAGE_SIZE));
+  const mobilePaged = useMemo(() => mobileFiltered.slice((mobilePage - 1) * MOBILE_PAGE_SIZE, mobilePage * MOBILE_PAGE_SIZE), [mobileFiltered, mobilePage, MOBILE_PAGE_SIZE]);
+
   if (params.id) return <ClientDetailInner id={params.id} />;
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* ── Page header ── */}
-      <div className="px-5 pt-4 pb-3 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-bold flex items-center gap-2 text-foreground">
-            <Users className="h-[18px] w-[18px] text-sky-500" />
-            Klien
-          </h1>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {isLoading ? "Memuat…" : `${clients.length} kontak terdaftar`}
-          </p>
-        </div>
-        <Button size="sm" className="rounded-xl h-8 px-3" onClick={() => setAddOpen(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Tambah
-        </Button>
-      </div>
+  const sharedDialog = (
+    <ClientFormDialog
+      open={addOpen}
+      onOpenChange={setAddOpen}
+      initial={emptyForm}
+      title="Klien Baru"
+      onSubmit={async (form) => {
+        if (!form.name.trim()) return;
+        const c = await addClient({
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim() || undefined,
+          passportNumber: form.passportNumber.trim() || undefined,
+          birthDate: form.birthDate || undefined,
+          birthPlace: form.birthPlace.trim() || undefined,
+          passportExpiry: form.passportExpiry || undefined,
+          passportIssueDate: form.passportIssueDate || undefined,
+          passportIssuingOffice: form.passportIssuingOffice.trim() || undefined,
+          gender: form.gender || undefined,
+          notes: form.notes.trim() || undefined,
+          createdByAgent: form.referredBy || undefined,
+          referredByClientId: form.referredByClientId || null,
+        });
+        toast.success("Klien dibuat", { description: c.name });
+        setAddOpen(false);
+        navigate(`/clients/${c.id}`);
+      }}
+    />
+  );
 
-      {/* ── Sticky search bar ── */}
-      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-100 px-5 py-2">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Cari nama, nomor WA, paspor…"
-            className="pl-9 pr-9 h-9 text-sm bg-slate-50 border-slate-200 rounded-xl focus:bg-white focus:border-sky-300 transition-colors"
-          />
-          <AnimatePresence>
-            {q && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                onClick={() => setQ("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-slate-200 transition-colors"
+  return (
+    <>
+      {/* ══════════════════════════════════════════════════════════
+           MOBILE LAYOUT (md:hidden) — Native App Style
+      ══════════════════════════════════════════════════════════ */}
+      <div className="md:hidden min-h-screen bg-[#F0F4FB] pb-28">
+
+        {/* ── TOP HEADER ── */}
+        <div className="bg-white px-4 pt-12 pb-4 shadow-sm">
+          <div className="flex items-start justify-between gap-3 mb-1">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate(-1)}
+                className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
+                style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                <X className="h-3 w-3" />
-              </motion.button>
+                <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+              </button>
+              <div>
+                <h1 className="text-[22px] font-extrabold text-[#0f1c3f] leading-tight">Klien & Jamaah</h1>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5">Kelola data klien, jamaah, dan riwayat perjalanan</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 mt-1">
+              <button
+                onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(""); }}
+                className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                {showSearch ? <X className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} /> : <Search className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />}
+              </button>
+              <button
+                onClick={() => setAddOpen(true)}
+                className="h-9 px-3.5 rounded-2xl flex items-center gap-1.5 text-[12px] font-bold text-white shadow-sm active:opacity-80 transition-opacity"
+                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+              >
+                <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+                Tambah Klien
+              </button>
+            </div>
+          </div>
+
+          {/* Animated search bar */}
+          <AnimatePresence>
+            {showSearch && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.22 }}
+                className="overflow-hidden"
+              >
+                <div className="relative mt-3">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <input
+                    autoFocus
+                    type="text"
+                    value={q}
+                    onChange={(e) => { setQ(e.target.value); setMobilePage(1); }}
+                    placeholder="Cari nama, email, atau nomor paspor…"
+                    className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-[#F0F4FB] border border-transparent text-[#0f1c3f] placeholder-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all"
+                  />
+                  {q && (
+                    <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-200/60 flex items-center justify-center active:opacity-60">
+                      <X className="h-3 w-3 text-slate-500" />
+                    </button>
+                  )}
+                </div>
+                {q && (
+                  <p className="text-[10.5px] text-slate-400 mt-1.5 ml-1">
+                    {mobileFiltered.length} dari {clients.length} klien
+                  </p>
+                )}
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
-        {/* Result count hint */}
-        {q && !isLoading && (
-          <p className="text-[10.5px] text-muted-foreground mt-1.5 ml-0.5">
-            {filtered.length} dari {clients.length} klien
-          </p>
-        )}
-      </div>
 
-      {/* ── Content ── */}
-      <div className="flex-1 overflow-auto px-5 py-3">
-        {isLoading ? (
-          <div className="space-y-2.5">
-            {[1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} />)}
+        <div className="px-4 pt-5 space-y-5">
+
+          {/* ── STATS GRID ── */}
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "Total Klien",   value: clients.length,  icon: <Users className="h-5 w-5" style={{ color: "#0066FF" }} strokeWidth={1.8} />, iconBg: "#dbeafe", filter: "all"    as const },
+              { label: "Klien Aktif",   value: klienAktif,      icon: <CheckCircle className="h-5 w-5" style={{ color: "#10b981" }} strokeWidth={1.8} />, iconBg: "#d1fae5", filter: "aktif"  as const },
+              { label: "Jamaah Aktif",  value: jamaahAktif,     icon: <Users className="h-5 w-5" style={{ color: "#8b5cf6" }} strokeWidth={1.8} />, iconBg: "#ede9fe", filter: "jamaah" as const },
+              { label: "Klien Loyal",   value: klienLoyal,      icon: <Star className="h-5 w-5" style={{ color: "#f59e0b" }} strokeWidth={1.8} />, iconBg: "#fef3c7", filter: "loyal"  as const },
+            ].map((stat) => (
+              <button
+                key={stat.label}
+                onClick={() => { setMobileStatusFilter(mobileStatusFilter === stat.filter ? "all" : stat.filter); setMobilePage(1); }}
+                className={`bg-white rounded-3xl p-4 text-left shadow-sm active:opacity-70 transition-all ${mobileStatusFilter === stat.filter ? "ring-2 ring-[#0066FF]/30" : ""}`}
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <div className="h-10 w-10 rounded-2xl flex items-center justify-center mb-3" style={{ backgroundColor: stat.iconBg }}>
+                  {stat.icon}
+                </div>
+                <p className="text-[26px] font-black text-[#0f1c3f] tabular-nums leading-none">{stat.value}</p>
+                <p className="text-[10px] font-semibold text-slate-400 mt-1 uppercase tracking-wide">{stat.label}</p>
+                <div className="flex items-center gap-0.5 mt-1.5">
+                  <TrendingUp className="h-2.5 w-2.5 text-emerald-400" strokeWidth={2.5} />
+                  <span className="text-[9px] text-emerald-500 font-semibold">vs bulan lalu</span>
+                </div>
+              </button>
+            ))}
           </div>
-        ) : filtered.length === 0 ? (
-          <EmptyState hasQuery={!!debouncedQ} onAdd={() => setAddOpen(true)} />
-        ) : (
-          <AnimatePresence mode="popLayout">
-            {/* Mobile: single column. md+: 2-col. lg+: 3-col */}
-            <div className="space-y-2.5 md:grid md:grid-cols-2 md:gap-3 md:space-y-0 lg:grid-cols-3">
-              {filtered.map((c) => {
-                const summary = clientOrderSummary.get(c.id);
-                return (
-                  <ClientCard
-                    key={c.id}
-                    client={c}
-                    orderCount={summary?.count ?? 0}
-                    bestStatus={summary?.bestStatus ?? "none"}
-                    latestLabel={summary?.latestType ?? null}
-                    totalPrice={summary?.totalPrice ?? 0}
-                    onNavigate={() => navigate(`/clients/${c.id}`)}
-                    referredByName={isOwner && c.createdByAgent ? memberNameMap.get(c.createdByAgent) : undefined}
-                  />
-                );
-              })}
-            </div>
-          </AnimatePresence>
-        )}
 
-        {/* Bottom padding for mobile nav */}
-        <div className="h-6" />
+          {/* ── FILTER / SORT ROW ── */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+            {([
+              { id: "all",    label: "Semua Status" },
+              { id: "aktif",  label: "Aktif" },
+              { id: "jamaah", label: "Jamaah Umrah" },
+              { id: "loyal",  label: "Klien Loyal" },
+            ] as const).map((f) => (
+              <button
+                key={f.id}
+                onClick={() => { setMobileStatusFilter(f.id); setMobilePage(1); }}
+                className={`shrink-0 h-8 px-3.5 rounded-full text-[11px] font-bold border transition-all active:scale-95 whitespace-nowrap flex items-center gap-1 ${mobileStatusFilter === f.id ? "text-white border-transparent shadow-sm" : "bg-white text-slate-600 border-slate-200"}`}
+                style={mobileStatusFilter === f.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
+              >
+                {f.label}
+              </button>
+            ))}
+            <div className="ml-auto shrink-0 flex items-center gap-1 text-[11px] text-slate-400 font-semibold whitespace-nowrap">
+              Urutkan: Terbaru <ChevronDown className="h-3 w-3" />
+            </div>
+          </div>
+
+          {/* ── DAFTAR KLIEN ── */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Daftar Klien</h3>
+              <span className="text-[12px] font-semibold text-slate-400">{mobileFiltered.length} Klien</span>
+            </div>
+
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1,2,3,4].map((i) => (
+                  <div key={i} className="bg-white rounded-3xl p-4 animate-pulse flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-slate-100 shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3.5 bg-slate-100 rounded-full w-3/4" />
+                      <div className="h-2.5 bg-slate-100 rounded-full w-1/2" />
+                      <div className="h-2 bg-slate-100 rounded-full w-1/3" />
+                    </div>
+                    <div className="h-6 w-14 bg-slate-100 rounded-full shrink-0" />
+                  </div>
+                ))}
+              </div>
+            ) : mobileFiltered.length === 0 ? (
+              <div className="bg-white rounded-3xl px-4 py-12 text-center flex flex-col items-center shadow-sm">
+                <div className="h-14 w-14 rounded-2xl bg-[#dbeafe] flex items-center justify-center mb-3">
+                  <Users className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
+                </div>
+                <p className="text-[14px] font-bold text-[#0f1c3f]">Belum ada klien</p>
+                <p className="text-[11px] text-slate-400 mt-1">{q ? "Coba kata kunci lain." : "Tambahkan klien pertama untuk memulai."}</p>
+                {!q && (
+                  <button
+                    onClick={() => setAddOpen(true)}
+                    className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80"
+                    style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Tambah Klien
+                  </button>
+                )}
+              </div>
+            ) : (
+              <motion.div
+                className="space-y-3"
+                initial="hidden"
+                animate="visible"
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05, delayChildren: 0.03 } } }}
+              >
+                {mobilePaged.map((c) => {
+                  const summary = clientOrderSummary.get(c.id);
+                  const orderCount = summary?.count ?? 0;
+                  const bestStatus = summary?.bestStatus ?? "none";
+                  const latestType = summary?.latestType;
+                  const badge = deriveStatusBadge(bestStatus);
+                  const initials = getInitials(c.name);
+                  const gradient = getGradient(c.name);
+                  const isAktif = clientIdsWithActiveOrder.has(c.id);
+                  const isJamaah = clientIdsWithUmrah.has(c.id);
+                  const waNumber = c.phone.replace(/\D/g, "");
+                  const waLink = waNumber ? `https://wa.me/${waNumber.startsWith("0") ? "62" + waNumber.slice(1) : waNumber}` : null;
+                  return (
+                    <motion.button
+                      key={c.id}
+                      variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } } }}
+                      whileTap={{ scale: 0.985 }}
+                      onClick={() => navigate(`/clients/${c.id}`)}
+                      className="w-full bg-white rounded-3xl p-4 shadow-sm text-left active:opacity-80 transition-opacity"
+                      style={{ WebkitTapHighlightColor: "transparent" }}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Avatar */}
+                        <div className={`h-12 w-12 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-sm`}>
+                          <span className="text-white text-sm font-bold tracking-wide">{initials}</span>
+                        </div>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="text-[14px] font-extrabold text-[#0f1c3f] truncate">{c.name}</p>
+                          </div>
+                          {c.email && <p className="text-[11px] text-slate-400 truncate mt-0.5">{c.email}</p>}
+                          {c.passportNumber && (
+                            <p className="text-[10px] text-slate-400 mt-0.5 font-mono">Paspor: {c.passportNumber}</p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                            <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border ${badge.bg} ${badge.text} ${badge.border}`}>
+                              {badge.label}
+                            </span>
+                            {isJamaah && (
+                              <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200">
+                                Jamaah Umrah
+                              </span>
+                            )}
+                            {isAktif && !isJamaah && (
+                              <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+                                Aktif
+                              </span>
+                            )}
+                            {orderCount > 1 && (
+                              <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
+                                ★ Loyal
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {/* Right side */}
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                          {orderCount > 0 && (
+                            <span className="text-[10px] text-slate-400 font-medium">{orderCount} order</span>
+                          )}
+                          {latestType && (
+                            <span className="text-[11px]">{ORDER_TYPE_EMOJI[latestType as keyof typeof ORDER_TYPE_EMOJI]}</span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Quick action row */}
+                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100">
+                        {waLink ? (
+                          <a
+                            href={waLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 text-[11px] font-semibold active:opacity-70"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" /> WA
+                          </a>
+                        ) : (
+                          <div className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl bg-slate-50 text-slate-300 text-[11px] font-semibold">
+                            <MessageCircle className="h-3.5 w-3.5" /> WA
+                          </div>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/clients/${c.id}`); }}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl bg-sky-50 text-sky-600 text-[11px] font-semibold active:opacity-70"
+                        >
+                          <BookOpen className="h-3.5 w-3.5" /> Dokumen
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/orders?clientId=${c.id}`); }}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl bg-blue-50 text-blue-600 text-[11px] font-semibold active:opacity-70"
+                        >
+                          <ShoppingBag className="h-3.5 w-3.5" /> Order
+                        </button>
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </motion.div>
+            )}
+
+            {/* ── PAGINATION ── */}
+            {totalMobilePages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-5">
+                <button
+                  onClick={() => setMobilePage(p => Math.max(1, p - 1))}
+                  disabled={mobilePage === 1}
+                  className="h-9 w-9 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-500 disabled:opacity-30 active:opacity-60"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                {Array.from({ length: Math.min(5, totalMobilePages) }, (_, i) => {
+                  let page = i + 1;
+                  if (totalMobilePages > 5) {
+                    if (mobilePage <= 3) page = i + 1;
+                    else if (mobilePage >= totalMobilePages - 2) page = totalMobilePages - 4 + i;
+                    else page = mobilePage - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setMobilePage(page)}
+                      className={`h-9 w-9 rounded-2xl text-[12px] font-bold transition-all ${mobilePage === page ? "text-white shadow-md" : "bg-white text-slate-500 shadow-sm"}`}
+                      style={mobilePage === page ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setMobilePage(p => Math.min(totalMobilePages, p + 1))}
+                  disabled={mobilePage === totalMobilePages}
+                  className="h-9 w-9 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-500 disabled:opacity-30 active:opacity-60"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── AKSI CEPAT ── */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Aksi Cepat</h3>
+              <span className="text-[11px] text-[#0066FF] font-semibold">Lihat Semua</span>
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { label: "Import Klien",  icon: <Upload className="h-5 w-5" style={{ color: "#0066FF" }} strokeWidth={1.8} />,  iconBg: "#dbeafe", action: () => toast.info("Segera hadir") },
+                { label: "Export Data",   icon: <Download className="h-5 w-5" style={{ color: "#10b981" }} strokeWidth={1.8} />, iconBg: "#d1fae5", action: () => toast.info("Segera hadir") },
+                { label: "Grup Klien",   icon: <Users className="h-5 w-5" style={{ color: "#8b5cf6" }} strokeWidth={1.8} />,   iconBg: "#ede9fe", action: () => toast.info("Segera hadir") },
+                { label: "Tag Klien",    icon: <Tag className="h-5 w-5" style={{ color: "#f59e0b" }} strokeWidth={1.8} />,    iconBg: "#fef3c7", action: () => toast.info("Segera hadir") },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  onClick={item.action}
+                  className="bg-white rounded-2xl p-3 flex flex-col items-center gap-2 shadow-sm active:opacity-70 transition-opacity"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <div className="h-10 w-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: item.iconBg }}>
+                    {item.icon}
+                  </div>
+                  <p className="text-[9px] font-bold text-[#0f1c3f] text-center leading-tight">{item.label}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <MobileFAB onClick={() => setAddOpen(true)} label="Tambah Klien" />
+      {/* ══════════════════════════════════════════════════════════
+           DESKTOP LAYOUT (hidden md:flex)
+      ══════════════════════════════════════════════════════════ */}
+      <div className="hidden md:flex flex-col h-full">
+        {/* ── Page header ── */}
+        <div className="px-5 pt-4 pb-3 flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-bold flex items-center gap-2 text-foreground">
+              <Users className="h-[18px] w-[18px] text-sky-500" />
+              Klien
+            </h1>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {isLoading ? "Memuat…" : `${clients.length} kontak terdaftar`}
+            </p>
+          </div>
+          <Button size="sm" className="rounded-xl h-8 px-3" onClick={() => setAddOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Tambah
+          </Button>
+        </div>
 
-      <ClientFormDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        initial={emptyForm}
-        title="Klien Baru"
-        onSubmit={async (form) => {
-          if (!form.name.trim()) return;
-          const c = await addClient({
-            name: form.name.trim(),
-            phone: form.phone.trim(),
-            email: form.email.trim() || undefined,
-            passportNumber: form.passportNumber.trim() || undefined,
-            birthDate: form.birthDate || undefined,
-            birthPlace: form.birthPlace.trim() || undefined,
-            passportExpiry: form.passportExpiry || undefined,
-            passportIssueDate: form.passportIssueDate || undefined,
-            passportIssuingOffice: form.passportIssuingOffice.trim() || undefined,
-            gender: form.gender || undefined,
-            notes: form.notes.trim() || undefined,
-            createdByAgent: form.referredBy || undefined,
-            referredByClientId: form.referredByClientId || null,
-          });
-          toast.success("Klien dibuat", { description: c.name });
-          setAddOpen(false);
-          navigate(`/clients/${c.id}`);
-        }}
-      />
-    </div>
+        {/* ── Sticky search bar ── */}
+        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-100 px-5 py-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Cari nama, nomor WA, paspor…"
+              className="pl-9 pr-9 h-9 text-sm bg-slate-50 border-slate-200 rounded-xl focus:bg-white focus:border-sky-300 transition-colors"
+            />
+            <AnimatePresence>
+              {q && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  onClick={() => setQ("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-slate-200 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
+          {q && !isLoading && (
+            <p className="text-[10.5px] text-muted-foreground mt-1.5 ml-0.5">
+              {filtered.length} dari {clients.length} klien
+            </p>
+          )}
+        </div>
+
+        {/* ── Content ── */}
+        <div className="flex-1 overflow-auto px-5 py-3">
+          {isLoading ? (
+            <div className="space-y-2.5">
+              {[1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <EmptyState hasQuery={!!debouncedQ} onAdd={() => setAddOpen(true)} />
+          ) : (
+            <AnimatePresence mode="popLayout">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+                {filtered.map((c) => {
+                  const summary = clientOrderSummary.get(c.id);
+                  return (
+                    <ClientCard
+                      key={c.id}
+                      client={c}
+                      orderCount={summary?.count ?? 0}
+                      bestStatus={summary?.bestStatus ?? "none"}
+                      latestLabel={summary?.latestType ?? null}
+                      totalPrice={summary?.totalPrice ?? 0}
+                      onNavigate={() => navigate(`/clients/${c.id}`)}
+                      referredByName={isOwner && c.createdByAgent ? memberNameMap.get(c.createdByAgent) : undefined}
+                    />
+                  );
+                })}
+              </div>
+            </AnimatePresence>
+          )}
+          <div className="h-6" />
+        </div>
+
+        <MobileFAB onClick={() => setAddOpen(true)} label="Tambah Klien" />
+      </div>
+
+      {sharedDialog}
+    </>
   );
 }
