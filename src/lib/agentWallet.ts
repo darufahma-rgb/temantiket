@@ -355,6 +355,40 @@ export async function deleteWalletTxsForOrder(orderId: string): Promise<void> {
   }
 }
 
+/**
+ * Delete a single wallet transaction by ID.
+ * Immediately removes from localStorage (optimistic update), then deletes from server.
+ * On failure, rolls back the localStorage cache and returns the error.
+ * Payout and adjustment transactions cannot be deleted through this function.
+ */
+export async function deleteWalletTxById(
+  agentId: string,
+  txId:    string,
+): Promise<{ success: boolean; error?: string }> {
+  const previous = listWalletTxs(agentId);
+
+  // Optimistic: remove from localStorage immediately
+  saveTxsCache(agentId, previous.filter((t) => t.id !== txId));
+
+  try {
+    const res = await fetch(`/api/wallet-tx/${encodeURIComponent(txId)}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    if (res.ok) return { success: true };
+
+    const body = await res.json().catch(() => ({})) as { error?: string };
+    // Rollback localStorage on server error
+    saveTxsCache(agentId, previous);
+    return { success: false, error: body?.error ?? `HTTP ${res.status}` };
+  } catch (e) {
+    // Rollback localStorage on exception
+    saveTxsCache(agentId, previous);
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 // ─── Mission conversion helpers ───────────────────────────────────────────────
 
 export function convertMissionPoints(

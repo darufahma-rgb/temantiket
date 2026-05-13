@@ -24,9 +24,14 @@ import {
   Mail, Calendar, AlertCircle,
   Crown, BarChart3, MessageCircle, ChevronRight, Loader2,
   Star, Camera, RefreshCw, Pencil, X, Save, Phone,
-  Wallet, ArrowDownToLine, Coins, ExternalLink,
+  Wallet, ArrowDownToLine, Coins, ExternalLink, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import { useOrdersStore } from "@/store/ordersStore";
@@ -48,7 +53,8 @@ import { uploadAvatar, savePhotoUrl } from "@/lib/avatarStorage";
 import { uploadCardBack, saveCardBackUrl, loadCardBackUrl } from "@/lib/cardBackStorage";
 import { supabase } from "@/lib/supabase";
 import {
-  pullWalletTxs, walletBalance, addWalletTxAsync, type WalletTransaction,
+  pullWalletTxs, walletBalance, addWalletTxAsync, deleteWalletTxById,
+  type WalletTransaction,
 } from "@/lib/agentWallet";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_EMOJI, type OrderType } from "@/features/orders/ordersRepo";
 import { AgentCard } from "@/components/AgentCard";
@@ -318,6 +324,7 @@ export default function AgentProfileOwnerView() {
   const [editEmail, setEditEmail] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [walletTxs, setWalletTxs] = useState<WalletTransaction[]>([]);
+  const [deletingTx, setDeletingTx] = useState<WalletTransaction | null>(null);
   const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
   const [syncingFee, setSyncingFee] = useState(false);
   const [lastBackfillDebug, setLastBackfillDebug] = useState<{
@@ -606,6 +613,26 @@ export default function AgentProfileOwnerView() {
     () => walletTxs.filter((t) => t.type === "payout"),
     [walletTxs],
   );
+
+  const handleDeleteTx = async () => {
+    if (!deletingTx || !agentId) return;
+    const tx = deletingTx;
+    setDeletingTx(null);
+    // Optimistic: remove from UI immediately
+    setWalletTxs((prev) => prev.filter((t) => t.id !== tx.id));
+    const { success, error } = await deleteWalletTxById(agentId, tx.id);
+    if (success) {
+      toast.success("Transaksi komisi dihapus.", { description: tx.description, duration: 4000 });
+      // Refresh from server to sync balance and breakdown
+      const fresh = await pullWalletTxs(agentId);
+      setWalletTxs(fresh);
+    } else {
+      // Rollback: re-fetch from server
+      toast.error(`Gagal hapus komisi: ${error ?? "Coba lagi"}`, { duration: 6000 });
+      const fresh = await pullWalletTxs(agentId);
+      setWalletTxs(fresh);
+    }
+  };
 
   const handlePhotoFile = async (file: File) => {
     if (!agentId) return;
@@ -1809,10 +1836,21 @@ export default function AgentProfileOwnerView() {
                               )}
                             </div>
                           </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-[13px] font-extrabold font-mono text-emerald-700">
-                              +{fmtIDR(tx.amountIDR)}
-                            </p>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isOwner && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setDeletingTx(tx); }}
+                                className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+                                title="Hapus komisi ini"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <div className="text-right">
+                              <p className="text-[13px] font-extrabold font-mono text-emerald-700">
+                                +{fmtIDR(tx.amountIDR)}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       );
@@ -1900,7 +1938,17 @@ export default function AgentProfileOwnerView() {
                                 <span className="text-[10px] text-muted-foreground">{fmtDateTime(tx.createdAt)}</span>
                               </div>
                             </div>
-                            <div className="text-right shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isOwner && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeletingTx(tx); }}
+                                  className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+                                  title="Hapus komisi lapangan ini"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              <div className="text-right">
                               <p className={`text-[13px] font-extrabold font-mono ${cfg.amtCls}`}>
                                 +{fmtIDR(tx.amountIDR)}
                               </p>
@@ -1909,6 +1957,7 @@ export default function AgentProfileOwnerView() {
                                   #{shortId}
                                 </span>
                               )}
+                              </div>
                             </div>
                           </div>
                         );
@@ -2040,6 +2089,42 @@ export default function AgentProfileOwnerView() {
           )}
         </motion.div>
       </AnimatePresence>
+
+      {/* ── Delete Commission Confirmation Dialog ── */}
+      <AlertDialog open={!!deletingTx} onOpenChange={(open) => { if (!open) setDeletingTx(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Transaksi Komisi?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>Transaksi berikut akan dihapus permanen dari wallet agen:</p>
+                {deletingTx && (
+                  <div className="rounded-lg border bg-muted/40 px-3 py-2 text-[12px]">
+                    <p className="font-medium text-foreground">{deletingTx.description}</p>
+                    <p className="mt-0.5">
+                      <span className="font-mono font-bold text-emerald-700">+{fmtIDR(deletingTx.amountIDR)}</span>
+                      <span className="text-muted-foreground ml-2">{fmtDateTime(deletingTx.createdAt)}</span>
+                    </p>
+                  </div>
+                )}
+                <p className="text-[12px] text-amber-700 font-semibold">
+                  ⚠ Saldo agen akan berkurang sebesar {deletingTx ? fmtIDR(deletingTx.amountIDR) : "—"}.
+                  Tindakan ini tidak bisa dibatalkan.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTx}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Ya, Hapus Komisi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

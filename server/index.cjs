@@ -1147,6 +1147,39 @@ app.delete('/api/wallet-txs-for-client/:clientId', isAuthenticatedOrBearer, asyn
 });
 
 /* ──────────────────────────────────────────────
+   DELETE /api/wallet-tx/:txId
+   Delete a single wallet transaction by ID. Owner only.
+   Payout and adjustment transactions are protected.
+────────────────────────────────────────────── */
+app.delete('/api/wallet-tx/:txId', isAuthenticatedOrBearer, async (req, res) => {
+  try {
+    const { rows: memberRows } = await pool.query(
+      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
+      [req.user.id],
+    );
+    const membership = memberRows[0];
+    if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
+    if (membership.role !== 'owner') return err(res, 403, 'Hanya owner yang bisa hapus komisi agen');
+
+    const { txId } = req.params;
+    const { rowCount } = await pool.query(
+      `DELETE FROM agent_wallet_transactions
+       WHERE id = $1 AND agency_id = $2
+         AND type NOT IN ('payout', 'adjustment')`,
+      [txId, membership.agency_id],
+    );
+
+    if (!rowCount || rowCount === 0) {
+      return err(res, 404, 'Transaksi tidak ditemukan atau tidak bisa dihapus (payout/adjustment dilindungi)');
+    }
+
+    return ok(res, { deleted: 1 });
+  } catch (e) {
+    return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
+  }
+});
+
+/* ──────────────────────────────────────────────
    POST /api/award-commission-points
    Award 20 points to agent when commission is earned.
 ────────────────────────────────────────────── */

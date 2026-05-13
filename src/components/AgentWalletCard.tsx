@@ -5,18 +5,23 @@
  * — IDR value at current conversion rate
  * — Convert button → mission points become komisi credit
  * — Payout recording → admin marks wallet as paid out
- * — Transaction history
+ * — Transaction history (with optional delete for owner)
  */
 import { useEffect, useMemo, useState } from "react";
-import { Wallet, ArrowDownToLine, History, ChevronDown, ChevronUp, Coins, Loader2, Check } from "lucide-react";
+import { Wallet, ArrowDownToLine, History, ChevronDown, ChevronUp, Coins, Loader2, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CloudSyncBadge } from "@/components/CloudSyncBadge";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   listWalletTxs, walletBalance, convertMissionPointsAsync, recordPayoutAsync,
-  pullWalletTxs, walletSyncKey,
+  pullWalletTxs, walletSyncKey, deleteWalletTxById,
   POINT_TO_IDR_RATE, type WalletTransaction,
 } from "@/lib/agentWallet";
 
@@ -62,15 +67,18 @@ interface Props {
   missionPoints: number;
   /** userId of the owner/admin performing actions. */
   reviewedBy:   string;
+  /** If true, show delete button on commission transactions (owner only). */
+  canDelete?:   boolean;
 }
 
-export function AgentWalletCard({ agentId, agentName, missionPoints, reviewedBy }: Props) {
+export function AgentWalletCard({ agentId, agentName, missionPoints, reviewedBy, canDelete = false }: Props) {
   const [txs, setTxs]                   = useState<WalletTransaction[]>(() => listWalletTxs(agentId));
   const [historyOpen, setHistoryOpen]   = useState(false);
   const [payoutMode, setPayoutMode]     = useState(false);
   const [payoutAmount, setPayoutAmount] = useState("");
   const [payoutNote, setPayoutNote]     = useState("");
   const [loading, setLoading]           = useState(false);
+  const [deletingTx, setDeletingTx]     = useState<WalletTransaction | null>(null);
 
   const syncKey = walletSyncKey(agentId);
 
@@ -141,6 +149,24 @@ export function AgentWalletCard({ agentId, agentName, missionPoints, reviewedBy 
       toast.error((err as Error).message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteTx = async () => {
+    if (!deletingTx) return;
+    const tx = deletingTx;
+    setDeletingTx(null);
+    // Optimistic update
+    setTxs((prev) => prev.filter((t) => t.id !== tx.id));
+    const { success, error } = await deleteWalletTxById(agentId, tx.id);
+    if (success) {
+      toast.success("Transaksi komisi dihapus.", { description: tx.description, duration: 4000 });
+      const fresh = await pullWalletTxs(agentId);
+      setTxs(fresh);
+    } else {
+      toast.error(`Gagal hapus komisi: ${error ?? "Coba lagi"}`, { duration: 6000 });
+      const fresh = await pullWalletTxs(agentId);
+      setTxs(fresh);
     }
   };
 
@@ -264,24 +290,73 @@ export function AgentWalletCard({ agentId, agentName, missionPoints, reviewedBy 
             {historyOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </button>
           {historyOpen && (
-            <div className="mt-1.5 space-y-1.5 max-h-48 overflow-y-auto">
-              {txs.map((tx) => (
-                <div key={tx.id} className="flex items-start justify-between gap-2 rounded-xl border border-[hsl(var(--border))] bg-white px-3 py-2">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold text-[hsl(var(--foreground))] truncate">{tx.description}</p>
-                    <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
-                      {TX_LABEL[tx.type]} · {fmtDate(tx.createdAt)}
-                    </p>
+            <div className="mt-1.5 space-y-1.5 max-h-72 overflow-y-auto">
+              {txs.map((tx) => {
+                const isDeletable = canDelete && tx.type !== "payout" && tx.type !== "adjustment";
+                return (
+                  <div key={tx.id} className="flex items-start justify-between gap-2 rounded-xl border border-[hsl(var(--border))] bg-white px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-semibold text-[hsl(var(--foreground))] truncate">{tx.description}</p>
+                      <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                        {TX_LABEL[tx.type]} · {fmtDate(tx.createdAt)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={cn("text-[12px] font-extrabold font-mono", TX_COLOR[tx.type])}>
+                        {tx.amountIDR >= 0 ? "+" : ""}{fmtIDR(tx.amountIDR)}
+                      </span>
+                      {isDeletable && (
+                        <button
+                          onClick={() => setDeletingTx(tx)}
+                          className="h-6 w-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Hapus transaksi ini"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <span className={cn("text-[12px] font-extrabold font-mono shrink-0", TX_COLOR[tx.type])}>
-                    {tx.amountIDR >= 0 ? "+" : ""}{fmtIDR(tx.amountIDR)}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deletingTx} onOpenChange={(open) => { if (!open) setDeletingTx(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Transaksi Komisi?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>Transaksi berikut akan dihapus permanen dari wallet agen:</p>
+                {deletingTx && (
+                  <div className="rounded-lg border bg-muted/40 px-3 py-2 text-[12px]">
+                    <p className="font-medium text-foreground">{deletingTx.description}</p>
+                    <p className="mt-0.5">
+                      <span className="font-mono font-bold text-emerald-700">+{fmtIDR(deletingTx.amountIDR)}</span>
+                    </p>
+                  </div>
+                )}
+                <p className="text-[12px] text-amber-700 font-semibold">
+                  ⚠ Saldo agen akan berkurang sebesar {deletingTx ? fmtIDR(deletingTx.amountIDR) : "—"}.
+                  Tindakan ini tidak bisa dibatalkan.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTx}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Ya, Hapus Komisi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
