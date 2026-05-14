@@ -47,6 +47,8 @@ function estimateCost(model: string, promptTokens: number, completionTokens: num
 // Satu tempat untuk semua model — ubah di sini kalau mau ganti model.
 
 // ✓ All model IDs verified valid on OpenRouter as of 2025-05
+// Note: anthropic/claude-* models require a paid Claude plan on OpenRouter.
+// Using google/gemini-2.0-flash-001 for all features — stabil, murah, cepat.
 export const OR_MODELS = {
   /** Vision + OCR: poster, paspor, tiket screenshot. Gemini 2.0 Flash 001 — stabil, murah, vision. */
   VISION:          "google/gemini-2.0-flash-001",
@@ -56,12 +58,12 @@ export const OR_MODELS = {
   CAPTION_WRITER:  "google/gemini-2.0-flash-001",
   /** Rapikan catatan, formatting teks ringan. */
   TEXT_FAST:       "google/gemini-2.0-flash-001",
-  /** Rapikan catatan dengan Claude — kualitas terbaik untuk formatting Markdown. */
-  NOTES_WRITER:    "anthropic/claude-3-5-sonnet-20241022",
+  /** Rapikan catatan — Gemini 2.0 Flash 001 (Claude requires paid OpenRouter plan). */
+  NOTES_WRITER:    "google/gemini-2.0-flash-001",
   /** Structured JSON output: itinerary, data terstruktur. */
   STRUCTURED:      "google/gemini-2.0-flash-001",
-  /** Reasoning kompleks — hanya pakai kalau butuh kualitas tinggi. */
-  REASONING:       "anthropic/claude-3-5-sonnet-20241022",
+  /** Reasoning — Gemini 2.0 Flash 001 (Claude requires paid OpenRouter plan). */
+  REASONING:       "google/gemini-2.0-flash-001",
 } as const;
 
 /** Fallback model jika primary Gemini model gagal (misal: model ID tidak valid). */
