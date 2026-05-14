@@ -1,0 +1,198 @@
+Ubah desain mobile halaman Calculator agar seragam dengan mobile Dashboard, Order Hub, Klien & Jamaah, Harga Tiket, dan Itinerary native-app style.
+
+Target utama:
+- src/pages/Calculator.tsx
+- mobile layout saja dengan md:hidden
+- desktop layout jangan dirusak
+- pertahankan semua logic hitungan existing:
+  - computeProfessionalQuote
+  - computeGeneralQuote
+  - computeGroupMatrix
+  - autosave localStorage
+  - restore previous session
+  - PDF preview/export
+  - create package/order
+  - currency converter tab
+  - visa calculator tab
+  - all calculator rows: hotel, transport, ticket, visa, destination, FnB, staff, general cost
+
+Desain mobile harus mengikuti referensi:
+- background putih kebiruan / soft blue
+- cards putih rounded besar
+- border soft blue
+- shadow lembut
+- spacing lega
+- typography navy tebal
+- primary gradient blue
+- bottom nav floating konsisten
+
+Struktur mobile Calculator:
+
+1. Header mobile:
+- tombol back kiri rounded square putih
+- title besar: “Kalkulator Profesional”
+- subtitle: “Kalkulasi biaya paket Umroh, Haji & Trip dengan akurat dan mudah.”
+- tombol kanan:
+  - Reset dengan icon refresh
+  - PDF dengan icon file/document
+- safe-area top
+- Reset tetap membuka confirmation existing
+- PDF tetap membuka PdfPreviewDialog existing
+
+2. Top segmented tabs:
+Buat segmented control rounded besar:
+- Umroh / Haji
+- Konverter Mata Uang
+- Kalkulator Visa
+Gunakan calcSection existing:
+- umroh
+- converter
+- visa
+Style:
+- active tab biru gradient
+- inactive navy/gray
+- icon kecil
+- jangan rusak staff default calcSection visa
+
+3. Mode segmented tabs untuk Umroh/Haji:
+Jika calcSection === "umroh", tampilkan mode tabs:
+- Umroh Private
+- Umroh Group
+- Umum
+Gunakan calc.mode existing:
+- umroh_private
+- umroh_group
+- umum
+Style:
+- rounded segmented white card
+- active biru
+- icon kecil
+- soft border
+
+4. Override Kurs card:
+Buat card putih rounded dengan title:
+“OVERRIDE KURS (KHUSUS HALAMAN INI)”
+Isi 3 mini cards:
+- SAR = Rp current localRateSAR/settings
+- USD = Rp current localRateUSD/settings
+- IDR = Rp 1
+Tampilkan hint:
+“(dari Pengaturan)” jika local override kosong
+“(basis)” untuk IDR
+Input tetap editable jika existing logic memang support override.
+Jangan hilangkan ability edit kurs lokal.
+
+5. Info Paket card:
+Buat card putih rounded border blue dengan title “INFO PAKET”.
+Fields:
+- Nama Paket
+- Destinasi
+- Jumlah Pax
+Style:
+- input rounded soft blue border
+- destination select
+- pax numeric input
+Gunakan calc.packageName, calc.destination, calc.pax existing.
+
+6. Calculator section cards:
+Untuk setiap cost section, buat card mobile-friendly:
+- Hotel
+- Transportasi
+- Tiket Pesawat
+- Visa
+- Destinasi
+- FnB
+- Staff
+- General Costs jika mode umum
+
+Setiap section:
+- card putih rounded besar dengan border soft blue
+- header dengan icon, title, currency badge, tombol “+ Tambah Baris”
+- rows tetap editable
+- jangan pakai table yang overflow parah di mobile
+- gunakan horizontal scroll hanya jika benar-benar perlu
+- lebih baik ubah tiap row jadi mini card/compact grid di mobile
+- tetap pertahankan semua field existing:
+  - hotel: label, room type, days, rates Q/T/D, rooms, currency
+  - transport: jenis, route, jumlah, harga, currency
+  - ticket: maskapai, route, jenis, harga/pax, currency
+  - visa/destination/fnb/staff/general cost sesuai existing fields
+- delete row tetap ada dengan icon trash kecil
+
+7. Subtotal rows:
+Di bawah setiap section tampilkan subtotal bar:
+- “Subtotal Hotel”
+- “Subtotal Transport”
+- “Subtotal Ticket”
+- dll
+Style:
+- soft blue footer row
+- total group
+- per pax
+- angka bold navy
+
+8. Restore session toast/card:
+Kalau autosave restore terdeteksi, tampilkan floating card kecil seperti referensi:
+“Sesi sebelumnya dipulihkan”
+“Kalkulasi terakhir ditemukan & dimuat otomatis.”
+Tombol:
+“Mulai Baru”
+Gunakan clearStorage/reset existing.
+
+9. Bottom summary cards:
+Buat 3 summary cards sticky-ish di bawah content sebelum bottom nav:
+- Total Budget (HPP)
+- Harga Jual Final
+- Net Profit
+Style:
+- pastel green / purple / green
+- angka besar
+- rounded card
+- gunakan quote existing
+Jika owner internal view ada, jangan rusak toggle internal profit.
+
+10. PDF / package/order actions:
+Pertahankan semua action existing:
+- preview PDF
+- export PDF
+- save package calc
+- create package
+- create order
+- quotation meta
+Kalau action di desktop ada, mobile tetap bisa akses, bisa lewat action card/bottom sheet.
+
+11. Converter dan Visa tabs:
+Jika calcSection === "converter":
+- render CurrencyConverterTab existing dalam native card wrapper
+Jika calcSection === "visa":
+- render VisaCalculatorTab existing dalam native card wrapper
+Jangan ubah logic internalnya kecuali styling mobile wrapper.
+
+12. Bottom nav:
+- gunakan bottom nav floating yang sama dengan dashboard/order/clients/ticket/itinerary
+- jangan duplicate jika sudah dari DashboardLayout
+- pastikan content padding-bottom cukup agar summary tidak ketutup bottom nav
+- plus tengah tetap konsisten
+
+13. Performance dan UX:
+- jangan blank screen
+- jangan refetch dari nol
+- calculator state harus tetap live dan cepat
+- autosave tetap jalan
+- no horizontal overflow global
+- keyboard mobile tidak merusak layout
+- input numeric harus nyaman di mobile
+- safe-area top/bottom support
+
+14. Compatibility:
+- jangan ubah auth
+- jangan ubah Supabase schema
+- jangan ubah routing
+- jangan membuat API Vercel baru
+- jangan hapus pricing logic
+- jangan ubah hasil kalkulasi
+- jangan rusak desktop layout
+- pastikan npm run build berhasil
+
+Expected result:
+Saat user buka /calculator di mobile, layout harus sangat mirip referensi Kalkulator Profesional native app: header besar, segmented tabs, override kurs card, info paket card, section calculator cards yang rapi, subtotal jelas, summary cards bawah, PDF/reset action, dan bottom nav konsisten dengan dashboard.

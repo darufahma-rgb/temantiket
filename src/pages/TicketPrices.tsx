@@ -1634,6 +1634,7 @@ export default function TicketPrices() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const screenshotSectionRef = useRef<HTMLDivElement>(null);
   const pasteSectionRef = useRef<HTMLDivElement>(null);
+  const ticketListRef = useRef<HTMLDivElement>(null);
 
   // ── Draft persistence (survive page refresh) ────────────────────────────
   const DRAFT_KEY = "ticket_prices.pending_draft.v1";
@@ -2101,6 +2102,16 @@ export default function TicketPrices() {
   const publishedCount = prices.filter(p => p.isPublished).length;
   const hiddenCount    = prices.filter(p => !p.isPublished).length;
 
+  function ticketTimeAgo(iso: string): string {
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return "baru saja";
+    if (m < 60) return `${m} menit lalu`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h} jam lalu`;
+    return `${Math.floor(h / 24)} hari lalu`;
+  }
+
   return (
     <div className="max-w-5xl mx-auto pb-8 md:py-6 md:px-4 md:space-y-6">
 
@@ -2110,36 +2121,38 @@ export default function TicketPrices() {
       <div className="md:hidden min-h-screen bg-[#F0F4FB] pb-28">
 
         {/* ── TOP HEADER ── */}
-        <div className="bg-white px-4 pt-12 pb-4 shadow-sm">
+        <div className="bg-white px-5 pt-12 pb-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <button
                 onClick={() => navigate(-1)}
-                className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
+                className="h-10 w-10 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+                <ArrowLeft className="h-4.5 w-4.5 text-[#0f1c3f]" strokeWidth={2} />
               </button>
-              <div>
-                <h1 className="text-[22px] font-extrabold text-[#0f1c3f] leading-tight">Harga Tiket</h1>
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5">AI Deep Extraction dari screenshot atau kode booking</p>
+              <div className="min-w-0">
+                <h1 className="text-[26px] font-extrabold text-[#0f1c3f] leading-tight">Harga Tiket</h1>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5 leading-snug">
+                  Extract harga tiket dari screenshot atau kode booking dengan AI Deep Extraction.
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0 mt-1">
               <button
                 onClick={() => void refreshTicketPrices()} disabled={loading}
-                className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity"
+                className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity disabled:opacity-40"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                <RefreshCw className={cn("h-4 w-4 text-[#0f1c3f]", loading && "animate-spin")} strokeWidth={2} />
+                <RefreshCw className={cn("h-4 w-4 text-slate-500", loading && "animate-spin")} strokeWidth={2} />
               </button>
               <button
-                onClick={handleSharePublic}
+                onClick={() => ticketListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 className="h-9 px-3.5 rounded-2xl flex items-center gap-1.5 text-[11px] font-bold text-white shadow-sm active:opacity-80 transition-opacity"
                 style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
               >
-                <Share2 className="h-3.5 w-3.5" strokeWidth={2} />
-                Share
+                <Clock className="h-3.5 w-3.5" strokeWidth={2} />
+                Riwayat
               </button>
             </div>
           </div>
@@ -2152,7 +2165,6 @@ export default function TicketPrices() {
             className="rounded-3xl px-5 py-6 text-white relative overflow-hidden"
             style={{ background: "linear-gradient(135deg,#00072d 0%,#0038B8 55%,#0066FF 100%)" }}
           >
-            {/* Decorative */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
               <div className="absolute -top-14 -right-14 h-52 w-52 rounded-full opacity-10 bg-white" />
               <div className="absolute top-4 right-4 h-20 w-20 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)" }} />
@@ -2167,8 +2179,7 @@ export default function TicketPrices() {
                 <p className="text-[10px] font-bold uppercase tracking-widest text-sky-300/80">Extract Harga Tiket dengan AI</p>
               </div>
               <h2 className="text-[22px] font-black text-white leading-tight mb-1">Cepat, Akurat, dan Otomatis ✨</h2>
-              <p className="text-[12px] text-white/60 mb-4 leading-snug">Upload screenshot tiket atau paste kode booking GDS / WhatsApp BC.</p>
-              {/* Stats row */}
+              <p className="text-[12px] text-white/60 mb-4 leading-snug">Upload screenshot tiket atau paste kode booking GDS / WhatsApp BC untuk ekstraksi otomatis.</p>
               <div className="flex gap-3 mb-5">
                 {[
                   { label: "Total Tiket", value: String(visiblePrices.length) },
@@ -2181,7 +2192,6 @@ export default function TicketPrices() {
                   </div>
                 ))}
               </div>
-              {/* CTA buttons */}
               {isAdmin && (
                 <div className="flex gap-2.5">
                   <button
@@ -2217,10 +2227,10 @@ export default function TicketPrices() {
               </div>
               <div className="flex-1 text-left">
                 <p className="text-[13px] font-extrabold text-[#0f1c3f]">Global Markup</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">{markup > 0 ? `+${fmtIDR(markup)} per pax` : "Belum diset"}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">{markup > 0 ? `+${fmtIDR(markup)} per pax` : "Belum diset — tap untuk mengatur"}</p>
               </div>
               {markup > 0 && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">Aktif</span>}
-              <ChevronDown className={cn("h-4 w-4 text-slate-400 transition-transform", markupOpen && "rotate-180")} />
+              <ChevronDown className={cn("h-4 w-4 text-slate-400 transition-transform shrink-0", markupOpen && "rotate-180")} />
             </button>
             {markupOpen && (
               <div className="border-t border-slate-100 px-5 pb-5 pt-4 space-y-3">
@@ -2250,11 +2260,10 @@ export default function TicketPrices() {
                   <p className="text-[11px] font-bold text-[#0066FF] uppercase tracking-widest mb-0.5">Langkah 1</p>
                   <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Extract dari Screenshot</h3>
                 </div>
-                <span className="text-[9px] font-extrabold px-2 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 uppercase tracking-wide">AI Deep Extraction</span>
+                <span className="text-[9px] font-extrabold px-2.5 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 uppercase tracking-wide shrink-0">AI Deep Extraction</span>
               </div>
 
-              {/* Upload drop zone */}
-              <div className="mx-5 mb-5">
+              <div className="mx-5 mb-5 space-y-3">
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={scanning}
@@ -2291,8 +2300,7 @@ export default function TicketPrices() {
                   )}
                 </button>
 
-                {/* Tips card */}
-                <div className="mt-3 bg-amber-50 rounded-2xl px-4 py-3 border border-amber-100">
+                <div className="bg-amber-50 rounded-2xl px-4 py-3 border border-amber-100">
                   <p className="text-[10px] font-extrabold text-amber-700 uppercase tracking-wide mb-2">Tips untuk hasil terbaik</p>
                   {[
                     "Pastikan detail penerbangan terlihat jelas",
@@ -2308,7 +2316,7 @@ export default function TicketPrices() {
                 </div>
 
                 {scanError && (
-                  <div className="mt-3 flex items-start gap-2 p-3 rounded-2xl bg-red-50 border border-red-100">
+                  <div className="flex items-start gap-2 p-3 rounded-2xl bg-red-50 border border-red-100">
                     <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                     <p className="text-[11px] text-red-700">{scanError}</p>
                   </div>
@@ -2336,7 +2344,7 @@ export default function TicketPrices() {
                 </div>
                 <button
                   onClick={openAdd}
-                  className="text-[11px] font-semibold text-[#0066FF] active:opacity-60"
+                  className="text-[11px] font-semibold text-[#0066FF] active:opacity-60 shrink-0"
                   style={{ WebkitTapHighlightColor: "transparent" }}
                 >
                   Manual Input
@@ -2345,7 +2353,7 @@ export default function TicketPrices() {
               <div className="px-5 pb-5 space-y-3">
                 <Textarea
                   placeholder={"Masukkan kode booking (PNR) / kode sistem (GDS)\n\nContoh:\n  1 GF70 CAI→BAH 03JUN 17:15\n  TOTAL AMOUNT 29283 EGP"}
-                  className="font-mono text-[11px] min-h-[100px] resize-y bg-[#F0F4FB] border-0 rounded-2xl text-slate-700 placeholder:text-slate-300"
+                  className="font-mono text-[11px] min-h-[110px] resize-y bg-[#F0F4FB] border-0 rounded-2xl text-slate-700 placeholder:text-slate-300"
                   value={pasteText}
                   onChange={(e) => setPasteText(e.target.value)}
                 />
@@ -2381,7 +2389,7 @@ export default function TicketPrices() {
                 </div>
                 <button
                   onClick={() => void savePending()} disabled={saving}
-                  className="h-9 px-4 rounded-2xl text-[11px] font-bold text-white flex items-center gap-1.5 active:opacity-80 transition-opacity disabled:opacity-50"
+                  className="h-9 px-4 rounded-2xl text-[11px] font-bold text-white flex items-center gap-1.5 active:opacity-80 transition-opacity disabled:opacity-50 shrink-0"
                   style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
                 >
                   {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
@@ -2417,15 +2425,23 @@ export default function TicketPrices() {
           )}
 
           {/* ── SECTION 3: DAFTAR TIKET ── */}
-          <div>
+          <div ref={ticketListRef}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Hasil Extract Terbaru</h3>
-              {markup > 0 && (
-                <span className="text-[10px] font-bold text-emerald-600">+{fmtIDR(markup)} markup/pax</span>
-              )}
+              <div>
+                <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Hasil Extract Terbaru</h3>
+                {markup > 0 && (
+                  <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">+{fmtIDR(markup)} markup/pax</p>
+                )}
+              </div>
+              <button
+                onClick={resetFilters}
+                className="text-[11px] font-semibold text-[#0066FF] active:opacity-60 shrink-0"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                Lihat Semua
+              </button>
             </div>
 
-            {/* Search & Filter */}
             {!loading && visiblePrices.length > 0 && (
               <div className="mb-4">
                 <SearchFilterBar
@@ -2482,12 +2498,18 @@ export default function TicketPrices() {
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold text-slate-400">{filteredPrices.length} rute tersedia</p>
                 {filteredPrices.map((item) => (
-                  <BoardingPassCard
-                    key={item.id} item={item} markup={markup} rates={rates}
-                    isAdmin={isAdmin} onEdit={openEdit} onDelete={handleDelete}
-                    onTogglePublish={handleTogglePublish} onView={openView}
-                    waNumber={waNumber} showBasePrice={isOwner}
-                  />
+                  <div key={item.id}>
+                    <BoardingPassCard
+                      item={item} markup={markup} rates={rates}
+                      isAdmin={isAdmin} onEdit={openEdit} onDelete={handleDelete}
+                      onTogglePublish={handleTogglePublish} onView={openView}
+                      waNumber={waNumber} showBasePrice={isOwner}
+                    />
+                    <p className="text-[10px] text-slate-400 text-right px-2 mt-1.5">
+                      <Clock className="inline h-3 w-3 mr-1 -mt-px" strokeWidth={1.8} />
+                      Extracted {ticketTimeAgo(item.createdAt)}
+                    </p>
+                  </div>
                 ))}
               </div>
             )}
@@ -2515,24 +2537,24 @@ export default function TicketPrices() {
           )}
 
           {/* ── FITUR LAINNYA ── */}
-          <div>
+          <div className="pb-2">
             <h3 className="text-[15px] font-extrabold text-[#0f1c3f] mb-3">Fitur Lainnya</h3>
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Pencarian Manual",    icon: <Search className="h-5 w-5" style={{ color: "#0066FF" }} strokeWidth={1.8} />,    iconBg: "#dbeafe", action: () => screenshotSectionRef.current?.scrollIntoView({ behavior: "smooth" }) },
-                { label: "Kalkulator & Kurs",   icon: <Calculator className="h-5 w-5" style={{ color: "#10b981" }} strokeWidth={1.8} />, iconBg: "#d1fae5", action: () => toast.info("Segera hadir") },
-                { label: "Notifikasi Harga",   icon: <Bell className="h-5 w-5" style={{ color: "#f59e0b" }} strokeWidth={1.8} />,       iconBg: "#fef3c7", action: () => toast.info("Segera hadir") },
-              ].map((item) => (
+                { label: "Pencarian Manual",  icon: <Search className="h-5 w-5" style={{ color: "#0066FF" }} strokeWidth={1.8} />,    iconBg: "#dbeafe", action: () => screenshotSectionRef.current?.scrollIntoView({ behavior: "smooth" }) },
+                { label: "Kalkulator & Kurs", icon: <Calculator className="h-5 w-5" style={{ color: "#10b981" }} strokeWidth={1.8} />, iconBg: "#d1fae5", action: () => toast.info("Segera hadir") },
+                { label: "Notifikasi Harga", icon: <Bell className="h-5 w-5" style={{ color: "#f59e0b" }} strokeWidth={1.8} />,       iconBg: "#fef3c7", action: () => toast.info("Segera hadir") },
+              ].map((feat) => (
                 <button
-                  key={item.label}
-                  onClick={item.action}
+                  key={feat.label}
+                  onClick={feat.action}
                   className="bg-white rounded-2xl p-3.5 flex flex-col items-center gap-2 shadow-sm active:opacity-70 transition-opacity"
                   style={{ WebkitTapHighlightColor: "transparent" }}
                 >
-                  <div className="h-11 w-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: item.iconBg }}>
-                    {item.icon}
+                  <div className="h-11 w-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: feat.iconBg }}>
+                    {feat.icon}
                   </div>
-                  <p className="text-[10px] font-bold text-[#0f1c3f] text-center leading-snug">{item.label}</p>
+                  <p className="text-[10px] font-bold text-[#0f1c3f] text-center leading-snug">{feat.label}</p>
                   <ChevronDown className="h-3 w-3 text-slate-300 -rotate-90" />
                 </button>
               ))}

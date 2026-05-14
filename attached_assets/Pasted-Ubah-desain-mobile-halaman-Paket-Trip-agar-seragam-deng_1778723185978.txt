@@ -1,0 +1,214 @@
+Ubah desain mobile halaman Paket & Trip agar seragam dengan mobile Dashboard, Order Hub, Klien & Jamaah, Harga Tiket, Itinerary, dan Calculator native-app style.
+
+Target utama:
+- src/pages/Packages.tsx atau halaman package utama yang digunakan routing /packages
+- mobile layout saja dengan md:hidden
+- desktop layout jangan dirusak
+- pertahankan seluruh logic existing:
+  - package CRUD
+  - package filtering
+  - package categories
+  - search
+  - create/edit package
+  - export PDF/package
+  - pricing
+  - itinerary relation
+  - package detail
+  - publish/private status
+  - package duplication
+  - pagination
+
+Desain mobile harus mengikuti referensi:
+- background putih kebiruan / soft blue
+- card putih rounded besar
+- shadow lembut
+- typography navy tebal
+- spacing lega
+- gradient primary blue
+- bottom nav floating konsisten
+
+Struktur mobile Paket & Trip:
+
+1. Header mobile:
+- tombol back kiri rounded square putih
+- title besar: “Paket & Trip”
+- subtitle:
+  “Kelola dan kalkulasi paket perjalanan Umroh, Haji & Trip dengan mudah.”
+- tombol kanan:
+  - Reset
+  - PDF
+- gunakan safe-area top
+- jangan pakai header lama kecil
+
+2. Category tabs atas:
+Buat horizontal segmented tabs:
+- Semua Paket
+- Umroh
+- Haji
+- Trip
+- Private
+Setiap tab punya count badge.
+Style:
+- active tab gradient biru
+- inactive putih/navy
+- horizontal scroll aman
+Gunakan package categories existing.
+
+3. Stats cards:
+Tambahkan 4 stat cards:
+- Total Paket
+- Paket Aktif
+- Dalam Perjalanan
+- Paket Selesai
+
+Style:
+- white rounded card
+- icon pastel bulat
+- angka besar navy
+- trend hijau %
+- text “vs bulan lalu”
+
+Gunakan data existing packages/orders:
+- aktif = published/open
+- dalam perjalanan = current ongoing
+- selesai = completed packages
+
+Fallback 0 jika data belum ada.
+
+4. Search + filter row:
+Tambahkan:
+- search bar besar:
+  “Cari nama paket atau tujuan…”
+- tombol Filter
+- dropdown “Urutkan: Terbaru”
+
+Gunakan search/filter existing.
+Filter boleh bottom sheet mobile:
+- category
+- active/private
+- published
+- reset
+
+5. Quick category cards:
+Tambahkan row icon category:
+- Semua
+- Umroh
+- Haji
+- Trip
+- Private
+
+Style:
+- white rounded square cards
+- icon outline
+- active state biru
+- klik memfilter package list
+
+6. Package list cards:
+Buat package cards premium seperti referensi:
+
+Isi card:
+- image thumbnail kiri
+- badge category:
+  - UMROH REGULER
+  - HAJI PLUS
+  - TRIP INTERNASIONAL
+  - UMROH PRIVATE
+- nama package besar
+- subtitle destinasi:
+  “Makkah 4M • Madinah 3M”
+  atau route trip
+- info kecil:
+  - durasi
+  - tanggal keberangkatan
+  - airline
+- kanan:
+  - status badge:
+    Aktif / Tersedia / Private
+  - harga besar
+  - text /pax
+  - tombol “Lihat Detail”
+
+Style:
+- rounded white card besar
+- soft shadow
+- image rounded
+- spacing lega
+- harga tebal navy
+- button outline biru
+
+Gunakan data package existing:
+- thumbnail/image package
+- pricing
+- itinerary
+- airline
+- duration
+- destinations
+- start date
+
+Klik card → package detail existing.
+
+7. Pagination:
+Tambahkan pagination mobile:
+- prev
+- nomor halaman
+- next
+Gunakan pagination existing atau client-side.
+Reset ke page 1 saat filter berubah.
+
+8. Aksi Cepat:
+Tambahkan section:
+“Aksi Cepat”
+kanan:
+“Lihat Semua”
+
+4 cards:
+- Paket Baru
+- Duplikasi Paket
+- Kelola Itinerary
+- Export Paket
+
+Style:
+- white rounded cards
+- pastel icon
+- title + subtitle kecil
+
+Mapping:
+- Paket Baru → create package existing
+- Duplikasi Paket → duplicate flow existing
+- Kelola Itinerary → /itinerary
+- Export Paket → export PDF existing
+
+9. Bottom nav:
+Gunakan bottom nav floating yang sama dengan halaman lain:
+- Dashboard
+- Order
+- Plus tengah
+- Klien
+- Lainnya
+
+Jangan duplicate jika sudah dari DashboardLayout.
+Pastikan content tidak ketutup bottom nav.
+
+10. Performance:
+- jangan blank screen
+- gunakan cached packages data
+- jangan refetch full setiap buka page
+- loading skeleton hanya saat first load
+- no horizontal overflow
+- image lazy loading
+- smooth mobile scroll
+
+11. Compatibility:
+- jangan ubah auth
+- jangan ubah Supabase schema
+- jangan ubah routing
+- jangan membuat API Vercel baru
+- jangan rusak desktop layout
+- jangan hapus package pricing logic
+- jangan ubah PDF/export logic
+- jangan ubah create/edit package flow
+- pastikan npm run build berhasil
+
+Expected result:
+Saat user buka /packages di mobile, layout harus sangat mirip referensi Paket & Trip native app:
+header besar, category tabs, stats cards, search/filter, package cards premium, pagination, quick actions, dan bottom nav konsisten dengan dashboard.

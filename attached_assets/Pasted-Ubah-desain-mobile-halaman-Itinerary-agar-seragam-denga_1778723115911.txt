@@ -1,0 +1,136 @@
+Ubah desain mobile halaman Itinerary agar seragam dengan mobile Dashboard, Order Hub, Klien & Jamaah, dan Harga Tiket native-app style.
+
+Target utama:
+- src/pages/ItineraryGenerator.tsx
+- mobile layout saja dengan md:hidden
+- desktop layout jangan dirusak
+- pertahankan semua logic existing: extractItinerary, extractItineraryFromImage, history localStorage, copy, download, WhatsApp text, export card/canvas, edit itinerary
+
+Desain mobile harus mengikuti referensi:
+- background putih kebiruan / soft blue
+- cards putih rounded besar
+- shadow lembut
+- spacing lega
+- typography navy tebal
+- primary gradient blue
+- bottom nav floating konsisten
+
+Struktur mobile Itinerary:
+
+1. Header mobile:
+- tombol back kiri rounded square putih
+- title besar: “Itinerary”
+- subtitle: “AI Itinerary Generator - Extract data dari screenshot atau kode booking.”
+- tombol kanan “Riwayat Itinerary” dengan icon clock/history
+- gunakan safe-area top
+- jangan pakai header lama yang kecil
+
+2. Hero card biru:
+- gradient biru/purple besar rounded
+- title kecil: “AI Itinerary Generator”
+- headline: “Ubah data penerbangan menjadi itinerary rapi siap copy-paste ✨”
+- deskripsi: “Cepat, akurat, dan siap digunakan untuk perjalanan Anda.”
+- tombol putih:
+  - “Extract dari Screenshot”
+  - “Extract dari Kode Booking”
+- visual dokumen/pesawat/AI chip boleh pakai gradient + lucide icons jika belum ada asset
+- tombol harus scroll/focus ke section terkait
+
+3. Section “1. Extract Data Penerbangan”:
+- card putih rounded besar
+- kanan label “AI Deep Extraction”
+- upload box dashed border
+- icon image upload
+- text:
+  “Upload screenshot tiket Anda”
+  “Format: JPG, PNG • Maks. 10MB”
+- tombol biru “Pilih Gambar”
+- kanan/bawah info card:
+  “AI akan mengenali:”
+  - Rute penerbangan
+  - Tanggal & waktu
+  - Maskapai & nomor penerbangan
+  - Durasi & transit
+  - Penumpang & bagasi
+  - Dan informasi penting lainnya
+- gunakan fungsi existing extractItineraryFromImage
+- jangan rusak flow hasil extract
+
+4. Divider “ATAU”:
+- garis kiri kanan
+- text tengah “ATAU”
+
+5. Section “2. Extract dari Kode Booking / Kode Sistem”:
+- card putih rounded besar
+- title sesuai referensi
+- kanan link “Manual Input”
+- input/textarea modern untuk PNR/GDS/kode booking
+- placeholder:
+  “Masukkan kode booking (PNR) / kode sistem (GDS)”
+- tombol biru gradient “Extract Sekarang”
+- gunakan fungsi existing extractItinerary
+- tampilkan loading state saat extract
+- contoh kecil:
+  “Contoh: ABC123, PNR ABC123, Amadeus: ABC123, Galileo: ABC123”
+
+6. Section “3. Hasil Itinerary”:
+- card putih rounded besar
+- kanan “Lihat Contoh”
+- jika sudah ada hasil extract, tampilkan preview itinerary premium:
+  - airline logo/name
+  - route besar contoh CGK → CAI
+  - city kecil
+  - tanggal
+  - jam ETD/ETA
+  - durasi/transit
+  - baggage
+  - badge “Siap Digunakan”
+  - tombol “Salin Itinerary”
+- tampilkan text itinerary dalam preview box biru muda:
+  “ITINERARY - 20 MEI 2025”
+  lalu detail route, tanggal, waktu, durasi, penerbangan, kelas, bagasi, catatan penting
+- tombol copy harus pakai buildWhatsAppText / existing copy flow
+- jika belum ada hasil, tampilkan empty state premium yang mengajak upload/paste dulu
+
+7. Action cards bawah:
+- 3 cards horizontal:
+  - Template Itinerary
+  - Simpan Itinerary
+  - Export Itinerary
+- gunakan icon pastel + chevron
+- Simpan pakai saveToHistory existing
+- Export pakai existing download/export logic jika tersedia
+- Template boleh toast “Segera hadir” jika belum ada fitur
+
+8. History behavior:
+- tombol “Riwayat Itinerary” membuka history panel/bottom sheet existing atau modal mobile-friendly
+- list history dari localStorage existing
+- bisa load item history
+- bisa delete history item
+- jangan rusak history lama
+
+9. Bottom nav:
+- gunakan bottom nav floating yang sama dengan dashboard/order/clients/ticket prices
+- jangan duplicate jika sudah dari DashboardLayout
+- pastikan content tidak ketutup bottom nav
+- plus tengah tetap konsisten
+
+10. Performance dan data:
+- jangan blank screen
+- loading hanya saat extract berjalan
+- hasil terakhir tetap terlihat setelah extract
+- local history tetap tersimpan
+- no horizontal overflow
+- aman di iPhone safe-area
+
+11. Compatibility:
+- jangan ubah auth
+- jangan ubah Supabase schema
+- jangan ubah routing
+- jangan membuat API Vercel baru
+- jangan rusak desktop layout
+- jangan hapus parser Galileo/Amadeus/PNR existing
+- pastikan npm run build berhasil
+
+Expected result:
+Saat user buka /itinerary di mobile, layout harus sangat mirip referensi Itinerary native app: header besar, hero AI card, upload screenshot, paste kode booking, hasil itinerary premium, action cards, history button, dan bottom nav konsisten dengan dashboard.
