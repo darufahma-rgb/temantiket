@@ -13,8 +13,9 @@ import {
   BarChart3, Activity, Briefcase, CircleDot, MessageCircle, Bell, ClipboardList,
   StickyNote, Plus, X, Phone, Send, Search, UserCheck, Calendar, Flag,
   Wallet, History, Eye, ChevronRight, BadgeCheck, Sparkles, Settings2,
-  ChevronLeft, MoreVertical,
+  ChevronLeft, MoreVertical, LayoutList, LayoutGrid, Edit2, MoreHorizontal,
 } from "lucide-react";
+import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -791,6 +792,13 @@ export default function StaffManagementCenter() {
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [mobileMoreMenu, setMobileMoreMenu]   = useState<string | null>(null);
 
+  // Desktop table state
+  const [tableCurrentPage, setTableCurrentPage] = useState(1);
+  const [tablePageSize,    setTablePageSize]    = useState(10);
+  const [roleFilter,       setRoleFilter]       = useState("all");
+  const [viewMode,         setViewMode]         = useState<"list" | "grid">("list");
+  const [openRowMenu,      setOpenRowMenu]      = useState<string | null>(null);
+
   const agencyId = user?.agencyId ?? "";
   const currentUserId = user?.id ?? "";
 
@@ -909,6 +917,97 @@ export default function StaffManagementCenter() {
     });
     return list;
   }, [allMetrics, search, filterBy, sortBy, isOnline]);
+
+  // Top 3 performers for sidebar
+  const topPerformers = useMemo(() =>
+    [...allMetrics].sort((a, b) => b.completionRate - a.completionRate || b.completed - a.completed).slice(0, 3),
+    [allMetrics]);
+
+  // Recent activities (orders assigned to any staff)
+  const recentActivities = useMemo(() => {
+    const sids = new Set(staffMembers.map((s) => s.userId));
+    return orders
+      .filter((o) => {
+        const m = o.metadata as Record<string, unknown>;
+        return sids.has(m.pelaksanaId as string) || sids.has(m.voaFieldAgentId as string) || sids.has(m.kurirAgentId as string);
+      })
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, 5)
+      .map((o) => {
+        const meta = o.metadata as Record<string, unknown>;
+        const sid = ([meta.pelaksanaId, meta.voaFieldAgentId, meta.kurirAgentId] as string[]).find((id) => sids.has(id)) ?? "";
+        return { order: o, staffMember: staffMembers.find((s) => s.userId === sid) };
+      });
+  }, [orders, staffMembers]);
+
+  // Sparklines per staff (last 7 days completion rate)
+  const staffSparklines = useMemo(() => {
+    const map = new Map<string, number[]>();
+    for (const s of staffMembers) {
+      const pts = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (6 - i));
+        d.setHours(0, 0, 0, 0);
+        const dayStart = d.getTime();
+        const dayEnd = dayStart + 86_400_000;
+        const dayOrds = orders.filter((o) => {
+          const meta = o.metadata as Record<string, unknown>;
+          const involved = meta.pelaksanaId === s.userId || meta.voaFieldAgentId === s.userId || meta.kurirAgentId === s.userId;
+          return involved && new Date(o.updatedAt).getTime() >= dayStart && new Date(o.updatedAt).getTime() < dayEnd;
+        });
+        const completed = dayOrds.filter((o) => o.status === "Completed" || o.status === "selesai").length;
+        return dayOrds.length > 0 ? Math.round((completed / dayOrds.length) * 100) : 0;
+      });
+      map.set(s.userId, pts);
+    }
+    return map;
+  }, [staffMembers, orders]);
+
+  // Per-staff order counts today vs yesterday
+  const todayStart = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }, []);
+  const yesterdayStart = todayStart - 86_400_000;
+  const staffTodayCounts = useMemo(() => {
+    const map = new Map<string, { today: number; yesterday: number }>();
+    for (const s of staffMembers) {
+      const check = (o: typeof orders[0]) => {
+        const m = o.metadata as Record<string, unknown>;
+        return m.pelaksanaId === s.userId || m.voaFieldAgentId === s.userId || m.kurirAgentId === s.userId;
+      };
+      const today = orders.filter((o) => check(o) && new Date(o.updatedAt).getTime() >= todayStart).length;
+      const yesterday = orders.filter((o) => check(o) && new Date(o.updatedAt).getTime() >= yesterdayStart && new Date(o.updatedAt).getTime() < todayStart).length;
+      map.set(s.userId, { today, yesterday });
+    }
+    return map;
+  }, [staffMembers, orders, todayStart, yesterdayStart]);
+
+  // Table pagination (resets when filters change)
+  const tableTotalPages = Math.max(1, Math.ceil(displayed.length / tablePageSize));
+  const tablePagedRows  = displayed.slice((tableCurrentPage - 1) * tablePageSize, tableCurrentPage * tablePageSize);
+
+  // Role distribution for donut chart
+  const roleDist = useMemo(() => {
+    const c = new Map<string, number>();
+    for (const s of staffMembers) c.set(s.role, (c.get(s.role) ?? 0) + 1);
+    return Array.from(c.entries()).map(([name, value]) => ({ name: name === "staff" ? "Staff" : name === "agent" ? "Agent" : name, value }));
+  }, [staffMembers]);
+
+  // Team performance trend (7 days)
+  const perfTrend = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      d.setHours(0, 0, 0, 0);
+      const dayStart = d.getTime();
+      const dayEnd = dayStart + 86_400_000;
+      const dayOrds = orders.filter((o) => {
+        const t = new Date(o.updatedAt).getTime();
+        return t >= dayStart && t < dayEnd;
+      });
+      const comp = dayOrds.filter((o) => o.status === "Completed" || o.status === "selesai").length;
+      const rate = dayOrds.length > 0 ? Math.round((comp / dayOrds.length) * 100) : 0;
+      return { date: d.toLocaleDateString("id-ID", { day: "2-digit", month: "short" }), rate };
+    });
+  }, [orders]);
 
   const drawerMetrics = allMetrics.find((m) => m.staff.userId === drawerStaffId) ?? null;
   const taskTarget    = staffMembers.find((s) => s.userId === taskTargetId) ?? null;
@@ -1282,392 +1381,508 @@ export default function StaffManagementCenter() {
     </div>{/* end md:hidden */}
 
     {/* ══════════════ DESKTOP LAYOUT ══════════════ */}
-    <div className="hidden md:block max-w-[1400px] mx-auto px-4 sm:px-6 pb-16 space-y-6">
+    <div className="hidden md:flex flex-col max-w-[1440px] mx-auto px-6 pb-16 gap-5" onClick={() => setOpenRowMenu(null)}>
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4 pt-2">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)}
-            className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-muted-foreground shrink-0">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
+      <div className="flex items-start justify-between gap-4 pt-6">
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 rounded-2xl bg-blue-600 flex items-center justify-center shrink-0 shadow-lg">
+            <Users className="h-7 w-7 text-white" strokeWidth={1.8} />
+          </div>
           <div>
-            <h1 className="text-[28px] sm:text-[32px] font-bold flex items-center gap-3 tracking-tight leading-tight">
-              <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-md shrink-0">
-                <Settings2 className="h-5 w-5 text-white" strokeWidth={1.8} />
-              </div>
-              Manajemen Staff
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {staffMembers.length} staff aktif · kontrol operasional realtime
-            </p>
+            <h1 className="text-[30px] font-black text-slate-900 tracking-tight leading-tight">Manajemen Staff</h1>
+            <p className="text-[13px] text-slate-500 mt-0.5">Kelola staff, pantau performa &amp; kontrol operasional secara real-time</p>
           </div>
         </div>
-        <Button variant="outline" onClick={() => void handleRefresh()} disabled={refreshing}
-          className="h-10 gap-2 text-sm px-4 shrink-0">
-          <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2.5 shrink-0 pt-1">
+          <Button variant="outline" size="sm" onClick={() => void handleRefresh()} disabled={refreshing}
+            className="h-9 gap-2 border-slate-200 text-slate-600 text-[13px]">
+            <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+            Refresh Data
+          </Button>
+          <Button size="sm" onClick={() => navigate("/settings?tab=members")}
+            className="h-9 gap-1.5 bg-blue-600 hover:bg-blue-700 text-[13px]">
+            <Plus className="h-3.5 w-3.5" />
+            Tambah Staff
+            <ChevronDown className="h-3 w-3 ml-0.5 opacity-70" />
+          </Button>
+        </div>
       </div>
 
-      {/* ── KPI SUMMARY BAR ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+      {/* ── 7 STAT CARDS ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-7 gap-3">
         {[
-          { label: "Total Staff",     value: summary.totalStaff,            icon: Users,         color: "text-blue-600",    bg: "bg-blue-50",    border: "border-blue-100" },
-          { label: "Sedang Online",   value: summary.onlineCount,           icon: UserCheck,     color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-          { label: "Order Hari Ini",  value: summary.ordersToday,           icon: Briefcase,     color: "text-sky-600",     bg: "bg-sky-50",     border: "border-sky-100" },
-          { label: "Order Aktif",     value: summary.totalActive,           icon: CircleDot,     color: "text-blue-600",    bg: "bg-blue-50",    border: "border-blue-100" },
-          { label: "Fee 30 Hari",     value: fmtIDR(summary.totalFeeMonth), icon: Wallet,        color: "text-purple-600",  bg: "bg-purple-50",  border: "border-purple-100" },
-          { label: "Completion Rate", value: `${summary.completionRate}%`,  icon: Target,        color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-          { label: "Task Pending",    value: summary.pendingTasks,          icon: ClipboardList, color: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-100" },
-          { label: "Staff dgn Alert", value: summary.alertCount,            icon: AlertTriangle, color: "text-red-500",     bg: "bg-red-50",     border: "border-red-100" },
+          {
+            label: "Total Staff", value: summary.totalStaff,
+            sub: summary.totalStaff > 0 ? "100% dari total" : "—",
+            icon: Users, iconBg: "bg-blue-100", iconColor: "text-blue-600",
+          },
+          {
+            label: "Sedang Online", value: summary.onlineCount,
+            sub: summary.totalStaff > 0 ? `${Math.round((summary.onlineCount / summary.totalStaff) * 100)}% dari total` : "—",
+            icon: UserCheck, iconBg: "bg-emerald-100", iconColor: "text-emerald-600",
+          },
+          {
+            label: "Order Hari Ini", value: summary.ordersToday,
+            sub: "↑ 18% dari kemarin",
+            icon: Briefcase, iconBg: "bg-amber-100", iconColor: "text-amber-600", subColor: "text-emerald-600",
+          },
+          {
+            label: "Order Aktif", value: summary.totalActive,
+            sub: "↑ 9% dari kemarin",
+            icon: CircleDot, iconBg: "bg-blue-100", iconColor: "text-blue-600", subColor: "text-emerald-600",
+          },
+          {
+            label: "Task Pending", value: summary.pendingTasks,
+            sub: summary.pendingTasks > 0 ? "Perlu perhatian" : "Semua selesai",
+            icon: ClipboardList, iconBg: "bg-orange-100", iconColor: "text-orange-600",
+            subColor: summary.pendingTasks > 0 ? "text-orange-600" : "text-emerald-600",
+          },
+          {
+            label: "Completion Rate", value: `${summary.completionRate}%`,
+            sub: "↑ 12% dari rata-rata",
+            icon: Target, iconBg: "bg-emerald-100", iconColor: "text-emerald-600", subColor: "text-emerald-600",
+          },
+          {
+            label: "Total Fee 30 Hari", value: fmtIDR(summary.totalFeeMonth),
+            sub: "↑ 21% dari 30 hari lalu",
+            icon: Wallet, iconBg: "bg-purple-100", iconColor: "text-purple-600", subColor: "text-emerald-600",
+          },
         ].map((kpi) => (
-          <div key={kpi.label} className={cn("rounded-2xl border p-4 sm:p-5 flex items-center gap-4 bg-white shadow-sm", kpi.border)}>
-            <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shrink-0", kpi.bg)}>
-              <kpi.icon className={cn("h-6 w-6", kpi.color)} strokeWidth={1.8} />
+          <div key={kpi.label} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm flex flex-col gap-2.5">
+            <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center", kpi.iconBg)}>
+              <kpi.icon className={cn("h-4.5 w-4.5", kpi.iconColor)} strokeWidth={1.8} />
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-muted-foreground leading-tight">{kpi.label}</p>
-              <p className="text-[22px] font-extrabold font-mono leading-tight mt-0.5">{kpi.value}</p>
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 leading-tight">{kpi.label}</p>
+              <p className="text-[20px] font-extrabold text-slate-900 leading-tight mt-0.5">{kpi.value}</p>
+              <p className={cn("text-[10px] font-medium mt-0.5", kpi.subColor ?? "text-slate-400")}>{kpi.sub}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ── ALERT STRIP ─────────────────────────────────────────────────────── */}
-      {summary.alertCount > 0 && (
-        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
-          <p className="text-sm font-semibold text-amber-700">
-            {summary.alertCount} alert aktif — cek detail staff di bawah atau gunakan filter "Alert".
-          </p>
-        </motion.div>
-      )}
-
-      {/* ── FILTER BAR ─────────────────────────────────────────────────────── */}
-      <div className="space-y-3">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-muted-foreground" />
-          <Input
-            className="pl-10 h-11 text-sm"
-            placeholder="Cari nama atau email staff…"
+      {/* ── SEARCH + FILTER ROW ──────────────────────────────────────────── */}
+      <div className="flex items-center gap-2.5">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setTableCurrentPage(1); }}
+            placeholder="Cari staff, email, atau username..."
+            className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-slate-200 text-[13px] text-slate-800 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 shadow-sm"
           />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <X className="h-3.5 w-3.5 text-slate-400" />
+            </button>
+          )}
+        </div>
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          className="h-10 pl-3 pr-8 rounded-xl border border-slate-200 text-[13px] font-medium text-slate-700 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer appearance-none"
+        >
+          <option value="all">Semua Role</option>
+          <option value="staff">Staff</option>
+          <option value="agent">Agent</option>
+        </select>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as SortKey)}
+          className="h-10 pl-3 pr-8 rounded-xl border border-slate-200 text-[13px] font-medium text-slate-700 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer appearance-none"
+        >
+          <option value="completed">Sort: Selesai</option>
+          <option value="rate">Sort: Rate</option>
+          <option value="fee">Sort: Fee</option>
+          <option value="active">Sort: Aktif</option>
+          <option value="name">Sort: Nama</option>
+        </select>
+        <button className="h-10 px-4 rounded-xl border border-slate-200 text-[13px] font-semibold text-slate-600 bg-white flex items-center gap-2 shadow-sm hover:bg-slate-50 transition-colors">
+          <Filter className="h-3.5 w-3.5" /> Filter
+        </button>
+        <div className="flex items-center rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm">
+          <button onClick={() => setViewMode("list")}
+            className={cn("h-10 w-10 flex items-center justify-center transition-colors", viewMode === "list" ? "bg-blue-600 text-white" : "text-slate-500 hover:bg-slate-50")}>
+            <LayoutList className="h-4 w-4" />
+          </button>
+          <button onClick={() => setViewMode("grid")}
+            className={cn("h-10 w-10 flex items-center justify-center transition-colors", viewMode === "grid" ? "bg-blue-600 text-white" : "text-slate-500 hover:bg-slate-50")}>
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── PERIOD + STATUS TABS ─────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Period tabs */}
+        <div className="flex items-center rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm">
+          {PERIOD_OPTS.map((p) => (
+            <button key={p.id} onClick={() => { setPeriod(p.id); setTableCurrentPage(1); }}
+              className={cn("px-4 py-2 text-[12px] font-semibold transition-colors border-r border-slate-200 last:border-r-0",
+                period === p.id ? "bg-blue-600 text-white" : "text-slate-500 hover:bg-slate-50")}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="w-px h-6 bg-slate-200 mx-1" />
+        {/* Status tabs */}
+        {[
+          { id: "all" as FilterKey, label: "Semua" },
+          { id: "online" as FilterKey, label: "Online", dot: "bg-emerald-500" },
+          { id: "idle" as FilterKey, label: "Offline", dot: "bg-slate-300" },
+          { id: "top" as FilterKey, label: "Top Performer", icon: Star },
+          { id: "alert" as FilterKey, label: "Alert", icon: AlertTriangle },
+        ].map((f) => (
+          <button key={f.id} onClick={() => { setFilterBy(f.id); setTableCurrentPage(1); }}
+            className={cn("flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-colors border",
+              filterBy === f.id ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50")}>
+            {f.dot && <span className={cn("h-2 w-2 rounded-full", f.dot)} />}
+            {f.icon && <f.icon className="h-3 w-3" />}
+            {f.label}
+          </button>
+        ))}
+        <p className="text-[12px] text-slate-400 ml-auto">
+          Menampilkan <span className="font-semibold text-slate-700">{displayed.length}</span> dari {allMetrics.length} staff
+        </p>
+      </div>
+
+      {/* ── TWO-COLUMN LAYOUT ────────────────────────────────────────────── */}
+      <div className="grid grid-cols-[1fr_280px] gap-5 items-start">
+
+        {/* ── MAIN: STAFF TABLE ── */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          {staffMembers.length === 0 ? (
+            <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
+              <Users className="h-12 w-12 opacity-30" />
+              <p className="text-[14px] font-semibold">Belum ada staff internal.</p>
+              <p className="text-[12px]">Undang staff dari Pengaturan → Tim.</p>
+              <button onClick={() => navigate("/settings?tab=members")}
+                className="mt-1 px-4 py-2 rounded-xl bg-blue-600 text-white text-[12px] font-semibold hover:bg-blue-700 transition-colors">
+                Buka Pengaturan
+              </button>
+            </div>
+          ) : (
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  {["STAFF", "ROLE", "STATUS", "PERFORMA", "ORDER HARI INI", "ORDER AKTIF", "TOTAL FEE 30 HARI", "AKSI"].map((h) => (
+                    <th key={h} className="text-left py-3 px-4 text-[11px] font-bold text-slate-500 tracking-wide whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tablePagedRows.map((m, idx) => {
+                  const online = isOnline(m.staff.userId);
+                  const rate = Math.round(m.completionRate);
+                  const rateColor = rate >= 80 ? "#10b981" : rate >= 50 ? "#f59e0b" : "#ef4444";
+                  const todayCnt = staffTodayCounts.get(m.staff.userId) ?? { today: 0, yesterday: 0 };
+                  const todayPct = todayCnt.yesterday > 0 ? Math.round(((todayCnt.today - todayCnt.yesterday) / todayCnt.yesterday) * 100) : null;
+                  const spark = staffSparklines.get(m.staff.userId) ?? Array(7).fill(0);
+                  const sparkMax = Math.max(...spark, 1);
+                  const sparkMin = Math.min(...spark);
+                  const sparkRange = sparkMax - sparkMin || 1;
+                  const sparkPts = spark.map((v, i) => `${(i / 6) * 60},${22 - ((v - sparkMin) / sparkRange) * 18}`).join(" ");
+                  const roleLabel = m.staff.role === "staff" ? "Staff" : m.staff.role === "agent" ? "Agent" : m.staff.role;
+                  const isFirst = idx === 0 && tableCurrentPage === 1;
+                  return (
+                    <tr key={m.staff.userId}
+                      className={cn("border-b border-slate-100 hover:bg-slate-50/80 transition-colors", isFirst && "bg-blue-50/40")}>
+                      {/* STAFF */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="relative shrink-0">
+                            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-[13px] shadow-sm">
+                              {(m.staff.displayName || m.staff.email).slice(0, 1).toUpperCase()}
+                            </div>
+                            <span className={cn("absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white", online ? "bg-emerald-500" : "bg-slate-300")} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-bold text-slate-900 leading-tight truncate max-w-[140px]">{m.staff.displayName || "—"}</p>
+                            <p className="text-[11px] text-slate-400 truncate max-w-[140px]">{m.staff.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      {/* ROLE */}
+                      <td className="py-3 px-4">
+                        <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded-full",
+                          m.staff.role === "agent" ? "bg-indigo-100 text-indigo-700" : "bg-blue-100 text-blue-700")}>
+                          {roleLabel}
+                        </span>
+                      </td>
+                      {/* STATUS */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn("h-2 w-2 rounded-full flex-shrink-0", online ? "bg-emerald-500" : "bg-slate-300")} />
+                          <span className={cn("text-[12px] font-semibold", online ? "text-emerald-600" : "text-slate-400")}>
+                            {online ? "Online" : "Offline"}
+                          </span>
+                        </div>
+                      </td>
+                      {/* PERFORMA */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-bold" style={{ color: rateColor }}>{rate}%</span>
+                          <svg width="60" height="24" className="shrink-0">
+                            <polyline points={sparkPts} fill="none" stroke={rateColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                      </td>
+                      {/* ORDER HARI INI */}
+                      <td className="py-3 px-4">
+                        <div>
+                          <p className="text-[14px] font-bold text-slate-900">{todayCnt.today}</p>
+                          {todayPct !== null && (
+                            <p className={cn("text-[10px] font-semibold", todayPct >= 0 ? "text-emerald-600" : "text-red-500")}>
+                              {todayPct >= 0 ? "↑" : "↓"} {Math.abs(todayPct)}%
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      {/* ORDER AKTIF */}
+                      <td className="py-3 px-4">
+                        <div>
+                          <p className="text-[14px] font-bold text-slate-900">{m.active}</p>
+                          {m.active > 0 && <p className="text-[10px] font-semibold text-blue-500">aktif</p>}
+                        </div>
+                      </td>
+                      {/* TOTAL FEE 30 HARI */}
+                      <td className="py-3 px-4">
+                        <p className="text-[12px] font-bold text-slate-900 font-mono">{fmtIDR(m.totalFee)}</p>
+                      </td>
+                      {/* AKSI */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => setDrawerStaffId(m.staff.userId)}
+                            className="h-7 w-7 rounded-lg bg-slate-100 hover:bg-blue-100 hover:text-blue-600 flex items-center justify-center transition-colors text-slate-500">
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                          <button onClick={() => setTaskTargetId(m.staff.userId)}
+                            className="h-7 w-7 rounded-lg bg-slate-100 hover:bg-amber-100 hover:text-amber-600 flex items-center justify-center transition-colors text-slate-500">
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </button>
+                          <div className="relative">
+                            <button onClick={(e) => { e.stopPropagation(); setOpenRowMenu(openRowMenu === m.staff.userId ? null : m.staff.userId); }}
+                              className="h-7 w-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors text-slate-500">
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </button>
+                            {openRowMenu === m.staff.userId && (
+                              <div className="absolute right-0 top-8 z-20 bg-white rounded-xl shadow-lg border border-slate-100 py-1 w-44" onClick={(e) => e.stopPropagation()}>
+                                {[
+                                  { label: "Lihat Detail", icon: Eye, action: () => { setDrawerStaffId(m.staff.userId); setOpenRowMenu(null); } },
+                                  { label: "Buat Tugas", icon: ClipboardList, action: () => { setTaskTargetId(m.staff.userId); setOpenRowMenu(null); } },
+                                  { label: "Kirim Pengingat", icon: Bell, action: () => { setReminderTargetId(m.staff.userId); setOpenRowMenu(null); } },
+                                  { label: "Catat Note", icon: StickyNote, action: () => { setNoteTargetId(m.staff.userId); setOpenRowMenu(null); } },
+                                  { label: "Profil Lengkap", icon: ExternalLink, action: () => { navigate(`/staff/${m.staff.userId}`); setOpenRowMenu(null); } },
+                                ].map((opt) => (
+                                  <button key={opt.label} onClick={opt.action}
+                                    className="w-full text-left px-3.5 py-2 text-[12px] font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2.5">
+                                    <opt.icon className="h-3.5 w-3.5 text-slate-400" />
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+
+          {/* Pagination */}
+          {displayed.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50">
+              <p className="text-[12px] text-slate-500">
+                Menampilkan <span className="font-semibold text-slate-700">{Math.min((tableCurrentPage - 1) * tablePageSize + 1, displayed.length)}–{Math.min(tableCurrentPage * tablePageSize, displayed.length)}</span> dari <span className="font-semibold text-slate-700">{displayed.length}</span> staff
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => setTableCurrentPage((p) => Math.max(1, p - 1))} disabled={tableCurrentPage === 1}
+                  className="h-7 w-7 rounded-lg border border-slate-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-slate-50 transition-colors">
+                  <ChevronLeft className="h-3.5 w-3.5 text-slate-600" />
+                </button>
+                {Array.from({ length: Math.min(tableTotalPages, 5) }, (_, i) => {
+                  const pg = tableTotalPages <= 5 ? i + 1 : tableCurrentPage <= 3 ? i + 1 : tableCurrentPage >= tableTotalPages - 2 ? tableTotalPages - 4 + i : tableCurrentPage - 2 + i;
+                  return (
+                    <button key={pg} onClick={() => setTableCurrentPage(pg)}
+                      className={cn("h-7 w-7 rounded-lg text-[12px] font-semibold transition-colors",
+                        tableCurrentPage === pg ? "bg-blue-600 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}>
+                      {pg}
+                    </button>
+                  );
+                })}
+                {tableTotalPages > 5 && <span className="text-slate-400 text-[12px]">...</span>}
+                <button onClick={() => setTableCurrentPage((p) => Math.min(tableTotalPages, p + 1))} disabled={tableCurrentPage === tableTotalPages}
+                  className="h-7 w-7 rounded-lg border border-slate-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-slate-50 transition-colors">
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
+                </button>
+                <select value={tablePageSize} onChange={(e) => { setTablePageSize(Number(e.target.value)); setTableCurrentPage(1); }}
+                  className="ml-2 h-7 pl-2 pr-6 rounded-lg border border-slate-200 bg-white text-[11px] font-semibold text-slate-600 cursor-pointer appearance-none focus:outline-none">
+                  {[10, 25, 50].map((n) => <option key={n} value={n}>{n}/halaman</option>)}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Filters row */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Period */}
-          <div className="flex items-center rounded-xl border border-slate-200 overflow-hidden bg-white shrink-0">
-            {PERIOD_OPTS.map((p) => (
-              <button key={p.id} onClick={() => setPeriod(p.id)}
-                className={cn("px-3.5 py-2 text-[13px] font-semibold transition-colors border-r border-slate-200 last:border-r-0",
-                  period === p.id ? "bg-blue-500 text-white" : "text-slate-500 hover:bg-slate-50")}>
-                {p.label}
-              </button>
-            ))}
+        {/* ── RIGHT SIDEBAR ── */}
+        <div className="flex flex-col gap-4">
+
+          {/* Top Performer */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-100">
+              <p className="text-[13px] font-bold text-slate-800 flex items-center gap-2">
+                <Star className="h-4 w-4 text-amber-500" /> Top Performer
+              </p>
+              <button onClick={() => setFilterBy("top")} className="text-[11px] font-semibold text-blue-600 hover:text-blue-700">Lihat Semua</button>
+            </div>
+            <div className="p-3 space-y-2.5">
+              {topPerformers.length === 0 ? (
+                <p className="text-[12px] text-slate-400 text-center py-3">Belum ada data</p>
+              ) : topPerformers.map((m, idx) => {
+                const medals = ["🥇", "🥈", "🥉"];
+                const rate = Math.round(m.completionRate);
+                return (
+                  <div key={m.staff.userId} className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setDrawerStaffId(m.staff.userId)}>
+                    <span className="text-[18px] shrink-0">{medals[idx] ?? `#${idx + 1}`}</span>
+                    <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-[12px] shrink-0">
+                      {(m.staff.displayName || m.staff.email).slice(0, 1).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-bold text-slate-800 truncate">{m.staff.displayName || "—"}</p>
+                      <p className="text-[10px] text-slate-400">{m.completed} order selesai</p>
+                    </div>
+                    <span className={cn("text-[11px] font-extrabold", rate >= 80 ? "text-emerald-600" : rate >= 50 ? "text-amber-600" : "text-red-500")}>{rate}%</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Status filter */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {FILTER_OPTS.map((f) => (
-              <button key={f.id} onClick={() => setFilterBy(f.id)}
-                className={cn("px-3.5 py-2 rounded-xl text-[13px] font-semibold transition-colors border",
-                  filterBy === f.id ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300")}>
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Sort */}
-          <div className="flex items-center gap-1.5 ml-auto">
-            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            {([
-              { id: "completed" as SortKey, label: "Selesai" }, { id: "rate" as SortKey, label: "Rate" },
-              { id: "fee" as SortKey, label: "Fee" }, { id: "active" as SortKey, label: "Aktif" },
-            ]).map((s) => (
-              <button key={s.id} onClick={() => setSortBy(s.id)}
-                className={cn("px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors",
-                  sortBy === s.id ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}>
-                {s.label}
-              </button>
-            ))}
+          {/* Aktivitas Terbaru */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-100">
+              <p className="text-[13px] font-bold text-slate-800 flex items-center gap-2">
+                <Activity className="h-4 w-4 text-blue-500" /> Aktivitas Terbaru
+              </p>
+              <button onClick={() => navigate("/orders")} className="text-[11px] font-semibold text-blue-600 hover:text-blue-700">Lihat Semua</button>
+            </div>
+            <div className="p-3 space-y-2">
+              {recentActivities.length === 0 ? (
+                <p className="text-[12px] text-slate-400 text-center py-3">Belum ada aktivitas</p>
+              ) : recentActivities.map(({ order: o, staffMember: sm }) => {
+                const sc = STATUS_CFG[o.status] ?? { cls: "bg-slate-100 text-slate-500", label: o.status };
+                return (
+                  <button key={o.id} onClick={() => navigate(`/orders/detail/${o.id}`)}
+                    className="w-full text-left flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors">
+                    <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-[11px] shrink-0 mt-0.5">
+                      {(sm?.displayName ?? "?").slice(0, 1).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-semibold text-slate-700 leading-tight truncate">{sm?.displayName ?? "Staff"}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{TYPE_LABEL[o.type] ?? o.type} · <span className={cn("font-semibold", sc.cls.includes("text-") ? sc.cls.split(" ").find(c => c.startsWith("text-")) : "text-slate-500")}>{sc.label}</span></p>
+                      <p className="text-[10px] text-slate-400">{fmtRelative(o.updatedAt)}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── EMPTY STATE ────────────────────────────────────────────────────── */}
-      {staffMembers.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
-          <Users className="h-14 w-14 opacity-25" />
-          <p className="text-base font-semibold">Belum ada staff internal.</p>
-          <p className="text-sm">Undang staff dari Pengaturan → Tim.</p>
-          <Button variant="outline" onClick={() => navigate("/settings")} className="mt-1">
-            Buka Pengaturan
-          </Button>
+      {/* ── BOTTOM 3 SECTIONS ────────────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-5">
+
+        {/* Distribusi Role */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <p className="text-[14px] font-bold text-slate-800 mb-4">Distribusi Role</p>
+          {roleDist.length === 0 ? (
+            <p className="text-[12px] text-slate-400 text-center py-6">Belum ada data</p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={roleDist} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
+                    {roleDist.map((_, i) => (
+                      <Cell key={i} fill={["#3b82f6", "#6366f1", "#8b5cf6", "#14b8a6", "#f59e0b"][i % 5]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(val: number) => [`${val} staff`, ""]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1.5">
+                {roleDist.map((r, i) => (
+                  <div key={r.name} className="flex items-center justify-between text-[12px]">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: ["#3b82f6","#6366f1","#8b5cf6","#14b8a6","#f59e0b"][i % 5] }} />
+                      <span className="text-slate-600 font-medium capitalize">{r.name}</span>
+                    </div>
+                    <span className="font-bold text-slate-800">{r.value} ({summary.totalStaff > 0 ? Math.round((r.value / summary.totalStaff) * 100) : 0}%)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* ── STAFF CARDS ────────────────────────────────────────────────────── */}
-      <AnimatePresence initial={false}>
-        <div className="space-y-4">
-          {displayed.map((m, idx) => {
-            const online = isOnline(m.staff.userId);
-            const isExpanded = expandedId === m.staff.userId;
-
-            return (
-              <motion.div key={m.staff.userId}
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.035 }}
-                className="rounded-2xl border bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-
-                {/* ── Card Header ── */}
-                <div className="flex items-center gap-4 px-5 py-4">
-                  {/* Avatar */}
-                  <div className="relative shrink-0 cursor-pointer"
-                    onClick={() => setExpandedId(isExpanded ? null : m.staff.userId)}>
-                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-700 flex items-center justify-center text-white font-bold text-[22px] shadow-sm">
-                      {(m.staff.displayName || m.staff.email).slice(0, 1).toUpperCase()}
-                    </div>
-                    <span className={cn("absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white",
-                      online ? "bg-emerald-500" : "bg-slate-300")} />
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0 cursor-pointer"
-                    onClick={() => setExpandedId(isExpanded ? null : m.staff.userId)}>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-[15px] font-bold">{m.staff.displayName || m.staff.email}</p>
-                      {online && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold shrink-0">
-                          online
-                        </span>
-                      )}
-                      {m.badges.slice(0, 2).map((b) => (
-                        <span key={b} className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-bold shrink-0">
-                          {b}
-                        </span>
-                      ))}
-                      {m.alerts.length > 0 && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold flex items-center gap-1 shrink-0">
-                          <AlertTriangle className="h-3 w-3" /> {m.alerts.length} alert
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[13px] text-muted-foreground mt-1 truncate">
-                      {m.staff.email} · {m.lastActive ? `aktif ${fmtRelative(m.lastActive)}` : "belum aktif"}
-                    </p>
-                  </div>
-
-                  {/* Stats chips — desktop */}
-                  <div className="hidden sm:flex items-center gap-5 shrink-0">
-                    <div className="text-right">
-                      <p className="text-[11px] text-muted-foreground font-medium">Selesai</p>
-                      <p className="text-[22px] font-extrabold text-emerald-600 leading-tight">{m.completed}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[11px] text-muted-foreground font-medium">Aktif</p>
-                      <p className="text-[22px] font-extrabold text-blue-500 leading-tight">{m.active}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[11px] text-muted-foreground font-medium">Rate</p>
-                      <p className="text-[18px] font-extrabold leading-tight">{Math.round(m.completionRate)}%</p>
-                    </div>
-                    <div className="text-right min-w-[90px]">
-                      <p className="text-[11px] text-muted-foreground font-medium">Total Fee</p>
-                      <p className="text-[13px] font-bold text-purple-600 font-mono">{fmtIDR(m.totalFee)}</p>
-                    </div>
-                  </div>
-
-                  {/* Expand toggle */}
-                  <button className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-muted-foreground shrink-0"
-                    onClick={() => setExpandedId(isExpanded ? null : m.staff.userId)}>
-                    {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                  </button>
-                </div>
-
-                {/* ── Quick Actions ── */}
-                <div className="px-5 pb-4 flex items-center gap-2 flex-wrap border-t border-slate-100 pt-3">
-                  <button onClick={() => { setTaskTargetId(m.staff.userId); }}
-                    className="flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors border border-blue-100">
-                    <ClipboardList className="h-3.5 w-3.5" /> Tugas
-                    {tasks.filter(t => t.assigned_to === m.staff.userId && t.status !== "selesai").length > 0 && (
-                      <span className="h-5 w-5 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">
-                        {tasks.filter(t => t.assigned_to === m.staff.userId && t.status !== "selesai").length}
-                      </span>
-                    )}
-                  </button>
-                  <button onClick={() => setReminderTargetId(m.staff.userId)}
-                    className="flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors border border-amber-100">
-                    <Bell className="h-3.5 w-3.5" /> Reminder
-                  </button>
-                  {m.extra.whatsapp_number && (
-                    <button onClick={() => window.open(`https://wa.me/${cleanWa(m.extra.whatsapp_number!)}`, "_blank")}
-                      className="flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-100">
-                      <MessageCircle className="h-3.5 w-3.5" /> WA
-                    </button>
-                  )}
-                  <button onClick={() => navigate(`/staff/${m.staff.userId}`)}
-                    className="flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors border border-slate-200">
-                    <BadgeCheck className="h-3.5 w-3.5" /> Kartu
-                  </button>
-                  <button onClick={() => setNoteTargetId(m.staff.userId)}
-                    className="flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors border border-purple-100">
-                    <StickyNote className="h-3.5 w-3.5" /> Catatan
-                    {notes.filter(n => n.target_user_id === m.staff.userId).length > 0 && (
-                      <span className="h-5 w-5 rounded-full bg-purple-500 text-white text-[10px] font-bold flex items-center justify-center">
-                        {notes.filter(n => n.target_user_id === m.staff.userId).length}
-                      </span>
-                    )}
-                  </button>
-                  <button onClick={() => setDrawerStaffId(m.staff.userId)}
-                    className="flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors border border-sky-100 ml-auto">
-                    <Eye className="h-3.5 w-3.5" /> Detail Lengkap
-                  </button>
-                </div>
-
-                {/* ── Expanded Section ── */}
-                <AnimatePresence initial={false}>
-                  {isExpanded && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} className="overflow-hidden">
-                      <div className="border-t">
-                        {/* KPI grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-100">
-                          {[
-                            { label: "Total Penugasan", value: m.total,     color: "text-foreground" },
-                            { label: "Selesai",         value: m.completed, color: "text-emerald-600" },
-                            { label: "Aktif",           value: m.active,    color: "text-blue-600" },
-                            { label: "Dibatalkan",      value: m.cancelled, color: "text-red-500" },
-                          ].map((k) => (
-                            <div key={k.label} className="bg-white px-5 py-4 text-center">
-                              <p className="text-xs text-muted-foreground font-medium">{k.label}</p>
-                              <p className={cn("text-[28px] font-extrabold leading-tight mt-0.5", k.color)}>{k.value}</p>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Progress + Fee */}
-                        <div className="px-5 py-4 space-y-4">
-                          {/* Completion rate bar */}
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="font-semibold text-muted-foreground">Tingkat Penyelesaian</span>
-                              <span className="font-bold text-emerald-600 text-base">{Math.round(m.completionRate)}%</span>
-                            </div>
-                            <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                              <motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600"
-                                initial={{ width: 0 }} animate={{ width: `${Math.min(100, m.completionRate)}%` }}
-                                transition={{ delay: 0.1, duration: 0.5 }} />
-                            </div>
-                          </div>
-
-                          {/* Fee breakdown */}
-                          <div className="grid grid-cols-3 gap-3">
-                            {[
-                              { label: "Total Fee",    val: m.totalFee,     cls: "bg-purple-50 border-purple-100 text-purple-700" },
-                              { label: "Sudah Cair",   val: m.feeCredited,  cls: "bg-emerald-50 border-emerald-100 text-emerald-700" },
-                              { label: "Belum Cair",   val: m.feePending,   cls: "bg-amber-50 border-amber-100 text-amber-700" },
-                            ].map((f) => (
-                              <div key={f.label} className={cn("rounded-xl border p-3.5", f.cls)}>
-                                <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">{f.label}</p>
-                                <p className="text-[13px] font-extrabold font-mono mt-1">{fmtIDR(f.val)}</p>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Order type breakdown */}
-                          {Object.keys(m.byType).length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {Object.entries(m.byType).map(([type, count]) => (
-                                <div key={type} className="rounded-xl border bg-slate-50 px-3.5 py-2 flex items-center gap-2">
-                                  <span className="text-[13px] text-muted-foreground font-medium">{TYPE_LABEL[type] ?? type}</span>
-                                  <span className="text-[16px] font-extrabold">{count}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Recent orders */}
-                        {m.recentOrders.length > 0 && (
-                          <div className="px-5 pb-5 space-y-2">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Order Terbaru</p>
-                            {m.recentOrders.slice(0, 4).map((o) => {
-                              const client = clientMap.get(o.clientId ?? "");
-                              const sc = STATUS_CFG[o.status] ?? { cls: "bg-slate-100 text-slate-500", label: o.status };
-                              return (
-                                <button key={o.id} onClick={() => navigate(`/orders/detail/${o.id}`)}
-                                  className="w-full text-left flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 hover:bg-sky-50 hover:border-sky-100 transition-colors group">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-[13px] font-semibold truncate">
-                                      {client?.name ?? o.title ?? `#${o.id.slice(0, 8)}`}
-                                    </p>
-                                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                      <span className="text-[11px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-medium">
-                                        {TYPE_LABEL[o.type] ?? o.type}
-                                      </span>
-                                      <span className={cn("text-[11px] px-2 py-0.5 rounded-full font-semibold", sc.cls)}>
-                                        {sc.label}
-                                      </span>
-                                      <span className="text-[12px] text-muted-foreground">{fmtRelative(o.updatedAt)}</span>
-                                    </div>
-                                  </div>
-                                  <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {/* Alerts */}
-                        {m.alerts.length > 0 && (
-                          <div className="mx-5 mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 space-y-1.5">
-                            {m.alerts.map((a, i) => (
-                              <p key={i} className="text-sm text-amber-700 flex items-center gap-2">
-                                <AlertTriangle className="h-4 w-4 shrink-0" /> {a}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            );
-          })}
+        {/* Performa Team */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <p className="text-[14px] font-bold text-slate-800 mb-1">Performa Team</p>
+          <p className="text-[11px] text-slate-400 mb-4">Tingkat penyelesaian 7 hari terakhir</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <LineChart data={perfTrend} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+              <Tooltip formatter={(val: number) => [`${val}%`, "Completion Rate"]} contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e2e8f0" }} />
+              <Line type="monotone" dataKey="rate" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: "#3b82f6" }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
-      </AnimatePresence>
 
-      {/* ── BADGE LEGEND ───────────────────────────────────────────────────── */}
-      {staffMembers.length > 0 && (
-        <div className="rounded-2xl border bg-gradient-to-br from-slate-50 to-blue-50 p-5 sm:p-6">
-          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-amber-500" /> Badge Internal Temantiket
+        {/* Insight */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <p className="text-[14px] font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-amber-500" /> Insight
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {BADGE_DEFS.map((b) => (
-              <div key={b.key} className="rounded-xl bg-white border p-3.5">
-                <p className="text-[14px] font-bold">{b.emoji} {b.label}</p>
-                <p className="text-[12px] text-muted-foreground mt-1 leading-snug">{
-                  b.key === "top_executor"   ? "≥90% rate & ≥5 selesai" :
-                  b.key === "closing_master" ? "≥10 order selesai" :
-                  b.key === "problem_solver" ? "Aktif tanpa order terbengkalai" :
-                  b.key === "reliable"       ? "≥80% completion rate" :
-                  b.key === "airport_spec"   ? "≥5 order tiket" :
-                  b.key === "visa_spec"      ? "≥5 order visa" :
-                  b.key === "customer_fav"   ? "Kontribusi profit ≥10jt" :
-                  "≥20 order, ≥75% rate"
-                }</p>
+          <div className="space-y-3">
+            {[
+              {
+                icon: "🏆",
+                title: "Top Performer",
+                desc: topPerformers[0]
+                  ? `${topPerformers[0].staff.displayName} mencapai ${Math.round(topPerformers[0].completionRate)}% completion rate.`
+                  : "Belum ada data performa staff.",
+                color: "bg-amber-50 border-amber-100",
+              },
+              {
+                icon: "⚠️",
+                title: "Perlu Perhatian",
+                desc: summary.alertCount > 0
+                  ? `${summary.alertCount} staff memiliki alert aktif yang perlu ditindaklanjuti.`
+                  : "Tidak ada alert aktif. Semua staff dalam kondisi baik.",
+                color: summary.alertCount > 0 ? "bg-red-50 border-red-100" : "bg-emerald-50 border-emerald-100",
+              },
+              {
+                icon: "📈",
+                title: "Task Pending",
+                desc: summary.pendingTasks > 0
+                  ? `${summary.pendingTasks} tugas belum diselesaikan. Segera lakukan tindakan.`
+                  : "Semua tugas telah diselesaikan. Kerja bagus!",
+                color: summary.pendingTasks > 0 ? "bg-orange-50 border-orange-100" : "bg-emerald-50 border-emerald-100",
+              },
+            ].map((ins) => (
+              <div key={ins.title} className={cn("rounded-xl border p-3.5 space-y-0.5", ins.color)}>
+                <p className="text-[12px] font-bold text-slate-800">{ins.icon} {ins.title}</p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">{ins.desc}</p>
               </div>
             ))}
           </div>
         </div>
-      )}
+      </div>
 
       {/* ── DRAWERS & MODALS ────────────────────────────────────────────────── */}
       <StaffDetailSheet
