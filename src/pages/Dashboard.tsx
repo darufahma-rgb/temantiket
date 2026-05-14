@@ -748,12 +748,13 @@ export default function Dashboard() {
   useEffect(() => { if (!ordersLoaded) void fetchOrders(); }, [ordersLoaded, fetchOrders]);
   useEffect(() => { if (!clientsLoaded) void fetchClients(); }, [clientsLoaded, fetchClients]);
   useEffect(() => {
+    if (!user?.agencyId) return;
     let alive = true;
     countAllAgencyJamaah()
       .then((n) => { if (alive) setTotalJamaah(n); })
       .catch(() => { if (alive) setTotalJamaah(0); });
     return () => { alive = false; };
-  }, [trips.length]);
+  }, [trips.length, user?.agencyId]);
 
   const handleRefresh = async () => {
     if (refreshing) return;

@@ -89,7 +89,15 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
   const syncInfo   = SYNC_DOT[syncStatus];
   const syncTitle  = `${syncInfo.label}${lastSync ? ` · ${formatLastSync(lastSync)}` : ""}${lastError ? ` · ${lastError}` : ""}`;
 
-  const displayName = currentUser?.displayName ?? "Temantiket";
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white/60 text-sm">
+        Memuat sesi…
+      </div>
+    );
+  }
+
+  const displayName = currentUser.displayName ?? "Temantiket";
 
   const isAgent = currentUser?.role === "agent";
   const isStaff = currentUser?.role === "staff";

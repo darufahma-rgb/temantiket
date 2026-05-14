@@ -109,10 +109,16 @@ function StoreBootstrap() {
   }, [refreshRates, refreshPackages, fetchTrips, fetchClients, fetchOrders, refreshTicketPrices, isAuthenticated, user?.id, pullRates]);
 
   useEffect(() => {
-    if (!isAuthenticated || !user?.agencyId) return;
-    const unsubscribe = startManagedRealtime(user.agencyId);
+    const agencyId = user?.agencyId;
+    if (!isAuthenticated || !agencyId) {
+      if (isAuthenticated && user && !agencyId) {
+        console.warn("[StoreBootstrap] user authenticated but agencyId missing — skip realtime init");
+      }
+      return;
+    }
+    const unsubscribe = startManagedRealtime(agencyId);
     return unsubscribe;
-  }, [isAuthenticated, user?.agencyId]);
+  }, [isAuthenticated, user?.agencyId, user]);
 
   useEffect(() => {
     let prevStatus = "offline";
@@ -177,7 +183,9 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isInitialized   = useAuthStore((s) => s.isInitialized);
   const needsBootstrap  = useAuthStore((s) => s.needsBootstrap);
+  const user            = useAuthStore((s) => s.user);
   const location = useLocation();
+
   if (!isInitialized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white/60 text-sm">
@@ -188,7 +196,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
-  if (needsBootstrap) {
+  if (needsBootstrap || (isAuthenticated && !user?.agencyId)) {
     return <Navigate to="/bootstrap" replace />;
   }
   return <>{children}</>;
