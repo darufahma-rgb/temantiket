@@ -507,7 +507,16 @@ async function compressForAI(dataUrl: string, maxEdge = 1280): Promise<string> {
 async function callOpenAIDirect(dataUrl: string): Promise<PassportData> {
   // Import lazily to avoid circular deps — authStore is a Zustand store, safe to import here.
   const { getAccessToken } = await import("@/store/authStore");
-  const token = getAccessToken();
+  const { supabase } = await import("@/lib/supabase");
+
+  let token = getAccessToken();
+  if (!token && supabase) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      token = data.session?.access_token ?? null;
+    } catch { /* ignore */ }
+  }
+
   const res = await fetch("/api/ocr-passport", {
     method: "POST",
     credentials: "include",

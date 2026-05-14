@@ -1,11 +1,25 @@
 import { getAccessToken } from "@/store/authStore";
+import { supabase } from "@/lib/supabase";
 
 /**
  * Returns base headers for /api/ai/chat and other AI routes.
  * Includes Supabase Bearer JWT so routes that require isAuthenticatedOrBearer pass.
+ *
+ * Strategy:
+ * 1. Fast path — synchronous localStorage read via getAccessToken()
+ * 2. Reliable fallback — supabase.auth.getSession() if the fast path returns null
+ *    (handles cases where the SDK stores the session under a different key format)
  */
 export async function getAIHeaders(): Promise<Record<string, string>> {
-  const token = getAccessToken();
+  let token = getAccessToken();
+
+  if (!token && supabase) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      token = data.session?.access_token ?? null;
+    } catch { /* ignore — will proceed without auth header */ }
+  }
+
   return {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
