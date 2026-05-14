@@ -1,11 +1,9 @@
 'use strict';
 
 /**
- * REST data routes — replaces all Supabase client calls with
- * server-side PostgreSQL queries backed by Replit PostgreSQL.
- *
+ * REST data routes — all backed by server-side PostgreSQL queries.
  * All routes are scoped to the authenticated user's agency.
- * Auth: accepts either Replit OIDC session OR Supabase Bearer JWT.
+ * Auth: Supabase Bearer JWT (Authorization: Bearer <token>).
  */
 
 const { pool } = require('../db.cjs');
@@ -31,10 +29,9 @@ function decodeJwtPayload(token) {
 }
 
 /**
- * Resolve the caller's user ID from:
- *   1. Replit OIDC session  (req.user.id)
- *   2. Supabase Bearer JWT  (Authorization: Bearer <token>)
- * Returns null if neither is present.
+ * Resolve the caller's user ID from the Supabase Bearer JWT.
+ * Falls back to req.user.id if already populated by upstream middleware.
+ * Returns null if no valid auth is present.
  */
 function resolveUserId(req) {
   if (req.user?.id) return req.user.id;
@@ -53,7 +50,7 @@ async function getCallerAgency(req) {
   const userId = resolveUserId(req);
   if (!userId) return null;
 
-  // 1. Try Replit PostgreSQL first (fast, local)
+  // 1. Query local PostgreSQL (primary)
   try {
     const { rows } = await pool.query(
       `SELECT am.agency_id, am.role, am.commission_pct
@@ -61,7 +58,7 @@ async function getCallerAgency(req) {
       [userId],
     );
     if (rows[0]) return rows[0];
-  } catch (_) { /* fall through to Supabase */ }
+  } catch (_) { /* fall through to Supabase REST fallback */ }
 
   // 2. Fallback: query Supabase REST API using the user's own Bearer JWT (RLS applies)
   const authHeader = req.headers['authorization'] ?? '';
@@ -90,11 +87,10 @@ async function getCallerAgency(req) {
   return null;
 }
 
-/** Middleware: require authenticated (session or Bearer) + agency membership. */
+/** Middleware: require Supabase Bearer JWT + agency membership. */
 async function requireMember(req, res, next) {
-  const isSession = req.isAuthenticated && req.isAuthenticated();
   const hasBearer = (req.headers['authorization'] ?? '').startsWith('Bearer ');
-  if (!isSession && !hasBearer) {
+  if (!hasBearer) {
     return fail(res, 401, 'Unauthorized');
   }
   const agency = await getCallerAgency(req).catch(() => null);

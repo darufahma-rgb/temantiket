@@ -7,15 +7,10 @@ const fs = require('fs');
 
 const PORT = process.env.PORT || 3001;
 
-// Legacy Supabase constants — kept only for graceful no-ops in older routes
-// that haven't been fully migrated yet. New routes use pg directly.
-const SUPABASE_URL = '';
-const SERVICE_ROLE_KEY = '';
-
-// Replit Auth + data routes
-const { setupAuth, isAuthenticated, isAuthenticatedOrBearer, registerAuthRoutes } = require('./replitAuth.cjs');
-const { registerDataRoutes, requireMember, getCallerAgency } = require('./routes/data.cjs');
-const { pool, query: dbQuery } = require('./db.cjs');
+// Supabase Bearer JWT auth + data routes
+const { isAuthenticatedOrBearer, registerAuthRoutes } = require('./replitAuth.cjs');
+const { registerDataRoutes } = require('./routes/data.cjs');
+const { pool } = require('./db.cjs');
 
 // ── OpenRouter — Caption Generator & OCR ────────────────────────────────────
 // Digunakan untuk: Caption Generator (marketing), OCR Paspor, teks ringan.
@@ -140,17 +135,7 @@ function err(res, status, message) {
   return res.status(status).json({ error: message });
 }
 
-// ── DB helpers replacing legacy Supabase admin client ────────────────────────
-
-/** Get caller's agency row from session (for authenticated routes). */
-async function getCallerAgencyFromSession(req) {
-  if (!req.user?.id) return null;
-  const { rows } = await pool.query(
-    'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
-    [req.user.id],
-  );
-  return rows[0] ?? null;
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Get caller user from Supabase Bearer JWT header. */
 async function getCallerUser(authHeader) {
@@ -172,13 +157,10 @@ function withTimeout(promise, ms, message) {
   ]);
 }
 
-/** @deprecated — Supabase removed. Kept as a no-op to avoid reference errors. */
-function classifySupabaseError() { return null; }
-
 /* ──────────────────────────────────────────────
    POST /api/bootstrap
-   One-time setup: authenticated Replit user creates their agency.
-   With Replit Auth, users are already created via OIDC — no password needed.
+   One-time setup: authenticated user creates their agency.
+   User identity comes from the Supabase Bearer JWT.
 ────────────────────────────────────────────── */
 app.post('/api/bootstrap', isAuthenticatedOrBearer, async (req, res) => {
   try {
@@ -349,7 +331,7 @@ app.post('/api/invite-member', isAuthenticatedOrBearer, async (req, res) => {
 
 /* ──────────────────────────────────────────────
    POST /api/remove-member
-   Owner removes staff/agent dari agency (membership only — Replit account unchanged)
+   Owner removes staff/agent dari agency (membership only — Supabase account unchanged)
 ────────────────────────────────────────────── */
 app.post('/api/remove-member', isAuthenticatedOrBearer, async (req, res) => {
   try {
