@@ -1978,6 +1978,52 @@ button, [role="button"], a, input, select, textarea {
   }
 }
 
+/* ── Mobile-native UX polish ────────────────────────────────────────────────
+   Tambahan global untuk pengalaman mobile yang lebih mulus dan konsisten.    */
+@media (max-width: 767px) {
+  /* Prevent horizontal overflow from -mx-4 full-bleed sections */
+  .layout-safe-inset {
+    overflow-x: hidden;
+  }
+
+  /* Remove default blue highlight on tap for all interactive elements */
+  button, a, [role="button"], [role="tab"], [role="option"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Better press feedback for card buttons that don't have active: classes */
+  button:active, [role="button"]:active {
+    opacity: 0.75;
+  }
+
+  /* Native-feel horizontal scroll containers (category tabs, etc.) */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Prevent page-level bounce/overscroll on native mobile sections */
+  .mobile-page-shell {
+    overscroll-behavior-y: none;
+  }
+
+  /* Full-width section separator (used between mobile card groups) */
+  .mobile-section-gap {
+    height: 8px;
+    background: hsl(var(--secondary));
+  }
+
+  /* Animated skeleton on secondary bg */
+  .animate-pulse {
+    animation-duration: 1.4s;
+  }
+}
+
 /* Prefer reduced motion — kill all animations globally */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

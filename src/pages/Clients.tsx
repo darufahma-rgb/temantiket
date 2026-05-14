@@ -365,7 +365,7 @@ function ClientDetailInner({ id }: { id: string }) {
               const isAdvancing = advancingOrderId === o.id;
               const canAdvance = !isComplete && (isOwner || userRole === "agent");
               return (
-                <div key={o.id} className={`rounded-2xl border bg-white overflow-hidden ${isComplete ? "border-emerald-100" : "border-border"}`}>
+                <div key={o.id} className={`rounded-2xl border bg-card overflow-hidden ${isComplete ? "border-emerald-100" : "border-border"}`}>
                   {/* Header row */}
                   <Link
                     to={`/orders/detail/${o.id}`}
@@ -454,7 +454,7 @@ function ClientDetailInner({ id }: { id: string }) {
 
 function InfoRow({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border bg-white p-3">
+    <div className="rounded-xl border border-border bg-card p-3">
       <div className="text-[10.5px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">{icon}{label}</div>
       <div className="text-sm font-medium mt-0.5 truncate">{value}</div>
     </div>
@@ -791,7 +791,7 @@ function Field({ label, required, icon, children }: {
 // ── Skeleton card ───────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl border border-border bg-white overflow-hidden animate-pulse">
+    <div className="rounded-2xl border border-border bg-card overflow-hidden animate-pulse">
       <div className="flex items-center gap-3 px-4 py-3.5">
         <div className="w-10 h-10 rounded-full bg-slate-200 shrink-0" />
         <div className="flex-1 min-w-0 space-y-2">
@@ -894,7 +894,7 @@ function ClientCard({
       exit={{ opacity: 0, scale: 0.97 }}
       whileHover={{ y: -2, boxShadow: "0 8px 22px -6px rgba(0,0,0,0.10)" }}
       whileTap={{ scale: 0.985 }}
-      className="rounded-2xl border border-border bg-white overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)] cursor-pointer"
+      className="rounded-2xl border border-border bg-card overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)] cursor-pointer"
     >
       {/* Top — clickable area → detail */}
       <button
@@ -1139,31 +1139,31 @@ export default function Clients() {
       {/* ══════════════════════════════════════════════════════════
            MOBILE LAYOUT (md:hidden) — Native App Style
       ══════════════════════════════════════════════════════════ */}
-      <div className="md:hidden min-h-screen bg-[#F0F4FB] pb-28">
+      <div className="md:hidden min-h-screen bg-secondary pb-28 -mx-4">
 
         {/* ── TOP HEADER ── */}
-        <div className="bg-white px-4 pt-12 pb-4 shadow-sm">
+        <div className="bg-card px-4 pt-12 pb-4 shadow-sm">
           <div className="flex items-start justify-between gap-3 mb-1">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate(-1)}
-                className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
+                className="h-9 w-9 rounded-2xl bg-secondary flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+                <ArrowLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
               </button>
               <div>
-                <h1 className="text-[22px] font-extrabold text-[#0f1c3f] leading-tight">Klien & Jamaah</h1>
+                <h1 className="text-[22px] font-extrabold text-foreground leading-tight">Klien & Jamaah</h1>
                 <p className="text-[11px] text-slate-400 font-medium mt-0.5">Kelola data klien, jamaah, dan riwayat perjalanan</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0 mt-1">
               <button
                 onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(""); }}
-                className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity"
+                className="h-9 w-9 rounded-2xl bg-secondary flex items-center justify-center active:opacity-60 transition-opacity"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                {showSearch ? <X className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} /> : <Search className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />}
+                {showSearch ? <X className="h-4 w-4 text-foreground" strokeWidth={2} /> : <Search className="h-4 w-4 text-foreground" strokeWidth={2} />}
               </button>
               <button
                 onClick={() => setAddOpen(true)}
@@ -1194,7 +1194,7 @@ export default function Clients() {
                     value={q}
                     onChange={(e) => { setQ(e.target.value); setMobilePage(1); }}
                     placeholder="Cari nama, email, atau nomor paspor…"
-                    className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-[#F0F4FB] border border-transparent text-[#0f1c3f] placeholder-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all"
+                    className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-secondary border border-transparent text-foreground placeholder-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all"
                   />
                   {q && (
                     <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-200/60 flex items-center justify-center active:opacity-60">
@@ -1225,13 +1225,13 @@ export default function Clients() {
               <button
                 key={stat.label}
                 onClick={() => { setMobileStatusFilter(mobileStatusFilter === stat.filter ? "all" : stat.filter); setMobilePage(1); }}
-                className={`bg-white rounded-3xl p-4 text-left shadow-sm active:opacity-70 transition-all ${mobileStatusFilter === stat.filter ? "ring-2 ring-[#0066FF]/30" : ""}`}
+                className={`bg-card rounded-3xl p-4 text-left shadow-sm active:opacity-70 transition-all ${mobileStatusFilter === stat.filter ? "ring-2 ring-[#0066FF]/30" : ""}`}
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 <div className="h-10 w-10 rounded-2xl flex items-center justify-center mb-3" style={{ backgroundColor: stat.iconBg }}>
                   {stat.icon}
                 </div>
-                <p className="text-[26px] font-black text-[#0f1c3f] tabular-nums leading-none">{stat.value}</p>
+                <p className="text-[26px] font-black text-foreground tabular-nums leading-none">{stat.value}</p>
                 <p className="text-[10px] font-semibold text-slate-400 mt-1 uppercase tracking-wide">{stat.label}</p>
                 <div className="flex items-center gap-0.5 mt-1.5">
                   <TrendingUp className="h-2.5 w-2.5 text-emerald-400" strokeWidth={2.5} />
@@ -1252,7 +1252,7 @@ export default function Clients() {
               <button
                 key={f.id}
                 onClick={() => { setMobileStatusFilter(f.id); setMobilePage(1); }}
-                className={`shrink-0 h-8 px-3.5 rounded-full text-[11px] font-bold border transition-all active:scale-95 whitespace-nowrap flex items-center gap-1 ${mobileStatusFilter === f.id ? "text-white border-transparent shadow-sm" : "bg-white text-slate-600 border-slate-200"}`}
+                className={`shrink-0 h-8 px-3.5 rounded-full text-[11px] font-bold border transition-all active:scale-95 whitespace-nowrap flex items-center gap-1 ${mobileStatusFilter === f.id ? "text-white border-transparent shadow-sm" : "bg-card text-slate-600 border-slate-200"}`}
                 style={mobileStatusFilter === f.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
               >
                 {f.label}
@@ -1266,14 +1266,14 @@ export default function Clients() {
           {/* ── DAFTAR KLIEN ── */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Daftar Klien</h3>
+              <h3 className="text-[15px] font-extrabold text-foreground">Daftar Klien</h3>
               <span className="text-[12px] font-semibold text-slate-400">{mobileFiltered.length} Klien</span>
             </div>
 
             {isLoading ? (
               <div className="space-y-3">
                 {[1,2,3,4].map((i) => (
-                  <div key={i} className="bg-white rounded-3xl p-4 animate-pulse flex items-center gap-3">
+                  <div key={i} className="bg-card rounded-3xl p-4 animate-pulse flex items-center gap-3">
                     <div className="h-12 w-12 rounded-full bg-slate-100 shrink-0" />
                     <div className="flex-1 space-y-2">
                       <div className="h-3.5 bg-slate-100 rounded-full w-3/4" />
@@ -1285,11 +1285,11 @@ export default function Clients() {
                 ))}
               </div>
             ) : mobileFiltered.length === 0 ? (
-              <div className="bg-white rounded-3xl px-4 py-12 text-center flex flex-col items-center shadow-sm">
+              <div className="bg-card rounded-3xl px-4 py-12 text-center flex flex-col items-center shadow-sm">
                 <div className="h-14 w-14 rounded-2xl bg-[#dbeafe] flex items-center justify-center mb-3">
                   <Users className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
                 </div>
-                <p className="text-[14px] font-bold text-[#0f1c3f]">Belum ada klien</p>
+                <p className="text-[14px] font-bold text-foreground">Belum ada klien</p>
                 <p className="text-[11px] text-slate-400 mt-1">{q ? "Coba kata kunci lain." : "Tambahkan klien pertama untuk memulai."}</p>
                 {!q && (
                   <button
@@ -1326,7 +1326,7 @@ export default function Clients() {
                       variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } } }}
                       whileTap={{ scale: 0.985 }}
                       onClick={() => navigate(`/clients/${c.id}`)}
-                      className="w-full bg-white rounded-3xl p-4 shadow-sm text-left active:opacity-80 transition-opacity"
+                      className="w-full bg-card rounded-3xl p-4 shadow-sm text-left active:opacity-80 transition-opacity"
                       style={{ WebkitTapHighlightColor: "transparent" }}
                     >
                       <div className="flex items-start gap-3">
@@ -1337,7 +1337,7 @@ export default function Clients() {
                         {/* Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 min-w-0">
-                            <p className="text-[14px] font-extrabold text-[#0f1c3f] truncate">{c.name}</p>
+                            <p className="text-[14px] font-extrabold text-foreground truncate">{c.name}</p>
                           </div>
                           {c.email && <p className="text-[11px] text-slate-400 truncate mt-0.5">{c.email}</p>}
                           {c.passportNumber && (
@@ -1417,7 +1417,7 @@ export default function Clients() {
                 <button
                   onClick={() => setMobilePage(p => Math.max(1, p - 1))}
                   disabled={mobilePage === 1}
-                  className="h-9 w-9 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-500 disabled:opacity-30 active:opacity-60"
+                  className="h-9 w-9 rounded-2xl bg-card shadow-sm flex items-center justify-center text-slate-500 disabled:opacity-30 active:opacity-60"
                   style={{ WebkitTapHighlightColor: "transparent" }}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -1433,7 +1433,7 @@ export default function Clients() {
                     <button
                       key={page}
                       onClick={() => setMobilePage(page)}
-                      className={`h-9 w-9 rounded-2xl text-[12px] font-bold transition-all ${mobilePage === page ? "text-white shadow-md" : "bg-white text-slate-500 shadow-sm"}`}
+                      className={`h-9 w-9 rounded-2xl text-[12px] font-bold transition-all ${mobilePage === page ? "text-white shadow-md" : "bg-card text-slate-500 shadow-sm"}`}
                       style={mobilePage === page ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
                     >
                       {page}
@@ -1443,7 +1443,7 @@ export default function Clients() {
                 <button
                   onClick={() => setMobilePage(p => Math.min(totalMobilePages, p + 1))}
                   disabled={mobilePage === totalMobilePages}
-                  className="h-9 w-9 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-500 disabled:opacity-30 active:opacity-60"
+                  className="h-9 w-9 rounded-2xl bg-card shadow-sm flex items-center justify-center text-slate-500 disabled:opacity-30 active:opacity-60"
                   style={{ WebkitTapHighlightColor: "transparent" }}
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -1455,7 +1455,7 @@ export default function Clients() {
           {/* ── AKSI CEPAT ── */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Aksi Cepat</h3>
+              <h3 className="text-[15px] font-extrabold text-foreground">Aksi Cepat</h3>
               <span className="text-[11px] text-[#0066FF] font-semibold">Lihat Semua</span>
             </div>
             <div className="grid grid-cols-4 gap-3">
@@ -1468,13 +1468,13 @@ export default function Clients() {
                 <button
                   key={item.label}
                   onClick={item.action}
-                  className="bg-white rounded-2xl p-3 flex flex-col items-center gap-2 shadow-sm active:opacity-70 transition-opacity"
+                  className="bg-card rounded-2xl p-3 flex flex-col items-center gap-2 shadow-sm active:opacity-70 transition-opacity"
                   style={{ WebkitTapHighlightColor: "transparent" }}
                 >
                   <div className="h-10 w-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: item.iconBg }}>
                     {item.icon}
                   </div>
-                  <p className="text-[9px] font-bold text-[#0f1c3f] text-center leading-tight">{item.label}</p>
+                  <p className="text-[9px] font-bold text-foreground text-center leading-tight">{item.label}</p>
                 </button>
               ))}
             </div>
@@ -1503,14 +1503,14 @@ export default function Clients() {
         </div>
 
         {/* ── Sticky search bar ── */}
-        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-100 px-5 py-2">
+        <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-md border-b border-slate-100 px-5 py-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Cari nama, nomor WA, paspor…"
-              className="pl-9 pr-9 h-9 text-sm bg-slate-50 border-slate-200 rounded-xl focus:bg-white focus:border-sky-300 transition-colors"
+              className="pl-9 pr-9 h-9 text-sm bg-slate-50 border-slate-200 rounded-xl focus:bg-card focus:border-sky-300 transition-colors"
             />
             <AnimatePresence>
               {q && (

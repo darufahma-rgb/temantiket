@@ -28,7 +28,7 @@ const SYNC_DOT: Record<SyncStatus, { color: string; glow: string; label: string 
 function formatLastSync(d: Date | null): string {
   if (!d) return "Belum ada sync";
   const diffSec = Math.max(0, Math.round((Date.now() - d.getTime()) / 1000));
-  if (diffSec < 60) return `${diffSec}d lalu`;
+  if (diffSec < 60) return `${diffSec}dtk lalu`;
   if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m lalu`;
   return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
@@ -425,8 +425,8 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 </button>
               </div>
 
-              {/* Items grid — bare icon + label, no boxes */}
-              <div className="px-5 pb-5 grid grid-cols-4 gap-x-3 gap-y-5">
+              {/* Items grid — icon box + label */}
+              <div className="px-4 pb-5 grid grid-cols-4 gap-x-2 gap-y-4">
                 {moreItems.map((item) => {
                   const isActive = !!item.path && location.pathname.startsWith(item.path);
                   return (
@@ -436,14 +436,19 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                       className="flex flex-col items-center gap-1.5 active:scale-90 transition-transform"
                       style={{ WebkitTapHighlightColor: "transparent" }}
                     >
-                      <item.icon
-                        strokeWidth={isActive ? 2.1 : 1.6}
-                        className="h-[22px] w-[22px]"
-                        style={{ color: isActive ? "#1a44d4" : "hsl(var(--muted-foreground))" }}
-                      />
+                      <div
+                        className="h-12 w-12 rounded-2xl flex items-center justify-center transition-colors"
+                        style={{ background: isActive ? "hsl(var(--primary) / 0.12)" : "hsl(var(--secondary))" }}
+                      >
+                        <item.icon
+                          strokeWidth={isActive ? 2.1 : 1.7}
+                          className="h-5 w-5"
+                          style={{ color: isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
+                        />
+                      </div>
                       <span
                         className="text-[10px] font-semibold text-center leading-tight"
-                        style={{ color: isActive ? "#1a44d4" : "hsl(var(--muted-foreground))" }}
+                        style={{ color: isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
                       >
                         {item.label}
                       </span>

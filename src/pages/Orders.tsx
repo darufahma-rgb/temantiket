@@ -181,43 +181,43 @@ export default function Orders() {
       {/* ══════════════════════════════════════════════════════════
            MOBILE LAYOUT  (md:hidden) — Native App Style
       ══════════════════════════════════════════════════════════ */}
-      <div className="md:hidden min-h-screen bg-[#F0F4FB] pb-28">
+      <div className="md:hidden min-h-screen bg-secondary pb-28 -mx-4">
 
         {/* ── TOP HEADER ── */}
-        <div className="bg-white px-4 pt-12 pb-4 shadow-sm">
+        <div className="bg-card px-4 pt-12 pb-4 shadow-sm">
           <div className="flex items-start justify-between gap-3 mb-1">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate(-1)}
-                className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
+                className="h-9 w-9 rounded-2xl bg-secondary flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+                <ArrowLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
               </button>
               <div>
-                <h1 className="text-[22px] font-extrabold text-[#0f1c3f] leading-tight">Order Hub</h1>
+                <h1 className="text-[22px] font-extrabold text-foreground leading-tight">Order Hub</h1>
                 <p className="text-[11px] text-slate-400 font-medium mt-0.5">Kelola semua pesanan dalam satu tempat</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0 mt-1">
               <button
                 onClick={() => { setShowSearch((s) => !s); if (showSearch) setQ(""); }}
-                className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity"
+                className="h-9 w-9 rounded-2xl bg-secondary flex items-center justify-center active:opacity-60 transition-opacity"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                {showSearch ? <X className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} /> : <Search className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />}
+                {showSearch ? <X className="h-4 w-4 text-foreground" strokeWidth={2} /> : <Search className="h-4 w-4 text-foreground" strokeWidth={2} />}
               </button>
               <button
                 onClick={() => setShowFilter((s) => !s)}
                 className={cn(
                   "h-9 px-3 rounded-2xl flex items-center gap-1.5 text-[11px] font-bold active:opacity-60 transition-all",
-                  showFilter || mobileStatus !== "all" ? "bg-[#0066FF] text-white" : "bg-[#F0F4FB] text-[#0f1c3f]"
+                  showFilter || mobileStatus !== "all" ? "bg-[#0066FF] text-white" : "bg-secondary text-foreground"
                 )}
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} />
                 Filter
-                {mobileStatus !== "all" && <span className="h-4 w-4 rounded-full bg-white text-[#0066FF] text-[9px] font-black flex items-center justify-center">1</span>}
+                {mobileStatus !== "all" && <span className="h-4 w-4 rounded-full bg-card text-[#0066FF] text-[9px] font-black flex items-center justify-center">1</span>}
               </button>
               <button
                 onClick={() => setAddOpen(true)}
@@ -247,7 +247,7 @@ export default function Orders() {
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     placeholder="Cari judul, klien, status…"
-                    className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-[#F0F4FB] border border-transparent text-[#0f1c3f] placeholder-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all"
+                    className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-secondary border border-transparent text-foreground placeholder-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all"
                   />
                   {q && (
                     <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-300/40 flex items-center justify-center active:opacity-60">
@@ -283,7 +283,7 @@ export default function Orders() {
                         onClick={() => setMobileStatus(f.id)}
                         className={cn(
                           "h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95",
-                          mobileStatus === f.id ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200"
+                          mobileStatus === f.id ? "bg-[#0066FF] text-white border-transparent" : "bg-card text-slate-600 border-slate-200"
                         )}
                         style={{ WebkitTapHighlightColor: "transparent" }}
                       >
@@ -306,7 +306,7 @@ export default function Orders() {
         </div>
 
         {/* ── CATEGORY TABS ── */}
-        <div className="bg-white mt-px px-4 pb-3 shadow-sm">
+        <div className="bg-card mt-px px-4 pb-3 shadow-sm">
           <div className="flex gap-2 overflow-x-auto scrollbar-none pt-3">
             {([
               { id: "all",    label: "Semua Order",     count: orders.length },
@@ -321,14 +321,14 @@ export default function Orders() {
                   "shrink-0 h-9 px-4 rounded-full text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95",
                   mobileCat === tab.id
                     ? "text-white shadow-md"
-                    : "bg-[#F0F4FB] text-slate-500"
+                    : "bg-secondary text-slate-500"
                 )}
                 style={mobileCat === tab.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
               >
                 {tab.label}
                 <span className={cn(
                   "text-[9px] font-extrabold px-1.5 py-0.5 rounded-full",
-                  mobileCat === tab.id ? "bg-white/25 text-white" : "bg-slate-200 text-slate-500"
+                  mobileCat === tab.id ? "bg-card/25 text-white" : "bg-slate-200 text-slate-500"
                 )}>
                   {tab.count}
                 </span>
@@ -341,11 +341,11 @@ export default function Orders() {
 
           {/* ── CLIENT FILTER BADGE ── */}
           {clientIdParam && clientNameById.get(clientIdParam) && (
-            <div className="flex items-center gap-2.5 bg-white border border-sky-200 rounded-2xl px-4 py-3 shadow-sm">
+            <div className="flex items-center gap-2.5 bg-card border border-sky-200 rounded-2xl px-4 py-3 shadow-sm">
               <div className="h-8 w-8 rounded-xl bg-[#dbeafe] flex items-center justify-center text-[#0066FF] text-[12px] font-extrabold shrink-0">
                 {clientNameById.get(clientIdParam)!.charAt(0).toUpperCase()}
               </div>
-              <p className="text-[12px] text-[#0f1c3f] font-semibold flex-1 truncate">
+              <p className="text-[12px] text-foreground font-semibold flex-1 truncate">
                 Klien: <span className="font-bold">{clientNameById.get(clientIdParam)}</span>
               </p>
               <button onClick={() => navigate("/orders")} className="text-[11px] text-[#0066FF] font-bold active:opacity-70 shrink-0 flex items-center gap-1">
@@ -355,9 +355,9 @@ export default function Orders() {
           )}
 
           {/* ── RINGKASAN ORDER CARD ── */}
-          <div className="bg-white rounded-3xl px-5 py-4 shadow-sm">
+          <div className="bg-card rounded-3xl px-5 py-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Ringkasan Order</h3>
+              <h3 className="text-[15px] font-extrabold text-foreground">Ringkasan Order</h3>
               <span className="text-[11px] text-slate-400 font-medium">
                 {new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date())}
               </span>
@@ -378,7 +378,7 @@ export default function Orders() {
                   <div className="h-9 w-9 rounded-2xl flex items-center justify-center" style={{ backgroundColor: stat.iconBg }}>
                     {stat.icon}
                   </div>
-                  <p className="text-[22px] font-black text-[#0f1c3f] tabular-nums leading-none">{stat.value}</p>
+                  <p className="text-[22px] font-black text-foreground tabular-nums leading-none">{stat.value}</p>
                   <p className="text-[9px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide">{stat.label}</p>
                   <div className="flex items-center gap-0.5">
                     <TrendingUp className="h-2.5 w-2.5 text-emerald-400" strokeWidth={2.5} />
@@ -391,7 +391,7 @@ export default function Orders() {
           {/* ── DAFTAR ORDER ── */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Daftar Order</h3>
+              <h3 className="text-[15px] font-extrabold text-foreground">Daftar Order</h3>
               <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
                 Urutkan: Terbaru <ChevronRight className="h-3.5 w-3.5" />
               </div>
@@ -400,7 +400,7 @@ export default function Orders() {
             {loadingOrders && orders.length === 0 ? (
               <div className="space-y-3">
                 {[1,2,3].map((i) => (
-                  <div key={i} className="bg-white rounded-3xl p-4 animate-pulse flex items-center gap-3">
+                  <div key={i} className="bg-card rounded-3xl p-4 animate-pulse flex items-center gap-3">
                     <div className="h-12 w-12 rounded-2xl bg-slate-100 shrink-0" />
                     <div className="flex-1 space-y-2">
                       <div className="h-3 bg-slate-100 rounded-full w-3/4" />
@@ -415,11 +415,11 @@ export default function Orders() {
                 ))}
               </div>
             ) : mobileFiltered.length === 0 ? (
-              <div className="bg-white rounded-3xl px-4 py-12 text-center flex flex-col items-center shadow-sm">
+              <div className="bg-card rounded-3xl px-4 py-12 text-center flex flex-col items-center shadow-sm">
                 <div className="h-14 w-14 rounded-2xl bg-[#dbeafe] flex items-center justify-center mb-3">
                   <ShoppingBag className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
                 </div>
-                <p className="text-[14px] font-bold text-[#0f1c3f]">Belum ada order</p>
+                <p className="text-[14px] font-bold text-foreground">Belum ada order</p>
                 <p className="text-[11px] text-slate-400 mt-1 leading-snug">
                   {q ? "Tidak ada hasil untuk pencarian ini." : "Buat order baru untuk memulai."}
                 </p>
@@ -500,7 +500,7 @@ export default function Orders() {
                       variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } } }}
                       whileTap={{ scale: 0.985 }}
                       onClick={() => navigate(`/orders/detail/${o.id}`)}
-                      className="w-full bg-white rounded-3xl p-4 shadow-sm text-left flex items-start gap-3.5 active:opacity-80 transition-opacity"
+                      className="w-full bg-card rounded-3xl p-4 shadow-sm text-left flex items-start gap-3.5 active:opacity-80 transition-opacity"
                       style={{ WebkitTapHighlightColor: "transparent" }}
                     >
                       {/* Icon */}
@@ -513,7 +513,7 @@ export default function Orders() {
                         <p className={cn("text-[9px] font-extrabold uppercase tracking-wider mb-0.5", tc.labelColor)}>
                           {tc.label}
                         </p>
-                        <p className="text-[13px] font-extrabold text-[#0f1c3f] leading-snug truncate">
+                        <p className="text-[13px] font-extrabold text-foreground leading-snug truncate">
                           {o.title || ORDER_TYPE_LABEL[o.type]}
                         </p>
                         {clientName && (
@@ -536,7 +536,7 @@ export default function Orders() {
 
                       {/* Price + chevron */}
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <p className="text-[13px] font-extrabold text-[#0f1c3f] tabular-nums">
+                        <p className="text-[13px] font-extrabold text-foreground tabular-nums">
                           {fmtOrderPrice(o.totalPrice, o.currency)}
                         </p>
                         <ChevronRight className="h-4 w-4 text-slate-300 mt-auto" />
@@ -628,7 +628,7 @@ export default function Orders() {
                 whileTap={{ scale: 0.985 }}
               >
                 <Link to={`/orders/detail/${o.id}`}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3 hover:bg-secondary/40 hover:border-primary/20 transition-colors">
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 hover:bg-secondary/40 hover:border-primary/20 transition-colors">
                   <div className="min-w-0 flex items-center gap-3">
                     <span className="text-2xl">{ORDER_TYPE_EMOJI[o.type]}</span>
                     <div className="min-w-0">
@@ -703,7 +703,7 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
       className={`px-4 py-2 rounded-full text-sm font-semibold border transition ${
         active
           ? "bg-primary text-primary-foreground border-transparent"
-          : "bg-white text-muted-foreground border-border hover:bg-secondary"
+          : "bg-card text-muted-foreground border-border hover:bg-secondary"
       }`}
     >
       {children}
