@@ -164,16 +164,30 @@ export const WALLET_FEE_ORDER_TYPES: WalletTxType[] = [
  * Accepts null/undefined gracefully (returns []) so callers never need to
  * guard before calling — prevents TypeError crashes from stale localStorage
  * entries where createdAt may be undefined.
+ *
+ * Falls back to extracting orderId from description (e.g. "#815e1be8") when
+ * tx.orderId is null — handles legacy entries that were saved without order_id.
  */
 export function deduplicateTxs(txs: WalletTransaction[] | null | undefined): WalletTransaction[] {
   if (!txs) return [];
   const seen = new Map<string, true>();
   const result: WalletTransaction[] = [];
+
+  // Extract short order-id from description as fallback: matches #xxxxxxxx (8 hex chars)
+  function resolveOrderId(tx: WalletTransaction): string | null {
+    if (tx.orderId) return tx.orderId;
+    const m = tx.description?.match(/#([a-f0-9]{8,36})/i);
+    return m ? m[1] : null;
+  }
+
   for (const tx of [...txs].sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""))) {
-    if (tx.orderId && WALLET_FEE_ORDER_TYPES.includes(tx.type)) {
-      const key = `${tx.type}:${tx.orderId}`;
-      if (seen.has(key)) continue;
-      seen.set(key, true);
+    if (WALLET_FEE_ORDER_TYPES.includes(tx.type)) {
+      const resolvedId = resolveOrderId(tx);
+      if (resolvedId) {
+        const key = `${tx.type}:${resolvedId}`;
+        if (seen.has(key)) continue;
+        seen.set(key, true);
+      }
     }
     result.push(tx);
   }
