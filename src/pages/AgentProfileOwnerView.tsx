@@ -1264,7 +1264,7 @@ export default function AgentProfileOwnerView() {
                   <div className="text-xl mb-2">{s.icon}</div>
                   <p className="text-[20px] font-extrabold leading-none tabular-nums" style={{ color: s.color }}>{s.value}</p>
                   <p className="text-[10px] font-bold uppercase tracking-wide mt-1 opacity-80" style={{ color: s.color }}>{s.label}</p>
-                  <p className="text-[9px] text-slate-400 mt-0.5">{s.sub}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{s.sub}</p>
                 </div>
               ))}
             </div>
@@ -1282,8 +1282,8 @@ export default function AgentProfileOwnerView() {
               {mobileAchievements.map((a) => (
                 <div key={a.id} className={`rounded-2xl p-3 flex flex-col items-center gap-1.5 ${a.unlocked ? "bg-gradient-to-b from-blue-50 to-indigo-50 border border-blue-100" : "bg-slate-50 border border-slate-100 opacity-50"}`}>
                   <span className={`text-2xl ${!a.unlocked ? "grayscale" : ""}`}>{a.emoji}</span>
-                  <p className="text-[9px] font-bold text-center text-slate-700 leading-tight">{a.label}</p>
-                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${a.unlocked ? "bg-[#0066FF] text-white" : "bg-slate-200 text-slate-500"}`}>
+                  <p className="text-[10px] font-bold text-center text-slate-700 leading-tight">{a.label}</p>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${a.unlocked ? "bg-[#0066FF] text-white" : "bg-slate-200 text-slate-500"}`}>
                     {a.unlocked ? "✓ Unlock" : "Terkunci"}
                   </span>
                 </div>
@@ -1313,7 +1313,7 @@ export default function AgentProfileOwnerView() {
                     <div className="text-xl mb-2">{typeEmoji}</div>
                     <p className="text-[11px] font-bold" style={{ color: c.color }}>{typeLabel}</p>
                     <p className="text-[18px] font-extrabold font-mono tabular-nums" style={{ color: c.color }}>{count}</p>
-                    <p className="text-[9px] text-slate-400 mt-0.5">{fmtRevCompact(typeRev)}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{fmtRevCompact(typeRev)}</p>
                   </div>
                 );
               })}
@@ -1366,7 +1366,7 @@ export default function AgentProfileOwnerView() {
               >
                 <t.icon className="h-3.5 w-3.5" />
                 {t.label}
-                {t.key === "misi" && pendingCount > 0 && <span className="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>}
+                {t.key === "misi" && pendingCount > 0 && <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>}
               </button>
             ))}
           </div>
@@ -1521,7 +1521,7 @@ export default function AgentProfileOwnerView() {
                       <div key={s.label} className={`rounded-2xl border p-3 ${s.bg}`}>
                         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1">{s.label}</p>
                         <p className={`text-[15px] font-extrabold font-mono ${s.color}`}>{fmtIDR(s.value)}</p>
-                        <p className="text-[9px] text-slate-400 mt-0.5">{s.sub}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{s.sub}</p>
                       </div>
                     ))}
                   </div>
@@ -1887,7 +1887,7 @@ export default function AgentProfileOwnerView() {
             <t.icon className="h-3.5 w-3.5" />
             {t.label}
             {t.key === "misi" && pendingCount > 0 && (
-              <span className="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+              <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                 {pendingCount}
               </span>
             )}
@@ -2666,7 +2666,7 @@ export default function AgentProfileOwnerView() {
                               )}
                               <p className="text-[11px] text-muted-foreground truncate">{tx.description}</p>
                               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${cfg.badgeCls}`}>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${cfg.badgeCls}`}>
                                   {cfg.label}
                                 </span>
                                 {statusStyle && (

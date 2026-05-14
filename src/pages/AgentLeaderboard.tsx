@@ -485,7 +485,7 @@ export default function AgentLeaderboard() {
                 </div>
                 <div>
                   <p className="text-[13px] font-bold text-slate-800">Full Ranking</p>
-                  <p className="text-[10.5px] text-slate-400">
+                  <p className="text-[11px] text-slate-400">
                     {rows.length} mitra · {RANGE_LABEL[range]}
                   </p>
                 </div>
@@ -549,7 +549,7 @@ export default function AgentLeaderboard() {
                               {r.name}
                             </span>
                             {r.isMe && (
-                              <span className="text-[8px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full shrink-0">
+                              <span className="text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full shrink-0">
                                 Kamu
                               </span>
                             )}
@@ -562,16 +562,16 @@ export default function AgentLeaderboard() {
 
                         <div className="hidden sm:flex items-center gap-5 shrink-0">
                           <div className="text-right">
-                            <div className="text-[9.5px] text-slate-400 font-medium">Poin</div>
+                            <div className="text-[10px] text-slate-400 font-medium">Poin</div>
                             <div className="text-[13px] font-extrabold text-blue-600 font-mono">{r.periodPoints}</div>
                           </div>
                           <div className="text-right">
-                            <div className="text-[9.5px] text-slate-400 font-medium">Lifetime</div>
+                            <div className="text-[10px] text-slate-400 font-medium">Lifetime</div>
                             <div className="text-[13px] font-extrabold text-amber-600 font-mono">{r.lifetimePoints}</div>
                           </div>
                           {r.isMe && (
                             <div className="text-right">
-                              <div className="text-[9.5px] text-slate-400 font-medium">Komisi</div>
+                              <div className="text-[10px] text-slate-400 font-medium">Komisi</div>
                               <div className="text-[12px] font-bold text-emerald-600 font-mono">{fmtIDR(r.commission)}</div>
                             </div>
                           )}
@@ -785,7 +785,7 @@ export default function AgentLeaderboard() {
                   <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide truncate">
                     {stat.label}
                   </p>
-                  <p className="text-[9px] text-slate-400 mt-0.5 truncate">{stat.sub}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5 truncate">{stat.sub}</p>
                 </motion.div>
               ))}
             </div>
@@ -973,18 +973,18 @@ export default function AgentLeaderboard() {
                               {r.name}
                             </span>
                             {r.isMe && (
-                              <span className="text-[8px] font-extrabold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full shrink-0">
+                              <span className="text-[10px] font-extrabold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full shrink-0">
                                 Kamu
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[9.5px] font-semibold bg-blue-50 text-[#0066FF] px-1.5 py-0.5 rounded-full border border-blue-100">
+                            <span className="text-[10px] font-semibold bg-blue-50 text-[#0066FF] px-1.5 py-0.5 rounded-full border border-blue-100">
                               AGENT
                             </span>
                             <AgentTierBadge tier={r.tier} size="xs" />
                             {member?.email && (
-                              <span className="text-[9px] text-slate-400 truncate max-w-[80px]">
+                              <span className="text-[10px] text-slate-400 truncate max-w-[80px]">
                                 {member.email}
                               </span>
                             )}
@@ -1004,12 +1004,12 @@ export default function AgentLeaderboard() {
                       <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-50 bg-slate-50/50">
                         <div className="flex items-center gap-3">
                           <div>
-                            <span className="text-[9px] text-slate-400 font-medium uppercase tracking-wide">Lifetime</span>
+                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Lifetime</span>
                             <div className="text-[11px] font-bold text-amber-600 font-mono">{r.lifetimePoints} pts</div>
                           </div>
                           {showComm && (
                             <div>
-                              <span className="text-[9px] text-slate-400 font-medium uppercase tracking-wide">Komisi</span>
+                              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Komisi</span>
                               <div className="text-[11px] font-bold text-emerald-600 font-mono">
                                 {r.commission >= 1_000_000
                                   ? `Rp${(r.commission / 1_000_000).toFixed(1)}Jt`
@@ -1026,7 +1026,7 @@ export default function AgentLeaderboard() {
                                   ? navigate("/agent/profile")
                                   : navigate(`/agents/${r.agentId}`)
                               }
-                              className="h-7 px-3 rounded-lg bg-[#0066FF] text-white text-[10.5px] font-semibold active:opacity-80 transition-opacity"
+                              className="h-7 px-3 rounded-lg bg-[#0066FF] text-white text-[11px] font-semibold active:opacity-80 transition-opacity"
                               style={{ WebkitTapHighlightColor: "transparent" }}
                             >
                               {r.isMe && !isOwner ? "Profilku" : "Detail"}
@@ -1260,13 +1260,13 @@ function PodiumCard({
 
         <p className={cn(
           "font-bold text-slate-800 text-center truncate w-full px-1 mt-2 leading-tight",
-          elevated ? "text-[12px]" : "text-[10.5px]",
+          elevated ? "text-[12px]" : "text-[11px]",
         )}>
           {row.name}
         </p>
 
         {isMe && (
-          <span className="mt-1 text-[8px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+          <span className="mt-1 text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
             Kamu
           </span>
         )}
@@ -1274,7 +1274,7 @@ function PodiumCard({
 
       <div className="px-2.5 pb-3 flex flex-col gap-1.5 flex-1">
         <div className={cn("rounded-lg px-2 py-2 text-center", cfg.pillBg)}>
-          <div className="text-[8px] font-semibold uppercase tracking-wider text-slate-400 mb-0.5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-0.5">
             Poin
           </div>
           <div className={cn(

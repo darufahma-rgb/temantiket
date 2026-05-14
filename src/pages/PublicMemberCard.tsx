@@ -525,7 +525,7 @@ export default function PublicMemberCardPage() {
                   <div key={label} className="rounded-2xl p-3 text-center" style={{ backgroundColor: bg }}>
                     <Icon className="h-4 w-4 mx-auto mb-1.5" style={{ color }} />
                     <p className="text-[12px] font-extrabold leading-tight truncate" style={{ color }}>{value}</p>
-                    <p className="text-[9px] font-semibold text-gray-400 mt-0.5 uppercase tracking-wide">{label}</p>
+                    <p className="text-[10px] font-semibold text-gray-400 mt-0.5 uppercase tracking-wide">{label}</p>
                   </div>
                 ))}
               </div>
@@ -751,7 +751,7 @@ export default function PublicMemberCardPage() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-white font-black text-[14px] leading-tight">Jadi Agen Temantiket</p>
-                          <span className="text-[9px] font-black uppercase tracking-wider bg-amber-400 text-amber-900 px-2 py-0.5 rounded-full whitespace-nowrap">Partner Resmi</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-amber-900 px-2 py-0.5 rounded-full whitespace-nowrap">Partner Resmi</span>
                         </div>
                         <p className="text-blue-200 text-[11px] mt-0.5 leading-snug">
                           {totalStamps > 0 ? `${totalStamps} transaksi — saatnya hasilkan komisi!` : "Hasilkan penghasilan jadi partner travel."}
@@ -922,14 +922,14 @@ export default function PublicMemberCardPage() {
                       className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-blue-600 active:bg-blue-50 transition-colors"
                       style={{ WebkitTapHighlightColor: "transparent" }}>
                       <Share2 className="h-5 w-5" />
-                      <span className="text-[9px] font-bold">Ajak</span>
+                      <span className="text-[10px] font-bold">Ajak</span>
                     </a>
                   )}
                   <Link to="/leaderboard"
                     className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-blue-600 active:bg-blue-50 transition-colors"
                     style={{ WebkitTapHighlightColor: "transparent" }}>
                     <Trophy className="h-5 w-5" />
-                    <span className="text-[9px] font-bold">Ranking</span>
+                    <span className="text-[10px] font-bold">Ranking</span>
                   </Link>
                 </div>
               </div>
