@@ -344,6 +344,68 @@ app.post('/api/invite-member', isAuthenticatedOrBearer, async (req, res) => {
 });
 
 /* ──────────────────────────────────────────────
+   GET /api/agency-members
+   Owner/staff gets list of all agency members with details.
+────────────────────────────────────────────── */
+app.get('/api/agency-members', isAuthenticatedOrBearer, async (req, res) => {
+  try {
+    const sb = getSb();
+    const { data: callerRows } = await sb
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    const callerMembership = callerRows?.[0];
+    if (!callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
+
+    const { data: memberRows, error: memberErr } = await sb
+      .from('agency_members')
+      .select('user_id, role, commission_pct, created_at, phone_wa, agent_notes, agent_status')
+      .eq('agency_id', callerMembership.agency_id);
+    if (memberErr) return err(res, 500, memberErr.message);
+
+    const SUPABASE_URL_ENV = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
+    const SUPABASE_SRK = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+    const userMap = {};
+    if (SUPABASE_URL_ENV && SUPABASE_SRK) {
+      try {
+        const listRes = await fetch(
+          `${SUPABASE_URL_ENV}/auth/v1/admin/users?page=1&per_page=1000`,
+          { headers: { 'Authorization': `Bearer ${SUPABASE_SRK}`, 'apikey': SUPABASE_SRK } }
+        );
+        if (listRes.ok) {
+          const listData = await listRes.json().catch(() => ({}));
+          for (const u of (listData?.users ?? [])) {
+            const fullName = (u.user_metadata?.full_name || '').trim();
+            const parts = fullName.split(' ');
+            userMap[u.id] = {
+              email: u.email || null,
+              first_name: parts[0] || null,
+              last_name: parts.slice(1).join(' ') || null,
+              profile_image_url: u.user_metadata?.avatar_url || null,
+            };
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    const rows = (memberRows ?? []).map((m) => ({
+      user_id: m.user_id,
+      role: m.role,
+      commission_pct: m.commission_pct,
+      created_at: m.created_at,
+      phone_wa: m.phone_wa || null,
+      agent_notes: m.agent_notes || null,
+      agent_status: m.agent_status || 'active',
+      ...(userMap[m.user_id] || { email: null, first_name: null, last_name: null, profile_image_url: null }),
+    }));
+    return ok(res, rows);
+  } catch (e) {
+    return err(res, 500, e.message);
+  }
+});
+
+/* ──────────────────────────────────────────────
    POST /api/remove-member
    Owner removes staff/agent dari agency (membership only — Supabase account unchanged)
 ────────────────────────────────────────────── */

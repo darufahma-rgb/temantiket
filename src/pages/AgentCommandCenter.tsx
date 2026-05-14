@@ -7,6 +7,7 @@ import {
   ShoppingBag, UserCheck, ChevronRight, ClipboardList, Phone, MessageCircle,
   ToggleLeft, StickyNote, CheckCircle2, Star, Globe, LayoutGrid, Info,
   BookOpen, PencilLine, Save, Plus, Trash2, BadgeCheck, AlertCircle,
+  List, Filter, MoreHorizontal, ChevronLeft,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
@@ -480,7 +481,7 @@ function AgentProfileDialog({
 }
 
 // ── Main Unified Page ──────────────────────────────────────────────────────────
-type TabKey = "direktori" | "analytics" | "misi" | "ketentuan";
+type TabKey = "direktori" | "analytics" | "misi" | "komisi" | "ketentuan";
 
 export default function AgentCommandCenter() {
   const navigate   = useNavigate();
@@ -508,6 +509,11 @@ export default function AgentCommandCenter() {
   const [selectedAgent, setSelectedAgent] = useState<AgentRow | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [addOpen, setAddOpen]       = useState(false);
+  const [filterLevel, setFilterLevel] = useState<"all" | string>("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
+  const [viewMode, setViewMode]     = useState<"list" | "grid">("list");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize]     = useState(10);
 
   // ── Analytics state ──
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
@@ -671,6 +677,21 @@ export default function AgentCommandCenter() {
     return agentRows.filter((a) => a.displayName.toLowerCase().includes(q) || a.email.toLowerCase().includes(q));
   }, [agentRows, search]);
 
+  // Dir-specific filtered rows (level + status filters on top of search)
+  const dirFilteredRows = useMemo(() => {
+    return filteredRows.filter((a) => {
+      const matchLevel = filterLevel === "all" || a.tierInfo.current.key === filterLevel;
+      const matchStatus = filterStatus === "all" || (a.agentStatus ?? "active") === filterStatus;
+      return matchLevel && matchStatus;
+    });
+  }, [filteredRows, filterLevel, filterStatus]);
+
+  const totalPages = Math.max(1, Math.ceil(dirFilteredRows.length / pageSize));
+  const pagedRows  = dirFilteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const activeAgentCount   = useMemo(() => agentRows.filter((a) => (a.agentStatus ?? "active") === "active").length, [agentRows]);
+  const inactiveAgentCount = useMemo(() => agentRows.filter((a) => (a.agentStatus ?? "active") !== "active").length, [agentRows]);
+
   // Sorted for analytics table
   const sortedRows = useMemo(() => {
     const rows = [...agentRows];
@@ -789,6 +810,7 @@ export default function AgentCommandCenter() {
     { key: "direktori",  label: "Direktori",     icon: Users },
     { key: "analytics",  label: "Analytics",     icon: BarChart3 },
     { key: "misi",       label: "Misi & Wallet", icon: Target },
+    { key: "komisi",     label: "Komisi",         icon: Percent },
     { key: "ketentuan",  label: "Ketentuan & Fee", icon: BookOpen },
   ];
   const TABS = isAgent
@@ -804,43 +826,47 @@ export default function AgentCommandCenter() {
       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
     >
       {/* ── Header ─────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <Crown className="h-5 w-5 text-primary" />
-            Manajemen Agen
-          </h1>
-          <p className="text-[12px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
-            {agentMembers.length} mitra terdaftar
-            {user?.agencyName && <> · {user.agencyName}</>}
-          </p>
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
+            style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
+            <Crown className="h-7 w-7 text-white" strokeWidth={2} />
+          </div>
+          <div>
+            <h1 className="text-[26px] font-black text-slate-900 leading-tight tracking-tight">Manajemen Agen</h1>
+            <p className="text-[13px] text-slate-500 mt-0.5">Kelola, monitor, dan tingkatkan performa agen dalam satu dashboard.</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" size="sm" onClick={load} disabled={loading}
-            className="rounded-xl border-sky-200 text-sky-700 hover:bg-sky-50">
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+            className="h-9 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 gap-1.5">
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          {isOwner && tab === "direktori" && (
-            <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white font-semibold"
+          {isOwner && (
+            <Button size="sm"
+              className="h-9 rounded-xl font-semibold text-white pl-4 pr-3 gap-0"
+              style={{ background: "linear-gradient(135deg, #1d4ed8, #2563eb)" }}
               onClick={() => setAddOpen(true)}>
-              <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Tambah Agen
+              <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+              + Tambah Agen
+              <span className="w-px h-4 bg-white/30 mx-2" />
+              <ChevronDown className="h-3.5 w-3.5 opacity-80" />
             </Button>
           )}
         </div>
       </div>
 
       {/* ── Tab Selector ───────────────────────────────────────────────────────── */}
-      <div className="flex gap-2 border-b pb-0">
+      <div className="flex gap-0 border-b border-slate-200">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex items-center gap-1.5 px-4 py-2 text-[12.5px] font-semibold border-b-2 transition-colors -mb-px whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-[12.5px] font-semibold border-b-2 transition-colors -mb-px whitespace-nowrap ${
               tab === key
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
             <Icon className="h-3.5 w-3.5" />
@@ -854,139 +880,352 @@ export default function AgentCommandCenter() {
       ══════════════════════════════════════════════════════════════════════════ */}
       {tab === "direktori" && (
         <div className="space-y-5">
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard label="Total Agen"   value={agentMembers.length}        sub="terdaftar"         icon={Users}      tone="sky" />
-            <StatCard label="Total Order"  value={totalDirOrders}             sub="dari semua agen"   icon={ShoppingBag} tone="emerald" />
-            <StatCard label="Total Klien"  value={totalDirClients}            sub="dibawa agen"       icon={UserCheck}  tone="violet" />
-            <StatCard label="Total Revenue" value={fmtIDR(totalAgentRevenue)} sub="semua agen"        icon={TrendingUp} tone="amber" />
+          {/* ── 6 Stat Cards ── */}
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+            {[
+              { label: "Total Agen",    value: agentMembers.length,       sub: `${agentMembers.length} terdaftar`,    iconBg: "#dbeafe", iconColor: "#2563eb", Icon: Users },
+              { label: "Total Order",   value: totalDirOrders,            sub: "dari semua agen",                     iconBg: "#fef3c7", iconColor: "#d97706", Icon: ShoppingBag },
+              { label: "Total Klien",   value: totalDirClients,           sub: "dibawa agen",                         iconBg: "#ede9fe", iconColor: "#7c3aed", Icon: UserCheck },
+              { label: "Total Revenue", value: fmtIDR(totalAgentRevenue), sub: "semua agen", large: true,             iconBg: "#fef3c7", iconColor: "#d97706", Icon: TrendingUp },
+              { label: "Agen Aktif",    value: activeAgentCount,          sub: `${agentMembers.length > 0 ? Math.round(activeAgentCount / agentMembers.length * 100) : 0}% dari total`,   iconBg: "#d1fae5", iconColor: "#059669", Icon: BadgeCheck },
+              { label: "Agen Nonaktif", value: inactiveAgentCount,        sub: `${agentMembers.length > 0 ? Math.round(inactiveAgentCount / agentMembers.length * 100) : 0}% dari total`, iconBg: "#f1f5f9", iconColor: "#94a3b8", Icon: ShieldCheck },
+            ].map((stat, i) => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <div className="mb-3">
+                  <div className="h-10 w-10 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: stat.iconBg, color: stat.iconColor }}>
+                    <stat.Icon className="h-5 w-5" />
+                  </div>
+                </div>
+                <p className="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wide">{stat.label}</p>
+                <p className={`font-black text-slate-900 mt-0.5 leading-none ${stat.large ? "text-[18px]" : "text-[26px]"}`}>{stat.value}</p>
+                <p className="text-[10.5px] text-emerald-600 mt-1.5 font-medium flex items-center gap-0.5">
+                  <TrendingUp className="h-3 w-3" />{stat.sub}
+                </p>
+              </div>
+            ))}
           </div>
 
-          {/* Search + table */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Trophy className="h-4 w-4 text-amber-500" /> Daftar Agen
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Diurutkan berdasarkan total poin (tertinggi di atas)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Cari nama atau email agen…"
+          {/* ── Daftar Agen Card ── */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+            {/* Card header */}
+            <div className="px-5 py-4 border-b border-slate-100">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h2 className="text-[15px] font-extrabold text-slate-900">Daftar Agen</h2>
+                  <p className="text-[12px] text-slate-500 mt-0.5">Kelola daftar agen dan pantau performa mereka secara real-time.</p>
+                </div>
+              </div>
+              {/* Search + filters row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative flex-1 min-w-[200px] max-w-[360px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-8 h-9 text-sm"
+                    onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                    placeholder="Cari nama agen, email atau username..."
+                    className="w-full h-9 pl-9 pr-4 rounded-lg text-[12.5px] bg-slate-50 border border-slate-200 text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
                   />
                 </div>
-                {isOwner && (
-                  <Button size="sm" variant="outline" className="h-9 shrink-0 border-sky-200 text-sky-600 hover:bg-sky-50"
-                    onClick={() => setAddOpen(true)}>
-                    <UserPlus className="h-3.5 w-3.5 mr-1" /> Tambah
-                  </Button>
+                {/* Level filter */}
+                <div className="relative">
+                  <select
+                    value={filterLevel}
+                    onChange={(e) => { setFilterLevel(e.target.value); setCurrentPage(1); }}
+                    className="h-9 pl-3 pr-8 rounded-lg text-[12px] font-medium border border-slate-200 bg-white text-slate-600 outline-none focus:border-blue-400 cursor-pointer appearance-none"
+                  >
+                    <option value="all">Semua Level</option>
+                    {TIERS.map((t) => <option key={t.key} value={t.key}>{t.emoji} {t.label}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                </div>
+                {/* Status filter */}
+                <div className="relative">
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => { setFilterStatus(e.target.value as typeof filterStatus); setCurrentPage(1); }}
+                    className="h-9 pl-3 pr-8 rounded-lg text-[12px] font-medium border border-slate-200 bg-white text-slate-600 outline-none focus:border-blue-400 cursor-pointer appearance-none"
+                  >
+                    <option value="all">Semua Status</option>
+                    <option value="active">Aktif</option>
+                    <option value="inactive">Nonaktif</option>
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                </div>
+                {/* Filter icon button */}
+                <button className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-[12px] font-medium text-slate-600 flex items-center gap-1.5 hover:bg-slate-50 transition-colors">
+                  <Filter className="h-3.5 w-3.5" />
+                  Filter
+                </button>
+                {/* View toggle */}
+                <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden shrink-0 ml-auto">
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={`h-9 w-9 flex items-center justify-center transition-colors ${viewMode === "list" ? "bg-blue-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                  >
+                    <List className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("grid")}
+                    className={`h-9 w-9 flex items-center justify-center transition-colors ${viewMode === "grid" ? "bg-blue-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Table body */}
+            {loading ? (
+              <div className="py-16 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-slate-400" />
+                <p className="text-[12px] text-slate-400">Memuat data agen…</p>
+              </div>
+            ) : pagedRows.length === 0 ? (
+              <div className="py-16 text-center">
+                <Users className="h-10 w-10 mx-auto mb-3 text-slate-200" />
+                <p className="text-[13px] font-semibold text-slate-500">
+                  {search || filterLevel !== "all" || filterStatus !== "all" ? "Tidak ditemukan agen yang cocok." : "Belum ada agen terdaftar."}
+                </p>
+                {!search && filterLevel === "all" && filterStatus === "all" && isOwner && (
+                  <button onClick={() => setAddOpen(true)} className="mt-3 text-[12px] font-bold text-blue-600 hover:underline">
+                    + Tambah agen pertama
+                  </button>
                 )}
               </div>
-
-              {loading ? (
-                <div className="py-12 text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Memuat data agen…
-                </div>
-              ) : filteredRows.length === 0 ? (
-                <div className="py-12 text-center space-y-3">
-                  <Users className="h-10 w-10 text-muted-foreground/30 mx-auto" />
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {search ? "Tidak ditemukan agen dengan nama tersebut." : "Belum ada agen terdaftar."}
-                  </p>
-                  {!search && isOwner && (
-                    <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white" onClick={() => setAddOpen(true)}>
-                      <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Tambah Agen Pertama
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="overflow-x-auto -mx-2">
-                  <table className="w-full min-w-[580px] text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        {["#", "Nama Agen", "Level / Rank", "Total Poin", "Order", "Klien", "Komisi", "Aksi"].map((h) => (
-                          <th key={h} className={`px-3 py-2 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground ${h === "#" ? "text-center w-8" : h === "Aksi" ? "text-center" : h === "Nama Agen" || h === "Level / Rank" ? "text-left" : "text-right"}`}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/50">
-                      {filteredRows.map((agent) => {
-                        const rank = agentRows.findIndex((a) => a.userId === agent.userId);
-                        return (
-                          <tr key={agent.userId} className="group hover:bg-secondary/40 transition-colors">
-                            <td className="px-3 py-3 text-center text-base">{rankOf(rank)}</td>
-                            <td className="px-3 py-3">
-                              <div className="flex items-center gap-2.5">
-                                <div className="h-8 w-8 rounded-full overflow-hidden flex items-center justify-center text-white text-sm font-bold shrink-0"
-                                  style={{ background: agent.photoUrl ? "transparent" : agent.color }}>
-                                  {agent.photoUrl ? (
-                                    <img src={agent.photoUrl} alt={agent.displayName} className="h-full w-full object-cover" />
-                                  ) : (
-                                    agent.displayName.charAt(0).toUpperCase()
-                                  )}
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="font-semibold text-[13px] truncate max-w-[140px]">{agent.displayName}</div>
-                                  <div className="text-[10.5px] text-muted-foreground truncate max-w-[140px]">{agent.email}</div>
-                                </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[960px]">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/60">
+                      <th className="pl-5 pr-2 py-3 text-left text-[10.5px] font-bold uppercase tracking-wide text-slate-400 w-10">#</th>
+                      <th className="px-3 py-3 text-left text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Agen</th>
+                      <th className="px-3 py-3 text-left text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Level / Rank</th>
+                      <th className="px-3 py-3 text-right text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Total Poin</th>
+                      <th className="px-3 py-3 text-right text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Order</th>
+                      <th className="px-3 py-3 text-right text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Klien</th>
+                      <th className="px-3 py-3 text-right text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Komisi</th>
+                      <th className="px-3 py-3 text-right text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Revenue</th>
+                      <th className="px-3 py-3 text-center text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Status</th>
+                      <th className="px-3 pr-5 py-3 text-center text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {pagedRows.map((agent) => {
+                      const globalRank = dirFilteredRows.findIndex((a) => a.userId === agent.userId) + 1;
+                      const isActive = (agent.agentStatus ?? "active") === "active";
+                      const { current: tier } = agent.tierInfo;
+                      const maxPts = Math.max(...agentRows.map((a) => a.totalPoints), 1);
+                      const ptsGrowthPct  = Math.round((agent.totalPoints / maxPts) * 100);
+                      const orderGrowthPct = agent.totalOrders > 0 ? Math.round((agent.completedOrders / agent.totalOrders) * 100) : 0;
+                      const clientGrowthPct = totalDirClients > 0 ? Math.round((agent.clientCount / totalDirClients) * 100) : 0;
+                      return (
+                        <tr key={agent.userId} className="hover:bg-blue-50/30 transition-colors group">
+                          <td className="pl-5 pr-2 py-3.5">
+                            <span className="text-[11px] font-bold text-slate-400">#{globalRank}</span>
+                          </td>
+                          <td className="px-3 py-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-9 w-9 rounded-full flex items-center justify-center text-white text-[13px] font-extrabold shrink-0 overflow-hidden"
+                                style={{ background: agent.photoUrl ? "transparent" : agent.color }}>
+                                {agent.photoUrl
+                                  ? <img src={agent.photoUrl} alt={agent.displayName} className="h-full w-full object-cover" />
+                                  : agent.displayName.charAt(0).toUpperCase()
+                                }
                               </div>
-                            </td>
-                            <td className="px-3 py-3"><TierBadge points={agent.totalPoints} /></td>
-                            <td className="px-3 py-3 text-right">
-                              <span className="font-mono font-semibold text-[13px]">{agent.totalPoints.toLocaleString("id-ID")}</span>
-                              <span className="text-[10px] text-muted-foreground ml-1">pts</span>
-                            </td>
-                            <td className="px-3 py-3 text-right">
-                              <div className="font-semibold text-[13px]">{agent.totalOrders}</div>
-                              {agent.completedOrders > 0 && (
-                                <div className="text-[10px] text-emerald-600">{agent.completedOrders} selesai</div>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-right font-semibold text-[13px]">{agent.clientCount}</td>
-                            <td className="px-3 py-3 text-right">
-                              <div className="font-mono text-[11.5px] font-semibold text-amber-700">{fmtIDR(agent.commissionOwed)}</div>
-                            </td>
-                            <td className="px-3 py-3">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <Button variant="outline" size="sm" className="h-7 px-2.5 text-[11px] gap-1"
-                                  onClick={() => navigate(`/agents/${agent.userId}`)}>
-                                  <Eye className="h-3 w-3" /> Profil
-                                </Button>
-                                <Button size="sm" className="h-7 px-2.5 text-[11px] gap-1 bg-sky-600 hover:bg-sky-700 text-white"
-                                  onClick={() => goToAnalytics(agent)}>
-                                  <BarChart3 className="h-3 w-3" /> Analitik
-                                </Button>
+                              <div className="min-w-0">
+                                <p className="text-[13px] font-bold text-slate-900 truncate max-w-[160px] leading-tight">{agent.displayName}</p>
+                                <p className="text-[10.5px] text-slate-400 truncate max-w-[160px]">{agent.email}</p>
                               </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3.5">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${tier.softBg} ${tier.softText}`}>
+                              {tier.emoji} {tier.label}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3.5 text-right">
+                            <div className="font-bold text-[13px] text-slate-800 tabular-nums">
+                              {agent.totalPoints.toLocaleString("id-ID")} <span className="text-[10px] font-normal text-slate-400">pts</span>
+                            </div>
+                            <div className="text-[10px] text-emerald-600 font-semibold flex items-center justify-end gap-0.5 mt-0.5">
+                              <TrendingUp className="h-2.5 w-2.5" />{ptsGrowthPct}%
+                            </div>
+                          </td>
+                          <td className="px-3 py-3.5 text-right">
+                            <div className="font-bold text-[13px] text-slate-800 tabular-nums">{agent.totalOrders}</div>
+                            <div className="text-[10px] text-emerald-600 font-semibold flex items-center justify-end gap-0.5 mt-0.5">
+                              <TrendingUp className="h-2.5 w-2.5" />{orderGrowthPct}%
+                            </div>
+                          </td>
+                          <td className="px-3 py-3.5 text-right">
+                            <div className="font-bold text-[13px] text-slate-800 tabular-nums">{agent.clientCount}</div>
+                            <div className="text-[10px] text-emerald-600 font-semibold flex items-center justify-end gap-0.5 mt-0.5">
+                              <TrendingUp className="h-2.5 w-2.5" />{clientGrowthPct}%
+                            </div>
+                          </td>
+                          <td className="px-3 py-3.5 text-right">
+                            <div className="font-mono font-bold text-[12px] text-slate-800">{fmtIDR(agent.commissionOwed)}</div>
+                          </td>
+                          <td className="px-3 py-3.5 text-right">
+                            <div className="font-mono font-bold text-[12px] text-slate-800">{fmtIDR(agent.totalRevenue)}</div>
+                          </td>
+                          <td className="px-3 py-3.5 text-center">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-bold ${isActive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
+                              <div className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-red-500"}`} />
+                              {isActive ? "Aktif" : "Nonaktif"}
+                            </span>
+                          </td>
+                          <td className="px-3 pr-5 py-3.5">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Button variant="outline" size="sm"
+                                className="h-7 px-2.5 text-[11px] gap-1 border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600"
+                                onClick={() => navigate(`/agents/${agent.userId}`)}>
+                                <Eye className="h-3 w-3" /> Profil
+                              </Button>
+                              <button
+                                className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+                                onClick={() => { setSelectedAgent(agent); setProfileOpen(true); }}
+                              >
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-              {!loading && filteredRows.length > 0 && (
-                <p className="text-[10.5px] text-muted-foreground text-right pt-1">
-                  {filteredRows.length} dari {agentRows.length} agen ·{" "}
-                  <button className="font-medium underline hover:text-foreground transition-colors"
-                    onClick={() => setTab("analytics")}>
-                    Lihat performa di Analytics →
-                  </button>
+            {/* Pagination */}
+            {!loading && dirFilteredRows.length > 0 && (
+              <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3">
+                <p className="text-[11.5px] text-slate-500">
+                  Menampilkan {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, dirFilteredRows.length)} dari {dirFilteredRows.length} agen
                 </p>
-              )}
-            </CardContent>
-          </Card>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map((page) => (
+                    <button key={page} onClick={() => setCurrentPage(page)}
+                      className={`h-8 w-8 rounded-lg text-[12px] font-semibold transition-colors ${page === currentPage ? "bg-blue-600 text-white border border-blue-600" : "border border-slate-200 text-slate-600 hover:border-blue-300"}`}>
+                      {page}
+                    </button>
+                  ))}
+                  {totalPages > 5 && <span className="text-slate-400 text-[12px] px-1">…</span>}
+                  {totalPages > 5 && (
+                    <button onClick={() => setCurrentPage(totalPages)}
+                      className={`h-8 w-8 rounded-lg text-[12px] font-semibold transition-colors ${totalPages === currentPage ? "bg-blue-600 text-white border border-blue-600" : "border border-slate-200 text-slate-600 hover:border-blue-300"}`}>
+                      {totalPages}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                  <div className="relative ml-1">
+                    <select
+                      value={pageSize}
+                      onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                      className="h-8 pl-2 pr-7 rounded-lg border border-slate-200 text-[11.5px] font-medium text-slate-600 bg-white outline-none cursor-pointer appearance-none"
+                    >
+                      <option value={10}>10 / hal</option>
+                      <option value={25}>25 / hal</option>
+                      <option value={50}>50 / hal</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          TAB: KOMISI
+      ══════════════════════════════════════════════════════════════════════════ */}
+      {tab === "komisi" && (
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <StatCard label="Total Komisi" value={fmtIDR(totalCommissionOwed)} sub="semua agen" icon={Percent} tone="amber" />
+            <StatCard label="Rata-rata Komisi" value={fmtIDR(agentRows.length > 0 ? Math.round(totalCommissionOwed / agentRows.length) : 0)} sub="per agen" icon={TrendingUp} tone="emerald" />
+            <StatCard label="Agen Komisi Aktif" value={String(agentRows.filter((a) => a.commissionOwed > 0).length)} sub="dengan komisi > 0" icon={BadgeCheck} tone="sky" />
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h2 className="text-[15px] font-extrabold text-slate-900">Rincian Komisi Agen</h2>
+              <p className="text-[12px] text-slate-500 mt-0.5">Total komisi yang harus dibayarkan ke setiap agen berdasarkan order Completed.</p>
+            </div>
+            {loading ? (
+              <div className="py-12 text-center">
+                <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-slate-400" />
+                <p className="text-[12px] text-slate-400">Memuat data komisi…</p>
+              </div>
+            ) : agentRows.length === 0 ? (
+              <div className="py-12 text-center">
+                <Percent className="h-10 w-10 mx-auto mb-3 text-slate-200" />
+                <p className="text-[13px] font-semibold text-slate-500">Belum ada data komisi.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px]">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/60">
+                      <th className="pl-5 px-3 py-3 text-left text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Agen</th>
+                      <th className="px-3 py-3 text-right text-[10.5px] font-bold uppercase tracking-wide text-slate-400">% Komisi</th>
+                      <th className="px-3 py-3 text-right text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Order Selesai</th>
+                      <th className="px-3 py-3 text-right text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Total Revenue</th>
+                      <th className="px-3 pr-5 py-3 text-right text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Komisi Terhutang</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {agentRows.map((agent) => (
+                      <tr key={agent.userId} className="hover:bg-blue-50/30 transition-colors">
+                        <td className="pl-5 px-3 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-[12px] font-bold shrink-0 overflow-hidden"
+                              style={{ background: agent.photoUrl ? "transparent" : agent.color }}>
+                              {agent.photoUrl ? <img src={agent.photoUrl} alt={agent.displayName} className="h-full w-full object-cover" /> : agent.displayName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-[13px] font-bold text-slate-900">{agent.displayName}</p>
+                              <p className="text-[10.5px] text-slate-400">{agent.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3.5 text-right">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            {agent.commissionPct}%
+                          </span>
+                        </td>
+                        <td className="px-3 py-3.5 text-right font-bold text-[13px] text-slate-800">{agent.completedOrders}</td>
+                        <td className="px-3 py-3.5 text-right font-mono font-bold text-[12.5px] text-slate-800">{fmtIDR(agent.totalRevenue)}</td>
+                        <td className="px-3 pr-5 py-3.5 text-right font-mono font-bold text-[13px] text-amber-700">{fmtIDR(agent.commissionOwed)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-slate-200 bg-slate-50/60">
+                      <td colSpan={4} className="pl-5 px-3 py-3 text-[12px] font-bold text-slate-700">Total Komisi Seluruh Agen</td>
+                      <td className="px-3 pr-5 py-3 text-right font-mono font-black text-[13px] text-amber-700">{fmtIDR(totalCommissionOwed)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

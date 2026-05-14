@@ -65,6 +65,7 @@ export interface MemberInfo {
   photoUrl?: string;
   phoneWa?: string | null;
   agentNotes?: string | null;
+  agentStatus?: "active" | "inactive";
 }
 
 interface AuthState {
@@ -346,6 +347,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user_id: string; role: string; commission_pct: number; created_at: string;
         email: string | null; first_name: string | null; last_name: string | null;
         profile_image_url: string | null; phone_wa: string | null; agent_notes: string | null;
+        agent_status: string | null;
       }>>("/api/agency-members");
       return rows.map((m) => {
         const isMe = m.user_id === user.id;
@@ -362,6 +364,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           photoUrl:      m.profile_image_url ?? undefined,
           phoneWa:       m.phone_wa ?? null,
           agentNotes:    m.agent_notes ?? null,
+          agentStatus:   (m.agent_status === "inactive" ? "inactive" : "active") as "active" | "inactive",
         };
       });
     } catch { return []; }
