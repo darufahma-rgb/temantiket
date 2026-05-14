@@ -14,6 +14,7 @@
 
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,6 +80,7 @@ interface NotifState {
   _channel:      RealtimeChannel | null;
 
   fetch:              (userId: string) => Promise<void>;
+  fetchNotifications: () => Promise<void>;
   markAsRead:         (id: string) => Promise<void>;
   markAllAsRead:      (userId: string) => Promise<void>;
   deleteNotif:        (id: string) => Promise<void>;
@@ -117,6 +119,13 @@ export const useNotificationStore = create<NotifState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  // ── Convenience wrapper: fetch using currently logged-in user ─────────────
+  fetchNotifications: async () => {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return;
+    return get().fetch(userId);
   },
 
   // ── Mark single notification as read ─────────────────────────────────────

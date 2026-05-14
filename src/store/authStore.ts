@@ -120,23 +120,34 @@ export function getAccessToken(): string | null {
 
 // ── Fetch agency membership via Supabase REST ────────────────────────────────
 
-async function fetchAgencyMembership(userId: string, accessToken: string): Promise<{
+async function fetchAgencyMembership(userId: string, _accessToken: string): Promise<{
   role: UserRole; agencyId: string; agencyName: string; commissionPct: number;
 } | null> {
   if (!supabase) return null;
   try {
-    const { data, error } = await supabase
+    const { data: memberData, error: memberError } = await supabase
       .from("agency_members")
-      .select("role, agency_id, commission_pct, agencies(name)")
+      .select("role, agency_id, commission_pct")
       .eq("user_id", userId)
       .limit(1)
       .single();
-    if (error || !data) return null;
+    if (memberError || !memberData) return null;
+
+    let agencyName = "Agency";
+    try {
+      const { data: agencyData } = await supabase
+        .from("agencies")
+        .select("name")
+        .eq("id", memberData.agency_id)
+        .maybeSingle();
+      if (agencyData?.name) agencyName = String(agencyData.name);
+    } catch { /* use default name if agencies query fails */ }
+
     return {
-      role:          data.role as UserRole,
-      agencyId:      data.agency_id,
-      agencyName:    (data.agencies as { name?: string } | null)?.name ?? "Agency",
-      commissionPct: Number(data.commission_pct ?? 0),
+      role:          memberData.role as UserRole,
+      agencyId:      memberData.agency_id,
+      agencyName,
+      commissionPct: Number(memberData.commission_pct ?? 0),
     };
   } catch { return null; }
 }
