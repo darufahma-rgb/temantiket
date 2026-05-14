@@ -6,7 +6,7 @@ import {
   Share2, Users, Trophy, Gift, Crown, Copy, Check,
   ChevronLeft, ChevronRight, ChevronDown, Sparkles, ExternalLink,
   Star, Calendar, Hash, TrendingUp, Briefcase, Zap, BadgeCheck, DollarSign,
-  Ticket, Shirt, Banknote, Plane, type LucideIcon,
+  Ticket, Plane, Building2, Instagram, Send, type LucideIcon,
 } from "lucide-react";
 import MemberCard from "@/components/MemberCard";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -28,17 +28,17 @@ function ensureExternalUrl(url: string): string {
 }
 
 const REWARD_MILESTONES = [
-  { row: 1, stamps: 4,  emoji: "🎫", label: "Voucher Diskon Rp100.000",        desc: "Potongan harga Rp100.000 untuk order berikutnya — umrah, tiket, atau visa.", color: "blue"   },
-  { row: 2, stamps: 8,  emoji: "🎁", label: "Merchandise Resmi Temantiket",     desc: "Paket merchandise eksklusif branded Temantiket dikirim ke alamat Anda.",     color: "violet" },
-  { row: 3, stamps: 12, emoji: "💸", label: "Voucher Diskon Rp300.000",         desc: "Voucher diskon besar untuk 1 paket pilihan — umrah, tiket, atau visa.",      color: "emerald"},
-  { row: 4, stamps: 16, emoji: "✈️", label: "VIP Grand Reward — Transit Qatar", desc: "Akses lounge premium & city tour eksklusif saat transit di Qatar. Syarat & ketentuan berlaku.", color: "amber" },
+  { row: 1, stamps: 4,  emoji: "🎫", label: "Diskon Tiket Domestik",       subLabel: "1 baris stamp", desc: "Diskon tiket pesawat domestik untuk order berikutnya.",           color: "blue"   },
+  { row: 2, stamps: 8,  emoji: "✈️", label: "Upgrade Kelas Penerbangan",   subLabel: "2 baris stamp", desc: "Upgrade kelas penerbangan untuk 1 perjalanan pilihan.",           color: "indigo" },
+  { row: 3, stamps: 12, emoji: "🏨", label: "Voucher Hotel Diskon 10%",    subLabel: "3 baris stamp", desc: "Voucher hotel diskon 10% untuk pilihan hotel Temantiket.",        color: "violet" },
+  { row: 4, stamps: 16, emoji: "🕋", label: "Umrah Gratis (Undian)",       subLabel: "4 baris stamp", desc: "Kesempatan umrah gratis melalui program undian Temantiket.",      color: "amber"  },
 ] as const;
 
 const REWARD_ROW_ICON: Record<number, LucideIcon> = {
   1: Ticket,
-  2: Shirt,
-  3: Banknote,
-  4: Plane,
+  2: Plane,
+  3: Building2,
+  4: Gift,
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -195,7 +195,7 @@ export default function PublicMemberCardPage() {
   const [err,                 setErr]                 = useState<"not_found" | "invalid_slug" | "network" | null>(null);
   const [referralCopied,      setReferralCopied]      = useState(false);
   const [showAllHistory,      setShowAllHistory]      = useState(false);
-  const [showRewards,         setShowRewards]         = useState(false);
+  const [showRewards,         setShowRewards]         = useState(true);
   const [publicOrders,        setPublicOrders]        = useState<PublicOrderData[]>([]);
   const [loadingPublicOrders, setLoadingPublicOrders] = useState(false);
   const [clientIdResolved,    setClientIdResolved]    = useState<string | null>(null);
@@ -433,19 +433,28 @@ export default function PublicMemberCardPage() {
                   <Sparkles className="h-3 w-3" /> Temantiket Member
                 </div>
 
-                {/* Name */}
-                <h1 className="text-[26px] font-black text-white tracking-tight leading-tight">
-                  {data.client.name}
-                </h1>
-
-                {/* ID + date row */}
-                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <span className="text-[11px] font-bold text-white/80 bg-white/15 px-2.5 py-1 rounded-full font-mono">
-                    {memberIdStr}
-                  </span>
-                  <span className="text-[11px] text-blue-100">
-                    Bergabung {fmtDateShort(data.client.createdAt)}
-                  </span>
+                {/* Name row + Pesan Sekarang button */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-[24px] font-black text-white tracking-tight leading-tight flex items-center gap-2 flex-wrap">
+                      {data.client.name}
+                      <BadgeCheck className="h-5 w-5 text-blue-200 shrink-0" />
+                    </h1>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <span className="text-[11px] font-bold text-white/80 bg-white/15 px-2.5 py-1 rounded-full font-mono">
+                        {memberIdStr}
+                      </span>
+                      <span className="text-[11px] text-blue-100">
+                        Bergabung {fmtDateShort(data.client.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                  <a href={ctaUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 bg-[#25D366] text-white text-[11px] font-black px-3 py-2.5 rounded-xl shadow-md shadow-green-900/30 shrink-0 whitespace-nowrap active:opacity-80 transition-opacity mt-0.5"
+                    style={{ WebkitTapHighlightColor: "transparent" }}>
+                    <MessageCircle className="h-3.5 w-3.5 shrink-0" />
+                    {isReferralView ? "Hubungi" : "Pesan Sekarang"}
+                  </a>
                 </div>
 
                 {/* Status badges */}
@@ -467,52 +476,6 @@ export default function PublicMemberCardPage() {
                     {totalStamps} / 16 stamp
                   </span>
                 </div>
-              </div>
-
-              {/* ── Member Card (floating up from hero) ──────────────────── */}
-              <div className="px-4 -mt-6">
-                <div className="bg-white rounded-3xl shadow-md p-4 space-y-3">
-                  <MemberCard
-                    client={{ name: data.client.name, createdAt: data.client.createdAt }}
-                    memberIndex={data.client.memberIndex}
-                    orders={data.orders.map((o) => ({ type: o.type, status: o.status, createdAt: o.createdAt, transitType: o.transitType }))}
-                    readOnly
-                  />
-                  <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
-                    {(data.client.referralStamps ?? 0) > 0 && (
-                      <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-semibold px-3 py-1.5 rounded-full">
-                        <Gift className="h-3 w-3" /> +{data.client.referralStamps} referral
-                      </div>
-                    )}
-                    {totalStamps >= 16 && (
-                      <div className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold px-3 py-1.5 rounded-full">
-                        <Crown className="h-3 w-3" /> Full Card! 🎉
-                      </div>
-                    )}
-                    {isGoldMember && totalStamps < 16 && (
-                      <div className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold px-3 py-1.5 rounded-full">
-                        <Crown className="h-3 w-3" /> Gold Member
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Quick Actions (WA + Share) ────────────────────────────── */}
-              <div className="px-4 mt-3 flex gap-2">
-                <a href={ctaUrl} target="_blank" rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] text-white text-[13px] font-black py-3.5 rounded-2xl shadow-sm shadow-green-200 active:opacity-80 transition-opacity"
-                  style={{ WebkitTapHighlightColor: "transparent" }}>
-                  <MessageCircle className="h-4 w-4 shrink-0" />
-                  {isReferralView ? "Hubungi Admin" : "Pesan Sekarang"}
-                </a>
-                {!isReferralView && (
-                  <button type="button" onClick={handleCopyReferral}
-                    className="flex items-center gap-1.5 bg-white border border-blue-100 text-blue-700 text-[13px] font-bold px-4 py-3.5 rounded-2xl shadow-sm active:opacity-70 transition-opacity"
-                    style={{ WebkitTapHighlightColor: "transparent" }}>
-                    {referralCopied ? <><Check className="h-4 w-4 text-emerald-500" /> Tersalin!</> : <><Copy className="h-4 w-4" /> Salin Link</>}
-                  </button>
-                )}
               </div>
 
               {/* ── Stat Chips (3-col) ────────────────────────────────────── */}
@@ -588,12 +551,40 @@ export default function PublicMemberCardPage() {
                   </div>
 
                   <p className="text-[12px] text-blue-500 font-semibold text-right">
-                    {totalStamps >= 16 ? "🎉 Full card! Klaim reward VIP Qatar" : `${16 - totalStamps} stamp lagi menuju Qatar ✈️`}
+                    {totalStamps >= 16 ? "🎉 Full card! Klaim reward Umrah Gratis" : `${16 - totalStamps} stamp lagi menuju Umrah Gratis 🕋`}
                   </p>
                 </div>
               </div>
 
-              {/* ── Hadiah Member Point (collapsible) ────────────────────── */}
+              {/* ── Member Card ───────────────────────────────────────────── */}
+              <div className="px-4 mt-3">
+                <div className="bg-white rounded-3xl shadow-sm p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-9 w-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                        <Star className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-extrabold text-[#0f1c3f] leading-tight">Member Card</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">{totalStamps} dari 16 stamp terisi</p>
+                      </div>
+                    </div>
+                    {(data.client.referralStamps ?? 0) > 0 && (
+                      <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold px-2.5 py-1 rounded-full">
+                        <Gift className="h-3 w-3" /> +{data.client.referralStamps} referral
+                      </div>
+                    )}
+                  </div>
+                  <MemberCard
+                    client={{ name: data.client.name, createdAt: data.client.createdAt }}
+                    memberIndex={data.client.memberIndex}
+                    orders={data.orders.map((o) => ({ type: o.type, status: o.status, createdAt: o.createdAt, transitType: o.transitType }))}
+                    readOnly
+                  />
+                </div>
+              </div>
+
+              {/* ── Hadiah Member Point (2×2 grid) ────────────────────────── */}
               <div className="px-4 mt-3">
                 <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
                   <button type="button" onClick={() => setShowRewards(v => !v)}
@@ -606,9 +597,14 @@ export default function PublicMemberCardPage() {
                       Hadiah Member Point
                     </h2>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
+                      <span className="text-[11px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full whitespace-nowrap">
                         {unlockedRewardCount > 0 ? `${unlockedRewardCount} diraih` : `${Math.min(4, Math.floor(totalStamps / 4))}/4 baris`}
                       </span>
+                      {currentReward && (
+                        <span className="text-[11px] text-blue-700 font-bold bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full whitespace-nowrap">
+                          Berikut: {currentReward.emoji} {currentReward.stamps - totalStamps} stamp
+                        </span>
+                      )}
                       <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${showRewards ? "rotate-180" : ""}`} />
                     </div>
                   </button>
@@ -617,66 +613,65 @@ export default function PublicMemberCardPage() {
                     {showRewards && (
                       <motion.div key="mob-rewards" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: "easeInOut" }} className="overflow-hidden">
-                        <div className="border-t border-gray-100">
-                          <ul className="divide-y divide-gray-50">
+                        <div className="border-t border-gray-100 p-4">
+                          <div className="grid grid-cols-2 gap-3">
                             {REWARD_MILESTONES.map((m) => {
                               const unlocked = totalStamps >= m.stamps;
                               const current  = totalStamps >= (m.row === 1 ? 0 : REWARD_MILESTONES[m.row - 2].stamps) && !unlocked;
                               const isVip    = m.row === 4;
-
-                              if (isVip) {
-                                return (
-                                  <li key={m.row} className="overflow-hidden">
-                                    <div className={`relative px-5 py-4 ${unlocked ? "bg-gradient-to-br from-amber-400 via-yellow-300 to-amber-500" : current ? "bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50" : "bg-gray-50"}`}>
-                                      {unlocked && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />}
-                                      <div className="flex items-center gap-3">
-                                        <div className={`shrink-0 h-10 w-10 rounded-xl flex items-center justify-center border ${unlocked ? "bg-white/30 border-white/50" : current ? "bg-blue-100 border-blue-300" : "bg-blue-50 border-blue-200"}`}>
-                                          <Plane className={`h-5 w-5 stroke-[1.5] ${unlocked ? "text-white" : "text-blue-500"}`} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${unlocked ? "bg-white/40 text-amber-900" : "bg-amber-400 text-white"}`}>👑 VIP</span>
-                                          <p className={`text-sm font-black leading-tight mt-1 ${unlocked ? "text-amber-950" : current ? "text-amber-900" : "text-gray-500"}`}>{m.label}</p>
-                                          {(current || unlocked) && (
-                                            <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                              {["🛫 Lounge", "🌆 City Tour", "🏨 Transit"].map((tag) => (
-                                                <span key={tag} className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${unlocked ? "bg-white/30 border-white/40 text-amber-950" : "bg-amber-50 border-amber-200 text-amber-800"}`}>{tag}</span>
-                                              ))}
-                                            </div>
-                                          )}
-                                        </div>
-                                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 ${unlocked ? "bg-white/40 text-amber-950 border-white/50" : current ? "bg-amber-100 text-amber-700 border-amber-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}>
-                                          {unlocked ? "✓ Diraih!" : current ? "Hampir!" : "16 ✦"}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </li>
-                                );
-                              }
-
+                              const RowIcon  = REWARD_ROW_ICON[m.row];
                               return (
-                                <li key={m.row} className={`flex items-center gap-3 px-5 py-4 ${unlocked ? "bg-emerald-50/50" : current ? "bg-blue-50/40" : ""}`}>
-                                  {(() => {
-                                    const RowIcon = REWARD_ROW_ICON[m.row];
-                                    return (
-                                      <div className={`shrink-0 h-10 w-10 rounded-xl flex items-center justify-center border ${unlocked || current ? "bg-blue-100 border-blue-200" : "bg-blue-50 border-blue-200"}`}>
-                                        <RowIcon className={`h-5 w-5 stroke-[1.5] ${unlocked ? "text-blue-600" : current ? "text-blue-500" : "text-blue-400"}`} />
-                                      </div>
-                                    );
-                                  })()}
-                                  <div className="flex-1 min-w-0">
-                                    <p className={`text-sm font-bold leading-tight truncate ${unlocked ? "text-emerald-800" : current ? "text-blue-800" : "text-gray-500"}`}>{m.label}</p>
-                                    {(unlocked || current) && <p className={`text-xs mt-0.5 line-clamp-1 ${unlocked ? "text-emerald-600" : "text-gray-400"}`}>{m.desc}</p>}
+                                <div key={m.row} className={`relative rounded-2xl p-3.5 border flex flex-col gap-2.5 overflow-hidden ${
+                                  unlocked ? "bg-emerald-50 border-emerald-200" :
+                                  current  ? "bg-blue-50 border-blue-200" :
+                                  isVip    ? "bg-amber-50/60 border-amber-100" :
+                                            "bg-gray-50 border-gray-100"
+                                }`}>
+                                  {isVip && !unlocked && (
+                                    <div className="absolute top-2 right-2">
+                                      <span className="text-[9px] font-black uppercase tracking-widest bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full">VIP</span>
+                                    </div>
+                                  )}
+                                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                    unlocked ? "bg-emerald-100" :
+                                    current  ? "bg-blue-100" :
+                                    isVip    ? "bg-amber-100" :
+                                              "bg-gray-100"
+                                  }`}>
+                                    <RowIcon className={`h-4.5 w-4.5 ${
+                                      unlocked ? "text-emerald-600" :
+                                      current  ? "text-blue-500" :
+                                      isVip    ? "text-amber-600" :
+                                                "text-gray-400"
+                                    }`} />
                                   </div>
-                                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 whitespace-nowrap ${unlocked ? "bg-emerald-100 text-emerald-700 border-emerald-300" : current ? "bg-blue-100 text-blue-600 border-blue-200" : "bg-gray-100 text-gray-400 border-gray-200"}`}>
+                                  <div className="min-w-0">
+                                    <p className={`text-[12px] font-bold leading-tight ${
+                                      unlocked ? "text-emerald-800" :
+                                      current  ? "text-blue-800" :
+                                      isVip    ? "text-amber-800" :
+                                                "text-gray-500"
+                                    }`}>{m.label}</p>
+                                    <p className={`text-[10px] font-semibold mt-0.5 ${
+                                      unlocked ? "text-emerald-500" :
+                                      current  ? "text-blue-400" :
+                                                "text-gray-400"
+                                    }`}>{m.subLabel}</p>
+                                  </div>
+                                  <span className={`self-start text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                                    unlocked ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+                                    current  ? "bg-blue-100 text-blue-600 border-blue-200" :
+                                              "bg-gray-100 text-gray-400 border-gray-200"
+                                  }`}>
                                     {unlocked ? "✓ Diraih" : current ? "Proses" : `${m.stamps} ✦`}
                                   </span>
-                                </li>
+                                </div>
                               );
                             })}
-                          </ul>
-                          <div className="px-5 py-3.5 bg-amber-50 border-t border-amber-100 rounded-b-3xl">
-                            <p className="text-xs text-amber-700 leading-relaxed">
-                              💡 Setiap 4 stamp = 1 baris. Klaim via WhatsApp ke admin. Grand Reward Qatar di baris ke-4!
+                          </div>
+                          <div className="mt-3 px-1 py-2.5 bg-amber-50 border border-amber-100 rounded-2xl">
+                            <p className="text-[11px] text-amber-700 leading-relaxed text-center">
+                              💡 Setiap 4 stamp = 1 baris. Klaim via WhatsApp ke admin.
                             </p>
                           </div>
                         </div>
