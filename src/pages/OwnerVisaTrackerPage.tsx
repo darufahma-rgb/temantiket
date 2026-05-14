@@ -1,9 +1,8 @@
 /**
  * OwnerVisaTrackerPage — /visa-tracker
  *
- * Dashboard operasional owner untuk monitoring & kontrol semua berkas
- * Visa Student Entry. Tampilkan ringkasan, tabel semua berkas, assignment
- * pelaksana inline, dan pelacakan pembayaran fee pelaksana.
+ * Redesigned dashboard: header, 5 stats cards, filter row, pipeline visualization,
+ * full data table with KLIEN/NEGARA/JENIS VISA/ID ORDER/TANGGAL AJU/STATUS/PROGRESS/AGEN/AKSI.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -12,10 +11,14 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   FileText, AlertTriangle, CheckCircle2, Clock,
-  Wallet, ChevronRight, RefreshCw, Loader2,
+  Wallet, RefreshCw, Loader2,
   Users, BadgeDollarSign, Search, Filter,
-  UserCheck, X, CircleDot, Landmark, ExternalLink,
-  ChevronLeft, Plus, Bell, MoreVertical, ChevronDown,
+  UserCheck, X, Landmark, ExternalLink,
+  ChevronLeft, ChevronRight, ChevronDown, Plus,
+  MoreVertical, CircleDot,
+  Eye, Pencil, Inbox, ClipboardCheck,
+  ShieldCheck, FileCheck2, Flag, LayoutGrid, List,
+  Download, Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,31 +38,189 @@ import type { Order } from "@/features/orders/ordersRepo";
 
 const VISA_STEPS = ORDER_PROCESS_STEPS["visa_student"];
 const DEFAULT_FEE = 200_000;
+const DEFAULT_PAGE_SIZE = 6;
 const MOBILE_PAGE_SIZE = 5;
 
+// ─── Pipeline stage definitions (7 stages) ───────────────────────────────────
+const PIPELINE_STAGES = [
+  {
+    key: "berkas_masuk",
+    label: "Berkas Masuk",
+    step: 0,
+    Icon: Inbox,
+    color: "#64748b",
+    iconBg: "#f1f5f9",
+    pct: 10,
+    badgeBg: "bg-slate-100",
+    badgeText: "text-slate-700",
+    barColor: "bg-slate-400",
+  },
+  {
+    key: "pengecekan",
+    label: "Pengecekan",
+    step: 1,
+    Icon: ClipboardCheck,
+    color: "#3b82f6",
+    iconBg: "#eff6ff",
+    pct: 25,
+    badgeBg: "bg-blue-100",
+    badgeText: "text-blue-700",
+    barColor: "bg-blue-400",
+  },
+  {
+    key: "proses_pengajuan",
+    label: "Proses Pengajuan",
+    step: 2,
+    Icon: Send,
+    color: "#f97316",
+    iconBg: "#fff7ed",
+    pct: 42,
+    badgeBg: "bg-orange-100",
+    badgeText: "text-orange-700",
+    barColor: "bg-orange-400",
+  },
+  {
+    key: "menunggu_kedutaan",
+    label: "Menunggu Kedutaan",
+    step: 3,
+    Icon: Landmark,
+    color: "#f59e0b",
+    iconBg: "#fffbeb",
+    pct: 58,
+    badgeBg: "bg-amber-100",
+    badgeText: "text-amber-700",
+    barColor: "bg-amber-400",
+  },
+  {
+    key: "disetujui",
+    label: "Disetujui",
+    step: 4,
+    Icon: ShieldCheck,
+    color: "#4f46e5",
+    iconBg: "#eef2ff",
+    pct: 75,
+    badgeBg: "bg-indigo-100",
+    badgeText: "text-indigo-700",
+    barColor: "bg-indigo-400",
+  },
+  {
+    key: "visa_terbit",
+    label: "Visa Terbit",
+    step: 5,
+    Icon: FileCheck2,
+    color: "#10b981",
+    iconBg: "#ecfdf5",
+    pct: 90,
+    badgeBg: "bg-green-100",
+    badgeText: "text-green-700",
+    barColor: "bg-green-400",
+  },
+  {
+    key: "selesai",
+    label: "Selesai",
+    step: 6,
+    Icon: Flag,
+    color: "#059669",
+    iconBg: "#d1fae5",
+    pct: 100,
+    badgeBg: "bg-emerald-100",
+    badgeText: "text-emerald-700",
+    barColor: "bg-emerald-500",
+  },
+] as const;
+
+// ─── Country flags ────────────────────────────────────────────────────────────
+const COUNTRY_FLAGS: Record<string, { flag: string; name: string }> = {
+  mesir:           { flag: "🇪🇬", name: "Mesir" },
+  turki:           { flag: "🇹🇷", name: "Turki" },
+  malaysia:        { flag: "🇲🇾", name: "Malaysia" },
+  arab_saudi:      { flag: "🇸🇦", name: "Arab Saudi" },
+  uni_emirat_arab: { flag: "🇦🇪", name: "Uni Emirat Arab" },
+  qatar:           { flag: "🇶🇦", name: "Qatar" },
+  jordania:        { flag: "🇯🇴", name: "Jordania" },
+  maroko:          { flag: "🇲🇦", name: "Maroko" },
+  uzbekistan:      { flag: "🇺🇿", name: "Uzbekistan" },
+  pakistan:        { flag: "🇵🇰", name: "Pakistan" },
+  iran:            { flag: "🇮🇷", name: "Iran" },
+  jerman:          { flag: "🇩🇪", name: "Jerman" },
+  perancis:        { flag: "🇫🇷", name: "Perancis" },
+  inggris:         { flag: "🇬🇧", name: "Inggris" },
+  belanda:         { flag: "🇳🇱", name: "Belanda" },
+};
+
+const COUNTRY_OPTIONS = [
+  { value: "mesir",           label: "🇪🇬 Mesir" },
+  { value: "turki",           label: "🇹🇷 Turki" },
+  { value: "malaysia",        label: "🇲🇾 Malaysia" },
+  { value: "arab_saudi",      label: "🇸🇦 Arab Saudi" },
+  { value: "uni_emirat_arab", label: "🇦🇪 Uni Emirat Arab" },
+  { value: "qatar",           label: "🇶🇦 Qatar" },
+  { value: "jordania",        label: "🇯🇴 Jordania" },
+  { value: "maroko",          label: "🇲🇦 Maroko" },
+  { value: "uzbekistan",      label: "🇺🇿 Uzbekistan" },
+  { value: "pakistan",        label: "🇵🇰 Pakistan" },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmtDate(iso: string) {
-  try { return format(new Date(iso), "d MMM yyyy", { locale: idLocale }); } catch { return iso; }
+  try { return format(new Date(iso), "d MMM yyyy", { locale: idLocale }); }
+  catch { return iso; }
+}
+
+function initials(name: string) {
+  return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase() || "?";
+}
+
+function formatOrderId(order: Order, index: number): string {
+  try {
+    const d = new Date(order.createdAt);
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    return `ORD-${dd}${mm}-${String(index + 1).padStart(3, "0")}`;
+  } catch {
+    return `ORD-${order.id.slice(0, 8)}`;
+  }
+}
+
+function meta(o: Order) {
+  return (o.metadata ?? {}) as Record<string, unknown>;
+}
+
+function getStageInfo(order: Order) {
+  const m = meta(order);
+  const step = Number(m.processStep ?? 0);
+  const isCompleted = order.status === "Completed" || step >= VISA_STEPS.length;
+  if (isCompleted) return PIPELINE_STAGES[6];
+  return PIPELINE_STAGES[Math.min(step, 5)];
+}
+
+function getCountryInfo(negara: string | undefined | null) {
+  if (!negara) return null;
+  const key = negara.toLowerCase().replace(/\s+/g, "_");
+  return COUNTRY_FLAGS[key] ?? { flag: "🌍", name: negara };
+}
+
+// ─── Avatar color palette ─────────────────────────────────────────────────────
+const AVATAR_COLORS = [
+  "linear-gradient(135deg,#6366f1,#4f46e5)",
+  "linear-gradient(135deg,#3b82f6,#1d4ed8)",
+  "linear-gradient(135deg,#10b981,#059669)",
+  "linear-gradient(135deg,#f97316,#ea580c)",
+  "linear-gradient(135deg,#8b5cf6,#7c3aed)",
+  "linear-gradient(135deg,#ec4899,#db2777)",
+  "linear-gradient(135deg,#f59e0b,#d97706)",
+  "linear-gradient(135deg,#14b8a6,#0d9488)",
+];
+function avatarColor(str: string) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
 type MemberInfo = { userId: string; displayName: string; email: string; role: string };
+type ViewMode = "table" | "grid";
 
-type FilterStatus = "all" | "belum" | "proses" | "selesai" | "kendala" | "belum_dibayar";
-
-function StepBadge({ step }: { step: number }) {
-  const s = VISA_STEPS[Math.min(step, VISA_STEPS.length - 1)];
-  const done = step >= VISA_STEPS.length - 1;
-  if (done) return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-      🎉 Visa Terbit
-    </span>
-  );
-  return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">
-      {s?.emoji} {s?.label ?? "—"}
-    </span>
-  );
-}
-
+// ─────────────────────────────────────────────────────────────────────────────
 export default function OwnerVisaTrackerPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -76,13 +237,21 @@ export default function OwnerVisaTrackerPage() {
   // Per-row action states
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [creditingId, setCreditingId] = useState<string | null>(null);
+  const [openRowMenu, setOpenRowMenu] = useState<string | null>(null);
 
-  // Filters
+  // Desktop filters
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
-  const [filterPelaksana, setFilterPelaksana] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterAgen, setFilterAgen] = useState("all");
+  const [filterNegara, setFilterNegara] = useState("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
 
-  // Mobile-only state
+  // Desktop pagination
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(DEFAULT_PAGE_SIZE);
+
+  // Mobile state
+  const [mobileFilterStatus, setMobileFilterStatus] = useState("all");
   const [mobilePage, setMobilePage] = useState(1);
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [mobileMoreMenu, setMobileMoreMenu] = useState<string | null>(null);
@@ -102,84 +271,162 @@ export default function OwnerVisaTrackerPage() {
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset mobile page when filters change
-  useEffect(() => { setMobilePage(1); }, [search, filterStatus, filterPelaksana]);
+  useEffect(() => { setPage(1); }, [search, filterStatus, filterAgen, filterNegara]);
+  useEffect(() => { setMobilePage(1); }, [mobileFilterStatus, search]);
 
   const clientMap = useMemo(
     () => new Map(clients.map((c) => [c.id, c])),
     [clients],
   );
-
   const memberMap = useMemo(
     () => new Map(members.map((m) => [m.userId, m])),
     [members],
   );
-
   const visaOrders = useMemo(
     () => orders.filter((o) => o.type === "visa_student"),
     [orders],
   );
 
-  const meta = (o: Order) => (o.metadata ?? {}) as Record<string, unknown>;
-
+  // ── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
-    const total         = visaOrders.length;
-    const belum         = visaOrders.filter((o) => !meta(o).pelaksanaId).length;
-    const selesai       = visaOrders.filter((o) => Number(meta(o).processStep ?? 0) >= VISA_STEPS.length - 1).length;
-    const kendala       = visaOrders.filter((o) => meta(o).visaKendala).length;
-    const proses        = total - belum - selesai;
-    const feeTotalSum   = visaOrders.reduce((s, o) => s + Number(meta(o).pelaksanaFee ?? DEFAULT_FEE), 0);
-    const feePaid       = visaOrders.filter((o) => meta(o).pelaksanaId && meta(o).pelaksanaFeeCredited).reduce((s, o) => s + Number(meta(o).pelaksanaFee ?? DEFAULT_FEE), 0);
-    const feeUnpaid     = visaOrders.filter((o) => meta(o).pelaksanaId && !meta(o).pelaksanaFeeCredited).reduce((s, o) => s + Number(meta(o).pelaksanaFee ?? DEFAULT_FEE), 0);
-    return { total, belum, proses: proses < 0 ? 0 : proses, selesai, kendala, feeTotalSum, feePaid, feeUnpaid };
+    const total = visaOrders.length;
+    const selesai = visaOrders.filter((o) => {
+      const step = Number(meta(o).processStep ?? 0);
+      return o.status === "Completed" || step >= VISA_STEPS.length - 1;
+    }).length;
+    const kendala = visaOrders.filter((o) => meta(o).visaKendala).length;
+    const menungguBayar = visaOrders.filter(
+      (o) => meta(o).pelaksanaId && !meta(o).pelaksanaFeeCredited
+    ).length;
+    const diproses = visaOrders.filter((o) => {
+      const step = Number(meta(o).processStep ?? 0);
+      const isDone = o.status === "Completed" || step >= VISA_STEPS.length - 1;
+      return !!meta(o).pelaksanaId && !isDone;
+    }).length;
+    const feeTotalSum = visaOrders.reduce(
+      (s, o) => s + Number(meta(o).pelaksanaFee ?? DEFAULT_FEE), 0
+    );
+    const feePaid = visaOrders
+      .filter((o) => meta(o).pelaksanaId && meta(o).pelaksanaFeeCredited)
+      .reduce((s, o) => s + Number(meta(o).pelaksanaFee ?? DEFAULT_FEE), 0);
+    const feeUnpaid = feeTotalSum - feePaid;
+    return { total, diproses, selesai, kendala, menungguBayar, feeTotalSum, feePaid, feeUnpaid };
   }, [visaOrders]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Pipeline counts ────────────────────────────────────────────────────────
+  const pipelineCounts = useMemo(() => {
+    const counts = new Array(7).fill(0) as number[];
+    visaOrders.forEach((o) => {
+      const step = Number(meta(o).processStep ?? 0);
+      const isCompleted = o.status === "Completed" || step >= VISA_STEPS.length;
+      if (isCompleted) {
+        counts[6]++;
+      } else {
+        counts[Math.min(step, 5)]++;
+      }
+    });
+    return counts;
+  }, [visaOrders]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Available countries for filter ────────────────────────────────────────
+  const availableCountries = useMemo(() => {
+    const seen = new Set<string>();
+    visaOrders.forEach((o) => {
+      const n = meta(o).negara as string | undefined;
+      if (n) seen.add(n);
+    });
+    return Array.from(seen).sort();
+  }, [visaOrders]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Desktop filtered list ──────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let list = [...visaOrders];
 
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((o) => {
-        const client = clientMap.get(o.clientId ?? "");
+        const c = clientMap.get(o.clientId ?? "");
         return (
-          (client?.name ?? "").toLowerCase().includes(q) ||
+          (c?.name ?? "").toLowerCase().includes(q) ||
+          (c?.passportNumber ?? "").toLowerCase().includes(q) ||
           o.id.toLowerCase().includes(q) ||
           (o.title ?? "").toLowerCase().includes(q)
         );
       });
     }
 
-    if (filterPelaksana !== "all") {
-      if (filterPelaksana === "__none") {
+    if (filterAgen !== "all") {
+      if (filterAgen === "__none") {
         list = list.filter((o) => !meta(o).pelaksanaId);
       } else {
-        list = list.filter((o) => meta(o).pelaksanaId === filterPelaksana);
+        list = list.filter((o) => meta(o).pelaksanaId === filterAgen);
       }
+    }
+
+    if (filterNegara !== "all") {
+      list = list.filter((o) => {
+        const n = meta(o).negara as string | undefined;
+        return n === filterNegara;
+      });
     }
 
     if (filterStatus !== "all") {
       list = list.filter((o) => {
-        const m = meta(o);
-        const step = Number(m.processStep ?? 0);
-        const isDone = step >= VISA_STEPS.length - 1;
-        switch (filterStatus) {
-          case "belum":        return !m.pelaksanaId;
-          case "selesai":      return isDone;
-          case "kendala":      return !!m.visaKendala;
-          case "belum_dibayar": return !!m.pelaksanaId && !m.pelaksanaFeeCredited;
-          case "proses":       return !!m.pelaksanaId && !isDone;
-          default:             return true;
-        }
+        const step = Number(meta(o).processStep ?? 0);
+        const isCompleted = o.status === "Completed" || step >= VISA_STEPS.length;
+        const stageIdx = isCompleted ? 6 : Math.min(step, 5);
+        const stageKey = PIPELINE_STAGES[stageIdx].key;
+        if (filterStatus === "kendala") return !!meta(o).visaKendala;
+        return stageKey === filterStatus;
       });
     }
 
     return list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [visaOrders, search, filterStatus, filterPelaksana, clientMap]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [visaOrders, search, filterStatus, filterAgen, filterNegara, clientMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pagedData = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  // ── Mobile filtered list ───────────────────────────────────────────────────
+  const mobileFiltered = useMemo(() => {
+    let list = [...visaOrders];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((o) => {
+        const c = clientMap.get(o.clientId ?? "");
+        return (
+          (c?.name ?? "").toLowerCase().includes(q) ||
+          (c?.passportNumber ?? "").toLowerCase().includes(q) ||
+          o.id.toLowerCase().includes(q)
+        );
+      });
+    }
+    if (mobileFilterStatus !== "all") {
+      list = list.filter((o) => {
+        const step = Number(meta(o).processStep ?? 0);
+        const isCompleted = o.status === "Completed" || step >= VISA_STEPS.length;
+        const stageIdx = isCompleted ? 6 : Math.min(step, 5);
+        const stageKey = PIPELINE_STAGES[stageIdx].key;
+        if (mobileFilterStatus === "kendala") return !!meta(o).visaKendala;
+        if (mobileFilterStatus === "selesai") return isCompleted;
+        return stageKey === mobileFilterStatus;
+      });
+    }
+    return list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [visaOrders, search, mobileFilterStatus, clientMap]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const mobileTotalPages = Math.max(1, Math.ceil(mobileFiltered.length / MOBILE_PAGE_SIZE));
+  const mobilePagedData = mobileFiltered.slice(
+    (mobilePage - 1) * MOBILE_PAGE_SIZE,
+    mobilePage * MOBILE_PAGE_SIZE,
+  );
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   async function handleRefresh() {
     setRefreshing(true);
-    await fetchOrders();
+    await Promise.all([fetchOrders(), fetchClients()]);
     setRefreshing(false);
+    toast.success("Data diperbarui!");
   }
 
   async function handleMigrateProgressSteps() {
@@ -187,11 +434,13 @@ export default function OwnerVisaTrackerPage() {
     setMigrateResult(null);
     try {
       const authH = await getBearer();
-      const res = await fetch("/api/migrate-progress-steps", { method: "POST", credentials: "include", headers: { ...authH } });
+      const res = await fetch("/api/migrate-progress-steps", {
+        method: "POST", credentials: "include", headers: { ...authH },
+      });
       const json = await res.json();
       if (json.ok) {
         setMigrateResult({ migrated: json.migrated, skipped: json.skipped, errors: json.errors });
-        toast.success(`✅ Migrasi selesai: ${json.migrated} order diperbarui, ${json.skipped} skip, ${json.errors} error`);
+        toast.success(`✅ Migrasi selesai: ${json.migrated} diperbarui, ${json.skipped} skip, ${json.errors} error`);
         await fetchOrders();
       } else {
         toast.error("Gagal migrasi: " + (json.message ?? "unknown error"));
@@ -212,7 +461,7 @@ export default function OwnerVisaTrackerPage() {
           pelaksanaId: memberId === "__none" ? null : memberId,
         },
       });
-      toast.success(memberId === "__none" ? "Pelaksana dilepas" : "Pelaksana lapangan berhasil di-assign!");
+      toast.success(memberId === "__none" ? "Pelaksana dilepas" : "Pelaksana berhasil di-assign!");
     } catch {
       toast.error("Gagal assign pelaksana.");
     } finally {
@@ -234,13 +483,13 @@ export default function OwnerVisaTrackerPage() {
       const { persisted, error: walletErr } = await addWalletTxAsync(
         pelaksanaId,
         {
-          agentId:     pelaksanaId,
-          type:        "pelaksana_fee",
+          agentId: pelaksanaId,
+          type: "pelaksana_fee",
           pointsDelta: 0,
-          amountIDR:   fee,
+          amountIDR: fee,
           description: `Fee Pelaksana Visa Student #${order.id.slice(0, 8)}${order.title ? ` — ${order.title}` : ""}`,
-          createdBy:   user?.id ?? "owner",
-          orderId:     order.id,
+          createdBy: user?.id ?? "owner",
+          orderId: order.id,
         },
         `pelaksana-${order.id}`,
       );
@@ -248,15 +497,44 @@ export default function OwnerVisaTrackerPage() {
         toast.error("Gagal catat fee pelaksana.", { description: walletErr ?? "Coba lagi." });
         return;
       }
-      await patchOrder(order.id, {
-        metadata: { ...m, pelaksanaFeeCredited: true },
-      });
+      await patchOrder(order.id, { metadata: { ...m, pelaksanaFeeCredited: true } });
       toast.success(`Fee Pelaksana ${fmtIDR(fee)} dikreditkan ke wallet pelaksana!`, { duration: 4000 });
     } catch {
       toast.error("Gagal catat fee pelaksana.");
     } finally {
       setCreditingId(null);
     }
+  }
+
+  function handleExportExcel() {
+    const headers = ["Klien", "Passport", "Negara", "Jenis Visa", "ID Order", "Tanggal Aju", "Status", "Progress %", "Agen"];
+    const rows = filtered.map((o, i) => {
+      const c = clientMap.get(o.clientId ?? "");
+      const stage = getStageInfo(o);
+      const negara = meta(o).negara as string | undefined;
+      const ci = getCountryInfo(negara);
+      const agen = memberMap.get((meta(o).pelaksanaId as string) ?? "");
+      return [
+        c?.name ?? o.title ?? `Order #${o.id.slice(0, 8)}`,
+        c?.passportNumber ?? "—",
+        ci?.name ?? "—",
+        "Student Visa",
+        formatOrderId(o, i),
+        fmtDate(o.createdAt),
+        stage.label,
+        `${stage.pct}%`,
+        agen?.displayName ?? "—",
+      ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
+    });
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `visa-tracker-${format(new Date(), "yyyyMMdd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Export berhasil diunduh!");
   }
 
   if (loading) {
@@ -268,67 +546,51 @@ export default function OwnerVisaTrackerPage() {
     );
   }
 
-  // Mobile computed values
-  const mobileTabs: { key: FilterStatus; label: string; count: number }[] = [
-    { key: "all",    label: "Semua",     count: visaOrders.length },
-    { key: "belum",  label: "Belum Ditugaskan", count: stats.belum  },
-    { key: "proses", label: "Diproses",  count: stats.proses  },
-    { key: "selesai",label: "Selesai",   count: stats.selesai },
-    { key: "kendala",label: "Kendala",   count: stats.kendala },
-  ];
-  const mobileTotalPages = Math.max(1, Math.ceil(filtered.length / MOBILE_PAGE_SIZE));
-  const mobilePagedList  = filtered.slice((mobilePage - 1) * MOBILE_PAGE_SIZE, mobilePage * MOBILE_PAGE_SIZE);
-
-  function initials(name: string) {
-    return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase() || "?";
-  }
-
+  // ══════════════════════════════════════════════════════════════════════════
+  // MOBILE LAYOUT
+  // ══════════════════════════════════════════════════════════════════════════
   return (
     <>
-    {/* ══════════════ MOBILE LAYOUT ══════════════ */}
     <div
       className="md:hidden min-h-screen bg-[#F0F4FB] pb-28"
       style={{ WebkitTapHighlightColor: "transparent" } as React.CSSProperties}
       onClick={() => setMobileMoreMenu(null)}
     >
-      {/* Header */}
+      {/* Mobile header */}
       <div className="px-4 pt-12 pb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <button
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0 active:opacity-60 transition-opacity"
+            className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0 active:opacity-60"
           >
             <ChevronLeft className="h-5 w-5 text-[#0f1c3f]" strokeWidth={2.5} />
           </button>
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-[#0f1c3f] leading-tight">Visa Tracker</h1>
-            <p className="text-[11px] text-[#64748b] mt-0.5 leading-snug">
-              Pantau semua pengajuan visa dalam satu tempat
-            </p>
+          <div>
+            <h1 className="text-xl font-bold text-[#0f1c3f]">Visa Tracker</h1>
+            <p className="text-[11px] text-[#64748b] mt-0.5">Monitoring semua berkas visa</p>
           </div>
         </div>
         <button
           onClick={() => void handleRefresh()}
           disabled={refreshing}
-          className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0 active:opacity-60 transition-opacity"
+          className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0 active:opacity-60"
         >
-          <RefreshCw className={`h-4.5 w-4.5 text-[#0f1c3f] ${refreshing ? "animate-spin" : ""}`} strokeWidth={1.5} />
+          <RefreshCw className={`h-4 w-4 text-[#0f1c3f] ${refreshing ? "animate-spin" : ""}`} strokeWidth={1.5} />
         </button>
       </div>
 
       <div className="px-4 space-y-4">
-
-        {/* Stats cards */}
+        {/* Mobile stats */}
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: "Total Pengajuan",  value: stats.total,   bg: "bg-blue-50",   ic: "text-blue-600",   icon: FileText      },
-            { label: "Belum Ditugaskan", value: stats.belum,   bg: "bg-orange-50", ic: "text-orange-600", icon: Clock         },
-            { label: "Sedang Diproses",  value: stats.proses,  bg: "bg-indigo-50", ic: "text-indigo-600", icon: CircleDot     },
-            { label: "Visa Terbit",      value: stats.selesai, bg: "bg-green-50",  ic: "text-green-600",  icon: CheckCircle2  },
+            { label: "Total Berkas", value: stats.total, bg: "bg-blue-50", ic: "text-blue-600", Icon: FileText },
+            { label: "Diproses", value: stats.diproses, bg: "bg-orange-50", ic: "text-orange-600", Icon: CircleDot },
+            { label: "Visa Terbit", value: stats.selesai, bg: "bg-green-50", ic: "text-green-600", Icon: CheckCircle2 },
+            { label: "Bermasalah", value: stats.kendala, bg: "bg-red-50", ic: "text-red-600", Icon: AlertTriangle },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${s.bg} ${s.ic}`}>
-                <s.icon className="h-4 w-4" strokeWidth={1.5} />
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${s.bg}`}>
+                <s.Icon className={`h-4 w-4 ${s.ic}`} strokeWidth={1.5} />
               </div>
               <div className="text-2xl font-bold text-[#0f1c3f]">{s.value}</div>
               <div className="text-[11px] text-[#64748b] mt-0.5">{s.label}</div>
@@ -336,7 +598,7 @@ export default function OwnerVisaTrackerPage() {
           ))}
         </div>
 
-        {/* Search + filter row */}
+        {/* Mobile search + filter */}
         <div className="bg-white rounded-2xl shadow-sm p-3 space-y-2">
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -345,7 +607,7 @@ export default function OwnerVisaTrackerPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari nama klien, ID order…"
-                className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 text-[13px] text-[#0f1c3f] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/30 focus:border-[#0066FF]/50"
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 text-[13px] text-[#0f1c3f] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               />
               {search && (
                 <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 active:opacity-60">
@@ -355,41 +617,37 @@ export default function OwnerVisaTrackerPage() {
             </div>
             <button
               onClick={() => setShowMobileFilter(true)}
-              className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0 active:opacity-60 transition-opacity"
+              className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0"
             >
               <Filter className="h-4 w-4 text-[#0f1c3f]" strokeWidth={1.5} />
             </button>
           </div>
           <p className="text-[11px] text-[#64748b] px-1">
-            Menampilkan <span className="font-bold text-[#0f1c3f]">{filtered.length}</span> dari {visaOrders.length} berkas
+            <span className="font-bold text-[#0f1c3f]">{mobileFiltered.length}</span> dari {visaOrders.length} berkas
           </p>
         </div>
 
-        {/* Status tabs */}
+        {/* Mobile pipeline tabs */}
         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {mobileTabs.map((tab) => (
+          {[{ key: "all", label: "Semua", count: visaOrders.length }, ...PIPELINE_STAGES.slice(0, 5).map((s, i) => ({ key: s.key, label: s.label, count: pipelineCounts[i] }))].map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setFilterStatus(tab.key)}
-              className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all active:opacity-60 ${
-                filterStatus === tab.key
-                  ? "text-white shadow-sm"
-                  : "bg-white text-[#64748b]"
+              onClick={() => setMobileFilterStatus(tab.key)}
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold transition-all ${
+                mobileFilterStatus === tab.key ? "text-white shadow-sm" : "bg-white text-[#64748b]"
               }`}
-              style={filterStatus === tab.key
-                ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" }
-                : undefined}
+              style={mobileFilterStatus === tab.key ? { background: "linear-gradient(135deg,#2563eb,#1d4ed8)" } : undefined}
             >
               {tab.label}
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                filterStatus === tab.key ? "bg-white/20 text-white" : "bg-gray-100 text-[#64748b]"
-              }`}>{tab.count}</span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${mobileFilterStatus === tab.key ? "bg-white/20 text-white" : "bg-gray-100 text-[#64748b]"}`}>
+                {tab.count}
+              </span>
             </button>
           ))}
         </div>
 
-        {/* Visa cards */}
-        {mobilePagedList.length === 0 ? (
+        {/* Mobile cards */}
+        {mobilePagedData.length === 0 ? (
           <div className="bg-white rounded-3xl shadow-sm p-10 text-center">
             <Landmark className="h-10 w-10 text-gray-300 mx-auto mb-3" strokeWidth={1.5} />
             <p className="text-[13px] font-semibold text-[#0f1c3f]">Tidak ada berkas ditemukan</p>
@@ -397,38 +655,37 @@ export default function OwnerVisaTrackerPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {mobilePagedList.map((order) => {
-              const m          = meta(order);
-              const step       = Number(m.processStep ?? 0);
-              const isDone     = step >= VISA_STEPS.length - 1;
-              const kendala    = (m.visaKendala as string | null) ?? null;
-              const pelaksanaId  = (m.pelaksanaId as string | null) ?? null;
-              const fee        = Number(m.pelaksanaFee ?? DEFAULT_FEE);
+            {mobilePagedData.map((order) => {
+              const m = meta(order);
+              const step = Number(m.processStep ?? 0);
+              const client = clientMap.get(order.clientId ?? "");
+              const pelaksanaId = (m.pelaksanaId as string | null) ?? null;
+              const pelaksana = pelaksanaId ? memberMap.get(pelaksanaId) : null;
+              const fee = Number(m.pelaksanaFee ?? DEFAULT_FEE);
               const feeCredited = !!(m.pelaksanaFeeCredited as boolean | null);
-              const client     = clientMap.get(order.clientId ?? "");
-              const pelaksana  = pelaksanaId ? memberMap.get(pelaksanaId) : null;
               const clientName = client?.name ?? order.title ?? `Order #${order.id.slice(0, 8)}`;
-
-              const statusColor = isDone
-                ? { border: "border-green-200", badge: "bg-green-100 text-green-700", text: "Visa Terbit" }
-                : kendala
-                ? { border: "border-amber-200", badge: "bg-amber-100 text-amber-700", text: "Ada Kendala" }
-                : !pelaksanaId
-                ? { border: "border-orange-200", badge: "bg-orange-100 text-orange-700", text: "Belum Ditugaskan" }
-                : { border: "border-indigo-100", badge: "bg-indigo-100 text-indigo-700", text: "Diproses" };
+              const stage = getStageInfo(order);
+              const negara = m.negara as string | undefined;
+              const ci = getCountryInfo(negara);
 
               return (
-                <div key={order.id} className={`bg-white rounded-3xl shadow-sm border ${statusColor.border} overflow-hidden`}>
+                <div key={order.id} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                   <div className="p-4">
-                    {/* Card header */}
                     <div className="flex items-start gap-3">
-                      <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 text-white text-[13px] font-bold"
-                        style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}>
+                      <div
+                        className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 text-white text-[13px] font-bold"
+                        style={{ background: avatarColor(clientName) }}
+                      >
                         {initials(clientName)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-[14px] font-bold text-[#0f1c3f] truncate">{clientName}</p>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-[14px] font-bold text-[#0f1c3f] truncate">{clientName}</p>
+                            {client?.passportNumber && (
+                              <p className="text-[10px] text-[#94a3b8] font-mono">{client.passportNumber}</p>
+                            )}
+                          </div>
                           <div className="relative shrink-0">
                             <button
                               onClick={(e) => { e.stopPropagation(); setMobileMoreMenu(mobileMoreMenu === order.id ? null : order.id); }}
@@ -439,50 +696,41 @@ export default function OwnerVisaTrackerPage() {
                             {mobileMoreMenu === order.id && (
                               <div className="absolute right-0 top-9 z-20 bg-white rounded-2xl shadow-lg border border-gray-100 py-1 w-44" onClick={(e) => e.stopPropagation()}>
                                 <button
-                                  onClick={() => { navigate(`/orders/detail/${order.id}`); setMobileMoreMenu(null); }}
+                                  onClick={() => navigate(`/orders/detail/${order.id}`)}
                                   className="w-full text-left px-4 py-2.5 text-[12px] font-medium text-[#0f1c3f] hover:bg-gray-50 flex items-center gap-2"
                                 >
-                                  <ExternalLink className="h-3.5 w-3.5 text-[#0066FF]" strokeWidth={1.5} /> Lihat Detail
+                                  <ExternalLink className="h-3.5 w-3.5 text-blue-500" strokeWidth={1.5} /> Lihat Detail
                                 </button>
                               </div>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor.badge}`}>{statusColor.text}</span>
-                          <span className="text-[10px] text-[#64748b] font-mono">#{order.id.slice(0, 8)}</span>
-                          <span className="text-[10px] text-[#64748b]">{fmtDate(order.createdAt)}</span>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${stage.badgeBg} ${stage.badgeText}`}>
+                            {stage.label}
+                          </span>
+                          {ci && <span className="text-[10px] text-[#64748b]">{ci.flag} {ci.name}</span>}
                         </div>
                       </div>
                     </div>
 
-                    {/* Kendala note */}
-                    {kendala && (
-                      <div className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
-                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-amber-800">{kendala}</p>
-                      </div>
-                    )}
-
-                    {/* Progress timeline */}
+                    {/* Progress */}
                     <div className="mt-3">
-                      <div className="flex items-center gap-1">
-                        {VISA_STEPS.map((s, i) => {
-                          const done   = i < step;
-                          const active = i === step;
-                          return (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                              <div className={`h-1.5 w-full rounded-full ${done ? "bg-green-500" : active ? "bg-[#0066FF]" : "bg-gray-100"}`} />
-                              <span className={`text-[9px] ${active ? "text-[#0066FF] font-bold" : done ? "text-green-600" : "text-gray-300"}`}>{s.emoji}</span>
-                            </div>
-                          );
-                        })}
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-[#64748b]">Progress</span>
+                        <span className="text-[10px] font-bold text-[#0f1c3f]">{stage.pct}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${stage.barColor} transition-all duration-500`}
+                          style={{ width: `${stage.pct}%` }}
+                        />
                       </div>
                     </div>
 
-                    {/* Pelaksana + fee row */}
-                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2 min-w-0">
+                    {/* Pelaksana + fee */}
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
                         <Users className="h-3.5 w-3.5 text-[#64748b] shrink-0" strokeWidth={1.5} />
                         {pelaksana
                           ? <span className="text-[11px] font-semibold text-[#0f1c3f] truncate">{pelaksana.displayName}</span>
@@ -490,23 +738,23 @@ export default function OwnerVisaTrackerPage() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {pelaksanaId && feeCredited && (
-                          <span className="flex items-center gap-1 text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
-                            <CheckCircle2 className="h-3 w-3" strokeWidth={2} /> Fee Dibayar
+                          <span className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-full flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" /> Lunas
                           </span>
                         )}
                         {pelaksanaId && !feeCredited && (
                           <button
                             disabled={creditingId === order.id}
                             onClick={() => void handleCreditFee(order)}
-                            className="flex items-center gap-1.5 text-[11px] font-semibold text-white bg-violet-600 px-3 py-1.5 rounded-full active:opacity-60 disabled:opacity-50"
+                            className="text-[11px] font-semibold text-white bg-violet-600 px-2.5 py-1 rounded-full active:opacity-60 disabled:opacity-50 flex items-center gap-1"
                           >
                             {creditingId === order.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <BadgeDollarSign className="h-3 w-3" />}
-                            Bayar {fmtIDR(fee)}
+                            {fmtIDR(fee)}
                           </button>
                         )}
                         <button
                           onClick={() => navigate(`/orders/detail/${order.id}`)}
-                          className="flex items-center gap-1 text-[11px] font-semibold text-[#0066FF] active:opacity-60"
+                          className="flex items-center gap-1 text-[11px] font-semibold text-blue-600"
                         >
                           Detail <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
                         </button>
@@ -519,13 +767,13 @@ export default function OwnerVisaTrackerPage() {
           </div>
         )}
 
-        {/* Pagination */}
+        {/* Mobile pagination */}
         {mobileTotalPages > 1 && (
           <div className="flex items-center justify-center gap-3 py-2">
             <button
               onClick={() => setMobilePage((p) => Math.max(1, p - 1))}
               disabled={mobilePage === 1}
-              className="w-9 h-9 rounded-xl bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40 active:opacity-60"
+              className="w-9 h-9 rounded-xl bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40"
             >
               <ChevronLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
             </button>
@@ -533,122 +781,52 @@ export default function OwnerVisaTrackerPage() {
             <button
               onClick={() => setMobilePage((p) => Math.min(mobileTotalPages, p + 1))}
               disabled={mobilePage === mobileTotalPages}
-              className="w-9 h-9 rounded-xl bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40 active:opacity-60"
+              className="w-9 h-9 rounded-xl bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40"
             >
               <ChevronRight className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
             </button>
           </div>
         )}
+      </div>
 
-        {/* Aksi Cepat */}
-        <div className="bg-white rounded-3xl shadow-sm p-4">
-          <h3 className="text-[14px] font-bold text-[#0f1c3f] mb-3">Aksi Cepat</h3>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { icon: Plus,       label: "Pengajuan Baru",    sub: "Tambah berkas baru",     action: () => navigate("/orders"), bg: "bg-blue-50",   ic: "text-blue-600"   },
-              { icon: Search,     label: "Cek Status Visa",   sub: "Cari berdasarkan ref",   action: () => document.querySelector("input")?.focus(),           bg: "bg-green-50",  ic: "text-green-600"  },
-              { icon: FileText,   label: "Dokumen Saya",      sub: "Kelola dokumen visa",    action: () => toast.info("Segera hadir! 🚀"),                       bg: "bg-purple-50", ic: "text-purple-600" },
-              { icon: Bell,       label: "Pengingat",         sub: "Atur notifikasi visa",   action: () => toast.info("Segera hadir! 🚀"),                       bg: "bg-amber-50",  ic: "text-amber-600"  },
-            ].map((item) => (
-              <button
-                key={item.label}
-                onClick={item.action}
-                className="text-left p-3 rounded-2xl border border-gray-100 bg-gray-50/60 active:opacity-60 transition-opacity"
-              >
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-2 ${item.bg} ${item.ic}`}>
-                  <item.icon className="h-4 w-4" strokeWidth={1.5} />
-                </div>
-                <div className="text-[12px] font-semibold text-[#0f1c3f] leading-tight">{item.label}</div>
-                <div className="text-[10px] text-[#64748b] mt-0.5">{item.sub}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Fee summary card */}
-        <div className="bg-white rounded-3xl shadow-sm p-4">
-          <h3 className="text-[14px] font-bold text-[#0f1c3f] mb-3">Ringkasan Fee Pelaksana</h3>
-          <div className="space-y-2.5">
-            {[
-              { label: "Total Fee",      value: stats.feeTotalSum, color: "text-[#0f1c3f]",    icon: BadgeDollarSign },
-              { label: "Sudah Dibayar",  value: stats.feePaid,     color: "text-green-600",    icon: CheckCircle2   },
-              { label: "Belum Dibayar",  value: stats.feeUnpaid,   color: "text-red-500",      icon: Wallet         },
-            ].map((row) => (
-              <div key={row.label} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                <div className="flex items-center gap-2">
-                  <row.icon className="h-4 w-4 text-[#64748b]" strokeWidth={1.5} />
-                  <span className="text-[12px] text-[#64748b]">{row.label}</span>
-                </div>
-                <span className={`text-[13px] font-bold font-mono ${row.color}`}>{fmtIDR(row.value)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>{/* end px-4 space-y-4 */}
-
-      {/* Filter bottom sheet */}
+      {/* Mobile filter sheet */}
       {showMobileFilter && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowMobileFilter(false)} />
           <div className="relative bg-white rounded-t-3xl">
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
-              <h3 className="text-[16px] font-bold text-[#0f1c3f]">Filter &amp; Urutkan</h3>
-              <button onClick={() => setShowMobileFilter(false)} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center active:opacity-60">
+              <h3 className="text-[16px] font-bold text-[#0f1c3f]">Filter</h3>
+              <button onClick={() => setShowMobileFilter(false)} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
                 <X className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
               </button>
             </div>
-            <div className="px-5 py-4 space-y-4 pb-8">
-              {/* Status filter */}
+            <div className="px-5 py-4 space-y-4 pb-10">
               <div>
                 <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wide mb-2">Status</p>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { key: "all" as FilterStatus,           label: "Semua Status"         },
-                    { key: "belum" as FilterStatus,         label: "⏳ Belum Ditugaskan"  },
-                    { key: "proses" as FilterStatus,        label: "🔄 Sedang Diproses"   },
-                    { key: "selesai" as FilterStatus,       label: "✅ Selesai / Terbit"  },
-                    { key: "kendala" as FilterStatus,       label: "⚠️ Ada Kendala"       },
-                    { key: "belum_dibayar" as FilterStatus, label: "💸 Fee Belum Dibayar" },
+                    { key: "all", label: "Semua Status" },
+                    ...PIPELINE_STAGES.map((s) => ({ key: s.key, label: s.label })),
                   ].map((opt) => (
                     <button
                       key={opt.key}
-                      onClick={() => { setFilterStatus(opt.key); setShowMobileFilter(false); }}
-                      className={`text-left px-3 py-2.5 rounded-xl text-[12px] font-medium transition-all active:opacity-60 ${
-                        filterStatus === opt.key
+                      onClick={() => { setMobileFilterStatus(opt.key); setShowMobileFilter(false); }}
+                      className={`text-left px-3 py-2.5 rounded-xl text-[12px] font-medium transition-all ${
+                        mobileFilterStatus === opt.key
                           ? "text-white"
                           : "bg-gray-50 text-[#0f1c3f] border border-gray-200"
                       }`}
-                      style={filterStatus === opt.key ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : undefined}
+                      style={mobileFilterStatus === opt.key ? { background: "linear-gradient(135deg,#2563eb,#1d4ed8)" } : undefined}
                     >
                       {opt.label}
                     </button>
                   ))}
                 </div>
               </div>
-              {/* Pelaksana filter */}
-              <div>
-                <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wide mb-2">Pelaksana</p>
-                <div className="relative">
-                  <select
-                    value={filterPelaksana}
-                    onChange={(e) => setFilterPelaksana(e.target.value)}
-                    className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[12px] text-[#0f1c3f] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/30 pr-8"
-                  >
-                    <option value="all">Semua Pelaksana</option>
-                    <option value="__none">— Belum Ditugaskan —</option>
-                    {members.map((mb) => (
-                      <option key={mb.userId} value={mb.userId}>{mb.displayName}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#64748b]" strokeWidth={2} />
-                </div>
-              </div>
-              {/* Clear */}
-              {(filterStatus !== "all" || filterPelaksana !== "all") && (
+              {mobileFilterStatus !== "all" && (
                 <button
-                  onClick={() => { setFilterStatus("all"); setFilterPelaksana("all"); setShowMobileFilter(false); }}
-                  className="w-full py-3 rounded-2xl border border-gray-200 text-[13px] font-semibold text-[#64748b] active:opacity-60"
+                  onClick={() => { setMobileFilterStatus("all"); setShowMobileFilter(false); }}
+                  className="w-full py-3 rounded-2xl border border-gray-200 text-[13px] font-semibold text-[#64748b]"
                 >
                   Reset Filter
                 </button>
@@ -657,323 +835,666 @@ export default function OwnerVisaTrackerPage() {
           </div>
         </div>
       )}
-    </div>{/* end md:hidden */}
+    </div>
 
-    {/* ══════════════ DESKTOP LAYOUT ══════════════ */}
-    <div className="hidden md:block p-4 md:p-6 max-w-[1400px] mx-auto space-y-6">
+    {/* ══════════════════════════════════════════════════════════════════════ */}
+    {/* DESKTOP LAYOUT                                                         */}
+    {/* ══════════════════════════════════════════════════════════════════════ */}
+    <div
+      className="hidden md:block min-h-screen bg-[#F0F4FB] p-6"
+      onClick={() => setOpenRowMenu(null)}
+    >
+      <div className="max-w-[1400px] mx-auto space-y-5">
 
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-lg font-extrabold text-foreground">Laporan Visa Student Entry</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Monitoring & kontrol semua berkas visa pelajar</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* One-time migration button — converts old 5-step progress to new unified 6-step */}
-          <button
-            onClick={() => void handleMigrateProgressSteps()}
-            disabled={migrating}
-            title="Sinkronkan data processStep lama ke sistem langkah terpadu (jalankan sekali)"
-            className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600 hover:text-amber-700 transition-colors border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg px-2.5 py-1.5"
-          >
-            {migrating
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              : <RefreshCw className="h-3.5 w-3.5" />
-            }
-            {migrating ? "Migrasi…" : "Sinkron Progress"}
-          </button>
-          <button
-            onClick={() => void handleRefresh()}
-            disabled={refreshing}
-            className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* ── Migration result banner ── */}
-      {migrateResult && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex items-center gap-3 text-sm">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-          <p className="text-emerald-800 font-medium">
-            Sinkronisasi selesai: <strong>{migrateResult.migrated}</strong> order diperbarui,{" "}
-            <strong>{migrateResult.skipped}</strong> sudah sinkron, <strong>{migrateResult.errors}</strong> error.
-          </p>
-          <button onClick={() => setMigrateResult(null)} className="ml-auto text-emerald-600 hover:text-emerald-800">
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* ── Stats grid ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-3"
-      >
-        {[
-          { label: "Semua Berkas Visa",         value: stats.total,   icon: FileText,      color: "bg-sky-50 border-sky-100 text-sky-700",           iconCls: "text-sky-400" },
-          { label: "Belum Didelegasikan",        value: stats.belum,   icon: Clock,         color: "bg-orange-50 border-orange-100 text-orange-700",  iconCls: "text-orange-400" },
-          { label: "Sedang Diproses",            value: stats.proses,  icon: CircleDot,     color: "bg-indigo-50 border-indigo-100 text-indigo-700",  iconCls: "text-indigo-400" },
-          { label: "Visa Terbit / Selesai",      value: stats.selesai, icon: CheckCircle2,  color: "bg-emerald-50 border-emerald-100 text-emerald-700", iconCls: "text-emerald-400" },
-          { label: "Berkas Bermasalah",          value: stats.kendala, icon: AlertTriangle, color: "bg-amber-50 border-amber-100 text-amber-700",     iconCls: "text-amber-400" },
-          { label: "Total Fee Pelaksana",        value: fmtIDR(stats.feeTotalSum), icon: BadgeDollarSign, color: "bg-violet-50 border-violet-100 text-violet-700", iconCls: "text-violet-400", isText: true },
-          { label: "Fee Sudah Dibayar",          value: fmtIDR(stats.feePaid),    icon: Wallet,          color: "bg-emerald-50 border-emerald-100 text-emerald-700", iconCls: "text-emerald-400", isText: true },
-          { label: "Fee Belum Dibayar",          value: fmtIDR(stats.feeUnpaid),  icon: Wallet,          color: "bg-red-50 border-red-100 text-red-700",   iconCls: "text-red-400", isText: true },
-        ].map(({ label, value, icon: Icon, color, iconCls, isText }) => (
-          <div key={label} className={`rounded-2xl border p-4 ${color}`}>
-            <div className="flex items-start justify-between mb-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide opacity-70">{label}</p>
-              <Icon className={`h-3.5 w-3.5 shrink-0 ${iconCls}`} />
+        {/* ── Page header ──────────────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between gap-4 bg-white rounded-2xl shadow-sm px-6 py-4"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}>
+              <FileCheck2 className="h-6 w-6 text-white" strokeWidth={1.5} />
             </div>
-            <p className={`font-extrabold ${isText ? "text-sm font-mono" : "text-xl md:text-2xl"}`}>{value}</p>
+            <div>
+              <h1 className="text-xl font-extrabold text-[#0f1c3f] leading-tight">Visa Tracker</h1>
+              <p className="text-[12px] text-[#64748b] mt-0.5">Monitoring & kontrol semua berkas visa pelajar secara real-time</p>
+            </div>
           </div>
-        ))}
-      </motion.div>
+          <div className="flex items-center gap-2">
+            {/* Sync progress button */}
+            <button
+              onClick={() => void handleMigrateProgressSteps()}
+              disabled={migrating}
+              title="Sinkronkan data processStep ke sistem terpadu (sekali saja)"
+              className="hidden lg:flex items-center gap-1.5 text-[11px] font-medium text-amber-600 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg px-2.5 py-1.5 transition-colors"
+            >
+              {migrating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              {migrating ? "Sinkron…" : "Sinkron Progress"}
+            </button>
+            <button
+              onClick={() => void handleRefresh()}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-[13px] font-semibold text-[#0f1c3f] transition-colors shadow-sm"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin text-blue-500" : "text-[#64748b]"}`} strokeWidth={1.5} />
+              Refresh Data
+            </button>
+            <button
+              onClick={() => navigate("/orders")}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+              style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              Tambah Tracker
+              <ChevronDown className="h-3.5 w-3.5 opacity-70" strokeWidth={2} />
+            </button>
+          </div>
+        </motion.div>
 
-      {/* ── Filters ── */}
-      <div className="rounded-2xl border bg-white p-4 space-y-3">
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* ── Migration result banner ─────────────────────────────────────── */}
+        {migrateResult && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex items-center gap-3 text-sm">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <p className="text-emerald-800 font-medium">
+              Sinkronisasi selesai: <strong>{migrateResult.migrated}</strong> diperbarui,{" "}
+              <strong>{migrateResult.skipped}</strong> skip, <strong>{migrateResult.errors}</strong> error.
+            </p>
+            <button onClick={() => setMigrateResult(null)} className="ml-auto">
+              <X className="h-3.5 w-3.5 text-emerald-600" />
+            </button>
+          </div>
+        )}
+
+        {/* ── Stats cards (5 cards) ──────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="grid grid-cols-5 gap-4"
+        >
+          {[
+            {
+              label: "Semua Berkas",
+              value: stats.total,
+              sub: "100% dari total",
+              Icon: FileText,
+              iconColor: "#2563eb",
+              iconBg: "#eff6ff",
+              borderLeft: "border-l-blue-500",
+            },
+            {
+              label: "Diproses",
+              value: stats.diproses,
+              sub: stats.total > 0 ? `${((stats.diproses / stats.total) * 100).toFixed(1)}%` : "0%",
+              Icon: Clock,
+              iconColor: "#f97316",
+              iconBg: "#fff7ed",
+              borderLeft: "border-l-orange-400",
+            },
+            {
+              label: "Visa Terbit",
+              value: stats.selesai,
+              sub: stats.total > 0 ? `+${((stats.selesai / stats.total) * 100).toFixed(1)}%` : "+0%",
+              Icon: CheckCircle2,
+              iconColor: "#10b981",
+              iconBg: "#ecfdf5",
+              borderLeft: "border-l-green-500",
+            },
+            {
+              label: "Menunggu Pembayaran",
+              value: stats.menungguBayar,
+              sub: stats.total > 0 ? `+${((stats.menungguBayar / stats.total) * 100).toFixed(1)}%` : "+0%",
+              Icon: Wallet,
+              iconColor: "#8b5cf6",
+              iconBg: "#f5f3ff",
+              borderLeft: "border-l-violet-500",
+            },
+            {
+              label: "Bermasalah",
+              value: stats.kendala,
+              sub: stats.total > 0 ? `+${((stats.kendala / stats.total) * 100).toFixed(1)}%` : "+0%",
+              Icon: AlertTriangle,
+              iconColor: "#ef4444",
+              iconBg: "#fef2f2",
+              borderLeft: "border-l-red-500",
+            },
+          ].map((card, i) => (
+            <motion.div
+              key={card.label}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.06 + i * 0.04 }}
+              className={`bg-white rounded-2xl shadow-sm border-l-4 ${card.borderLeft} p-5 flex items-start justify-between gap-3`}
+            >
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wide leading-tight mb-1">{card.label}</p>
+                <p className="text-3xl font-extrabold text-[#0f1c3f] leading-none">{card.value}</p>
+                <p className="text-[11px] text-[#94a3b8] mt-1.5 font-medium">{card.sub}</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: card.iconBg }}>
+                <card.Icon className="h-5 w-5" style={{ color: card.iconColor }} strokeWidth={1.5} />
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* ── Filter row ────────────────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3 flex-wrap"
+        >
           {/* Search */}
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Cari nama klien atau ID order…"
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#94a3b8]" strokeWidth={1.5} />
+            <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9 text-sm"
+              placeholder="Cari nama klien, nomor paspor, ID order..."
+              className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 text-[13px] text-[#0f1c3f] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-300 transition-all"
             />
             {search && (
               <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2">
-                <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                <X className="h-3.5 w-3.5 text-[#94a3b8] hover:text-[#64748b]" strokeWidth={2} />
               </button>
             )}
           </div>
 
-          {/* Status filter */}
-          <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as FilterStatus)}>
-            <SelectTrigger className="h-9 w-[180px] text-[12px]">
-              <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-              <SelectValue placeholder="Filter status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Status</SelectItem>
-              <SelectItem value="belum">⏳ Belum Didelegasikan</SelectItem>
-              <SelectItem value="proses">🔄 Sedang Diproses</SelectItem>
-              <SelectItem value="selesai">✅ Selesai / Visa Terbit</SelectItem>
-              <SelectItem value="kendala">⚠️ Ada Kendala</SelectItem>
-              <SelectItem value="belum_dibayar">💸 Fee Belum Dibayar</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Status dropdown */}
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="h-10 rounded-xl border border-gray-200 bg-white px-3 pr-8 text-[13px] text-[#0f1c3f] focus:outline-none focus:ring-2 focus:ring-blue-500/30 appearance-none cursor-pointer min-w-[150px]"
+            style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center" }}
+          >
+            <option value="all">Semua Status</option>
+            {PIPELINE_STAGES.map((s) => (
+              <option key={s.key} value={s.key}>{s.label}</option>
+            ))}
+            <option value="kendala">⚠️ Ada Kendala</option>
+          </select>
 
-          {/* Pelaksana filter */}
-          <Select value={filterPelaksana} onValueChange={setFilterPelaksana}>
-            <SelectTrigger className="h-9 w-[200px] text-[12px]">
-              <Users className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-              <SelectValue placeholder="Filter pelaksana" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Pelaksana</SelectItem>
-              <SelectItem value="__none">— Belum Ditugaskan —</SelectItem>
-              {members.map((m) => (
-                <SelectItem key={m.userId} value={m.userId}>{m.displayName}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Agent dropdown */}
+          <select
+            value={filterAgen}
+            onChange={(e) => setFilterAgen(e.target.value)}
+            className="h-10 rounded-xl border border-gray-200 bg-white px-3 pr-8 text-[13px] text-[#0f1c3f] focus:outline-none focus:ring-2 focus:ring-blue-500/30 appearance-none cursor-pointer min-w-[150px]"
+            style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center" }}
+          >
+            <option value="all">Semua Agen</option>
+            <option value="__none">— Belum Ditugaskan —</option>
+            {members.map((m) => (
+              <option key={m.userId} value={m.userId}>{m.displayName}</option>
+            ))}
+          </select>
+
+          {/* Country dropdown */}
+          <select
+            value={filterNegara}
+            onChange={(e) => setFilterNegara(e.target.value)}
+            className="h-10 rounded-xl border border-gray-200 bg-white px-3 pr-8 text-[13px] text-[#0f1c3f] focus:outline-none focus:ring-2 focus:ring-blue-500/30 appearance-none cursor-pointer min-w-[150px]"
+            style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center" }}
+          >
+            <option value="all">Semua Negara</option>
+            {availableCountries.length > 0
+              ? availableCountries.map((n) => {
+                  const ci = getCountryInfo(n);
+                  return <option key={n} value={n}>{ci ? `${ci.flag} ${ci.name}` : n}</option>;
+                })
+              : COUNTRY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))
+            }
+          </select>
+
+          {/* Filter button */}
+          <button
+            onClick={() => {}}
+            className="h-10 px-4 rounded-xl border border-gray-200 bg-white flex items-center gap-2 text-[13px] font-semibold text-[#0f1c3f] hover:bg-gray-50 transition-colors"
+          >
+            <Filter className="h-4 w-4 text-[#64748b]" strokeWidth={1.5} />
+            Filter
+          </button>
 
           {/* Clear filters */}
-          {(filterStatus !== "all" || filterPelaksana !== "all" || search) && (
+          {(filterStatus !== "all" || filterAgen !== "all" || filterNegara !== "all" || search) && (
             <button
-              onClick={() => { setSearch(""); setFilterStatus("all"); setFilterPelaksana("all"); }}
-              className="text-[11px] font-medium text-muted-foreground hover:text-foreground flex items-center gap-1"
+              onClick={() => { setSearch(""); setFilterStatus("all"); setFilterAgen("all"); setFilterNegara("all"); }}
+              className="h-10 px-3 rounded-xl text-[12px] font-medium text-red-500 hover:bg-red-50 transition-colors flex items-center gap-1"
             >
-              <X className="h-3 w-3" /> Reset filter
+              <X className="h-3.5 w-3.5" strokeWidth={2} /> Reset
             </button>
           )}
-        </div>
 
-        <p className="text-[11px] text-muted-foreground">
-          Menampilkan <span className="font-bold text-foreground">{filtered.length}</span> dari {visaOrders.length} berkas visa
-        </p>
-      </div>
-
-      {/* ── Berkas list ── */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-          <div className="h-16 w-16 rounded-2xl bg-muted/30 flex items-center justify-center">
-            <Landmark className="h-8 w-8 text-muted-foreground/40" />
+          {/* View mode toggle */}
+          <div className="ml-auto flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+            <button
+              onClick={() => setViewMode("table")}
+              className={`p-2 rounded-lg transition-all ${viewMode === "table" ? "bg-white shadow-sm text-[#0f1c3f]" : "text-[#94a3b8] hover:text-[#64748b]"}`}
+            >
+              <List className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`p-2 rounded-lg transition-all ${viewMode === "grid" ? "bg-white shadow-sm text-[#0f1c3f]" : "text-[#94a3b8] hover:text-[#64748b]"}`}
+            >
+              <LayoutGrid className="h-4 w-4" strokeWidth={1.5} />
+            </button>
           </div>
-          <div>
-            <p className="text-sm font-semibold">Tidak ada berkas ditemukan</p>
-            <p className="text-xs text-muted-foreground mt-1">Coba ubah filter atau tambah order Visa Student Entry baru.</p>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((order, idx) => {
-            const m = meta(order);
-            const step         = Number(m.processStep ?? 0);
-            const isDone       = step >= VISA_STEPS.length - 1;
-            const kendala      = (m.visaKendala as string | null) ?? null;
-            const pelaksanaId  = (m.pelaksanaId as string | null) ?? null;
-            const fee          = Number(m.pelaksanaFee ?? DEFAULT_FEE);
-            const feeCredited  = !!(m.pelaksanaFeeCredited as boolean | null);
-            const client       = clientMap.get(order.clientId ?? "");
-            const pelaksana    = pelaksanaId ? memberMap.get(pelaksanaId) : null;
-            const agenId       = order.createdByAgent as string | null;
-            const agenPenjual  = agenId
-              ? (memberMap.get(agenId)?.displayName ?? `#${agenId.slice(0, 8)}`)
-              : null;
+        </motion.div>
 
-            return (
-              <motion.div
-                key={order.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: idx * 0.02 }}
-                className={`rounded-2xl border bg-white overflow-hidden ${
-                  isDone ? "border-emerald-200" :
-                  kendala ? "border-amber-200" :
-                  !pelaksanaId ? "border-orange-200" :
-                  "border-border"
-                }`}
-              >
-                {/* Row header */}
-                <div className="px-4 pt-4 pb-3 flex items-start gap-3 flex-wrap">
-                  {/* Left: client info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-[13px] font-bold leading-tight">
-                        {client?.name ?? order.title ?? `Order #${order.id.slice(0, 8)}`}
-                      </p>
-                      <StepBadge step={step} />
-                      {kendala && (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                          <AlertTriangle className="h-2.5 w-2.5" /> Kendala
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap text-[10px] text-muted-foreground">
-                      <span className="font-mono">#{order.id.slice(0, 8)}</span>
-                      <span>·</span>
-                      <span>{fmtDate(order.createdAt)}</span>
-                      {client?.phone && <><span>·</span><span>{client.phone}</span></>}
-                      {agenPenjual && (
-                        <><span>·</span>
-                        <span className="px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 font-semibold">
-                          Agen: {agenPenjual}
-                        </span></>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right: view detail */}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-[11px] shrink-0"
-                    onClick={() => navigate(`/orders/detail/${order.id}`)}
+        {/* ── Pipeline Status section ─────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="bg-white rounded-2xl shadow-sm p-5"
+        >
+          <h2 className="text-[14px] font-bold text-[#0f1c3f] mb-5">Pipeline Status Visa</h2>
+          <div className="flex items-start gap-0 overflow-x-auto pb-2">
+            {PIPELINE_STAGES.map((stage, i) => (
+              <div key={stage.key} className="flex items-start flex-1 min-w-[100px]">
+                {/* Stage column */}
+                <div className="flex flex-col items-center flex-1 px-1">
+                  {/* Icon circle */}
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center mb-2 shadow-sm"
+                    style={{ background: stage.iconBg, border: `1.5px solid ${stage.color}20` }}
                   >
-                    <ExternalLink className="h-3.5 w-3.5 mr-1" /> Detail
-                  </Button>
-                </div>
-
-                {/* Progress bar */}
-                <div className="px-4 pb-3">
-                  <div className="flex items-center gap-1">
-                    {VISA_STEPS.map((s, i) => {
-                      const done   = i < step;
-                      const active = i === step;
-                      return (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-                          <div className={`h-1 w-full rounded-full ${done ? "bg-emerald-500" : active ? "bg-indigo-500" : "bg-muted/30"}`} />
-                          <span className={`text-[8px] ${active ? "text-indigo-600 font-bold" : done ? "text-emerald-600" : "text-muted-foreground/40"}`}>{s.emoji}</span>
-                        </div>
-                      );
-                    })}
+                    <stage.Icon className="h-5 w-5" style={{ color: stage.color }} strokeWidth={1.5} />
                   </div>
+                  {/* Count */}
+                  <div className="text-2xl font-extrabold leading-none" style={{ color: stage.color }}>
+                    {pipelineCounts[i]}
+                  </div>
+                  {/* Label */}
+                  <p className="text-[10px] font-semibold text-[#64748b] text-center mt-1 leading-tight max-w-[80px]">
+                    {stage.label}
+                  </p>
                 </div>
-
-                {/* Kendala note */}
-                {kendala && (
-                  <div className="mx-4 mb-3 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-amber-800">{kendala}</p>
+                {/* Arrow connector */}
+                {i < PIPELINE_STAGES.length - 1 && (
+                  <div className="flex items-center pt-4 shrink-0">
+                    <div className="flex items-center gap-0.5">
+                      {[...Array(3)].map((_, di) => (
+                        <div key={di} className="w-1.5 h-0.5 rounded-full bg-gray-300" />
+                      ))}
+                      <ChevronRight className="h-3.5 w-3.5 text-gray-300 -ml-0.5" strokeWidth={2} />
+                    </div>
                   </div>
                 )}
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
-                {/* Bottom row: pelaksana + fee */}
-                <div className="px-4 pb-4 pt-1 border-t border-border/50 mt-1 flex items-center gap-3 flex-wrap">
+        {/* ── Daftar Tracker table ────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-white rounded-2xl shadow-sm overflow-hidden"
+        >
+          {/* Table header bar */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <div>
+              <h2 className="text-[14px] font-bold text-[#0f1c3f]">Daftar Tracker</h2>
+              <p className="text-[11px] text-[#94a3b8] mt-0.5">
+                Menampilkan {filtered.length === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, filtered.length)} dari {filtered.length} data
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportExcel}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-[12px] font-semibold text-[#64748b] transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" strokeWidth={1.5} />
+                Export Excel
+              </button>
+              <div className="flex items-center gap-1.5 text-[12px] text-[#64748b] font-medium bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
+                {pageSize} / halaman
+              </div>
+            </div>
+          </div>
 
-                  {/* Assign Pelaksana Lapangan */}
-                  <div className="flex items-center gap-2 flex-1 min-w-[220px]">
-                    <Users className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
-                    <Select
-                      value={pelaksanaId ?? "__none"}
-                      onValueChange={(v) => void handleAssign(order, v)}
-                      disabled={assigningId === order.id}
-                    >
-                      <SelectTrigger className={`h-8 text-[11px] flex-1 ${!pelaksanaId ? "border-orange-200 bg-orange-50" : "border-indigo-200 bg-indigo-50"}`}>
-                        <SelectValue>
-                          {pelaksana
-                            ? <span className="flex items-center gap-1"><UserCheck className="h-3 w-3 text-indigo-600" />{pelaksana.displayName}</span>
-                            : <span className="text-orange-600 font-medium">⚠ Belum Ditugaskan</span>
-                          }
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none">— Lepas Pelaksana —</SelectItem>
-                        {members.map((m) => (
-                          <SelectItem key={m.userId} value={m.userId}>
-                            {m.displayName}
-                            <span className="text-[10px] text-muted-foreground ml-1">({m.role})</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {assigningId === order.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
-                  </div>
-
-                  {/* Fee Pelaksana */}
-                  {pelaksanaId && (
-                    <div className="flex items-center gap-2 shrink-0">
-                      {feeCredited ? (
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Fee {fmtIDR(fee)} — Sudah Dibayar
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          className="h-8 text-[11px] bg-violet-600 hover:bg-violet-700 text-white"
-                          disabled={creditingId === order.id}
-                          onClick={() => void handleCreditFee(order)}
-                        >
-                          {creditingId === order.id
-                            ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
-                            : <BadgeDollarSign className="h-3 w-3 mr-1.5" />
-                          }
-                          Bayar Fee {fmtIDR(fee)}
-                        </Button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* If no pelaksana, fee column shows pending */}
-                  {!pelaksanaId && (
-                    <span className="text-[10px] text-orange-600 italic shrink-0">
-                      Fee menunggu delegasi
-                    </span>
-                  )}
+          {/* Table content */}
+          {viewMode === "table" ? (
+            filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center">
+                  <Landmark className="h-8 w-8 text-gray-300" strokeWidth={1.5} />
                 </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+                <p className="text-sm font-semibold text-[#0f1c3f]">Tidak ada berkas ditemukan</p>
+                <p className="text-[12px] text-[#94a3b8]">Coba ubah filter atau tambah order Visa Student Entry baru.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-[#F8FAFC] border-b border-gray-100">
+                      {["KLIEN", "NEGARA", "JENIS VISA", "ID ORDER", "TANGGAL AJU", "STATUS", "PROGRESS", "AGEN", "AKSI"].map((col) => (
+                        <th key={col} className="px-4 py-3 text-left text-[10px] font-bold text-[#94a3b8] uppercase tracking-wider whitespace-nowrap">
+                          {col}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedData.map((order, idx) => {
+                      const m = meta(order);
+                      const globalIdx = (page - 1) * pageSize + idx;
+                      const client = clientMap.get(order.clientId ?? "");
+                      const pelaksanaId = (m.pelaksanaId as string | null) ?? null;
+                      const pelaksana = pelaksanaId ? memberMap.get(pelaksanaId) : null;
+                      const fee = Number(m.pelaksanaFee ?? DEFAULT_FEE);
+                      const feeCredited = !!(m.pelaksanaFeeCredited as boolean | null);
+                      const clientName = client?.name ?? order.title ?? `Order #${order.id.slice(0, 8)}`;
+                      const stage = getStageInfo(order);
+                      const negara = m.negara as string | undefined;
+                      const ci = getCountryInfo(negara);
+
+                      return (
+                        <motion.tr
+                          key={order.id}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.03 }}
+                          className="border-b border-gray-50 hover:bg-[#F8FAFC] transition-colors group"
+                        >
+                          {/* KLIEN */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-[11px] font-bold shrink-0"
+                                style={{ background: avatarColor(clientName) }}
+                              >
+                                {initials(clientName)}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[13px] font-semibold text-[#0f1c3f] truncate max-w-[140px]">{clientName}</p>
+                                <p className="text-[10px] text-[#94a3b8] font-mono">{client?.passportNumber ?? "—"}</p>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* NEGARA */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            {ci ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-lg leading-none">{ci.flag}</span>
+                                <span className="text-[12px] font-medium text-[#0f1c3f]">{ci.name}</span>
+                              </div>
+                            ) : (
+                              <span className="text-[12px] text-[#94a3b8]">—</span>
+                            )}
+                          </td>
+
+                          {/* JENIS VISA */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className="text-[12px] font-medium text-[#0f1c3f]">Student Visa</span>
+                          </td>
+
+                          {/* ID ORDER */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[12px] font-mono font-semibold text-[#0f1c3f]">{formatOrderId(order, globalIdx)}</span>
+                              <button
+                                onClick={() => { void navigator.clipboard.writeText(order.id); toast.success("ID disalin!"); }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <ExternalLink className="h-3 w-3 text-[#94a3b8] hover:text-blue-500" strokeWidth={1.5} />
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* TANGGAL AJU */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className="text-[12px] text-[#64748b]">{fmtDate(order.createdAt)}</span>
+                          </td>
+
+                          {/* STATUS */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${stage.badgeBg} ${stage.badgeText}`}>
+                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: stage.color }} />
+                              {stage.label}
+                            </span>
+                          </td>
+
+                          {/* PROGRESS */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <div className="flex items-center gap-2 min-w-[100px]">
+                              <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${stage.barColor}`}
+                                  style={{ width: `${stage.pct}%` }}
+                                />
+                              </div>
+                              <span className="text-[11px] font-bold text-[#64748b] shrink-0 w-8 text-right">{stage.pct}%</span>
+                            </div>
+                          </td>
+
+                          {/* AGEN */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            {pelaksana ? (
+                              <div className="flex items-center gap-1.5">
+                                <div
+                                  className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0"
+                                  style={{ background: avatarColor(pelaksana.displayName) }}
+                                >
+                                  {initials(pelaksana.displayName)}
+                                </div>
+                                <span className="text-[12px] font-medium text-[#0f1c3f] max-w-[100px] truncate">{pelaksana.displayName}</span>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-orange-500 font-medium italic">Belum Ditugaskan</span>
+                            )}
+                          </td>
+
+                          {/* AKSI */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              {/* View */}
+                              <button
+                                onClick={() => navigate(`/orders/detail/${order.id}`)}
+                                className="w-8 h-8 rounded-lg hover:bg-blue-50 flex items-center justify-center transition-colors group/btn"
+                                title="Lihat detail"
+                              >
+                                <Eye className="h-4 w-4 text-[#94a3b8] group-hover/btn:text-blue-500 transition-colors" strokeWidth={1.5} />
+                              </button>
+
+                              {/* More actions */}
+                              <div className="relative">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setOpenRowMenu(openRowMenu === order.id ? null : order.id); }}
+                                  className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
+                                  title="Aksi lainnya"
+                                >
+                                  <MoreVertical className="h-4 w-4 text-[#94a3b8]" strokeWidth={1.5} />
+                                </button>
+
+                                {openRowMenu === order.id && (
+                                  <div className="absolute right-0 top-9 z-30 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 w-52" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                      onClick={() => { navigate(`/orders/detail/${order.id}`); setOpenRowMenu(null); }}
+                                      className="w-full text-left px-4 py-2.5 text-[13px] text-[#0f1c3f] hover:bg-gray-50 flex items-center gap-2.5"
+                                    >
+                                      <Eye className="h-4 w-4 text-blue-500" strokeWidth={1.5} /> Lihat Detail
+                                    </button>
+
+                                    <div className="mx-3 my-1.5 border-t border-gray-100" />
+
+                                    <p className="px-4 pt-1 pb-1.5 text-[10px] font-bold text-[#94a3b8] uppercase tracking-wide">Assign Pelaksana</p>
+                                    {members.slice(0, 5).map((mb) => (
+                                      <button
+                                        key={mb.userId}
+                                        onClick={() => { void handleAssign(order, mb.userId); setOpenRowMenu(null); }}
+                                        disabled={assigningId === order.id}
+                                        className="w-full text-left px-4 py-2 text-[12px] text-[#0f1c3f] hover:bg-gray-50 flex items-center gap-2"
+                                      >
+                                        <div
+                                          className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[8px] font-bold shrink-0"
+                                          style={{ background: avatarColor(mb.displayName) }}
+                                        >
+                                          {initials(mb.displayName)}
+                                        </div>
+                                        <span className={pelaksanaId === mb.userId ? "font-bold text-blue-600" : ""}>{mb.displayName}</span>
+                                        {pelaksanaId === mb.userId && <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 ml-auto" strokeWidth={2} />}
+                                      </button>
+                                    ))}
+                                    {pelaksanaId && (
+                                      <button
+                                        onClick={() => { void handleAssign(order, "__none"); setOpenRowMenu(null); }}
+                                        className="w-full text-left px-4 py-2 text-[12px] text-red-500 hover:bg-red-50 flex items-center gap-2"
+                                      >
+                                        <X className="h-3.5 w-3.5" strokeWidth={2} /> Lepas Pelaksana
+                                      </button>
+                                    )}
+
+                                    {pelaksanaId && !feeCredited && (
+                                      <>
+                                        <div className="mx-3 my-1.5 border-t border-gray-100" />
+                                        <button
+                                          disabled={creditingId === order.id}
+                                          onClick={() => { void handleCreditFee(order); setOpenRowMenu(null); }}
+                                          className="w-full text-left px-4 py-2.5 text-[13px] text-violet-700 hover:bg-violet-50 flex items-center gap-2.5 disabled:opacity-50"
+                                        >
+                                          <BadgeDollarSign className="h-4 w-4 text-violet-500" strokeWidth={1.5} />
+                                          Bayar Fee {fmtIDR(fee)}
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+          ) : (
+            /* Grid view */
+            <div className="p-4 grid grid-cols-2 lg:grid-cols-3 gap-4">
+              {pagedData.map((order, idx) => {
+                const m = meta(order);
+                const client = clientMap.get(order.clientId ?? "");
+                const pelaksanaId = (m.pelaksanaId as string | null) ?? null;
+                const pelaksana = pelaksanaId ? memberMap.get(pelaksanaId) : null;
+                const clientName = client?.name ?? order.title ?? `Order #${order.id.slice(0, 8)}`;
+                const stage = getStageInfo(order);
+                const negara = m.negara as string | undefined;
+                const ci = getCountryInfo(negara);
+                const globalIdx = (page - 1) * pageSize + idx;
+
+                return (
+                  <motion.div
+                    key={order.id}
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.03 }}
+                    className="bg-[#F8FAFC] rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => navigate(`/orders/detail/${order.id}`)}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-[11px] font-bold shrink-0"
+                          style={{ background: avatarColor(clientName) }}
+                        >
+                          {initials(clientName)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-bold text-[#0f1c3f] truncate">{clientName}</p>
+                          <p className="text-[10px] text-[#94a3b8] font-mono">{client?.passportNumber ?? "—"}</p>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${stage.badgeBg} ${stage.badgeText}`}>
+                        {stage.label}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5 text-[11px] text-[#64748b] mb-3">
+                      {ci && <div className="flex items-center gap-1.5">{ci.flag} <span>{ci.name}</span></div>}
+                      <div className="flex items-center gap-1.5"><span className="font-mono font-semibold">{formatOrderId(order, globalIdx)}</span></div>
+                      <div>{fmtDate(order.createdAt)}</div>
+                    </div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="flex-1 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                        <div className={`h-full rounded-full ${stage.barColor}`} style={{ width: `${stage.pct}%` }} />
+                      </div>
+                      <span className="text-[10px] font-bold text-[#64748b]">{stage.pct}%</span>
+                    </div>
+                    {pelaksana && (
+                      <p className="text-[10px] text-[#94a3b8] mt-2">Agen: <span className="font-semibold text-[#64748b]">{pelaksana.displayName}</span></p>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Pagination ────────────────────────────────────────────────── */}
+          {filtered.length > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100">
+              <p className="text-[12px] text-[#94a3b8]">
+                Halaman {page} dari {totalPages}
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4 text-[#64748b]" strokeWidth={2} />
+                </button>
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                  let p: number;
+                  if (totalPages <= 7) {
+                    p = i + 1;
+                  } else if (page <= 4) {
+                    p = i < 5 ? i + 1 : i === 5 ? -1 : totalPages;
+                  } else if (page >= totalPages - 3) {
+                    p = i === 0 ? 1 : i === 1 ? -1 : totalPages - (6 - i);
+                  } else {
+                    p = i === 0 ? 1 : i === 1 ? -1 : i === 6 ? totalPages : i === 5 ? -2 : page + (i - 3);
+                  }
+                  if (p < 0) {
+                    return <span key={`ellipsis-${i}`} className="w-8 h-8 flex items-center justify-center text-[#94a3b8] text-[12px]">…</span>;
+                  }
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`w-8 h-8 rounded-lg text-[13px] font-semibold transition-all ${
+                        p === page
+                          ? "text-white shadow-sm"
+                          : "border border-gray-200 text-[#64748b] hover:bg-gray-50"
+                      }`}
+                      style={p === page ? { background: "linear-gradient(135deg,#2563eb,#1d4ed8)" } : undefined}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4 text-[#64748b]" strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          )}
+        </motion.div>
+
+      </div>
     </div>
     </>
   );
