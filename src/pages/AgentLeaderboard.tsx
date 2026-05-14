@@ -1,103 +1,39 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Trophy, ChevronLeft, Sparkles, Calendar, Star,
-  TrendingUp, Flame, ChevronRight, Crown,
-  Search, SlidersHorizontal, Users, Wallet,
-  UserPlus, BarChart3, Settings2, History,
+  Trophy, ChevronLeft, ChevronRight, TrendingUp, Share2,
+  Users, BarChart3, Loader2, UserCheck, ShoppingBag, ChevronDown,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { useOrdersStore } from "@/store/ordersStore";
+import { useClientsStore } from "@/store/clientsStore";
 import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import {
   listAgentPoints, sumPointsByAgent, type AgentPoint,
 } from "@/features/agentPoints/agentPointsRepo";
 import { onAgentPointsChanged } from "@/lib/supabaseRealtime";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
-import { AgentTierBadge } from "@/components/AgentTierProgress";
 import type { AgentTier } from "@/features/agentPoints/agentTiers";
 import { revenueIDR, fmtIDR, agentFeeFromMeta } from "@/lib/profit";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-type RangeKey = "this_month" | "last_month" | "this_year" | "all";
+/* ── Types ──────────────────────────────────────────────────────── */
+type RangeKey = "last_30_days" | "this_month" | "last_month" | "this_year" | "all";
 
 const RANGE_LABEL: Record<RangeKey, string> = {
-  this_month: "Bulan Ini",
-  last_month: "Bulan Lalu",
-  this_year:  "Tahun Ini",
-  all:        "Sepanjang Masa",
+  last_30_days: "30 Hari Terakhir",
+  this_month:   "Bulan Ini",
+  last_month:   "Bulan Lalu",
+  this_year:    "Tahun Ini",
+  all:          "Sepanjang Masa",
 };
-
-function rangeBounds(key: RangeKey): { from: number; to: number } | null {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  switch (key) {
-    case "this_month":  return { from: new Date(y, m, 1).getTime(),     to: new Date(y, m + 1, 1).getTime() };
-    case "last_month":  return { from: new Date(y, m - 1, 1).getTime(), to: new Date(y, m, 1).getTime() };
-    case "this_year":   return { from: new Date(y, 0, 1).getTime(),     to: new Date(y + 1, 0, 1).getTime() };
-    default:            return null;
-  }
-}
-
-function avatarGradient(name: string): string {
-  const gradients = [
-    "from-violet-500 to-purple-700",
-    "from-sky-500 to-blue-700",
-    "from-emerald-500 to-green-700",
-    "from-rose-500 to-pink-700",
-    "from-fuchsia-500 to-purple-700",
-    "from-teal-500 to-cyan-700",
-    "from-indigo-500 to-indigo-700",
-    "from-orange-500 to-red-700",
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) & 0xffffffff;
-  return gradients[Math.abs(hash) % gradients.length];
-}
-
-const PODIUM_CFG = {
-  1: {
-    border:      "border-amber-200",
-    bg:          "bg-gradient-to-b from-amber-50 to-white",
-    accentColor: "text-amber-600",
-    pillBg:      "bg-amber-50 border border-amber-200",
-    pillText:    "text-amber-700",
-    avatarRing:  "ring-2 ring-amber-300",
-    shadow:      "shadow-amber-100",
-    crown:       true,
-  },
-  2: {
-    border:      "border-slate-200",
-    bg:          "bg-gradient-to-b from-slate-50 to-white",
-    accentColor: "text-slate-500",
-    pillBg:      "bg-slate-50 border border-slate-200",
-    pillText:    "text-slate-600",
-    avatarRing:  "ring-2 ring-slate-200",
-    shadow:      "shadow-slate-100",
-    crown:       false,
-  },
-  3: {
-    border:      "border-orange-200",
-    bg:          "bg-gradient-to-b from-orange-50 to-white",
-    accentColor: "text-orange-500",
-    pillBg:      "bg-orange-50 border border-orange-200",
-    pillText:    "text-orange-700",
-    avatarRing:  "ring-2 ring-orange-200",
-    shadow:      "shadow-orange-100",
-    crown:       false,
-  },
-} as const;
-
-const RANK_MEDAL = ["🥇", "🥈", "🥉"];
 
 type LeaderboardRow = {
   agentId:        string;
   name:           string;
+  email:          string;
+  photoUrl?:      string;
   isMe:           boolean;
   orders:         number;
   revenue:        number;
@@ -105,49 +41,81 @@ type LeaderboardRow = {
   periodPoints:   number;
   lifetimePoints: number;
   tier:           AgentTier;
+  clientCount:    number;
 };
 
-type MobileTab = "all" | "poin" | "komisi" | "closing" | "performa";
-const MOBILE_TABS: { key: MobileTab; label: string }[] = [
-  { key: "all",      label: "Semua" },
-  { key: "poin",     label: "Top Poin" },
-  { key: "komisi",   label: "Top Komisi" },
-  { key: "closing",  label: "Top Closing" },
-  { key: "performa", label: "Top Performa" },
-];
-
-const PAGE_SIZE = 8;
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  show: (i = 0) => ({
-    opacity: 1, y: 0,
-    transition: { duration: 0.38, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] as const },
-  }),
-};
-
-function fmtCompact(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(0) + "K";
-  return String(n);
+/* ── Helpers ─────────────────────────────────────────────────────── */
+function rangeBounds(key: RangeKey): { from: number; to: number } | null {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  switch (key) {
+    case "last_30_days": return { from: now.getTime() - 30 * 86_400_000, to: now.getTime() };
+    case "this_month":   return { from: new Date(y, m, 1).getTime(),     to: new Date(y, m + 1, 1).getTime() };
+    case "last_month":   return { from: new Date(y, m - 1, 1).getTime(), to: new Date(y, m, 1).getTime() };
+    case "this_year":    return { from: new Date(y, 0, 1).getTime(),     to: new Date(y + 1, 0, 1).getTime() };
+    default:             return null;
+  }
 }
 
+function prevBounds(key: RangeKey): { from: number; to: number } | null {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  switch (key) {
+    case "last_30_days": {
+      const to = now.getTime() - 30 * 86_400_000;
+      return { from: to - 30 * 86_400_000, to };
+    }
+    case "this_month":  return { from: new Date(y, m - 1, 1).getTime(), to: new Date(y, m, 1).getTime() };
+    case "last_month":  return { from: new Date(y, m - 2, 1).getTime(), to: new Date(y, m - 1, 1).getTime() };
+    case "this_year":   return { from: new Date(y - 1, 0, 1).getTime(), to: new Date(y, 0, 1).getTime() };
+    default:            return null;
+  }
+}
+
+const AVATAR_COLORS = [
+  "#6366f1","#8b5cf6","#ec4899","#14b8a6","#f59e0b",
+  "#10b981","#3b82f6","#ef4444","#06b6d4","#84cc16",
+];
+
+function avatarBg(name: string): string {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1)  return "baru saja";
+  if (mins < 60) return `${mins} menit lalu`;
+  const h = Math.floor(mins / 60);
+  if (h < 24)    return `${h} jam lalu`;
+  return `${Math.floor(h / 24)} hari lalu`;
+}
+
+function growthPct(curr: number, prev: number): number | null {
+  if (prev <= 0) return null;
+  return Math.round(((curr - prev) / prev) * 100);
+}
+
+const PAGE_SIZES = [10, 25, 50];
+
+/* ── Component ───────────────────────────────────────────────────── */
 export default function AgentLeaderboard() {
   const navigate    = useNavigate();
   const me          = useAuthStore((s) => s.user);
   const listMembers = useAuthStore((s) => s.listMembers);
   const { orders, fetchOrders, loaded: ordersLoaded } = useOrdersStore();
+  const { clients, fetchClients } = useClientsStore();
 
-  const [range,        setRange]        = useState<RangeKey>("this_month");
-  const [members,      setMembers]      = useState<MemberInfo[]>([]);
-  const [points,       setPoints]       = useState<AgentPoint[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [scrolled,     setScrolled]     = useState(false);
-
-  // Mobile-specific state
-  const [mobileSearch, setMobileSearch] = useState("");
-  const [mobileTab,    setMobileTab]    = useState<MobileTab>("all");
-  const [mobilePage,   setMobilePage]   = useState(1);
+  const [range,       setRange]       = useState<RangeKey>("last_30_days");
+  const [members,     setMembers]     = useState<MemberInfo[]>([]);
+  const [points,      setPoints]      = useState<AgentPoint[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize,    setPageSize]    = useState(10);
 
   const refreshPoints = useCallback(async () => {
     try { setPoints(await listAgentPoints()); }
@@ -156,6 +124,7 @@ export default function AgentLeaderboard() {
 
   useEffect(() => {
     if (!ordersLoaded) void fetchOrders();
+    void fetchClients();
     void (async () => {
       try {
         const [m, p] = await Promise.all([listMembers(), listAgentPoints()]);
@@ -165,25 +134,35 @@ export default function AgentLeaderboard() {
     })();
     const unsub = onAgentPointsChanged(() => { void refreshPoints(); });
     return unsub;
-  }, [ordersLoaded, fetchOrders, listMembers, refreshPoints]);
+  }, [ordersLoaded, fetchOrders, fetchClients, listMembers, refreshPoints]);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 6);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  useEffect(() => { setCurrentPage(1); }, [range, pageSize]);
 
+  /* ── Derived data ──────────────────────────────────────────────── */
   const agentMembers = useMemo(() => members.filter((m) => m.role === "agent"), [members]);
   const memberById   = useMemo(() => new Map(members.map((m) => [m.userId, m])), [members]);
   const bounds       = useMemo(() => rangeBounds(range), [range]);
+  const prevB        = useMemo(() => prevBounds(range), [range]);
 
-  const periodOrders = useMemo(() => {
-    if (!bounds) return orders;
+  const clientCountByAgent = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of clients) {
+      const aid = c.createdByAgent;
+      if (aid) map.set(aid, (map.get(aid) ?? 0) + 1);
+    }
+    return map;
+  }, [clients]);
+
+  const filterOrders = useCallback((b: { from: number; to: number } | null) => {
+    if (!b) return orders;
     return orders.filter((o) => {
       const t = new Date(o.createdAt).getTime();
-      return t >= bounds.from && t < bounds.to;
+      return t >= b.from && t < b.to;
     });
-  }, [orders, bounds]);
+  }, [orders]);
+
+  const periodOrders = useMemo(() => filterOrders(bounds), [filterOrders, bounds]);
+  const prevOrders   = useMemo(() => filterOrders(prevB),  [filterOrders, prevB]);
 
   const periodPoints = useMemo(() => {
     if (!bounds) return points;
@@ -193,13 +172,10 @@ export default function AgentLeaderboard() {
     });
   }, [points, bounds]);
 
-  const rows = useMemo<LeaderboardRow[]>(() => {
-    const lifetime = sumPointsByAgent(points);
-    const periodic = sumPointsByAgent(periodPoints);
+  function buildStats(ordArr: typeof orders) {
     const agentIds = new Set(agentMembers.map((a) => a.userId));
     const stats    = new Map<string, { revenue: number; orders: number; commission: number }>();
-
-    for (const o of periodOrders) {
+    for (const o of ordArr) {
       if (!o.createdByAgent || !agentIds.has(o.createdByAgent)) continue;
       const cur = stats.get(o.createdByAgent) ?? { revenue: 0, orders: 0, commission: 0 };
       cur.revenue += revenueIDR(o);
@@ -207,54 +183,24 @@ export default function AgentLeaderboard() {
       if (o.status === "Completed") cur.commission += agentFeeFromMeta(o);
       stats.set(o.createdByAgent, cur);
     }
-    for (const o of periodOrders) {
-      if (o.status !== "Completed") continue;
-      const meta = (o.metadata ?? {}) as Record<string, unknown>;
-
-      if (o.type === "visa_voa") {
-        const fieldAgentId = meta.voaFieldAgentId as string | undefined;
-        if (fieldAgentId && agentIds.has(fieldAgentId)) {
-          const voaFee = Number(meta.voaAgentFee ?? 0);
-          if (voaFee > 0) {
-            const cur = stats.get(fieldAgentId) ?? { revenue: 0, orders: 0, commission: 0 };
-            cur.commission += voaFee;
-            stats.set(fieldAgentId, cur);
-          }
-        }
-      }
-
-      if (o.type === "visa_student") {
-        const pelaksanaId = meta.pelaksanaId as string | undefined;
-        if (pelaksanaId && agentIds.has(pelaksanaId)) {
-          const pelFee = Number(meta.pelaksanaFee ?? 200_000);
-          if (pelFee > 0) {
-            const cur = stats.get(pelaksanaId) ?? { revenue: 0, orders: 0, commission: 0 };
-            cur.commission += pelFee;
-            stats.set(pelaksanaId, cur);
-          }
-        }
-      }
-
-      const kurirAgentId = meta.kurirAgentId as string | undefined;
-      if (kurirAgentId && agentIds.has(kurirAgentId)) {
-        const kurirFee = Number(meta.kurirFee ?? 0);
-        if (kurirFee > 0) {
-          const cur = stats.get(kurirAgentId) ?? { revenue: 0, orders: 0, commission: 0 };
-          cur.commission += kurirFee;
-          stats.set(kurirAgentId, cur);
-        }
-      }
-    }
     for (const a of agentMembers) {
       if (!stats.has(a.userId)) stats.set(a.userId, { revenue: 0, orders: 0, commission: 0 });
     }
+    return stats;
+  }
 
+  const rows = useMemo<LeaderboardRow[]>(() => {
+    const lifetime = sumPointsByAgent(points);
+    const periodic = sumPointsByAgent(periodPoints);
+    const stats    = buildStats(periodOrders);
     return Array.from(stats.entries())
       .map(([agentId, v]) => {
         const member = memberById.get(agentId);
         return {
           agentId,
           name:           member?.displayName ?? `Agent ${agentId.slice(0, 6)}…`,
+          email:          member?.email ?? "—",
+          photoUrl:       member?.photoUrl,
           isMe:           agentId === me?.id,
           orders:         v.orders,
           revenue:        v.revenue,
@@ -262,956 +208,546 @@ export default function AgentLeaderboard() {
           periodPoints:   periodic.get(agentId) ?? 0,
           lifetimePoints: lifetime.get(agentId) ?? 0,
           tier:           getTierInfo(lifetime.get(agentId) ?? 0).current.key as AgentTier,
+          clientCount:    clientCountByAgent.get(agentId) ?? 0,
         };
       })
       .sort((a, b) => {
-        if (b.periodPoints    !== a.periodPoints)    return b.periodPoints    - a.periodPoints;
-        if (b.orders          !== a.orders)          return b.orders          - a.orders;
-        if (b.lifetimePoints  !== a.lifetimePoints)  return b.lifetimePoints  - a.lifetimePoints;
+        if (b.periodPoints   !== a.periodPoints)   return b.periodPoints   - a.periodPoints;
+        if (b.orders         !== a.orders)         return b.orders         - a.orders;
+        if (b.lifetimePoints !== a.lifetimePoints) return b.lifetimePoints - a.lifetimePoints;
         return a.name.localeCompare(b.name, "id");
       });
-  }, [periodOrders, periodPoints, points, agentMembers, memberById, me?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodOrders, periodPoints, points, agentMembers, memberById, me?.id, clientCountByAgent]);
 
-  const myRank     = useMemo(() => { const i = rows.findIndex((r) => r.agentId === me?.id); return i >= 0 ? i + 1 : null; }, [rows, me?.id]);
-  const mostActive = useMemo(() => [...rows].sort((a, b) => b.orders      - a.orders)[0]      ?? null, [rows]);
-  const topKomisi  = useMemo(() => [...rows].sort((a, b) => b.commission  - a.commission)[0]  ?? null, [rows]);
-  const topPoin    = useMemo(() => rows[0] ?? null, [rows]);
+  /* Previous period totals for growth */
+  const prevTotals = useMemo(() => {
+    const stats = buildStats(prevOrders);
+    return {
+      orders:  Array.from(stats.values()).reduce((s, v) => s + v.orders, 0),
+      revenue: Array.from(stats.values()).reduce((s, v) => s + v.revenue, 0),
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prevOrders, agentMembers]);
 
-  const top3   = rows.slice(0, 3);
-  const podium: (LeaderboardRow | null)[] = [top3[1] ?? null, top3[0] ?? null, top3[2] ?? null];
-  const podiumRanks: (1 | 2 | 3)[]       = [2, 1, 3];
+  /* Summary stats */
+  const totalOrders  = useMemo(() => rows.reduce((s, r) => s + r.orders, 0), [rows]);
+  const totalRevenue = useMemo(() => rows.reduce((s, r) => s + r.revenue, 0), [rows]);
+  const totalClients = useMemo(() => rows.reduce((s, r) => s + r.clientCount, 0), [rows]);
+  const totalAgents  = agentMembers.length;
+  const orderGrowth   = growthPct(totalOrders, prevTotals.orders);
+  const revenueGrowth = growthPct(totalRevenue, prevTotals.revenue);
 
-  // ── Mobile computed ────────────────────────────────────────────────────────
+  /* Podium */
+  const top3         = rows.slice(0, 3);
+  const podiumOrder: (LeaderboardRow | null)[] = [top3[1] ?? null, top3[0] ?? null, top3[2] ?? null];
+  const podiumRanks: (1 | 2 | 3)[]            = [2, 1, 3];
+
+  /* Table pagination */
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const pagedRows  = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  /* Recent activities */
+  const recentActivities = useMemo(() =>
+    orders
+      .filter((o) => o.createdByAgent)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 6)
+      .map((o) => {
+        const agent = memberById.get(o.createdByAgent!);
+        return {
+          agentId:   o.createdByAgent!,
+          agentName: agent?.displayName ?? "Agen",
+          orderId:   o.id?.toString().slice(0, 14) ?? "—",
+          time:      o.createdAt,
+        };
+      }),
+  [orders, memberById]);
+
   const isOwner = me?.role === "owner";
+  const myRank  = useMemo(() => {
+    const i = rows.findIndex((r) => r.agentId === me?.id);
+    return i >= 0 ? i + 1 : null;
+  }, [rows, me?.id]);
 
-  const totalPeriodPoints = useMemo(() => rows.reduce((s, r) => s + r.periodPoints, 0), [rows]);
-  const totalCommission   = useMemo(() => rows.reduce((s, r) => s + r.commission, 0), [rows]);
-  const activeAgents      = useMemo(() => rows.filter((r) => r.orders > 0).length, [rows]);
+  /* ── Pagination helper ─────────────────────────────────────────── */
+  function pageNums(): (number | "…")[] {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages: (number | "…")[] = [1];
+    if (currentPage > 3)  pages.push("…");
+    for (let p = Math.max(2, currentPage - 1); p <= Math.min(totalPages - 1, currentPage + 1); p++) pages.push(p);
+    if (currentPage < totalPages - 2) pages.push("…");
+    pages.push(totalPages);
+    return pages;
+  }
 
-  const mobileTabRows = useMemo<LeaderboardRow[]>(() => {
-    switch (mobileTab) {
-      case "poin":     return [...rows].sort((a, b) => b.periodPoints   - a.periodPoints);
-      case "komisi":   return [...rows].sort((a, b) => b.commission     - a.commission);
-      case "closing":  return [...rows].sort((a, b) => b.orders         - a.orders);
-      case "performa": return [...rows].sort((a, b) => b.lifetimePoints - a.lifetimePoints);
-      default:         return rows;
-    }
-  }, [rows, mobileTab]);
-
-  const searchedMobileRows = useMemo(() => {
-    if (!mobileSearch.trim()) return mobileTabRows;
-    const q = mobileSearch.toLowerCase();
-    return mobileTabRows.filter((r) => {
-      const member = memberById.get(r.agentId);
-      return (
-        r.name.toLowerCase().includes(q) ||
-        (member?.email ?? "").toLowerCase().includes(q)
-      );
-    });
-  }, [mobileTabRows, mobileSearch, memberById]);
-
-  const totalMobilePages = Math.max(1, Math.ceil(searchedMobileRows.length / PAGE_SIZE));
-  const paginatedMobileRows = useMemo(
-    () => searchedMobileRows.slice((mobilePage - 1) * PAGE_SIZE, mobilePage * PAGE_SIZE),
-    [searchedMobileRows, mobilePage],
-  );
-
-  // Reset page when search/tab changes
-  useEffect(() => { setMobilePage(1); }, [mobileSearch, mobileTab, range]);
-
+  /* ═══════════════════════════════════════════════════════════════
+     RENDER
+  ═══════════════════════════════════════════════════════════════ */
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="max-w-[1400px] mx-auto p-4 md:p-6 space-y-6">
 
-      {/* ══════════════════════════════════════════════════════════════
-          DESKTOP LAYOUT  (hidden on mobile)
-      ══════════════════════════════════════════════════════════════ */}
-
-      {/* ── Sticky header (desktop only) ── */}
-      <header
-        className={cn(
-          "hidden md:flex sticky top-0 z-20 bg-white/90 backdrop-blur-md transition-all duration-200",
-          scrolled ? "shadow-md" : "border-b border-slate-100",
-        )}
-      >
-        <div className="flex items-center gap-3 px-4 py-3 max-w-[1400px] mx-auto w-full">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/agent")}
-            className="h-8 w-8 p-0 shrink-0 text-slate-500 hover:text-slate-800"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <Trophy className="h-4 w-4 text-amber-500 shrink-0" />
-              <h1 className="text-[15px] font-black text-slate-900 tracking-[-0.02em] leading-none">
-                Leaderboard Mitra
-              </h1>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-none">
-              {RANGE_LABEL[range]}
-              {myRank && (
-                <> · <span className="font-semibold text-amber-600">Kamu #{myRank}</span></>
-              )}
-            </p>
+      {/* ── Page header ────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="h-14 w-14 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0 shadow-sm">
+            <Trophy className="h-7 w-7 text-amber-500" strokeWidth={1.8} />
           </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Calendar className="h-3.5 w-3.5 text-slate-400" />
-            <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
-              <SelectTrigger className="h-8 w-[130px] text-[12px] border-slate-200 rounded-lg">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => (
-                  <SelectItem key={k} value={k} className="text-[12px]">
-                    {RANGE_LABEL[k]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div>
+            <h1 className="text-[26px] font-black text-slate-900 leading-tight tracking-tight">Leaderboard</h1>
+            <p className="text-[13px] text-slate-500 mt-0.5">Peringkat agen berdasarkan performa dan pencapaian</p>
+            {myRank && (
+              <span className="inline-block mt-1.5 text-[11px] font-bold bg-amber-50 border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">
+                🏆 Kamu #{myRank}
+              </span>
+            )}
           </div>
         </div>
-      </header>
 
-      {/* ── Desktop content ── */}
-      <div className="hidden md:block max-w-[1400px] mx-auto px-4 pb-16 space-y-5 pt-5">
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="relative">
+            <select
+              value={range}
+              onChange={(e) => setRange(e.target.value as RangeKey)}
+              className="h-9 pl-3 pr-8 rounded-lg text-[12.5px] font-semibold border border-slate-200 bg-white text-slate-700 outline-none focus:border-blue-400 cursor-pointer appearance-none shadow-sm"
+            >
+              {(Object.entries(RANGE_LABEL) as [RangeKey, string][]).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+          </div>
 
-        {/* Podium */}
-        {loading ? (
-          <PodiumSkeleton />
-        ) : top3.length > 0 ? (
-          <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 rounded-lg border-slate-200 text-slate-600 gap-1.5 shadow-sm"
+            onClick={() => {
+              void navigator.clipboard.writeText(window.location.href);
+              toast.success("Link disalin!");
+            }}
           >
-            <div className="flex items-center justify-between px-5 pt-5 pb-4">
-              <div>
-                <h2 className="text-[13px] font-black text-slate-900 tracking-[-0.02em] flex items-center gap-1.5">
-                  <Crown className="h-4 w-4 text-amber-500" />
-                  Top 3 Champions
-                </h2>
-                <p className="text-[11px] text-slate-400 mt-0.5">{RANGE_LABEL[range]}</p>
-              </div>
-              {myRank && myRank <= 3 && (
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700">
-                  🏆 Kamu #{myRank}
-                </span>
-              )}
+            <Share2 className="h-3.5 w-3.5" />
+            Bagikan
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Two-column layout ──────────────────────────────────── */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
+
+        {/* ════════════════════════════════════════════════════════
+            MAIN CONTENT
+        ════════════════════════════════════════════════════════ */}
+        <div className="space-y-5 min-w-0">
+
+          {/* ── Podium ─────────────────────────────────────────── */}
+          {loading ? (
+            <div className="grid grid-cols-3 gap-3">
+              {[180, 220, 180].map((h, i) => (
+                <div key={i} className="bg-white rounded-2xl border border-slate-100 animate-pulse" style={{ height: h }} />
+              ))}
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:gap-4 px-3 pb-5 items-end">
-              {podium.map((row, idx) => (
+          ) : top3.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-100 py-16 flex items-center justify-center">
+              <div className="text-center">
+                <Trophy className="h-10 w-10 text-slate-200 mx-auto mb-2" />
+                <p className="text-[13px] font-semibold text-slate-400">Belum ada mitra di periode ini</p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3 items-end">
+              {podiumOrder.map((row, idx) => (
                 <PodiumCard
                   key={podiumRanks[idx]}
                   row={row}
                   rank={podiumRanks[idx]}
                   isMe={row?.agentId === me?.id}
                   elevated={podiumRanks[idx] === 1}
-                  onProfile={() => navigate("/agent/profile")}
+                  onView={() => row && navigate(row.isMe && !isOwner ? "/agent/profile" : `/agents/${row.agentId}`)}
                 />
               ))}
             </div>
-          </motion.section>
-        ) : (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm py-14 flex items-center justify-center">
-            <div className="text-center">
-              <Trophy className="h-8 w-8 text-slate-200 mx-auto mb-2" />
-              <p className="text-[12.5px] text-slate-400">Belum ada mitra di periode ini</p>
-            </div>
-          </div>
-        )}
-
-        {/* Insight mini cards */}
-        {!loading && rows.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {mostActive && (
-              <InsightCard
-                icon={<Flame className="h-4 w-4 text-amber-500" />}
-                iconBg="bg-amber-50"
-                label="Most Active"
-                sub="Terbanyak order"
-                name={mostActive.name}
-                value={`${mostActive.orders} order`}
-                valueColor="text-amber-600"
-                isMe={mostActive.isMe}
-                delay={0}
-              />
-            )}
-            {topKomisi && (
-              <InsightCard
-                icon={<span className="text-[15px] leading-none">💰</span>}
-                iconBg="bg-emerald-50"
-                label="Top Komisi"
-                sub="Komisi sales tertinggi"
-                name={topKomisi.name}
-                value={topKomisi.isMe ? fmtIDR(topKomisi.commission) : "🔒 Private"}
-                valueColor="text-emerald-600"
-                isMe={topKomisi.isMe}
-                delay={0.05}
-              />
-            )}
-            {topPoin && (
-              <InsightCard
-                icon={<Star className="h-4 w-4 text-violet-500" />}
-                iconBg="bg-violet-50"
-                label="Top Poin"
-                sub={`Poin ${RANGE_LABEL[range].toLowerCase()}`}
-                name={topPoin.name}
-                value={`${topPoin.periodPoints} poin`}
-                valueColor="text-violet-600"
-                isMe={topPoin.isMe}
-                delay={0.1}
-              />
-            )}
-          </div>
-        )}
-
-        {/* Full ranking */}
-        {!loading && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.1 }}
-            className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <Sparkles className="h-3.5 w-3.5 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-[13px] font-bold text-slate-800">Full Ranking</p>
-                  <p className="text-[11px] text-slate-400">
-                    {rows.length} mitra · {RANGE_LABEL[range]}
-                  </p>
-                </div>
-              </div>
-              {myRank && (
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-                  Kamu #{myRank}
-                </span>
-              )}
-            </div>
-
-            {rows.length === 0 ? (
-              <div className="py-14 text-center">
-                <Trophy className="h-8 w-8 mx-auto text-slate-200 mb-2" />
-                <p className="text-[12.5px] font-medium text-slate-400">Belum ada mitra terdaftar</p>
-              </div>
-            ) : (
-              <AnimatePresence mode="wait">
-                <div className="divide-y divide-slate-50">
-                  {rows.map((r, i) => {
-                    const rank   = i + 1;
-                    const isTop3 = rank <= 3;
-                    return (
-                      <motion.div
-                        key={r.agentId}
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.2, delay: Math.min(i * 0.03, 0.4) }}
-                        className={cn(
-                          "flex items-center gap-3 px-4 py-3 transition-colors",
-                          r.isMe
-                            ? "bg-amber-50/60 border-l-[3px] border-amber-400"
-                            : "hover:bg-slate-50/80",
-                        )}
-                      >
-                        <div className={cn(
-                          "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-extrabold leading-none",
-                          isTop3
-                            ? rank === 1 ? "bg-amber-50 text-amber-600 border border-amber-200"
-                              : rank === 2 ? "bg-slate-100 text-slate-500 border border-slate-200"
-                              : "bg-orange-50 text-orange-500 border border-orange-200"
-                            : "bg-slate-50 text-slate-400 border border-slate-100 font-mono text-[10px]",
-                        )}>
-                          {isTop3 ? RANK_MEDAL[rank - 1] : rank}
-                        </div>
-
-                        <div className={cn(
-                          "h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center",
-                          "text-white font-extrabold text-[13px] shrink-0 ring-2 ring-white shadow-sm",
-                          avatarGradient(r.name),
-                        )}>
-                          {r.name.charAt(0).toUpperCase()}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className={cn(
-                              "text-[13px] font-semibold truncate",
-                              r.isMe ? "text-amber-800" : "text-slate-800",
-                            )}>
-                              {r.name}
-                            </span>
-                            {r.isMe && (
-                              <span className="text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full shrink-0">
-                                Kamu
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <AgentTierBadge tier={r.tier} size="xs" />
-                            <span className="text-[10px] text-slate-400">{r.orders} order</span>
-                          </div>
-                        </div>
-
-                        <div className="hidden sm:flex items-center gap-5 shrink-0">
-                          <div className="text-right">
-                            <div className="text-[10px] text-slate-400 font-medium">Poin</div>
-                            <div className="text-[13px] font-extrabold text-blue-600 font-mono">{r.periodPoints}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-[10px] text-slate-400 font-medium">Lifetime</div>
-                            <div className="text-[13px] font-extrabold text-amber-600 font-mono">{r.lifetimePoints}</div>
-                          </div>
-                          {r.isMe && (
-                            <div className="text-right">
-                              <div className="text-[10px] text-slate-400 font-medium">Komisi</div>
-                              <div className="text-[12px] font-bold text-emerald-600 font-mono">{fmtIDR(r.commission)}</div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex sm:hidden flex-col items-end shrink-0 gap-0.5">
-                          <span className="text-[12px] font-extrabold text-blue-600 font-mono">{r.periodPoints} poin</span>
-                          <span className="text-[10px] text-slate-400">{r.orders} order</span>
-                        </div>
-
-                        {r.isMe && (
-                          <button
-                            onClick={() => navigate("/agent/profile")}
-                            className="shrink-0 h-7 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-semibold text-slate-600 transition-colors flex items-center gap-1"
-                          >
-                            <span className="hidden sm:inline">Profil</span>
-                            <ChevronRight className="h-3 w-3" />
-                          </button>
-                        )}
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </AnimatePresence>
-            )}
-          </motion.div>
-        )}
-
-        {/* Loading skeleton for ranking */}
-        {loading && (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100">
-              <div className="h-4 w-32 bg-slate-100 rounded-lg animate-pulse" />
-            </div>
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
-                <div className="h-7 w-7 bg-slate-100 rounded-lg animate-pulse" />
-                <div className="h-9 w-9 bg-slate-100 rounded-full animate-pulse" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="h-3 w-28 bg-slate-100 rounded animate-pulse" />
-                  <div className="h-2.5 w-16 bg-slate-100 rounded animate-pulse" />
-                </div>
-                <div className="h-4 w-12 bg-slate-100 rounded animate-pulse" />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Tip strip */}
-        {!loading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-4 flex items-start gap-3"
-          >
-            <div className="h-8 w-8 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
-              <TrendingUp className="h-4 w-4 text-blue-500" />
-            </div>
-            <div>
-              <p className="text-[12px] font-semibold text-slate-700 mb-0.5">Cara naik ranking</p>
-              <p className="text-[11.5px] text-slate-500 leading-relaxed">
-                Daftarkan klien baru, bantu mereka order, dan pastikan order naik ke status{" "}
-                <span className="font-semibold text-slate-700">Completed</span>.
-                Tiap order Completed = <span className="font-semibold text-slate-700">+10 poin</span>;
-                jika ada komisi sales, dapat bonus <span className="font-semibold text-slate-700">+20 poin</span> —
-                total <span className="font-semibold text-slate-700">+30 poin</span> sekaligus.
-                Top performer dapat reward bulanan dari admin.
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════════
-          MOBILE LAYOUT  (hidden on desktop)
-      ══════════════════════════════════════════════════════════════ */}
-      <div className="md:hidden -mx-4 bg-[#F0F4FB] min-h-screen pb-32 overflow-x-hidden">
-
-        {/* ── Section 1: Header ────────────────────────────────────── */}
-        <div className="bg-white px-5 pt-[72px] pb-5 shadow-sm">
-          {/* Back + title row */}
-          <div className="flex items-start gap-3 mb-3">
-            <button
-              onClick={() => navigate(-1 as unknown as string)}
-              className="h-9 w-9 rounded-xl bg-[#F0F4FB] flex items-center justify-center shrink-0 active:opacity-60 transition-opacity mt-0.5"
-              style={{ WebkitTapHighlightColor: "transparent" }}
-            >
-              <ChevronLeft className="h-4 w-4 text-slate-600" />
-            </button>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <Trophy className="h-5 w-5 text-amber-500 shrink-0" />
-                <h1 className="text-[22px] font-extrabold text-[#0f1c3f] leading-tight">
-                  Leaderboard Agent
-                </h1>
-              </div>
-              <p className="text-[12px] text-slate-500 leading-snug">
-                Pantau ranking, poin, komisi, dan performa agent dalam satu tempat.
-              </p>
-            </div>
-          </div>
-
-          {/* My rank + period */}
-          <div className="flex items-center gap-2 flex-wrap mb-3">
-            {myRank && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700">
-                🏆 Kamu #{myRank}
-              </span>
-            )}
-            <span className="text-[11px] text-slate-400 font-medium">{RANGE_LABEL[range]}</span>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate("/agent-center")}
-              className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl border border-slate-200 bg-white text-[12px] font-semibold text-slate-600 active:opacity-70 transition-opacity"
-              style={{ WebkitTapHighlightColor: "transparent" }}
-            >
-              <History className="h-3.5 w-3.5" />
-              Riwayat
-            </button>
-            <button
-              onClick={() => navigate("/agent-center")}
-              className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-[#0066FF] text-white text-[12px] font-semibold active:opacity-80 transition-opacity shadow-md shadow-blue-200"
-              style={{ WebkitTapHighlightColor: "transparent" }}
-            >
-              <UserPlus className="h-3.5 w-3.5" />
-              Tambah Agent
-            </button>
-            <div className="ml-auto">
-              <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
-                <SelectTrigger className="h-9 w-[110px] text-[11px] border-slate-200 rounded-xl">
-                  <Calendar className="h-3 w-3 mr-1 text-slate-400" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => (
-                    <SelectItem key={k} value={k} className="text-[12px]">
-                      {RANGE_LABEL[k]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Section 2: Stats Cards ────────────────────────────────── */}
-        <div className="px-4 mt-4">
-          {loading ? (
-            <div className="grid grid-cols-2 gap-3">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl p-4 shadow-sm animate-pulse">
-                  <div className="h-9 w-9 bg-slate-100 rounded-xl mb-3" />
-                  <div className="h-6 w-16 bg-slate-100 rounded mb-1.5" />
-                  <div className="h-3 w-20 bg-slate-100 rounded" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                {
-                  label: "Total Agent",
-                  value: fmtCompact(agentMembers.length),
-                  sub: `${activeAgents} aktif periode ini`,
-                  icon: <Users className="h-5 w-5" strokeWidth={1.8} />,
-                  color: "#0066FF", bg: "#dbeafe",
-                },
-                {
-                  label: "Total Poin",
-                  value: fmtCompact(totalPeriodPoints),
-                  sub: RANGE_LABEL[range],
-                  icon: <Star className="h-5 w-5" strokeWidth={1.8} />,
-                  color: "#8b5cf6", bg: "#ede9fe",
-                },
-                {
-                  label: "Total Komisi",
-                  value: isOwner ? (totalCommission >= 1_000_000 ? `Rp${(totalCommission/1_000_000).toFixed(1)}Jt` : fmtIDR(totalCommission)) : "🔒 Private",
-                  sub: "seluruh agent",
-                  icon: <Wallet className="h-5 w-5" strokeWidth={1.8} />,
-                  color: "#10b981", bg: "#d1fae5",
-                },
-                {
-                  label: "Performa Terbaik",
-                  value: mostActive?.name.split(" ")[0] ?? "—",
-                  sub: mostActive ? `${mostActive.orders} order` : "belum ada data",
-                  icon: <Flame className="h-5 w-5" strokeWidth={1.8} />,
-                  color: "#f59e0b", bg: "#fef3c7",
-                },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  variants={fadeUp}
-                  initial="hidden"
-                  animate="show"
-                  custom={i}
-                  className="bg-white rounded-2xl p-4 shadow-sm"
-                >
-                  <div
-                    className="h-10 w-10 rounded-xl flex items-center justify-center mb-3"
-                    style={{ backgroundColor: stat.bg, color: stat.color }}
-                  >
-                    {stat.icon}
-                  </div>
-                  <p className="text-[20px] font-extrabold text-[#0f1c3f] tabular-nums leading-none mb-0.5 truncate">
-                    {stat.value}
-                  </p>
-                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide truncate">
-                    {stat.label}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5 truncate">{stat.sub}</p>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ── Section 3: Search + Filter ───────────────────────────── */}
-        <div className="px-4 mt-4 space-y-2">
-          {/* Search bar */}
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              value={mobileSearch}
-              onChange={(e) => setMobileSearch(e.target.value)}
-              placeholder="Cari nama agent, email…"
-              className="w-full h-11 pl-10 pr-4 bg-white rounded-xl border border-slate-200 text-[13px] text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-blue-100 transition-all"
-            />
-          </div>
-          {/* Sort row */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 flex-1 bg-white rounded-xl border border-slate-200 h-9 px-3">
-              <SlidersHorizontal className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-              <span className="text-[11px] text-slate-500 font-medium">Urutkan:</span>
-              <span className="text-[11px] font-bold text-[#0066FF]">
-                {MOBILE_TABS.find((t) => t.key === mobileTab)?.label ?? "Semua"}
-              </span>
-            </div>
-            <div className="text-[11px] text-slate-400 font-medium shrink-0 bg-white rounded-xl border border-slate-200 h-9 px-3 flex items-center">
-              {searchedMobileRows.length} agent
-            </div>
-          </div>
-        </div>
-
-        {/* ── Section 4: Ranking Tabs ──────────────────────────────── */}
-        <div className="px-4 mt-3">
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {MOBILE_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setMobileTab(tab.key)}
-                className={cn(
-                  "shrink-0 h-8 px-4 rounded-full text-[12px] font-semibold transition-all active:scale-95",
-                  mobileTab === tab.key
-                    ? "bg-[#0066FF] text-white shadow-md shadow-blue-200"
-                    : "bg-white text-slate-600 border border-slate-200",
-                )}
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Section 5: Podium Top 3 ──────────────────────────────── */}
-        <div className="px-4 mt-4">
-          {loading ? (
-            <PodiumSkeleton />
-          ) : top3.length > 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
-            >
-              <div className="flex items-center justify-between px-4 pt-4 pb-3">
-                <div className="flex items-center gap-2">
-                  <Crown className="h-4 w-4 text-amber-500" />
-                  <span className="text-[13px] font-extrabold text-[#0f1c3f]">Top 3 Champions</span>
-                </div>
-                <span className="text-[10px] text-slate-400 font-medium">{RANGE_LABEL[range]}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 px-3 pb-4 items-end">
-                {podium.map((row, idx) => (
-                  <PodiumCard
-                    key={podiumRanks[idx]}
-                    row={row}
-                    rank={podiumRanks[idx]}
-                    isMe={row?.agentId === me?.id}
-                    elevated={podiumRanks[idx] === 1}
-                    onProfile={() =>
-                      isOwner && row
-                        ? navigate(`/agents/${row.agentId}`)
-                        : navigate("/agent/profile")
-                    }
-                  />
-                ))}
-              </div>
-            </motion.div>
-          ) : !loading && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm py-10 text-center">
-              <Trophy className="h-8 w-8 text-slate-200 mx-auto mb-2" />
-              <p className="text-[12px] text-slate-400">Belum ada agent di periode ini</p>
-            </div>
-          )}
-        </div>
-
-        {/* ── Section 6: Ranking List ──────────────────────────────── */}
-        <div className="px-4 mt-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Ranking Agent</h3>
-            {myRank && (
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#0066FF] border border-blue-100">
-                Kamu #{myRank}
-              </span>
-            )}
-          </div>
-
-          {loading ? (
-            <div className="space-y-2">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl p-4 shadow-sm animate-pulse flex items-center gap-3">
-                  <div className="h-8 w-8 bg-slate-100 rounded-xl shrink-0" />
-                  <div className="h-10 w-10 bg-slate-100 rounded-full shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3.5 w-28 bg-slate-100 rounded" />
-                    <div className="h-2.5 w-20 bg-slate-100 rounded" />
-                  </div>
-                  <div className="h-6 w-14 bg-slate-100 rounded" />
-                </div>
-              ))}
-            </div>
-          ) : searchedMobileRows.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm py-12 text-center">
-              <Search className="h-8 w-8 text-slate-200 mx-auto mb-2" />
-              <p className="text-[12.5px] font-medium text-slate-400">Tidak ada hasil ditemukan</p>
-              <p className="text-[11px] text-slate-300 mt-0.5">Coba kata kunci lain</p>
-            </div>
-          ) : (
-            <AnimatePresence mode="wait">
-              <div className="space-y-2">
-                {paginatedMobileRows.map((r, i) => {
-                  const globalRank = searchedMobileRows.indexOf(r) + 1;
-                  const isTop3     = globalRank <= 3 && mobileSearch === "" && mobileTab === "all";
-                  const member     = memberById.get(r.agentId);
-                  const showComm   = isOwner || r.isMe;
-
-                  return (
-                    <motion.div
-                      key={r.agentId}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.22, delay: Math.min(i * 0.04, 0.3) }}
-                      className={cn(
-                        "bg-white rounded-2xl shadow-sm overflow-hidden",
-                        r.isMe && "ring-2 ring-amber-300",
-                      )}
-                    >
-                      <div className="flex items-center gap-3 px-4 py-3.5">
-                        {/* Rank badge */}
-                        <div className={cn(
-                          "h-8 w-8 rounded-xl flex items-center justify-center shrink-0 text-[12px] font-extrabold",
-                          isTop3
-                            ? globalRank === 1 ? "bg-amber-50 text-amber-600 border border-amber-200"
-                              : globalRank === 2 ? "bg-slate-100 text-slate-500 border border-slate-200"
-                              : "bg-orange-50 text-orange-500 border border-orange-200"
-                            : "bg-[#F0F4FB] text-slate-500 font-mono text-[11px]",
-                        )}>
-                          {isTop3 ? RANK_MEDAL[globalRank - 1] : globalRank}
-                        </div>
-
-                        {/* Avatar */}
-                        <div className="relative shrink-0">
-                          <div className={cn(
-                            "h-11 w-11 rounded-full bg-gradient-to-br flex items-center justify-center",
-                            "text-white font-extrabold text-[15px] shadow-sm",
-                            avatarGradient(r.name),
-                          )}>
-                            {r.name.charAt(0).toUpperCase()}
-                          </div>
-                          <span className={cn(
-                            "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white",
-                            r.orders > 0 ? "bg-emerald-400" : "bg-slate-300",
-                          )} />
-                        </div>
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className={cn(
-                              "text-[13px] font-bold truncate leading-tight",
-                              r.isMe ? "text-amber-800" : "text-[#0f1c3f]",
-                            )}>
-                              {r.name}
-                            </span>
-                            {r.isMe && (
-                              <span className="text-[10px] font-extrabold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full shrink-0">
-                                Kamu
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[10px] font-semibold bg-blue-50 text-[#0066FF] px-1.5 py-0.5 rounded-full border border-blue-100">
-                              AGENT
-                            </span>
-                            <AgentTierBadge tier={r.tier} size="xs" />
-                            {member?.email && (
-                              <span className="text-[10px] text-slate-400 truncate max-w-[80px]">
-                                {member.email}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Stats */}
-                        <div className="flex flex-col items-end shrink-0 gap-0.5">
-                          <span className="text-[13px] font-extrabold text-[#0066FF] font-mono tabular-nums">
-                            {r.periodPoints} poin
-                          </span>
-                          <span className="text-[10px] text-slate-400">{r.orders} order</span>
-                        </div>
-                      </div>
-
-                      {/* Bottom row: komisi + actions */}
-                      <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-50 bg-slate-50/50">
-                        <div className="flex items-center gap-3">
-                          <div>
-                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Lifetime</span>
-                            <div className="text-[11px] font-bold text-amber-600 font-mono">{r.lifetimePoints} pts</div>
-                          </div>
-                          {showComm && (
-                            <div>
-                              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Komisi</span>
-                              <div className="text-[11px] font-bold text-emerald-600 font-mono">
-                                {r.commission >= 1_000_000
-                                  ? `Rp${(r.commission / 1_000_000).toFixed(1)}Jt`
-                                  : fmtIDR(r.commission)}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {(isOwner || r.isMe) && (
-                            <button
-                              onClick={() =>
-                                r.isMe && !isOwner
-                                  ? navigate("/agent/profile")
-                                  : navigate(`/agents/${r.agentId}`)
-                              }
-                              className="h-7 px-3 rounded-lg bg-[#0066FF] text-white text-[11px] font-semibold active:opacity-80 transition-opacity"
-                              style={{ WebkitTapHighlightColor: "transparent" }}
-                            >
-                              {r.isMe && !isOwner ? "Profilku" : "Detail"}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </AnimatePresence>
           )}
 
-          {/* Pagination */}
-          {!loading && totalMobilePages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <button
-                onClick={() => setMobilePage((p) => Math.max(1, p - 1))}
-                disabled={mobilePage === 1}
-                className="h-9 w-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center active:opacity-60 disabled:opacity-30 transition-opacity shadow-sm"
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                <ChevronLeft className="h-4 w-4 text-slate-600" />
-              </button>
-
-              {Array.from({ length: totalMobilePages }, (_, i) => i + 1)
-                .filter((p) => p === 1 || p === totalMobilePages || Math.abs(p - mobilePage) <= 1)
-                .reduce<(number | "…")[]>((acc, p, idx, arr) => {
-                  if (idx > 0 && typeof arr[idx - 1] === "number" && (p as number) - (arr[idx - 1] as number) > 1) {
-                    acc.push("…");
-                  }
-                  acc.push(p);
-                  return acc;
-                }, [])
-                .map((p, i) =>
-                  p === "…" ? (
-                    <span key={`ellipsis-${i}`} className="text-slate-400 text-[12px] px-1">…</span>
-                  ) : (
-                    <button
-                      key={p}
-                      onClick={() => setMobilePage(p as number)}
-                      className={cn(
-                        "h-9 w-9 rounded-xl text-[12px] font-bold transition-all active:scale-95 shadow-sm",
-                        mobilePage === p
-                          ? "bg-[#0066FF] text-white shadow-blue-200"
-                          : "bg-white border border-slate-200 text-slate-600",
-                      )}
-                      style={{ WebkitTapHighlightColor: "transparent" }}
-                    >
-                      {p}
-                    </button>
-                  )
-                )}
-
-              <button
-                onClick={() => setMobilePage((p) => Math.min(totalMobilePages, p + 1))}
-                disabled={mobilePage === totalMobilePages}
-                className="h-9 w-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center active:opacity-60 disabled:opacity-30 transition-opacity shadow-sm"
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                <ChevronRight className="h-4 w-4 text-slate-600" />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* ── Section 7: Quick Actions ─────────────────────────────── */}
-        <div className="px-4 mt-6">
-          <h3 className="text-[15px] font-extrabold text-[#0f1c3f] mb-3">Aksi Cepat</h3>
-          <div className="grid grid-cols-2 gap-3">
+          {/* ── 4 Stat Cards ──────────────────────────────────── */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              {
-                icon: <UserPlus className="h-5 w-5" strokeWidth={1.8} />,
-                label: "Tambah Agent",
-                sub: "Daftarkan agent baru",
-                color: "#0066FF", bg: "#dbeafe",
-                path: "/agent-center",
-              },
-              {
-                icon: <Users className="h-5 w-5" strokeWidth={1.8} />,
-                label: "Undang Agent",
-                sub: "Kirim link undangan",
-                color: "#8b5cf6", bg: "#ede9fe",
-                path: "/agent-center",
-              },
-              {
-                icon: <Settings2 className="h-5 w-5" strokeWidth={1.8} />,
-                label: "Kelola Role",
-                sub: "Atur hak akses agent",
-                color: "#f59e0b", bg: "#fef3c7",
-                path: "/settings",
-              },
-              {
-                icon: <BarChart3 className="h-5 w-5" strokeWidth={1.8} />,
-                label: "Laporan Performa",
-                sub: "Lihat statistik detail",
-                color: "#10b981", bg: "#d1fae5",
-                path: "/reports",
-              },
-            ].map((item, i) => (
-              <motion.button
-                key={item.label}
-                variants={fadeUp}
-                initial="hidden"
-                animate="show"
-                custom={i}
-                onClick={() => navigate(item.path)}
-                className="bg-white rounded-2xl p-4 shadow-sm flex items-start gap-3 text-left active:opacity-80 transition-opacity"
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
+              { label: "Total Agen",    value: String(totalAgents),        growth: null,         icon: Users,       iconBg: "#dbeafe", iconColor: "#2563eb" },
+              { label: "Total Order",   value: String(totalOrders),        growth: orderGrowth,  icon: ShoppingBag, iconBg: "#fef3c7", iconColor: "#d97706" },
+              { label: "Total Klien",   value: String(totalClients),       growth: null,         icon: UserCheck,   iconBg: "#ede9fe", iconColor: "#7c3aed" },
+              { label: "Total Revenue", value: fmtIDR(totalRevenue),       growth: revenueGrowth,icon: TrendingUp,  iconBg: "#dcfce7", iconColor: "#16a34a", small: true },
+            ].map((s, i) => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-start gap-3">
                 <div
                   className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: item.bg, color: item.color }}
+                  style={{ backgroundColor: s.iconBg, color: s.iconColor }}
                 >
-                  {item.icon}
+                  <s.icon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[12.5px] font-bold text-[#0f1c3f] leading-tight">{item.label}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{item.sub}</p>
+                  <p className="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wide leading-none">{s.label}</p>
+                  <p className={cn("font-black text-slate-900 leading-tight mt-1 tabular-nums", s.small ? "text-[16px]" : "text-[22px]")}>
+                    {s.value}
+                  </p>
+                  {s.growth !== null && s.growth !== undefined ? (
+                    <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-0.5 font-semibold">
+                      <TrendingUp className="h-3 w-3" />
+                      ↑ {s.growth}% dari periode lalu
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 mt-1">dari periode lalu</p>
+                  )}
                 </div>
-              </motion.button>
+              </div>
             ))}
+          </div>
+
+          {/* ── Peringkat Agen table ───────────────────────────── */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h2 className="text-[15px] font-extrabold text-slate-900">Peringkat Agen</h2>
+            </div>
+
+            {loading ? (
+              <div className="py-16 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-slate-300" />
+                <p className="text-[12px] text-slate-400">Memuat data…</p>
+              </div>
+            ) : rows.length === 0 ? (
+              <div className="py-16 text-center">
+                <Trophy className="h-10 w-10 mx-auto mb-3 text-slate-200" />
+                <p className="text-[13px] font-semibold text-slate-400">Belum ada data untuk periode ini</p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px]">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/70">
+                        <th className="pl-5 pr-2 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 w-12">#</th>
+                        <th className="px-3 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Agen</th>
+                        <th className="px-3 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Level</th>
+                        <th className="px-3 py-3 text-right text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Total Point</th>
+                        <th className="px-3 py-3 text-right text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Order</th>
+                        <th className="px-3 py-3 text-right text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Klien</th>
+                        <th className="px-3 py-3 text-right text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Revenue</th>
+                        <th className="px-3 pr-5 py-3 text-center text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {pagedRows.map((row, idx) => {
+                        const rank     = (currentPage - 1) * pageSize + idx + 1;
+                        const tierInfo = getTierInfo(row.lifetimePoints).current;
+                        return (
+                          <tr
+                            key={row.agentId}
+                            className={cn(
+                              "transition-colors",
+                              row.isMe ? "bg-amber-50/40" : "hover:bg-slate-50/70",
+                            )}
+                          >
+                            {/* # */}
+                            <td className="pl-5 pr-2 py-3.5">
+                              {rank === 1 ? (
+                                <span className="text-[18px] leading-none">🏆</span>
+                              ) : rank === 2 ? (
+                                <span className="text-[18px] leading-none">🥈</span>
+                              ) : rank === 3 ? (
+                                <span className="text-[18px] leading-none">🥉</span>
+                              ) : (
+                                <span className="text-[12px] font-bold text-slate-400 tabular-nums">{rank}</span>
+                              )}
+                            </td>
+
+                            {/* Agen */}
+                            <td className="px-3 py-3">
+                              <div className="flex items-center gap-2.5">
+                                <div
+                                  className="h-9 w-9 rounded-full flex items-center justify-center text-white text-[13px] font-extrabold shrink-0 overflow-hidden"
+                                  style={{ background: row.photoUrl ? "transparent" : avatarBg(row.name) }}
+                                >
+                                  {row.photoUrl
+                                    ? <img src={row.photoUrl} alt={row.name} className="h-full w-full object-cover" />
+                                    : row.name.charAt(0).toUpperCase()
+                                  }
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[13px] font-bold text-slate-900 truncate max-w-[160px] leading-tight">
+                                      {row.name}
+                                    </span>
+                                    {row.isMe && (
+                                      <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full shrink-0">
+                                        Saya
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[10.5px] text-slate-400 truncate max-w-[160px]">{row.email}</p>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Level */}
+                            <td className="px-3 py-3">
+                              <span className={cn(
+                                "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-bold whitespace-nowrap",
+                                tierInfo.softBg, tierInfo.softText,
+                              )}>
+                                {tierInfo.emoji} {tierInfo.label}
+                              </span>
+                            </td>
+
+                            {/* Total Point */}
+                            <td className="px-3 py-3 text-right">
+                              <span className="font-bold text-[13px] text-slate-800 tabular-nums">
+                                {row.periodPoints.toLocaleString("id-ID")}
+                              </span>
+                              <span className="text-[10px] text-slate-400 ml-1">pts</span>
+                            </td>
+
+                            {/* Order */}
+                            <td className="px-3 py-3 text-right font-bold text-[13px] text-slate-800 tabular-nums">
+                              {row.orders}
+                            </td>
+
+                            {/* Klien */}
+                            <td className="px-3 py-3 text-right font-bold text-[13px] text-slate-800 tabular-nums">
+                              {row.clientCount}
+                            </td>
+
+                            {/* Revenue */}
+                            <td className="px-3 py-3 text-right font-mono font-bold text-[12px] text-slate-800 tabular-nums">
+                              {fmtIDR(row.revenue)}
+                            </td>
+
+                            {/* Aksi */}
+                            <td className="px-3 pr-5 py-3">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2.5 text-[11.5px] border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600 rounded-lg"
+                                  onClick={() => navigate(row.isMe && !isOwner ? "/agent/profile" : `/agents/${row.agentId}`)}
+                                >
+                                  Profil
+                                </Button>
+                                <button
+                                  className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:border-blue-300 transition-colors"
+                                  onClick={() => navigate(`/agents/${row.agentId}`)}
+                                >
+                                  <BarChart3 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3 bg-slate-50/40">
+                  <p className="text-[11.5px] text-slate-500">
+                    Menampilkan{" "}
+                    <span className="font-semibold text-slate-700">
+                      {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, rows.length)}
+                    </span>{" "}
+                    dari <span className="font-semibold text-slate-700">{rows.length}</span> agen
+                  </p>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-slate-700 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </button>
+
+                    {pageNums().map((p, i) =>
+                      p === "…" ? (
+                        <span key={`ell-${i}`} className="text-slate-400 text-[12px] w-6 text-center">…</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setCurrentPage(p as number)}
+                          className={cn(
+                            "h-8 w-8 rounded-lg text-[12px] font-semibold transition-colors",
+                            p === currentPage
+                              ? "bg-blue-600 text-white border border-blue-600"
+                              : "border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600",
+                          )}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-slate-700 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+
+                    <div className="relative ml-1">
+                      <select
+                        value={pageSize}
+                        onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                        className="h-8 pl-2.5 pr-7 rounded-lg border border-slate-200 bg-white text-[11.5px] font-medium text-slate-600 outline-none cursor-pointer appearance-none hover:border-slate-300"
+                      >
+                        {PAGE_SIZES.map((s) => (
+                          <option key={s} value={s}>{s} / halaman</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Cara naik ranking tip */}
-        {!loading && (
-          <div className="px-4 mt-4 mb-4">
-            <div className="bg-white rounded-2xl shadow-sm p-4 flex items-start gap-3">
-              <div className="h-9 w-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
-                <TrendingUp className="h-4 w-4 text-[#0066FF]" />
+        {/* ════════════════════════════════════════════════════════
+            RIGHT SIDEBAR
+        ════════════════════════════════════════════════════════ */}
+        <div className="space-y-4 xl:sticky xl:top-6">
+
+          {/* Aktivitas Terbaru */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3.5 border-b border-slate-100">
+              <h3 className="text-[13.5px] font-extrabold text-slate-900">Aktivitas Terbaru</h3>
+            </div>
+
+            {recentActivities.length === 0 ? (
+              <div className="px-4 py-6 text-center text-[12px] text-slate-400">
+                Belum ada aktivitas
               </div>
-              <div>
-                <p className="text-[12px] font-bold text-[#0f1c3f] mb-1">Cara naik ranking</p>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Order Completed = <span className="font-semibold text-slate-700">+10 poin</span>.
-                  Jika ada komisi sales, bonus <span className="font-semibold text-slate-700">+20 poin</span> — total{" "}
-                  <span className="font-semibold text-slate-700">+30 poin</span> sekaligus.
-                </p>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {recentActivities.map((act, i) => (
+                  <div key={i} className="px-4 py-3 flex items-start gap-2.5">
+                    <div
+                      className="h-8 w-8 rounded-full flex items-center justify-center text-white text-[12px] font-bold shrink-0"
+                      style={{ background: avatarBg(act.agentName) }}
+                    >
+                      {act.agentName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px] font-bold text-slate-800 leading-tight truncate">{act.agentName}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                        Menyelesaikan order{" "}
+                        <span className="font-semibold text-slate-700">{act.orderId}</span>
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{timeAgo(act.time)}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
+            )}
+
+            <div className="px-4 py-3 border-t border-slate-100">
+              <button
+                onClick={() => navigate("/agent-center")}
+                className="w-full h-8 rounded-lg border border-slate-200 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+              >
+                Lihat Semua Aktivitas
+              </button>
             </div>
           </div>
-        )}
+
+          {/* Cara Mendapat Poin */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3.5 border-b border-slate-100">
+              <h3 className="text-[13.5px] font-extrabold text-slate-900">Cara Mendapat Poin</h3>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {[
+                { icon: "✅", label: "Menyelesaikan Order",    pts: "10 - 50 poin",       ptsBg: "#dcfce7", ptsColor: "#15803d" },
+                { icon: "👥", label: "Menambahkan Klien Baru", pts: "5 - 20 poin",        ptsBg: "#dbeafe", ptsColor: "#1d4ed8" },
+                { icon: "🔁", label: "Order Repeat",           pts: "15 - 40 poin",       ptsBg: "#fef3c7", ptsColor: "#92400e" },
+                { icon: "🎯", label: "Pencapaian Target",       pts: "Bonus poin tambahan", ptsBg: "#ede9fe", ptsColor: "#6d28d9" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-[15px] shrink-0"
+                      style={{ backgroundColor: item.ptsBg }}
+                    >
+                      {item.icon}
+                    </div>
+                    <span className="text-[12px] font-semibold text-slate-700 truncate">{item.label}</span>
+                  </div>
+                  <span
+                    className="text-[11px] font-bold shrink-0 px-2 py-0.5 rounded-md"
+                    style={{ backgroundColor: item.ptsBg, color: item.ptsColor }}
+                  >
+                    {item.pts}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="px-4 pb-4">
+              <button
+                onClick={() => navigate("/agent-center?tab=ketentuan")}
+                className="w-full h-8 rounded-lg border border-slate-200 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+              >
+                Lihat Detail Sistem Poin
+              </button>
+            </div>
+          </div>
+
+          {/* Jadilah yang Terbaik! */}
+          <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 rounded-xl border border-amber-100 shadow-sm p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="text-[13.5px] font-extrabold text-amber-900">Jadilah yang Terbaik!</h3>
+                <p className="text-[11.5px] text-amber-700/80 mt-1.5 leading-relaxed">
+                  Tingkatkan performa dan raih posisi teratas untuk mendapatkan reward menarik setiap bulannya.
+                </p>
+              </div>
+              <div className="text-[38px] leading-none shrink-0 mt-1">🏆</div>
+            </div>
+            <button
+              onClick={() => navigate("/agent-center?tab=ketentuan")}
+              className="mt-3.5 w-full h-9 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[12.5px] font-bold transition-colors shadow-sm"
+            >
+              Lihat Hadiah
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   );
 }
 
-/* ── PodiumSkeleton ──────────────────────────────────────────────── */
-function PodiumSkeleton() {
-  return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-      <div className="h-4 w-36 bg-slate-100 rounded-lg animate-pulse mb-5" />
-      <div className="grid grid-cols-3 gap-3 items-end">
-        {[220, 260, 220].map((h, i) => (
-          <div
-            key={i}
-            className="rounded-xl bg-slate-50 border border-slate-100 animate-pulse"
-            style={{ height: h }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ── PodiumCard ──────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   PodiumCard
+═══════════════════════════════════════════════════════════════ */
 function PodiumCard({
-  row, rank, isMe, elevated, onProfile,
+  row, rank, isMe, elevated, onView,
 }: {
   row:      LeaderboardRow | null;
   rank:     1 | 2 | 3;
   isMe:     boolean;
   elevated: boolean;
-  onProfile: () => void;
+  onView:   () => void;
 }) {
-  const cfg = PODIUM_CFG[rank];
+  const tierInfo = row ? getTierInfo(row.lifetimePoints).current : null;
 
   if (!row) {
     return (
       <div
         className={cn(
-          "rounded-xl border-2 border-dashed border-slate-100 flex items-center justify-center text-[11px] text-slate-300",
-          elevated ? "min-h-[260px]" : "min-h-[200px]",
+          "bg-white rounded-2xl border-2 border-dashed border-slate-100 flex items-center justify-center text-[12px] text-slate-300 font-semibold",
+          elevated ? "min-h-[240px]" : "min-h-[200px]",
         )}
       >
         #{rank}
@@ -1219,142 +755,89 @@ function PodiumCard({
     );
   }
 
+  const cfg = {
+    1: { cardBg: "from-amber-50/80 to-white", border: "border-amber-200", ptColor: "text-amber-600", rankBg: "bg-amber-100 text-amber-700" },
+    2: { cardBg: "from-slate-50 to-white",    border: "border-slate-200", ptColor: "text-slate-700", rankBg: "bg-slate-100 text-slate-600" },
+    3: { cardBg: "from-orange-50 to-white",   border: "border-orange-200",ptColor: "text-orange-600",rankBg: "bg-orange-100 text-orange-600" },
+  }[rank];
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: elevated ? -16 : 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: rank === 1 ? 0 : rank === 2 ? 0.1 : 0.17 }}
+    <div
       className={cn(
-        "rounded-xl border flex flex-col overflow-hidden shadow-sm hover:shadow-md transition-shadow",
-        cfg.bg, cfg.border,
-        elevated && "shadow-md",
+        "bg-gradient-to-b rounded-2xl border flex flex-col overflow-hidden cursor-pointer",
+        "transition-all duration-200 hover:shadow-md",
+        cfg.cardBg, cfg.border,
+        elevated ? "shadow-md" : "shadow-sm",
       )}
+      onClick={onView}
     >
-      <div className="flex items-center justify-between px-3 pt-3">
-        <span className={cn("text-[10px] font-bold tracking-wider uppercase", cfg.accentColor)}>
-          #{rank}
+      {/* Top: rank badge + crown */}
+      <div className="flex items-center justify-between px-3.5 pt-3.5 pb-1">
+        <span className={cn("h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-black", cfg.rankBg)}>
+          {rank}
         </span>
-        {rank === 1 && (
-          <Crown className="h-3.5 w-3.5 text-amber-500" />
-        )}
+        {rank === 1 && <span className="text-[18px] leading-none">👑</span>}
       </div>
 
-      <div className="flex flex-col items-center pt-2 pb-2 px-3">
-        <div className="relative">
-          {rank === 1 && (
-            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-base select-none">
-              👑
-            </span>
+      {/* Avatar */}
+      <div className="flex flex-col items-center px-3.5 pb-3 pt-1">
+        <div
+          className={cn(
+            "rounded-full flex items-center justify-center text-white font-extrabold shadow overflow-hidden",
+            elevated ? "h-[60px] w-[60px] text-[22px]" : "h-[44px] w-[44px] text-[16px]",
           )}
-          <div className={cn(
-            "rounded-full bg-gradient-to-br flex items-center justify-center text-white font-extrabold shadow",
-            avatarGradient(row.name),
-            cfg.avatarRing,
-            elevated
-              ? "h-14 w-14 text-xl mt-4"
-              : "h-10 w-10 text-base mt-2",
-          )}>
-            {row.name.charAt(0).toUpperCase()}
-          </div>
+          style={{ background: row.photoUrl ? "transparent" : avatarBg(row.name) }}
+        >
+          {row.photoUrl
+            ? <img src={row.photoUrl} alt={row.name} className="h-full w-full object-cover" />
+            : row.name.charAt(0).toUpperCase()
+          }
         </div>
 
         <p className={cn(
-          "font-bold text-slate-800 text-center truncate w-full px-1 mt-2 leading-tight",
-          elevated ? "text-[12px]" : "text-[11px]",
+          "font-bold text-slate-900 text-center truncate w-full mt-2 leading-tight px-1",
+          elevated ? "text-[13px]" : "text-[11.5px]",
         )}>
           {row.name}
         </p>
 
         {isMe && (
-          <span className="mt-1 text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
-            Kamu
+          <span className="mt-1 text-[9px] font-black uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+            Saya
+          </span>
+        )}
+
+        {tierInfo && (
+          <span className={cn(
+            "mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold",
+            tierInfo.softBg, tierInfo.softText,
+          )}>
+            {tierInfo.emoji} {tierInfo.label}
           </span>
         )}
       </div>
 
-      <div className="px-2.5 pb-3 flex flex-col gap-1.5 flex-1">
-        <div className={cn("rounded-lg px-2 py-2 text-center", cfg.pillBg)}>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-0.5">
-            Poin
-          </div>
-          <div className={cn(
-            "font-extrabold font-mono leading-none",
-            cfg.pillText,
-            elevated ? "text-2xl" : "text-xl",
-          )}>
-            {row.periodPoints}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-1">
-          <div className="rounded-lg bg-white/80 border border-slate-100 px-1.5 py-1.5 text-center">
-            <div className="text-[7.5px] text-slate-400 font-medium">Order</div>
-            <div className="text-[12px] font-bold text-slate-700 font-mono">{row.orders}</div>
-          </div>
-          <div className="rounded-lg bg-white/80 border border-slate-100 px-1.5 py-1.5 text-center">
-            <div className="text-[7.5px] text-slate-400 font-medium">Lifetime</div>
-            <div className="text-[12px] font-bold text-slate-700 font-mono">{row.lifetimePoints}</div>
-          </div>
-        </div>
-
-        <div className="flex justify-center">
-          <AgentTierBadge tier={row.tier} size="xs" />
-        </div>
-
-        {isMe ? (
-          <button
-            onClick={onProfile}
-            className="w-full h-8 mt-0.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700 transition-all shadow-sm"
-          >
-            Profil Saya
-          </button>
-        ) : (
-          <div className="h-7 mt-0.5 rounded-lg bg-white/50 border border-slate-100 flex items-center justify-center">
-            <span className="text-[8.5px] text-slate-400 font-medium">Mitra Temantiket</span>
-          </div>
-        )}
+      {/* Points */}
+      <div className="mx-3 mb-2.5 py-2 px-2 rounded-xl bg-white/70 border border-white/90 text-center">
+        <span className={cn("font-black font-mono leading-none", cfg.ptColor, elevated ? "text-[26px]" : "text-[20px]")}>
+          {row.periodPoints.toLocaleString("id-ID")}
+        </span>
+        <span className="text-[11px] text-slate-400 ml-1 font-semibold">pts</span>
       </div>
-    </motion.div>
-  );
-}
 
-/* ── InsightCard ─────────────────────────────────────────────────── */
-function InsightCard({
-  icon, iconBg, label, sub, name, value, valueColor, isMe, delay,
-}: {
-  icon:       ReactNode;
-  iconBg:     string;
-  label:      string;
-  sub:        string;
-  name:       string;
-  value:      string;
-  valueColor: string;
-  isMe:       boolean;
-  delay:      number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay }}
-      className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-start gap-3 hover:shadow-md transition-shadow"
-    >
-      <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
-        {icon}
+      {/* Stats row */}
+      <div className="mx-3 mb-3 grid grid-cols-3 gap-1 text-center">
+        {[
+          { label: "Order",   val: String(row.orders) },
+          { label: "Klien",   val: String(row.clientCount) },
+          { label: "Revenue", val: fmtIDR(row.revenue) },
+        ].map((s) => (
+          <div key={s.label} className="bg-white/60 rounded-lg py-1.5 px-1 border border-white/80">
+            <p className="text-[8px] text-slate-400 font-semibold uppercase tracking-wide leading-none">{s.label}</p>
+            <p className="text-[10px] font-bold text-slate-700 font-mono leading-tight mt-0.5 truncate">{s.val}</p>
+          </div>
+        ))}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 mb-0.5">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{label}</span>
-          {isMe && (
-            <span className="text-[7.5px] font-bold px-1 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">
-              Kamu!
-            </span>
-          )}
-        </div>
-        <p className="text-[10px] text-slate-400 leading-none mb-1.5">{sub}</p>
-        <p className="text-[12.5px] font-semibold text-slate-800 truncate">{name}</p>
-        <p className={cn("text-[11.5px] font-bold font-mono mt-0.5", valueColor)}>{value}</p>
-      </div>
-    </motion.div>
+    </div>
   );
 }
