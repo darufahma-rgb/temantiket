@@ -339,33 +339,84 @@ export async function addWalletTxAsync(
   }
 }
 
-/** Pull wallet txs dari server API → update localStorage cache → return list. */
+/** Pull wallet txs dari server API → update localStorage cache → return list.
+ *
+ * Merges results from two sources to handle legacy transactions:
+ *  - Replit PG (via /api/wallet-txs) — new transactions via addWalletTxAsync
+ *  - Supabase (direct query)         — old transactions via addWalletTx
+ * Results are merged and deduplicated by `id`.
+ */
 export async function pullWalletTxs(agentId: string): Promise<WalletTransaction[]> {
   try {
     const agencyId = getCurrentAgencyId();
     if (!agencyId) return listWalletTxs(agentId);
 
     const authH = await getBearer();
-    const res = await fetch(`/api/wallet-txs/${agentId}`, {
-      credentials: "include",
-      headers: { ...authH },
-    });
-    if (!res.ok) {
-      console.warn("[agentWallet] pull gagal:", res.status);
-      return listWalletTxs(agentId);
+
+    // ── Source 1: Replit PG via server API ───────────────────────────────────
+    let pgTxs: WalletTransaction[] = [];
+    try {
+      const res = await fetch(`/api/wallet-txs/${agentId}`, {
+        credentials: "include",
+        headers: { ...authH },
+      });
+      if (res.ok) {
+        const data = await res.json() as Array<Record<string, unknown>>;
+        pgTxs = (data ?? []).map((r) => ({
+          id:          String(r.id),
+          agentId:     String(r.agent_id),
+          type:        r.type as WalletTxType,
+          pointsDelta: Number(r.points_delta),
+          amountIDR:   Number(r.amount_idr),
+          description: String(r.description ?? ""),
+          createdAt:   String(r.created_at),
+          createdBy:   String(r.created_by ?? ""),
+          orderId:     r.order_id ? String(r.order_id) : null,
+        }));
+      } else {
+        console.warn("[agentWallet] pull PG gagal:", res.status);
+      }
+    } catch (e) {
+      console.warn("[agentWallet] pull PG exception:", e);
     }
-    const data = await res.json() as Array<Record<string, unknown>>;
-    const txs: WalletTransaction[] = (data ?? []).map((r) => ({
-      id:          String(r.id),
-      agentId:     String(r.agent_id),
-      type:        r.type as WalletTxType,
-      pointsDelta: Number(r.points_delta),
-      amountIDR:   Number(r.amount_idr),
-      description: String(r.description ?? ""),
-      createdAt:   String(r.created_at),
-      createdBy:   String(r.created_by ?? ""),
-      orderId:     r.order_id ? String(r.order_id) : null,
-    }));
+
+    // ── Source 2: Supabase (legacy transactions written via addWalletTx) ─────
+    let sbTxs: WalletTransaction[] = [];
+    try {
+      const { supabase, isSupabaseConfigured } = await import("./supabase");
+      if (isSupabaseConfigured()) {
+        const { data, error } = await supabase!
+          .from("agent_wallet_transactions")
+          .select("*")
+          .eq("agency_id", agencyId)
+          .eq("agent_id", agentId)
+          .order("created_at", { ascending: false });
+        if (!error && data) {
+          sbTxs = (data as Array<Record<string, unknown>>).map((r) => ({
+            id:          String(r.id),
+            agentId:     String(r.agent_id),
+            type:        r.type as WalletTxType,
+            pointsDelta: Number(r.points_delta ?? 0),
+            amountIDR:   Number(r.amount_idr ?? 0),
+            description: String(r.description ?? ""),
+            createdAt:   String(r.created_at),
+            createdBy:   String(r.created_by ?? ""),
+            orderId:     r.order_id ? String(r.order_id) : null,
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn("[agentWallet] pull Supabase exception:", e);
+    }
+
+    // ── Merge & deduplicate by id (PG takes precedence for same id) ──────────
+    const merged = new Map<string, WalletTransaction>();
+    for (const tx of [...sbTxs, ...pgTxs]) {
+      merged.set(tx.id, tx);
+    }
+    const txs = [...merged.values()].sort((a, b) =>
+      (b.createdAt ?? "").localeCompare(a.createdAt ?? ""),
+    );
 
     // Warn about duplicates (same type+orderId combo)
     const seen = new Map<string, string>();
