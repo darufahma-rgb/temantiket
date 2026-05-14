@@ -1441,21 +1441,23 @@ app.post('/api/backfill-field-fees', isAuthenticatedOrBearer, async (req, res) =
       if (errorSamples.length < 5) errorSamples.push(`[${label}] ${msg}`);
     }
 
-    async function upsertTx(txId, agentId, type, amountIdr, description) {
+    async function upsertTx(txId, agentId, type, amountIdr, description, orderId) {
       try {
+        const row = {
+          id:           txId,
+          agency_id:    agencyId,
+          agent_id:     agentId,
+          type,
+          points_delta: 0,
+          amount_idr:   amountIdr,
+          description,
+          created_by:   req.user.id,
+          created_at:   now,
+        };
+        if (orderId) row.order_id = orderId;
         const { error } = await getSb()
           .from('agent_wallet_transactions')
-          .upsert({
-            id:           txId,
-            agency_id:    agencyId,
-            agent_id:     agentId,
-            type,
-            points_delta: 0,
-            amount_idr:   amountIdr,
-            description,
-            created_by:   req.user.id,
-            created_at:   now,
-          }, { onConflict: 'id', ignoreDuplicates: true });
+          .upsert(row, { onConflict: 'id', ignoreDuplicates: true });
         return error ?? null;
       } catch (e) { return e; }
     }
@@ -1474,23 +1476,34 @@ app.post('/api/backfill-field-fees', isAuthenticatedOrBearer, async (req, res) =
       const oid8 = String(order.id).slice(0, 8);
 
       const checks = [
-        [meta.voaFieldAgentId,              Number(meta.voaAgentFee ?? 0),        'voa_agent_fee',  `Fee Agent Lapangan VOA — order #${oid8}`,       `voa-${order.id}`,        'voaFeeCredited'],
-        [meta.fieldAgentId,                 Number(meta.fieldAgentFee ?? 0),       'voa_agent_fee',  `Fee Agent Lapangan — order #${oid8}`,           `field-${order.id}`,      'fieldFeeCredited'],
-        [meta.visaExecutorId,               Number(meta.executorFee ?? 0),         'pelaksana_fee',  `Fee Pelaksana Visa — order #${oid8}`,           `executor-${order.id}`,   'executorFeeCredited'],
-        [meta.assignedOperationalAgentId,   Number(meta.operationalAgentFee ?? 0), 'voa_agent_fee',  `Fee Agent Operasional — order #${oid8}`,        `op-${order.id}`,         'operationalFeeCredited'],
-        [order.type === 'visa_student' ? meta.pelaksanaId : null, Number(meta.pelaksanaFee ?? (order.type === 'visa_student' && meta.pelaksanaId ? 200000 : 0)), 'pelaksana_fee', `Fee Pelaksana Visa Student — order #${oid8}`, `pelaksana-${order.id}`, 'pelaksanaFeeCredited'],
-        [meta.kurirAgentId,                 Number(meta.kurirFee ?? 0),            'kurir_fee',      `Fee Kurir Setoran — order #${oid8}`,            `kurir-${order.id}`,      'kurirFeeCredited'],
-        [order.created_by_agent,            Number(meta.agentFee ?? 0),            'order_bonus',    `Komisi Sales ${order.type} — order #${oid8}`,   `agent-${order.id}`,      'agentFeeCredited'],
-        [meta.salesAgentId && meta.salesAgentId !== order.created_by_agent ? meta.salesAgentId : null, Number(meta.salesCommission ?? meta.agentCommission ?? 0), 'order_bonus', `Komisi Sales Agent — order #${oid8}`, `salesagent-${order.id}`, null],
-        [meta.assignedAgentId,              Number(meta.assignedAgentFee ?? 0),    'voa_agent_fee',  `Fee Agent Ditugaskan — order #${oid8}`,         `assigned-${order.id}`,   null],
-        [meta.handlerAgentId,               Number(meta.handlerFee ?? 0),          'voa_agent_fee',  `Fee Handler — order #${oid8}`,                  `handler-${order.id}`,    null],
-        [meta.courierAgentId && meta.courierAgentId !== meta.kurirAgentId ? meta.courierAgentId : null, Number(meta.courierFee ?? 0), 'kurir_fee', `Fee Kurir — order #${oid8}`, `courier-${order.id}`, null],
+        // Primary / canonical agent slots — use these first (deterministic keys)
+        [meta.voaFieldAgentId,              Number(meta.voaAgentFee ?? 0),        'voa_agent_fee',  `Fee Agent Lapangan VOA #${oid8}`,               `voa-${order.id}`,        'voaFeeCredited'],
+        [meta.fieldAgentId,                 Number(meta.fieldAgentFee ?? 0),       'field_agent_fee',`Fee Agent Lapangan #${oid8}`,                   `field-${order.id}`,      'fieldFeeCredited'],
+        [meta.visaExecutorId,               Number(meta.executorFee ?? 0),         'pelaksana_fee',  `Fee Pelaksana Visa #${oid8}`,                   `executor-${order.id}`,   'executorFeeCredited'],
+        [meta.assignedOperationalAgentId,   Number(meta.operationalAgentFee ?? 0), 'operational_fee',`Fee Agent Operasional #${oid8}`,                `op-${order.id}`,         'operationalFeeCredited'],
+        [order.type === 'visa_student' ? meta.pelaksanaId : null, Number(meta.pelaksanaFee ?? (order.type === 'visa_student' && meta.pelaksanaId ? 200000 : 0)), 'pelaksana_fee', `Fee Pelaksana Visa Student #${oid8}`, `pelaksana-${order.id}`, 'pelaksanaFeeCredited'],
+        [meta.kurirAgentId,                 Number(meta.kurirFee ?? 0),            'kurir_fee',      `Fee Kurir Setoran #${oid8}`,                    `kurir-${order.id}`,      'kurirFeeCredited'],
+        [order.created_by_agent,            Number(meta.agentFee ?? 0),            'order_bonus',    `Komisi Sales ${order.type} #${oid8}`,           `agent-${order.id}`,      'agentFeeCredited'],
+        // Secondary / legacy slots — only process if agent differs from primary slots above
+        [meta.salesAgentId && meta.salesAgentId !== order.created_by_agent ? meta.salesAgentId : null, Number(meta.salesCommission ?? meta.agentCommission ?? 0), 'order_bonus', `Komisi Sales Agent #${oid8}`, `salesagent-${order.id}`, null],
+        [meta.assignedAgentId && meta.assignedAgentId !== meta.voaFieldAgentId ? meta.assignedAgentId : null, Number(meta.assignedAgentFee ?? 0), 'voa_agent_fee', `Fee Agent Ditugaskan #${oid8}`, `assigned-${order.id}`, null],
+        [meta.handlerAgentId && meta.handlerAgentId !== meta.voaFieldAgentId && meta.handlerAgentId !== meta.assignedAgentId ? meta.handlerAgentId : null, Number(meta.handlerFee ?? 0), 'voa_agent_fee', `Fee Handler #${oid8}`, `handler-${order.id}`, null],
+        [meta.courierAgentId && meta.courierAgentId !== meta.kurirAgentId ? meta.courierAgentId : null, Number(meta.courierFee ?? 0), 'kurir_fee', `Fee Kurir #${oid8}`, `courier-${order.id}`, null],
       ];
+
+      // Per-order guard: track (agentId, type) pairs already credited so overlapping
+      // metadata slots (voaFieldAgentId / assignedAgentId / handlerAgentId pointing to the
+      // same person) never produce duplicate entries within the same order.
+      const creditedPairs = new Set();
 
       for (const [agentId, fee, type, desc, txId, creditedFlag] of checks) {
         if (!agentId || fee <= 0) continue;
         if (filterAgentId && filterAgentId !== agentId) continue;
-        const txErr = await upsertTx(txId, agentId, type, fee, desc);
+        // Skip if this (agent, type) combination was already handled for this order
+        const pairKey = `${agentId}:${type}`;
+        if (creditedPairs.has(pairKey)) { results.skipped++; continue; }
+        creditedPairs.add(pairKey);
+        const txErr = await upsertTx(txId, agentId, type, fee, desc, order.id);
         if (txErr) {
           collectErr(`${txId}`, txErr);
         } else {
