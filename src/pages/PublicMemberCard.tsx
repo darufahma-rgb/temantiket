@@ -1120,52 +1120,23 @@ export default function PublicMemberCardPage() {
                                   const unlocked = totalStamps >= m.stamps;
                                   const current  = totalStamps >= (m.row === 1 ? 0 : REWARD_MILESTONES[m.row - 2].stamps) && !unlocked;
                                   const isVip    = m.row === 4;
-                                  if (isVip) {
-                                    return (
-                                      <li key={m.row} className="overflow-hidden">
-                                        <div className={`relative px-5 py-4 transition-all ${unlocked ? "bg-gradient-to-br from-amber-400 via-yellow-300 to-amber-500" : current ? "bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50" : "bg-gray-50"}`}>
-                                          {unlocked && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />}
-                                          <div className="flex items-center gap-3">
-                                            <div className={`shrink-0 h-10 w-10 rounded-xl flex items-center justify-center border ${unlocked ? "bg-white/30 border-white/50" : current ? "bg-blue-100 border-blue-300" : "bg-blue-50 border-blue-200"}`}>
-                                              <Plane className={`h-5 w-5 stroke-[1.5] ${unlocked ? "text-white" : "text-blue-500"}`} />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                              <div className="flex items-center gap-1.5 mb-1">
-                                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${unlocked ? "bg-white/40 text-amber-900" : "bg-amber-400 text-white"}`}>👑 VIP</span>
-                                              </div>
-                                              <p className={`text-sm font-black leading-tight ${unlocked ? "text-amber-950" : current ? "text-amber-900" : "text-gray-500"}`}>{m.label}</p>
-                                              {(current || unlocked) && (
-                                                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                                  {["🛫 Lounge", "🌆 City Tour", "🏨 Transit"].map((tag) => (
-                                                    <span key={tag} className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${unlocked ? "bg-white/30 border-white/40 text-amber-950" : "bg-amber-50 border-amber-200 text-amber-800"}`}>{tag}</span>
-                                                  ))}
-                                                </div>
-                                              )}
-                                            </div>
-                                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 ${unlocked ? "bg-white/40 text-amber-950 border-white/50" : current ? "bg-amber-100 text-amber-700 border-amber-300" : "bg-gray-100 text-gray-400 border-gray-200"}`}>
-                                              {unlocked ? "✓ Diraih!" : current ? "Hampir!" : "16 ✦"}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      </li>
-                                    );
-                                  }
+                                  const RowIcon  = REWARD_ROW_ICON[m.row];
                                   return (
                                     <li key={m.row} className={`flex items-center gap-3 px-5 py-4 transition-colors ${unlocked ? "bg-emerald-50/50" : current ? "bg-blue-50/40" : ""}`}>
-                                      {(() => {
-                                        const RowIcon = REWARD_ROW_ICON[m.row];
-                                        return (
-                                          <div className={`shrink-0 h-10 w-10 rounded-xl flex items-center justify-center border ${unlocked || current ? "bg-blue-100 border-blue-200" : "bg-blue-50 border-blue-200"}`}>
-                                            <RowIcon className={`h-5 w-5 stroke-[1.5] ${unlocked ? "text-blue-600" : current ? "text-blue-500" : "text-blue-400"}`} />
-                                          </div>
-                                        );
-                                      })()}
+                                      <div className={`shrink-0 h-10 w-10 rounded-xl flex items-center justify-center border ${unlocked || current ? "bg-blue-100 border-blue-200" : "bg-blue-50 border-blue-200"}`}>
+                                        <RowIcon className={`h-5 w-5 stroke-[1.5] ${unlocked ? "text-blue-600" : current ? "text-blue-500" : "text-blue-400"}`} />
+                                      </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className={`text-sm font-bold leading-tight truncate ${unlocked ? "text-emerald-800" : current ? "text-blue-800" : "text-gray-500"}`}>{m.label}</p>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          {isVip && !unlocked && (
+                                            <span className="text-[9px] font-black uppercase tracking-widest bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full">VIP</span>
+                                          )}
+                                          <p className={`text-sm font-bold leading-tight truncate ${unlocked ? "text-emerald-800" : current ? "text-blue-800" : "text-gray-500"}`}>{m.label}</p>
+                                        </div>
                                         {(unlocked || current) && <p className={`text-xs mt-0.5 leading-snug line-clamp-1 ${unlocked ? "text-emerald-600" : "text-gray-400"}`}>{m.desc}</p>}
                                       </div>
                                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 whitespace-nowrap ${unlocked ? "bg-emerald-100 text-emerald-700 border-emerald-300" : current ? "bg-blue-100 text-blue-600 border-blue-200" : "bg-gray-100 text-gray-400 border-gray-200"}`}>
-                                        {unlocked ? "✓ Diraih" : current ? "Proses" : `${m.stamps} ✦`}
+                                        {unlocked ? "✓ Diraih" : current ? "Proses" : `${m.stamps} +`}
                                       </span>
                                     </li>
                                   );
