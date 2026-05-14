@@ -856,6 +856,10 @@ Rules:
 
       if (!ocrRes.ok) {
         console.error(`[ocr-passport] Model "${tryModel}" HTTP ${ocrRes.status} error — provider response: ${bodyText.slice(0, 400)}`);
+        // Intercept upstream auth errors — return clear message
+        if (ocrRes.status === 401 || ocrRes.status === 403) {
+          return err(res, 503, 'API key OpenRouter tidak valid atau kedaluwarsa. Periksa OPENROUTER_API_KEY di Replit Secrets.');
+        }
         lastOcrError = `OCR API error (${tryModel}) HTTP ${ocrRes.status}: ${bodyText.slice(0, 300)}`;
         if (
           bodyText.includes('not a valid model') ||
@@ -964,6 +968,10 @@ app.post('/api/ai/chat', async (req, res) => {
         body: JSON.stringify(bodyWithModel),
         signal: controller.signal,
       });
+      // Intercept upstream auth errors — return clear message instead of OpenRouter's raw error
+      if (response.status === 401 || response.status === 403) {
+        return err(res, 503, 'API key OpenRouter tidak valid atau kedaluwarsa. Periksa OPENROUTER_API_KEY di Replit Secrets.');
+      }
       const text = await response.text();
       res.status(response.status).set('Content-Type', 'application/json').send(text);
     } catch (fetchErr) {
@@ -1012,6 +1020,10 @@ app.post('/api/ai/assistant', async (req, res) => {
         body: JSON.stringify(bodyWithModel),
         signal: controller.signal,
       });
+      // Intercept upstream auth errors — return clear message instead of OpenAI's raw error
+      if (response.status === 401 || response.status === 403) {
+        return err(res, 503, 'API key OpenAI tidak valid atau kedaluwarsa. Periksa konfigurasi AI Integrations di Replit.');
+      }
       const text = await response.text();
       res.status(response.status).set('Content-Type', 'application/json').send(text);
     } catch (fetchErr) {

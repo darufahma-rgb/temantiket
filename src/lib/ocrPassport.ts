@@ -502,13 +502,19 @@ async function compressForAI(dataUrl: string, maxEdge = 1280): Promise<string> {
 
 /**
  * Call the dedicated /api/ocr-passport server route.
- * Auth via cookie session (credentials: "include") — no Bearer token needed.
+ * Requires Supabase Bearer JWT — included from localStorage session.
  */
 async function callOpenAIDirect(dataUrl: string): Promise<PassportData> {
+  // Import lazily to avoid circular deps — authStore is a Zustand store, safe to import here.
+  const { getAccessToken } = await import("@/store/authStore");
+  const token = getAccessToken();
   const res = await fetch("/api/ocr-passport", {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify({ imageDataUrl: dataUrl }),
   });
 

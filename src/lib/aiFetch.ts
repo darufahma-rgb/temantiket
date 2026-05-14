@@ -1,9 +1,15 @@
+import { getAccessToken } from "@/store/authStore";
+
 /**
  * Returns base headers for /api/ai/chat and other AI routes.
- * Auth is handled via cookie session (credentials: "include") — no Bearer token needed.
+ * Includes Supabase Bearer JWT so routes that require isAuthenticatedOrBearer pass.
  */
 export async function getAIHeaders(): Promise<Record<string, string>> {
-  return { "Content-Type": "application/json" };
+  const token = getAccessToken();
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
 }
 
 // ── Central AI caller ─────────────────────────────────────────────────────────
