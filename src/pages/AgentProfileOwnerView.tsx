@@ -918,37 +918,9 @@ export default function AgentProfileOwnerView() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] gap-3 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="text-sm">Memuat profil agen…</span>
-      </div>
-    );
-  }
-
-  if (!agent) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-6">
-        <div className="h-14 w-14 rounded-2xl bg-red-50 flex items-center justify-center">
-          <AlertCircle className="h-7 w-7 text-red-400" />
-        </div>
-        <div>
-          <p className="font-semibold text-foreground">Agen Tidak Ditemukan</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Profil agen ini tidak tersedia atau sudah dihapus.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => navigate("/agent-center")}>
-          <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Kembali ke Agent Center
-        </Button>
-      </div>
-    );
-  }
-
   const { current: tier, next, pointsToNext, progress } = tierInfo;
 
-  // ── Mobile-specific computed values ─────────────────────────────────────────
+  // ── Mobile-specific computed values — must stay BEFORE early returns to obey Rules of Hooks ──
 
   const totalRevenue = useMemo(
     () => agentOrders.reduce((s, o) => s + revenueIDR(o), 0),
@@ -1020,6 +992,34 @@ export default function AgentProfileOwnerView() {
     if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
     return fmtIDR(n);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] gap-3 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-sm">Memuat profil agen…</span>
+      </div>
+    );
+  }
+
+  if (!agent) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-6">
+        <div className="h-14 w-14 rounded-2xl bg-red-50 flex items-center justify-center">
+          <AlertCircle className="h-7 w-7 text-red-400" />
+        </div>
+        <div>
+          <p className="font-semibold text-foreground">Agen Tidak Ditemukan</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Profil agen ini tidak tersedia atau sudah dihapus.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate("/agent-center")}>
+          <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Kembali ke Agent Center
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <>
