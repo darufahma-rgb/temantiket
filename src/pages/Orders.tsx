@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
-import { ShoppingBag, Plus, Search, ArrowLeft, ChevronRight, TrendingUp, Wallet, AlertTriangle, Plane, FileText, Package, SlidersHorizontal, X, CheckCircle, Clock, XCircle, GraduationCap, ChevronDown, LayoutList, LayoutGrid, CalendarDays, RotateCcw, CreditCard, BadgeCheck, Activity } from "lucide-react";
+import { ShoppingBag, Plus, Search, ArrowLeft, ChevronRight, TrendingUp, Wallet, AlertTriangle, Plane, FileText, Package, SlidersHorizontal, X, CheckCircle, Clock, XCircle, GraduationCap, ChevronDown, LayoutList, LayoutGrid, CalendarDays, RotateCcw, CreditCard, BadgeCheck, Activity, User, MessageSquare, DollarSign } from "lucide-react";
 import { PieChart, Pie, Cell } from "recharts";
 import { MobileFAB } from "@/components/MobileFAB";
 import { AnimatePresence } from "framer-motion";
@@ -808,24 +808,65 @@ export default function Orders() {
                 const ps = derivePaymentStatus(o.paidAmount ?? 0, o.totalPrice, o.paymentStatus);
                 const tc = DESKTOP_TYPE_CONFIG[o.type] ?? DESKTOP_TYPE_CONFIG.umrah;
                 const clientName = o.clientId ? clientNameById.get(o.clientId) : null;
+                const invNum = invNumbers.get(o.id) ?? "INV-…";
+                const dateStr = new Intl.DateTimeFormat("id-ID", { day:"numeric", month:"short", year:"numeric" }).format(new Date(o.createdAt));
+                const agentLabel = user?.displayName
+                  ? `${user.displayName} (${user.role === "owner" ? "Owner" : user.role === "staff" ? "Staff" : "Agen"})`
+                  : undefined;
+                const isCompleted = ["Done","Paid","Completed"].includes(o.status);
                 return (
                   <Link key={o.id} to={`/orders/detail/${o.id}`}
-                    className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md hover:border-blue-200 transition-all flex flex-col gap-3">
-                    <div className="flex items-start justify-between">
+                    className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md hover:border-blue-200 transition-all flex flex-col gap-2.5 group">
+                    {/* Top row: icon + both status badges */}
+                    <div className="flex items-start justify-between gap-2">
                       <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: tc.bg }}>
                         <tc.Icon className="h-5 w-5" style={{ color: tc.color }} strokeWidth={1.8} />
                       </div>
-                      <span className={cn("text-[9.5px] font-bold px-2 py-1 rounded-full border", PAYMENT_STATUS_STYLE[ps])}>
-                        {PAYMENT_STATUS_LABEL[ps]}
-                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={cn(
+                          "text-[9.5px] font-bold px-2 py-0.5 rounded-full border",
+                          isCompleted ? "bg-purple-50 text-purple-700 border-purple-200" :
+                          o.status === "Confirmed" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                          o.status === "Cancelled" ? "bg-red-50 text-red-600 border-red-200" :
+                          "bg-slate-100 text-slate-500 border-slate-200"
+                        )}>
+                          {isCompleted ? "Completed" : o.status}
+                        </span>
+                        <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full border", PAYMENT_STATUS_STYLE[ps])}>
+                          {PAYMENT_STATUS_LABEL[ps]}
+                        </span>
+                      </div>
                     </div>
+                    {/* Title */}
                     <div>
                       <p className="text-[12px] font-extrabold text-slate-800 leading-snug line-clamp-2">
                         {o.title || `${tc.label}${clientName ? ` – ${clientName.toUpperCase()}` : ""}`}
                       </p>
-                      <p className="text-[10.5px] font-mono text-slate-400 mt-1">{invNumbers.get(o.id)}</p>
+                      <p className="text-[10px] font-mono text-slate-400 mt-0.5">{invNum} · {dateStr}</p>
                     </div>
-                    <p className="text-[15px] font-black text-slate-800 tabular-nums mt-auto">{fmtOrderPrice(o.totalPrice, o.currency)}</p>
+                    {/* Agent + type label */}
+                    {agentLabel && (
+                      <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+                        <User className="h-3 w-3 shrink-0 text-slate-400" />
+                        <span className="truncate">{agentLabel}</span>
+                      </div>
+                    )}
+                    {/* Bottom: price + HPP */}
+                    <div className="flex items-center justify-between mt-auto pt-1 border-t border-slate-100">
+                      <p className="text-[14px] font-black text-slate-800 tabular-nums">{fmtOrderPrice(o.totalPrice, o.currency)}</p>
+                      <div className="flex items-center gap-1">
+                        {user?.role !== "agent" && (!o.costPrice || o.costPrice === 0) && (
+                          <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                            <AlertTriangle className="h-2.5 w-2.5" /> HPP
+                          </span>
+                        )}
+                        {o.paidAmount > 0 && o.paidAmount < o.totalPrice && (
+                          <span className="text-[9px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded-full">
+                            DP
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </Link>
                 );
               })}
@@ -846,6 +887,9 @@ export default function Orders() {
                 const agentLabel = user?.displayName
                   ? `${user.displayName} (${user.role === "owner" ? "Owner" : user.role === "staff" ? "Staff" : "Agen"})`
                   : undefined;
+                const isCompleted = ["Done","Paid","Completed"].includes(o.status);
+                const hasMissingHPP = user?.role !== "agent" && (!o.costPrice || o.costPrice === 0);
+                const isDP = (o.paidAmount ?? 0) > 0 && (o.paidAmount ?? 0) < o.totalPrice;
                 return (
                   <motion.div
                     key={o.id}
@@ -854,39 +898,86 @@ export default function Orders() {
                   >
                     <Link
                       to={`/orders/detail/${o.id}`}
-                      className="flex items-center gap-4 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:shadow-md hover:border-blue-200 transition-all group"
+                      className="flex items-start gap-4 bg-white rounded-xl border border-slate-200 px-4 py-3.5 hover:shadow-md hover:border-blue-200 transition-all group"
                     >
-                      <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: tc.bg }}>
+                      {/* Type Icon */}
+                      <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: tc.bg }}>
                         <tc.Icon className="h-5 w-5" style={{ color: tc.color }} strokeWidth={1.8} />
                       </div>
+
+                      {/* Main content — 3 rows */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13.5px] font-extrabold text-slate-800 truncate leading-tight">
-                          {o.title || `${ORDER_TYPE_LABEL[o.type]}${clientName ? ` – ${clientName.toUpperCase()}` : ""}`}
-                        </p>
+                        {/* Row 1: title + order status badge */}
+                        <div className="flex items-center gap-2">
+                          <p className="text-[13.5px] font-extrabold text-slate-800 truncate leading-tight flex-1">
+                            {o.title || `${ORDER_TYPE_LABEL[o.type]}${clientName ? ` – ${clientName.toUpperCase()}` : ""}`}
+                          </p>
+                          <span className={cn(
+                            "shrink-0 text-[10px] font-bold px-2.5 py-0.5 rounded-full border",
+                            isCompleted ? "bg-purple-50 text-purple-700 border-purple-200" :
+                            o.status === "Confirmed" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                            o.status === "Cancelled" ? "bg-red-50 text-red-600 border-red-200" :
+                            "bg-slate-100 text-slate-500 border-slate-200"
+                          )}>
+                            {isCompleted ? "Completed" : o.status}
+                          </span>
+                        </div>
+
+                        {/* Row 2: INV · date · order type */}
                         <p className="text-[11px] text-slate-400 mt-0.5 truncate">
                           <span className="font-mono">{invNum}</span>
                           {" · "}{dateStr}
-                          {agentLabel && <>{" · "}<span className="text-slate-500 font-medium">{agentLabel}</span></>}
+                          {" · "}<span className="text-slate-400">{tc.label}</span>
                         </p>
+
+                        {/* Row 3: agent badge + HPP warning + DP info + notes */}
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {agentLabel && (
+                            <span className="flex items-center gap-1 text-[10.5px] font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full">
+                              <User className="h-3 w-3 shrink-0 text-slate-400" />
+                              {agentLabel}
+                            </span>
+                          )}
+                          {hasMissingHPP && (
+                            <span className="flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                              <AlertTriangle className="h-2.5 w-2.5" /> HPP belum diset
+                            </span>
+                          )}
+                          {isDP && (
+                            <span className="flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+                              <DollarSign className="h-2.5 w-2.5" /> DP {fmtOrderPrice(o.paidAmount ?? 0, o.currency)}
+                            </span>
+                          )}
+                          {o.notes && (
+                            <span className="flex items-center gap-1 text-[9.5px] text-slate-400 font-medium truncate max-w-[180px]">
+                              <MessageSquare className="h-2.5 w-2.5 shrink-0" />
+                              {o.notes}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <span className={cn(
-                          "flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full",
-                          ps === "PAID"   ? "bg-emerald-50 text-emerald-700" :
-                          ps === "DP"     ? "bg-amber-50 text-amber-700" :
-                          ps === "UNPAID" ? "bg-red-50 text-red-600" :
-                                           "bg-gray-100 text-gray-600",
-                        )}>
+
+                      {/* Right section: payment status + price */}
+                      <div className="flex items-center gap-2.5 shrink-0 self-center">
+                        <div className="flex flex-col items-end gap-1">
                           <span className={cn(
-                            "h-1.5 w-1.5 rounded-full",
-                            ps === "PAID" ? "bg-emerald-500" : ps === "DP" ? "bg-amber-400" :
-                            ps === "UNPAID" ? "bg-red-500" : "bg-gray-400",
-                          )} />
-                          {PAYMENT_STATUS_LABEL[ps]}
-                        </span>
-                        <p className="text-[13.5px] font-black text-slate-800 tabular-nums w-[112px] text-right">
-                          {fmtOrderPrice(o.totalPrice, o.currency)}
-                        </p>
+                            "flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full",
+                            ps === "PAID"   ? "bg-emerald-50 text-emerald-700" :
+                            ps === "DP"     ? "bg-amber-50 text-amber-700" :
+                            ps === "UNPAID" ? "bg-red-50 text-red-600" :
+                                             "bg-gray-100 text-gray-600",
+                          )}>
+                            <span className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              ps === "PAID" ? "bg-emerald-500" : ps === "DP" ? "bg-amber-400" :
+                              ps === "UNPAID" ? "bg-red-500" : "bg-gray-400",
+                            )} />
+                            {PAYMENT_STATUS_LABEL[ps]}
+                          </span>
+                          <p className="text-[13.5px] font-black text-slate-800 tabular-nums text-right">
+                            {fmtOrderPrice(o.totalPrice, o.currency)}
+                          </p>
+                        </div>
                         <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-400 transition-colors" />
                       </div>
                     </Link>
