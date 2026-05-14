@@ -5,10 +5,10 @@
  * full data table with KLIEN/NEGARA/JENIS VISA/ID ORDER/TANGGAL AJU/STATUS/PROGRESS/AGEN/AKSI.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getBearer } from "@/lib/authFetch";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText, AlertTriangle, CheckCircle2, Clock,
   Wallet, RefreshCw, Loader2,
@@ -18,7 +18,8 @@ import {
   MoreVertical, CircleDot,
   Eye, Pencil, Inbox, ClipboardCheck,
   ShieldCheck, FileCheck2, Flag, LayoutGrid, List,
-  Download, Send,
+  Download, Send, UserCog, Phone, Mail, Hash, CreditCard,
+  CalendarDays, MapPin, Info, ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -238,6 +239,8 @@ export default function OwnerVisaTrackerPage() {
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [creditingId, setCreditingId] = useState<string | null>(null);
   const [openRowMenu, setOpenRowMenu] = useState<string | null>(null);
+  const [openAssignPopover, setOpenAssignPopover] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // Desktop filters
   const [search, setSearch] = useState("");
@@ -842,7 +845,7 @@ export default function OwnerVisaTrackerPage() {
     {/* ══════════════════════════════════════════════════════════════════════ */}
     <div
       className="hidden md:block min-h-screen bg-[#F0F4FB] p-6"
-      onClick={() => setOpenRowMenu(null)}
+      onClick={() => { setOpenRowMenu(null); setOpenAssignPopover(null); }}
     >
       <div className="max-w-[1400px] mx-auto space-y-5">
 
@@ -1207,7 +1210,11 @@ export default function OwnerVisaTrackerPage() {
                         >
                           {/* KLIEN */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
-                            <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); }}
+                              className="flex items-center gap-3 group/klien text-left hover:opacity-80 transition-opacity"
+                            >
                               <div
                                 className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-[11px] font-bold shrink-0"
                                 style={{ background: avatarColor(clientName) }}
@@ -1215,10 +1222,11 @@ export default function OwnerVisaTrackerPage() {
                                 {initials(clientName)}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-[13px] font-semibold text-[#0f1c3f] truncate max-w-[140px]">{clientName}</p>
+                                <p className="text-[13px] font-semibold text-[#0f1c3f] truncate max-w-[140px] group-hover/klien:text-blue-600 transition-colors">{clientName}</p>
                                 <p className="text-[10px] text-[#94a3b8] font-mono">{client?.passportNumber ?? "—"}</p>
                               </div>
-                            </div>
+                              <Info className="h-3 w-3 text-blue-400 opacity-0 group-hover/klien:opacity-100 transition-opacity shrink-0" strokeWidth={2} />
+                            </button>
                           </td>
 
                           {/* NEGARA */}
@@ -1258,10 +1266,20 @@ export default function OwnerVisaTrackerPage() {
 
                           {/* STATUS */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
-                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${stage.badgeBg} ${stage.badgeText}`}>
-                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: stage.color }} />
-                              {stage.label}
-                            </span>
+                            <div className="flex flex-col gap-1">
+                              <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${stage.badgeBg} ${stage.badgeText}`}>
+                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: stage.color }} />
+                                {stage.label}
+                              </span>
+                              <div className="flex items-center gap-1.5 pl-0.5">
+                                <span className="text-[10px] text-[#94a3b8]">Langkah {stage.step + 1}/7</span>
+                                {!!(m.visaKendala as string | undefined) && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-full">
+                                    <AlertTriangle className="h-2.5 w-2.5" strokeWidth={2.5} /> Kendala
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </td>
 
                           {/* PROGRESS */}
@@ -1277,21 +1295,79 @@ export default function OwnerVisaTrackerPage() {
                             </div>
                           </td>
 
-                          {/* AGEN */}
-                          <td className="px-4 py-3.5 whitespace-nowrap">
-                            {pelaksana ? (
-                              <div className="flex items-center gap-1.5">
-                                <div
-                                  className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0"
-                                  style={{ background: avatarColor(pelaksana.displayName) }}
-                                >
-                                  {initials(pelaksana.displayName)}
+                          {/* AGEN — inline assignment */}
+                          <td className="px-4 py-3.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenAssignPopover(openAssignPopover === order.id ? null : order.id);
+                                  setOpenRowMenu(null);
+                                }}
+                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-all hover:shadow-sm ${
+                                  pelaksana
+                                    ? "border-blue-100 bg-blue-50 hover:border-blue-300"
+                                    : "border-dashed border-orange-200 bg-orange-50 hover:border-orange-400"
+                                }`}
+                              >
+                                {pelaksana ? (
+                                  <>
+                                    <div
+                                      className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[8px] font-bold shrink-0"
+                                      style={{ background: avatarColor(pelaksana.displayName) }}
+                                    >
+                                      {initials(pelaksana.displayName)}
+                                    </div>
+                                    <span className="text-[11px] font-semibold text-blue-800 max-w-[90px] truncate">{pelaksana.displayName}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCog className="h-3.5 w-3.5 text-orange-500" strokeWidth={1.5} />
+                                    <span className="text-[11px] font-medium text-orange-600">Tugaskan</span>
+                                  </>
+                                )}
+                                <ChevronDown className="h-3 w-3 text-gray-400 shrink-0 ml-0.5" strokeWidth={2} />
+                                {assigningId === order.id && <Loader2 className="h-3 w-3 animate-spin text-blue-400 shrink-0" />}
+                              </button>
+
+                              {openAssignPopover === order.id && (
+                                <div className="absolute left-0 top-[calc(100%+4px)] z-40 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 min-w-[200px]" onClick={(e) => e.stopPropagation()}>
+                                  <p className="px-4 pt-1 pb-2 text-[10px] font-bold text-[#94a3b8] uppercase tracking-wide">Pilih Staff</p>
+                                  {members.map((mb) => (
+                                    <button
+                                      key={mb.userId}
+                                      onClick={() => { void handleAssign(order, mb.userId); setOpenAssignPopover(null); }}
+                                      disabled={assigningId === order.id}
+                                      className="w-full text-left px-4 py-2 text-[12px] text-[#0f1c3f] hover:bg-blue-50 flex items-center gap-2.5 disabled:opacity-50 transition-colors"
+                                    >
+                                      <div
+                                        className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0"
+                                        style={{ background: avatarColor(mb.displayName) }}
+                                      >
+                                        {initials(mb.displayName)}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className={`truncate ${pelaksanaId === mb.userId ? "font-bold text-blue-600" : ""}`}>{mb.displayName}</p>
+                                        <p className="text-[10px] text-gray-400 truncate">{mb.role}</p>
+                                      </div>
+                                      {pelaksanaId === mb.userId && <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 shrink-0" strokeWidth={2} />}
+                                    </button>
+                                  ))}
+                                  {pelaksanaId && (
+                                    <>
+                                      <div className="mx-3 my-1.5 border-t border-gray-100" />
+                                      <button
+                                        onClick={() => { void handleAssign(order, "__none"); setOpenAssignPopover(null); }}
+                                        className="w-full text-left px-4 py-2 text-[12px] text-red-500 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                                      >
+                                        <X className="h-3.5 w-3.5" strokeWidth={2} /> Lepas Staff
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
-                                <span className="text-[12px] font-medium text-[#0f1c3f] max-w-[100px] truncate">{pelaksana.displayName}</span>
-                              </div>
-                            ) : (
-                              <span className="text-[11px] text-orange-500 font-medium italic">Belum Ditugaskan</span>
-                            )}
+                              )}
+                            </div>
                           </td>
 
                           {/* AKSI */}
@@ -1496,6 +1572,227 @@ export default function OwnerVisaTrackerPage() {
 
       </div>
     </div>
+
+    {/* ── Client Detail Panel (slide-in from right) ─────────────────────────── */}
+    <AnimatePresence>
+      {selectedOrder && (() => {
+        const so = selectedOrder;
+        const sm = meta(so);
+        const sc = clientMap.get(so.clientId ?? "");
+        const sPelaksanaId = (sm.pelaksanaId as string | null) ?? null;
+        const sPelaksana = sPelaksanaId ? memberMap.get(sPelaksanaId) : null;
+        const sStage = getStageInfo(so);
+        const sNegara = sm.negara as string | undefined;
+        const sCi = getCountryInfo(sNegara);
+        const sClientName = sc?.name ?? so.title ?? `Order #${so.id.slice(0, 8)}`;
+        const sKendala = sm.visaKendala as string | undefined;
+        const sNotes = sm.notes as string | undefined ?? so.notes;
+        const sFee = Number(sm.pelaksanaFee ?? DEFAULT_FEE);
+        const sFeeCredited = !!(sm.pelaksanaFeeCredited as boolean | null);
+
+        return (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm hidden md:block"
+              onClick={() => setSelectedOrder(null)}
+            />
+            {/* Panel */}
+            <motion.div
+              key="panel"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 280 }}
+              className="fixed right-0 top-0 bottom-0 z-50 w-[420px] bg-white shadow-2xl flex flex-col hidden md:flex"
+            >
+              {/* Panel header */}
+              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100" style={{ background: "linear-gradient(135deg,#1e40af,#2563eb)" }}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-11 h-11 rounded-2xl flex items-center justify-center text-white text-[13px] font-bold shrink-0 border-2 border-white/30"
+                    style={{ background: avatarColor(sClientName) }}
+                  >
+                    {initials(sClientName)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-extrabold text-white truncate">{sClientName}</p>
+                    <p className="text-[11px] text-blue-200 font-mono">{sc?.passportNumber ?? "—"}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors shrink-0"
+                >
+                  <X className="h-4 w-4 text-white" strokeWidth={2} />
+                </button>
+              </div>
+
+              {/* Scrollable body */}
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+                {/* Status + progress */}
+                <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`inline-flex items-center gap-1.5 text-[12px] font-bold px-3 py-1.5 rounded-full ${sStage.badgeBg} ${sStage.badgeText}`}>
+                      <span className="w-2 h-2 rounded-full" style={{ background: sStage.color }} />
+                      {sStage.label}
+                    </span>
+                    <span className="text-[12px] font-bold text-[#64748b]">Langkah {sStage.step + 1} / 7</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] text-[#64748b]">Progress Keseluruhan</span>
+                      <span className="text-[12px] font-bold text-[#0f1c3f]">{sStage.pct}%</span>
+                    </div>
+                    <div className="h-2.5 rounded-full bg-gray-200 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${sStage.pct}%` }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className={`h-full rounded-full ${sStage.barColor}`}
+                      />
+                    </div>
+                  </div>
+                  {/* Stage steps mini-timeline */}
+                  <div className="flex items-center gap-0.5 pt-1">
+                    {PIPELINE_STAGES.map((ps, i) => {
+                      const done = i < sStage.step + 1;
+                      const active = i === sStage.step;
+                      return (
+                        <div key={ps.key} title={ps.label} className="flex-1 flex flex-col items-center gap-0.5">
+                          <div className={`h-1.5 w-full rounded-full transition-all ${done ? (active ? "" : "bg-gray-300") : "bg-gray-100"}`}
+                            style={active ? { background: sStage.color } : undefined} />
+                          {active && <span className="text-[8px] text-center text-[#64748b] leading-tight font-semibold max-w-[50px] truncate">{ps.label}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Kendala warning */}
+                {sKendala && (
+                  <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" strokeWidth={2} />
+                    <div>
+                      <p className="text-[12px] font-bold text-red-700 mb-0.5">Ada Kendala</p>
+                      <p className="text-[12px] text-red-600 leading-relaxed">{sKendala}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Client info */}
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-wider mb-2">Informasi Klien</p>
+                  {[
+                    { icon: Users, label: "Nama Lengkap", value: sc?.name ?? "—" },
+                    { icon: CreditCard, label: "Nomor Paspor", value: sc?.passportNumber ?? "—", mono: true },
+                    { icon: Phone, label: "Telepon / WhatsApp", value: sc?.phone ?? "—" },
+                    { icon: Mail, label: "Email", value: sc?.email ?? "—" },
+                  ].map(({ icon: Icon, label, value, mono }) => (
+                    <div key={label} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                        <Icon className="h-3.5 w-3.5 text-blue-500" strokeWidth={1.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-[#94a3b8] font-medium">{label}</p>
+                        <p className={`text-[13px] font-semibold text-[#0f1c3f] truncate ${mono ? "font-mono" : ""}`}>{value || "—"}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Order info */}
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-wider mb-2">Detail Order</p>
+                  {[
+                    { icon: Hash, label: "ID Order", value: so.id.slice(0, 16) + "…", mono: true },
+                    { icon: MapPin, label: "Negara Tujuan", value: sCi ? `${sCi.flag} ${sCi.name}` : "—" },
+                    { icon: CalendarDays, label: "Tanggal Pengajuan", value: fmtDate(so.createdAt) },
+                    { icon: FileText, label: "Jenis Visa", value: "Student Visa" },
+                  ].map(({ icon: Icon, label, value, mono }) => (
+                    <div key={label} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                        <Icon className="h-3.5 w-3.5 text-indigo-500" strokeWidth={1.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-[#94a3b8] font-medium">{label}</p>
+                        <p className={`text-[13px] font-semibold text-[#0f1c3f] truncate ${mono ? "font-mono" : ""}`}>{value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Assigned staff */}
+                <div>
+                  <p className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-wider mb-2">Staff Penanganan</p>
+                  {sPelaksana ? (
+                    <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0"
+                        style={{ background: avatarColor(sPelaksana.displayName) }}
+                      >
+                        {initials(sPelaksana.displayName)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-bold text-blue-800">{sPelaksana.displayName}</p>
+                        <p className="text-[11px] text-blue-500">{sPelaksana.role}</p>
+                      </div>
+                      {sFeeCredited ? (
+                        <span className="text-[10px] font-bold text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-full flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Lunas
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full">
+                          Fee: {fmtIDR(sFee)}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 bg-orange-50 border border-dashed border-orange-200 rounded-2xl px-4 py-3">
+                      <UserCog className="h-5 w-5 text-orange-400 shrink-0" strokeWidth={1.5} />
+                      <p className="text-[13px] text-orange-600 font-medium italic">Belum ada staff yang ditugaskan</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Notes */}
+                {sNotes && (
+                  <div>
+                    <p className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-wider mb-2">Catatan</p>
+                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                      <p className="text-[13px] text-amber-900 leading-relaxed">{sNotes}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Panel footer */}
+              <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
+                <button
+                  onClick={() => navigate(`/orders/detail/${so.id}`)}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-bold text-white transition-opacity hover:opacity-90"
+                  style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}
+                >
+                  <Eye className="h-4 w-4" strokeWidth={2} />
+                  Buka Detail Order
+                </button>
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="w-12 h-12 rounded-2xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                >
+                  <X className="h-4 w-4 text-[#64748b]" strokeWidth={2} />
+                </button>
+              </div>
+            </motion.div>
+          </>
+        );
+      })()}
+    </AnimatePresence>
     </>
   );
 }
