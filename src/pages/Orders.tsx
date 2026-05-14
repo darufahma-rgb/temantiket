@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
-import { ShoppingBag, Plus, Search, ArrowLeft, ChevronRight, TrendingUp, Wallet, AlertTriangle, Plane, FileText, Package, SlidersHorizontal, X, CheckCircle, Clock, XCircle } from "lucide-react";
+import { ShoppingBag, Plus, Search, ArrowLeft, ChevronRight, TrendingUp, Wallet, AlertTriangle, Plane, FileText, Package, SlidersHorizontal, X, CheckCircle, Clock, XCircle, GraduationCap, ChevronDown, LayoutList, LayoutGrid, CalendarDays, RotateCcw, CreditCard, BadgeCheck, Activity } from "lucide-react";
+import { PieChart, Pie, Cell } from "recharts";
 import { MobileFAB } from "@/components/MobileFAB";
 import { AnimatePresence } from "framer-motion";
 import { motion } from "framer-motion";
@@ -175,6 +176,90 @@ export default function Orders() {
     Completed: "bg-purple-100 text-purple-700",
     Cancelled: "bg-red-100 text-red-600",
   };
+
+  // ── Desktop-specific state ──────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<"all" | OrderType>("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterJenis, setFilterJenis]   = useState("all");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterRange, setFilterRange]   = useState("all");
+  const [viewMode, setViewMode]         = useState<"list" | "grid">("list");
+
+  // ── Desktop counts ─────────────────────────────────────────────────
+  const completedCount = useMemo(() => orders.filter(o => ["Done","Paid","Completed"].includes(o.status)).length, [orders]);
+  const confirmedCount = useMemo(() => orders.filter(o => o.status === "Confirmed").length, [orders]);
+  const pendingCount   = useMemo(() => orders.filter(o => o.status === "Draft").length, [orders]);
+  const cancelledCount = useMemo(() => orders.filter(o => o.status === "Cancelled").length, [orders]);
+
+  // ── Month-over-month growth ────────────────────────────────────────
+  const nowD       = new Date();
+  const thisMonthStr = `${nowD.getFullYear()}-${String(nowD.getMonth()+1).padStart(2,"0")}`;
+  const lastMonthD   = new Date(nowD.getFullYear(), nowD.getMonth()-1, 1);
+  const lastMonthStr = `${lastMonthD.getFullYear()}-${String(lastMonthD.getMonth()+1).padStart(2,"0")}`;
+  const tmo = useMemo(() => orders.filter(o => o.createdAt.startsWith(thisMonthStr)), [orders, thisMonthStr]);
+  const lmo = useMemo(() => orders.filter(o => o.createdAt.startsWith(lastMonthStr)), [orders, lastMonthStr]);
+  function growPct(cur: number, prev: number) {
+    if (prev === 0) return cur > 0 ? 100 : 0;
+    return Math.round(((cur - prev) / prev) * 100);
+  }
+  const growTotal     = growPct(tmo.length, lmo.length);
+  const growCompleted = growPct(
+    tmo.filter(o => ["Done","Paid","Completed"].includes(o.status)).length,
+    lmo.filter(o => ["Done","Paid","Completed"].includes(o.status)).length,
+  );
+  const growConfirmed = growPct(
+    tmo.filter(o => o.status === "Confirmed").length,
+    lmo.filter(o => o.status === "Confirmed").length,
+  );
+  const growPending = growPct(
+    tmo.filter(o => o.status === "Draft").length,
+    lmo.filter(o => o.status === "Draft").length,
+  );
+  const growRevenue = growPct(
+    tmo.filter(o => o.status !== "Cancelled").reduce((s, o) => s + revenueIDR(o, egpRate), 0),
+    lmo.filter(o => o.status !== "Cancelled").reduce((s, o) => s + revenueIDR(o, egpRate), 0),
+  );
+
+  // ── INV number map ─────────────────────────────────────────────────
+  const invNumbers = useMemo(() => {
+    const sorted = [...orders].sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const m = new Map<string, string>();
+    sorted.forEach((o, i) => {
+      const d = new Date(o.createdAt);
+      const yy = String(d.getFullYear()).slice(2);
+      const mm = String(d.getMonth()+1).padStart(2,"0");
+      const dd = String(d.getDate()).padStart(2,"0");
+      m.set(o.id, `INV-${yy}${mm}${dd}-${String(i+1).padStart(4,"0")}`);
+    });
+    return m;
+  }, [orders]);
+
+  // ── Desktop filtered list ──────────────────────────────────────────
+  const desktopFiltered = useMemo(() => {
+    let out = orders;
+    if (activeTab !== "all") out = out.filter(o => o.type === activeTab);
+    if (filterStatus === "completed") out = out.filter(o => ["Done","Paid","Completed"].includes(o.status));
+    else if (filterStatus === "confirmed") out = out.filter(o => o.status === "Confirmed");
+    else if (filterStatus === "pending")   out = out.filter(o => o.status === "Draft");
+    else if (filterStatus === "cancelled") out = out.filter(o => o.status === "Cancelled");
+    if (filterJenis !== "all") out = out.filter(o => o.type === filterJenis);
+    if (filterRange === "under1m")   out = out.filter(o => revenueIDR(o, egpRate) < 1_000_000);
+    else if (filterRange === "1m5m") out = out.filter(o => { const v = revenueIDR(o, egpRate); return v >= 1_000_000 && v < 5_000_000; });
+    else if (filterRange === "above5m") out = out.filter(o => revenueIDR(o, egpRate) >= 5_000_000);
+    const s = q.trim().toLowerCase();
+    if (s) out = out.filter(o =>
+      (o.title ?? "").toLowerCase().includes(s) ||
+      (clientNameById.get(o.clientId ?? "") ?? "").toLowerCase().includes(s) ||
+      o.status.toLowerCase().includes(s) ||
+      (invNumbers.get(o.id) ?? "").toLowerCase().includes(s),
+    );
+    return [...out].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [orders, activeTab, filterStatus, filterJenis, filterRange, q, clientNameById, egpRate, invNumbers]);
+
+  // ── Recent activity (last 8 orders) ───────────────────────────────
+  const recentActivity = useMemo(() =>
+    [...orders].sort((a,b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()).slice(0, 8),
+  [orders]);
 
   return (
     <>
@@ -551,127 +636,440 @@ export default function Orders() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════
-           DESKTOP LAYOUT  (hidden md:block)
+           DESKTOP LAYOUT  (hidden md:flex) — Order Hub Redesign
       ══════════════════════════════════════════════════════════ */}
-      <motion.div
-        className="hidden md:block p-4 md:p-6 max-w-[1400px] mx-auto space-y-5"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            {(typeFilter || clientIdParam) && (
-              <Button variant="ghost" size="sm" onClick={() => navigate("/orders")} className="h-8 px-2">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
+      <div className="hidden md:flex gap-5 p-5 xl:p-6 max-w-[1440px] mx-auto w-full">
+
+        {/* ─────────────── MAIN COLUMN ─────────────── */}
+        <motion.div
+          className="flex-1 min-w-0"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {/* Header */}
+          <div className="flex items-start justify-between mb-5">
             <div>
-              <h1 className="text-2xl md:text-[30px] font-bold flex items-center gap-2 leading-tight">
-                {typeFilter ? <span className="text-3xl">{ORDER_TYPE_EMOJI[typeFilter]}</span> : <ShoppingBag className="h-7 w-7" />}
-                {heading}
-              </h1>
-              {clientIdParam && clientNameById.get(clientIdParam) && (
-                <p className="text-[12px] text-muted-foreground mt-0.5">
-                  Filter: klien <span className="font-semibold">{clientNameById.get(clientIdParam)}</span>
+              <h1 className="text-[28px] font-black text-slate-900 leading-tight tracking-tight">Order Hub</h1>
+              <p className="text-[13px] text-slate-500 mt-0.5">Kelola, pantau, dan selesaikan semua order dalam satu tempat.</p>
+            </div>
+            <button
+              onClick={() => setAddOpen(true)}
+              className="flex items-center gap-2 h-10 pl-4 pr-3 rounded-xl text-white text-[13px] font-bold shadow-md hover:opacity-90 active:scale-95 transition-all"
+              style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              Order Baru
+              <span className="w-px h-5 bg-white/30 mx-0.5" />
+              <ChevronDown className="h-3.5 w-3.5 opacity-80" />
+            </button>
+          </div>
+
+          {/* ── 5 Stat Cards ── */}
+          <div className="grid grid-cols-5 gap-3 mb-5">
+            {([
+              { label: "Total Order", value: orders.length, growth: growTotal,
+                icon: <ShoppingBag className="h-5 w-5 shrink-0" style={{ color:"#2563eb" }} strokeWidth={1.8} />, iconBg:"#eff6ff" },
+              { label: "Completed",   value: completedCount, growth: growCompleted,
+                icon: <CheckCircle   className="h-5 w-5 shrink-0" style={{ color:"#10b981" }} strokeWidth={1.8} />, iconBg:"#ecfdf5" },
+              { label: "Confirmed",   value: confirmedCount, growth: growConfirmed,
+                icon: <BadgeCheck    className="h-5 w-5 shrink-0" style={{ color:"#3b82f6" }} strokeWidth={1.8} />, iconBg:"#dbeafe" },
+              { label: "Pending",     value: pendingCount,   growth: growPending,
+                icon: <Clock         className="h-5 w-5 shrink-0" style={{ color:"#f59e0b" }} strokeWidth={1.8} />, iconBg:"#fffbeb" },
+              { label: "Total Nilai", value: totalRevenue, growth: growRevenue, isCurrency: true,
+                icon: <Wallet        className="h-5 w-5 shrink-0" style={{ color:"#8b5cf6" }} strokeWidth={1.8} />, iconBg:"#f5f3ff" },
+            ] as Array<{ label: string; value: number; growth: number; isCurrency?: boolean; icon: React.ReactNode; iconBg: string }>).map((card) => (
+              <div key={card.label} className="bg-white rounded-xl border border-slate-200 px-4 py-3.5 shadow-sm">
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: card.iconBg }}>
+                    {card.icon}
+                  </div>
+                  <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium mb-0.5">{card.label}</p>
+                <p className={cn("font-black leading-none tabular-nums text-slate-900", card.isCurrency ? "text-[17px]" : "text-[24px]")}>
+                  {card.isCurrency
+                    ? (card.value >= 1_000_000_000
+                        ? `Rp ${(card.value/1_000_000_000).toFixed(2)} M`
+                        : card.value >= 1_000_000
+                          ? `Rp ${(card.value/1_000_000).toFixed(2)} Jt`
+                          : `Rp ${card.value.toLocaleString("id-ID")}`)
+                    : card.value.toLocaleString("id-ID")}
                 </p>
-              )}
+                <div className="flex items-center gap-1 mt-1.5">
+                  <span className={cn("text-[10px] font-bold", card.growth >= 0 ? "text-emerald-600" : "text-red-500")}>
+                    {card.growth >= 0 ? "+" : ""}{card.growth}%
+                  </span>
+                  <span className="text-[10px] text-slate-400">vs bulan lalu</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Tab Bar ── */}
+          <div className="flex items-center border-b border-slate-200 mb-4 overflow-x-auto scrollbar-none">
+            {([
+              { id: "all",          label: "Semua",         count: orders.length },
+              { id: "umrah",        label: "Umrah & Haji",  count: orders.filter(o => o.type === "umrah").length },
+              { id: "flight",       label: "Tiket Pesawat", count: orders.filter(o => o.type === "flight").length },
+              { id: "visa_voa",     label: "Visa VOA",      count: orders.filter(o => o.type === "visa_voa").length },
+              { id: "visa_student", label: "Visa Pelajar",  count: orders.filter(o => o.type === "visa_student").length },
+            ] as Array<{ id: string; label: string; count: number }>).map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as "all" | OrderType)}
+                className={cn(
+                  "shrink-0 flex items-center gap-1.5 px-4 py-2.5 text-[12.5px] font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap",
+                  activeTab === tab.id
+                    ? "border-blue-600 text-blue-700 bg-blue-50/50"
+                    : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50",
+                )}
+              >
+                {tab.label}
+                <span className={cn(
+                  "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                  activeTab === tab.id ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500",
+                )}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* ── Search + Controls ── */}
+          <div className="flex items-center gap-2 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Cari judul / klien / status / tanggal…"
+                className="w-full h-10 pl-9 pr-4 rounded-xl text-[13px] bg-white border border-slate-200 text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+              />
+            </div>
+            <button className="flex items-center gap-1.5 h-10 px-3.5 rounded-xl bg-white border border-slate-200 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors shrink-0">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Filter
+            </button>
+            <div className="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden shrink-0">
+              <button
+                onClick={() => setViewMode("list")}
+                className={cn("h-10 w-10 flex items-center justify-center transition-colors", viewMode === "list" ? "bg-blue-50 text-blue-600" : "text-slate-400 hover:text-slate-600")}
+              >
+                <LayoutList className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("grid")}
+                className={cn("h-10 w-10 flex items-center justify-center transition-colors", viewMode === "grid" ? "bg-blue-50 text-blue-600" : "text-slate-400 hover:text-slate-600")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
             </div>
           </div>
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4 mr-1.5" /> Order Baru
-          </Button>
-        </div>
 
-        {/* Type filter chips */}
-        <div className="flex flex-wrap gap-2">
-          <FilterChip active={!typeFilter} onClick={() => navigate(clientIdParam ? `/orders?clientId=${clientIdParam}` : "/orders")}>
-            Semua
-          </FilterChip>
-          {ORDER_TYPES.map((t) => (
-            <FilterChip key={t} active={typeFilter === t} onClick={() => navigate(`/orders/${t}${clientIdParam ? `?clientId=${clientIdParam}` : ""}`)}>
-              <span className="mr-1">{ORDER_TYPE_EMOJI[t]}</span>{ORDER_TYPE_LABEL[t]}
-            </FilterChip>
-          ))}
-        </div>
-
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari judul / klien / status…" className="pl-10 h-11 text-sm" />
-        </div>
-
-        {loadingOrders && orders.length === 0 ? (
-          <div className="text-sm text-muted-foreground">Memuat…</div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border p-10 text-center">
-            <ShoppingBag className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">Belum ada order. Buat order baru untuk memulai.</p>
-            <Button className="mt-4" onClick={() => setAddOpen(true)}>
-              <Plus className="h-4 w-4 mr-1.5" /> Order Baru
-            </Button>
-          </div>
-        ) : (
-          <motion.div
-            className="space-y-2"
-            initial="hidden"
-            animate="visible"
-            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.042, delayChildren: 0.04 } } }}
-          >
-            {filtered.map((o) => (
-              <motion.div
-                key={o.id}
-                variants={{
-                  hidden: { opacity: 0, y: 8 },
-                  visible: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } },
-                }}
-                whileHover={{ y: -2, boxShadow: "0 8px 20px -6px rgba(0,0,0,0.09)" }}
-                whileTap={{ scale: 0.985 }}
-              >
-                <Link to={`/orders/detail/${o.id}`}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 hover:bg-secondary/40 hover:border-primary/20 transition-colors">
-                  <div className="min-w-0 flex items-center gap-3">
-                    <span className="text-2xl">{ORDER_TYPE_EMOJI[o.type]}</span>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-sm truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</div>
-                      <div className="text-[11.5px] text-muted-foreground truncate">
-                        {ORDER_TYPE_LABEL[o.type]}
-                        {o.clientId && clientNameById.get(o.clientId) && (
-                          <>
-                            {" · "}
-                            <span
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/clients/${o.clientId}`); }}
-                              className="hover:underline hover:text-primary cursor-pointer"
-                            >
-                              {clientNameById.get(o.clientId)}
-                            </span>
-                          </>
-                        )}
-                        {" · "}{o.status}
+          {/* ── Order List ── */}
+          {loadingOrders && orders.length === 0 ? (
+            <div className="space-y-2">
+              {[1,2,3,4,5].map(i => (
+                <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 animate-pulse flex items-center gap-4">
+                  <div className="h-11 w-11 rounded-xl bg-slate-100 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 bg-slate-100 rounded w-2/5" />
+                    <div className="h-3 bg-slate-100 rounded w-3/5" />
+                  </div>
+                  <div className="h-6 w-16 bg-slate-100 rounded-full shrink-0" />
+                  <div className="h-4 w-24 bg-slate-100 rounded shrink-0" />
+                </div>
+              ))}
+            </div>
+          ) : desktopFiltered.length === 0 ? (
+            <div className="bg-white rounded-xl border border-dashed border-slate-300 p-14 text-center">
+              <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-3">
+                <ShoppingBag className="h-6 w-6 text-blue-500" strokeWidth={1.8} />
+              </div>
+              <p className="text-[14px] font-bold text-slate-700">Belum ada order</p>
+              <p className="text-[12px] text-slate-400 mt-1">
+                {q ? "Tidak ada hasil untuk pencarian ini." : "Buat order baru untuk memulai."}
+              </p>
+              {!q && (
+                <button
+                  onClick={() => setAddOpen(true)}
+                  className="mt-4 inline-flex items-center gap-1.5 h-9 px-4 rounded-xl text-[12px] font-bold text-white"
+                  style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Order Baru
+                </button>
+              )}
+            </div>
+          ) : viewMode === "grid" ? (
+            <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+              {desktopFiltered.map((o) => {
+                const ps = derivePaymentStatus(o.paidAmount ?? 0, o.totalPrice, o.paymentStatus);
+                const tc = DESKTOP_TYPE_CONFIG[o.type] ?? DESKTOP_TYPE_CONFIG.umrah;
+                const clientName = o.clientId ? clientNameById.get(o.clientId) : null;
+                return (
+                  <Link key={o.id} to={`/orders/detail/${o.id}`}
+                    className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md hover:border-blue-200 transition-all flex flex-col gap-3">
+                    <div className="flex items-start justify-between">
+                      <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: tc.bg }}>
+                        <tc.Icon className="h-5 w-5" style={{ color: tc.color }} strokeWidth={1.8} />
                       </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    {(() => {
-                      const ps = derivePaymentStatus(o.paidAmount ?? 0, o.totalPrice, o.paymentStatus);
-                      return (
-                        <span className={cn("text-[9.5px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap", PAYMENT_STATUS_STYLE[ps])}>
-                          {PAYMENT_STATUS_EMOJI[ps]} {PAYMENT_STATUS_LABEL[ps]}
-                        </span>
-                      );
-                    })()}
-                    {user?.role !== "agent" && (!o.costPrice || o.costPrice === 0) && (
-                      <span className="inline-flex items-center gap-0.5 text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
-                        <AlertTriangle className="h-3 w-3" />HPP belum diisi
+                      <span className={cn("text-[9.5px] font-bold px-2 py-1 rounded-full border", PAYMENT_STATUS_STYLE[ps])}>
+                        {PAYMENT_STATUS_LABEL[ps]}
                       </span>
-                    )}
-                    <span className="text-sm font-mono font-semibold">{fmtOrderPrice(o.totalPrice, o.currency)}</span>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </motion.div>
+                    </div>
+                    <div>
+                      <p className="text-[12px] font-extrabold text-slate-800 leading-snug line-clamp-2">
+                        {o.title || `${tc.label}${clientName ? ` – ${clientName.toUpperCase()}` : ""}`}
+                      </p>
+                      <p className="text-[10.5px] font-mono text-slate-400 mt-1">{invNumbers.get(o.id)}</p>
+                    </div>
+                    <p className="text-[15px] font-black text-slate-800 tabular-nums mt-auto">{fmtOrderPrice(o.totalPrice, o.currency)}</p>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <motion.div
+              className="space-y-1.5"
+              initial="hidden"
+              animate="visible"
+              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.035, delayChildren: 0.02 } } }}
+            >
+              {desktopFiltered.map((o) => {
+                const ps = derivePaymentStatus(o.paidAmount ?? 0, o.totalPrice, o.paymentStatus);
+                const tc = DESKTOP_TYPE_CONFIG[o.type] ?? DESKTOP_TYPE_CONFIG.umrah;
+                const clientName = o.clientId ? clientNameById.get(o.clientId) : null;
+                const invNum = invNumbers.get(o.id) ?? "INV-…";
+                const dateStr = new Intl.DateTimeFormat("id-ID", { day:"numeric", month:"short", year:"numeric" }).format(new Date(o.createdAt));
+                const agentLabel = user?.displayName
+                  ? `${user.displayName} (${user.role === "owner" ? "Owner" : user.role === "staff" ? "Staff" : "Agen"})`
+                  : undefined;
+                return (
+                  <motion.div
+                    key={o.id}
+                    variants={{ hidden:{ opacity:0, y:6 }, visible:{ opacity:1, y:0, transition:{ duration:0.24, ease:[0.16,1,0.3,1] } } }}
+                    whileHover={{ y:-1 }}
+                  >
+                    <Link
+                      to={`/orders/detail/${o.id}`}
+                      className="flex items-center gap-4 bg-white rounded-xl border border-slate-200 px-4 py-3 hover:shadow-md hover:border-blue-200 transition-all group"
+                    >
+                      <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: tc.bg }}>
+                        <tc.Icon className="h-5 w-5" style={{ color: tc.color }} strokeWidth={1.8} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13.5px] font-extrabold text-slate-800 truncate leading-tight">
+                          {o.title || `${ORDER_TYPE_LABEL[o.type]}${clientName ? ` – ${clientName.toUpperCase()}` : ""}`}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                          <span className="font-mono">{invNum}</span>
+                          {" · "}{dateStr}
+                          {agentLabel && <>{" · "}<span className="text-slate-500 font-medium">{agentLabel}</span></>}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <span className={cn(
+                          "flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full",
+                          ps === "PAID"   ? "bg-emerald-50 text-emerald-700" :
+                          ps === "DP"     ? "bg-amber-50 text-amber-700" :
+                          ps === "UNPAID" ? "bg-red-50 text-red-600" :
+                                           "bg-gray-100 text-gray-600",
+                        )}>
+                          <span className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            ps === "PAID" ? "bg-emerald-500" : ps === "DP" ? "bg-amber-400" :
+                            ps === "UNPAID" ? "bg-red-500" : "bg-gray-400",
+                          )} />
+                          {PAYMENT_STATUS_LABEL[ps]}
+                        </span>
+                        <p className="text-[13.5px] font-black text-slate-800 tabular-nums w-[112px] text-right">
+                          {fmtOrderPrice(o.totalPrice, o.currency)}
+                        </p>
+                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-400 transition-colors" />
+                      </div>
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+        </motion.div>
+
+        {/* ─────────────── RIGHT PANEL ─────────────── */}
+        <div className="w-[276px] xl:w-[292px] shrink-0 space-y-4">
+
+          {/* Filter Order */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[13px] font-extrabold text-slate-800">Filter Order</h3>
+              <button
+                onClick={() => { setFilterStatus("all"); setFilterJenis("all"); setFilterDateFrom(""); setFilterRange("all"); }}
+                className="text-[11px] text-blue-600 font-semibold hover:text-blue-700 flex items-center gap-0.5"
+              >
+                <RotateCcw className="h-3 w-3" /> Reset
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1">Status</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full h-9 rounded-lg border border-slate-200 text-[12px] text-slate-700 bg-white px-3 pr-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all appearance-none cursor-pointer"
+                  style={{ backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`, backgroundRepeat:"no-repeat", backgroundPosition:"right 8px center", backgroundSize:"16px" }}
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="completed">Selesai / Lunas</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="pending">Draft / Pending</option>
+                  <option value="cancelled">Dibatalkan</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1">Jenis Order</label>
+                <select
+                  value={filterJenis}
+                  onChange={(e) => setFilterJenis(e.target.value)}
+                  className="w-full h-9 rounded-lg border border-slate-200 text-[12px] text-slate-700 bg-white px-3 pr-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all appearance-none cursor-pointer"
+                  style={{ backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`, backgroundRepeat:"no-repeat", backgroundPosition:"right 8px center", backgroundSize:"16px" }}
+                >
+                  <option value="all">Semua Jenis</option>
+                  <option value="umrah">Umrah & Haji</option>
+                  <option value="flight">Tiket Pesawat</option>
+                  <option value="visa_voa">Visa VOA</option>
+                  <option value="visa_student">Visa Pelajar</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1">Tanggal Order</label>
+                <div className="relative">
+                  <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={filterDateFrom}
+                    onChange={(e) => setFilterDateFrom(e.target.value)}
+                    className="w-full h-9 rounded-lg border border-slate-200 text-[12px] text-slate-700 bg-white pl-8 pr-2 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1">Rentang Nilai</label>
+                <select
+                  value={filterRange}
+                  onChange={(e) => setFilterRange(e.target.value)}
+                  className="w-full h-9 rounded-lg border border-slate-200 text-[12px] text-slate-700 bg-white px-3 pr-8 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all appearance-none cursor-pointer"
+                  style={{ backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`, backgroundRepeat:"no-repeat", backgroundPosition:"right 8px center", backgroundSize:"16px" }}
+                >
+                  <option value="all">Semua Nilai</option>
+                  <option value="under1m">Di bawah Rp 1 Jt</option>
+                  <option value="1m5m">Rp 1 Jt – Rp 5 Jt</option>
+                  <option value="above5m">Di atas Rp 5 Jt</option>
+                </select>
+              </div>
+              <button
+                className="w-full h-9 rounded-xl text-[12.5px] font-bold text-white transition-all hover:opacity-90 active:scale-95"
+                style={{ background:"linear-gradient(135deg,#2563eb,#1d4ed8)" }}
+              >
+                Terapkan Filter
+              </button>
+            </div>
+          </div>
+
+          {/* Statistik Order */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <h3 className="text-[13px] font-extrabold text-slate-800 mb-3">Statistik Order</h3>
+            {orders.length > 0 ? (
+              <div className="flex items-center gap-3">
+                <div className="shrink-0">
+                  <PieChart width={116} height={116}>
+                    <Pie
+                      data={[
+                        { value: completedCount || 0.01, color:"#10b981" },
+                        { value: confirmedCount || 0,    color:"#3b82f6" },
+                        { value: pendingCount   || 0,    color:"#f59e0b" },
+                        { value: cancelledCount || 0,    color:"#ef4444" },
+                      ]}
+                      cx={52} cy={52} innerRadius={30} outerRadius={50}
+                      paddingAngle={2} dataKey="value" stroke="none"
+                    >
+                      {["#10b981","#3b82f6","#f59e0b","#ef4444"].map((color, i) => (
+                        <Cell key={i} fill={color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </div>
+                <div className="flex-1 space-y-2 min-w-0">
+                  {[
+                    { label:"Completed",  value: completedCount, color:"#10b981" },
+                    { label:"Confirmed",  value: confirmedCount, color:"#3b82f6" },
+                    { label:"Pending",    value: pendingCount,   color:"#f59e0b" },
+                    { label:"Dibatalkan", value: cancelledCount, color:"#ef4444" },
+                  ].map((item) => {
+                    const pct = orders.length > 0 ? ((item.value / orders.length)*100).toFixed(1) : "0.0";
+                    return (
+                      <div key={item.label} className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                        <span className="text-[10.5px] text-slate-600 flex-1 truncate">{item.label}</span>
+                        <span className="text-[10.5px] font-bold text-slate-700 tabular-nums">{item.value}</span>
+                        <span className="text-[9.5px] text-slate-400 w-[38px]">({pct}%)</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <p className="text-[12px] text-slate-400 text-center py-4">Belum ada data</p>
+            )}
+          </div>
+
+          {/* Aktivitas Terbaru */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[13px] font-extrabold text-slate-800">Aktivitas Terbaru</h3>
+              <button onClick={() => navigate("/orders")} className="text-[11px] text-blue-600 font-semibold hover:text-blue-700">
+                Lihat Semua
+              </button>
+            </div>
+            {recentActivity.length === 0 ? (
+              <p className="text-[12px] text-slate-400 py-2">Belum ada aktivitas.</p>
+            ) : (
+              <div className="space-y-2">
+                {recentActivity.map((o) => {
+                  const ps = derivePaymentStatus(o.paidAmount ?? 0, o.totalPrice, o.paymentStatus);
+                  const isPaid = ps === "PAID";
+                  const invNum = invNumbers.get(o.id) ?? o.id.slice(0,12);
+                  const diff = Date.now() - new Date(o.updatedAt ?? o.createdAt).getTime();
+                  const mins = Math.floor(diff / 60000);
+                  const rel = mins < 1 ? "Baru saja"
+                    : mins < 60   ? `${mins} menit yang lalu`
+                    : mins < 1440 ? `${Math.floor(mins/60)} jam yang lalu`
+                    : `${Math.floor(mins/1440)} hari yang lalu`;
+                  return (
+                    <Link key={o.id} to={`/orders/detail/${o.id}`}
+                      className="flex items-start gap-2.5 hover:bg-slate-50 rounded-lg p-1.5 -mx-1.5 transition-colors">
+                      <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5", isPaid ? "bg-emerald-50" : "bg-blue-50")}>
+                        {isPaid
+                          ? <CreditCard  className="h-3.5 w-3.5 text-emerald-600" strokeWidth={1.8} />
+                          : <ShoppingBag className="h-3.5 w-3.5 text-blue-600"    strokeWidth={1.8} />
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11.5px] font-bold text-slate-700 leading-tight">
+                          {isPaid ? "Pembayaran diterima" : "Order baru dibuat"}
+                        </p>
+                        <p className="text-[10px] font-mono text-slate-400 mt-0.5">{invNum}</p>
+                      </div>
+                      <p className="text-[10px] text-slate-400 shrink-0 mt-0.5 whitespace-nowrap">{rel}</p>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* ── Dialog (shared) ── */}
       <NewOrderDialog
@@ -695,6 +1093,13 @@ export default function Orders() {
     </>
   );
 }
+
+const DESKTOP_TYPE_CONFIG: Record<string, { label: string; Icon: React.ComponentType<{ className?: string; style?: React.CSSProperties; strokeWidth?: number }>; bg: string; color: string }> = {
+  umrah:        { label: "Umrah & Haji",  Icon: Package,        bg: "#f5f3ff", color: "#8b5cf6" },
+  flight:       { label: "Tiket Pesawat", Icon: Plane,           bg: "#eff6ff", color: "#2563eb" },
+  visa_voa:     { label: "Visa VOA",      Icon: FileText,        bg: "#ecfdf5", color: "#10b981" },
+  visa_student: { label: "Visa Pelajar",  Icon: GraduationCap,  bg: "#fffbeb", color: "#f59e0b" },
+};
 
 function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
