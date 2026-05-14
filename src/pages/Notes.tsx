@@ -6,6 +6,8 @@ import {
   Briefcase, MessageCircle, Megaphone, Zap, ClipboardList, Feather, Send,
   List, CheckSquare, HelpCircle, LayoutGrid, Bell, AlignJustify, Plane,
   FileText, Eye, Code, RotateCcw,
+  ArrowLeft, SlidersHorizontal, ChevronRight, TrendingUp,
+  Package, Users, Lightbulb, Wallet, MoreVertical, History,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -218,6 +220,11 @@ export default function Notes() {
   // Gate: jangan push ke cloud sampai initial pull selesai. Tanpa ini,
   // first effect run akan kirim local empty + delete semua note di cloud.
   const pulledRef = useRef(!isSupabaseConfigured());
+
+  // ── Mobile-only UI state ─────────────────────────────────────────────────
+  const [showMobileFilter, setShowMobileFilter] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [mobileMoreMenu, setMobileMoreMenu] = useState<string | null>(null);
 
   // ── AITEM context wiring ─────────────────────────────────────────────────
   const { setPageContext, setActiveItem, setOnApplyEdit, setPageData, clearContext } = useAIContextStore();
@@ -577,7 +584,565 @@ export default function Notes() {
     }).format(new Date(ts));
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-4 md:space-y-5 px-4 sm:px-6 pb-10">
+    <>
+    {/* ══════════════════════════════════════════════════════════
+        MOBILE LAYOUT — md:hidden
+    ══════════════════════════════════════════════════════════ */}
+    <div className="md:hidden min-h-screen bg-[#F0F4FB] pb-28">
+
+      {/* ── TOP HEADER ── */}
+      <div className="bg-white px-4 pt-12 pb-4 shadow-sm">
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => window.history.back()}
+              className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+            </button>
+            <div>
+              <h1 className="text-[22px] font-extrabold text-[#0f1c3f] leading-tight">Catatan</h1>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5 max-w-[200px]">Simpan catatan penting, ide, info paket, dan hal yang perlu diingat.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 mt-1">
+            <button
+              onClick={() => setShowHistory(true)}
+              className="h-9 px-3 rounded-2xl bg-[#F0F4FB] flex items-center gap-1.5 text-[11px] font-bold text-[#0f1c3f] active:opacity-60 transition-opacity"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <History className="h-3.5 w-3.5" strokeWidth={2} />
+              Riwayat
+            </button>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="h-9 w-9 rounded-2xl flex items-center justify-center text-white shadow-sm active:opacity-80 transition-opacity"
+              style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+            </button>
+          </div>
+        </div>
+
+        {/* Search row */}
+        <div className="flex items-center gap-2 mt-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari catatan atau kata kunci…"
+              className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-[#F0F4FB] border border-transparent text-[#0f1c3f] placeholder-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all"
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-300/40 flex items-center justify-center active:opacity-60">
+                <X className="h-3 w-3 text-slate-500" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setShowMobileFilter((s) => !s)}
+            className={cn(
+              "h-11 px-3 rounded-2xl flex items-center gap-1.5 text-[11px] font-bold transition-all active:opacity-60 shrink-0",
+              showMobileFilter || filterTag !== null ? "bg-[#0066FF] text-white" : "bg-[#F0F4FB] text-[#0f1c3f]"
+            )}
+            style={{ WebkitTapHighlightColor: "transparent" }}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} />
+            Filter
+            {filterTag !== null && (
+              <span className="h-4 w-4 rounded-full bg-white text-[#0066FF] text-[9px] font-black flex items-center justify-center">1</span>
+            )}
+          </button>
+        </div>
+
+        {/* Filter panel */}
+        <AnimatePresence>
+          {showMobileFilter && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Filter Tag</p>
+                  {filterTag && (
+                    <button onClick={() => setFilterTag(null)} className="text-[11px] text-[#0066FF] font-semibold active:opacity-60">
+                      Reset Filter
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setFilterTag(null)}
+                    className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95", filterTag === null ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                  >
+                    Semua
+                  </button>
+                  {allTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => setFilterTag(filterTag === tag ? null : tag)}
+                      className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95 flex items-center gap-1", filterTag === tag ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
+                      style={{ WebkitTapHighlightColor: "transparent" }}
+                    >
+                      <Hash className="h-3 w-3" strokeWidth={2} />
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Urutkan</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {([
+                      { value: "newest", label: "Terbaru" },
+                      { value: "oldest", label: "Terlama" },
+                      { value: "az", label: "A–Z" },
+                    ] as { value: SortMode; label: string }[]).map((s) => (
+                      <button
+                        key={s.value}
+                        onClick={() => setSortMode(s.value)}
+                        className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95", sortMode === s.value ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
+                        style={{ WebkitTapHighlightColor: "transparent" }}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ── CATEGORY TABS ── */}
+      <div className="bg-white mt-px px-4 pb-3 shadow-sm">
+        <div className="flex gap-2 overflow-x-auto scrollbar-none pt-3">
+          {([
+            { id: null, label: "Semua" },
+            { id: "paket", label: "Paket" },
+            { id: "klien", label: "Klien" },
+            { id: "ide", label: "Ide" },
+            { id: "keuangan", label: "Keuangan" },
+            { id: "lainnya", label: "Lainnya" },
+          ] as { id: string | null; label: string }[]).map((cat) => {
+            const count = cat.id === null ? notes.length : notes.filter((n) => (n.tags ?? []).includes(cat.id!)).length;
+            const active = filterTag === cat.id;
+            return (
+              <button
+                key={String(cat.id)}
+                onClick={() => setFilterTag(cat.id)}
+                className={cn(
+                  "shrink-0 h-9 px-4 rounded-full text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95",
+                  active ? "text-white shadow-md" : "bg-[#F0F4FB] text-slate-500"
+                )}
+                style={active ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
+              >
+                {cat.label}
+                <span className={cn("text-[9px] font-extrabold px-1.5 py-0.5 rounded-full", active ? "bg-white/25 text-white" : "bg-slate-200 text-slate-500")}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── CONTENT AREA ── */}
+      <div className="px-4 pt-5 space-y-5">
+
+        {/* ── STATS CARD ── */}
+        <div className="bg-white rounded-3xl px-5 py-4 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Ringkasan Catatan</h3>
+            <span className="text-[11px] text-slate-400 font-medium">
+              {new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date())}
+            </span>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: "Total", value: notes.length, iconBg: "#dbeafe", color: "#0066FF" },
+              { label: "Aktif", value: notes.length, iconBg: "#d1fae5", color: "#10b981" },
+              { label: "Berbintang", value: notes.filter((n) => n.pinned).length, iconBg: "#fef3c7", color: "#f59e0b" },
+              { label: "Tersimpan", value: 0, iconBg: "#fee2e2", color: "#ef4444" },
+            ].map((stat, i) => (
+              <div key={i} className="flex flex-col items-center gap-1.5">
+                <div className="h-9 w-9 rounded-2xl flex items-center justify-center" style={{ backgroundColor: stat.iconBg }}>
+                  <StickyNote className="h-4 w-4" style={{ color: stat.color }} strokeWidth={1.8} />
+                </div>
+                <p className="text-[22px] font-black text-[#0f1c3f] tabular-nums leading-none">{stat.value}</p>
+                <p className="text-[9px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide">{stat.label}</p>
+                <div className="flex items-center gap-0.5">
+                  <TrendingUp className="h-2.5 w-2.5 text-emerald-400" strokeWidth={2.5} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── DAFTAR CATATAN ── */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Daftar Catatan</h3>
+            <button
+              onClick={() => setSortMode((s) => s === "newest" ? "oldest" : s === "oldest" ? "az" : "newest")}
+              className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 active:opacity-60"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              Urutkan: {sortMode === "newest" ? "Terbaru" : sortMode === "oldest" ? "Terlama" : "A–Z"}
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* Empty state */}
+          {filtered.length === 0 && (
+            <div className="bg-white rounded-3xl p-8 text-center shadow-sm">
+              <StickyNote className="h-10 w-10 mx-auto mb-3 opacity-20 text-slate-400" />
+              <p className="text-[13px] font-semibold text-slate-400">
+                {search || filterTag ? "Catatan tidak ditemukan" : "Belum ada catatan"}
+              </p>
+              {!search && !filterTag && (
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="mt-3 text-[12px] text-[#0066FF] font-bold active:opacity-60"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  + Tambah catatan pertama
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {filtered.map((note) => {
+              const primaryTag = (note.tags ?? [])[0];
+              const tagIconMap: Record<string, React.ReactNode> = {
+                paket:    <Package   className="h-5 w-5" style={{ color: "#0066FF" }} strokeWidth={1.6} />,
+                klien:    <Users     className="h-5 w-5" style={{ color: "#10b981" }} strokeWidth={1.6} />,
+                ide:      <Lightbulb className="h-5 w-5" style={{ color: "#f59e0b" }} strokeWidth={1.6} />,
+                keuangan: <Wallet    className="h-5 w-5" style={{ color: "#8b5cf6" }} strokeWidth={1.6} />,
+                lainnya:  <Plane     className="h-5 w-5" style={{ color: "#ec4899" }} strokeWidth={1.6} />,
+              };
+              const tagBgMap: Record<string, string> = {
+                paket: "#dbeafe", klien: "#d1fae5", ide: "#fef3c7", keuangan: "#ede9fe", lainnya: "#fce7f3",
+              };
+              const iconEl = tagIconMap[primaryTag ?? ""] ?? <StickyNote className="h-5 w-5 text-slate-400" strokeWidth={1.6} />;
+              const iconBg = tagBgMap[primaryTag ?? ""] ?? "#f1f5f9";
+
+              const relTime = (() => {
+                const diff = Date.now() - note.updatedAt;
+                const mins = Math.floor(diff / 60000);
+                const hrs  = Math.floor(diff / 3600000);
+                const days = Math.floor(diff / 86400000);
+                if (mins < 1)  return "Baru saja";
+                if (hrs  < 1)  return `${mins} mnt lalu`;
+                if (days < 1)  return `${hrs} jam lalu`;
+                if (days === 1) return "Kemarin";
+                if (days < 7)  return `${days} hari lalu`;
+                return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short" }).format(new Date(note.updatedAt));
+              })();
+
+              return (
+                <div key={note.id} className="bg-white rounded-3xl p-4 shadow-sm relative">
+                  <div className="flex items-start gap-3">
+                    {/* Tag icon */}
+                    <div className="h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: iconBg }}>
+                      {iconEl}
+                    </div>
+                    {/* Body — clickable to expand */}
+                    <div className="flex-1 min-w-0" onClick={() => setExpandedNote(note)}>
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            {note.pinned && <Pin className="h-3 w-3 text-amber-400 fill-amber-400 rotate-45 shrink-0" />}
+                            <h3 className="text-[14px] font-extrabold text-[#0f1c3f] leading-tight truncate">{note.title}</h3>
+                          </div>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            {primaryTag && (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#F0F4FB] text-slate-500 uppercase tracking-wide">
+                                {primaryTag}
+                              </span>
+                            )}
+                            <span className="text-[9px] text-slate-400">Dibuat oleh Anda</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-medium shrink-0">{relTime}</span>
+                      </div>
+                      {note.content && (
+                        <p className="text-[12px] text-slate-500 leading-relaxed line-clamp-2">
+                          {markdownToPlainText(note.content)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[10px] text-slate-400 shrink-0">
+                        {new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(note.updatedAt))}
+                      </span>
+                      {note.content && (
+                        <span className="text-[10px] text-slate-400 shrink-0">· {wordCount(note.content)} kata</span>
+                      )}
+                      {(note.tags ?? []).length > 0 && (
+                        <span className="text-[10px] text-slate-400 shrink-0">· {(note.tags ?? []).length} tag</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {/* Pin/star toggle */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); togglePin(note.id); }}
+                        className={cn("h-7 w-7 rounded-xl flex items-center justify-center transition-all active:scale-90", note.pinned ? "bg-amber-50 text-amber-400" : "text-slate-300 hover:bg-slate-50 hover:text-slate-400")}
+                        style={{ WebkitTapHighlightColor: "transparent" }}
+                      >
+                        <Pin className={cn("h-3.5 w-3.5", note.pinned && "fill-amber-400 rotate-45")} strokeWidth={2} />
+                      </button>
+                      {/* More menu */}
+                      <div className="relative">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setMobileMoreMenu(mobileMoreMenu === note.id ? null : note.id); }}
+                          className="h-7 w-7 rounded-xl flex items-center justify-center text-slate-300 hover:bg-slate-50 hover:text-slate-500 transition-all active:scale-90"
+                          style={{ WebkitTapHighlightColor: "transparent" }}
+                        >
+                          <MoreVertical className="h-3.5 w-3.5" strokeWidth={2} />
+                        </button>
+                        {mobileMoreMenu === note.id && (
+                          <div className="absolute right-0 bottom-8 z-20 bg-white rounded-2xl shadow-xl border border-slate-100 py-1 min-w-[150px]" onClick={(e) => e.stopPropagation()}>
+                            <button onClick={() => { startEdit(note); setExpandedNote(null); setMobileMoreMenu(null); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-semibold text-slate-700 hover:bg-[#F0F4FB] transition-colors">
+                              <Edit3 className="h-3.5 w-3.5 text-sky-500" /> Edit
+                            </button>
+                            <button onClick={() => { copyNote(note); setMobileMoreMenu(null); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-semibold text-slate-700 hover:bg-[#F0F4FB] transition-colors">
+                              <Copy className="h-3.5 w-3.5 text-slate-400" /> Salin Markdown
+                            </button>
+                            <button onClick={() => { copyNotePlain(note); setMobileMoreMenu(null); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-semibold text-slate-700 hover:bg-[#F0F4FB] transition-colors">
+                              <ClipboardCheck className="h-3.5 w-3.5 text-green-500" /> Salin Teks Biasa
+                            </button>
+                            {note.content.trim() && (
+                              <button onClick={() => { openRapihkanPicker(note.id, note.content); setMobileMoreMenu(null); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-semibold text-slate-700 hover:bg-[#F0F4FB] transition-colors">
+                                <Sparkles className="h-3.5 w-3.5 text-sky-400" /> Rapihkan AI
+                              </button>
+                            )}
+                            <div className="mx-3 border-t border-slate-100 my-1" />
+                            <button onClick={() => { deleteNote(note.id); setMobileMoreMenu(null); }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-semibold text-red-500 hover:bg-red-50 transition-colors">
+                              <Trash2 className="h-3.5 w-3.5" /> Hapus
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── KATEGORI CATATAN SECTION ── */}
+        {allTags.length > 0 && (
+          <div>
+            <h3 className="text-[15px] font-extrabold text-[#0f1c3f] mb-3">Kategori Catatan</h3>
+            <div className="flex gap-3 overflow-x-auto scrollbar-none pb-1">
+              {allTags.map((tag) => {
+                const count = notes.filter((n) => (n.tags ?? []).includes(tag)).length;
+                return (
+                  <button
+                    key={tag}
+                    onClick={() => setFilterTag(filterTag === tag ? null : tag)}
+                    className={cn("shrink-0 bg-white rounded-2xl px-4 py-3 shadow-sm flex items-center gap-2 transition-all active:scale-95", filterTag === tag ? "ring-2 ring-[#0066FF]" : "")}
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                  >
+                    <Hash className={cn("h-4 w-4 shrink-0", filterTag === tag ? "text-[#0066FF]" : "text-slate-400")} strokeWidth={2} />
+                    <div className="text-left">
+                      <p className={cn("text-[12px] font-bold capitalize", filterTag === tag ? "text-[#0066FF]" : "text-[#0f1c3f]")}>{tag}</p>
+                      <p className="text-[10px] text-slate-400">{count} catatan</p>
+                    </div>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-300 ml-1 shrink-0" strokeWidth={2} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+      </div>{/* end content area */}
+
+      {/* ── ADD NOTE BOTTOM SHEET ── */}
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-end justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setShowAddForm(false)} />
+            <motion.div
+              className="relative w-full bg-white rounded-t-3xl shadow-2xl"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 380, damping: 38 }}
+            >
+              <div className="flex justify-center pt-3 pb-1 shrink-0">
+                <div className="w-10 h-1 rounded-full bg-slate-300" />
+              </div>
+              <div className="px-5 pb-3 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <h2 className="text-[16px] font-extrabold text-[#0f1c3f]">Catatan Baru</h2>
+                <div className="flex items-center gap-2">
+                  <AIModelToggle feature="notes" />
+                  <button onClick={() => setShowAddForm(false)} className="h-8 w-8 rounded-xl bg-[#F0F4FB] flex items-center justify-center active:opacity-70">
+                    <X className="h-4 w-4 text-slate-500" />
+                  </button>
+                </div>
+              </div>
+              <div className="px-5 py-4 space-y-3 max-h-[70vh] overflow-y-auto">
+                <Input
+                  placeholder="Judul catatan"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="h-11 text-[14px] font-semibold rounded-xl bg-[#F0F4FB] border-transparent focus:ring-2 focus:ring-sky-200"
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === "Enter") textareaRef.current?.focus(); }}
+                />
+                <div className="relative">
+                  <Textarea
+                    ref={textareaRef}
+                    placeholder="Tulis catatan di sini…"
+                    value={newContent}
+                    onChange={(e) => setNewContent(e.target.value)}
+                    rows={5}
+                    className="text-[13px] rounded-xl bg-[#F0F4FB] border-transparent focus:ring-2 focus:ring-sky-200 resize-none pr-10"
+                    onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) addNote(); }}
+                  />
+                  {newContent.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => openRapihkanPicker("new", newContent)}
+                      disabled={formatting === "new"}
+                      className="absolute right-2 top-2 p-1.5 rounded-lg text-sky-400 hover:text-sky-600 hover:bg-sky-100 transition-colors"
+                    >
+                      <Sparkles className={cn("h-4 w-4", formatting === "new" && "animate-pulse")} />
+                    </button>
+                  )}
+                </div>
+                {newContent && (
+                  <p className="text-[10px] text-slate-400">{wordCount(newContent)} kata · {newContent.length} karakter</p>
+                )}
+                {/* Tags */}
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  {newTags.map((tag) => (
+                    <span key={tag} className="flex items-center gap-1 bg-sky-100 text-sky-700 text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                      #{tag}
+                      <button onClick={() => removeTag(tag, true)} className="text-sky-400"><X className="h-3 w-3" /></button>
+                    </span>
+                  ))}
+                  <div className="flex items-center gap-1 bg-[#F0F4FB] px-2.5 py-1 rounded-full">
+                    <Hash className="h-3 w-3 text-sky-400" />
+                    <input
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => { if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) { e.preventDefault(); addTag(tagInput, true); } }}
+                      placeholder="Tambah tag"
+                      className="h-5 w-24 text-[11px] border-0 bg-transparent shadow-none p-0 focus:outline-none text-slate-700 placeholder:text-slate-400"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1 pb-2">
+                  <button
+                    onClick={() => setShowAddForm(false)}
+                    className="flex-1 h-11 rounded-2xl bg-[#F0F4FB] text-[13px] font-bold text-slate-600 active:opacity-70 transition-opacity"
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={addNote}
+                    className="flex-1 h-11 rounded-2xl text-[13px] font-bold text-white shadow-sm active:opacity-80 transition-opacity flex items-center justify-center gap-2"
+                    style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+                  >
+                    <Plus className="h-4 w-4" strokeWidth={2.5} />
+                    Simpan Catatan
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── RIWAYAT BOTTOM SHEET ── */}
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-end justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setShowHistory(false)} />
+            <motion.div
+              className="relative w-full bg-white rounded-t-3xl shadow-2xl max-h-[70vh] flex flex-col"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 380, damping: 38 }}
+            >
+              <div className="flex justify-center pt-3 pb-1 shrink-0">
+                <div className="w-10 h-1 rounded-full bg-slate-300" />
+              </div>
+              <div className="px-5 pb-3 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <h2 className="text-[16px] font-extrabold text-[#0f1c3f]">Riwayat Catatan</h2>
+                <button onClick={() => setShowHistory(false)} className="h-8 w-8 rounded-xl bg-[#F0F4FB] flex items-center justify-center active:opacity-70">
+                  <X className="h-4 w-4 text-slate-500" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+                {[...notes].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 10).map((note) => (
+                  <button
+                    key={note.id}
+                    onClick={() => { setExpandedNote(note); setShowHistory(false); }}
+                    className="w-full flex items-center gap-3 bg-[#F0F4FB] rounded-2xl px-4 py-3 active:opacity-70 transition-opacity text-left"
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                  >
+                    <StickyNote className="h-4 w-4 text-[#0066FF] shrink-0" strokeWidth={1.8} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-bold text-[#0f1c3f] truncate">{note.title}</p>
+                      <p className="text-[11px] text-slate-400">
+                        {new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(note.updatedAt))}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" strokeWidth={2} />
+                  </button>
+                ))}
+                {notes.length === 0 && (
+                  <div className="text-center py-8 text-slate-400 text-[13px]">Belum ada catatan</div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Backdrop to close more menu on tap outside */}
+      {mobileMoreMenu && (
+        <div className="fixed inset-0 z-[9]" onClick={() => setMobileMoreMenu(null)} />
+      )}
+
+    </div>{/* end md:hidden */}
+
+    {/* ══════════════════════════════════════════════════════════
+        DESKTOP LAYOUT — hidden md:block
+    ══════════════════════════════════════════════════════════ */}
+    <div className="hidden md:block max-w-[1400px] mx-auto space-y-4 md:space-y-5 px-4 sm:px-6 pb-10">
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -1493,6 +2058,7 @@ export default function Notes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div>{/* end hidden md:block desktop layout */}
+    </>{/* end fragment */}
   );
 }

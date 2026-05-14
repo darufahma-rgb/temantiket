@@ -1,0 +1,182 @@
+Ubah desain mobile halaman Caption Generator agar seragam dengan mobile Dashboard, Order Hub, Klien & Jamaah, Harga Tiket, Itinerary, Calculator, Paket & Trip, dan BC Templates native-app style.
+
+Target utama:
+- Cari file halaman Caption Generator di repo, kemungkinan route /caption, /caption-generator, /marketing, atau komponen terkait caption.
+- Refactor mobile layout saja dengan md:hidden.
+- Desktop layout jangan dirusak.
+- Pertahankan semua logic existing:
+  - generate caption dengan AI
+  - form input caption
+  - pilihan platform
+  - tone/gaya
+  - target audiens
+  - panjang caption
+  - package-specific caption
+  - hasil caption
+  - copy/edit/save/gunakan caption
+  - riwayat caption jika sudah ada
+  - prompt/template existing
+
+Desain mobile harus mengikuti referensi:
+- background putih kebiruan / soft blue
+- card putih rounded besar
+- shadow lembut
+- typography navy tebal
+- spacing lega
+- gradient primary blue
+- bottom nav floating konsisten
+
+Struktur mobile Caption Generator:
+
+1. Header mobile:
+- tombol back kiri rounded square putih
+- title besar: “Caption Generator”
+- subtitle:
+  “Buat caption promosi menarik untuk paket Umroh, Haji & Trip dalam hitungan detik dengan AI.”
+- tombol kanan “Riwayat Caption” dengan icon history/refresh
+- safe-area top
+- jangan pakai header lama kecil
+
+2. Hero card biru:
+- gradient biru besar rounded
+- title kecil: “AI Marketing Assistant”
+- headline:
+  “Caption Menarik, Penjualan Meningkat ✨”
+- deskripsi:
+  “AI kami membantu Anda membuat caption promosi yang persuasif, relevan, dan siap posting.”
+- tombol putih:
+  “Buat Caption Baru”
+- visual AI/text/chat illustration boleh pakai gradient + lucide icons kalau belum ada asset
+- tombol scroll/focus ke form generator
+
+3. Stats cards:
+Tambahkan 4 stat cards:
+- Caption Dibuat
+- Digunakan
+- Disimpan
+- Dilihat
+
+Style:
+- white rounded card
+- pastel icon
+- angka besar navy
+- trend hijau
+- text “vs bulan lalu”
+
+Fallback data:
+- kalau belum ada analytics, pakai count dari local history / saved captions
+- fallback 0, jangan hardcode angka besar di production
+
+4. Card “Buat Caption Baru”:
+Buat form generator premium seperti referensi.
+
+Fields:
+- Jenis Konten
+  contoh: Promosi Paket, Reminder Keberangkatan, Testimoni, Info Visa, Promo Tiket
+- Platform
+  pilihan icon:
+  Instagram, WhatsApp, Facebook, TikTok
+- Bahasa
+  Bahasa Indonesia / English / Arabic jika existing support
+- Produk / Paket
+  dropdown package existing jika ada
+- Tone / Gaya
+  Persuasif, Friendly, Premium, Islami, Urgent, Profesional
+- Target Audiens
+  Umum, Jamaah Umroh, Orang Tua, Mahasiswa, Agen, Keluarga
+- Highlight / Keunggulan opsional
+  textarea/input dengan counter 0/200
+- Panjang Caption:
+  Pendek 1-2 kalimat
+  Sedang 3-5 kalimat
+  Panjang 6-8 kalimat
+
+Tambahkan tab kecil:
+- Umum
+- Spesifik Paket
+
+Tombol utama:
+- “Generate Caption”
+- gradient biru
+- loading state saat AI proses
+
+Gunakan logic generator existing, jangan ganti core prompt AI kecuali perlu adaptasi field.
+
+5. Card “Hasil Caption”:
+Jika hasil sudah ada:
+- tampilkan caption card besar
+- kiri text caption
+- kanan gambar paket/thumbnail jika ada
+- tombol star/favorite
+- badge:
+  - Skor Relevansi
+  - Tone
+  - waktu generate
+- action buttons:
+  - Salin
+  - Edit
+  - Simpan
+  - Gunakan Caption
+
+Gunakan function existing:
+- copy to clipboard
+- save caption
+- edit caption
+- apply/use caption
+Jika belum ada hasil, tampilkan empty state premium.
+
+6. Section “Inspirasi Cepat”:
+Tambahkan quick inspiration cards:
+- Promo Spesial
+- Testimoni Jamaah
+- Fasilitas Paket
+- Reminder Keberangkatan
+
+Style:
+- white rounded cards
+- pastel icon
+- title + subtitle
+- klik card mengisi form dengan template/preset
+- kalau belum ada action, toast “Segera hadir”
+
+7. Riwayat Caption:
+Tombol “Riwayat Caption” membuka bottom sheet/modal mobile-friendly:
+- list caption history
+- bisa copy ulang
+- bisa hapus dari history
+- bisa load ke editor
+Gunakan localStorage/history existing jika ada.
+Jika belum ada, buat localStorage ringan:
+temantiket.caption.history.v1
+
+8. Bottom nav:
+Gunakan bottom nav floating yang sama dengan halaman lain:
+- Dashboard
+- Order
+- Plus tengah
+- Klien
+- Lainnya
+Jangan duplicate jika sudah dari DashboardLayout.
+Pastikan content tidak ketutup bottom nav.
+
+9. Performance:
+- jangan blank screen
+- loading hanya saat generate
+- hasil terakhir tetap tampil setelah generate
+- no horizontal overflow
+- input nyaman di mobile
+- keyboard tidak merusak layout
+- safe-area top/bottom support
+
+10. Compatibility:
+- jangan ubah auth
+- jangan ubah Supabase schema
+- jangan ubah routing
+- jangan membuat API Vercel baru
+- jangan rusak desktop layout
+- jangan hapus logic AI existing
+- jangan expose API key di frontend jika sebelumnya server-side
+- pastikan npm run build berhasil
+
+Expected result:
+Saat user buka halaman Caption Generator di mobile, layout harus sangat mirip referensi: header besar, hero AI marketing card, stats cards, form generator premium, hasil caption card, inspirasi cepat, riwayat caption, dan bottom nav konsisten dengan dashboard.

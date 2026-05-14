@@ -1,0 +1,114 @@
+Ubah desain mobile halaman Visa Tracker agar seragam dengan mobile Dashboard, Order Hub, Klien & Jamaah, Harga Tiket, Itinerary, Calculator, Paket & Trip, BC Templates, Caption Generator, dan Catatan native-app style.
+
+Target:
+- Cari file halaman Visa Tracker di repo, kemungkinan route /visa-tracker, /visa, /visas, atau komponen terkait visa tracking.
+- Refactor mobile layout saja dengan md:hidden.
+- Desktop layout jangan dirusak.
+- Pertahankan semua logic existing: list visa, status update, detail, create pengajuan, filter, search, dokumen, reminder, dan history.
+
+Desain mobile:
+- background putih kebiruan
+- cards putih rounded besar
+- shadow lembut
+- typography navy tebal
+- gradient primary blue
+- bottom nav floating konsisten
+
+Struktur mobile Visa Tracker:
+
+1. Header:
+- tombol back kiri rounded square putih
+- title besar: “Visa Tracker”
+- subtitle: “Pantau semua pengajuan visa Anda dalam satu tempat secara mudah.”
+- tombol kanan “Riwayat”
+- tombol biru “+ Pengajuan Visa”
+- safe-area top
+
+2. Stats cards:
+Buat 4 cards:
+- Total Pengajuan
+- Sedang Diproses
+- Disetujui
+- Ditolak
+
+Gunakan data asli visa applications.
+Fallback 0 kalau data belum ada.
+Style icon pastel, angka besar, trend kecil.
+
+3. Search + filter:
+- search bar:
+  “Cari nama pemohon, negara tujuan, atau nomor paspor…”
+- tombol Filter
+- dropdown “Urutkan: Terbaru”
+
+4. Status tabs:
+- Semua
+- Sedang Diproses
+- Disetujui
+- Ditolak
+- Draft
+
+Tab aktif border/blue.
+Count badge berdasarkan data asli.
+
+5. Visa application cards:
+Setiap card berisi:
+- avatar initials kiri
+- nama pemohon besar
+- negara + jenis visa
+- tanggal diajukan
+- nomor paspor
+- status badge kanan
+- ref number
+- estimasi/disetujui/ditolak/terakhir diubah
+- progress timeline 4 step:
+  Diajukan → Sedang Diproses → Dokumen → Keputusan
+- tombol “Lihat Detail”
+- menu titik tiga
+
+Status color:
+- process orange/blue
+- approved green
+- rejected red
+- draft gray
+
+Klik card atau tombol detail membuka detail existing.
+
+6. Pagination:
+Tambahkan pagination mobile:
+- prev
+- angka halaman
+- next
+Reset ke page 1 saat search/filter berubah.
+
+7. Aksi Cepat:
+Tambahkan 4 cards:
+- Pengajuan Baru
+- Cek Status Visa
+- Dokumen Saya
+- Pengingat
+
+Action:
+- Pengajuan Baru → create flow existing
+- Cek Status Visa → search/filter ref
+- Dokumen Saya → dokumen visa existing jika ada
+- Pengingat → reminder existing atau toast “Segera hadir”
+
+8. Bottom nav:
+Gunakan bottom nav floating yang sama dengan halaman lain.
+Jangan duplicate jika sudah dari DashboardLayout.
+Pastikan content tidak ketutup bottom nav.
+
+Rules:
+- Jangan ubah auth.
+- Jangan ubah Supabase schema.
+- Jangan ubah routing.
+- Jangan membuat API Vercel baru.
+- Jangan rusak desktop layout.
+- Jangan hapus logic existing.
+- No horizontal overflow.
+- Skeleton hanya first load.
+- npm run build harus berhasil.
+
+Expected result:
+Saat user buka Visa Tracker di mobile, tampilannya mirip referensi: header besar, stats cards, search/filter, status tabs, visa cards dengan progress timeline, pagination, quick actions, dan bottom nav konsisten.

@@ -1,0 +1,97 @@
+Ubah desain mobile halaman Manajemen Agent agar seragam dengan native-app style halaman Dashboard.
+
+Target:
+- Cari file halaman agent management di repo.
+- Kemungkinan terkait route /agents, /members, /team, /staff, atau listMembers.
+- Refactor mobile layout saja dengan md:hidden.
+- Desktop jangan dirusak.
+- Pertahankan logic existing: list agent, tambah agent, edit, role, performa, aktivitas, profile/detail agent.
+
+Struktur mobile:
+
+1. Header:
+- tombol back kiri rounded square putih
+- title “Manajemen Agent”
+- subtitle “Kelola data agent, hak akses, performa, dan aktivitas dalam satu tempat.”
+- tombol “Riwayat Aktivitas”
+- tombol biru “+ Tambah Agent”
+
+2. Stats cards:
+- Total Agent
+- Aktif
+- Nonaktif
+- Role
+- Performa Baik
+
+Gunakan data asli member/agent.
+Fallback 0 jika kosong.
+
+3. Search/filter:
+- search: “Cari nama agent, email, atau no. HP…”
+- tombol Filter
+- dropdown Role: Semua
+- dropdown Urutkan: Terbaru
+
+4. Role tabs:
+- Semua
+- Admin
+- Manager
+- Agent
+- Viewer
+
+Tiap tab ada count.
+
+5. Agent list cards:
+Setiap card:
+- avatar initials kiri + online dot
+- nama agent
+- role badge
+- email
+- phone
+- tanggal bergabung
+- performa badge
+- rating bintang
+- transaksi count
+- penjualan total
+- action buttons:
+  - lihat detail
+  - edit
+  - more menu
+
+Klik card/detail masuk ke profile agent existing.
+
+6. Pagination:
+- prev
+- page numbers
+- next
+Reset ke page 1 saat search/filter berubah.
+
+7. Aksi Cepat:
+- Tambah Agent
+- Undang Agent
+- Kelola Role
+- Laporan Performa
+
+Action:
+- Tambah Agent → existing create flow
+- Undang Agent → invite flow existing atau toast “Segera hadir”
+- Kelola Role → role management existing
+- Laporan Performa → performance report existing
+
+8. Bottom nav:
+Gunakan bottom nav floating yang sama:
+Dashboard, Order, Plus, Klien, Lainnya.
+Jangan duplicate jika sudah dari DashboardLayout.
+
+Rules:
+- Jangan ubah auth.
+- Jangan ubah Supabase schema.
+- Jangan ubah routing.
+- Jangan membuat API Vercel baru.
+- Jangan rusak desktop.
+- No horizontal overflow.
+- Skeleton hanya first load.
+- npm run build harus berhasil.
+
+Expected result:
+Halaman Manajemen Agent mobile harus mirip referensi: header besar, stats cards, search/filter, role tabs, agent cards premium, pagination, quick actions, dan bottom nav konsisten.

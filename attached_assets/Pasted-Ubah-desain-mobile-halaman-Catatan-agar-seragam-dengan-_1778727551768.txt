@@ -1,0 +1,210 @@
+Ubah desain mobile halaman Catatan agar seragam dengan mobile Dashboard, Order Hub, Klien & Jamaah, Harga Tiket, Itinerary, Calculator, Paket & Trip, BC Templates, dan Caption Generator native-app style.
+
+Target utama:
+- src/pages/Notes.tsx
+- mobile layout saja dengan md:hidden
+- desktop layout jangan dirusak
+- pertahankan seluruh logic existing:
+  - create note
+  - edit note
+  - delete note
+  - pin/star note
+  - search
+  - sort
+  - filter tags
+  - localStorage notes
+  - Supabase cloud sync via pullNotes/upsertNote/deleteNoteCloud/syncNotesFull
+  - AITEM context
+  - AI rapihkan note
+  - copy markdown/plain text
+  - expanded note dialog
+  - tag management
+
+Desain mobile harus mengikuti referensi:
+- background putih kebiruan / soft blue
+- cards putih rounded besar
+- shadow lembut
+- typography navy tebal
+- spacing lega
+- gradient primary blue
+- bottom nav floating konsisten
+
+Struktur mobile Catatan:
+
+1. Header mobile:
+- tombol back kiri rounded square putih
+- title besar: “Catatan”
+- subtitle:
+  “Simpan catatan penting, ide, info paket, dan hal-hal yang perlu Anda ingat.”
+- tombol kanan:
+  - “Riwayat” dengan icon refresh/history
+  - “+ Catatan Baru”
+- safe-area top
+- tombol Catatan Baru membuka form add note existing
+- jangan pakai header lama kecil
+
+2. Stats cards:
+Tambahkan 4 stat cards:
+- Total Catatan
+- Catatan Aktif
+- Berbintang
+- Sampah
+
+Style:
+- white rounded card besar
+- pastel icon
+- angka besar navy
+- trend hijau/merah
+- text “vs bulan lalu”
+
+Data:
+- Total Catatan = notes.length
+- Catatan Aktif = notes yang tidak deleted/trash jika field ada, fallback notes.length
+- Berbintang = notes yang pinned/starred
+- Sampah = trashed/deleted jika field ada, fallback 0
+Jangan crash jika field trash belum ada.
+
+3. Search + filter row:
+Tambahkan:
+- search bar:
+  “Cari catatan atau kata kunci…”
+- tombol Filter
+- dropdown “Urutkan: Terbaru”
+
+Gunakan state existing:
+- search
+- sortMode
+- filterTag
+
+Filter button boleh buka bottom sheet:
+- tags
+- pinned only
+- reset filter
+
+4. Category quick cards:
+Tambahkan row kategori:
+- Semua
+- Paket
+- Klien
+- Ide
+- Keuangan
+- Lainnya
+
+Style:
+- white rounded cards
+- icon outline
+- active state biru
+- horizontal scroll aman
+
+Mapping:
+- Semua → filterTag null
+- Paket → tag “paket”
+- Klien → tag “klien”
+- Ide → tag “ide”
+- Keuangan → tag “keuangan”
+- Lainnya → tag “lainnya”
+Jika tag belum ada, tetap filter aman tanpa crash.
+
+5. Note list cards:
+Buat note cards premium seperti referensi.
+
+Isi card:
+- icon pastel kiri berdasarkan tag utama:
+  - paket → Package/Box
+  - klien → Users
+  - ide → Lightbulb
+  - keuangan → Wallet/Card
+  - lainnya → Plane/More
+- title besar navy
+- kategori badge kecil + “Dibuat oleh Anda”
+- preview content 2 baris
+- chips bawah:
+  - tanggal
+  - jumlah item / word count / tags count
+- kanan:
+  - star/pin button
+  - more menu
+  - waktu relatif: “10:30 WIB”, “Kemarin”, “2 hari lalu”
+- klik card membuka expanded note existing
+- star toggle memakai togglePin existing
+- more menu berisi:
+  - edit
+  - copy
+  - copy plain
+  - rapihkan AI
+  - delete
+
+6. Kategori Catatan section:
+Tambahkan section bawah:
+“Kategori Catatan”
+dengan horizontal cards:
+- Paket + count
+- Klien + count
+- Ide + count
+- Keuangan + count
+- Lainnya + count
+- chevron kanan
+
+Count dihitung dari tags notes.
+Klik kategori set filterTag.
+
+7. Add note form:
+- Pertahankan add form existing.
+- Bisa tampil sebagai bottom sheet/modal mobile native style saat tombol “Catatan Baru” ditekan.
+- Field:
+  - title
+  - content
+  - tags
+  - AI rapihkan
+  - save
+- Jangan hapus AIModelToggle dan AI rapihkan flow.
+- Pastikan cloud sync tetap eksplisit via upsertNote.
+
+8. Expanded note dialog:
+- Pertahankan expandedNote logic existing.
+- Style dialog mobile rounded besar.
+- Tetap support:
+  - edit
+  - delete
+  - copy
+  - copy plain text
+  - AI rapihkan
+  - AITEM apply edit
+
+9. Riwayat button:
+- tombol “Riwayat” boleh membuka bottom sheet berisi notes terbaru atau sync status.
+- Kalau belum ada history khusus, tampilkan notes berdasarkan updatedAt terbaru.
+- Jangan membuat schema baru.
+
+10. Bottom nav:
+Gunakan bottom nav floating yang sama dengan halaman lain:
+- Dashboard
+- Order
+- Plus tengah
+- Klien
+- Lainnya
+Jangan duplicate jika sudah dari DashboardLayout.
+Pastikan content tidak ketutup bottom nav.
+
+11. Performance:
+- jangan blank screen
+- jangan wipe local notes sebelum cloud pull selesai
+- pertahankan pulledRef safety logic
+- search/filter cepat
+- no horizontal overflow
+- smooth mobile scroll
+- localStorage dan cloud sync tetap aman
+
+12. Compatibility:
+- jangan ubah auth
+- jangan ubah Supabase schema
+- jangan ubah routing
+- jangan membuat API Vercel baru
+- jangan rusak desktop layout
+- jangan hapus AITEM integration
+- jangan hapus AI rapihkan
+- jangan ubah storage key notes
+- pastikan npm run build berhasil
+
+Expected result:
+Saat user buka halaman Catatan di mobile, layout harus sangat mirip referensi: header besar, stats cards, search/filter, category cards, note cards premium, kategori catatan, add note modal, dan bottom nav konsisten dengan dashboard.

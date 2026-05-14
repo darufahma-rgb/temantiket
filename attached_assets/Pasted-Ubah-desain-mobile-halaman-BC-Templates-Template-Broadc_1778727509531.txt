@@ -1,0 +1,194 @@
+Ubah desain mobile halaman BC Templates / Template Broadcast agar seragam dengan mobile Dashboard, Order Hub, Klien & Jamaah, Harga Tiket, Itinerary, Calculator, dan Paket & Trip native-app style.
+
+Target utama:
+- src/pages/BCTemplates.tsx
+- mobile layout saja dengan md:hidden
+- desktop layout jangan dirusak
+- pertahankan seluruh logic existing:
+  - listTemplates
+  - createTemplate
+  - updateTemplate
+  - deleteTemplate
+  - copy template
+  - variable replacement
+  - AITEM context
+  - category filter
+  - search
+  - form dialog
+  - copy dialog
+  - delete confirmation
+
+Desain mobile harus mengikuti referensi:
+- background putih kebiruan / soft blue
+- cards putih rounded besar
+- shadow lembut
+- typography navy tebal
+- spacing lega
+- gradient primary blue
+- bottom nav floating konsisten
+
+Struktur mobile BC Templates:
+
+1. Header mobile:
+- tombol back kiri rounded square putih
+- title besar: “Template Broadcast”
+- subtitle:
+  “Kelola template BC untuk mempermudah pembuatan broadcast.”
+- tombol kanan:
+  - Reset
+  - “+ Template Baru”
+- tombol Template Baru hanya tampil jika canEdit true
+- gunakan safe-area top
+- jangan pakai header lama kecil
+
+2. Stats cards:
+Tambahkan 4 stat cards:
+- Total Template
+- Aktif
+- Draft
+- Diarsipkan
+
+Style:
+- white rounded card besar
+- pastel circular icon
+- angka besar navy
+- trend naik/turun %
+- text “vs bulan lalu”
+
+Data:
+- Total Template = templates.length
+- Aktif = template aktif/published jika field ada, atau fallback templates.length
+- Draft = status draft jika field ada, fallback 0
+- Diarsipkan = archived jika field ada, fallback 0
+Jangan crash kalau field status belum ada.
+
+3. Search + filter row:
+Tambahkan:
+- search bar besar:
+  “Cari template berdasarkan nama atau kategori…”
+- tombol Filter
+- dropdown “Urutkan: Terbaru”
+
+Gunakan search logic existing.
+Filter button boleh buka bottom sheet sederhana:
+- category
+- status
+- reset
+
+4. Category quick cards:
+Tambahkan row kategori:
+- Semua
+- Umroh
+- Haji
+- Trip
+- Private
+
+Style:
+- white rounded cards
+- icon outline
+- active state biru
+- count optional
+Mapping category:
+- Semua → all
+- Umroh → umrah
+- Haji → haji
+- Trip → general/trip if available
+- Private → private if available, fallback general
+Jika BC_CATEGORIES punya key berbeda, gunakan key existing dan jangan bikin error.
+
+5. Template list cards:
+Buat card list premium seperti referensi.
+
+Isi card:
+- thumbnail kiri:
+  - gradient image-style card berdasarkan kategori
+  - text besar seperti:
+    “UMROH REGULER 12 HARI”
+    “HAJI PLUS 2025”
+    atau title template
+  - gunakan fallback gradient kalau tidak ada image
+- kanan:
+  - status badge:
+    AKTIF / DRAFT / ARSIP
+  - title template besar
+  - category label + dibuat tanggal
+  - info:
+    “Digunakan X kali”
+    “Diperbarui tanggal”
+  - action buttons:
+    - preview/copy eye
+    - edit pencil
+    - more menu
+- tombol edit/delete hanya untuk canEdit
+- tombol copy/preview tetap tersedia sesuai existing flow
+- klik preview/copy harus tetap pakai handleCopyClick dan variable dialog existing
+
+6. Pagination:
+Tambahkan pagination mobile:
+- prev
+- nomor halaman
+- next
+Gunakan client-side pagination, misalnya 5 template per page.
+Reset ke page 1 saat search/filter berubah.
+
+7. Aksi Cepat:
+Tambahkan section:
+“Aksi Cepat”
+kanan:
+“Lihat Semua”
+
+4 cards:
+- Template Baru
+- Duplikasi Template
+- Import Template
+- Kelola Kategori
+
+Style:
+- white rounded cards
+- pastel icon
+- title + subtitle kecil
+
+Action:
+- Template Baru → openAdd existing
+- Duplikasi Template → jika belum ada, toast “Segera hadir”
+- Import Template → toast “Segera hadir”
+- Kelola Kategori → toast “Segera hadir”
+
+8. Dialog/form behavior:
+- Pertahankan form dialog existing untuk add/edit template.
+- Pertahankan variable suggestions.
+- Pertahankan Markdown preview.
+- Pertahankan copy dialog untuk isi variable.
+- Pertahankan delete confirmation.
+- Styling dialog boleh dibuat lebih mobile-friendly rounded besar.
+
+9. Bottom nav:
+Gunakan bottom nav floating yang sama dengan halaman lain:
+- Dashboard
+- Order
+- Plus tengah
+- Klien
+- Lainnya
+Jangan duplicate jika sudah dari DashboardLayout.
+Pastikan content tidak ketutup bottom nav.
+
+10. Performance:
+- jangan blank screen
+- gunakan templates state existing
+- loading skeleton hanya saat first load
+- search/filter cepat
+- no horizontal overflow
+- smooth mobile scroll
+
+11. Compatibility:
+- jangan ubah auth
+- jangan ubah Supabase schema
+- jangan ubah routing
+- jangan membuat API Vercel baru
+- jangan rusak desktop layout
+- jangan hapus AITEM integration
+- jangan hapus copy variable flow
+- pastikan npm run build berhasil
+
+Expected result:
+Saat user buka halaman BC Templates di mobile, layout harus sangat mirip referensi Template Broadcast native app: header besar, stats cards, search/filter, category cards, template cards premium, pagination, quick actions, dan bottom nav konsisten dengan dashboard.
