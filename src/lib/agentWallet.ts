@@ -297,126 +297,73 @@ export async function addWalletTxAsync(
   // Write to localStorage first — instant cache, deduplicating by id
   saveTxsCache(agentId, [full, ...listWalletTxs(agentId).filter((t) => t.id !== full.id)]);
 
-  // ── Primary path: server endpoint (Supabase Bearer JWT) ─────────────────────
+  // ── Primary path: direct Supabase insert (upsert for idempotency) ───────────
   try {
+    if (!isSupabaseConfigured()) {
+      return { tx: full, persisted: false, error: "Supabase not configured" };
+    }
     const agencyId = requireAgencyId();
-    const authH = await getBearer();
 
-    const res = await fetch("/api/credit-wallet-tx", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json", ...authH },
-      body: JSON.stringify({
-        id:          full.id,
-        agencyId,
-        agentId:     full.agentId,
-        type:        full.type,
-        pointsDelta: full.pointsDelta,
-        amountIDR:   full.amountIDR,
-        description: full.description,
-        createdBy:   full.createdBy,
-        createdAt:   full.createdAt,
-        orderId:     full.orderId ?? null,
-      }),
-    });
+    const { error } = await supabase!.from("agent_wallet_transactions").upsert({
+      id:           full.id,
+      agency_id:    agencyId,
+      agent_id:     full.agentId,
+      type:         full.type,
+      points_delta: full.pointsDelta,
+      amount_idr:   full.amountIDR,
+      description:  full.description,
+      created_by:   full.createdBy,
+      created_at:   full.createdAt,
+      order_id:     full.orderId ?? null,
+    }, { onConflict: "id", ignoreDuplicates: true });
 
-    if (res.ok) {
-      console.log(`[agentWallet] credit-wallet-tx OK — id=${full.id} agent=${full.agentId} amount=${full.amountIDR}`);
-      const syncKey = walletSyncKey(agentId);
-      resolveFeatureSync(syncKey);
-      return { tx: full, persisted: true };
+    if (error) {
+      console.error(`[agentWallet] upsert wallet tx error:`, error.message);
+      return { tx: full, persisted: false, error: error.message };
     }
 
-    const body = await res.json().catch(() => ({})) as { error?: string };
-    const serverError = body?.error ?? `HTTP ${res.status}`;
-    console.error(`[agentWallet] credit-wallet-tx server error (${res.status}):`, serverError);
-    return { tx: full, persisted: false, error: serverError };
+    console.log(`[agentWallet] wallet tx upserted OK — id=${full.id} agent=${full.agentId} amount=${full.amountIDR}`);
+    const syncKey = walletSyncKey(agentId);
+    resolveFeatureSync(syncKey);
+    return { tx: full, persisted: true };
 
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("[agentWallet] credit-wallet-tx exception:", e);
+    console.error("[agentWallet] wallet tx upsert exception:", e);
     return { tx: full, persisted: false, error: msg };
   }
 }
 
-/** Pull wallet txs dari server API → update localStorage cache → return list.
- *
- * Merges results from two sources to handle legacy transactions:
- *  - Replit PG (via /api/wallet-txs) — new transactions via addWalletTxAsync
- *  - Supabase (direct query)         — old transactions via addWalletTx
- * Results are merged and deduplicated by `id`.
- */
+/** Pull wallet txs dari Supabase → update localStorage cache → return list. */
 export async function pullWalletTxs(agentId: string): Promise<WalletTransaction[]> {
   try {
     const agencyId = getCurrentAgencyId();
     if (!agencyId) return listWalletTxs(agentId);
+    if (!isSupabaseConfigured()) return listWalletTxs(agentId);
 
-    const authH = await getBearer();
+    const { data, error } = await supabase!
+      .from("agent_wallet_transactions")
+      .select("*")
+      .eq("agency_id", agencyId)
+      .eq("agent_id", agentId)
+      .order("created_at", { ascending: false });
 
-    // ── Source 1: Replit PG via server API ───────────────────────────────────
-    let pgTxs: WalletTransaction[] = [];
-    try {
-      const res = await fetch(`/api/wallet-txs/${agentId}`, {
-        credentials: "include",
-        headers: { ...authH },
-      });
-      if (res.ok) {
-        const data = await res.json() as Array<Record<string, unknown>>;
-        pgTxs = (data ?? []).map((r) => ({
-          id:          String(r.id),
-          agentId:     String(r.agent_id),
-          type:        r.type as WalletTxType,
-          pointsDelta: Number(r.points_delta),
-          amountIDR:   Number(r.amount_idr),
-          description: String(r.description ?? ""),
-          createdAt:   String(r.created_at),
-          createdBy:   String(r.created_by ?? ""),
-          orderId:     r.order_id ? String(r.order_id) : null,
-        }));
-      } else {
-        console.warn("[agentWallet] pull PG gagal:", res.status);
-      }
-    } catch (e) {
-      console.warn("[agentWallet] pull PG exception:", e);
+    if (error) {
+      console.warn("[agentWallet] pullWalletTxs error:", error.message);
+      return listWalletTxs(agentId);
     }
 
-    // ── Source 2: Supabase (legacy transactions written via addWalletTx) ─────
-    let sbTxs: WalletTransaction[] = [];
-    try {
-      const { supabase, isSupabaseConfigured } = await import("./supabase");
-      if (isSupabaseConfigured()) {
-        const { data, error } = await supabase!
-          .from("agent_wallet_transactions")
-          .select("*")
-          .eq("agency_id", agencyId)
-          .eq("agent_id", agentId)
-          .order("created_at", { ascending: false });
-        if (!error && data) {
-          sbTxs = (data as Array<Record<string, unknown>>).map((r) => ({
-            id:          String(r.id),
-            agentId:     String(r.agent_id),
-            type:        r.type as WalletTxType,
-            pointsDelta: Number(r.points_delta ?? 0),
-            amountIDR:   Number(r.amount_idr ?? 0),
-            description: String(r.description ?? ""),
-            createdAt:   String(r.created_at),
-            createdBy:   String(r.created_by ?? ""),
-            orderId:     r.order_id ? String(r.order_id) : null,
-          }));
-        }
-      }
-    } catch (e) {
-      console.warn("[agentWallet] pull Supabase exception:", e);
-    }
-
-    // ── Merge & deduplicate by id (PG takes precedence for same id) ──────────
-    const merged = new Map<string, WalletTransaction>();
-    for (const tx of [...sbTxs, ...pgTxs]) {
-      merged.set(tx.id, tx);
-    }
-    const txs = [...merged.values()].sort((a, b) =>
-      (b.createdAt ?? "").localeCompare(a.createdAt ?? ""),
-    );
+    const txs: WalletTransaction[] = (data as Array<Record<string, unknown>>).map((r) => ({
+      id:          String(r.id),
+      agentId:     String(r.agent_id),
+      type:        r.type as WalletTxType,
+      pointsDelta: Number(r.points_delta ?? 0),
+      amountIDR:   Number(r.amount_idr ?? 0),
+      description: String(r.description ?? ""),
+      createdAt:   String(r.created_at),
+      createdBy:   String(r.created_by ?? ""),
+      orderId:     r.order_id ? String(r.order_id) : null,
+    }));
 
     // Warn about duplicates (same type+orderId combo)
     const seen = new Map<string, string>();
@@ -424,7 +371,7 @@ export async function pullWalletTxs(agentId: string): Promise<WalletTransaction[
       if (!tx.orderId) continue;
       const key = `${tx.type}:${tx.orderId}`;
       if (seen.has(key)) {
-        console.warn(`[agentWallet] DUPLICATE wallet tx detected: type=${tx.type} orderId=${tx.orderId} ids=${seen.get(key)},${tx.id}`);
+        console.warn(`[agentWallet] DUPLICATE detected: type=${tx.type} orderId=${tx.orderId} ids=${seen.get(key)},${tx.id}`);
       } else {
         seen.set(key, tx.id);
       }
@@ -433,7 +380,7 @@ export async function pullWalletTxs(agentId: string): Promise<WalletTransaction[
     saveTxsCache(agentId, txs);
     return txs;
   } catch (e) {
-    console.warn("[agentWallet] pull exception:", e);
+    console.warn("[agentWallet] pullWalletTxs exception:", e);
     return listWalletTxs(agentId);
   }
 }
@@ -457,16 +404,24 @@ export async function deleteWalletTxsForOrder(orderId: string): Promise<void> {
     }
   } catch { /* ignore localStorage errors */ }
 
-  // Remove from server DB
+  // Remove from Supabase (non-payout/adjustment only)
   try {
-    const authH = await getBearer();
-    await fetch(`/api/wallet-txs-for-order/${orderId}`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: { ...authH },
-    });
+    if (!isSupabaseConfigured()) return;
+    const agencyId = getCurrentAgencyId();
+    if (!agencyId) return;
+
+    const { error } = await supabase!
+      .from("agent_wallet_transactions")
+      .delete()
+      .eq("agency_id", agencyId)
+      .eq("order_id", orderId)
+      .not("type", "in", "(payout,adjustment)");
+
+    if (error) {
+      console.warn("[agentWallet] deleteWalletTxsForOrder Supabase error:", error.message);
+    }
   } catch (e) {
-    console.warn("[agentWallet] deleteWalletTxsForOrder server call failed:", e);
+    console.warn("[agentWallet] deleteWalletTxsForOrder exception:", e);
   }
 }
 
@@ -486,21 +441,34 @@ export async function deleteWalletTxById(
   saveTxsCache(agentId, previous.filter((t) => t.id !== txId));
 
   try {
-    const authH = await getBearer();
-    const res = await fetch(`/api/wallet-tx/${encodeURIComponent(txId)}`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: { ...authH },
-    });
+    if (!isSupabaseConfigured()) {
+      return { success: false, error: "Supabase not configured" };
+    }
+    const agencyId = getCurrentAgencyId();
+    if (!agencyId) {
+      saveTxsCache(agentId, previous);
+      return { success: false, error: "agencyId tidak tersedia" };
+    }
 
-    if (res.ok) return { success: true };
+    const { data: deleted, error } = await supabase!
+      .from("agent_wallet_transactions")
+      .delete()
+      .eq("id", txId)
+      .eq("agency_id", agencyId)
+      .not("type", "in", "(payout,adjustment)")
+      .select();
 
-    const body = await res.json().catch(() => ({})) as { error?: string };
-    // Rollback localStorage on server error
-    saveTxsCache(agentId, previous);
-    return { success: false, error: body?.error ?? `HTTP ${res.status}` };
+    if (error) {
+      saveTxsCache(agentId, previous);
+      return { success: false, error: error.message };
+    }
+    if (!deleted?.length) {
+      saveTxsCache(agentId, previous);
+      return { success: false, error: "Transaksi tidak ditemukan atau dilindungi (payout/adjustment)" };
+    }
+
+    return { success: true };
   } catch (e) {
-    // Rollback localStorage on exception
     saveTxsCache(agentId, previous);
     return { success: false, error: e instanceof Error ? e.message : String(e) };
   }

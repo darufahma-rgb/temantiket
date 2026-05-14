@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3001;
 // Supabase Bearer JWT auth + data routes
 const { isAuthenticatedOrBearer, registerAuthRoutes } = require('./replitAuth.cjs');
 const { registerDataRoutes } = require('./routes/data.cjs');
-const { pool } = require('./db.cjs');
+const { getSb } = require('./supabaseAdmin.cjs');
 
 // ── OpenRouter — Caption Generator & OCR ────────────────────────────────────
 // Digunakan untuk: Caption Generator (marketing), OCR Paspor, teks ringan.
@@ -171,25 +171,30 @@ app.post('/api/bootstrap', isAuthenticatedOrBearer, async (req, res) => {
     }
 
     // Check user already has a membership (prevent duplicate bootstrap)
-    const { rows: existing } = await pool.query(
-      'SELECT agency_id FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [userId],
-    );
-    if (existing.length > 0) {
+    const sb = getSb();
+    const { data: existing, error: existErr } = await sb
+      .from('agency_members')
+      .select('agency_id')
+      .eq('user_id', userId)
+      .limit(1);
+    if (existErr) return err(res, 500, existErr.message);
+    if (existing?.length > 0) {
       return err(res, 403, 'Anda sudah terdaftar di sebuah agency.');
     }
 
-    // Create agency + membership in one transaction
-    const { rows: agencyRows } = await pool.query(
-      'INSERT INTO agencies (name, owner_id) VALUES ($1, $2) RETURNING *',
-      [agencyName.trim(), userId],
-    );
-    const agency = agencyRows[0];
+    // Create agency
+    const { data: agency, error: agencyErr } = await sb
+      .from('agencies')
+      .insert({ name: agencyName.trim(), owner_id: userId })
+      .select()
+      .single();
+    if (agencyErr) return err(res, 500, agencyErr.message);
 
-    await pool.query(
-      'INSERT INTO agency_members (user_id, agency_id, role) VALUES ($1, $2, $3)',
-      [userId, agency.id, 'owner'],
-    );
+    // Create membership
+    const { error: memErr } = await sb
+      .from('agency_members')
+      .insert({ user_id: userId, agency_id: agency.id, role: 'owner' });
+    if (memErr) return err(res, 500, memErr.message);
 
     return ok(res, { ok: true, agencyId: agency.id, userId });
   } catch (e) {
@@ -210,11 +215,12 @@ app.post('/api/bootstrap', isAuthenticatedOrBearer, async (req, res) => {
 ────────────────────────────────────────────── */
 app.post('/api/invite-member', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    const { rows: callerRows } = await pool.query(
-      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id],
-    );
-    const callerMembership = callerRows[0];
+    const { data: callerRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    const callerMembership = callerRows?.[0];
     if (!callerMembership) return err(res, 403, 'Caller belum terdaftar di agency');
     if (callerMembership.role !== 'owner') return err(res, 403, 'Hanya owner yang bisa invite');
 
@@ -270,15 +276,23 @@ app.post('/api/invite-member', isAuthenticatedOrBearer, async (req, res) => {
         const msg = adminJson?.msg || adminJson?.message || adminJson?.error || `Supabase Admin API ${adminRes.status}`;
         // Handle "already registered" gracefully — still add to agency
         if (adminRes.status === 422 && String(msg).toLowerCase().includes('already')) {
-          // User exists in Supabase — look up by email in local users table
-          const { rows: existingRows } = await pool.query(
-            'SELECT id FROM users WHERE email = $1 LIMIT 1',
-            [email.toLowerCase().trim()],
-          );
-          if (!existingRows[0]) {
-            return err(res, 409, `Email ${email} sudah terdaftar di Supabase namun belum pernah login. Minta user login dulu lalu coba lagi.`);
+          // User exists in Supabase — try to find their UUID via Admin API listUsers
+          try {
+            const listRes = await fetch(
+              `${SUPABASE_URL_ENV}/auth/v1/admin/users?page=1&per_page=1000`,
+              { headers: { 'Authorization': `Bearer ${SUPABASE_SRK}`, 'apikey': SUPABASE_SRK } },
+            );
+            if (listRes.ok) {
+              const listData = await listRes.json().catch(() => ({}));
+              const found = (listData?.users ?? []).find(
+                (u) => u.email?.toLowerCase() === (email || '').toLowerCase().trim(),
+              );
+              if (found?.id) targetUserId = found.id;
+            }
+          } catch { /* ignore */ }
+          if (!targetUserId) {
+            return err(res, 409, `Email ${email} sudah terdaftar di Supabase. Minta user login dulu lalu coba lagi.`);
           }
-          targetUserId = existingRows[0].id;
         } else {
           return err(res, adminRes.status >= 500 ? 502 : 400, `Gagal membuat akun: ${msg}`);
         }
@@ -288,42 +302,42 @@ app.post('/api/invite-member', isAuthenticatedOrBearer, async (req, res) => {
       }
     }
 
-    // Upsert local user stub (email stored for lookup; actual profile filled on first login)
-    await pool.query(
-      `INSERT INTO users (id, email, first_name, created_at, updated_at)
-       VALUES ($1, $2, $3, now(), now())
-       ON CONFLICT (id) DO UPDATE SET
-         email      = COALESCE(EXCLUDED.email, users.email),
-         first_name = COALESCE(EXCLUDED.first_name, users.first_name),
-         updated_at = now()`,
-      [targetUserId, email?.toLowerCase().trim() || null, (displayName ?? '').trim() || null],
-    );
-
     // Insert/upsert agency membership
-    const { rows: inserted } = await pool.query(
-      `INSERT INTO agency_members (user_id, agency_id, role, commission_pct, phone_wa, agent_notes, agent_status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT (user_id, agency_id) DO UPDATE SET role = EXCLUDED.role,
-         commission_pct = EXCLUDED.commission_pct, phone_wa = EXCLUDED.phone_wa,
-         agent_notes = EXCLUDED.agent_notes, agent_status = EXCLUDED.agent_status
-       RETURNING *`,
-      [targetUserId, callerMembership.agency_id, role, commissionPct,
-       whatsappNumber, agentNotes, agentStatus],
-    );
+    const { data: inserted, error: memberErr } = await getSb()
+      .from('agency_members')
+      .upsert({
+        user_id:        targetUserId,
+        agency_id:      callerMembership.agency_id,
+        role,
+        commission_pct: commissionPct,
+        phone_wa:       whatsappNumber,
+        agent_notes:    agentNotes,
+        agent_status:   agentStatus,
+      }, { onConflict: 'user_id,agency_id' })
+      .select()
+      .single();
+    if (memberErr) return err(res, 500, memberErr.message);
 
     // Auto-create wallet seed for new agents
     if (role === 'agent') {
       const walletSeedId = `wtx-reg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      await pool.query(
-        `INSERT INTO agent_wallet_transactions
-           (id, agency_id, agent_id, type, points_delta, amount_idr, description, created_by, created_at)
-         VALUES ($1, $2, $3, 'adjustment', 0, 0, 'Wallet dibuat otomatis saat registrasi agen', $4, now())
-         ON CONFLICT DO NOTHING`,
-        [walletSeedId, callerMembership.agency_id, targetUserId, req.user.id],
-      ).catch(() => {}); // non-critical
+      await getSb()
+        .from('agent_wallet_transactions')
+        .upsert({
+          id:           walletSeedId,
+          agency_id:    callerMembership.agency_id,
+          agent_id:     targetUserId,
+          type:         'adjustment',
+          points_delta: 0,
+          amount_idr:   0,
+          description:  'Wallet dibuat otomatis saat registrasi agen',
+          created_by:   req.user.id,
+          created_at:   new Date().toISOString(),
+        }, { onConflict: 'id', ignoreDuplicates: true })
+        .catch(() => {}); // non-critical
     }
 
-    return ok(res, { ok: true, userId: targetUserId, role, member: inserted[0] });
+    return ok(res, { ok: true, userId: targetUserId, role, member: inserted });
   } catch (e) {
     return err(res, 500, e?.message || 'Terjadi kesalahan internal');
   }
@@ -335,11 +349,12 @@ app.post('/api/invite-member', isAuthenticatedOrBearer, async (req, res) => {
 ────────────────────────────────────────────── */
 app.post('/api/remove-member', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    const { rows: callerRows } = await pool.query(
-      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id],
-    );
-    const callerMembership = callerRows[0];
+    const { data: callerRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    const callerMembership = callerRows?.[0];
     if (!callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
     if (callerMembership.role !== 'owner') return err(res, 403, 'Hanya owner yang bisa hapus anggota');
 
@@ -347,17 +362,19 @@ app.post('/api/remove-member', isAuthenticatedOrBearer, async (req, res) => {
     if (!userId || typeof userId !== 'string') return err(res, 400, 'userId required');
     if (userId === req.user.id) return err(res, 400, 'Tidak bisa hapus diri sendiri');
 
-    const { rows: targetRows } = await pool.query(
-      'SELECT role FROM agency_members WHERE agency_id = $1 AND user_id = $2',
-      [callerMembership.agency_id, userId],
-    );
-    if (!targetRows[0]) return err(res, 404, 'User tidak ditemukan di agency ini');
+    const { data: targetRows } = await getSb()
+      .from('agency_members')
+      .select('role')
+      .eq('agency_id', callerMembership.agency_id)
+      .eq('user_id', userId);
+    if (!targetRows?.[0]) return err(res, 404, 'User tidak ditemukan di agency ini');
     if (targetRows[0].role === 'owner') return err(res, 400, 'Tidak bisa hapus sesama owner');
 
-    await pool.query(
-      'DELETE FROM agency_members WHERE agency_id = $1 AND user_id = $2',
-      [callerMembership.agency_id, userId],
-    );
+    await getSb()
+      .from('agency_members')
+      .delete()
+      .eq('agency_id', callerMembership.agency_id)
+      .eq('user_id', userId);
 
     return ok(res, { ok: true });
   } catch (e) {
@@ -372,11 +389,12 @@ app.post('/api/remove-member', isAuthenticatedOrBearer, async (req, res) => {
 app.post('/api/award-completion-points', isAuthenticatedOrBearer, async (req, res) => {
   try {
 
-    const { rows: callerRows } = await pool.query(
-      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id],
-    );
-    const callerMembership = callerRows[0];
+    const { data: callerRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    const callerMembership = callerRows?.[0];
     if (!callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
     if (!['owner', 'staff'].includes(callerMembership.role)) {
       return err(res, 403, 'Hanya owner atau staff yang bisa award poin');
@@ -387,21 +405,26 @@ app.post('/api/award-completion-points', isAuthenticatedOrBearer, async (req, re
 
     const agencyId = callerMembership.agency_id;
 
-    const { rows: targetRows } = await pool.query(
-      'SELECT role FROM agency_members WHERE user_id = $1 AND agency_id = $2',
-      [agentId, agencyId],
-    );
-    if (!targetRows[0]) return err(res, 404, 'Agen tidak ditemukan di agency ini');
+    const { data: targetRows } = await getSb()
+      .from('agency_members')
+      .select('role')
+      .eq('user_id', agentId)
+      .eq('agency_id', agencyId);
+    if (!targetRows?.[0]) return err(res, 404, 'Agen tidak ditemukan di agency ini');
     if (targetRows[0].role !== 'agent') {
       return ok(res, { ok: true, awarded: 0, reason: 'not_agent', role: targetRows[0].role });
     }
 
-    await pool.query(
-      `INSERT INTO agent_points (agency_id, agent_id, order_id, points, reason, awarded_at)
-       VALUES ($1, $2, $3, 20, 'order_completed', now())
-       ON CONFLICT (order_id) DO NOTHING`,
-      [agencyId, agentId, orderId],
-    );
+    await getSb()
+      .from('agent_points')
+      .upsert({
+        agency_id:  agencyId,
+        agent_id:   agentId,
+        order_id:   orderId,
+        points:     20,
+        reason:     'order_completed',
+        awarded_at: new Date().toISOString(),
+      }, { onConflict: 'order_id', ignoreDuplicates: true });
 
     return ok(res, { ok: true, points: 20 });
   } catch (e) {
@@ -416,11 +439,12 @@ app.post('/api/award-completion-points', isAuthenticatedOrBearer, async (req, re
 app.post('/api/revoke-order-points', isAuthenticatedOrBearer, async (req, res) => {
   try {
 
-    const { rows: callerRows } = await pool.query(
-      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id],
-    );
-    const callerMembership = callerRows[0];
+    const { data: callerRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    const callerMembership = callerRows?.[0];
     if (!callerMembership) return err(res, 403, 'Tidak terdaftar di agency');
     if (!['owner', 'staff'].includes(callerMembership.role)) {
       return err(res, 403, 'Hanya owner atau staff yang bisa revoke poin');
@@ -429,10 +453,11 @@ app.post('/api/revoke-order-points', isAuthenticatedOrBearer, async (req, res) =
     const { orderId } = req.body || {};
     if (!orderId) return err(res, 400, 'orderId diperlukan');
 
-    await pool.query(
-      'DELETE FROM agent_points WHERE order_id = $1 AND agency_id = $2',
-      [orderId, callerMembership.agency_id],
-    );
+    await getSb()
+      .from('agent_points')
+      .delete()
+      .eq('order_id', orderId)
+      .eq('agency_id', callerMembership.agency_id);
 
     return ok(res, { ok: true, revoked: orderId });
   } catch (e) {
@@ -447,25 +472,31 @@ app.post('/api/revoke-order-points', isAuthenticatedOrBearer, async (req, res) =
 ────────────────────────────────────────────── */
 app.delete('/api/agent-points-for-client/:clientId', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    const { rows: callerRows } = await pool.query(
-      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id],
-    );
-    const membership = callerRows[0];
+    const { data: callerRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    const membership = callerRows?.[0];
     if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
     if (!['owner', 'staff'].includes(membership.role)) {
       return err(res, 403, 'Hanya owner/staff yang bisa hapus poin');
     }
     const { clientId } = req.params;
-    const { rowCount } = await pool.query(
-      `DELETE FROM agent_points
-       WHERE agency_id = $1
-         AND order_id IN (
-           SELECT id FROM orders WHERE agency_id = $1 AND client_id = $2
-         )`,
-      [membership.agency_id, clientId],
-    );
-    return ok(res, { deleted: rowCount ?? 0 });
+    const { data: orderIds_ } = await getSb()
+      .from('orders')
+      .select('id')
+      .eq('agency_id', membership.agency_id)
+      .eq('client_id', clientId);
+    const oids = (orderIds_ ?? []).map((o) => o.id);
+    if (!oids.length) return ok(res, { deleted: 0 });
+    const { data: deleted_ } = await getSb()
+      .from('agent_points')
+      .delete()
+      .eq('agency_id', membership.agency_id)
+      .in('order_id', oids)
+      .select();
+    return ok(res, { deleted: deleted_?.length ?? 0 });
   } catch (e) {
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }
@@ -779,11 +810,12 @@ app.post('/api/ocr-passport', isAuthenticatedOrBearer, async (req, res) => {
       return err(res, 503, 'OPENROUTER_API_KEY tidak ditemukan. Pastikan sudah diset di environment variables.');
     }
 
-    const { rows: memRows } = await pool.query(
-      'SELECT agency_id FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id],
-    );
-    if (!memRows[0]) return err(res, 403, 'Tidak terdaftar di agency manapun');
+    const { data: memRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    if (!memRows?.[0]) return err(res, 403, 'Tidak terdaftar di agency manapun');
 
     const { imageDataUrl } = req.body || {};
     if (!imageDataUrl || typeof imageDataUrl !== 'string') {
@@ -1039,16 +1071,17 @@ app.post('/api/ai/assistant', async (req, res) => {
 
 /* ──────────────────────────────────────────────
    POST /api/credit-wallet-tx
-   Insert a wallet transaction using pg directly (Replit PostgreSQL).
+   Insert a wallet transaction via Supabase (service role — bypasses RLS).
 ────────────────────────────────────────────── */
 app.post('/api/credit-wallet-tx', isAuthenticatedOrBearer, async (req, res) => {
   try {
 
-    const { rows: memberRows } = await pool.query(
-      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id],
-    );
-    const membership = memberRows[0];
+    const { data: memberRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    const membership = memberRows?.[0];
     if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
 
     const { id, agencyId, agentId, type, pointsDelta, amountIDR, description, createdBy, createdAt, orderId } = req.body ?? {};
@@ -1060,15 +1093,21 @@ app.post('/api/credit-wallet-tx', isAuthenticatedOrBearer, async (req, res) => {
       return err(res, 403, 'Agen hanya bisa mengkreditkan wallet sendiri');
     }
 
-    await pool.query(
-      `INSERT INTO agent_wallet_transactions
-         (id, agency_id, agent_id, type, points_delta, amount_idr, description, created_by, created_at, order_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       ON CONFLICT (id) DO NOTHING`,
-      [id, agencyId, agentId, type, pointsDelta ?? 0, amountIDR,
-       description ?? '', createdBy ?? req.user.id, createdAt ?? new Date().toISOString(),
-       orderId ?? null],
-    );
+    const { error: txErr } = await getSb()
+      .from('agent_wallet_transactions')
+      .upsert({
+        id,
+        agency_id:    agencyId,
+        agent_id:     agentId,
+        type,
+        points_delta: pointsDelta ?? 0,
+        amount_idr:   amountIDR,
+        description:  description ?? '',
+        created_by:   createdBy ?? req.user.id,
+        created_at:   createdAt ?? new Date().toISOString(),
+        order_id:     orderId ?? null,
+      }, { onConflict: 'id', ignoreDuplicates: true });
+    if (txErr) return err(res, 500, txErr.message);
 
     return ok(res, { ok: true, id });
   } catch (e) {
@@ -1082,11 +1121,12 @@ app.post('/api/credit-wallet-tx', isAuthenticatedOrBearer, async (req, res) => {
 ────────────────────────────────────────────── */
 app.get('/api/wallet-txs/:agentId', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    const { rows: memberRows } = await pool.query(
-      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id],
-    );
-    const membership = memberRows[0];
+    const { data: memberRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    const membership = memberRows?.[0];
     if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
 
     const { agentId } = req.params;
@@ -1094,15 +1134,15 @@ app.get('/api/wallet-txs/:agentId', isAuthenticatedOrBearer, async (req, res) =>
       return err(res, 403, 'Agen hanya bisa melihat wallet sendiri');
     }
 
-    const { rows } = await pool.query(
-      `SELECT id, agency_id, agent_id, type, points_delta, amount_idr, description, created_by, created_at, order_id
-       FROM agent_wallet_transactions
-       WHERE agency_id = $1 AND agent_id = $2
-       ORDER BY created_at DESC`,
-      [membership.agency_id, agentId],
-    );
+    const { data: rows, error: txsErr } = await getSb()
+      .from('agent_wallet_transactions')
+      .select('id, agency_id, agent_id, type, points_delta, amount_idr, description, created_by, created_at, order_id')
+      .eq('agency_id', membership.agency_id)
+      .eq('agent_id', agentId)
+      .order('created_at', { ascending: false });
+    if (txsErr) return err(res, 500, txsErr.message);
 
-    return ok(res, rows);
+    return ok(res, rows ?? []);
   } catch (e) {
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }
@@ -1114,23 +1154,26 @@ app.get('/api/wallet-txs/:agentId', isAuthenticatedOrBearer, async (req, res) =>
 ────────────────────────────────────────────── */
 app.delete('/api/wallet-txs-for-order/:orderId', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    const { rows: memberRows } = await pool.query(
-      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id],
-    );
-    const membership = memberRows[0];
+    const { data: memberRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    const membership = memberRows?.[0];
     if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
     if (membership.role === 'agent') return err(res, 403, 'Hanya owner/staff yang bisa hapus wallet tx');
 
     const { orderId } = req.params;
-    const { rowCount } = await pool.query(
-      `DELETE FROM agent_wallet_transactions
-       WHERE agency_id = $1 AND order_id = $2
-         AND type NOT IN ('payout', 'adjustment')`,
-      [membership.agency_id, orderId],
-    );
+    const { data: deleted_, error: delErr } = await getSb()
+      .from('agent_wallet_transactions')
+      .delete()
+      .eq('agency_id', membership.agency_id)
+      .eq('order_id', orderId)
+      .not('type', 'in', '(payout,adjustment)')
+      .select();
+    if (delErr) return err(res, 500, delErr.message);
 
-    return ok(res, { deleted: rowCount ?? 0 });
+    return ok(res, { deleted: deleted_?.length ?? 0 });
   } catch (e) {
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }
@@ -1142,27 +1185,34 @@ app.delete('/api/wallet-txs-for-order/:orderId', isAuthenticatedOrBearer, async 
 ────────────────────────────────────────────── */
 app.delete('/api/wallet-txs-for-client/:clientId', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    const { rows: memberRows } = await pool.query(
-      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id],
-    );
-    const membership = memberRows[0];
+    const { data: memberRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    const membership = memberRows?.[0];
     if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
     if (membership.role === 'agent') return err(res, 403, 'Hanya owner/staff yang bisa hapus wallet tx');
 
     const { clientId } = req.params;
-    // Delete wallet txs for all orders belonging to this client
-    const { rowCount } = await pool.query(
-      `DELETE FROM agent_wallet_transactions
-       WHERE agency_id = $1
-         AND order_id IN (
-           SELECT id FROM orders WHERE agency_id = $1 AND client_id = $2
-         )
-         AND type NOT IN ('payout', 'adjustment')`,
-      [membership.agency_id, clientId],
-    );
+    const { data: orderIds_ } = await getSb()
+      .from('orders')
+      .select('id')
+      .eq('agency_id', membership.agency_id)
+      .eq('client_id', clientId);
+    const oids = (orderIds_ ?? []).map((o) => o.id);
+    if (!oids.length) return ok(res, { deleted: 0 });
 
-    return ok(res, { deleted: rowCount ?? 0 });
+    const { data: deleted_, error: delErr } = await getSb()
+      .from('agent_wallet_transactions')
+      .delete()
+      .eq('agency_id', membership.agency_id)
+      .in('order_id', oids)
+      .not('type', 'in', '(payout,adjustment)')
+      .select();
+    if (delErr) return err(res, 500, delErr.message);
+
+    return ok(res, { deleted: deleted_?.length ?? 0 });
   } catch (e) {
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }
@@ -1175,27 +1225,30 @@ app.delete('/api/wallet-txs-for-client/:clientId', isAuthenticatedOrBearer, asyn
 ────────────────────────────────────────────── */
 app.delete('/api/wallet-tx/:txId', isAuthenticatedOrBearer, async (req, res) => {
   try {
-    const { rows: memberRows } = await pool.query(
-      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id],
-    );
-    const membership = memberRows[0];
+    const { data: memberRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    const membership = memberRows?.[0];
     if (!membership) return err(res, 403, 'Tidak terdaftar di agency manapun');
     if (membership.role !== 'owner') return err(res, 403, 'Hanya owner yang bisa hapus komisi agen');
 
     const { txId } = req.params;
-    const { rowCount } = await pool.query(
-      `DELETE FROM agent_wallet_transactions
-       WHERE id = $1 AND agency_id = $2
-         AND type NOT IN ('payout', 'adjustment')`,
-      [txId, membership.agency_id],
-    );
+    const { data: deleted_, error: delErr } = await getSb()
+      .from('agent_wallet_transactions')
+      .delete()
+      .eq('id', txId)
+      .eq('agency_id', membership.agency_id)
+      .not('type', 'in', '(payout,adjustment)')
+      .select();
+    if (delErr) return err(res, 500, delErr.message);
 
-    if (!rowCount || rowCount === 0) {
+    if (!deleted_?.length) {
       return err(res, 404, 'Transaksi tidak ditemukan atau tidak bisa dihapus (payout/adjustment dilindungi)');
     }
 
-    return ok(res, { deleted: 1 });
+    return ok(res, { deleted: deleted_.length });
   } catch (e) {
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }
@@ -1213,21 +1266,26 @@ app.post('/api/award-commission-points', isAuthenticatedOrBearer, async (req, re
       return err(res, 400, 'agencyId, agentId, dan orderId wajib diisi');
     }
 
-    const { rows: memberRows } = await pool.query(
-      'SELECT role FROM agency_members WHERE user_id = $1 AND agency_id = $2',
-      [agentId, agencyId],
-    );
-    if (!memberRows[0]) return err(res, 404, 'Member tidak ditemukan di agency ini');
+    const { data: memberRows } = await getSb()
+      .from('agency_members')
+      .select('role')
+      .eq('user_id', agentId)
+      .eq('agency_id', agencyId);
+    if (!memberRows?.[0]) return err(res, 404, 'Member tidak ditemukan di agency ini');
     if (memberRows[0].role !== 'agent') {
       return ok(res, { awarded: 0, reason: 'not_agent', role: memberRows[0].role });
     }
 
-    await pool.query(
-      `INSERT INTO agent_points (agency_id, agent_id, order_id, points, reason, awarded_at)
-       VALUES ($1, $2, $3, 20, 'commission_received', now())
-       ON CONFLICT (order_id) DO NOTHING`,
-      [agencyId, agentId, orderId],
-    );
+    await getSb()
+      .from('agent_points')
+      .upsert({
+        agency_id:  agencyId,
+        agent_id:   agentId,
+        order_id:   orderId,
+        points:     20,
+        reason:     'commission_received',
+        awarded_at: new Date().toISOString(),
+      }, { onConflict: 'order_id', ignoreDuplicates: true });
 
     return ok(res, { awarded: 20, reason: 'commission_received' });
   } catch (e) {
@@ -1256,23 +1314,27 @@ app.post('/api/save-card-back-url', isAuthenticatedOrBearer, async (req, res) =>
     const { targetUserId, agencyId, storagePath: clientStoragePath } = req.body ?? {};
     if (!targetUserId || !agencyId) return err(res, 400, 'targetUserId dan agencyId wajib diisi');
 
-    const { rows: memberRows } = await pool.query(
-      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 AND agency_id = $2',
-      [req.user.id, agencyId],
-    );
-    if (!memberRows[0]) return err(res, 403, 'Tidak terdaftar di agency yang diminta');
+    const { data: memberRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .eq('agency_id', agencyId);
+    if (!memberRows?.[0]) return err(res, 403, 'Tidak terdaftar di agency yang diminta');
     if (memberRows[0].role !== 'owner' && targetUserId !== req.user.id) {
       return err(res, 403, 'Hanya owner yang bisa update gambar kartu member lain');
     }
 
     const url = clientStoragePath ?? null;
-    const { rows: updated } = await pool.query(
-      'UPDATE agency_members SET card_back_image_url = $3 WHERE user_id = $1 AND agency_id = $2 RETURNING user_id, card_back_image_url',
-      [targetUserId, agencyId, url],
-    );
-    if (!updated[0]) return err(res, 404, 'User tidak ditemukan di agency ini');
+    const { data: updated, error: updErr } = await getSb()
+      .from('agency_members')
+      .update({ card_back_image_url: url })
+      .eq('user_id', targetUserId)
+      .eq('agency_id', agencyId)
+      .select('user_id, card_back_image_url')
+      .single();
+    if (updErr || !updated) return err(res, 404, 'User tidak ditemukan di agency ini');
 
-    return ok(res, { ok: true, url: updated[0].card_back_image_url });
+    return ok(res, { ok: true, url: updated.card_back_image_url });
   } catch (e) {
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }
@@ -1288,7 +1350,8 @@ app.get('/api/health-check', async (req, res) => {
   let dbOk = false;
 
   try {
-    await pool.query('SELECT 1');
+    const { error: hcErr } = await getSb().from('agencies').select('id').limit(1);
+    if (hcErr) throw new Error(hcErr.message);
     dbOk = true;
   } catch (e) {
     errors.push(`Database: ${e.message}`);
@@ -1330,11 +1393,12 @@ app.post('/api/backfill-field-fees', isAuthenticatedOrBearer, async (req, res) =
   const ROUTE = '[backfill-field-fees]';
   try {
 
-    const { rows: memRows } = await pool.query(
-      'SELECT agency_id, role FROM agency_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id],
-    );
-    if (!memRows[0]) return err(res, 403, 'Tidak terdaftar di agency manapun');
+    const { data: memRows } = await getSb()
+      .from('agency_members')
+      .select('agency_id, role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    if (!memRows?.[0]) return err(res, 403, 'Tidak terdaftar di agency manapun');
     if (memRows[0].role === 'agent') return err(res, 403, 'Hanya owner/staff yang dapat melakukan backfill fee');
 
     const agencyId = memRows[0].agency_id;
@@ -1356,13 +1420,14 @@ app.post('/api/backfill-field-fees', isAuthenticatedOrBearer, async (req, res) =
         }));
       console.log(`${ROUTE} using ${orders.length} Completed orders from client payload`);
     } else {
-      const { rows } = await pool.query(
-        `SELECT id, type, status, metadata, created_by_agent
-         FROM orders WHERE agency_id = $1 AND status = 'Completed'`,
-        [agencyId],
-      );
-      orders = rows;
-      console.log(`${ROUTE} fetched ${orders.length} Completed orders from local DB`);
+      const { data: rows, error: ordErr } = await getSb()
+        .from('orders')
+        .select('id, type, status, metadata, created_by_agent')
+        .eq('agency_id', agencyId)
+        .eq('status', 'Completed');
+      if (ordErr) return err(res, 500, ordErr.message);
+      orders = rows ?? [];
+      console.log(`${ROUTE} fetched ${orders.length} Completed orders from Supabase`);
     }
 
     const results = { credited: 0, skipped: 0, errors: 0 };
@@ -1378,20 +1443,30 @@ app.post('/api/backfill-field-fees', isAuthenticatedOrBearer, async (req, res) =
 
     async function upsertTx(txId, agentId, type, amountIdr, description) {
       try {
-        await pool.query(
-          `INSERT INTO agent_wallet_transactions
-             (id, agency_id, agent_id, type, points_delta, amount_idr, description, created_by, created_at)
-           VALUES ($1,$2,$3,$4,0,$5,$6,$7,$8)
-           ON CONFLICT (id) DO NOTHING`,
-          [txId, agencyId, agentId, type, amountIdr, description, req.user.id, now],
-        );
-        return null;
+        const { error } = await getSb()
+          .from('agent_wallet_transactions')
+          .upsert({
+            id:           txId,
+            agency_id:    agencyId,
+            agent_id:     agentId,
+            type,
+            points_delta: 0,
+            amount_idr:   amountIdr,
+            description,
+            created_by:   req.user.id,
+            created_at:   now,
+          }, { onConflict: 'id', ignoreDuplicates: true });
+        return error ?? null;
       } catch (e) { return e; }
     }
 
-    async function markMeta(orderId, meta, patch) {
-      const updated = { ...meta, ...patch };
-      await pool.query('UPDATE orders SET metadata = $2 WHERE id = $1', [orderId, JSON.stringify(updated)]).catch(() => {});
+    async function markMeta(orderId, meta, metaPatch) {
+      const updated = { ...meta, ...metaPatch };
+      await getSb()
+        .from('orders')
+        .update({ metadata: updated })
+        .eq('id', orderId)
+        .catch(() => {});
     }
 
     for (const order of orders) {
@@ -1456,11 +1531,12 @@ app.post('/api/migrate-progress-steps', async (req, res) => {
   try {
     const callerUser = await getCallerUser(req.headers['authorization'] ?? '');
     if (callerUser) {
-      const { rows: memberRows } = await pool.query(
-        'SELECT role FROM agency_members WHERE user_id = $1 LIMIT 1',
-        [callerUser.id],
-      );
-      if (!memberRows[0] || !['owner', 'staff'].includes(memberRows[0].role)) {
+      const { data: memberRows } = await getSb()
+        .from('agency_members')
+        .select('role')
+        .eq('user_id', callerUser.id)
+        .limit(1);
+      if (!memberRows?.[0] || !['owner', 'staff'].includes(memberRows[0].role)) {
         return err(res, 403, 'Hanya owner/staff yang dapat menjalankan migrasi');
       }
     }
@@ -1474,10 +1550,11 @@ app.post('/api/migrate-progress-steps', async (req, res) => {
     const NEW_MAX = { visa_student: 5, flight: 4, visa_voa: 4, umrah: 5 };
     const types = Object.keys(MIGRATIONS);
 
-    const { rows: orders } = await pool.query(
-      `SELECT id, type, metadata FROM orders WHERE type = ANY($1)`,
-      [types],
-    );
+    const { data: orders, error: ordersErr } = await getSb()
+      .from('orders')
+      .select('id, type, metadata')
+      .in('type', types);
+    if (ordersErr) return err(res, 500, ordersErr.message);
 
     let migrated = 0, skipped = 0, errors = 0;
     const errorSamples = [];
@@ -1495,10 +1572,11 @@ app.post('/api/migrate-progress-steps', async (req, res) => {
       if (newStep === undefined || newStep === oldStep) { skipped++; continue; }
       const clampedStep = Math.min(newStep, newMax);
       try {
-        await pool.query(
-          'UPDATE orders SET metadata = $2 WHERE id = $1',
-          [order.id, JSON.stringify({ ...meta, processStep: clampedStep })],
-        );
+        const { error: upErr } = await getSb()
+          .from('orders')
+          .update({ metadata: { ...meta, processStep: clampedStep } })
+          .eq('id', order.id);
+        if (upErr) throw new Error(upErr.message);
         migrated++;
         console.log(`${ROUTE} migrated order ${order.id} type=${order.type} ${oldStep}→${clampedStep}`);
       } catch (e) {
@@ -1536,31 +1614,14 @@ app.post('/api/setup-card-back', (req, res) => {
   return ok(res, { ok: true, message: 'Storage bucket tidak diperlukan — gambar disimpan di database.' });
 });
 
-// ── Startup DB migration: add order_id column + unique constraint ─────────────
-async function runWalletMigration() {
-  try {
-    await pool.query(`
-      ALTER TABLE agent_wallet_transactions
-        ADD COLUMN IF NOT EXISTS order_id TEXT;
-    `);
-    await pool.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS uniq_wallet_tx_order_fee
-        ON agent_wallet_transactions (agency_id, agent_id, order_id, type)
-        WHERE order_id IS NOT NULL;
-    `);
-    console.log('[server] wallet migration OK — order_id column + unique index ready');
-  } catch (e) {
-    console.warn('[server] wallet migration warning:', e.message);
-  }
-}
-void runWalletMigration();
+// runWalletMigration (Replit PostgreSQL) — dihapus; Supabase sudah punya skema lengkap.
 
 const _server = app.listen(PORT, '0.0.0.0', () => {
   const mode = isProd ? 'production' : 'development';
   console.log(`[server] API running on port ${PORT} (${mode})`);
   const authMode = 'Bearer JWT (Supabase)';
   console.log(`[server] Auth: ${authMode}`);
-  console.log(`[server] Database: ${process.env.DATABASE_URL ? 'PostgreSQL (DATABASE_URL)' : 'not configured'}`);
+  console.log(`[server] Database: Supabase (${process.env.VITE_SUPABASE_URL || 'URL dari VITE_SUPABASE_URL'})`);
   console.log(`[server] ── Caption Generator & OCR (OpenRouter) ──`);
   console.log(`[server]   OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
   if (OPENROUTER_API_KEY) {
