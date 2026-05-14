@@ -972,7 +972,7 @@ export default function OwnerVisaTrackerPage() {
           })}
         </div>
       )}
-    </div>{/* end hidden md:block desktop layout */}
-    </>{/* end fragment */}
+    </div>
+    </>
   );
 }

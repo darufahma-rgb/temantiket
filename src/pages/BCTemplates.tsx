@@ -1082,8 +1082,8 @@ export default function BCTemplates() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>{/* end hidden md:flex desktop layout */}
-    </>{/* end fragment */}
+    </div>
+    </>
   );
 }
 

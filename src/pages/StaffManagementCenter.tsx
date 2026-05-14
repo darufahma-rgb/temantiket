@@ -1696,7 +1696,7 @@ export default function StaffManagementCenter() {
         existingNotes={notes.filter((n) => n.target_user_id === noteTargetId)}
         onSaved={(note) => setNotes((prev) => [note, ...prev])}
       />
-    </div>{/* end hidden md:block desktop layout */}
-    </>{/* end fragment */}
+    </div>
+    </>
   );
 }

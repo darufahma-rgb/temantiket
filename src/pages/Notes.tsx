@@ -2058,7 +2058,7 @@ export default function Notes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>{/* end hidden md:block desktop layout */}
-    </>{/* end fragment */}
+    </div>
+    </>
   );
 }
