@@ -14,6 +14,7 @@ import {
   Wallet, ChevronRight, RefreshCw, Loader2,
   Users, BadgeDollarSign, Search, Filter,
   UserCheck, X, CircleDot, Landmark, ExternalLink,
+  ChevronLeft, Plus, Bell, MoreVertical, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ import type { Order } from "@/features/orders/ordersRepo";
 
 const VISA_STEPS = ORDER_PROCESS_STEPS["visa_student"];
 const DEFAULT_FEE = 200_000;
+const MOBILE_PAGE_SIZE = 5;
 
 function fmtDate(iso: string) {
   try { return format(new Date(iso), "d MMM yyyy", { locale: idLocale }); } catch { return iso; }
@@ -79,6 +81,11 @@ export default function OwnerVisaTrackerPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [filterPelaksana, setFilterPelaksana] = useState<string>("all");
 
+  // Mobile-only state
+  const [mobilePage, setMobilePage] = useState(1);
+  const [showMobileFilter, setShowMobileFilter] = useState(false);
+  const [mobileMoreMenu, setMobileMoreMenu] = useState<string | null>(null);
+
   useEffect(() => {
     void (async () => {
       setLoading(true);
@@ -93,6 +100,9 @@ export default function OwnerVisaTrackerPage() {
       setLoading(false);
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset mobile page when filters change
+  useEffect(() => { setMobilePage(1); }, [search, filterStatus, filterPelaksana]);
 
   const clientMap = useMemo(
     () => new Map(clients.map((c) => [c.id, c])),
@@ -256,8 +266,399 @@ export default function OwnerVisaTrackerPage() {
     );
   }
 
+  // Mobile computed values
+  const mobileTabs: { key: FilterStatus; label: string; count: number }[] = [
+    { key: "all",    label: "Semua",     count: visaOrders.length },
+    { key: "belum",  label: "Belum Ditugaskan", count: stats.belum  },
+    { key: "proses", label: "Diproses",  count: stats.proses  },
+    { key: "selesai",label: "Selesai",   count: stats.selesai },
+    { key: "kendala",label: "Kendala",   count: stats.kendala },
+  ];
+  const mobileTotalPages = Math.max(1, Math.ceil(filtered.length / MOBILE_PAGE_SIZE));
+  const mobilePagedList  = filtered.slice((mobilePage - 1) * MOBILE_PAGE_SIZE, mobilePage * MOBILE_PAGE_SIZE);
+
+  function initials(name: string) {
+    return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase() || "?";
+  }
+
   return (
-    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-6">
+    <>
+    {/* ══════════════ MOBILE LAYOUT ══════════════ */}
+    <div
+      className="md:hidden min-h-screen bg-[#F0F4FB] pb-28"
+      style={{ WebkitTapHighlightColor: "transparent" } as React.CSSProperties}
+      onClick={() => setMobileMoreMenu(null)}
+    >
+      {/* Header */}
+      <div className="px-4 pt-12 pb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0 active:opacity-60 transition-opacity"
+          >
+            <ChevronLeft className="h-5 w-5 text-[#0f1c3f]" strokeWidth={2.5} />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-[#0f1c3f] leading-tight">Visa Tracker</h1>
+            <p className="text-[11px] text-[#64748b] mt-0.5 leading-snug">
+              Pantau semua pengajuan visa dalam satu tempat
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => void handleRefresh()}
+          disabled={refreshing}
+          className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0 active:opacity-60 transition-opacity"
+        >
+          <RefreshCw className={`h-4.5 w-4.5 text-[#0f1c3f] ${refreshing ? "animate-spin" : ""}`} strokeWidth={1.5} />
+        </button>
+      </div>
+
+      <div className="px-4 space-y-4">
+
+        {/* Stats cards */}
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: "Total Pengajuan",  value: stats.total,   bg: "bg-blue-50",   ic: "text-blue-600",   icon: FileText      },
+            { label: "Belum Ditugaskan", value: stats.belum,   bg: "bg-orange-50", ic: "text-orange-600", icon: Clock         },
+            { label: "Sedang Diproses",  value: stats.proses,  bg: "bg-indigo-50", ic: "text-indigo-600", icon: CircleDot     },
+            { label: "Visa Terbit",      value: stats.selesai, bg: "bg-green-50",  ic: "text-green-600",  icon: CheckCircle2  },
+          ].map((s) => (
+            <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${s.bg} ${s.ic}`}>
+                <s.icon className="h-4 w-4" strokeWidth={1.5} />
+              </div>
+              <div className="text-2xl font-bold text-[#0f1c3f]">{s.value}</div>
+              <div className="text-[11px] text-[#64748b] mt-0.5">{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Search + filter row */}
+        <div className="bg-white rounded-2xl shadow-sm p-3 space-y-2">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#64748b]" strokeWidth={1.5} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari nama klien, ID order…"
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 text-[13px] text-[#0f1c3f] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/30 focus:border-[#0066FF]/50"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 active:opacity-60">
+                  <X className="h-3.5 w-3.5 text-[#64748b]" strokeWidth={2} />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setShowMobileFilter(true)}
+              className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0 active:opacity-60 transition-opacity"
+            >
+              <Filter className="h-4 w-4 text-[#0f1c3f]" strokeWidth={1.5} />
+            </button>
+          </div>
+          <p className="text-[11px] text-[#64748b] px-1">
+            Menampilkan <span className="font-bold text-[#0f1c3f]">{filtered.length}</span> dari {visaOrders.length} berkas
+          </p>
+        </div>
+
+        {/* Status tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {mobileTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setFilterStatus(tab.key)}
+              className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all active:opacity-60 ${
+                filterStatus === tab.key
+                  ? "text-white shadow-sm"
+                  : "bg-white text-[#64748b]"
+              }`}
+              style={filterStatus === tab.key
+                ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" }
+                : undefined}
+            >
+              {tab.label}
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                filterStatus === tab.key ? "bg-white/20 text-white" : "bg-gray-100 text-[#64748b]"
+              }`}>{tab.count}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Visa cards */}
+        {mobilePagedList.length === 0 ? (
+          <div className="bg-white rounded-3xl shadow-sm p-10 text-center">
+            <Landmark className="h-10 w-10 text-gray-300 mx-auto mb-3" strokeWidth={1.5} />
+            <p className="text-[13px] font-semibold text-[#0f1c3f]">Tidak ada berkas ditemukan</p>
+            <p className="text-[11px] text-[#64748b] mt-1">Coba ubah filter atau tambah order baru</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {mobilePagedList.map((order) => {
+              const m          = meta(order);
+              const step       = Number(m.processStep ?? 0);
+              const isDone     = step >= VISA_STEPS.length - 1;
+              const kendala    = (m.visaKendala as string | null) ?? null;
+              const pelaksanaId  = (m.pelaksanaId as string | null) ?? null;
+              const fee        = Number(m.pelaksanaFee ?? DEFAULT_FEE);
+              const feeCredited = !!(m.pelaksanaFeeCredited as boolean | null);
+              const client     = clientMap.get(order.clientId ?? "");
+              const pelaksana  = pelaksanaId ? memberMap.get(pelaksanaId) : null;
+              const clientName = client?.name ?? order.title ?? `Order #${order.id.slice(0, 8)}`;
+
+              const statusColor = isDone
+                ? { border: "border-green-200", badge: "bg-green-100 text-green-700", text: "Visa Terbit" }
+                : kendala
+                ? { border: "border-amber-200", badge: "bg-amber-100 text-amber-700", text: "Ada Kendala" }
+                : !pelaksanaId
+                ? { border: "border-orange-200", badge: "bg-orange-100 text-orange-700", text: "Belum Ditugaskan" }
+                : { border: "border-indigo-100", badge: "bg-indigo-100 text-indigo-700", text: "Diproses" };
+
+              return (
+                <div key={order.id} className={`bg-white rounded-3xl shadow-sm border ${statusColor.border} overflow-hidden`}>
+                  <div className="p-4">
+                    {/* Card header */}
+                    <div className="flex items-start gap-3">
+                      <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 text-white text-[13px] font-bold"
+                        style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}>
+                        {initials(clientName)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[14px] font-bold text-[#0f1c3f] truncate">{clientName}</p>
+                          <div className="relative shrink-0">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setMobileMoreMenu(mobileMoreMenu === order.id ? null : order.id); }}
+                              className="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center active:opacity-60"
+                            >
+                              <MoreVertical className="h-4 w-4 text-[#64748b]" strokeWidth={1.5} />
+                            </button>
+                            {mobileMoreMenu === order.id && (
+                              <div className="absolute right-0 top-9 z-20 bg-white rounded-2xl shadow-lg border border-gray-100 py-1 w-44" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  onClick={() => { navigate(`/orders/detail/${order.id}`); setMobileMoreMenu(null); }}
+                                  className="w-full text-left px-4 py-2.5 text-[12px] font-medium text-[#0f1c3f] hover:bg-gray-50 flex items-center gap-2"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5 text-[#0066FF]" strokeWidth={1.5} /> Lihat Detail
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor.badge}`}>{statusColor.text}</span>
+                          <span className="text-[10px] text-[#64748b] font-mono">#{order.id.slice(0, 8)}</span>
+                          <span className="text-[10px] text-[#64748b]">{fmtDate(order.createdAt)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Kendala note */}
+                    {kendala && (
+                      <div className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-amber-800">{kendala}</p>
+                      </div>
+                    )}
+
+                    {/* Progress timeline */}
+                    <div className="mt-3">
+                      <div className="flex items-center gap-1">
+                        {VISA_STEPS.map((s, i) => {
+                          const done   = i < step;
+                          const active = i === step;
+                          return (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                              <div className={`h-1.5 w-full rounded-full ${done ? "bg-green-500" : active ? "bg-[#0066FF]" : "bg-gray-100"}`} />
+                              <span className={`text-[9px] ${active ? "text-[#0066FF] font-bold" : done ? "text-green-600" : "text-gray-300"}`}>{s.emoji}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Pelaksana + fee row */}
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Users className="h-3.5 w-3.5 text-[#64748b] shrink-0" strokeWidth={1.5} />
+                        {pelaksana
+                          ? <span className="text-[11px] font-semibold text-[#0f1c3f] truncate">{pelaksana.displayName}</span>
+                          : <span className="text-[11px] text-orange-600 font-medium italic">Belum Ditugaskan</span>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {pelaksanaId && feeCredited && (
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
+                            <CheckCircle2 className="h-3 w-3" strokeWidth={2} /> Fee Dibayar
+                          </span>
+                        )}
+                        {pelaksanaId && !feeCredited && (
+                          <button
+                            disabled={creditingId === order.id}
+                            onClick={() => void handleCreditFee(order)}
+                            className="flex items-center gap-1.5 text-[11px] font-semibold text-white bg-violet-600 px-3 py-1.5 rounded-full active:opacity-60 disabled:opacity-50"
+                          >
+                            {creditingId === order.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <BadgeDollarSign className="h-3 w-3" />}
+                            Bayar {fmtIDR(fee)}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => navigate(`/orders/detail/${order.id}`)}
+                          className="flex items-center gap-1 text-[11px] font-semibold text-[#0066FF] active:opacity-60"
+                        >
+                          Detail <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {mobileTotalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 py-2">
+            <button
+              onClick={() => setMobilePage((p) => Math.max(1, p - 1))}
+              disabled={mobilePage === 1}
+              className="w-9 h-9 rounded-xl bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40 active:opacity-60"
+            >
+              <ChevronLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+            </button>
+            <span className="text-[13px] font-semibold text-[#0f1c3f]">{mobilePage} / {mobileTotalPages}</span>
+            <button
+              onClick={() => setMobilePage((p) => Math.min(mobileTotalPages, p + 1))}
+              disabled={mobilePage === mobileTotalPages}
+              className="w-9 h-9 rounded-xl bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40 active:opacity-60"
+            >
+              <ChevronRight className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+            </button>
+          </div>
+        )}
+
+        {/* Aksi Cepat */}
+        <div className="bg-white rounded-3xl shadow-sm p-4">
+          <h3 className="text-[14px] font-bold text-[#0f1c3f] mb-3">Aksi Cepat</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { icon: Plus,       label: "Pengajuan Baru",    sub: "Tambah berkas baru",     action: () => navigate("/orders"), bg: "bg-blue-50",   ic: "text-blue-600"   },
+              { icon: Search,     label: "Cek Status Visa",   sub: "Cari berdasarkan ref",   action: () => document.querySelector("input")?.focus(),           bg: "bg-green-50",  ic: "text-green-600"  },
+              { icon: FileText,   label: "Dokumen Saya",      sub: "Kelola dokumen visa",    action: () => toast.info("Segera hadir! 🚀"),                       bg: "bg-purple-50", ic: "text-purple-600" },
+              { icon: Bell,       label: "Pengingat",         sub: "Atur notifikasi visa",   action: () => toast.info("Segera hadir! 🚀"),                       bg: "bg-amber-50",  ic: "text-amber-600"  },
+            ].map((item) => (
+              <button
+                key={item.label}
+                onClick={item.action}
+                className="text-left p-3 rounded-2xl border border-gray-100 bg-gray-50/60 active:opacity-60 transition-opacity"
+              >
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-2 ${item.bg} ${item.ic}`}>
+                  <item.icon className="h-4 w-4" strokeWidth={1.5} />
+                </div>
+                <div className="text-[12px] font-semibold text-[#0f1c3f] leading-tight">{item.label}</div>
+                <div className="text-[10px] text-[#64748b] mt-0.5">{item.sub}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Fee summary card */}
+        <div className="bg-white rounded-3xl shadow-sm p-4">
+          <h3 className="text-[14px] font-bold text-[#0f1c3f] mb-3">Ringkasan Fee Pelaksana</h3>
+          <div className="space-y-2.5">
+            {[
+              { label: "Total Fee",      value: stats.feeTotalSum, color: "text-[#0f1c3f]",    icon: BadgeDollarSign },
+              { label: "Sudah Dibayar",  value: stats.feePaid,     color: "text-green-600",    icon: CheckCircle2   },
+              { label: "Belum Dibayar",  value: stats.feeUnpaid,   color: "text-red-500",      icon: Wallet         },
+            ].map((row) => (
+              <div key={row.label} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                <div className="flex items-center gap-2">
+                  <row.icon className="h-4 w-4 text-[#64748b]" strokeWidth={1.5} />
+                  <span className="text-[12px] text-[#64748b]">{row.label}</span>
+                </div>
+                <span className={`text-[13px] font-bold font-mono ${row.color}`}>{fmtIDR(row.value)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>{/* end px-4 space-y-4 */}
+
+      {/* Filter bottom sheet */}
+      {showMobileFilter && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMobileFilter(false)} />
+          <div className="relative bg-white rounded-t-3xl">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+              <h3 className="text-[16px] font-bold text-[#0f1c3f]">Filter &amp; Urutkan</h3>
+              <button onClick={() => setShowMobileFilter(false)} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center active:opacity-60">
+                <X className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-4 pb-8">
+              {/* Status filter */}
+              <div>
+                <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wide mb-2">Status</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { key: "all" as FilterStatus,           label: "Semua Status"         },
+                    { key: "belum" as FilterStatus,         label: "⏳ Belum Ditugaskan"  },
+                    { key: "proses" as FilterStatus,        label: "🔄 Sedang Diproses"   },
+                    { key: "selesai" as FilterStatus,       label: "✅ Selesai / Terbit"  },
+                    { key: "kendala" as FilterStatus,       label: "⚠️ Ada Kendala"       },
+                    { key: "belum_dibayar" as FilterStatus, label: "💸 Fee Belum Dibayar" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.key}
+                      onClick={() => { setFilterStatus(opt.key); setShowMobileFilter(false); }}
+                      className={`text-left px-3 py-2.5 rounded-xl text-[12px] font-medium transition-all active:opacity-60 ${
+                        filterStatus === opt.key
+                          ? "text-white"
+                          : "bg-gray-50 text-[#0f1c3f] border border-gray-200"
+                      }`}
+                      style={filterStatus === opt.key ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : undefined}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Pelaksana filter */}
+              <div>
+                <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wide mb-2">Pelaksana</p>
+                <div className="relative">
+                  <select
+                    value={filterPelaksana}
+                    onChange={(e) => setFilterPelaksana(e.target.value)}
+                    className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[12px] text-[#0f1c3f] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/30 pr-8"
+                  >
+                    <option value="all">Semua Pelaksana</option>
+                    <option value="__none">— Belum Ditugaskan —</option>
+                    {members.map((mb) => (
+                      <option key={mb.userId} value={mb.userId}>{mb.displayName}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#64748b]" strokeWidth={2} />
+                </div>
+              </div>
+              {/* Clear */}
+              {(filterStatus !== "all" || filterPelaksana !== "all") && (
+                <button
+                  onClick={() => { setFilterStatus("all"); setFilterPelaksana("all"); setShowMobileFilter(false); }}
+                  className="w-full py-3 rounded-2xl border border-gray-200 text-[13px] font-semibold text-[#64748b] active:opacity-60"
+                >
+                  Reset Filter
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>{/* end md:hidden */}
+
+    {/* ══════════════ DESKTOP LAYOUT ══════════════ */}
+    <div className="hidden md:block p-4 md:p-6 max-w-[1400px] mx-auto space-y-6">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -571,6 +972,7 @@ export default function OwnerVisaTrackerPage() {
           })}
         </div>
       )}
-    </div>
+    </div>{/* end hidden md:block desktop layout */}
+    </>{/* end fragment */}
   );
 }
