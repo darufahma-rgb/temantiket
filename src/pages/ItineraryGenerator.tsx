@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Sparkles, Copy, Check, Download, MessageCircle, ChevronDown, ChevronUp,
   Plane, RefreshCw, Pencil, Info, Wand2, Share2, ImagePlus, X, History, Trash2,
+  ArrowLeft, Clock, FileText, Save, ExternalLink, Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -620,6 +622,7 @@ function LegField({ label, value, onChange, placeholder, type = "text", mono = f
 type Tab = "wa" | "card" | "share";
 
 export default function ItineraryGenerator() {
+  const navigate = useNavigate();
   const rates = useRatesStore((s) => s.rates);
   const egpRate = rates.EGP ?? 515;
 
@@ -641,6 +644,10 @@ export default function ItineraryGenerator() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const shareCanvasRef = useRef<HTMLCanvasElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const mobileScreenshotRef = useRef<HTMLDivElement>(null);
+  const mobilePasteRef = useRef<HTMLDivElement>(null);
+  const mobileResultRef = useRef<HTMLDivElement>(null);
+  const mobileHistoryRef = useRef<HTMLDivElement>(null);
 
   const waText = itinerary ? buildWhatsAppText(itinerary, egpRate) : "";
   const smartTips = itinerary ? buildSmartTips(itinerary.legs) : [];
@@ -819,7 +826,492 @@ export default function ItineraryGenerator() {
   const hasApiKey = true;
 
   return (
-    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-5">
+    <div className="max-w-[1400px] mx-auto">
+
+      {/* ══════════════════════════════════════════════════════════
+           MOBILE LAYOUT  (md:hidden) — Native App Style
+      ══════════════════════════════════════════════════════════ */}
+      <div className="md:hidden min-h-screen bg-[#F0F4FB] pb-28">
+
+        {/* ── TOP HEADER ── */}
+        <div className="bg-white px-5 pt-12 pb-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <button
+                onClick={() => navigate(-1)}
+                className="h-10 w-10 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+              </button>
+              <div className="min-w-0">
+                <h1 className="text-[26px] font-extrabold text-[#0f1c3f] leading-tight">Itinerary</h1>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5 leading-snug">
+                  AI Itinerary Generator — Extract data dari screenshot atau kode booking.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 mt-1">
+              <button
+                onClick={() => {
+                  setHistoryOpen(true);
+                  setTimeout(() => mobileHistoryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+                }}
+                className="h-9 px-3.5 rounded-2xl flex items-center gap-1.5 text-[11px] font-bold text-white shadow-sm active:opacity-80 transition-opacity"
+                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+              >
+                <Clock className="h-3.5 w-3.5" strokeWidth={2} />
+                Riwayat
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 pt-5 space-y-5">
+
+          {/* ── HERO AI CARD ── */}
+          <div
+            className="rounded-3xl px-5 py-6 text-white relative overflow-hidden"
+            style={{ background: "linear-gradient(135deg,#1a0050 0%,#4c00b0 40%,#0038B8 80%,#0066FF 100%)" }}
+          >
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div className="absolute -top-14 -right-14 h-52 w-52 rounded-full opacity-10 bg-white" />
+              <div className="absolute top-4 right-4 h-20 w-20 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)" }} />
+              <div className="absolute -bottom-10 left-0 right-0 h-28" style={{ background: "radial-gradient(ellipse at 50% 100%, rgba(100,0,255,0.3) 0%, transparent 70%)" }} />
+              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "18px 18px" }} />
+            </div>
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-7 w-7 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                  <Sparkles className="h-4 w-4 text-yellow-300" strokeWidth={1.8} />
+                </div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-purple-200/80">AI Itinerary Generator</p>
+              </div>
+              <h2 className="text-[20px] font-black text-white leading-tight mb-1">
+                Ubah data penerbangan menjadi itinerary rapi siap copy-paste ✨
+              </h2>
+              <p className="text-[12px] text-white/60 mb-5 leading-snug">Cepat, akurat, dan siap digunakan untuk perjalanan Anda.</p>
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => mobileScreenshotRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  className="flex-1 h-10 rounded-2xl bg-white text-[#0038B8] text-[12px] font-extrabold flex items-center justify-center gap-1.5 active:opacity-80 transition-opacity shadow-sm"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <ImagePlus className="h-3.5 w-3.5" strokeWidth={2} />
+                  Extract Screenshot
+                </button>
+                <button
+                  onClick={() => mobilePasteRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  className="flex-1 h-10 rounded-2xl bg-white/15 border border-white/25 text-white text-[12px] font-extrabold flex items-center justify-center gap-1.5 active:opacity-80 transition-opacity"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <FileText className="h-3.5 w-3.5" strokeWidth={2} />
+                  Kode Booking
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ── SECTION 1: SCREENSHOT UPLOAD ── */}
+          <div ref={mobileScreenshotRef} className="bg-white rounded-3xl shadow-sm overflow-hidden">
+            <div className="px-5 pt-5 pb-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-[#0066FF] uppercase tracking-widest mb-0.5">Langkah 1</p>
+                <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Extract Data Penerbangan</h3>
+              </div>
+              <span className="text-[9px] font-extrabold px-2.5 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 uppercase tracking-wide shrink-0">AI Deep Extraction</span>
+            </div>
+            <div className="mx-5 mb-5 space-y-3">
+              <button
+                onClick={() => imageInputRef.current?.click()}
+                disabled={isOcrProcessing}
+                className={cn(
+                  "w-full border-2 border-dashed rounded-2xl py-8 px-4 flex flex-col items-center gap-3 transition-colors active:opacity-80",
+                  isOcrProcessing ? "border-purple-400 bg-purple-50" : "border-slate-200 bg-[#F0F4FB]"
+                )}
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                {isOcrProcessing ? (
+                  <>
+                    <div className="h-12 w-12 rounded-2xl bg-purple-100 flex items-center justify-center">
+                      <Loader2 className="h-6 w-6 text-purple-500 animate-spin" strokeWidth={1.8} />
+                    </div>
+                    <p className="text-[13px] font-bold text-purple-700">AI sedang membaca tiket…</p>
+                    <p className="text-[11px] text-slate-400">Mengekstrak data penerbangan dari gambar…</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="h-12 w-12 rounded-2xl bg-[#dbeafe] flex items-center justify-center">
+                      <ImagePlus className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[13px] font-bold text-[#0f1c3f]">Upload screenshot tiket Anda</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Format: JPG, PNG • Maks. 8MB</p>
+                    </div>
+                    <div
+                      className="h-10 px-5 rounded-2xl text-white text-[12px] font-bold flex items-center gap-2"
+                      style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+                    >
+                      <ImagePlus className="h-3.5 w-3.5" /> Pilih Gambar
+                    </div>
+                  </>
+                )}
+              </button>
+
+              {previewImageUrl && (
+                <div className="relative rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 max-h-40 flex items-center justify-center">
+                  <img src={previewImageUrl} alt="Preview" className="max-h-40 object-contain" />
+                  <button
+                    onClick={() => setPreviewImageUrl(null)}
+                    className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 text-white flex items-center justify-center"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
+              <div className="bg-sky-50 rounded-2xl px-4 py-3 border border-sky-100">
+                <p className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide mb-2">AI akan mengenali:</p>
+                {[
+                  "Rute penerbangan & kota",
+                  "Tanggal & waktu keberangkatan / tiba",
+                  "Maskapai & nomor penerbangan",
+                  "Durasi & transit",
+                  "Penumpang & bagasi",
+                  "Dan informasi penting lainnya",
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-1.5 mb-1 last:mb-0">
+                    <div className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0 mt-1.5" />
+                    <p className="text-[11px] text-sky-700">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── ATAU DIVIDER ── */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Atau</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+
+          {/* ── SECTION 2: PASTE KODE BOOKING ── */}
+          <div ref={mobilePasteRef} className="bg-white rounded-3xl shadow-sm overflow-hidden">
+            <div className="px-5 pt-5 pb-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-[#0066FF] uppercase tracking-widest mb-0.5">Langkah 2</p>
+                <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Paste Kode Booking / GDS</h3>
+              </div>
+              <button
+                onClick={() => setItinerary({ legs: [{}] })}
+                className="text-[11px] font-semibold text-[#0066FF] active:opacity-60 shrink-0"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                Manual Input
+              </button>
+            </div>
+            <div className="px-5 pb-5 space-y-3">
+              <Textarea
+                value={rawInput}
+                onChange={(e) => setRawInput(e.target.value)}
+                placeholder={"Masukkan kode booking (PNR) / kode sistem (GDS)\n\nContoh: ABC123, PNR ABC123,\nAmadeus: ABC123, Galileo: ABC123"}
+                className="font-mono text-[11px] min-h-[110px] resize-y bg-[#F0F4FB] border-0 rounded-2xl text-slate-700 placeholder:text-slate-300"
+              />
+              <button
+                onClick={() => void handleProcess()}
+                disabled={!rawInput.trim() || isProcessing}
+                className="w-full h-12 rounded-2xl text-[13px] font-extrabold text-white flex items-center justify-center gap-2 active:opacity-80 transition-opacity disabled:opacity-50"
+                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+              >
+                {isProcessing
+                  ? <><Loader2 className="h-4 w-4 animate-spin" />Menganalisis via AI…</>
+                  : <><Sparkles className="h-4 w-4 text-yellow-300" />Extract Sekarang</>
+                }
+              </button>
+              {rawInput.trim() && (
+                <button
+                  onClick={() => { setRawInput(""); setItinerary(null); setPreviewImageUrl(null); }}
+                  className="w-full text-[11px] text-slate-400 font-medium active:opacity-60 text-center"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  Reset Input
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* ── SECTION 3: HASIL ITINERARY ── */}
+          <div ref={mobileResultRef}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Hasil Itinerary</h3>
+                {itinerary && (
+                  <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">
+                    {itinerary.legs.length} penerbangan ditemukan
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => toast.info("Contoh tersedia di placeholder kode booking")}
+                className="text-[11px] font-semibold text-[#0066FF] active:opacity-60 shrink-0"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                Lihat Contoh
+              </button>
+            </div>
+
+            {itinerary ? (
+              <div className="space-y-3">
+                {/* Meta badge */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={cn(
+                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border",
+                    usedAI ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-sky-50 text-sky-700 border-sky-200",
+                  )}>
+                    {usedAI ? <Sparkles className="h-3 w-3" /> : <Info className="h-3 w-3" />}
+                    {usedAI ? "AI GPT-4o Vision/Mini" : "Parser Regex"}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <Check className="h-3 w-3" /> Siap Digunakan
+                  </span>
+                </div>
+
+                {/* Flight summary cards */}
+                {itinerary.legs.map((leg, i) => (
+                  <div key={i} className="bg-white rounded-3xl shadow-sm overflow-hidden">
+                    <div className="px-5 py-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Penerbangan {i + 1}</p>
+                        {leg.flightNumber && (
+                          <span className="text-[10px] font-mono font-bold text-[#0066FF] bg-blue-50 px-2 py-0.5 rounded-lg">{leg.flightNumber}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-center min-w-[56px]">
+                          <p className="text-[22px] font-black text-[#0f1c3f] leading-none">{leg.fromCode ?? "—"}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[70px]">{leg.fromCity ?? ""}</p>
+                          {leg.etd && <p className="text-[12px] font-bold text-[#0066FF] mt-1">{leg.etd}</p>}
+                        </div>
+                        <div className="flex-1 flex flex-col items-center gap-1">
+                          <div className="w-full flex items-center gap-1">
+                            <div className="flex-1 h-px bg-slate-200" />
+                            <Plane className="h-3.5 w-3.5 text-slate-300" strokeWidth={1.5} />
+                            <div className="flex-1 h-px bg-slate-200" />
+                          </div>
+                          {leg.transitCode && (
+                            <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                              via {leg.transitCode}
+                            </span>
+                          )}
+                          {leg.airline && <p className="text-[10px] text-slate-400">{leg.airline}</p>}
+                        </div>
+                        <div className="text-center min-w-[56px]">
+                          <p className="text-[22px] font-black text-[#0f1c3f] leading-none">{leg.toCode ?? "—"}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[70px]">{leg.toCity ?? ""}</p>
+                          {leg.eta && <p className="text-[12px] font-bold text-[#0066FF] mt-1">{leg.eta}</p>}
+                        </div>
+                      </div>
+                      {leg.departDate && (
+                        <p className="text-[11px] text-slate-400 mt-2.5 font-medium">{fmtDate(leg.departDate)}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {/* WhatsApp text preview */}
+                <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
+                  <div className="px-5 pt-4 pb-3 border-b border-slate-100 flex items-center justify-between">
+                    <p className="text-[13px] font-extrabold text-[#0f1c3f]">Teks Itinerary</p>
+                    <button
+                      onClick={() => void handleCopyWA()}
+                      className="h-9 px-4 rounded-2xl text-[11px] font-bold flex items-center gap-1.5 active:opacity-80 transition-opacity"
+                      style={{ background: copied ? "linear-gradient(135deg,#059669,#047857)" : "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent", color: "white" }}
+                    >
+                      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copied ? "Tersalin!" : "Salin"}
+                    </button>
+                  </div>
+                  <div className="px-5 py-4">
+                    <div className="bg-[#F0F4FB] rounded-2xl px-4 py-3 max-h-52 overflow-y-auto">
+                      <pre className="whitespace-pre-wrap text-[11px] font-mono text-slate-700 leading-relaxed">{waText}</pre>
+                    </div>
+                    <button
+                      onClick={handleOpenWA}
+                      className="w-full mt-3 h-11 rounded-2xl text-[13px] font-extrabold text-white flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+                      style={{ background: "linear-gradient(135deg,#25D366,#1a9c4a)", WebkitTapHighlightColor: "transparent" }}
+                    >
+                      <MessageCircle className="h-4 w-4" /> Buka WhatsApp
+                    </button>
+                  </div>
+                </div>
+
+                {/* Smart tips */}
+                {smartTips.length > 0 && (
+                  <div className="bg-amber-50 rounded-2xl px-4 py-3 border border-amber-100">
+                    <p className="text-[10px] font-extrabold text-amber-700 uppercase tracking-wide mb-2">Smart Info Otomatis</p>
+                    {smartTips.map((tip, i) => (
+                      <p key={i} className="text-[11px] text-amber-800 mb-1 last:mb-0">– {tip}</p>
+                    ))}
+                  </div>
+                )}
+
+                {/* Edit button */}
+                <button
+                  onClick={() => setEditOpen((v) => !v)}
+                  className="w-full h-11 rounded-2xl bg-white border border-slate-200 text-[12px] font-bold text-[#0f1c3f] flex items-center justify-center gap-2 shadow-sm active:opacity-70"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <Pencil className="h-4 w-4" />
+                  {editOpen ? "Tutup Editor Manual" : "Edit Manual"}
+                  {editOpen ? <ChevronDown className="h-3.5 w-3.5 rotate-180" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white rounded-3xl px-4 py-12 text-center flex flex-col items-center shadow-sm">
+                <div className="h-14 w-14 rounded-2xl bg-[#dbeafe] flex items-center justify-center mb-3">
+                  <Plane className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
+                </div>
+                <p className="text-[14px] font-bold text-[#0f1c3f]">Belum ada itinerary</p>
+                <p className="text-[11px] text-slate-400 mt-1 leading-snug max-w-[220px]">
+                  Upload screenshot tiket atau paste kode booking untuk memulai.
+                </p>
+                <button
+                  onClick={() => mobileScreenshotRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80"
+                  style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+                >
+                  <ImagePlus className="h-3.5 w-3.5" /> Mulai Extract
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── ACTION CARDS ── */}
+          {itinerary && (
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                {
+                  label: "Template\nItinerary",
+                  icon: <FileText className="h-5 w-5" style={{ color: "#0066FF" }} strokeWidth={1.8} />,
+                  iconBg: "#dbeafe",
+                  action: () => toast.info("Template segera hadir"),
+                },
+                {
+                  label: "Simpan\nItinerary",
+                  icon: <Save className="h-5 w-5" style={{ color: "#10b981" }} strokeWidth={1.8} />,
+                  iconBg: "#d1fae5",
+                  action: () => {
+                    if (itinerary) {
+                      const next = saveToHistory(itinerary);
+                      setHistory(next);
+                      toast.success("Itinerary disimpan ke riwayat!");
+                    }
+                  },
+                },
+                {
+                  label: "Export\nItinerary",
+                  icon: <Download className="h-5 w-5" style={{ color: "#f59e0b" }} strokeWidth={1.8} />,
+                  iconBg: "#fef3c7",
+                  action: () => {
+                    setActiveTab("card");
+                    void renderCanvas().then(() => {
+                      setTimeout(() => handleDownload(), 500);
+                    });
+                    toast.info("Merender Travel Card…");
+                  },
+                },
+              ].map((feat) => (
+                <button
+                  key={feat.label}
+                  onClick={feat.action}
+                  className="bg-white rounded-2xl p-3.5 flex flex-col items-center gap-2 shadow-sm active:opacity-70 transition-opacity"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <div className="h-11 w-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: feat.iconBg }}>
+                    {feat.icon}
+                  </div>
+                  <p className="text-[10px] font-bold text-[#0f1c3f] text-center leading-snug whitespace-pre-line">{feat.label}</p>
+                  <ChevronDown className="h-3 w-3 text-slate-300 -rotate-90" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* ── HISTORY PANEL (mobile) ── */}
+          <div ref={mobileHistoryRef}>
+            {history.length > 0 && (
+              <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
+                <button
+                  onClick={() => setHistoryOpen((v) => !v)}
+                  className="w-full px-5 py-4 flex items-center gap-3 active:opacity-70 transition-opacity"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <div className="h-10 w-10 rounded-2xl bg-sky-50 flex items-center justify-center shrink-0">
+                    <History className="h-5 w-5 text-sky-500" strokeWidth={1.8} />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-[13px] font-extrabold text-[#0f1c3f]">Riwayat Itinerary</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{history.length} itinerary tersimpan</p>
+                  </div>
+                  <ChevronDown className={cn("h-4 w-4 text-slate-400 transition-transform shrink-0", historyOpen && "rotate-180")} />
+                </button>
+                {historyOpen && (
+                  <div className="border-t border-slate-100 divide-y divide-slate-100">
+                    {history.map((entry) => (
+                      <div key={entry.id} className="px-5 py-3.5 flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] font-extrabold text-[#0f1c3f] truncate">{entry.label}</p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {entry.data.pnr && (
+                              <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{entry.data.pnr}</span>
+                            )}
+                            {entry.data.passengerName && (
+                              <span className="text-[10px] text-slate-400 truncate max-w-[100px]">{entry.data.passengerName}</span>
+                            )}
+                            <span className="text-[10px] text-slate-300 ml-auto shrink-0">{fmtRelTime(entry.savedAt)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => {
+                              setItinerary(entry.data);
+                              setActiveTab("wa");
+                              mobileResultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                              toast.success("Itinerary dimuat dari riwayat");
+                            }}
+                            className="h-8 px-3 rounded-xl text-[11px] font-bold text-[#0066FF] bg-blue-50 active:opacity-70"
+                            style={{ WebkitTapHighlightColor: "transparent" }}
+                          >
+                            Muat
+                          </button>
+                          <button
+                            onClick={() => {
+                              const next = deleteFromHistory(entry.id);
+                              setHistory(next);
+                              toast.success("Dihapus dari riwayat");
+                            }}
+                            className="h-8 w-8 rounded-xl flex items-center justify-center bg-red-50 active:opacity-70"
+                            style={{ WebkitTapHighlightColor: "transparent" }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════
+           DESKTOP LAYOUT  (hidden md:block)
+      ══════════════════════════════════════════════════════════ */}
+      <div className="hidden md:block p-6 space-y-5">
 
       {/* Header */}
       <div>
@@ -1267,6 +1759,7 @@ export default function ItineraryGenerator() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
