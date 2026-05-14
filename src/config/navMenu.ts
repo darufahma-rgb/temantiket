@@ -66,7 +66,7 @@ const TICKETS:       NavItemConfig = { icon: Ticket,          title: "Harga Tike
 const ITINERARY:     NavItemConfig = { icon: Sparkles,        title: "Itinerary",          label: "Itinerary AI",  url: "/itinerary",        badge: "AI" };
 const CALC:          NavItemConfig = { icon: Calculator,      title: "Kalkulator & Kurs",  label: "Kalkulator",    url: "/calculator"        };
 const BC:            NavItemConfig = { icon: MessageSquare,   title: "Template Broadcast", label: "Broadcast",     url: "/bc-templates"      };
-const CAPTION:       NavItemConfig = { icon: Megaphone,       title: "Caption Generator",  label: "Caption Gen",   url: "/caption-generator", badge: "AI" };
+const CAPTION:       NavItemConfig = { icon: Megaphone,       title: "Caption Generator",  label: "Caption Gen",   url: "/caption-generator", badge: "AI", ownerOnly: true };
 const NOTES:         NavItemConfig = { icon: StickyNote,      title: "Catatan",                                    url: "/notes"             };
 const REPORTS:       NavItemConfig = { icon: BarChart3,       title: "Laporan Keuangan",   label: "Laporan",       url: "/reports"           };
 const EXPORTS:       NavItemConfig = { icon: FileSpreadsheet, title: "Export Center",      label: "Export",        url: "/exports"           };
@@ -101,7 +101,7 @@ export const AGENT_SIDEBAR_SECTIONS: SidebarSectionConfig[] = [
   { key: "home",     label: "",        items: [DASHBOARD_AGENT] },
   { key: "bisnis",   label: "Bisnis",  items: [CLIENTS, ORDERS, PACKAGES] },
   { key: "tools",    label: "Tools",   items: [TICKETS, ITINERARY, CALC] },
-  { key: "konten",   label: "Konten",  items: [BC, CAPTION, NOTES] },
+  { key: "konten",   label: "Konten",  items: [BC, NOTES] },
   { key: "agen",     label: "Agen",    items: [LEADERBOARD, AGENT_CENTER] },
   { key: "settings", label: "",        items: [SETTINGS] },
 ];
@@ -147,7 +147,7 @@ export const AGENT_BOTTOM_NAV: MobileNavItem[] = [
 
 export const AGENT_MORE_ITEMS: MobileNavItem[] = [
   m(TICKETS), m(ITINERARY), m(CALC),
-  m(BC), m(CAPTION), m(NOTES),
+  m(BC), m(NOTES),
   m(AGENT_CENTER), m(LEADERBOARD),
   m(SETTINGS),
 ];
