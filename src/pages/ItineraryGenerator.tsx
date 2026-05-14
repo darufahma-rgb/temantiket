@@ -18,6 +18,7 @@ import {
   calcTransitMinutes, fmtMinutes,
   type ItineraryData, type FlightLeg,
 } from "@/lib/itineraryAI";
+import { Phone } from "lucide-react";
 
 // ── Itinerary History (localStorage) ──────────────────────────────────────
 
@@ -634,6 +635,11 @@ export default function ItineraryGenerator() {
   const [activeTab, setActiveTab] = useState<Tab>("wa");
   const [copied, setCopied] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+
+  // Broadcast WA fields
+  const [broadcastBagasi, setBroadcastBagasi] = useState("");
+  const [broadcastHarga, setBroadcastHarga] = useState("");
+  const [broadcastKontak, setBroadcastKontak] = useState("Miwon");
   const [isRenderingCard, setIsRenderingCard] = useState(false);
   const [isRenderingShare, setIsRenderingShare] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -649,7 +655,13 @@ export default function ItineraryGenerator() {
   const mobileResultRef = useRef<HTMLDivElement>(null);
   const mobileHistoryRef = useRef<HTMLDivElement>(null);
 
-  const waText = itinerary ? buildWhatsAppText(itinerary, egpRate) : "";
+  const waText = itinerary
+    ? buildWhatsAppText(itinerary, egpRate, {
+        bagasi: broadcastBagasi,
+        harga: broadcastHarga,
+        kontak: broadcastKontak,
+      })
+    : "";
   const smartTips = itinerary ? buildSmartTips(itinerary.legs) : [];
 
   // ── Auto-save itinerary to history when set ──
@@ -1122,7 +1134,7 @@ export default function ItineraryGenerator() {
                 {/* WhatsApp text preview */}
                 <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
                   <div className="px-5 pt-4 pb-3 border-b border-slate-100 flex items-center justify-between">
-                    <p className="text-[13px] font-extrabold text-[#0f1c3f]">Teks Itinerary</p>
+                    <p className="text-[13px] font-extrabold text-[#0f1c3f]">Teks Broadcast WA</p>
                     <button
                       onClick={() => void handleCopyWA()}
                       className="h-9 px-4 rounded-2xl text-[11px] font-bold flex items-center gap-1.5 active:opacity-80 transition-opacity"
@@ -1132,7 +1144,42 @@ export default function ItineraryGenerator() {
                       {copied ? "Tersalin!" : "Salin"}
                     </button>
                   </div>
-                  <div className="px-5 py-4">
+                  {/* Broadcast fields (mobile) */}
+                  <div className="px-5 pt-4 pb-2 space-y-2">
+                    <p className="text-[10px] font-bold text-sky-600 uppercase tracking-wide">Isi Broadcast</p>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <div className="flex-1 space-y-1">
+                          <label className="text-[10px] text-slate-400 font-medium">Bagasi</label>
+                          <input
+                            value={broadcastBagasi}
+                            onChange={(e) => setBroadcastBagasi(e.target.value)}
+                            placeholder="30 kg"
+                            className="w-full h-8 rounded-xl border border-slate-200 bg-[#F0F4FB] px-3 text-[12px] text-slate-700 outline-none focus:border-sky-400"
+                          />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <label className="text-[10px] text-slate-400 font-medium">Harga</label>
+                          <input
+                            value={broadcastHarga}
+                            onChange={(e) => setBroadcastHarga(e.target.value)}
+                            placeholder="29.000 EGP"
+                            className="w-full h-8 rounded-xl border border-slate-200 bg-[#F0F4FB] px-3 text-[12px] text-slate-700 outline-none focus:border-sky-400"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-slate-400 font-medium">Nama Kontak</label>
+                        <input
+                          value={broadcastKontak}
+                          onChange={(e) => setBroadcastKontak(e.target.value)}
+                          placeholder="Miwon"
+                          className="w-full h-8 rounded-xl border border-slate-200 bg-[#F0F4FB] px-3 text-[12px] text-slate-700 outline-none focus:border-sky-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="px-5 pb-4 pt-2">
                     <div className="bg-[#F0F4FB] rounded-2xl px-4 py-3 max-h-52 overflow-y-auto">
                       <pre className="whitespace-pre-wrap text-[11px] font-mono text-slate-700 leading-relaxed">{waText}</pre>
                     </div>
@@ -1571,6 +1618,43 @@ export default function ItineraryGenerator() {
               {/* WhatsApp tab */}
               {activeTab === "wa" && (
                 <div className="p-4 space-y-3">
+                  {/* Broadcast fields */}
+                  <div className="rounded-xl border border-sky-100 bg-sky-50 p-3 space-y-2">
+                    <p className="text-[11px] font-bold text-sky-700 uppercase tracking-wide flex items-center gap-1.5">
+                      <MessageCircle className="h-3 w-3" /> Isi Broadcast
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Bagasi</Label>
+                        <Input
+                          value={broadcastBagasi}
+                          onChange={(e) => setBroadcastBagasi(e.target.value)}
+                          placeholder="misal: 30 kg"
+                          className="h-7 text-[12px]"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Harga</Label>
+                        <Input
+                          value={broadcastHarga}
+                          onChange={(e) => setBroadcastHarga(e.target.value)}
+                          placeholder="misal: 29.000 EGP"
+                          className="h-7 text-[12px]"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                          <Phone className="h-2.5 w-2.5" /> Nama Kontak
+                        </Label>
+                        <Input
+                          value={broadcastKontak}
+                          onChange={(e) => setBroadcastKontak(e.target.value)}
+                          placeholder="Miwon"
+                          className="h-7 text-[12px]"
+                        />
+                      </div>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Button size="sm" onClick={handleCopyWA} className="gap-1.5 bg-sky-500 hover:bg-sky-600">
                       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}

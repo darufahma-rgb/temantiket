@@ -653,142 +653,106 @@ export function buildSmartTips(legs: FlightLeg[]): string[] {
   return tips.slice(0, 5);
 }
 
-// ── WhatsApp text builder ──────────────────────────────────────────────────
+// ── WhatsApp Broadcast text builder ───────────────────────────────────────
 
-function fmtDateLong(iso?: string | null): string {
+/** Format tanggal Indonesia singkat: "4 Agustus 2026" */
+function fmtDateId(iso?: string | null): string {
   if (!iso) return "";
   try {
-    return new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(iso + "T00:00:00"));
+    return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso + "T00:00:00"));
   } catch { return iso; }
 }
 
-function fmtMonthOnly(iso?: string | null): string {
-  if (!iso) return "";
-  try {
-    return new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(iso + "T00:00:00"));
-  } catch { return ""; }
-}
-
+/** Format jam dengan titik: "02.45" */
 function fmtTime(t?: string | null): string {
   if (!t) return "—";
   return t.replace(":", ".");
 }
 
-function fmtCityCode(city?: string | null, code?: string | null, terminal?: string | null): string {
-  const t = terminal ? ` ${/^T\d/.test(terminal) ? terminal : "T" + terminal}` : "";
-  if (city && code) return `${city} (${code}${t})`;
-  if (code) return `${code}${t}`;
-  return city ?? "—";
+export interface BroadcastOptions {
+  bagasi?: string;
+  harga?: string;
+  kontak?: string;
 }
 
-function fmtPrice(amount: number, currency: string): string {
-  if (currency === "IDR") {
-    return "Rp " + amount.toLocaleString("id-ID");
-  }
-  return `${currency} ${amount.toLocaleString("id-ID")}`;
-}
-
-export function buildWhatsAppText(data: ItineraryData, _egpRate: number): string {
-  const lines: string[] = [];
-  const SEP = "──────────";
-
+export function buildWhatsAppText(data: ItineraryData, _egpRate: number, broadcastOpts?: BroadcastOptions): string {
   const allLegs = data.legs.filter((l) => l.fromCode || l.toCode || l.departTime);
   if (allLegs.length === 0) return "";
 
-  const journeys        = groupLegsIntoJourneys(allLegs);
-  const firstJourney    = journeys[0] ?? [];
-  const lastJourney     = journeys[journeys.length - 1] ?? [];
-  const firstLeg        = firstJourney[0];
-  const lastLeg         = lastJourney[lastJourney.length - 1];
-  const firstJourneyEnd = firstJourney[firstJourney.length - 1];
+  const journeys     = groupLegsIntoJourneys(allLegs);
+  const firstJourney = journeys[0] ?? [];
+  const lastJourney  = journeys[journeys.length - 1] ?? [];
+  const firstLeg     = firstJourney[0];
+  const lastLegFirst = firstJourney[firstJourney.length - 1];
+  const lastLeg      = lastJourney[lastJourney.length - 1];
 
-  // Trip-type detection
+  const originCity  = firstLeg?.fromCity ?? firstLeg?.fromCode ?? "";
+  const destCity    = lastLegFirst?.toCity ?? lastLegFirst?.toCode ?? "";
+  const airlineName = firstLeg?.airline ?? "";
+
   const isReturn = journeys.length >= 2 &&
     !!firstLeg?.fromCode && !!lastLeg?.toCode &&
     firstLeg.fromCode === lastLeg.toCode;
-  const isMultiCity = journeys.length >= 2 && !isReturn;
 
-  // Header
-  const originCity = firstLeg?.fromCity ?? firstLeg?.fromCode ?? "";
-  const destCity   = firstJourneyEnd?.toCity ?? firstJourneyEnd?.toCode ?? "";
-  const tripLabel  = isReturn ? "Pulang Pergi" : isMultiCity ? "Multi-city" : "Sekali Jalan";
+  const lines: string[] = [];
 
-  lines.push(`*Tiket Pesawat ${originCity} → ${destCity} (${tripLabel})*`);
-  lines.push(`by Temantiket`);
-  lines.push("");
+  // ── Header ──
+  lines.push(`✈️ *Promo Tiket ${originCity} – ${destCity}*`);
+  lines.push(`*By Temantiket*`);
+  lines.push(``);
+  if (airlineName) {
+    lines.push(airlineName);
+    lines.push(``);
+  }
 
-  // Section labels
-  const sectionLabels: string[] = isReturn
-    ? ["KEBERANGKATAN", "KEPULANGAN"]
-    : journeys.length === 1
-      ? ["KEBERANGKATAN"]
-      : journeys.map((_, i) => i === 0 ? "KEBERANGKATAN" : `PERJALANAN ${i + 1}`);
+  // ── Helper: format satu journey ──
+  function formatJourney(label: string, jLegs: FlightLeg[]) {
+    if (jLegs.length === 0) return;
+    const dateStr = fmtDateId(jLegs[0].departDate);
+    lines.push(`• *${label}* — ${dateStr}`);
 
-  let flightCounter = 0;
+    jLegs.forEach((leg, i) => {
+      const dep  = fmtTime(leg.departTime);
+      const arr  = fmtTime(leg.arriveTime);
+      const fNum = leg.flightNumber ? ` *(${leg.flightNumber})*` : "";
+      lines.push(`${leg.fromCode ?? "—"} ${dep} → ${leg.toCode ?? "—"} ${arr}${fNum}`);
 
-  journeys.forEach((jLegs, jIdx) => {
-    lines.push(SEP);
-    lines.push(`*${sectionLabels[jIdx] ?? `PERJALANAN ${jIdx + 1}`}*`);
-
-    let lastShownDate: string | null = null;
-
-    jLegs.forEach((leg, legIdx) => {
-      // Date header (show on first leg or when date changes)
-      const depDate = leg.departDate ?? null;
-      if (depDate && depDate !== lastShownDate) {
-        lines.push(fmtDateLong(depDate));
-        lastShownDate = depDate;
-      }
-
-      lines.push("");
-
-      // Flight block
-      flightCounter++;
-      lines.push(`*Flight ${flightCounter}*`);
-      lines.push(`${fmtCityCode(leg.fromCity, leg.fromCode, null)} → ${fmtCityCode(leg.toCity, leg.toCode, null)}`);
-
-      if (leg.airline || leg.flightNumber) {
-        lines.push([leg.airline, leg.flightNumber].filter(Boolean).join(" "));
-      }
-
-      const isNextDay = !!leg.arriveDate && !!leg.departDate && leg.arriveDate > leg.departDate;
-      lines.push(`Berangkat  ${fmtTime(leg.departTime)}`);
-      lines.push(`Tiba       ${fmtTime(leg.arriveTime)}${isNextDay ? " (+1)" : ""}`);
-
-      // Transit info between consecutive legs in same journey
-      if (legIdx < jLegs.length - 1) {
-        const nextLeg     = jLegs[legIdx + 1];
-        const transitMins = calcTransitMinutes(leg, nextLeg);
-        const transitCity = leg.toCity ?? leg.toCode ?? "transit";
-
-        lines.push("");
-
-        if (transitMins !== null) {
-          lines.push(`Transit di ${transitCity} — ${fmtMinutes(transitMins)}`);
-          if (transitMins > 12 * 60) {
-            lines.push(`(transit panjang — pastikan cek kebutuhan visa transit)`);
-          }
-        } else {
-          lines.push(`Transit di ${transitCity}`);
-        }
+      if (i < jLegs.length - 1) {
+        const transitMins = calcTransitMinutes(leg, jLegs[i + 1]);
+        lines.push(transitMins !== null ? `Transit ${fmtMinutes(transitMins)}` : `Transit`);
       }
     });
-  });
-
-  // Bagasi & harga
-  lines.push("");
-  lines.push(SEP);
-
-  const currency = data.priceCurrency ?? "IDR";
-  if (data.baggage) {
-    lines.push(`Bagasi: ${data.baggage}`);
-  }
-  if (data.totalPrice && data.totalPrice > 0) {
-    lines.push(`Harga: ${fmtPrice(data.totalPrice, currency)}`);
   }
 
-  lines.push("");
-  lines.push(`_by Temantiket — mudah, cepat, amanah_`);
+  // ── Outbound ──
+  formatJourney("Berangkat", firstJourney);
+
+  // ── Return / additional journeys ──
+  if (journeys.length >= 2) {
+    lines.push(``);
+    formatJourney(isReturn ? "Pulang" : "Perjalanan 2", lastJourney);
+    for (let i = 1; i < journeys.length - 1; i++) {
+      lines.push(``);
+      formatJourney(`Perjalanan ${i + 1}`, journeys[i]);
+    }
+  }
+
+  lines.push(``);
+
+  // ── Bagasi / Harga / Kontak ──
+  const bagasiText = broadcastOpts?.bagasi?.trim()
+    || (data.baggage ? data.baggage : "xx kg");
+  lines.push(`Bagasi : ${bagasiText}`);
+
+  const hargaText = broadcastOpts?.harga?.trim()
+    || (data.totalPrice && data.totalPrice > 0
+      ? `${data.priceCurrency ?? ""} ${data.totalPrice.toLocaleString("id-ID")}`.trim()
+      : "xx.xxx LE");
+  lines.push(`Harga : ${hargaText}`);
+
+  lines.push(``);
+  const kontakText = broadcastOpts?.kontak?.trim() || "Miwon";
+  lines.push(`Hubungi Temantiket : (${kontakText})`);
 
   return lines.join("\n");
 }
