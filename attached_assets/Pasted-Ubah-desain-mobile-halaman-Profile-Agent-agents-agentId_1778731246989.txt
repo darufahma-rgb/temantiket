@@ -1,0 +1,171 @@
+Ubah desain mobile halaman Profile Agent /agents/:agentId agar seragam dengan native-app style halaman Dashboard yang baru.
+
+Target utama:
+- src/pages/AgentProfileOwnerView.tsx
+- route: /agents/:agentId
+- mobile layout saja dengan md:hidden / lg:hidden
+- desktop layout jangan dirusak
+- pertahankan seluruh logic existing:
+  - load agent by agentId
+  - listMembers
+  - agent points
+  - missions
+  - submissions
+  - orders
+  - clients
+  - wallet transactions / commission
+  - delete commission transaction
+  - sync/backfill fee
+  - upload avatar
+  - upload card back
+  - edit profile
+  - tabs overview/misi/orders/komisi/informasi
+
+Desain mobile harus mengikuti referensi:
+- background putih kebiruan / soft blue
+- cards putih rounded besar
+- shadow lembut
+- typography navy tebal
+- spacing lega
+- primary gradient blue
+- bottom nav floating konsisten
+
+Struktur mobile Profile Agent:
+
+1. Header mobile:
+- tombol back kiri rounded square putih
+- title besar: “Profile Agent”
+- subtitle: “Kelola profil, informasi, dan pencapaian Anda”
+- tombol kanan:
+  - “Bagikan” dengan icon share
+  - menu titik tiga
+- safe-area top
+
+2. Profile identity card:
+Buat card putih besar:
+- avatar/foto agent kiri besar
+- badge verified/check biru
+- nama agent besar
+- role badge “Agent”
+- username/email kecil
+- ID Agent, contoh “AGT-0001”
+- status badge Aktif
+- tanggal bergabung
+- rating + jumlah ulasan
+- badge “Top 1% Agent” jika ranking bagus
+- 4 tombol kontak:
+  - WhatsApp
+  - Telepon
+  - Email
+  - Instagram
+Gunakan data asli agent/profile. Fallback aman jika field kosong.
+
+3. Level Agent hero card:
+Buat card gradient biru:
+- label “Level Agent”
+- tier agent dari getTierInfo(totalPoints), contoh Platinum
+- text progress:
+  “Anda berada di level tertinggi” atau progress ke tier berikutnya
+- progress bar
+- poin current / target
+- tombol “Lihat Benefit”
+- visual diamond/trophy boleh pakai lucide icon/gradient illustration
+Gunakan totalPoints existing.
+
+4. Ringkasan Performa:
+Card putih dengan title “Ringkasan Performa” + link “Lihat Detail”.
+Isi 4 stat cards:
+- Total Transaksi
+- Total Penjualan
+- Rating
+- Total Klien
+Gunakan data asli:
+- agentOrders.length / completed orders
+- revenue/sales total dari order
+- rating fallback 4.8 atau hitung jika ada data
+- agentClients.length
+Jangan hardcode jika data ada.
+
+5. Pencapaian:
+Card putih dengan title “Pencapaian” + “Lihat Semua”.
+Tampilkan achievement badges:
+- 100 Transaksi
+- Top Seller
+- Rating 5.0
+- 50 Klien
+- Platinum Club
+Status:
+- unlocked jika syarat terpenuhi
+- locked gray jika belum
+Boleh gunakan image/icon badge sederhana dari lucide/emoji/gradient jika belum ada asset.
+
+6. Layanan Terlaris:
+Card putih dengan 4 mini cards:
+- Visa Student
+- Tiket Internasional
+- Paket Umrah
+- Hotel
+Masing-masing:
+- icon pastel
+- jumlah transaksi
+- total nominal
+Gunakan portfolio/order type data existing.
+Fallback 0.
+
+7. Riwayat Aktivitas Terbaru:
+Card putih dengan title + “Lihat Semua”.
+Tampilkan list aktivitas:
+- booking/order berhasil
+- order visa disetujui
+- klien baru/referral
+- point reward
+- payout/commission
+Gunakan data dari agentOrders, allPoints, walletTxs.
+Setiap row:
+- icon pastel kiri
+- title
+- invoice/ref + tanggal
+- nominal/poin kanan
+- chevron
+
+8. Existing tabs tetap tersedia:
+Jangan hapus tab overview/misi/orders/komisi/informasi.
+Untuk mobile:
+- default tampilan atas adalah summary native layout.
+- Tab detail bisa ditempatkan setelah sections utama atau sebagai horizontal pill tabs.
+- Komisi tab tetap harus berisi delete manual transaction yang sudah ada.
+- Misi review tetap jalan.
+- Orders list tetap jalan.
+- Informasi tetap jalan.
+
+9. Bottom nav:
+Gunakan bottom nav floating yang sama dengan halaman lain:
+- Beranda/Dashboard
+- Order
+- Plus tengah
+- Klien
+- Akun active
+Jangan duplicate jika sudah dari DashboardLayout.
+Pastikan padding-bottom cukup agar content tidak ketutup nav.
+
+10. Performance dan safety:
+- Jangan blank screen.
+- Jika agent belum loaded, tampilkan skeleton premium.
+- Jika agentId invalid, tampilkan empty/error state friendly.
+- Semua access user/agency/agent harus guarded.
+- Jangan crash kalau photoUrl, phoneWa, cardBackUrl, orders, clients, walletTxs kosong.
+- Jangan refetch berlebihan setiap render.
+- no horizontal overflow.
+
+11. Compatibility:
+- jangan ubah auth
+- jangan ubah Supabase schema
+- jangan ubah routing
+- jangan membuat API Vercel baru
+- jangan re-add Replit Auth
+- jangan rusak desktop layout
+- jangan ubah logic komisi/poin
+- pastikan npm run build berhasil
+
+Expected result:
+Saat owner membuka /agents/:agentId di mobile, halaman profile agent harus sangat mirip referensi: header besar, profile identity card, contact buttons, level card biru, ringkasan performa, pencapaian, layanan terlaris, riwayat aktivitas, tabs detail tetap tersedia, dan bottom nav konsisten.

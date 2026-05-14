@@ -1,0 +1,94 @@
+Ubah desain mobile halaman Leaderboard Agent agar seragam dengan native-app style halaman Dashboard.
+
+Target:
+- Cari file halaman leaderboard agent di repo, kemungkinan /leaderboard, /agents/leaderboard, /agent-points, atau komponen MitraLeaderboardCard.
+- Refactor mobile layout saja dengan md:hidden.
+- Desktop jangan dirusak.
+
+Struktur mobile:
+
+1. Header:
+- tombol back kiri rounded square putih
+- title “Leaderboard Agent”
+- subtitle “Pantau ranking, poin, komisi, dan performa agent dalam satu tempat.”
+- tombol “Riwayat Aktivitas”
+- tombol biru “+ Tambah Agent” atau “Export”
+
+2. Stats cards:
+- Total Agent
+- Agent Aktif
+- Total Poin
+- Total Komisi
+- Performa Terbaik
+
+Gunakan data asli agent, points, wallet/commission.
+Fallback 0.
+
+3. Search/filter:
+- search “Cari nama agent, email, atau no. HP…”
+- tombol Filter
+- dropdown Periode: Bulan Ini
+- dropdown Urutkan: Poin Tertinggi
+
+4. Ranking tabs:
+- Semua
+- Top Poin
+- Top Komisi
+- Top Closing
+- Top Performa
+
+5. Podium top 3:
+Buat card khusus ranking:
+- rank #1 paling besar di tengah
+- rank #2 dan #3 di kiri/kanan
+- avatar initials
+- nama agent
+- poin
+- komisi
+- badge performa
+
+6. List leaderboard:
+Setiap card:
+- nomor ranking
+- avatar initials + online dot
+- nama agent
+- role badge
+- email/phone kecil
+- poin total
+- komisi total
+- transaksi count
+- rating/performa badge
+- tombol lihat detail, edit, more
+
+Klik detail masuk ke profile agent existing.
+
+7. Pagination:
+- prev
+- page numbers
+- next
+
+8. Aksi Cepat:
+- Tambah Agent
+- Undang Agent
+- Kelola Role
+- Laporan Performa
+
+9. Bottom nav:
+Gunakan bottom nav floating yang sama:
+Dashboard, Order, Plus, Klien, Lainnya.
+Jangan duplicate jika sudah dari DashboardLayout.
+
+Rules:
+- Jangan ubah auth.
+- Jangan ubah Supabase schema.
+- Jangan ubah routing.
+- Jangan membuat API Vercel baru.
+- Jangan rusak desktop.
+- Leaderboard harus pakai source of truth yang sama dengan profile agent, agent points, wallet, dan komisi.
+- Jangan hitung duplicate commission/orphan order.
+- No horizontal overflow.
+- Skeleton hanya first load.
+- npm run build harus berhasil.
+
+Expected result:
+Leaderboard Agent mobile tampil premium seperti referensi: header besar, stats cards, filter, tabs ranking, podium top 3, ranking cards, pagination, quick actions, dan bottom nav konsisten.
