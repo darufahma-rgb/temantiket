@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogIn, AlertCircle, KeyRound, Eye, EyeOff } from "lucide-react";
+import { LogIn } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import splashBackground from "@assets/image_1777530688079.png";
 
 const cardVariants = {
@@ -24,39 +24,16 @@ const SPARKLES = Array.from({ length: 22 }, (_, i) => {
 });
 
 export default function Login() {
-  const [email, setEmail]           = useState("");
-  const [password, setPassword]     = useState("");
-  const [showPass, setShowPass]     = useState(false);
-  const [pin, setPin]               = useState("");
-  const [phase, setPhase]           = useState<"form" | "pin">("form");
-
-  const { login, completePinLogin, isLoading, error, isAuthenticated, clearError, pendingLoginUser } = useAuthStore();
+  const { login, isLoading, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (isAuthenticated) navigate("/", { replace: true });
   }, [isAuthenticated, navigate]);
 
-  useEffect(() => {
-    if (pendingLoginUser) setPhase("pin");
-    else setPhase("form");
-  }, [pendingLoginUser]);
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    clearError();
-    if (!email.trim() || !password) return;
-    const result = await login(email.trim(), password);
-    if (result === "ok") navigate("/", { replace: true });
-    else if (result === "needs_pin") setPhase("pin");
-  };
-
-  const handlePinSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    clearError();
-    if (!pin.trim()) return;
-    const ok = await completePinLogin(pin.trim());
-    if (ok) navigate("/", { replace: true });
+    void login();
   };
 
   return (
@@ -130,198 +107,51 @@ export default function Login() {
           style={{ mixBlendMode: "screen", filter: "drop-shadow(0 8px 32px rgba(14,165,233,0.55))" }}
         />
 
-        <AnimatePresence mode="wait">
+        <motion.div
+          className="mt-4 w-full"
+          initial={{ opacity: 0, y: 32, scale: 0.94, filter: "blur(10px)" }}
+          animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="rounded-3xl border border-white/20 bg-white/10 p-7 shadow-[0_24px_60px_rgba(0,0,0,0.4)] backdrop-blur-md">
+            <motion.div variants={cardVariants} initial="hidden" animate="show" className="space-y-4">
 
-          {/* ── Email / Password form ── */}
-          {phase === "form" && (
-            <motion.div
-              key="form"
-              className="mt-4 w-full"
-              initial={{ opacity: 0, y: 32, scale: 0.94, filter: "blur(10px)" }}
-              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -16, scale: 0.97, filter: "blur(6px)" }}
-              transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <div className="rounded-3xl border border-white/20 bg-white/10 p-7 shadow-[0_24px_60px_rgba(0,0,0,0.4)] backdrop-blur-md">
-                <motion.div variants={cardVariants} initial="hidden" animate="show" className="space-y-4">
+              <motion.div variants={itemVariants} className="mb-6 text-center">
+                <h1 className="text-xl font-extrabold tracking-tight text-white">Portal Admin</h1>
+                <p className="mt-1 text-[12px] text-white/60">Masuk untuk mengakses Temantiket Portal</p>
+              </motion.div>
 
-                  <motion.div variants={itemVariants} className="mb-6 text-center">
-                    <h1 className="text-xl font-extrabold tracking-tight text-white">Portal Admin</h1>
-                    <p className="mt-1 text-[12px] text-white/60">Masuk untuk mengakses Temantiket Portal</p>
-                  </motion.div>
-
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div
-                        className="flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/20 px-3.5 py-2.5"
-                        initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      >
-                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-300" />
-                        <p className="text-[12px] font-medium text-red-200">{error}</p>
-                      </motion.div>
+              <motion.div variants={itemVariants} className="pt-1">
+                <form onSubmit={handleLogin}>
+                  <motion.button
+                    type="submit"
+                    disabled={isLoading}
+                    className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
+                    style={{
+                      background: "linear-gradient(135deg, #123499 0%, #1a44d4 60%, #6694ff 100%)",
+                      boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        Mengarahkan…
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="h-4 w-4" />
+                        Masuk dengan Replit
+                      </>
                     )}
-                  </AnimatePresence>
+                  </motion.button>
+                </form>
+              </motion.div>
 
-                  <form onSubmit={handleLogin} className="space-y-3">
-                    <motion.div variants={itemVariants} className="space-y-1.5">
-                      <label className="pl-1 text-[11px] font-bold uppercase tracking-widest text-white/70">Email</label>
-                      <input
-                        type="email"
-                        autoComplete="email"
-                        placeholder="admin@agensi.com"
-                        value={email}
-                        onChange={(e) => { setEmail(e.target.value); clearError(); }}
-                        disabled={isLoading}
-                        className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-sm text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
-                      />
-                    </motion.div>
-
-                    <motion.div variants={itemVariants} className="space-y-1.5">
-                      <label className="pl-1 text-[11px] font-bold uppercase tracking-widest text-white/70">Password</label>
-                      <div className="relative">
-                        <input
-                          type={showPass ? "text" : "password"}
-                          autoComplete="current-password"
-                          placeholder="••••••••"
-                          value={password}
-                          onChange={(e) => { setPassword(e.target.value); clearError(); }}
-                          disabled={isLoading}
-                          className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 pr-11 text-sm text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPass((p) => !p)}
-                          tabIndex={-1}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
-                        >
-                          {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </motion.div>
-
-                    <motion.div variants={itemVariants} className="pt-1">
-                      <motion.button
-                        type="submit"
-                        disabled={isLoading || !email.trim() || !password}
-                        className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
-                        style={{
-                          background: "linear-gradient(135deg, #123499 0%, #1a44d4 60%, #6694ff 100%)",
-                          boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
-                        }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        {isLoading ? (
-                          <>
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                            Masuk…
-                          </>
-                        ) : (
-                          <>
-                            <LogIn className="h-4 w-4" />
-                            Masuk
-                          </>
-                        )}
-                      </motion.button>
-                    </motion.div>
-                  </form>
-
-                </motion.div>
-              </div>
             </motion.div>
-          )}
-
-          {/* ── PIN / 2FA ── */}
-          {phase === "pin" && (
-            <motion.div
-              key="pin"
-              className="mt-4 w-full"
-              initial={{ opacity: 0, y: 32, scale: 0.94, filter: "blur(10px)" }}
-              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -16, scale: 0.97, filter: "blur(6px)" }}
-              transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <div className="rounded-3xl border border-white/20 bg-white/10 p-7 shadow-[0_24px_60px_rgba(0,0,0,0.4)] backdrop-blur-md">
-                <motion.div variants={cardVariants} initial="hidden" animate="show" className="space-y-4">
-                  <motion.div variants={itemVariants} className="mb-6 text-center">
-                    <div className="flex justify-center mb-3">
-                      <div className="h-12 w-12 rounded-2xl bg-sky-500/30 border border-sky-400/40 flex items-center justify-center">
-                        <KeyRound className="h-5 w-5 text-sky-300" />
-                      </div>
-                    </div>
-                    <h1 className="text-xl font-extrabold tracking-tight text-white">Verifikasi 2FA</h1>
-                    <p className="mt-1 text-[12px] text-white/60">Masukkan PIN keamanan Anda</p>
-                  </motion.div>
-
-                  <form onSubmit={handlePinSubmit} className="space-y-4">
-                    <AnimatePresence>
-                      {error && (
-                        <motion.div
-                          className="flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/20 px-3.5 py-2.5"
-                          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        >
-                          <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-300" />
-                          <p className="text-[12px] font-medium text-red-200">{error}</p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <motion.div variants={itemVariants} className="space-y-1.5">
-                      <label className="pl-1 text-[11px] font-bold uppercase tracking-widest text-white/70">PIN Keamanan</label>
-                      <input
-                        type="password"
-                        inputMode="numeric"
-                        maxLength={8}
-                        placeholder="••••••"
-                        value={pin}
-                        onChange={(e) => { setPin(e.target.value.replace(/\D/g, "")); clearError(); }}
-                        disabled={isLoading}
-                        className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-center text-xl font-bold tracking-[0.5em] text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
-                      />
-                    </motion.div>
-
-                    <motion.div variants={itemVariants}>
-                      <motion.button
-                        type="submit"
-                        disabled={isLoading || !pin.trim()}
-                        className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
-                        style={{
-                          background: "linear-gradient(135deg, #123499 0%, #1a44d4 60%, #6694ff 100%)",
-                          boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
-                        }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        {isLoading ? (
-                          <>
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                            Memverifikasi…
-                          </>
-                        ) : (
-                          <>
-                            <KeyRound className="h-4 w-4" />
-                            Verifikasi
-                          </>
-                        )}
-                      </motion.button>
-                    </motion.div>
-
-                    <motion.div variants={itemVariants}>
-                      <button
-                        type="button"
-                        onClick={() => { setPhase("form"); setPin(""); clearError(); }}
-                        className="w-full text-center text-[12px] text-white/50 hover:text-white/80 transition-colors mt-1"
-                      >
-                        Kembali ke login
-                      </button>
-                    </motion.div>
-                  </form>
-                </motion.div>
-              </div>
-            </motion.div>
-          )}
-
-        </AnimatePresence>
+          </div>
+        </motion.div>
       </motion.div>
     </div>
   );

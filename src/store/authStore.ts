@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { supabase } from "@/lib/supabase";
 
 // ── Local-only security settings (PIN/2FA + login history) ──────────────────
 
@@ -102,89 +101,17 @@ interface AuthState {
   getLoginHistory: () => LoginEvent[];
 }
 
-// ── Supabase token helpers ───────────────────────────────────────────────────
+// ── Token helpers (no-op for Replit Auth — uses cookies) ────────────────────
 
 export function getAccessToken(): string | null {
-  // Supabase persists session in localStorage — retrieve it synchronously
-  try {
-    const raw = localStorage.getItem(
-      `sb-${import.meta.env.VITE_SUPABASE_URL?.match(/\/\/([^.]+)/)?.[1]}-auth-token`,
-    );
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return parsed?.access_token ?? null;
-    }
-  } catch { /* ignore */ }
   return null;
 }
 
-// ── Fetch agency membership via Supabase REST ────────────────────────────────
-
-async function fetchAgencyMembership(userId: string, _accessToken: string): Promise<{
-  role: UserRole; agencyId: string; agencyName: string; commissionPct: number;
-} | null> {
-  if (!supabase) return null;
-  try {
-    const { data: memberData, error: memberError } = await supabase
-      .from("agency_members")
-      .select("role, agency_id, commission_pct")
-      .eq("user_id", userId)
-      .limit(1)
-      .single();
-    if (memberError || !memberData) return null;
-
-    let agencyName = "Agency";
-    try {
-      const { data: agencyData } = await supabase
-        .from("agencies")
-        .select("name")
-        .eq("id", memberData.agency_id)
-        .maybeSingle();
-      if (agencyData?.name) agencyName = String(agencyData.name);
-    } catch { /* use default name if agencies query fails */ }
-
-    return {
-      role:          memberData.role as UserRole,
-      agencyId:      memberData.agency_id,
-      agencyName,
-      commissionPct: Number(memberData.commission_pct ?? 0),
-    };
-  } catch { return null; }
-}
-
-// ── Build AuthUser from Supabase session ─────────────────────────────────────
-
-async function buildAuthUser(session: { access_token: string; user: { id: string; email?: string; user_metadata?: Record<string, unknown> } }): Promise<AuthUser | null> {
-  const sbUser = session.user;
-  const meta   = sbUser.user_metadata ?? {};
-  const displayName =
-    (meta.full_name as string | undefined)?.trim() ||
-    (meta.display_name as string | undefined)?.trim() ||
-    sbUser.email?.split("@")[0] ||
-    "User";
-
-  const membership = await fetchAgencyMembership(sbUser.id, session.access_token);
-  if (!membership) return null;
-
-  return {
-    id:              sbUser.id,
-    email:           sbUser.email ?? "",
-    displayName,
-    role:            membership.role,
-    agencyId:        membership.agencyId,
-    agencyName:      membership.agencyName,
-    commissionPct:   membership.commissionPct,
-    profileImageUrl: (meta.avatar_url as string | undefined) ?? null,
-  };
-}
-
-// ── API helpers (for invite/remove/list — still go through Express server) ───
+// ── API helpers ──────────────────────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = getAccessToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...((options?.headers ?? {}) as Record<string, string>),
   };
   const res  = await fetch(path, { credentials: "include", headers, ...options });
@@ -201,6 +128,31 @@ async function callApi(path: string, body: unknown): Promise<unknown> {
   return apiFetch(path, { method: "POST", body: JSON.stringify(body) });
 }
 
+// ── Fetch user from Replit Auth session ──────────────────────────────────────
+
+async function fetchReplitUser(): Promise<AuthUser | null> {
+  try {
+    const data = await apiFetch<{
+      id: string; email: string; displayName: string;
+      role: string | null; agencyId: string | null; agencyName: string | null;
+      commissionPct: number; profileImageUrl?: string | null;
+    }>("/api/auth/user");
+    if (!data.id || !data.role || !data.agencyId) return null;
+    return {
+      id:              data.id,
+      email:           data.email ?? "",
+      displayName:     data.displayName ?? "User",
+      role:            data.role as UserRole,
+      agencyId:        data.agencyId,
+      agencyName:      data.agencyName ?? "",
+      commissionPct:   Number(data.commissionPct ?? 0),
+      profileImageUrl: data.profileImageUrl ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── Store ────────────────────────────────────────────────────────────────────
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -213,69 +165,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   newLoginAt:      null,
   needsBootstrap:  false,
 
-  // ── init: restore session from Supabase on app start ──────────────────────
+  // ── init: restore session from Replit Auth on app start ───────────────────
   init: async () => {
     set({ isLoading: true });
     try {
-      if (!supabase) {
-        set({ isInitialized: true, isLoading: false });
-        return;
-      }
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        set({ user: null, isAuthenticated: false, isInitialized: true, isLoading: false });
-        return;
-      }
-      const user = await buildAuthUser(session);
+      const user = await fetchReplitUser();
       if (user) {
         recordLoginEvent(user.id);
         set({ user, isAuthenticated: true, needsBootstrap: false, isInitialized: true, isLoading: false });
       } else {
-        // Authenticated in Supabase but no agency membership yet → needs bootstrap
-        set({ user: null, isAuthenticated: false, needsBootstrap: true, isInitialized: true, isLoading: false });
+        // Check if we have a Replit session at all (user logged in but no agency)
+        try {
+          const res = await fetch("/api/auth/user", { credentials: "include" });
+          if (res.status === 401) {
+            // Not logged in at all — redirect to Replit login
+            set({ user: null, isAuthenticated: false, isInitialized: true, isLoading: false });
+          } else {
+            // Logged in but no agency membership yet
+            set({ user: null, isAuthenticated: false, needsBootstrap: true, isInitialized: true, isLoading: false });
+          }
+        } catch {
+          set({ user: null, isAuthenticated: false, isInitialized: true, isLoading: false });
+        }
       }
     } catch {
       set({ user: null, isAuthenticated: false, isInitialized: true, isLoading: false });
     }
   },
 
-  // ── login: Supabase email/password ────────────────────────────────────────
-  login: async (email?: string, password?: string) => {
-    if (!email || !password) {
-      set({ error: "Email dan password wajib diisi." });
-      return false;
-    }
-    if (!supabase) {
-      set({ error: "Supabase belum dikonfigurasi." });
-      return false;
-    }
-    set({ isLoading: true, error: null });
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error || !data.session) {
-        set({ isLoading: false, error: error?.message ?? "Login gagal." });
-        return false;
-      }
-      const user = await buildAuthUser(data.session);
-      if (!user) {
-        // Logged in but no agency → bootstrap needed
-        set({ isLoading: false, needsBootstrap: true });
-        return false;
-      }
-      const sec = loadSecuritySettings(user.id);
-      if (sec.twoFactor && sec.pinHash) {
-        set({ pendingLoginUser: user, isLoading: false, error: null });
-        return "needs_pin";
-      }
-      const previous  = loadLoginHistory(user.id);
-      recordLoginEvent(user.id);
-      const newLoginAt = sec.loginAlert && previous.length > 0 ? previous[0].at : null;
-      set({ user, isAuthenticated: true, isLoading: false, error: null, newLoginAt, needsBootstrap: false });
-      return "ok";
-    } catch (e) {
-      set({ isLoading: false, error: (e as Error).message });
-      return false;
-    }
+  // ── login: redirect to Replit OIDC (no email/password form) ──────────────
+  login: async (_email?: string, _password?: string) => {
+    // With Replit Auth, we redirect to /api/login which handles OIDC
+    window.location.href = "/api/login";
+    return false;
   },
 
   // ── completePinLogin ──────────────────────────────────────────────────────
@@ -303,11 +225,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return true;
   },
 
-  // ── logout: Supabase signOut ──────────────────────────────────────────────
+  // ── logout: Replit session destroy ───────────────────────────────────────
   logout: async () => {
-    if (supabase) {
-      await supabase.auth.signOut().catch(() => {});
-    }
+    try { await fetch("/api/logout", { credentials: "include" }); } catch { /* ignore */ }
     set({
       user:            null,
       isAuthenticated: false,
@@ -315,6 +235,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       newLoginAt:      null,
       needsBootstrap:  false,
     });
+    window.location.href = "/api/logout";
   },
 
   clearError:    () => set({ error: null }),
@@ -378,11 +299,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
-  // ── changePassword: via Supabase ──────────────────────────────────────────
-  changePassword: async (_currentPw, newPw) => {
-    if (!supabase) throw new Error("Supabase belum dikonfigurasi.");
-    const { error } = await supabase.auth.updateUser({ password: newPw });
-    if (error) throw new Error(error.message);
+  // ── changePassword: not applicable with Replit Auth ───────────────────────
+  changePassword: async (_currentPw, _newPw) => {
+    throw new Error("Ubah password dilakukan melalui akun Replit Anda.");
   },
 
   getSecuritySettings: () => {
@@ -426,14 +345,10 @@ export function requireAgencyId(): string {
 export async function bootstrapFirstOwner(input: {
   agencyName: string; displayName?: string; email?: string; password?: string;
 }): Promise<void> {
-  const token = getAccessToken();
   const res = await fetch("/api/bootstrap", {
     method:  "POST",
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ agencyName: input.agencyName, displayName: input.displayName }),
   });
   const json = await res.json();

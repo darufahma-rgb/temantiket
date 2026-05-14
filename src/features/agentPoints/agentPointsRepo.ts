@@ -66,7 +66,27 @@ export async function listAgentPoints(): Promise<AgentPoint[]> {
  * Gunakan ini untuk menampilkan riwayat/ledger poin yang readable.
  */
 export async function listAgentPointsWithOrders(): Promise<AgentPoint[]> {
-  if (!isSupabaseConfigured() || !supabase) return [];
+  if (!isSupabaseConfigured() || !supabase) {
+    // Try API route when Supabase not configured
+    try {
+      const res = await fetch("/api/agent-points", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json() as Record<string, unknown>[];
+        return (data ?? []).map((r) => ({
+          id:        String(r.id),
+          agencyId:  String(r.agency_id),
+          agentId:   String(r.agent_id),
+          orderId:   String(r.order_id),
+          points:    Number(r.points ?? 0),
+          reason:    String(r.reason ?? "order_completed"),
+          awardedAt: String(r.awarded_at ?? new Date().toISOString()),
+        }));
+      }
+    } catch (err) {
+      console.warn("[agentPoints] API fetch gagal:", err);
+    }
+    return [];
+  }
   try {
     const { data, error } = await supabase
       .from("agent_points")

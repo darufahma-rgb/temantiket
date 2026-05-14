@@ -148,8 +148,6 @@ export async function listClients(): Promise<Client[]> {
         10000,
       );
       if (error) throw error;
-      // fromRowList: strip base64 photos dari cache list — hemat localStorage
-      // dan memory. Storage URL (http...) tetap disimpan.
       const items = (data ?? []).map(fromRowList);
       saveCache(items);
       return items;
@@ -158,6 +156,18 @@ export async function listClients(): Promise<Client[]> {
       console.warn(`[clients] list dari Supabase gagal, pakai cache lokal (${cached.length} item):`, err);
       return cached;
     }
+  }
+  // Try API route when Supabase not configured
+  try {
+    const res = await fetch("/api/clients", { credentials: "include" });
+    if (res.ok) {
+      const data = await res.json() as Record<string, unknown>[];
+      const items = (data ?? []).map(fromRowList);
+      saveCache(items);
+      return items;
+    }
+  } catch (err) {
+    console.warn("[clients] API fetch gagal, pakai cache lokal:", err);
   }
   return loadCache();
 }
