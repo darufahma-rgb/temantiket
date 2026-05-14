@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import {
   Trophy, ChevronLeft, Sparkles, Calendar, Star,
   TrendingUp, Flame, ChevronRight, Crown,
+  Search, SlidersHorizontal, Users, Wallet,
+  UserPlus, BarChart3, Settings2, History,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -105,17 +107,47 @@ type LeaderboardRow = {
   tier:           AgentTier;
 };
 
+type MobileTab = "all" | "poin" | "komisi" | "closing" | "performa";
+const MOBILE_TABS: { key: MobileTab; label: string }[] = [
+  { key: "all",      label: "Semua" },
+  { key: "poin",     label: "Top Poin" },
+  { key: "komisi",   label: "Top Komisi" },
+  { key: "closing",  label: "Top Closing" },
+  { key: "performa", label: "Top Performa" },
+];
+
+const PAGE_SIZE = 8;
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
+  show: (i = 0) => ({
+    opacity: 1, y: 0,
+    transition: { duration: 0.38, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] as const },
+  }),
+};
+
+function fmtCompact(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(0) + "K";
+  return String(n);
+}
+
 export default function AgentLeaderboard() {
   const navigate    = useNavigate();
   const me          = useAuthStore((s) => s.user);
   const listMembers = useAuthStore((s) => s.listMembers);
   const { orders, fetchOrders, loaded: ordersLoaded } = useOrdersStore();
 
-  const [range,   setRange]   = useState<RangeKey>("this_month");
-  const [members, setMembers] = useState<MemberInfo[]>([]);
-  const [points,  setPoints]  = useState<AgentPoint[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [scrolled, setScrolled] = useState(false);
+  const [range,        setRange]        = useState<RangeKey>("this_month");
+  const [members,      setMembers]      = useState<MemberInfo[]>([]);
+  const [points,       setPoints]       = useState<AgentPoint[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [scrolled,     setScrolled]     = useState(false);
+
+  // Mobile-specific state
+  const [mobileSearch, setMobileSearch] = useState("");
+  const [mobileTab,    setMobileTab]    = useState<MobileTab>("all");
+  const [mobilePage,   setMobilePage]   = useState(1);
 
   const refreshPoints = useCallback(async () => {
     try { setPoints(await listAgentPoints()); }
@@ -179,7 +211,6 @@ export default function AgentLeaderboard() {
       if (o.status !== "Completed") continue;
       const meta = (o.metadata ?? {}) as Record<string, unknown>;
 
-      // VOA field agent fee — hanya order Completed
       if (o.type === "visa_voa") {
         const fieldAgentId = meta.voaFieldAgentId as string | undefined;
         if (fieldAgentId && agentIds.has(fieldAgentId)) {
@@ -192,7 +223,6 @@ export default function AgentLeaderboard() {
         }
       }
 
-      // Pelaksana visa_student fee — hanya order Completed
       if (o.type === "visa_student") {
         const pelaksanaId = meta.pelaksanaId as string | undefined;
         if (pelaksanaId && agentIds.has(pelaksanaId)) {
@@ -205,7 +235,6 @@ export default function AgentLeaderboard() {
         }
       }
 
-      // Kurir setoran fee — hanya order Completed
       const kurirAgentId = meta.kurirAgentId as string | undefined;
       if (kurirAgentId && agentIds.has(kurirAgentId)) {
         const kurirFee = Number(meta.kurirFee ?? 0);
@@ -252,17 +281,59 @@ export default function AgentLeaderboard() {
   const podium: (LeaderboardRow | null)[] = [top3[1] ?? null, top3[0] ?? null, top3[2] ?? null];
   const podiumRanks: (1 | 2 | 3)[]       = [2, 1, 3];
 
+  // ── Mobile computed ────────────────────────────────────────────────────────
+  const isOwner = me?.role === "owner";
+
+  const totalPeriodPoints = useMemo(() => rows.reduce((s, r) => s + r.periodPoints, 0), [rows]);
+  const totalCommission   = useMemo(() => rows.reduce((s, r) => s + r.commission, 0), [rows]);
+  const activeAgents      = useMemo(() => rows.filter((r) => r.orders > 0).length, [rows]);
+
+  const mobileTabRows = useMemo<LeaderboardRow[]>(() => {
+    switch (mobileTab) {
+      case "poin":     return [...rows].sort((a, b) => b.periodPoints   - a.periodPoints);
+      case "komisi":   return [...rows].sort((a, b) => b.commission     - a.commission);
+      case "closing":  return [...rows].sort((a, b) => b.orders         - a.orders);
+      case "performa": return [...rows].sort((a, b) => b.lifetimePoints - a.lifetimePoints);
+      default:         return rows;
+    }
+  }, [rows, mobileTab]);
+
+  const searchedMobileRows = useMemo(() => {
+    if (!mobileSearch.trim()) return mobileTabRows;
+    const q = mobileSearch.toLowerCase();
+    return mobileTabRows.filter((r) => {
+      const member = memberById.get(r.agentId);
+      return (
+        r.name.toLowerCase().includes(q) ||
+        (member?.email ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [mobileTabRows, mobileSearch, memberById]);
+
+  const totalMobilePages = Math.max(1, Math.ceil(searchedMobileRows.length / PAGE_SIZE));
+  const paginatedMobileRows = useMemo(
+    () => searchedMobileRows.slice((mobilePage - 1) * PAGE_SIZE, mobilePage * PAGE_SIZE),
+    [searchedMobileRows, mobilePage],
+  );
+
+  // Reset page when search/tab changes
+  useEffect(() => { setMobilePage(1); }, [mobileSearch, mobileTab, range]);
+
   return (
     <div className="min-h-screen bg-slate-50">
 
-      {/* ── Sticky header ── */}
+      {/* ══════════════════════════════════════════════════════════════
+          DESKTOP LAYOUT  (hidden on mobile)
+      ══════════════════════════════════════════════════════════════ */}
+
+      {/* ── Sticky header (desktop only) ── */}
       <header
         className={cn(
-          "sticky top-0 z-20 bg-white/90 backdrop-blur-md transition-all duration-200",
+          "hidden md:flex sticky top-0 z-20 bg-white/90 backdrop-blur-md transition-all duration-200",
           scrolled ? "shadow-md" : "border-b border-slate-100",
         )}
       >
-        <div className="flex items-center gap-3 px-4 py-3 max-w-[1400px] mx-auto">
+        <div className="flex items-center gap-3 px-4 py-3 max-w-[1400px] mx-auto w-full">
           <Button
             variant="ghost"
             size="sm"
@@ -287,7 +358,6 @@ export default function AgentLeaderboard() {
             </p>
           </div>
 
-          {/* Period filter */}
           <div className="flex items-center gap-1.5 shrink-0">
             <Calendar className="h-3.5 w-3.5 text-slate-400" />
             <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
@@ -306,9 +376,10 @@ export default function AgentLeaderboard() {
         </div>
       </header>
 
-      <div className="max-w-[1400px] mx-auto px-4 pb-16 space-y-5 pt-5">
+      {/* ── Desktop content ── */}
+      <div className="hidden md:block max-w-[1400px] mx-auto px-4 pb-16 space-y-5 pt-5">
 
-        {/* ── Podium ── */}
+        {/* Podium */}
         {loading ? (
           <PodiumSkeleton />
         ) : top3.length > 0 ? (
@@ -318,7 +389,6 @@ export default function AgentLeaderboard() {
             transition={{ duration: 0.4 }}
             className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
           >
-            {/* Section header */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4">
               <div>
                 <h2 className="text-[13px] font-black text-slate-900 tracking-[-0.02em] flex items-center gap-1.5">
@@ -329,12 +399,10 @@ export default function AgentLeaderboard() {
               </div>
               {myRank && myRank <= 3 && (
                 <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700">
-                  🏆 Kamu #{ myRank}
+                  🏆 Kamu #{myRank}
                 </span>
               )}
             </div>
-
-            {/* Podium grid: 2nd | 1st | 3rd */}
             <div className="grid grid-cols-3 gap-2 sm:gap-4 px-3 pb-5 items-end">
               {podium.map((row, idx) => (
                 <PodiumCard
@@ -357,7 +425,7 @@ export default function AgentLeaderboard() {
           </div>
         )}
 
-        {/* ── Insight mini cards ── */}
+        {/* Insight mini cards */}
         {!loading && rows.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {mostActive && (
@@ -402,7 +470,7 @@ export default function AgentLeaderboard() {
           </div>
         )}
 
-        {/* ── Full ranking ── */}
+        {/* Full ranking */}
         {!loading && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -410,7 +478,6 @@ export default function AgentLeaderboard() {
             transition={{ duration: 0.35, delay: 0.1 }}
             className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
           >
-            {/* Header row */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -454,7 +521,6 @@ export default function AgentLeaderboard() {
                             : "hover:bg-slate-50/80",
                         )}
                       >
-                        {/* Rank badge */}
                         <div className={cn(
                           "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-extrabold leading-none",
                           isTop3
@@ -466,7 +532,6 @@ export default function AgentLeaderboard() {
                           {isTop3 ? RANK_MEDAL[rank - 1] : rank}
                         </div>
 
-                        {/* Avatar */}
                         <div className={cn(
                           "h-9 w-9 rounded-full bg-gradient-to-br flex items-center justify-center",
                           "text-white font-extrabold text-[13px] shrink-0 ring-2 ring-white shadow-sm",
@@ -475,7 +540,6 @@ export default function AgentLeaderboard() {
                           {r.name.charAt(0).toUpperCase()}
                         </div>
 
-                        {/* Name + tier */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
                             <span className={cn(
@@ -496,7 +560,6 @@ export default function AgentLeaderboard() {
                           </div>
                         </div>
 
-                        {/* Stats — desktop */}
                         <div className="hidden sm:flex items-center gap-5 shrink-0">
                           <div className="text-right">
                             <div className="text-[9.5px] text-slate-400 font-medium">Poin</div>
@@ -514,13 +577,11 @@ export default function AgentLeaderboard() {
                           )}
                         </div>
 
-                        {/* Stats — mobile */}
                         <div className="flex sm:hidden flex-col items-end shrink-0 gap-0.5">
                           <span className="text-[12px] font-extrabold text-blue-600 font-mono">{r.periodPoints} poin</span>
                           <span className="text-[10px] text-slate-400">{r.orders} order</span>
                         </div>
 
-                        {/* Profile cta */}
                         {r.isMe && (
                           <button
                             onClick={() => navigate("/agent/profile")}
@@ -539,7 +600,7 @@ export default function AgentLeaderboard() {
           </motion.div>
         )}
 
-        {/* ── Loading skeleton for ranking ── */}
+        {/* Loading skeleton for ranking */}
         {loading && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100">
@@ -559,7 +620,7 @@ export default function AgentLeaderboard() {
           </div>
         )}
 
-        {/* ── Tip strip ── */}
+        {/* Tip strip */}
         {!loading && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -582,6 +643,533 @@ export default function AgentLeaderboard() {
               </p>
             </div>
           </motion.div>
+        )}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+          MOBILE LAYOUT  (hidden on desktop)
+      ══════════════════════════════════════════════════════════════ */}
+      <div className="md:hidden -mx-4 bg-[#F0F4FB] min-h-screen pb-32 overflow-x-hidden">
+
+        {/* ── Section 1: Header ────────────────────────────────────── */}
+        <div className="bg-white px-5 pt-[72px] pb-5 shadow-sm">
+          {/* Back + title row */}
+          <div className="flex items-start gap-3 mb-3">
+            <button
+              onClick={() => navigate(-1 as unknown as string)}
+              className="h-9 w-9 rounded-xl bg-[#F0F4FB] flex items-center justify-center shrink-0 active:opacity-60 transition-opacity mt-0.5"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <ChevronLeft className="h-4 w-4 text-slate-600" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <Trophy className="h-5 w-5 text-amber-500 shrink-0" />
+                <h1 className="text-[22px] font-extrabold text-[#0f1c3f] leading-tight">
+                  Leaderboard Agent
+                </h1>
+              </div>
+              <p className="text-[12px] text-slate-500 leading-snug">
+                Pantau ranking, poin, komisi, dan performa agent dalam satu tempat.
+              </p>
+            </div>
+          </div>
+
+          {/* My rank + period */}
+          <div className="flex items-center gap-2 flex-wrap mb-3">
+            {myRank && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700">
+                🏆 Kamu #{myRank}
+              </span>
+            )}
+            <span className="text-[11px] text-slate-400 font-medium">{RANGE_LABEL[range]}</span>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/agent-center")}
+              className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl border border-slate-200 bg-white text-[12px] font-semibold text-slate-600 active:opacity-70 transition-opacity"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <History className="h-3.5 w-3.5" />
+              Riwayat
+            </button>
+            <button
+              onClick={() => navigate("/agent-center")}
+              className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-[#0066FF] text-white text-[12px] font-semibold active:opacity-80 transition-opacity shadow-md shadow-blue-200"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              Tambah Agent
+            </button>
+            <div className="ml-auto">
+              <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
+                <SelectTrigger className="h-9 w-[110px] text-[11px] border-slate-200 rounded-xl">
+                  <Calendar className="h-3 w-3 mr-1 text-slate-400" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => (
+                    <SelectItem key={k} value={k} className="text-[12px]">
+                      {RANGE_LABEL[k]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Section 2: Stats Cards ────────────────────────────────── */}
+        <div className="px-4 mt-4">
+          {loading ? (
+            <div className="grid grid-cols-2 gap-3">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl p-4 shadow-sm animate-pulse">
+                  <div className="h-9 w-9 bg-slate-100 rounded-xl mb-3" />
+                  <div className="h-6 w-16 bg-slate-100 rounded mb-1.5" />
+                  <div className="h-3 w-20 bg-slate-100 rounded" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                {
+                  label: "Total Agent",
+                  value: fmtCompact(agentMembers.length),
+                  sub: `${activeAgents} aktif periode ini`,
+                  icon: <Users className="h-5 w-5" strokeWidth={1.8} />,
+                  color: "#0066FF", bg: "#dbeafe",
+                },
+                {
+                  label: "Total Poin",
+                  value: fmtCompact(totalPeriodPoints),
+                  sub: RANGE_LABEL[range],
+                  icon: <Star className="h-5 w-5" strokeWidth={1.8} />,
+                  color: "#8b5cf6", bg: "#ede9fe",
+                },
+                {
+                  label: "Total Komisi",
+                  value: isOwner ? (totalCommission >= 1_000_000 ? `Rp${(totalCommission/1_000_000).toFixed(1)}Jt` : fmtIDR(totalCommission)) : "🔒 Private",
+                  sub: "seluruh agent",
+                  icon: <Wallet className="h-5 w-5" strokeWidth={1.8} />,
+                  color: "#10b981", bg: "#d1fae5",
+                },
+                {
+                  label: "Performa Terbaik",
+                  value: mostActive?.name.split(" ")[0] ?? "—",
+                  sub: mostActive ? `${mostActive.orders} order` : "belum ada data",
+                  icon: <Flame className="h-5 w-5" strokeWidth={1.8} />,
+                  color: "#f59e0b", bg: "#fef3c7",
+                },
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate="show"
+                  custom={i}
+                  className="bg-white rounded-2xl p-4 shadow-sm"
+                >
+                  <div
+                    className="h-10 w-10 rounded-xl flex items-center justify-center mb-3"
+                    style={{ backgroundColor: stat.bg, color: stat.color }}
+                  >
+                    {stat.icon}
+                  </div>
+                  <p className="text-[20px] font-extrabold text-[#0f1c3f] tabular-nums leading-none mb-0.5 truncate">
+                    {stat.value}
+                  </p>
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide truncate">
+                    {stat.label}
+                  </p>
+                  <p className="text-[9px] text-slate-400 mt-0.5 truncate">{stat.sub}</p>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Section 3: Search + Filter ───────────────────────────── */}
+        <div className="px-4 mt-4 space-y-2">
+          {/* Search bar */}
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={mobileSearch}
+              onChange={(e) => setMobileSearch(e.target.value)}
+              placeholder="Cari nama agent, email…"
+              className="w-full h-11 pl-10 pr-4 bg-white rounded-xl border border-slate-200 text-[13px] text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-blue-100 transition-all"
+            />
+          </div>
+          {/* Sort row */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-1 bg-white rounded-xl border border-slate-200 h-9 px-3">
+              <SlidersHorizontal className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              <span className="text-[11px] text-slate-500 font-medium">Urutkan:</span>
+              <span className="text-[11px] font-bold text-[#0066FF]">
+                {MOBILE_TABS.find((t) => t.key === mobileTab)?.label ?? "Semua"}
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-400 font-medium shrink-0 bg-white rounded-xl border border-slate-200 h-9 px-3 flex items-center">
+              {searchedMobileRows.length} agent
+            </div>
+          </div>
+        </div>
+
+        {/* ── Section 4: Ranking Tabs ──────────────────────────────── */}
+        <div className="px-4 mt-3">
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {MOBILE_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setMobileTab(tab.key)}
+                className={cn(
+                  "shrink-0 h-8 px-4 rounded-full text-[12px] font-semibold transition-all active:scale-95",
+                  mobileTab === tab.key
+                    ? "bg-[#0066FF] text-white shadow-md shadow-blue-200"
+                    : "bg-white text-slate-600 border border-slate-200",
+                )}
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Section 5: Podium Top 3 ──────────────────────────────── */}
+        <div className="px-4 mt-4">
+          {loading ? (
+            <PodiumSkeleton />
+          ) : top3.length > 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-4 pt-4 pb-3">
+                <div className="flex items-center gap-2">
+                  <Crown className="h-4 w-4 text-amber-500" />
+                  <span className="text-[13px] font-extrabold text-[#0f1c3f]">Top 3 Champions</span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-medium">{RANGE_LABEL[range]}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 px-3 pb-4 items-end">
+                {podium.map((row, idx) => (
+                  <PodiumCard
+                    key={podiumRanks[idx]}
+                    row={row}
+                    rank={podiumRanks[idx]}
+                    isMe={row?.agentId === me?.id}
+                    elevated={podiumRanks[idx] === 1}
+                    onProfile={() =>
+                      isOwner && row
+                        ? navigate(`/agents/${row.agentId}`)
+                        : navigate("/agent/profile")
+                    }
+                  />
+                ))}
+              </div>
+            </motion.div>
+          ) : !loading && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm py-10 text-center">
+              <Trophy className="h-8 w-8 text-slate-200 mx-auto mb-2" />
+              <p className="text-[12px] text-slate-400">Belum ada agent di periode ini</p>
+            </div>
+          )}
+        </div>
+
+        {/* ── Section 6: Ranking List ──────────────────────────────── */}
+        <div className="px-4 mt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Ranking Agent</h3>
+            {myRank && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#0066FF] border border-blue-100">
+                Kamu #{myRank}
+              </span>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl p-4 shadow-sm animate-pulse flex items-center gap-3">
+                  <div className="h-8 w-8 bg-slate-100 rounded-xl shrink-0" />
+                  <div className="h-10 w-10 bg-slate-100 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 w-28 bg-slate-100 rounded" />
+                    <div className="h-2.5 w-20 bg-slate-100 rounded" />
+                  </div>
+                  <div className="h-6 w-14 bg-slate-100 rounded" />
+                </div>
+              ))}
+            </div>
+          ) : searchedMobileRows.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm py-12 text-center">
+              <Search className="h-8 w-8 text-slate-200 mx-auto mb-2" />
+              <p className="text-[12.5px] font-medium text-slate-400">Tidak ada hasil ditemukan</p>
+              <p className="text-[11px] text-slate-300 mt-0.5">Coba kata kunci lain</p>
+            </div>
+          ) : (
+            <AnimatePresence mode="wait">
+              <div className="space-y-2">
+                {paginatedMobileRows.map((r, i) => {
+                  const globalRank = searchedMobileRows.indexOf(r) + 1;
+                  const isTop3     = globalRank <= 3 && mobileSearch === "" && mobileTab === "all";
+                  const member     = memberById.get(r.agentId);
+                  const showComm   = isOwner || r.isMe;
+
+                  return (
+                    <motion.div
+                      key={r.agentId}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.22, delay: Math.min(i * 0.04, 0.3) }}
+                      className={cn(
+                        "bg-white rounded-2xl shadow-sm overflow-hidden",
+                        r.isMe && "ring-2 ring-amber-300",
+                      )}
+                    >
+                      <div className="flex items-center gap-3 px-4 py-3.5">
+                        {/* Rank badge */}
+                        <div className={cn(
+                          "h-8 w-8 rounded-xl flex items-center justify-center shrink-0 text-[12px] font-extrabold",
+                          isTop3
+                            ? globalRank === 1 ? "bg-amber-50 text-amber-600 border border-amber-200"
+                              : globalRank === 2 ? "bg-slate-100 text-slate-500 border border-slate-200"
+                              : "bg-orange-50 text-orange-500 border border-orange-200"
+                            : "bg-[#F0F4FB] text-slate-500 font-mono text-[11px]",
+                        )}>
+                          {isTop3 ? RANK_MEDAL[globalRank - 1] : globalRank}
+                        </div>
+
+                        {/* Avatar */}
+                        <div className="relative shrink-0">
+                          <div className={cn(
+                            "h-11 w-11 rounded-full bg-gradient-to-br flex items-center justify-center",
+                            "text-white font-extrabold text-[15px] shadow-sm",
+                            avatarGradient(r.name),
+                          )}>
+                            {r.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className={cn(
+                            "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white",
+                            r.orders > 0 ? "bg-emerald-400" : "bg-slate-300",
+                          )} />
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className={cn(
+                              "text-[13px] font-bold truncate leading-tight",
+                              r.isMe ? "text-amber-800" : "text-[#0f1c3f]",
+                            )}>
+                              {r.name}
+                            </span>
+                            {r.isMe && (
+                              <span className="text-[8px] font-extrabold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full shrink-0">
+                                Kamu
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[9.5px] font-semibold bg-blue-50 text-[#0066FF] px-1.5 py-0.5 rounded-full border border-blue-100">
+                              AGENT
+                            </span>
+                            <AgentTierBadge tier={r.tier} size="xs" />
+                            {member?.email && (
+                              <span className="text-[9px] text-slate-400 truncate max-w-[80px]">
+                                {member.email}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="flex flex-col items-end shrink-0 gap-0.5">
+                          <span className="text-[13px] font-extrabold text-[#0066FF] font-mono tabular-nums">
+                            {r.periodPoints} poin
+                          </span>
+                          <span className="text-[10px] text-slate-400">{r.orders} order</span>
+                        </div>
+                      </div>
+
+                      {/* Bottom row: komisi + actions */}
+                      <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-50 bg-slate-50/50">
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <span className="text-[9px] text-slate-400 font-medium uppercase tracking-wide">Lifetime</span>
+                            <div className="text-[11px] font-bold text-amber-600 font-mono">{r.lifetimePoints} pts</div>
+                          </div>
+                          {showComm && (
+                            <div>
+                              <span className="text-[9px] text-slate-400 font-medium uppercase tracking-wide">Komisi</span>
+                              <div className="text-[11px] font-bold text-emerald-600 font-mono">
+                                {r.commission >= 1_000_000
+                                  ? `Rp${(r.commission / 1_000_000).toFixed(1)}Jt`
+                                  : fmtIDR(r.commission)}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {(isOwner || r.isMe) && (
+                            <button
+                              onClick={() =>
+                                r.isMe && !isOwner
+                                  ? navigate("/agent/profile")
+                                  : navigate(`/agents/${r.agentId}`)
+                              }
+                              className="h-7 px-3 rounded-lg bg-[#0066FF] text-white text-[10.5px] font-semibold active:opacity-80 transition-opacity"
+                              style={{ WebkitTapHighlightColor: "transparent" }}
+                            >
+                              {r.isMe && !isOwner ? "Profilku" : "Detail"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </AnimatePresence>
+          )}
+
+          {/* Pagination */}
+          {!loading && totalMobilePages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <button
+                onClick={() => setMobilePage((p) => Math.max(1, p - 1))}
+                disabled={mobilePage === 1}
+                className="h-9 w-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center active:opacity-60 disabled:opacity-30 transition-opacity shadow-sm"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <ChevronLeft className="h-4 w-4 text-slate-600" />
+              </button>
+
+              {Array.from({ length: totalMobilePages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalMobilePages || Math.abs(p - mobilePage) <= 1)
+                .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+                  if (idx > 0 && typeof arr[idx - 1] === "number" && (p as number) - (arr[idx - 1] as number) > 1) {
+                    acc.push("…");
+                  }
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, i) =>
+                  p === "…" ? (
+                    <span key={`ellipsis-${i}`} className="text-slate-400 text-[12px] px-1">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setMobilePage(p as number)}
+                      className={cn(
+                        "h-9 w-9 rounded-xl text-[12px] font-bold transition-all active:scale-95 shadow-sm",
+                        mobilePage === p
+                          ? "bg-[#0066FF] text-white shadow-blue-200"
+                          : "bg-white border border-slate-200 text-slate-600",
+                      )}
+                      style={{ WebkitTapHighlightColor: "transparent" }}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+
+              <button
+                onClick={() => setMobilePage((p) => Math.min(totalMobilePages, p + 1))}
+                disabled={mobilePage === totalMobilePages}
+                className="h-9 w-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center active:opacity-60 disabled:opacity-30 transition-opacity shadow-sm"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <ChevronRight className="h-4 w-4 text-slate-600" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Section 7: Quick Actions ─────────────────────────────── */}
+        <div className="px-4 mt-6">
+          <h3 className="text-[15px] font-extrabold text-[#0f1c3f] mb-3">Aksi Cepat</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              {
+                icon: <UserPlus className="h-5 w-5" strokeWidth={1.8} />,
+                label: "Tambah Agent",
+                sub: "Daftarkan agent baru",
+                color: "#0066FF", bg: "#dbeafe",
+                path: "/agent-center",
+              },
+              {
+                icon: <Users className="h-5 w-5" strokeWidth={1.8} />,
+                label: "Undang Agent",
+                sub: "Kirim link undangan",
+                color: "#8b5cf6", bg: "#ede9fe",
+                path: "/agent-center",
+              },
+              {
+                icon: <Settings2 className="h-5 w-5" strokeWidth={1.8} />,
+                label: "Kelola Role",
+                sub: "Atur hak akses agent",
+                color: "#f59e0b", bg: "#fef3c7",
+                path: "/settings",
+              },
+              {
+                icon: <BarChart3 className="h-5 w-5" strokeWidth={1.8} />,
+                label: "Laporan Performa",
+                sub: "Lihat statistik detail",
+                color: "#10b981", bg: "#d1fae5",
+                path: "/reports",
+              },
+            ].map((item, i) => (
+              <motion.button
+                key={item.label}
+                variants={fadeUp}
+                initial="hidden"
+                animate="show"
+                custom={i}
+                onClick={() => navigate(item.path)}
+                className="bg-white rounded-2xl p-4 shadow-sm flex items-start gap-3 text-left active:opacity-80 transition-opacity"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <div
+                  className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: item.bg, color: item.color }}
+                >
+                  {item.icon}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[12.5px] font-bold text-[#0f1c3f] leading-tight">{item.label}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{item.sub}</p>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        </div>
+
+        {/* Cara naik ranking tip */}
+        {!loading && (
+          <div className="px-4 mt-4 mb-4">
+            <div className="bg-white rounded-2xl shadow-sm p-4 flex items-start gap-3">
+              <div className="h-9 w-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
+                <TrendingUp className="h-4 w-4 text-[#0066FF]" />
+              </div>
+              <div>
+                <p className="text-[12px] font-bold text-[#0f1c3f] mb-1">Cara naik ranking</p>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Order Completed = <span className="font-semibold text-slate-700">+10 poin</span>.
+                  Jika ada komisi sales, bonus <span className="font-semibold text-slate-700">+20 poin</span> — total{" "}
+                  <span className="font-semibold text-slate-700">+30 poin</span> sekaligus.
+                </p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -642,7 +1230,6 @@ function PodiumCard({
         elevated && "shadow-md",
       )}
     >
-      {/* Rank badge */}
       <div className="flex items-center justify-between px-3 pt-3">
         <span className={cn("text-[10px] font-bold tracking-wider uppercase", cfg.accentColor)}>
           #{rank}
@@ -652,7 +1239,6 @@ function PodiumCard({
         )}
       </div>
 
-      {/* Avatar */}
       <div className="flex flex-col items-center pt-2 pb-2 px-3">
         <div className="relative">
           {rank === 1 && (
@@ -686,9 +1272,7 @@ function PodiumCard({
         )}
       </div>
 
-      {/* Stats */}
       <div className="px-2.5 pb-3 flex flex-col gap-1.5 flex-1">
-        {/* Points */}
         <div className={cn("rounded-lg px-2 py-2 text-center", cfg.pillBg)}>
           <div className="text-[8px] font-semibold uppercase tracking-wider text-slate-400 mb-0.5">
             Poin
@@ -702,7 +1286,6 @@ function PodiumCard({
           </div>
         </div>
 
-        {/* Order + Lifetime */}
         <div className="grid grid-cols-2 gap-1">
           <div className="rounded-lg bg-white/80 border border-slate-100 px-1.5 py-1.5 text-center">
             <div className="text-[7.5px] text-slate-400 font-medium">Order</div>
@@ -714,12 +1297,10 @@ function PodiumCard({
           </div>
         </div>
 
-        {/* Tier */}
         <div className="flex justify-center">
           <AgentTierBadge tier={row.tier} size="xs" />
         </div>
 
-        {/* CTA */}
         {isMe ? (
           <button
             onClick={onProfile}
