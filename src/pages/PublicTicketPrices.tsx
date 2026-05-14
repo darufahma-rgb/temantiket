@@ -980,159 +980,103 @@ export default function PublicTicketPrices() {
         </div>
       </header>
 
-      {/* ── Hero ── */}
-      <div
-        className="relative overflow-hidden"
-        style={{ background: resolveBannerCss(bannerTheme).base }}
-      >
-        {/* ── Dynamic layers driven by bannerTheme ── */}
-        {(() => {
-          const css = resolveBannerCss(bannerTheme);
-          return (
-            <>
-              {/* Layer 1: base gradient */}
-              <div className="absolute inset-0 pointer-events-none"
-                style={{ background: `linear-gradient(170deg, ${css.base} 0%, ${css.base}cc 50%, ${css.base} 100%)` }} />
+      {/* ── Hero — compact elegant strip ── */}
+      {(() => {
+        const css = resolveBannerCss(bannerTheme);
+        return (
+          <div
+            className="relative overflow-hidden"
+            style={{ background: css.base }}
+          >
+            {/* Subtle blobs */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full"
+                style={{ background: `radial-gradient(circle, ${css.blob1Color} 0%, transparent 65%)`, filter: "blur(48px)" }} />
+              <div className="absolute -top-16 right-[-4%] w-[360px] h-[360px] rounded-full"
+                style={{ background: `radial-gradient(circle, ${css.blob2Color} 0%, transparent 65%)`, filter: "blur(52px)" }} />
+              <div className="absolute bottom-0 left-[30%] w-[500px] h-[120px] rounded-full"
+                style={{ background: `radial-gradient(ellipse, ${css.blob3Color} 0%, transparent 70%)`, filter: "blur(36px)" }} />
+            </div>
+            {/* Fine grid texture */}
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
+            {/* Top accent line */}
+            <div className="absolute top-0 left-0 right-0 h-px"
+              style={{ background: `linear-gradient(90deg, transparent 0%, ${css.accentColor} 40%, ${css.blob1Color} 60%, transparent 100%)` }} />
+            {/* Bottom fade */}
+            <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+              style={{ background: `linear-gradient(to bottom, transparent, ${css.base}e0)` }} />
 
-              {/* Layer 2: vivid blobs */}
-              <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute -top-48 -left-48 w-[700px] h-[700px] rounded-full"
-                  style={{ background: `radial-gradient(circle, ${css.blob1Color} 0%, transparent 65%)`, filter: "blur(55px)" }} />
-                <div className="absolute -top-32 right-[-8%] w-[620px] h-[620px] rounded-full"
-                  style={{ background: `radial-gradient(circle, ${css.blob2Color} 0%, transparent 65%)`, filter: "blur(60px)" }} />
-                <div className="absolute top-[20%] left-[20%] w-[600px] h-[320px] rounded-full"
-                  style={{ background: `radial-gradient(ellipse, ${css.blob3Color} 0%, transparent 70%)`, filter: "blur(44px)" }} />
-                <div className="absolute bottom-[-30px] right-[8%] w-[380px] h-[260px] rounded-full"
-                  style={{ background: `radial-gradient(circle, ${css.blob1Color} 0%, transparent 60%)`, filter: "blur(40px)" }} />
-                <div className="absolute bottom-[5%] left-[-5%] w-[340px] h-[220px] rounded-full"
-                  style={{ background: `radial-gradient(ellipse, ${css.blob2Color} 0%, transparent 65%)`, filter: "blur(36px)" }} />
+            {/* Content */}
+            <div className="relative max-w-5xl mx-auto px-4 py-6 md:py-8">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+                {/* Left — headline block */}
+                <div className="min-w-0">
+                  {/* Live badge */}
+                  <div className="inline-flex items-center gap-1.5 bg-white/8 border border-white/10 rounded-full px-3 py-1 mb-3 backdrop-blur-sm">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                    </span>
+                    <span className="text-[10px] text-white/70 font-semibold uppercase tracking-[0.1em]">
+                      Agen Tiketing · Mudah & Murah
+                    </span>
+                  </div>
+
+                  <h1 className="font-black leading-tight text-white">
+                    <span className="text-2xl md:text-3xl block">Beli Tiket Pesawat</span>
+                    <span
+                      className="text-xl md:text-2xl text-transparent bg-clip-text"
+                      style={{ backgroundImage: `linear-gradient(90deg, ${css.accentColor.replace(/[\d.]+\)$/, "0.9)")} 0%, ${css.blob2Color.replace(/[\d.]+\)$/, "0.9)")} 100%)` }}
+                    >
+                      Gak Ribet, Gak Mahal.
+                    </span>
+                  </h1>
+
+                  <p className="text-[12px] text-white/50 mt-1.5 max-w-sm leading-relaxed hidden md:block">
+                    Harga bersaing, proses kilat, CS aktif via WhatsApp. Cocok buat mahasiswa!
+                  </p>
+
+                  {/* Trust chips — desktop */}
+                  <div className="hidden md:flex items-center gap-3 mt-3">
+                    {["⚡ Konfirmasi 1×24 jam", "🔒 Aman & Amanah", "🌏 Semua Rute"].map((t) => (
+                      <span key={t} className="text-[10px] text-white/40 font-medium">{t}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right — CTA + route count */}
+                <div className="flex flex-row md:flex-col items-center md:items-end gap-3 shrink-0">
+                  {waNumber && (
+                    <a
+                      href={whatsappUrl(waNumber)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-400 active:scale-95 text-white text-[13px] font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-green-900/30 hover:-translate-y-0.5 whitespace-nowrap"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      Chat Sekarang
+                    </a>
+                  )}
+                  <a
+                    href="#tickets"
+                    className="inline-flex items-center gap-1.5 bg-white/8 hover:bg-white/12 border border-white/12 text-white/80 text-[12px] font-semibold px-4 py-2.5 rounded-xl transition-all backdrop-blur-sm whitespace-nowrap"
+                  >
+                    <Plane className="w-3.5 h-3.5" />
+                    Lihat Tiket
+                  </a>
+                  {published.length > 0 && (
+                    <p className="text-[10px] text-white/25 md:text-right hidden md:block">
+                      {published.length} rute tersedia
+                    </p>
+                  )}
+                </div>
               </div>
-
-              {/* Layer 3: dot-grid texture */}
-              <div className="absolute inset-0 pointer-events-none"
-                style={{ backgroundImage: "radial-gradient(circle, rgba(148,163,184,0.07) 1px, transparent 1px)", backgroundSize: "26px 26px" }} />
-
-              {/* Layer 4: top accent line */}
-              <div className="absolute top-0 left-0 right-0 h-[2px]"
-                style={{ background: `linear-gradient(90deg, transparent, ${css.accentColor} 30%, ${css.blob1Color} 50%, ${css.accentColor} 70%, transparent)` }} />
-
-              {/* Layer 5: bottom fade */}
-              <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
-                style={{ background: `linear-gradient(to bottom, transparent, ${css.base})` }} />
-
-              {/* Layer 6: edge vignette */}
-              <div className="absolute inset-0 pointer-events-none"
-                style={{ background: `radial-gradient(ellipse 110% 110% at 50% 50%, transparent 35%, ${css.base}99 100%)` }} />
-            </>
-          );
-        })()}
-
-        {/* ── Floating airport codes — decorative ── */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden select-none" aria-hidden>
-          {[
-            { code: "JED", top: "10%",  left: "3%",   opacity: 0.055, size: "text-6xl" },
-            { code: "MED", top: "58%",  left: "1.5%", opacity: 0.045, size: "text-5xl" },
-            { code: "CGK", top: "6%",   right: "4%",  opacity: 0.055, size: "text-6xl" },
-            { code: "SUB", top: "62%",  right: "2%",  opacity: 0.045, size: "text-5xl" },
-            { code: "DOH", top: "32%",  left: "0.5%", opacity: 0.035, size: "text-4xl" },
-            { code: "DXB", top: "28%",  right: "0.5%",opacity: 0.035, size: "text-4xl" },
-            { code: "IST", top: "80%",  left: "6%",   opacity: 0.03,  size: "text-3xl" },
-            { code: "SIN", top: "75%",  right: "6%",  opacity: 0.03,  size: "text-3xl" },
-          ].map(({ code, top, left, right, opacity, size }) => (
-            <span key={code} className={`absolute font-black tracking-tighter text-white ${size}`}
-              style={{ top, left, right, opacity, letterSpacing: "-0.04em" }}>
-              {code}
-            </span>
-          ))}
-        </div>
-
-        <div className="relative max-w-3xl mx-auto px-4 pt-14 pb-12 md:pt-20 md:pb-16 text-center">
-
-          {/* Live badge */}
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 rounded-full px-4 py-1.5 mb-7 backdrop-blur-md">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-            </span>
-            <span className="text-[11px] text-white/80 font-semibold uppercase tracking-[0.12em]">
-              Agen Tiketing Mahasiswa · Mudah & Murah
-            </span>
+            </div>
           </div>
-
-          {/* Main headline */}
-          <h1 className="font-black leading-[1.1] mb-5">
-            <span className="block text-white text-4xl md:text-5xl lg:text-[3.5rem]">
-              Beli Tiket Pesawat
-            </span>
-            <span
-              className="block text-4xl md:text-5xl lg:text-[3.5rem] text-transparent bg-clip-text mt-1"
-              style={{ backgroundImage: "linear-gradient(90deg, #60c8f5 0%, #a78bfa 50%, #60c8f5 100%)", backgroundSize: "200% auto" }}
-            >
-              Gak Ribet, Gak Mahal.
-            </span>
-          </h1>
-
-          {/* Subtitle */}
-          <p className="text-[15px] md:text-base text-blue-200/80 max-w-xl mx-auto leading-relaxed mb-8">
-            Temantiket hadir buat kamu yang mau pesan tiket tanpa drama —
-            harga bersaing, proses kilat, dan ada yang bisa dihubungi
-            kapan saja. Cocok banget buat mahasiswa!
-          </p>
-
-          {/* Value pills */}
-          <div className="flex flex-wrap justify-center gap-2 mb-8">
-            {["🎓 Ramah Mahasiswa", "💸 Harga Transparan", "⚡ Proses Cepat", "🔒 Aman & Amanah", "🌏 Semua Rute"].map((r) => (
-              <span key={r}
-                className="px-3 py-1 rounded-full text-[11px] font-semibold text-white/70 border border-white/10 bg-white/5 backdrop-blur-sm">
-                {r}
-              </span>
-            ))}
-          </div>
-
-          {/* CTA */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            {waNumber && (
-              <a
-                href={whatsappUrl(waNumber)}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-400 active:scale-95 text-white text-sm font-bold px-7 py-3.5 rounded-2xl transition-all shadow-lg shadow-green-900/40 hover:shadow-green-900/60 hover:-translate-y-0.5"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Chat Sekarang, Gratis!
-              </a>
-            )}
-            <a
-              href="#tickets"
-              className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/15 text-white text-sm font-semibold px-6 py-3.5 rounded-2xl transition-all backdrop-blur-sm"
-            >
-              <Plane className="w-4 h-4" />
-              Cek Harga Tiket
-            </a>
-          </div>
-
-          {/* Trust stats */}
-          <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3">
-            {[
-              { icon: "🎓", label: "Favorit para mahasiswa" },
-              { icon: "⚡", label: "Konfirmasi dalam 1×24 jam" },
-              { icon: "💬", label: "CS aktif via WhatsApp" },
-            ].map(({ icon, label }) => (
-              <div key={label} className="flex items-center gap-1.5 text-[12px] text-white/50">
-                <span>{icon}</span>
-                <span>{label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Route count */}
-          {published.length > 0 && (
-            <p className="mt-5 text-[11px] text-white/30">
-              {published.length} rute aktif tersedia saat ini
-            </p>
-          )}
-        </div>
-      </div>
+        );
+      })()}
 
       {/* ── Filter Bar (only when there are tickets) ── */}
       {!loading && published.length > 0 && (
