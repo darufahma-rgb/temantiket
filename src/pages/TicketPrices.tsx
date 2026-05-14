@@ -2247,7 +2247,7 @@ export default function TicketPrices() {
   const [deskSheetUrl, setDeskSheetUrl] = useState("");
   const [deskSyncBanner, setDeskSyncBanner] = useState(false);
   const [filterAirlineCode, setFilterAirlineCode] = useState("all");
-  const [expandedSource, setExpandedSource] = useState<"share"|"upload"|"manual"|null>("upload");
+  const [expandedSource, setExpandedSource] = useState<"share"|"upload"|"bc"|"manual"|null>(null);
 
   const IDN_CODES = useMemo(() => new Set([
     "CGK","HLP","SUB","DPS","MES","BDJ","UPG","BPN","MDC","PLW","SRG","JOG","SOC",
@@ -2924,7 +2924,85 @@ export default function TicketPrices() {
                 )}
               </div>
 
-              {/* Option 3: Input Manual */}
+              {/* Option 3: Tempel Teks BC (AI) */}
+              <div className="border-b border-slate-100">
+                <div
+                  className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                  onClick={() => setExpandedSource(s => s === "bc" ? null : "bc")}
+                >
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-slate-700">Tempel Teks BC (AI)</span>
+                    <span className="ml-2 text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">AI</span>
+                  </div>
+                  <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", expandedSource === "bc" && "rotate-180")} />
+                </div>
+
+                {expandedSource === "bc" && (
+                  <div className="px-5 pb-5 space-y-3">
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Tempel teks broadcast (BC), itinerary, atau kode sistem GDS — AI akan otomatis mengekstrak data harga tiket.
+                    </p>
+
+                    {/* Textarea */}
+                    <Textarea
+                      placeholder={`Contoh:\nEK 802 CGK-DXB 15JUL 2359 0450+1\nDXB-JED EK 853 16JUL 0700 0845\nHarga: Rp 4.850.000 / pax\n\natau paste kode GDS / BC WA langsung di sini...`}
+                      className="min-h-[140px] text-xs font-mono resize-none border-slate-200 focus-visible:ring-amber-400 bg-slate-50"
+                      value={pasteText}
+                      onChange={e => setPasteText(e.target.value)}
+                      disabled={scanningText}
+                    />
+
+                    {/* Error */}
+                    {scanError && (
+                      <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+                        <p className="text-xs text-red-700">{scanError}</p>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        className="h-9 text-xs bg-amber-500 hover:bg-amber-600 text-white gap-1.5 flex-1"
+                        disabled={!pasteText.trim() || scanningText}
+                        onClick={handleParseText}
+                      >
+                        {scanningText ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            AI sedang memproses…
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5" />
+                            Proses dengan AI
+                          </>
+                        )}
+                      </Button>
+                      {pasteText && !scanningText && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-9 text-xs border-slate-200 text-slate-500"
+                          onClick={() => { setPasteText(""); setScanError(null); }}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </div>
+
+                    <p className="text-[10px] text-slate-400">
+                      Mendukung teks BC WhatsApp, format Galileo GDS, itinerary maskapai, dan teks bebas lainnya.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Option 4: Input Manual */}
               <div
                 className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors rounded-b-xl"
                 onClick={openAdd}
