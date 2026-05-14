@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAgencyId, getCurrentAgencyId, useAuthStore } from "@/store/authStore";
+import { getBearer } from "@/lib/authFetch";
 import { makePersistedCache } from "@/lib/persistedCache";
 import { type PaymentStatus, PAYMENT_STATUSES, coercePaymentStatus } from "@/lib/paymentStatus";
 import { withTimeout } from "@/lib/supabaseTimeout";
@@ -252,9 +253,11 @@ export async function deleteOrder(id: string): Promise<void> {
       );
     }
   } else {
+    const authH = await getBearer();
     const res = await fetch(`/api/orders/${id}`, {
       method: "DELETE",
       credentials: "include",
+      headers: { ...authH },
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({})) as { error?: string };

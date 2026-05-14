@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getBearer } from "@/lib/authFetch";
 import { CloudSyncBadge } from "@/components/CloudSyncBadge";
 import { loadProductCommissions as loadProdComm, saveProductCommissions as saveProdComm, pullProductCommissions, type ProductCommissions } from "@/lib/productCommissions";
 import { agentFeeFromMeta, voaAgentFeeFromMeta } from "@/lib/profit";
@@ -318,10 +319,11 @@ export default function Settings() {
     if (isManual) { setWalletRefreshing(true); } else { setWalletLoading(true); }
     try {
       // 1. Global backfill — no agentId = all agents in agency, idempotent
+      const authH = await getBearer();
       await fetch("/api/backfill-field-fees", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authH },
         body: JSON.stringify({}),
       }).catch(() => { /* silent — non-blocking */ });
       // 2. Pull fresh wallet txs for all agents after backfill

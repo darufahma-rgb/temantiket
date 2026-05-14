@@ -23,6 +23,7 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import { getBearer } from "@/lib/authFetch";
 
 const BUCKET = "card-back-images";
 
@@ -87,7 +88,8 @@ async function resizeToWebP(
  */
 async function triggerBucketSetup(): Promise<boolean> {
   try {
-    const res = await fetch("/api/setup-card-back", { method: "POST", credentials: "include" });
+    const authH = await getBearer();
+    const res = await fetch("/api/setup-card-back", { method: "POST", credentials: "include", headers: { ...authH } });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       console.warn("[cardBackStorage] setup-card-back failed:", body?.error ?? res.status);

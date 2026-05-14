@@ -7,15 +7,17 @@ import type { IghPdfData, IghLayoutConfig } from './generateIghPdf';
 import { generateInvoicePdf } from './invoiceGenerator';
 import { buildIghPdf, downloadIghPdf } from './generateIghPdf';
 import { loadIghAdminSettings } from './ighSettings';
+import { getBearer } from '@/lib/authFetch';
 
 /** Generate invoice PDF via Vercel serverless function.
  *  Falls back to browser-side pdf-lib if the API is unavailable. */
 export async function generateInvoicePdfRemote(data: InvoiceData): Promise<Uint8Array> {
   try {
+    const authH = await getBearer();
     const res = await fetch('/api/export/invoice', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authH },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(`Server error ${res.status}`);
@@ -38,10 +40,11 @@ export async function downloadIghPdfRemote(
   const baseUrl = window.location.origin;
 
   try {
+    const authH = await getBearer();
     const res = await fetch('/api/export/igh', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authH },
       body: JSON.stringify({ data, layout, adminSettings, baseUrl }),
     });
     if (!res.ok) throw new Error(`Server error ${res.status}`);
@@ -73,10 +76,11 @@ export async function buildIghPdfRemote(
   const baseUrl = window.location.origin;
 
   try {
+    const authH = await getBearer();
     const res = await fetch('/api/export/igh', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authH },
       body: JSON.stringify({ data, layout, adminSettings, baseUrl }),
     });
     if (!res.ok) throw new Error(`Server error ${res.status}`);

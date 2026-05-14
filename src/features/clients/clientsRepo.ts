@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAgencyId, getCurrentAgencyId, useAuthStore } from "@/store/authStore";
+import { getBearer } from "@/lib/authFetch";
 import { makePersistedCache } from "@/lib/persistedCache";
 import { withTimeout } from "@/lib/supabaseTimeout";
 import { isDataUrl, uploadClientPhoto } from "@/lib/supabaseStorage";
@@ -252,14 +253,19 @@ export async function deleteClient(id: string): Promise<void> {
   // Best-effort cleanup of linked financial records for all orders of this client:
   // 1. Wallet transactions — prevents ghost commissions in wallet views.
   // 2. Agent points — prevents orphan point rows inflating leaderboard totals.
-  void fetch(`/api/wallet-txs-for-client/${id}`, {
-    method: "DELETE",
-    credentials: "include",
-  }).catch((e) => console.warn("[clients] deleteWalletTxsForClient failed:", e));
-  void fetch(`/api/agent-points-for-client/${id}`, {
-    method: "DELETE",
-    credentials: "include",
-  }).catch((e) => console.warn("[clients] deleteAgentPointsForClient failed:", e));
+  void (async () => {
+    const authH = await getBearer();
+    void fetch(`/api/wallet-txs-for-client/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: { ...authH },
+    }).catch((e) => console.warn("[clients] deleteWalletTxsForClient failed:", e));
+    void fetch(`/api/agent-points-for-client/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: { ...authH },
+    }).catch((e) => console.warn("[clients] deleteAgentPointsForClient failed:", e));
+  })();
 
   if (isSupabaseConfigured()) {
     const { data, error } = await withTimeout(

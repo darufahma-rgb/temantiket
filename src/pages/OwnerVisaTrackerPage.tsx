@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { getBearer } from "@/lib/authFetch";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -185,7 +186,8 @@ export default function OwnerVisaTrackerPage() {
     setMigrating(true);
     setMigrateResult(null);
     try {
-      const res = await fetch("/api/migrate-progress-steps", { method: "POST", credentials: "include" });
+      const authH = await getBearer();
+      const res = await fetch("/api/migrate-progress-steps", { method: "POST", credentials: "include", headers: { ...authH } });
       const json = await res.json();
       if (json.ok) {
         setMigrateResult({ migrated: json.migrated, skipped: json.skipped, errors: json.errors });

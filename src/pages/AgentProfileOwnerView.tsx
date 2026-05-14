@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getBearer } from "@/lib/authFetch";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -416,10 +417,11 @@ export default function AgentProfileOwnerView() {
     if (!agentId) return;
     setSyncingFee(true);
     try {
+      const authH = await getBearer();
       const res = await fetch("/api/backfill-field-fees", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authH },
         body: JSON.stringify({ agentId }),
       });
       const json = await res.json().catch(() => ({})) as {
@@ -889,10 +891,11 @@ export default function AgentProfileOwnerView() {
 
       // ── Award 20 poin ke agen penjual via server ──────────────────────────────
       try {
+        const authH2 = await getBearer();
         const pointsRes = await fetch("/api/award-completion-points", {
           method: "POST",
           credentials: "include",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authH2 },
           body: JSON.stringify({ orderId, agentId }),
         });
         if (pointsRes.ok) {

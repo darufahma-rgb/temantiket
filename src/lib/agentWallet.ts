@@ -19,6 +19,7 @@
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { requireAgencyId, getCurrentAgencyId } from "@/store/authStore";
 import { beginFeatureSync, resolveFeatureSync } from "@/store/featureSyncStore";
+import { getBearer } from "@/lib/authFetch";
 
 export const POINT_TO_IDR_RATE = 1_000;
 
@@ -296,14 +297,15 @@ export async function addWalletTxAsync(
   // Write to localStorage first — instant cache, deduplicating by id
   saveTxsCache(agentId, [full, ...listWalletTxs(agentId).filter((t) => t.id !== full.id)]);
 
-  // ── Primary path: server endpoint (Replit Auth session — no Supabase needed) ─
+  // ── Primary path: server endpoint (Supabase Bearer JWT) ─────────────────────
   try {
     const agencyId = requireAgencyId();
+    const authH = await getBearer();
 
     const res = await fetch("/api/credit-wallet-tx", {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authH },
       body: JSON.stringify({
         id:          full.id,
         agencyId,
@@ -343,8 +345,10 @@ export async function pullWalletTxs(agentId: string): Promise<WalletTransaction[
     const agencyId = getCurrentAgencyId();
     if (!agencyId) return listWalletTxs(agentId);
 
+    const authH = await getBearer();
     const res = await fetch(`/api/wallet-txs/${agentId}`, {
       credentials: "include",
+      headers: { ...authH },
     });
     if (!res.ok) {
       console.warn("[agentWallet] pull gagal:", res.status);
@@ -404,9 +408,11 @@ export async function deleteWalletTxsForOrder(orderId: string): Promise<void> {
 
   // Remove from server DB
   try {
+    const authH = await getBearer();
     await fetch(`/api/wallet-txs-for-order/${orderId}`, {
       method: "DELETE",
       credentials: "include",
+      headers: { ...authH },
     });
   } catch (e) {
     console.warn("[agentWallet] deleteWalletTxsForOrder server call failed:", e);
@@ -429,9 +435,11 @@ export async function deleteWalletTxById(
   saveTxsCache(agentId, previous.filter((t) => t.id !== txId));
 
   try {
+    const authH = await getBearer();
     const res = await fetch(`/api/wallet-tx/${encodeURIComponent(txId)}`, {
       method: "DELETE",
       credentials: "include",
+      headers: { ...authH },
     });
 
     if (res.ok) return { success: true };

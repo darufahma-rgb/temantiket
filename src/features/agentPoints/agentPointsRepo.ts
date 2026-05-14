@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getCurrentAgencyId } from "@/store/authStore";
+import { getBearer } from "@/lib/authFetch";
 
 /**
  * agent_points = log poin gamification yg di-award otomatis lewat trigger
@@ -102,10 +103,11 @@ export async function awardOrderCompletionPoints(
 ): Promise<void> {
   try {
     const agencyId = getCurrentAgencyId();
+    const authH = await getBearer();
     const res = await fetch("/api/award-completion-points", {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authH },
       body: JSON.stringify({ agentId, orderId, agencyId }),
     });
     if (!res.ok) {
@@ -123,10 +125,11 @@ export async function awardOrderCompletionPoints(
  */
 export async function revokeOrderPoints(orderId: string): Promise<void> {
   try {
+    const authH = await getBearer();
     const res = await fetch("/api/revoke-order-points", {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authH },
       body: JSON.stringify({ orderId }),
     });
     if (!res.ok) {
