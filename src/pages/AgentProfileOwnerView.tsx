@@ -25,6 +25,7 @@ import {
   Crown, BarChart3, MessageCircle, ChevronRight, Loader2,
   Star, Camera, RefreshCw, Pencil, X, Save, Phone,
   Wallet, ArrowDownToLine, Coins, ExternalLink, Trash2,
+  Share2, MoreVertical, BadgeCheck, ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +47,7 @@ import { onAgentPointsChanged } from "@/lib/supabaseRealtime";
 import type { DailyMission, MissionSubmission, MissionStatus } from "@/features/missions/types";
 import { getTierInfo } from "@/features/agentPoints/agentTiers";
 import { sumMissionPointsByAgent } from "@/features/missions/missionsRepo";
-import { fmtIDR, agentFeeFromMeta } from "@/lib/profit";
+import { fmtIDR, agentFeeFromMeta, revenueIDR } from "@/lib/profit";
 import { computeFeeBreakdown } from "@/lib/agentFeeBreakdown";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -947,15 +948,730 @@ export default function AgentProfileOwnerView() {
 
   const { current: tier, next, pointsToNext, progress } = tierInfo;
 
+  // ── Mobile-specific computed values ─────────────────────────────────────────
+
+  const totalRevenue = useMemo(
+    () => agentOrders.reduce((s, o) => s + revenueIDR(o), 0),
+    [agentOrders],
+  );
+
+  const mobileAchievements = useMemo(() => [
+    { id: "order10",  emoji: "📦", label: "10 Order",  unlocked: agentOrders.length >= 10 },
+    { id: "order50",  emoji: "🚀", label: "50 Order",  unlocked: agentOrders.length >= 50 },
+    { id: "order100", emoji: "💯", label: "100 Order", unlocked: agentOrders.length >= 100 },
+    { id: "klien10",  emoji: "👥", label: "10 Klien",  unlocked: agentClients.length >= 10 },
+    { id: "platinum", emoji: "💎", label: "Platinum",  unlocked: tier.key === "platinum" },
+    { id: "top3",     emoji: "🥇", label: "Top 3",     unlocked: !!(rank && rank <= 3) },
+  ], [agentOrders.length, agentClients.length, tier.key, rank]);
+
+  const recentActivities = useMemo(() => {
+    type Act = { id: string; icon: string; title: string; ref: string; date: string; amount: string; amtColor: string };
+    const acts: Act[] = [];
+    [...agentOrders]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 4)
+      .forEach((o) => {
+        const fee = agentFeeFromMeta(o);
+        acts.push({
+          id: `order-${o.id}`,
+          icon: (ORDER_TYPE_EMOJI as Record<string, string>)[o.type] ?? "📦",
+          title: `${ORDER_TYPE_LABEL[o.type]}: ${clientMap.get(o.clientId ?? "")?.name ?? o.title ?? "—"}`,
+          ref: `#${o.id.slice(0, 8)} · ${o.status}`,
+          date: fmtDate(o.createdAt),
+          amount: fee > 0 ? `+${fmtIDR(fee)}` : "",
+          amtColor: "text-emerald-600",
+        });
+      });
+    allPoints
+      .filter((p) => p.agentId === agentId)
+      .slice(0, 3)
+      .forEach((p) => {
+        acts.push({
+          id: `pt-${p.id}`,
+          icon: "⭐",
+          title: REASON_LABEL[p.reason] ?? p.reason,
+          ref: `+${p.points} poin`,
+          date: fmtDate(p.awardedAt),
+          amount: `+${p.points} pts`,
+          amtColor: "text-amber-600",
+        });
+      });
+    [...dedupedWalletTxs]
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+      .filter((tx) => tx.type === "payout")
+      .slice(0, 2)
+      .forEach((tx) => {
+        acts.push({
+          id: `tx-${tx.id}`,
+          icon: "💸",
+          title: `Pencairan: ${tx.description}`,
+          ref: fmtDate(tx.createdAt),
+          date: fmtDate(tx.createdAt),
+          amount: `-${fmtIDR(Math.abs(tx.amountIDR))}`,
+          amtColor: "text-orange-600",
+        });
+      });
+    return acts.slice(0, 6);
+  }, [agentOrders, allPoints, dedupedWalletTxs, agentId, clientMap]);
+
+  const fmtRevCompact = (n: number) => {
+    if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}M`;
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}Jt`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+    return fmtIDR(n);
+  };
+
   return (
-    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-5">
-      {/* Back nav */}
-      <button
-        onClick={() => navigate("/agent-center")}
-        className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" /> Kembali ke Agent Center
-      </button>
+    <>
+      {/* ═══════════════════════════════════════════════════════════════
+          MOBILE LAYOUT  (md:hidden)
+      ═══════════════════════════════════════════════════════════════ */}
+      <div className="md:hidden -mx-4 bg-[#F0F4FB] pb-32 min-h-screen">
+
+        {/* ── 1. Header ──────────────────────────────────────────────── */}
+        <div className="bg-white px-4 pt-[68px] pb-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigate(-1 as unknown as string)}
+              className="h-9 w-9 rounded-xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <ChevronLeft className="h-4 w-4 text-slate-600" />
+            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => { if (navigator.share) void navigator.share({ title: agent.displayName, url: window.location.href }); }}
+                className="h-9 w-9 rounded-xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <Share2 className="h-4 w-4 text-slate-600" />
+              </button>
+              {canEdit && (
+                <button
+                  onClick={() => { setEditName(agent.displayName); setEditEmail(agent.email); setIsEditMode(true); }}
+                  className="h-9 w-9 rounded-xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <MoreVertical className="h-4 w-4 text-slate-600" />
+                </button>
+              )}
+            </div>
+          </div>
+          <h1 className="text-[22px] font-extrabold text-[#0f1c3f] mt-3 leading-tight">Profile Agent</h1>
+          <p className="text-[12px] text-slate-500 mt-0.5">Kelola profil, informasi, dan pencapaian {agent.displayName}.</p>
+        </div>
+
+        {/* ── 2. Profile Identity Card ────────────────────────────────── */}
+        <div className="px-4 mt-4">
+          <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
+            <div className={`h-24 bg-gradient-to-r ${tier.gradient}`} />
+            <div className="px-5 pb-5 -mt-12">
+              <div className="flex items-end justify-between">
+                {/* Avatar */}
+                <div className="relative">
+                  {canEdit ? (
+                    <button type="button" onClick={() => photoInputRef.current?.click()} disabled={photoUploading}
+                      className="relative group cursor-pointer disabled:cursor-default"
+                      style={{ WebkitTapHighlightColor: "transparent" }}
+                    >
+                      <div className="h-20 w-20 rounded-2xl bg-white border-4 border-white overflow-hidden flex items-center justify-center shadow-md">
+                        {agentPhotoUrl ? (
+                          <img src={agentPhotoUrl} alt="foto" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className={`h-full w-full bg-gradient-to-br ${tier.gradient} flex items-center justify-center`}>
+                            <span className="text-2xl font-extrabold text-white">{agent.displayName.charAt(0).toUpperCase()}</span>
+                          </div>
+                        )}
+                      </div>
+                      {photoUploading ? (
+                        <div className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center">
+                          <RefreshCw className="h-5 w-5 text-white animate-spin" />
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 rounded-2xl bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity">
+                          <Camera className="h-5 w-5 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="h-20 w-20 rounded-2xl bg-white border-4 border-white overflow-hidden flex items-center justify-center shadow-md">
+                      {agentPhotoUrl ? (
+                        <img src={agentPhotoUrl} alt="foto" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className={`h-full w-full bg-gradient-to-br ${tier.gradient} flex items-center justify-center`}>
+                          <span className="text-2xl font-extrabold text-white">{agent.displayName.charAt(0).toUpperCase()}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-[#0066FF] border-2 border-white flex items-center justify-center shadow-sm">
+                    <BadgeCheck className="h-3.5 w-3.5 text-white" />
+                  </div>
+                </div>
+                {/* Badges top-right */}
+                <div className="flex flex-col items-end gap-1.5 pb-1">
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">● Aktif</span>
+                  {rank && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">🏆 #{rank}</span>}
+                </div>
+              </div>
+
+              {/* Name + info */}
+              <div className="mt-3">
+                <h2 className="text-[20px] font-extrabold text-[#0f1c3f] leading-tight">{agent.displayName}</h2>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-blue-100 text-[#0066FF]">{tier.emoji} {tier.label}</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Mitra Agent</span>
+                </div>
+                <p className="text-[12px] text-slate-500 mt-2">{agent.email}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">ID: AGT-{agentId?.slice(0, 8).toUpperCase()}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                  <Calendar className="h-3 w-3 shrink-0" /> Bergabung {fmtDate(agent.createdAt)}
+                </p>
+              </div>
+
+              {/* Edit form (mobile) */}
+              {isEditMode && (
+                <div className="mt-4 p-4 rounded-2xl bg-[#F0F4FB] space-y-3">
+                  <p className="text-[12px] font-bold text-[#0f1c3f]">Edit Profil</p>
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Nama Lengkap</label>
+                    <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white text-[13px] font-semibold text-[#0f1c3f] px-3 py-2.5 focus:outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-blue-100 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Email</label>
+                    <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white text-[13px] text-[#0f1c3f] px-3 py-2.5 focus:outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-blue-100 transition-all"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => void handleSaveProfile()} disabled={isSaving}
+                      className="flex-1 h-10 rounded-xl bg-[#0066FF] text-white text-[12px] font-bold active:opacity-80 disabled:opacity-60 flex items-center justify-center gap-1.5 transition-opacity"
+                      style={{ WebkitTapHighlightColor: "transparent" }}
+                    >
+                      {isSaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Simpan
+                    </button>
+                    <button onClick={() => { setIsEditMode(false); setEditName(agent.displayName); setEditEmail(agent.email); }} disabled={isSaving}
+                      className="flex-1 h-10 rounded-xl border border-slate-200 bg-white text-[12px] font-semibold text-slate-600 active:opacity-70 flex items-center justify-center gap-1.5 transition-opacity"
+                      style={{ WebkitTapHighlightColor: "transparent" }}
+                    >
+                      <X className="h-3.5 w-3.5" /> Batal
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Contact buttons */}
+              {!isEditMode && (
+                <div className="flex gap-2 mt-4 flex-wrap">
+                  {agentPhoneWa && (
+                    <a href={`https://wa.me/${agentPhoneWa.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-emerald-500 text-white text-[11px] font-bold active:opacity-80 shadow-sm transition-opacity"
+                      style={{ WebkitTapHighlightColor: "transparent" }}
+                    >
+                      💬 WA
+                    </a>
+                  )}
+                  {agentPhoneWa && (
+                    <a href={`tel:${agentPhoneWa}`}
+                      className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-[#F0F4FB] border border-slate-200 text-slate-700 text-[11px] font-bold active:opacity-80 transition-opacity"
+                      style={{ WebkitTapHighlightColor: "transparent" }}
+                    >
+                      <Phone className="h-3.5 w-3.5" /> Telepon
+                    </a>
+                  )}
+                  <a href={`mailto:${agent.email}`}
+                    className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-[#F0F4FB] border border-slate-200 text-slate-700 text-[11px] font-bold active:opacity-80 transition-opacity"
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                  >
+                    <Mail className="h-3.5 w-3.5" /> Email
+                  </a>
+                  {canEdit && (
+                    <button onClick={() => { setEditName(agent.displayName); setEditEmail(agent.email); setIsEditMode(true); }}
+                      className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-[#0066FF] text-white text-[11px] font-bold active:opacity-80 shadow-sm transition-opacity"
+                      style={{ WebkitTapHighlightColor: "transparent" }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── 3. Level Agent Hero Card ────────────────────────────────── */}
+        <div className="px-4 mt-3">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+            className={`rounded-3xl p-5 bg-gradient-to-br ${tier.gradient} shadow-lg`}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-[11px] font-bold text-white/70 uppercase tracking-wide mb-0.5">Level Agent</p>
+                <p className="text-[24px] font-extrabold text-white leading-tight">{tier.emoji} {tier.label}</p>
+              </div>
+              <div className="h-12 w-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0">
+                <Trophy className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            {next ? (
+              <>
+                <div className="flex justify-between text-[10px] text-white/75 mb-1.5">
+                  <span className="font-semibold">{totalPoints.toLocaleString("id-ID")} poin</span>
+                  <span>{pointsToNext} lagi → {next.emoji} {next.label}</span>
+                </div>
+                <div className="h-2.5 rounded-full bg-white/25 overflow-hidden">
+                  <motion.div className="h-full rounded-full bg-white" initial={{ width: 0 }} animate={{ width: `${Math.round(progress * 100)}%` }} transition={{ duration: 0.8, ease: "easeOut" }} />
+                </div>
+              </>
+            ) : (
+              <p className="text-[13px] text-white font-semibold mb-2">🎉 Anda sudah di level tertinggi — Platinum!</p>
+            )}
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {tier.perks.map((p) => (
+                <span key={p} className="text-[10px] px-2 py-0.5 rounded-full bg-white/20 text-white font-medium">✓ {p}</span>
+              ))}
+            </div>
+            <button
+              onClick={() => navigate("/agent/leaderboard")}
+              className="mt-3 w-full h-9 rounded-xl bg-white/20 border border-white/30 text-white text-[12px] font-bold active:opacity-80 flex items-center justify-center gap-1.5 transition-opacity"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <BarChart3 className="h-3.5 w-3.5" /> Lihat Leaderboard
+            </button>
+          </motion.div>
+        </div>
+
+        {/* ── 4. Ringkasan Performa ───────────────────────────────────── */}
+        <div className="px-4 mt-3">
+          <div className="bg-white rounded-3xl shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Ringkasan Performa</h3>
+              <button onClick={() => setTab("orders")} className="text-[11px] font-semibold text-[#0066FF] active:opacity-70 flex items-center gap-0.5" style={{ WebkitTapHighlightColor: "transparent" }}>
+                Lihat Detail <ChevronRight className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                { label: "Total Order",     value: String(agentOrders.length),                                          sub: `${agentOrders.filter((o) => o.status === "Completed").length} selesai`, icon: "📦", color: "#8b5cf6", bg: "#ede9fe" },
+                { label: "Total Penjualan", value: fmtRevCompact(totalRevenue),                                         sub: "total pendapatan",   icon: "💰", color: "#10b981", bg: "#d1fae5" },
+                { label: "Rating",          value: "4.8 ★",                                                             sub: "performa agent",     icon: "⭐", color: "#f59e0b", bg: "#fef3c7" },
+                { label: "Total Klien",     value: String(agentClients.length),                                         sub: "klien terdaftar",    icon: "👥", color: "#0066FF", bg: "#dbeafe" },
+              ] as const).map((s) => (
+                <div key={s.label} className="rounded-2xl p-4" style={{ backgroundColor: s.bg }}>
+                  <div className="text-xl mb-2">{s.icon}</div>
+                  <p className="text-[20px] font-extrabold leading-none tabular-nums" style={{ color: s.color }}>{s.value}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wide mt-1 opacity-80" style={{ color: s.color }}>{s.label}</p>
+                  <p className="text-[9px] text-slate-400 mt-0.5">{s.sub}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── 5. Pencapaian ───────────────────────────────────────────── */}
+        <div className="px-4 mt-3">
+          <div className="bg-white rounded-3xl shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Pencapaian</h3>
+              <span className="text-[10px] font-semibold text-slate-400">{mobileAchievements.filter((a) => a.unlocked).length}/{mobileAchievements.length} unlock</span>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {mobileAchievements.map((a) => (
+                <div key={a.id} className={`rounded-2xl p-3 flex flex-col items-center gap-1.5 ${a.unlocked ? "bg-gradient-to-b from-blue-50 to-indigo-50 border border-blue-100" : "bg-slate-50 border border-slate-100 opacity-50"}`}>
+                  <span className={`text-2xl ${!a.unlocked ? "grayscale" : ""}`}>{a.emoji}</span>
+                  <p className="text-[9px] font-bold text-center text-slate-700 leading-tight">{a.label}</p>
+                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${a.unlocked ? "bg-[#0066FF] text-white" : "bg-slate-200 text-slate-500"}`}>
+                    {a.unlocked ? "✓ Unlock" : "Terkunci"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── 6. Layanan Terlaris ─────────────────────────────────────── */}
+        <div className="px-4 mt-3">
+          <div className="bg-white rounded-3xl shadow-sm p-5">
+            <h3 className="text-[15px] font-extrabold text-[#0f1c3f] mb-4">Layanan Terlaris</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {portfolio.map(({ type, count }) => {
+                const typeEmoji = (ORDER_TYPE_EMOJI as Record<string, string>)[type] ?? "📦";
+                const typeLabel = ORDER_TYPE_LABEL[type as keyof typeof ORDER_TYPE_LABEL] ?? type;
+                const typeRev = agentOrders.filter((o) => o.type === type).reduce((s, o) => s + revenueIDR(o), 0);
+                const colMap: Record<string, { color: string; bg: string }> = {
+                  umrah:        { color: "#0066FF", bg: "#dbeafe" },
+                  flight:       { color: "#8b5cf6", bg: "#ede9fe" },
+                  visa_voa:     { color: "#10b981", bg: "#d1fae5" },
+                  visa_student: { color: "#f59e0b", bg: "#fef3c7" },
+                };
+                const c = colMap[type] ?? { color: "#64748b", bg: "#f1f5f9" };
+                return (
+                  <div key={type} className="rounded-2xl p-4" style={{ backgroundColor: c.bg }}>
+                    <div className="text-xl mb-2">{typeEmoji}</div>
+                    <p className="text-[11px] font-bold" style={{ color: c.color }}>{typeLabel}</p>
+                    <p className="text-[18px] font-extrabold font-mono tabular-nums" style={{ color: c.color }}>{count}</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5">{fmtRevCompact(typeRev)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ── 7. Riwayat Aktivitas ────────────────────────────────────── */}
+        <div className="px-4 mt-3">
+          <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Riwayat Aktivitas</h3>
+              <button onClick={() => setTab("orders")} className="text-[11px] font-semibold text-[#0066FF] active:opacity-70" style={{ WebkitTapHighlightColor: "transparent" }}>Lihat Semua</button>
+            </div>
+            {recentActivities.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-10 px-4 text-center">
+                <ShoppingBag className="h-8 w-8 text-slate-200" />
+                <p className="text-[12px] text-slate-400">Belum ada aktivitas</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {recentActivities.map((act) => (
+                  <div key={act.id} className="flex items-center gap-3 px-5 py-3">
+                    <div className="h-9 w-9 rounded-xl bg-[#F0F4FB] flex items-center justify-center text-base shrink-0">{act.icon}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-semibold text-[#0f1c3f] truncate">{act.title}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 truncate">{act.ref} · {act.date}</p>
+                    </div>
+                    {act.amount && (
+                      <div className="shrink-0 flex items-center gap-1">
+                        <span className={`text-[12px] font-extrabold font-mono ${act.amtColor}`}>{act.amount}</span>
+                        <ChevronRight className="h-3.5 w-3.5 text-slate-300" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── 8. Detail Tabs ──────────────────────────────────────────── */}
+        <div className="px-4 mt-4">
+          <h3 className="text-[15px] font-extrabold text-[#0f1c3f] mb-3">Detail Lengkap</h3>
+          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            {TABS.map((t) => (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className={`shrink-0 flex items-center gap-1.5 h-9 px-4 rounded-full text-[12px] font-semibold transition-all active:scale-95 ${tab === t.key ? "bg-[#0066FF] text-white shadow-md shadow-blue-200" : "bg-white text-slate-600 border border-slate-200"}`}
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <t.icon className="h-3.5 w-3.5" />
+                {t.label}
+                {t.key === "misi" && pendingCount > 0 && <span className="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile tab content */}
+        <div className="px-4 mt-3">
+          <AnimatePresence mode="wait">
+            <motion.div key={`mob-${tab}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+
+              {/* Overview: compact extras */}
+              {tab === "overview" && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white rounded-2xl shadow-sm p-4">
+                      <div className="flex items-center justify-between mb-2"><span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Rank</span><Crown className="h-4 w-4 text-amber-500" /></div>
+                      <p className="text-[22px] font-extrabold font-mono text-amber-600">{rank ? `#${rank}` : "—"}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">di leaderboard</p>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-sm p-4">
+                      <div className="flex items-center justify-between mb-2"><span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Misi Selesai</span><Target className="h-4 w-4 text-purple-500" /></div>
+                      <p className="text-[22px] font-extrabold font-mono text-purple-600">{submissions.filter((s) => s.status === "approved").length}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">misi disetujui</p>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl shadow-sm p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-[13px] font-extrabold text-[#0f1c3f]">Ringkasan Komisi</p>
+                      <button onClick={() => setTab("komisi")} className="text-[11px] font-semibold text-[#0066FF]" style={{ WebkitTapHighlightColor: "transparent" }}>Detail</button>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { label: "Komisi Sales",   value: bd.salesCommission, color: "text-emerald-700" },
+                        { label: "Fee Lapangan",   value: bd.fieldAgentFee + bd.pelaksanaFee + bd.kurirFee, color: "text-indigo-700" },
+                        { label: "Total Komisi",   value: bd.totalCredit, color: "text-[#0f1c3f]" },
+                        { label: "Saldo Wallet",   value: bd.netBalance, color: bd.netBalance >= 0 ? "text-sky-700" : "text-red-700" },
+                      ].map((row) => (
+                        <div key={row.label} className="flex items-center justify-between">
+                          <span className="text-[12px] text-slate-500">{row.label}</span>
+                          <span className={`text-[13px] font-extrabold font-mono ${row.color}`}>{fmtIDR(row.value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100"><p className="text-[13px] font-extrabold text-[#0f1c3f]">Kartu Agen Digital</p></div>
+                    <div className="p-4 flex flex-col items-center gap-3">
+                      <AgentCard displayName={agent.displayName} agentId={agentId ?? ""} since={agent.createdAt} backImageUrl={cardBackUrl} />
+                      <input ref={cardBackInputRef} type="file" accept="image/*" className="hidden"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleCardBackFile(f); e.target.value = ""; }}
+                      />
+                      <button onClick={() => cardBackInputRef.current?.click()} disabled={cardBackUploading}
+                        className="w-full flex items-center justify-center gap-2 h-9 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50 text-blue-600 text-[12px] font-semibold disabled:opacity-60"
+                        style={{ WebkitTapHighlightColor: "transparent" }}
+                      >
+                        {cardBackUploading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Mengupload…</> : <><Camera className="h-3.5 w-3.5" />{cardBackUrl ? "Ganti Belakang Kartu" : "Upload Belakang Kartu"}</>}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Misi tab */}
+              {tab === "misi" && (
+                <div className="space-y-3">
+                  <div className="flex gap-1.5 flex-wrap">
+                    {([
+                      { key: "all" as const,      label: "Semua" },
+                      { key: "pending" as const,   label: `Menunggu${pendingCount > 0 ? ` (${pendingCount})` : ""}` },
+                      { key: "approved" as const,  label: "Disetujui" },
+                      { key: "none" as const,      label: "Belum dikerjakan" },
+                    ]).map((f) => (
+                      <button key={f.key} onClick={() => setMissionFilter(f.key)}
+                        className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${missionFilter === f.key ? "bg-[#0066FF] text-white border-[#0066FF]" : "bg-white text-slate-500 border-slate-200"}`}
+                        style={{ WebkitTapHighlightColor: "transparent" }}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                  {filteredMissions.length === 0 ? (
+                    <EmptyState icon={Target} title="Tidak ada misi" desc="Belum ada misi yang sesuai filter." />
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredMissions.map((m) => (
+                        <MissionRow key={m.id} mission={m} submission={subMap.get(m.id)} onReview={handleReview} reviewing={reviewing} />
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-slate-400 text-center pt-1">
+                    Buat misi baru di <button onClick={() => navigate("/agent-center")} className="text-[#0066FF] font-semibold" style={{ WebkitTapHighlightColor: "transparent" }}>Agent Center</button>
+                  </p>
+                </div>
+              )}
+
+              {/* Orders tab */}
+              {tab === "orders" && (
+                <div className="space-y-3">
+                  {agentOrders.length === 0 ? (
+                    <EmptyState icon={ShoppingBag} title="Belum ada order" desc="Agen ini belum membuat order apapun." />
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between px-1">
+                        <p className="text-[13px] font-extrabold text-[#0f1c3f]">Daftar Order ({agentOrders.length})</p>
+                        <span className="text-[11px] text-slate-400">{agentOrders.filter((o) => o.status === "Completed").length} selesai</span>
+                      </div>
+                      {[...agentOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((o) => {
+                        const clientName = clientMap.get(o.clientId ?? "")?.name;
+                        const isCompleting = completingOrderId === o.id;
+                        const canComplete = isOwner && o.status !== "Completed" && o.status !== "Cancelled";
+                        return (
+                          <div key={o.id} className={`bg-white rounded-2xl border p-4 space-y-3 ${o.status === "Completed" ? "border-emerald-100" : "border-slate-100"}`}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/orders/detail/${o.id}`)}>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-[13px] font-semibold text-[#0f1c3f] leading-tight">{clientName ?? o.title ?? "—"}</p>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${o.status === "Completed" ? "bg-emerald-100 text-emerald-700" : o.status === "Cancelled" ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-700"}`}>{o.status}</span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  <span className="text-[11px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{ORDER_TYPE_LABEL[o.type]}</span>
+                                  <span className="text-[11px] text-slate-400">{fmtDate(o.createdAt)}</span>
+                                </div>
+                              </div>
+                              <p className="text-[13px] font-extrabold font-mono text-orange-700 shrink-0">+{fmtIDR(agentFeeFromMeta(o))}</p>
+                            </div>
+                            {canComplete && (
+                              <div className="pt-1 border-t border-slate-100">
+                                <Button size="sm" className="w-full h-8 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isCompleting} onClick={() => void handleMarkComplete(o.id)}>
+                                  {isCompleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />}
+                                  Sudah Selesai
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Komisi tab */}
+              {tab === "komisi" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Komisi Sales",   value: bd.salesCommission, color: "text-emerald-800", bg: "bg-emerald-50 border-emerald-100",                         sub: `${uniqueBonusOrderCount || orderBonusTxs.length} order selesai` },
+                      { label: "Fee Lapangan",   value: bd.fieldAgentFee + bd.pelaksanaFee + bd.kurirFee, color: "text-indigo-800", bg: "bg-indigo-50 border-indigo-100", sub: "VOA · Pelaksana · Kurir" },
+                      { label: "Bonus / Manual", value: bd.bonusManual,     color: "text-violet-800",  bg: "bg-violet-50 border-violet-100",                          sub: "konversi poin · koreksi" },
+                      { label: "Saldo Wallet",   value: bd.netBalance,      color: bd.netBalance >= 0 ? "text-sky-800" : "text-red-700", bg: bd.netBalance >= 0 ? "bg-sky-50 border-sky-100" : "bg-red-50 border-red-100", sub: `Cair ${fmtIDR(bd.totalPaidOut)}` },
+                    ].map((s) => (
+                      <div key={s.label} className={`rounded-2xl border p-3 ${s.bg}`}>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1">{s.label}</p>
+                        <p className={`text-[15px] font-extrabold font-mono ${s.color}`}>{fmtIDR(s.value)}</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">{s.sub}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {isOwner && (
+                    <div className="flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2.5">
+                      <p className="text-[11px] text-blue-700 font-medium flex-1">Fee lapangan belum muncul? Sinkronkan sekarang.</p>
+                      <Button size="sm" variant="outline" className="h-7 text-[11px] border-blue-200 text-blue-700 hover:bg-blue-100 shrink-0 ml-2" disabled={syncingFee} onClick={() => void runBackfill(false)}>
+                        {syncingFee ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Sinkron…</> : <><RefreshCw className="h-3 w-3 mr-1" />Sinkronkan</>}
+                      </Button>
+                    </div>
+                  )}
+                  <div className="bg-white rounded-2xl overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                      <p className="text-[13px] font-extrabold text-[#0f1c3f]">Audit Komisi Per Order</p>
+                      {orderBonusTxs.length > 0 && <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">{orderBonusTxs.length} entri</span>}
+                    </div>
+                    {orderBonusTxs.length === 0 ? (
+                      <div className="py-10 text-center"><Coins className="h-8 w-8 mx-auto text-slate-200 mb-2" /><p className="text-[12px] text-slate-400">Belum ada komisi tercatat</p></div>
+                    ) : (
+                      <div className="divide-y divide-slate-50">
+                        {orderBonusTxs.map((tx) => {
+                          const idMatch = tx.description.match(/#([a-f0-9]{8})/i);
+                          const shortId = idMatch?.[1] ?? null;
+                          const linkedOrder = shortId ? agentOrders.find((o) => o.id.startsWith(shortId)) : null;
+                          const linkedClientName = linkedOrder ? clientMap.get(linkedOrder.clientId ?? "")?.name : null;
+                          const isOrphan = ordersLoaded && shortId !== null && linkedOrder === null;
+                          return (
+                            <div key={tx.id} className={`flex items-center gap-3 px-4 py-3 ${isOrphan ? "opacity-70" : ""}`}>
+                              <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isOrphan ? "bg-orange-50 border border-orange-100" : "bg-emerald-50 border border-emerald-100"}`}>
+                                {isOrphan ? <AlertTriangle className="h-4 w-4 text-orange-500" /> : <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                {linkedClientName && <p className="text-[12px] font-bold text-[#0f1c3f] truncate">{linkedClientName}</p>}
+                                <p className="text-[11px] text-slate-400 truncate">{tx.description}</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">{fmtDateTime(tx.createdAt)}</p>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {isOwner && (
+                                  <button onClick={(e) => { e.stopPropagation(); setDeletingTx(tx); }} className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors" title="Hapus">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                                <p className="text-[13px] font-extrabold font-mono text-emerald-700">+{fmtIDR(tx.amountIDR)}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  {fieldCommTxs.length > 0 && (
+                    <div className="bg-white rounded-2xl overflow-hidden">
+                      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                        <p className="text-[13px] font-extrabold text-[#0f1c3f]">Komisi Lapangan</p>
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">{fieldCommTxs.length} penugasan</span>
+                      </div>
+                      <div className="divide-y divide-slate-50">
+                        {fieldCommTxs.map((tx) => {
+                          const FCFG: Record<string, { emoji: string; label: string; amtCls: string }> = {
+                            voa_agent_fee:  { emoji: "🛂", label: "Lapangan VOA",   amtCls: "text-indigo-700" },
+                            field_agent_fee:{ emoji: "📋", label: "Agent Lapangan", amtCls: "text-sky-700" },
+                            pelaksana_fee:  { emoji: "🎓", label: "Pelaksana Visa", amtCls: "text-purple-700" },
+                            kurir_fee:      { emoji: "🚗", label: "Kurir",          amtCls: "text-amber-700" },
+                            operational_fee:{ emoji: "⚙️", label: "Operasional",    amtCls: "text-teal-700" },
+                          };
+                          const cfg = FCFG[tx.type] ?? FCFG.voa_agent_fee;
+                          const idMatch = tx.description.match(/#([a-f0-9-]{8,36})/i);
+                          const shortId = idMatch?.[1] ?? null;
+                          const linkedOrder = shortId ? orders.find((o) => o.id.startsWith(shortId) || o.id === shortId) : null;
+                          const clientName = linkedOrder?.clientId ? clientMap.get(linkedOrder.clientId)?.name : null;
+                          return (
+                            <div key={tx.id} className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={() => linkedOrder && navigate(`/orders/detail/${linkedOrder.id}`)}>
+                              <div className="h-9 w-9 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 text-base">{cfg.emoji}</div>
+                              <div className="flex-1 min-w-0">
+                                {clientName && <p className="text-[12px] font-bold text-[#0f1c3f] truncate">{clientName}</p>}
+                                <p className="text-[11px] text-slate-400 truncate">{tx.description}</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">{cfg.label} · {fmtDateTime(tx.createdAt)}</p>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {isOwner && (
+                                  <button onClick={(e) => { e.stopPropagation(); setDeletingTx(tx); }} className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                                <p className={`text-[13px] font-extrabold font-mono ${cfg.amtCls}`}>+{fmtIDR(tx.amountIDR)}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <button onClick={() => navigate("/agent-center", { state: { focusAgent: agentId, tab: "direktori" } })} className="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 py-3 text-[12px] font-semibold text-sky-700" style={{ WebkitTapHighlightColor: "transparent" }}>
+                    <Wallet className="h-3.5 w-3.5" />Kelola Wallet di Agent Center<ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Informasi tab */}
+              {tab === "informasi" && (
+                <div className="space-y-3">
+                  <div className="bg-white rounded-2xl overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-[#F0F4FB]"><p className="text-[13px] font-extrabold text-[#0f1c3f]">Informasi Agen</p></div>
+                    <div className="divide-y divide-slate-50">
+                      {[
+                        { label: "Nama Lengkap",    value: agent.displayName,                                      icon: Users },
+                        { label: "Email",            value: agent.email,                                            icon: Mail },
+                        { label: "Role",             value: agent.role === "agent" ? "Mitra Agen" : agent.role,    icon: Crown },
+                        { label: "Bergabung",        value: fmtDate(agent.createdAt),                              icon: Calendar },
+                        { label: "Total Poin",       value: `${totalPoints.toLocaleString("id-ID")} poin`,         icon: Star },
+                        { label: "Level / Tier",     value: `${tier.emoji} ${tier.label}`,                         icon: Trophy },
+                        { label: "Rank Leaderboard", value: rank ? `#${rank}` : "Belum ada data",                  icon: BarChart3 },
+                      ].map(({ label, value, icon: Icon }) => (
+                        <div key={label} className="flex items-center gap-3 px-4 py-3">
+                          <div className="h-8 w-8 rounded-xl bg-[#F0F4FB] flex items-center justify-center shrink-0"><Icon className="h-4 w-4 text-slate-500" /></div>
+                          <div className="flex-1">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wide">{label}</p>
+                            <p className="text-[13px] font-semibold text-[#0f1c3f] mt-0.5">{value}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate("/agent-center")}>
+                      <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Kembali
+                    </Button>
+                    <Button size="sm" className="flex-1 bg-[#0a2472] hover:bg-[#051650] text-white" onClick={() => navigate("/agent-center", { state: { focusAgent: agentId } })}>
+                      <BarChart3 className="h-3.5 w-3.5 mr-1" /> Lihat Analitik
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          DESKTOP LAYOUT  (hidden md:block)
+      ═══════════════════════════════════════════════════════════════ */}
+      <div className="hidden md:block p-4 md:p-6 max-w-[1400px] mx-auto space-y-5">
+        {/* Back nav */}
+        <button
+          onClick={() => navigate("/agent-center")}
+          className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Kembali ke Agent Center
+        </button>
 
       {/* ── Header Card ── */}
       <motion.div
@@ -2122,7 +2838,9 @@ export default function AgentProfileOwnerView() {
         </motion.div>
       </AnimatePresence>
 
-      {/* ── Delete Commission Confirmation Dialog ── */}
+      </div>
+
+      {/* ── Delete Commission Confirmation Dialog (shared mobile + desktop) ── */}
       <AlertDialog open={!!deletingTx} onOpenChange={(open) => { if (!open) setDeletingTx(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -2157,6 +2875,6 @@ export default function AgentProfileOwnerView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
