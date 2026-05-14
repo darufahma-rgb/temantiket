@@ -1199,7 +1199,882 @@ export default function Calculator() {
   }
 
   return (
-    <div className="pwa-compact-form space-y-2.5 md:space-y-5 max-w-[1400px] mx-auto" style={M}>
+    <>
+    {/* ═══════════════════════════════════════════════════════════════════
+        MOBILE LAYOUT (md:hidden) — native-app style
+    ═══════════════════════════════════════════════════════════════════ */}
+    <div className="md:hidden min-h-screen bg-[#F0F4FB] pb-32" style={M}>
+
+      {/* ── Mobile Header ── */}
+      <div className="bg-white px-4 pt-[calc(env(safe-area-inset-top)+16px)] pb-5 shadow-sm">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="h-9 w-9 rounded-2xl bg-[#F0F4FB] border border-sky-100 flex items-center justify-center shrink-0"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f1c3f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-[22px] font-extrabold text-[#0f1c3f] leading-tight">Kalkulator Profesional</h1>
+            <p className="text-[12px] text-slate-500 leading-snug">Kalkulasi biaya paket Umroh, Haji &amp; Trip.</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {calcSection === "umroh" && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="h-9 w-9 rounded-2xl bg-[#F0F4FB] border border-sky-100 flex items-center justify-center"
+                  title="Reset"
+                >
+                  <RotateCcw className="h-4 w-4 text-sky-600" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPdfOpen(true)}
+                  disabled={quote.finalPrice === 0}
+                  className="h-9 w-9 rounded-2xl flex items-center justify-center text-white disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+                  title="PDF"
+                >
+                  <FileText className="h-4 w-4" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Top Section Tabs ── */}
+      <div className="px-4 pt-4">
+        <div className="flex gap-1.5 p-1 bg-white rounded-2xl shadow-sm border border-sky-100">
+          {(([
+            { key: "umroh"     as const, label: "Umroh / Haji",       icon: Moon          },
+            { key: "converter" as const, label: "Konverter Mata Uang", icon: ArrowLeftRight },
+            { key: "visa"      as const, label: "Kalkulator Visa",     icon: Stamp         },
+          ] as const).filter((t) => !isStaffUser || t.key !== "umroh") as Array<{ key: "umroh"|"converter"|"visa"; label: string; icon: React.ElementType }>).map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setCalcSection(key)}
+              className={cn(
+                "flex-1 flex flex-col items-center gap-0.5 py-2.5 rounded-xl text-[10px] font-bold transition-all",
+                calcSection === key
+                  ? "text-white"
+                  : "text-slate-500"
+              )}
+              style={calcSection === key ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : {}}
+            >
+              <Icon className="h-4 w-4" strokeWidth={2} />
+              <span className="leading-tight text-center">{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── CONVERTER TAB ── */}
+      {calcSection === "converter" && (
+        <div className="px-4 pt-4">
+          <div className="bg-white rounded-3xl shadow-sm border border-sky-100 p-5">
+            <CurrencyConverterTab />
+          </div>
+        </div>
+      )}
+
+      {/* ── VISA TAB ── */}
+      {calcSection === "visa" && (
+        <div className="px-4 pt-4">
+          <div className="bg-white rounded-3xl shadow-sm border border-sky-100 p-5">
+            <VisaCalculatorTab />
+          </div>
+        </div>
+      )}
+
+      {/* ── UMROH / HAJI SECTION ── */}
+      {calcSection === "umroh" && (
+        <div className="px-4 pt-4 space-y-4">
+
+          {/* Mode tabs */}
+          <div className="flex gap-1.5 p-1 bg-white rounded-2xl shadow-sm border border-sky-100">
+            {([
+              { mode: "umroh_private" as CalcMode, label: "Umroh Private", icon: Moon },
+              { mode: "umroh_group"   as CalcMode, label: "Umroh Group",   icon: Users },
+              { mode: "umum"          as CalcMode, label: "Umum",          icon: Compass },
+            ]).map(({ mode, label, icon: Icon }) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setField("mode", mode)}
+                className={cn(
+                  "flex-1 flex flex-col items-center gap-0.5 py-2.5 rounded-xl text-[10px] font-bold transition-all",
+                  calc.mode === mode ? "bg-sky-500 text-white" : "text-slate-500"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+                <span className="leading-tight text-center">{label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* ── Override Kurs Card ── */}
+          <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
+            <div className="px-5 pt-4 pb-2">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Override Kurs (Khusus Halaman Ini)</p>
+            </div>
+            <div className="px-4 pb-4 grid grid-cols-3 gap-2">
+              {(["SAR", "USD"] as const).map((cur) => {
+                const storeVal = rates[cur] ?? 0;
+                const localVal = cur === "SAR" ? calc.localRateSAR : calc.localRateUSD;
+                const active = localVal > 0;
+                return (
+                  <div key={cur} className={cn("rounded-2xl border p-3 space-y-1.5", active ? "bg-sky-50 border-sky-200" : "bg-[#F0F4FB] border-sky-100")}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold text-sky-700">{cur}</span>
+                      {active && (
+                        <button type="button" onClick={() => setField(cur === "SAR" ? "localRateSAR" : "localRateUSD", 0)} className="text-[9px] text-sky-400 font-medium">↩</button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder={storeVal.toLocaleString("id-ID")}
+                      value={localVal > 0 ? localVal.toLocaleString("id-ID") : ""}
+                      onChange={(e) => {
+                        const stripped = e.target.value.replace(/\./g, "").replace(/[^0-9]/g, "");
+                        setField(cur === "SAR" ? "localRateSAR" : "localRateUSD", stripped ? Number(stripped) : 0);
+                      }}
+                      className="w-full text-[11px] font-bold bg-transparent border-0 p-0 focus:outline-none text-[#0f1c3f]"
+                    />
+                    <p className="text-[9px] text-slate-400">{active ? `Rp ${localVal.toLocaleString("id-ID")}` : "(dari Pengaturan)"}</p>
+                  </div>
+                );
+              })}
+              <div className="rounded-2xl border border-sky-100 bg-[#F0F4FB] p-3 space-y-1.5">
+                <span className="text-[10px] font-extrabold text-sky-700">IDR</span>
+                <p className="text-[11px] font-bold text-[#0f1c3f]">1</p>
+                <p className="text-[9px] text-slate-400">(basis)</p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Info Paket Card ── */}
+          <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
+            <div className="px-5 pt-4 pb-2">
+              <p className="text-[10px] font-extrabold text-sky-600 uppercase tracking-wider">Info Paket</p>
+            </div>
+            <div className="px-4 pb-4 space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Nama Paket</label>
+                <input
+                  type="text"
+                  value={calc.packageName}
+                  onChange={(e) => setField("packageName", e.target.value)}
+                  placeholder="cth: Umrah Ramadhan 2026"
+                  className="w-full h-11 rounded-2xl border border-sky-100 bg-[#F0F4FB] px-4 text-[13px] font-semibold text-[#0f1c3f] focus:outline-none focus:ring-2 focus:ring-sky-300"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Destinasi</label>
+                  <select
+                    value={calc.destination}
+                    onChange={(e) => setField("destination", e.target.value)}
+                    className="w-full h-11 rounded-2xl border border-sky-100 bg-[#F0F4FB] px-3 text-[12px] font-semibold text-[#0f1c3f] focus:outline-none focus:ring-2 focus:ring-sky-300"
+                  >
+                    <option value="">Pilih rute</option>
+                    {DESTINATION_PRESETS.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Jumlah Pax</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={calc.pax > 0 ? calc.pax.toLocaleString("id-ID") : ""}
+                    onChange={(e) => {
+                      const stripped = e.target.value.replace(/\./g, "").replace(/[^0-9]/g, "");
+                      setField("pax", Math.max(1, stripped ? Number(stripped) : 1));
+                    }}
+                    className="w-full h-11 rounded-2xl border border-sky-100 bg-[#F0F4FB] px-4 text-[13px] font-bold text-right text-[#0f1c3f] focus:outline-none focus:ring-2 focus:ring-sky-300"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── HOTEL CARD (mobile) ── */}
+          {calc.mode !== "umum" && (
+            <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
+              <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-xl bg-blue-500 flex items-center justify-center">
+                    <Hotel className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+                  </div>
+                  <span className="text-[14px] font-extrabold text-[#0f1c3f]">Hotel</span>
+                  <span className="text-[10px] bg-sky-100 text-sky-700 font-bold px-2 py-0.5 rounded-lg">SAR / USD</span>
+                </div>
+                <button type="button" onClick={addHotel} className="h-8 px-3 rounded-xl text-[11px] font-bold text-sky-600 border border-sky-200 bg-[#F0F4FB] flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Tambah
+                </button>
+              </div>
+              <div className="px-4 pb-4 space-y-3">
+                {calc.hotels.map((h) => {
+                  const cur = h.currency ?? "SAR";
+                  const rate = cur === "SAR" ? sarRate : cur === "USD" ? usdRate : 1;
+                  const activeRate = h.roomType ? resolveRoomRate(h, h.roomType) : (h.pricePerNight ?? 0);
+                  const foreignAmount = h.days * activeRate * h.rooms;
+                  const totalIDR = foreignAmount * rate;
+                  const capacity = h.roomType ? ROOM_CAPACITY[h.roomType as keyof typeof ROOM_CAPACITY] : 0;
+                  const perPaxIDR = capacity > 0 ? (h.days * activeRate * rate) / capacity : totalIDR / safePax;
+                  return (
+                    <div key={h.id} className="bg-[#F0F4FB] rounded-2xl p-3 space-y-2.5 border border-sky-100">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={h.label}
+                          onChange={(e) => updateHotel(h.id, { label: e.target.value })}
+                          placeholder="Nama hotel"
+                          className="flex-1 h-9 rounded-xl border border-sky-200 bg-white px-3 text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400"
+                        />
+                        <button type="button" onClick={() => removeHotel(h.id)} className="h-9 w-9 rounded-xl flex items-center justify-center text-red-400 hover:bg-red-50">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Tipe</p>
+                          <select value={h.roomType ?? ""} onChange={(e) => updateHotel(h.id, { roomType: (e.target.value || undefined) as HotelRow["roomType"] })} className="w-full h-8 rounded-xl border border-sky-200 bg-white px-1 text-[11px] focus:outline-none">
+                            <option value="">—</option>
+                            {ROOM_TYPES.map((r) => <option key={r} value={r}>{r}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Hari</p>
+                          <NumCell value={h.days} onChange={(v) => updateHotel(h.id, { days: v })} />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Kamar</p>
+                          <NumCell value={h.rooms} onChange={(v) => updateHotel(h.id, { rooms: v })} />
+                        </div>
+                      </div>
+                      <HotelRatesCell hotel={h} onChange={(patch) => updateHotel(h.id, patch)} />
+                      <div className="flex items-center justify-between pt-1">
+                        <RowCurrencyToggle value={cur as "IDR"|"SAR"|"USD"|"EGP"} onChange={(v) => updateHotel(h.id, { currency: v })} />
+                        <div className="text-right">
+                          <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
+                          <p className="text-[9px] text-slate-400">{formatCurrency(perPaxIDR)}/pax</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {quote && quote.hotelIDR > 0 && (
+                  <div className="bg-sky-50 rounded-2xl px-4 py-3 flex items-center justify-between border border-sky-200">
+                    <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal Hotel</span>
+                    <div className="text-right">
+                      <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.hotelIDR)}</p>
+                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.hotelIDR / safePax)}/pax</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── TRANSPORT CARD (mobile) ── */}
+          {calc.mode !== "umum" && (
+            <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
+              <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-xl bg-blue-600 flex items-center justify-center">
+                    <Bus className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+                  </div>
+                  <span className="text-[14px] font-extrabold text-[#0f1c3f]">Transportasi</span>
+                  <span className="text-[10px] bg-sky-100 text-sky-700 font-bold px-2 py-0.5 rounded-lg">SAR / USD</span>
+                </div>
+                <button type="button" onClick={addTransport} className="h-8 px-3 rounded-xl text-[11px] font-bold text-sky-600 border border-sky-200 bg-[#F0F4FB] flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Tambah
+                </button>
+              </div>
+              <div className="px-4 pb-4 space-y-3">
+                {calc.transports.map((t) => {
+                  const cur = t.currency ?? "SAR";
+                  const rate = cur === "SAR" ? sarRate : cur === "USD" ? usdRate : 1;
+                  const totalIDR = t.fleet * t.pricePerFleet * rate;
+                  return (
+                    <div key={t.id} className="bg-[#F0F4FB] rounded-2xl p-3 space-y-2.5 border border-sky-100">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Jenis</p>
+                          <SelectCell value={t.label} onChange={(v) => updateTransport(t.id, { label: v })} options={TRANSPORT_TYPES} placeholder="Jenis" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Rute</p>
+                          <SelectCell value={t.route ?? ""} onChange={(v) => updateTransport(t.id, { route: v })} options={ROUTE_OPTIONS} placeholder="Rute" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Jumlah</p>
+                          <NumCell value={t.fleet} onChange={(v) => updateTransport(t.id, { fleet: v })} />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Harga</p>
+                          <NumCell value={t.pricePerFleet} onChange={(v) => updateTransport(t.id, { pricePerFleet: v })} />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <RowCurrencyToggle value={cur as "IDR"|"SAR"|"USD"|"EGP"} onChange={(v) => updateTransport(t.id, { currency: v })} />
+                          <button type="button" onClick={() => removeTransport(t.id)} className="h-7 w-7 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-50">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
+                          <p className="text-[9px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {quote && quote.transportIDR > 0 && (
+                  <div className="bg-sky-50 rounded-2xl px-4 py-3 flex items-center justify-between border border-sky-200">
+                    <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal Transport</span>
+                    <div className="text-right">
+                      <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.transportIDR)}</p>
+                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.transportIDR / safePax)}/pax</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── TIKET PESAWAT CARD (mobile) ── */}
+          {calc.mode !== "umum" && (
+            <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
+              <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-xl bg-sky-500 flex items-center justify-center">
+                    <Plane className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+                  </div>
+                  <span className="text-[14px] font-extrabold text-[#0f1c3f]">Tiket Pesawat</span>
+                  <span className="text-[10px] bg-sky-100 text-sky-700 font-bold px-2 py-0.5 rounded-lg">IDR / USD</span>
+                </div>
+                <button type="button" onClick={addTicket} className="h-8 px-3 rounded-xl text-[11px] font-bold text-sky-600 border border-sky-200 bg-[#F0F4FB] flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Tambah
+                </button>
+              </div>
+              <div className="px-4 pb-4 space-y-3">
+                {(calc.tickets ?? []).map((tk) => {
+                  const totalIDR = tk.currency === "SAR"
+                    ? tk.pricePerPax * safePax * sarRate
+                    : tk.currency === "USD"
+                    ? tk.pricePerPax * safePax * usdRate
+                    : tk.pricePerPax * safePax;
+                  return (
+                    <div key={tk.id} className="bg-[#F0F4FB] rounded-2xl p-3 space-y-2.5 border border-sky-100">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Maskapai</p>
+                          <SelectCell value={tk.airline ?? ""} onChange={(v) => updateTicket(tk.id, { airline: v })} options={AIRLINES} placeholder="Maskapai" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Jenis</p>
+                          <select value={tk.flightType === "Open Jaw" ? "Return" : tk.flightType} onChange={(e) => updateTicket(tk.id, { flightType: e.target.value })} className="w-full h-7 rounded-lg border border-sky-200 bg-white px-1.5 text-[12px] focus:outline-none">
+                            <option value="Return">Return</option>
+                            <option value="One Way">One Way</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Rute</p>
+                        <TextCell value={tk.label} onChange={(v) => updateTicket(tk.id, { label: v })} placeholder="cth: CGK - JED - CGK" suggestions={FLIGHT_ROUTE_SUGGESTIONS} listId={`mob-flight-${tk.id}`} />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Harga / Pax</p>
+                        <NumCell value={tk.pricePerPax} onChange={(v) => updateTicket(tk.id, { pricePerPax: v })} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <RowCurrencyToggle value={tk.currency} onChange={(v) => updateTicket(tk.id, { currency: v })} />
+                          <button type="button" onClick={() => removeTicket(tk.id)} className="h-7 w-7 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-50">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
+                          <p className="text-[9px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {quote && quote.ticketIDR > 0 && (
+                  <div className="bg-sky-50 rounded-2xl px-4 py-3 flex items-center justify-between border border-sky-200">
+                    <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal Tiket</span>
+                    <div className="text-right">
+                      <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.ticketIDR)}</p>
+                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.ticketIDR / safePax)}/pax</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── VISA CARD (mobile) ── */}
+          {calc.mode !== "umum" && (
+            <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
+              <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-xl bg-indigo-500 flex items-center justify-center">
+                    <Stamp className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+                  </div>
+                  <span className="text-[14px] font-extrabold text-[#0f1c3f]">Visa</span>
+                  <span className="text-[10px] bg-sky-100 text-sky-700 font-bold px-2 py-0.5 rounded-lg">SAR / USD</span>
+                </div>
+                <button type="button" onClick={addVisa} className="h-8 px-3 rounded-xl text-[11px] font-bold text-sky-600 border border-sky-200 bg-[#F0F4FB] flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Tambah
+                </button>
+              </div>
+              <div className="px-4 pb-4 space-y-3">
+                {calc.visas.map((v) => {
+                  const cur = v.currency ?? "USD";
+                  const rate = cur === "SAR" ? sarRate : cur === "USD" ? usdRate : 1;
+                  const totalIDR = v.pricePerPax * safePax * rate;
+                  return (
+                    <div key={v.id} className="bg-[#F0F4FB] rounded-2xl p-3 space-y-2.5 border border-sky-100">
+                      <div className="flex gap-2">
+                        <input type="text" value={v.label} onChange={(e) => updateVisa(v.id, { label: e.target.value })} placeholder="cth: Visa Umroh" className="flex-1 h-9 rounded-xl border border-sky-200 bg-white px-3 text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400" />
+                        <button type="button" onClick={() => removeVisa(v.id)} className="h-9 w-9 rounded-xl flex items-center justify-center text-red-400 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Harga / Pax</p>
+                        <NumCell value={v.pricePerPax} onChange={(val) => updateVisa(v.id, { pricePerPax: val })} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <RowCurrencyToggle value={cur as "IDR"|"SAR"|"USD"|"EGP"} onChange={(val) => updateVisa(v.id, { currency: val })} />
+                        <div className="text-right">
+                          <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
+                          <p className="text-[9px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {quote && quote.visaIDR > 0 && (
+                  <div className="bg-sky-50 rounded-2xl px-4 py-3 flex items-center justify-between border border-sky-200">
+                    <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal Visa</span>
+                    <div className="text-right">
+                      <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.visaIDR)}</p>
+                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.visaIDR / safePax)}/pax</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── DESTINASI CARD (mobile) ── */}
+          {calc.mode !== "umum" && (
+            <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
+              <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-xl bg-emerald-500 flex items-center justify-center">
+                    <Globe className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+                  </div>
+                  <span className="text-[14px] font-extrabold text-[#0f1c3f]">Destinasi / Ziarah</span>
+                </div>
+                <button type="button" onClick={addDest} className="h-8 px-3 rounded-xl text-[11px] font-bold text-sky-600 border border-sky-200 bg-[#F0F4FB] flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Tambah
+                </button>
+              </div>
+              <div className="px-4 pb-4 space-y-3">
+                {calc.destinations.map((d) => {
+                  const cur = d.currency ?? "SAR";
+                  const rate = cur === "SAR" ? sarRate : cur === "USD" ? usdRate : 1;
+                  const totalIDR = d.pricePerPax * safePax * rate;
+                  return (
+                    <div key={d.id} className="bg-[#F0F4FB] rounded-2xl p-3 space-y-2.5 border border-sky-100">
+                      <div className="flex gap-2">
+                        <input type="text" value={d.label} onChange={(e) => updateDest(d.id, { label: e.target.value })} placeholder="cth: Tasreh" className="flex-1 h-9 rounded-xl border border-sky-200 bg-white px-3 text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400" />
+                        <button type="button" onClick={() => removeDest(d.id)} className="h-9 w-9 rounded-xl flex items-center justify-center text-red-400 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Harga / Pax</p>
+                        <NumCell value={d.pricePerPax} onChange={(v) => updateDest(d.id, { pricePerPax: v })} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <RowCurrencyToggle value={cur as "IDR"|"SAR"|"USD"|"EGP"} onChange={(v) => updateDest(d.id, { currency: v })} />
+                        <div className="text-right">
+                          <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
+                          <p className="text-[9px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {quote && quote.destinationIDR > 0 && (
+                  <div className="bg-sky-50 rounded-2xl px-4 py-3 flex items-center justify-between border border-sky-200">
+                    <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal Destinasi</span>
+                    <div className="text-right">
+                      <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.destinationIDR)}</p>
+                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.destinationIDR / safePax)}/pax</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── F&B CARD (mobile) ── */}
+          {calc.mode !== "umum" && (
+            <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
+              <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-xl bg-amber-500 flex items-center justify-center">
+                    <Globe className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+                  </div>
+                  <span className="text-[14px] font-extrabold text-[#0f1c3f]">F&amp;B / Konsumsi</span>
+                </div>
+                <button type="button" onClick={addFnB} className="h-8 px-3 rounded-xl text-[11px] font-bold text-sky-600 border border-sky-200 bg-[#F0F4FB] flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Tambah
+                </button>
+              </div>
+              <div className="px-4 pb-4 space-y-3">
+                {(calc.fnbs ?? []).map((f) => {
+                  const cur = f.currency ?? "SAR";
+                  const rate = cur === "SAR" ? sarRate : cur === "USD" ? usdRate : 1;
+                  const totalIDR = f.pricePerPax * safePax * rate;
+                  return (
+                    <div key={f.id} className="bg-[#F0F4FB] rounded-2xl p-3 space-y-2.5 border border-sky-100">
+                      <div className="flex gap-2">
+                        <input type="text" value={f.label} onChange={(e) => updateFnB(f.id, { label: e.target.value })} placeholder="cth: Zam-zam" className="flex-1 h-9 rounded-xl border border-sky-200 bg-white px-3 text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400" />
+                        <button type="button" onClick={() => removeFnB(f.id)} className="h-9 w-9 rounded-xl flex items-center justify-center text-red-400 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Harga / Pax</p>
+                        <NumCell value={f.pricePerPax} onChange={(v) => updateFnB(f.id, { pricePerPax: v })} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <RowCurrencyToggle value={cur as "IDR"|"SAR"|"USD"|"EGP"} onChange={(v) => updateFnB(f.id, { currency: v })} />
+                        <div className="text-right">
+                          <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
+                          <p className="text-[9px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {quote && quote.fnbIDR > 0 && (
+                  <div className="bg-sky-50 rounded-2xl px-4 py-3 flex items-center justify-between border border-sky-200">
+                    <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal F&amp;B</span>
+                    <div className="text-right">
+                      <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.fnbIDR)}</p>
+                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.fnbIDR / safePax)}/pax</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── STAFF CARD (mobile) ── */}
+          {calc.mode !== "umum" && (
+            <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
+              <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-xl bg-sky-500 flex items-center justify-center">
+                    <UserCheck className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+                  </div>
+                  <span className="text-[14px] font-extrabold text-[#0f1c3f]">Cost for Staff</span>
+                </div>
+                <button type="button" onClick={addStaff} className="h-8 px-3 rounded-xl text-[11px] font-bold text-sky-600 border border-sky-200 bg-[#F0F4FB] flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Tambah
+                </button>
+              </div>
+              <div className="px-4 pb-4 space-y-3">
+                {calc.staffs.map((s) => {
+                  const cur = s.currency ?? "SAR";
+                  const rate = cur === "SAR" ? sarRate : cur === "USD" ? usdRate : 1;
+                  const count = Math.max(1, (s as StaffRow).numStaff ?? 1);
+                  const totalIDR = s.totalCost * count * rate;
+                  return (
+                    <div key={s.id} className="bg-[#F0F4FB] rounded-2xl p-3 space-y-2.5 border border-sky-100">
+                      <div className="flex gap-2">
+                        <input type="text" value={s.label} onChange={(e) => updateStaff(s.id, { label: e.target.value })} placeholder="cth: Muthowif" className="flex-1 h-9 rounded-xl border border-sky-200 bg-white px-3 text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400" />
+                        <button type="button" onClick={() => removeStaff(s.id)} className="h-9 w-9 rounded-xl flex items-center justify-center text-red-400 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Jml Staff</p>
+                          <NumCell value={(s as StaffRow).numStaff ?? 1} onChange={(v) => updateStaff(s.id, { numStaff: v })} />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Total Biaya</p>
+                          <NumCell value={s.totalCost} onChange={(v) => updateStaff(s.id, { totalCost: v })} />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <RowCurrencyToggle value={cur as "IDR"|"SAR"|"USD"|"EGP"} onChange={(v) => updateStaff(s.id, { currency: v })} />
+                        <div className="text-right">
+                          <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
+                          <p className="text-[9px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {quote && quote.staffIDR > 0 && (
+                  <div className="bg-sky-50 rounded-2xl px-4 py-3 flex items-center justify-between border border-sky-200">
+                    <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal Staff</span>
+                    <div className="text-right">
+                      <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.staffIDR)}</p>
+                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.staffIDR / safePax)}/pax</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── GENERAL COSTS CARD (Umum mode only, mobile) ── */}
+          {calc.mode === "umum" && (
+            <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
+              <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-xl bg-sky-600 flex items-center justify-center">
+                    <TrendingUp className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+                  </div>
+                  <span className="text-[14px] font-extrabold text-[#0f1c3f]">Rincian Biaya</span>
+                </div>
+                <button type="button" onClick={addGeneralCost} className="h-8 px-3 rounded-xl text-[11px] font-bold text-sky-600 border border-sky-200 bg-[#F0F4FB] flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Tambah
+                </button>
+              </div>
+              <div className="px-4 pb-4 space-y-3">
+                {calc.generalCosts.map((c) => {
+                  const rowQty = c.qty ?? 1;
+                  const multiplier = (c.unit === "pax" ? safePax : 1) * rowQty;
+                  const groupIDR = c.currency === "IDR" ? c.amount * multiplier : c.currency === "SAR" ? c.amount * multiplier * sarRate : c.currency === "EGP" ? c.amount * multiplier * egpRate : c.amount * multiplier * usdRate;
+                  const cat = CATS.find((cat) => cat.value === c.category);
+                  return (
+                    <div key={c.id} className="bg-[#F0F4FB] rounded-2xl p-3 space-y-2.5 border border-sky-100">
+                      <div className="flex gap-2">
+                        <span className="text-[16px] pt-1">{cat?.emoji ?? "📦"}</span>
+                        <input type="text" value={c.label} onChange={(e) => updateGeneralCost(c.id, { label: e.target.value })} placeholder="Keterangan" className="flex-1 h-9 rounded-xl border border-sky-200 bg-white px-3 text-[12px] font-semibold focus:outline-none focus:ring-1 focus:ring-sky-400" />
+                        <button type="button" onClick={() => removeGeneralCost(c.id)} className="h-9 w-9 rounded-xl flex items-center justify-center text-red-400 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Kategori</p>
+                          <select value={c.category ?? ""} onChange={(e) => updateGeneralCost(c.id, { category: e.target.value })} className="w-full h-7 rounded-lg border border-sky-200 bg-white px-1 text-[11px] focus:outline-none">
+                            {CATS.map((cat) => <option key={cat.value} value={cat.value}>{cat.emoji} {cat.label}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Qty</p>
+                          <NumCell value={rowQty} onChange={(v) => updateGeneralCost(c.id, { qty: Math.max(1, v) })} />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Harga Satuan</p>
+                        <NumCell value={c.amount} onChange={(v) => updateGeneralCost(c.id, { amount: v })} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <RowCurrencyToggle value={c.currency} onChange={(v) => updateGeneralCost(c.id, { currency: v })} />
+                          <UnitToggle value={c.unit} onChange={(v) => updateGeneralCost(c.id, { unit: v })} />
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(groupIDR)}</p>
+                          <p className="text-[9px] text-slate-400">{formatCurrency(groupIDR / safePax)}/pax</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Financial Parameters Card (mobile) ── */}
+          <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
+            <div className="px-5 pt-4 pb-2">
+              <p className="text-[10px] font-extrabold text-sky-600 uppercase tracking-wider flex items-center gap-1.5">
+                <TrendingUp className="h-3.5 w-3.5" /> Parameter Finansial
+              </p>
+            </div>
+            <div className="px-4 pb-4 space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Commission Fee Admin (IDR Tetap)</label>
+                <NumCell value={calc.commissionFee} onChange={(v) => setField("commissionFee", v)} placeholder="0" />
+                <p className="text-[10px] text-slate-400">Nominal IDR tambahan di atas HPP</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                  Profit / Margin ({calc.marginPercent}%)
+                </label>
+                <Slider value={[calc.marginPercent]} min={0} max={50} step={1} onValueChange={(v) => setField("marginPercent", v[0])} />
+                <div className="flex justify-between text-[10px] text-sky-400 font-medium">
+                  <span>0%</span><span>25%</span><span>50%</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Discount (IDR dikurangkan)</label>
+                <NumCell value={calc.discount} onChange={(v) => setField("discount", v)} placeholder="0" />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Summary Cards (mobile) ── */}
+          {quote && calc.mode !== "umroh_group" && (
+            <div className="space-y-3">
+              {/* HPP */}
+              <div className="bg-white rounded-3xl shadow-sm border border-sky-100 p-5">
+                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Total Budget (HPP)</p>
+                <p className="text-[22px] font-extrabold text-[#0f1c3f]">{formatCurrency(quote.hpp)}</p>
+                <p className="text-[12px] text-slate-500 mt-0.5">{formatCurrency(quote.hpp / safePax)}/pax · {safePax} pax</p>
+              </div>
+
+              {/* Harga Jual Final */}
+              <div className="rounded-3xl p-5 text-white relative overflow-hidden" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}>
+                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 90% 10%,white 0%,transparent 55%)" }} />
+                <div className="relative">
+                  <p className="text-[10px] font-bold uppercase tracking-wide opacity-75">Harga Jual Final</p>
+                  <p className="text-[24px] font-extrabold mt-1">{formatCurrency(quote.finalPrice)}</p>
+                  <div className="mt-3 pt-3 border-t border-white/20 grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] opacity-70">Per Pax ({safePax} pax)</p>
+                      <p className="text-[15px] font-bold">{formatCurrency(quote.perPaxFinal)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] opacity-70">HPP per Pax</p>
+                      <p className="text-[15px] font-bold">{formatCurrency(quote.hpp / safePax)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Net Profit */}
+              <div className={cn(
+                "rounded-3xl p-5 border",
+                quote.netProfit >= 0 ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
+              )}>
+                <p className={cn("text-[10px] font-extrabold uppercase tracking-wider mb-1", quote.netProfit >= 0 ? "text-emerald-600" : "text-red-600")}>Net Profit</p>
+                <p className={cn("text-[22px] font-extrabold", quote.netProfit >= 0 ? "text-emerald-700" : "text-red-600")}>
+                  {quote.netProfit >= 0 ? "+" : ""}{formatCurrency(quote.netProfit)}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {formatCurrency(quote.netProfit / safePax)}/pax
+                  {quote.netProfit < 0 && " ⚠️ di bawah modal!"}
+                </p>
+              </div>
+
+              {/* Action buttons */}
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPdfOpen(true)}
+                  disabled={quote.finalPrice === 0}
+                  className="flex flex-col items-center gap-1.5 p-4 bg-white rounded-2xl border border-sky-100 shadow-sm text-[11px] font-bold text-sky-700 disabled:opacity-40"
+                >
+                  <FileText className="h-5 w-5 text-sky-500" />
+                  <span>PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateTrip}
+                  disabled={creatingTrip || quote.finalPrice === 0}
+                  className="flex flex-col items-center gap-1.5 p-4 bg-white rounded-2xl border border-sky-100 shadow-sm text-[11px] font-bold text-indigo-700 disabled:opacity-40"
+                >
+                  <Plane className="h-5 w-5 text-indigo-500" />
+                  <span>{creatingTrip ? "Membuat…" : "Buat Trip"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateOrder}
+                  disabled={creatingOrder || quote.finalPrice === 0}
+                  className="flex flex-col items-center gap-1.5 p-4 bg-white rounded-2xl border border-sky-100 shadow-sm text-[11px] font-bold text-amber-700 disabled:opacity-40"
+                >
+                  <TrendingUp className="h-5 w-5 text-amber-500" />
+                  <span>{creatingOrder ? "Menyimpan…" : "Ke Order"}</span>
+                </button>
+              </div>
+
+              {/* Internal Profit View (owner) */}
+              {isOwner && (() => {
+                const rateMap: Record<string, number> = { IDR: 1, USD: effectiveRates.USD ?? 16000, SAR: effectiveRates.SAR ?? 4250, EGP: effectiveRates.EGP ?? 515 };
+                const modalIDR = Math.round((calc.internalModal || 0) * (rateMap[calc.internalModalCurrency] || 1));
+                const opexIDR = Math.round(calc.internalOpex || 0);
+                const hargaJual = Math.round(quote.finalPrice || 0);
+                const profitIDRVal = hargaJual - modalIDR - opexIDR;
+                const marginPct = hargaJual > 0 ? (profitIDRVal / hargaJual) * 100 : 0;
+                return (
+                  <div className="rounded-3xl border border-blue-200 overflow-hidden">
+                    <button type="button" onClick={() => setShowInternalView((v) => !v)} className="w-full flex items-center justify-between px-4 py-3.5 bg-blue-50">
+                      <div className="flex items-center gap-2">
+                        <Lock className="h-4 w-4 text-blue-600" />
+                        <span className="text-[12px] font-bold text-blue-800">Internal Profit View</span>
+                        <span className="text-[9px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full font-semibold">Owner</span>
+                      </div>
+                      {showInternalView ? <EyeOff className="h-4 w-4 text-blue-400" /> : <Eye className="h-4 w-4 text-blue-400" />}
+                    </button>
+                    {showInternalView && (
+                      <div className="bg-white px-4 pb-4 pt-3 space-y-3">
+                        <div>
+                          <p className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide mb-1.5">Harga Modal (Nett)</p>
+                          <div className="flex gap-2">
+                            <select value={calc.internalModalCurrency} onChange={(e) => setField("internalModalCurrency", e.target.value as CalcState["internalModalCurrency"])} className="h-9 rounded-xl border border-blue-200 bg-blue-50 text-[11px] font-bold text-blue-800 px-2 focus:outline-none">
+                              {(["IDR", "USD", "SAR", "EGP"] as const).map((c) => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <input type="number" min={0} value={calc.internalModal || ""} onChange={(e) => setField("internalModal", Number(e.target.value) || 0)} placeholder="0" className="flex-1 h-9 rounded-xl border border-blue-200 px-3 text-[12px] font-mono focus:outline-none" />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide mb-1.5">Biaya Operasional (IDR)</p>
+                          <input type="number" min={0} value={calc.internalOpex || ""} onChange={(e) => setField("internalOpex", Number(e.target.value) || 0)} placeholder="0" className="w-full h-9 rounded-xl border border-blue-200 px-3 text-[12px] font-mono focus:outline-none" />
+                        </div>
+                        <div className="rounded-2xl bg-blue-50 border border-blue-200 p-3 space-y-2">
+                          {[
+                            { label: "Harga Jual Final", value: hargaJual, color: "text-sky-700" },
+                            { label: `− Modal (${calc.internalModalCurrency})`, value: -modalIDR, color: "text-rose-600" },
+                            { label: "− Biaya Operasional", value: -opexIDR, color: "text-rose-600" },
+                          ].map((r) => (
+                            <div key={r.label} className="flex items-center justify-between">
+                              <span className={`text-[11px] font-semibold ${r.color}`}>{r.label}</span>
+                              <span className={`text-[12px] font-bold font-mono ${r.color}`}>{r.value < 0 ? `- ${formatCurrency(Math.abs(r.value))}` : formatCurrency(r.value)}</span>
+                            </div>
+                          ))}
+                          <div className="border-t border-blue-200 pt-2 flex items-center justify-between">
+                            <div>
+                              <p className={`text-[12px] font-extrabold ${profitIDRVal >= 0 ? "text-emerald-700" : "text-red-600"}`}>= Total Profit</p>
+                              <p className="text-[10px] text-slate-500">margin {marginPct.toFixed(1)}%</p>
+                            </div>
+                            <span className={`text-[15px] font-extrabold font-mono ${profitIDRVal >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                              {profitIDRVal >= 0 ? "+" : ""}{formatCurrency(profitIDRVal)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+        </div>
+      )}
+    </div>
+
+    {/* ═══════════════════════════════════════════════════════════════════
+        DESKTOP LAYOUT (hidden md:block)
+    ═══════════════════════════════════════════════════════════════════ */}
+    <div className="hidden md:block pwa-compact-form space-y-2.5 md:space-y-5 max-w-[1400px] mx-auto" style={M}>
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -2478,6 +3353,7 @@ export default function Calculator() {
       </AlertDialog>
       </>)}
     </div>
+    </>
   );
 }
 
