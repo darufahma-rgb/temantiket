@@ -418,11 +418,13 @@ export default function AgentProfileOwnerView() {
     setSyncingFee(true);
     try {
       const authH = await getBearer();
+      // Pass all orders from Supabase so the backend can credit commissions even
+      // when local PostgreSQL is empty (Replit env — Supabase is the real data store).
       const res = await fetch("/api/backfill-field-fees", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...authH },
-        body: JSON.stringify({ agentId }),
+        body: JSON.stringify({ agentId, orders }),
       });
       const json = await res.json().catch(() => ({})) as {
         credited?: number;
@@ -469,9 +471,11 @@ export default function AgentProfileOwnerView() {
     }
   };
 
-  // Auto-backfill field fees on mount (owner only) — runs silently in background
+  // Auto-backfill field fees on mount (owner only) — runs silently in background.
+  // No supabase guard: backfill calls /api/backfill-field-fees (backend PostgreSQL),
+  // and the frontend passes orders from Supabase via the request body.
   useEffect(() => {
-    if (!agentId || !isOwner || !supabase) return;
+    if (!agentId || !isOwner) return;
     void runBackfill(true);
   }, [agentId, isOwner]); // eslint-disable-line react-hooks/exhaustive-deps
 

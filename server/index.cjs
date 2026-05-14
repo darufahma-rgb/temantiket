@@ -1338,15 +1338,32 @@ app.post('/api/backfill-field-fees', isAuthenticatedOrBearer, async (req, res) =
     if (memRows[0].role === 'agent') return err(res, 403, 'Hanya owner/staff yang dapat melakukan backfill fee');
 
     const agencyId = memRows[0].agency_id;
-    const { agentId: filterAgentId } = req.body ?? {};
-    console.log(`${ROUTE} caller=${req.user.id} agency=${agencyId} filter=${filterAgentId ?? 'semua'}`);
+    const { agentId: filterAgentId, orders: clientOrders } = req.body ?? {};
+    console.log(`${ROUTE} caller=${req.user.id} agency=${agencyId} filter=${filterAgentId ?? 'semua'} clientOrders=${Array.isArray(clientOrders) ? clientOrders.length : 'none'}`);
 
-    const { rows: orders } = await pool.query(
-      `SELECT id, type, status, metadata, created_by_agent
-       FROM orders WHERE agency_id = $1 AND status = 'Completed'`,
-      [agencyId],
-    );
-    console.log(`${ROUTE} fetched ${orders.length} Completed orders`);
+    // If the frontend passes orders directly (Supabase data), use those.
+    // Otherwise fall back to querying local PostgreSQL (may be empty in Replit env).
+    let orders;
+    if (Array.isArray(clientOrders) && clientOrders.length > 0) {
+      orders = clientOrders
+        .filter((o) => o.status === 'Completed')
+        .map((o) => ({
+          id:               o.id,
+          type:             o.type,
+          status:           o.status,
+          metadata:         o.metadata ?? {},
+          created_by_agent: o.createdByAgent ?? o.created_by_agent ?? null,
+        }));
+      console.log(`${ROUTE} using ${orders.length} Completed orders from client payload`);
+    } else {
+      const { rows } = await pool.query(
+        `SELECT id, type, status, metadata, created_by_agent
+         FROM orders WHERE agency_id = $1 AND status = 'Completed'`,
+        [agencyId],
+      );
+      orders = rows;
+      console.log(`${ROUTE} fetched ${orders.length} Completed orders from local DB`);
+    }
 
     const results = { credited: 0, skipped: 0, errors: 0 };
     const errorSamples = [];
