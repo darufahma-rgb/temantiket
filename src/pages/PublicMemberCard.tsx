@@ -28,17 +28,17 @@ function ensureExternalUrl(url: string): string {
 }
 
 const REWARD_MILESTONES = [
-  { row: 1, stamps: 4,  emoji: "🎫", label: "Diskon Tiket Domestik",       subLabel: "1 baris stamp", desc: "Diskon tiket pesawat domestik untuk order berikutnya.",           color: "blue"   },
-  { row: 2, stamps: 8,  emoji: "✈️", label: "Upgrade Kelas Penerbangan",   subLabel: "2 baris stamp", desc: "Upgrade kelas penerbangan untuk 1 perjalanan pilihan.",           color: "indigo" },
-  { row: 3, stamps: 12, emoji: "🏨", label: "Voucher Hotel Diskon 10%",    subLabel: "3 baris stamp", desc: "Voucher hotel diskon 10% untuk pilihan hotel Temantiket.",        color: "violet" },
-  { row: 4, stamps: 16, emoji: "🕋", label: "Umrah Gratis (Undian)",       subLabel: "4 baris stamp", desc: "Kesempatan umrah gratis melalui program undian Temantiket.",      color: "amber"  },
+  { row: 1, stamps: 4,  emoji: "💰", label: "Cashback Rp 100.000",           subLabel: "1 baris stamp", desc: "Cashback Rp 100.000 untuk order berikutnya. Langsung dikreditkan ke akun kamu.",  color: "blue"   },
+  { row: 2, stamps: 8,  emoji: "🎁", label: "Merchandise Temantiket",         subLabel: "2 baris stamp", desc: "Paket merchandise eksklusif Temantiket — kaos, totebag, dan sticker keren!",       color: "indigo" },
+  { row: 3, stamps: 12, emoji: "💵", label: "Cashback Rp 300.000",            subLabel: "3 baris stamp", desc: "Cashback Rp 300.000 untuk order berikutnya. Makin banyak order, makin hemat!",    color: "violet" },
+  { row: 4, stamps: 16, emoji: "✈️", label: "Voucher Keliling Transit Doha",  subLabel: "4 baris stamp", desc: "Voucher perjalanan eksklusif keliling dengan transit Doha. Reward paling spesial!", color: "amber"  },
 ] as const;
 
 const REWARD_ROW_ICON: Record<number, LucideIcon> = {
-  1: Ticket,
-  2: Plane,
-  3: Building2,
-  4: Gift,
+  1: DollarSign,
+  2: Gift,
+  3: DollarSign,
+  4: Plane,
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -551,7 +551,7 @@ export default function PublicMemberCardPage() {
                   </div>
 
                   <p className="text-[12px] text-blue-500 font-semibold text-right">
-                    {totalStamps >= 16 ? "🎉 Full card! Klaim reward Umrah Gratis" : `${16 - totalStamps} stamp lagi menuju Umrah Gratis 🕋`}
+                    {totalStamps >= 16 ? "🎉 Full card! Klaim Voucher Transit Doha" : `${16 - totalStamps} stamp lagi menuju Transit Doha ✈️`}
                   </p>
                 </div>
               </div>
@@ -1084,7 +1084,7 @@ export default function PublicMemberCardPage() {
                         })}
                       </div>
                       <p className="text-sm text-blue-500 font-semibold text-right">
-                        {totalStamps >= 16 ? "🎉 Full card! Klaim reward VIP Qatar" : `${16 - totalStamps} stamp lagi menuju Qatar ✈️`}
+                        {totalStamps >= 16 ? "🎉 Full card! Klaim Voucher Transit Doha" : `${16 - totalStamps} stamp lagi menuju Transit Doha ✈️`}
                       </p>
                     </div>
 
