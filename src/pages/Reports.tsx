@@ -450,6 +450,18 @@ export default function Reports() {
       const kurirIDR   = kurirOpCost(o);
       const pelFee     = pelaksanaFeeFromMeta(o);
 
+      // Sub-komponen VOA (untuk breakdown tooltip)
+      const rawMeta = (o.metadata ?? {}) as Record<string, unknown>;
+      const voaAgentFeeAmt     = voaOpexIDR > 0 ? Number(rawMeta.voaAgentFee     ?? 0) : 0;
+      const voaTransportFeeAmt = voaOpexIDR > 0 ? Number(rawMeta.voaTransportFee ?? 0) : 0;
+      const voaOtherFeeAmt     = voaOpexIDR > 0 ? Number(rawMeta.voaOtherFee     ?? 0) : 0;
+      const voaFieldAgentId    = rawMeta.voaFieldAgentId as string | undefined;
+
+      // Sub-komponen Kurir (untuk breakdown tooltip)
+      const kurirFeeAmt          = kurirIDR > 0 ? Number(rawMeta.kurirFee          ?? 0) : 0;
+      const kurirTransportFeeAmt = kurirIDR > 0 ? Number(rawMeta.kurirTransportFee ?? 0) : 0;
+      const kurirOtherFeeAmt     = kurirIDR > 0 ? Number(rawMeta.kurirOtherFee     ?? 0) : 0;
+
       // Fee agen: hanya dipotong jika createdByAgent mengarah ke member berole "agent"
       // (sama persis dengan agencyProfit callback — agar angka sinkron)
       const member   = o.createdByAgent ? memberById.get(o.createdByAgent) : undefined;
@@ -483,7 +495,14 @@ export default function Reports() {
         agentFee,
         pelFee,
         voaOpexIDR,
+        voaAgentFeeAmt,
+        voaTransportFeeAmt,
+        voaOtherFeeAmt,
+        voaFieldAgentName: voaFieldAgentId ? (memberById.get(voaFieldAgentId)?.displayName ?? null) : null,
         kurirIDR,
+        kurirFeeAmt,
+        kurirTransportFeeAmt,
+        kurirOtherFeeAmt,
         internalOpex,
         agentName: agentFee > 0 ? (member?.displayName ?? "Agen") : null,
         paymentStatus: (o.paymentStatus ?? "UNPAID") as PaymentStatus,
@@ -1225,7 +1244,7 @@ export default function Reports() {
                           <span className="relative group/biaya inline-block">
                             {fmtIDR(row.biaya)}
                             {/* Breakdown tooltip */}
-                            <span className="pointer-events-none absolute right-0 bottom-full mb-1.5 z-50 hidden group-hover/biaya:flex flex-col w-52 rounded-xl border border-amber-200 bg-white shadow-2xl p-2.5 text-[10.5px] text-left gap-0.5" style={{ whiteSpace: "nowrap" }}>
+                            <span className="pointer-events-none absolute right-0 bottom-full mb-1.5 z-50 hidden group-hover/biaya:flex flex-col w-64 rounded-xl border border-amber-200 bg-white shadow-2xl p-2.5 text-[10.5px] text-left gap-0.5" style={{ whiteSpace: "nowrap" }}>
                               <span className="font-bold text-foreground mb-1 border-b pb-1 text-[11px]">Rincian Biaya</span>
                               {row.internalOpex > 0 && (
                                 <span className="flex justify-between gap-3 text-slate-600">
@@ -1245,16 +1264,40 @@ export default function Reports() {
                                   <span className="font-mono">{fmtIDR(row.pelFee)}</span>
                                 </span>
                               )}
-                              {row.voaOpexIDR > 0 && (
+                              {row.voaAgentFeeAmt > 0 && (
                                 <span className="flex justify-between gap-3 text-purple-700">
-                                  <span>🛂 Biaya VOA</span>
-                                  <span className="font-mono">{fmtIDR(row.voaOpexIDR)}</span>
+                                  <span>🛂 Fee Agent Lapangan{row.voaFieldAgentName ? ` (${row.voaFieldAgentName})` : ""}</span>
+                                  <span className="font-mono">{fmtIDR(row.voaAgentFeeAmt)}</span>
                                 </span>
                               )}
-                              {row.kurirIDR > 0 && (
+                              {row.voaTransportFeeAmt > 0 && (
+                                <span className="flex justify-between gap-3 text-purple-600">
+                                  <span>🚌 Ongkos Transport VOA</span>
+                                  <span className="font-mono">{fmtIDR(row.voaTransportFeeAmt)}</span>
+                                </span>
+                              )}
+                              {row.voaOtherFeeAmt > 0 && (
+                                <span className="flex justify-between gap-3 text-purple-500">
+                                  <span>📌 Biaya VOA Lainnya</span>
+                                  <span className="font-mono">{fmtIDR(row.voaOtherFeeAmt)}</span>
+                                </span>
+                              )}
+                              {row.kurirFeeAmt > 0 && (
                                 <span className="flex justify-between gap-3 text-amber-700">
-                                  <span>🚴 Biaya Kurir</span>
-                                  <span className="font-mono">{fmtIDR(row.kurirIDR)}</span>
+                                  <span>🚗 Fee Jasa Kurir</span>
+                                  <span className="font-mono">{fmtIDR(row.kurirFeeAmt)}</span>
+                                </span>
+                              )}
+                              {row.kurirTransportFeeAmt > 0 && (
+                                <span className="flex justify-between gap-3 text-amber-600">
+                                  <span>🛣️ Ongkos Transport Kurir</span>
+                                  <span className="font-mono">{fmtIDR(row.kurirTransportFeeAmt)}</span>
+                                </span>
+                              )}
+                              {row.kurirOtherFeeAmt > 0 && (
+                                <span className="flex justify-between gap-3 text-amber-500">
+                                  <span>📌 Biaya Kurir Lainnya</span>
+                                  <span className="font-mono">{fmtIDR(row.kurirOtherFeeAmt)}</span>
                                 </span>
                               )}
                               <span className="flex justify-between gap-3 font-bold text-amber-800 border-t pt-1 mt-0.5">
@@ -1280,7 +1323,7 @@ export default function Reports() {
                             )}
                           </span>
                           {/* Full P&L breakdown tooltip */}
-                          <span className="pointer-events-none absolute right-0 bottom-full mb-1.5 z-50 hidden group-hover/profit:flex flex-col w-56 rounded-xl border border-blue-200 bg-white shadow-2xl p-2.5 text-[10.5px] text-left gap-0.5" style={{ whiteSpace: "nowrap" }}>
+                          <span className="pointer-events-none absolute right-0 bottom-full mb-1.5 z-50 hidden group-hover/profit:flex flex-col w-64 rounded-xl border border-blue-200 bg-white shadow-2xl p-2.5 text-[10.5px] text-left gap-0.5" style={{ whiteSpace: "nowrap" }}>
                             <span className="font-bold text-foreground mb-1 border-b pb-1 text-[11px]">Breakdown Profit Bersih</span>
                             <span className="flex justify-between gap-3 text-sky-700">
                               <span>Revenue</span>
@@ -1312,16 +1355,40 @@ export default function Reports() {
                                 <span className="font-mono">{fmtIDR(row.pelFee)}</span>
                               </span>
                             )}
-                            {row.voaOpexIDR > 0 && (
+                            {row.voaAgentFeeAmt > 0 && (
                               <span className="flex justify-between gap-3 text-purple-700">
-                                <span>− Biaya VOA</span>
-                                <span className="font-mono">{fmtIDR(row.voaOpexIDR)}</span>
+                                <span>− Fee Agent Lapangan{row.voaFieldAgentName ? ` (${row.voaFieldAgentName})` : ""}</span>
+                                <span className="font-mono">{fmtIDR(row.voaAgentFeeAmt)}</span>
                               </span>
                             )}
-                            {row.kurirIDR > 0 && (
+                            {row.voaTransportFeeAmt > 0 && (
+                              <span className="flex justify-between gap-3 text-purple-600">
+                                <span>− Ongkos Transport VOA</span>
+                                <span className="font-mono">{fmtIDR(row.voaTransportFeeAmt)}</span>
+                              </span>
+                            )}
+                            {row.voaOtherFeeAmt > 0 && (
+                              <span className="flex justify-between gap-3 text-purple-500">
+                                <span>− Biaya VOA Lainnya</span>
+                                <span className="font-mono">{fmtIDR(row.voaOtherFeeAmt)}</span>
+                              </span>
+                            )}
+                            {row.kurirFeeAmt > 0 && (
                               <span className="flex justify-between gap-3 text-amber-700">
-                                <span>− Biaya Kurir</span>
-                                <span className="font-mono">{fmtIDR(row.kurirIDR)}</span>
+                                <span>− Fee Jasa Kurir</span>
+                                <span className="font-mono">{fmtIDR(row.kurirFeeAmt)}</span>
+                              </span>
+                            )}
+                            {row.kurirTransportFeeAmt > 0 && (
+                              <span className="flex justify-between gap-3 text-amber-600">
+                                <span>− Ongkos Transport Kurir</span>
+                                <span className="font-mono">{fmtIDR(row.kurirTransportFeeAmt)}</span>
+                              </span>
+                            )}
+                            {row.kurirOtherFeeAmt > 0 && (
+                              <span className="flex justify-between gap-3 text-amber-500">
+                                <span>− Biaya Kurir Lainnya</span>
+                                <span className="font-mono">{fmtIDR(row.kurirOtherFeeAmt)}</span>
                               </span>
                             )}
                             <span className={`flex justify-between gap-3 font-bold border-t pt-1 mt-0.5 ${row.profit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
