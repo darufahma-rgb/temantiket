@@ -13,6 +13,7 @@ import {
   BarChart3, Activity, Briefcase, CircleDot, MessageCircle, Bell, ClipboardList,
   StickyNote, Plus, X, Phone, Send, Search, UserCheck, Calendar, Flag,
   Wallet, History, Eye, ChevronRight, BadgeCheck, Sparkles, Settings2,
+  ChevronLeft, MoreVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,8 @@ import { usePresenceStore } from "@/store/presenceStore";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+const MOBILE_PAGE_SIZE = 5;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -783,6 +786,11 @@ export default function StaffManagementCenter() {
   const [reminderTargetId, setReminderTargetId] = useState<string | null>(null);
   const [noteTargetId, setNoteTargetId]       = useState<string | null>(null);
 
+  // Mobile-only state
+  const [mobilePage, setMobilePage]           = useState(1);
+  const [showMobileFilter, setShowMobileFilter] = useState(false);
+  const [mobileMoreMenu, setMobileMoreMenu]   = useState<string | null>(null);
+
   const agencyId = user?.agencyId ?? "";
   const currentUserId = user?.id ?? "";
 
@@ -829,6 +837,9 @@ export default function StaffManagementCenter() {
     })();
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset mobile page when filters change
+  useEffect(() => { setMobilePage(1); }, [search, filterBy, sortBy]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -946,8 +957,332 @@ export default function StaffManagementCenter() {
     );
   }
 
+  // Mobile computed values
+  const mobileTotalPages = Math.max(1, Math.ceil(displayed.length / MOBILE_PAGE_SIZE));
+  const mobilePagedList  = displayed.slice((mobilePage - 1) * MOBILE_PAGE_SIZE, mobilePage * MOBILE_PAGE_SIZE);
+  function mobileInitials(name: string) {
+    return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase() || "?";
+  }
+
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-16 space-y-6">
+    <>
+    {/* ══════════════ MOBILE LAYOUT ══════════════ */}
+    <div
+      className="md:hidden min-h-screen bg-[#F0F4FB] pb-28"
+      style={{ WebkitTapHighlightColor: "transparent" } as React.CSSProperties}
+      onClick={() => setMobileMoreMenu(null)}
+    >
+      {/* Header */}
+      <div className="px-4 pt-12 pb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0 active:opacity-60 transition-opacity"
+          >
+            <ChevronLeft className="h-5 w-5 text-[#0f1c3f]" strokeWidth={2.5} />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-[#0f1c3f] leading-tight">Manajemen Agent</h1>
+            <p className="text-[11px] text-[#64748b] mt-0.5 leading-snug">
+              Kelola data agent, performa, dan aktivitas
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => void handleRefresh()}
+          disabled={refreshing}
+          className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0 active:opacity-60 transition-opacity"
+        >
+          <RefreshCw className={`h-4 w-4 text-[#0f1c3f] ${refreshing ? "animate-spin" : ""}`} strokeWidth={1.5} />
+        </button>
+      </div>
+
+      <div className="px-4 space-y-4">
+
+        {/* Stats cards */}
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: "Total Agent",  value: summary.totalStaff,   bg: "bg-blue-50",   ic: "text-blue-600",   icon: Users        },
+            { label: "Online",       value: summary.onlineCount,  bg: "bg-green-50",  ic: "text-green-600",  icon: CircleDot    },
+            { label: "Alert",        value: summary.alertCount,   bg: "bg-red-50",    ic: "text-red-600",    icon: AlertTriangle},
+            { label: "Top Performer",value: allMetrics.filter((m) => m.completionRate >= 80 || m.completed >= 5).length, bg: "bg-amber-50", ic: "text-amber-600", icon: Star },
+          ].map((s) => (
+            <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${s.bg} ${s.ic}`}>
+                <s.icon className="h-4 w-4" strokeWidth={1.5} />
+              </div>
+              <div className="text-2xl font-bold text-[#0f1c3f]">{s.value}</div>
+              <div className="text-[11px] text-[#64748b] mt-0.5">{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Search + filter */}
+        <div className="bg-white rounded-2xl shadow-sm p-3 space-y-2">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#64748b]" strokeWidth={1.5} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari nama agent atau email…"
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 text-[13px] text-[#0f1c3f] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/30 focus:border-[#0066FF]/50"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 active:opacity-60">
+                  <X className="h-3.5 w-3.5 text-[#64748b]" strokeWidth={2} />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setShowMobileFilter(true)}
+              className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0 active:opacity-60"
+            >
+              <Filter className="h-4 w-4 text-[#0f1c3f]" strokeWidth={1.5} />
+            </button>
+          </div>
+          <p className="text-[11px] text-[#64748b] px-1">
+            Menampilkan <span className="font-bold text-[#0f1c3f]">{displayed.length}</span> dari {allMetrics.length} agent
+          </p>
+        </div>
+
+        {/* Filter tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {FILTER_OPTS.map((opt) => {
+            const cnt = opt.id === "all" ? allMetrics.length
+              : opt.id === "online" ? summary.onlineCount
+              : opt.id === "top"    ? allMetrics.filter((m) => m.completionRate >= 80 || m.completed >= 5).length
+              : opt.id === "alert"  ? summary.alertCount
+              : allMetrics.filter((m) => !m.lastActive || (Date.now() - new Date(m.lastActive).getTime()) > 14 * 86_400_000).length;
+            return (
+              <button
+                key={opt.id}
+                onClick={() => setFilterBy(opt.id)}
+                className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all active:opacity-60 ${
+                  filterBy === opt.id ? "text-white shadow-sm" : "bg-white text-[#64748b]"
+                }`}
+                style={filterBy === opt.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : undefined}
+              >
+                {opt.label}
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${filterBy === opt.id ? "bg-white/20 text-white" : "bg-gray-100 text-[#64748b]"}`}>{cnt}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Agent cards */}
+        {mobilePagedList.length === 0 ? (
+          <div className="bg-white rounded-3xl shadow-sm p-10 text-center">
+            <Users className="h-10 w-10 text-gray-300 mx-auto mb-3" strokeWidth={1.5} />
+            <p className="text-[13px] font-semibold text-[#0f1c3f]">Tidak ada agent ditemukan</p>
+            <p className="text-[11px] text-[#64748b] mt-1">Coba ubah filter atau tambah agent baru</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {mobilePagedList.map((metrics) => {
+              const { staff, extra, completed, active: activeOrders, completionRate, lastActive, badges, alerts, totalFee } = metrics;
+              const online = isOnline(staff.userId);
+
+              return (
+                <div key={staff.userId} className={cn("bg-white rounded-3xl shadow-sm overflow-hidden border", alerts.length > 0 ? "border-amber-200" : "border-transparent")}>
+                  <div className="p-4">
+                    {/* Card header */}
+                    <div className="flex items-start gap-3">
+                      <div className="relative shrink-0">
+                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white text-[13px] font-bold"
+                          style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}>
+                          {mobileInitials(staff.displayName)}
+                        </div>
+                        {online && (
+                          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[14px] font-bold text-[#0f1c3f] truncate">{staff.displayName}</p>
+                          <div className="relative shrink-0">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setMobileMoreMenu(mobileMoreMenu === staff.userId ? null : staff.userId); }}
+                              className="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center active:opacity-60"
+                            >
+                              <MoreVertical className="h-4 w-4 text-[#64748b]" strokeWidth={1.5} />
+                            </button>
+                            {mobileMoreMenu === staff.userId && (
+                              <div className="absolute right-0 top-9 z-20 bg-white rounded-2xl shadow-lg border border-gray-100 py-1 w-48" onClick={(e) => e.stopPropagation()}>
+                                <button onClick={() => { setDrawerStaffId(staff.userId); setMobileMoreMenu(null); }} className="w-full text-left px-4 py-2.5 text-[12px] font-medium text-[#0f1c3f] hover:bg-gray-50 flex items-center gap-2">
+                                  <Eye className="h-3.5 w-3.5 text-[#0066FF]" strokeWidth={1.5} /> Lihat Detail
+                                </button>
+                                <button onClick={() => { setTaskTargetId(staff.userId); setMobileMoreMenu(null); }} className="w-full text-left px-4 py-2.5 text-[12px] font-medium text-[#0f1c3f] hover:bg-gray-50 flex items-center gap-2">
+                                  <ClipboardList className="h-3.5 w-3.5 text-amber-500" strokeWidth={1.5} /> Buat Tugas
+                                </button>
+                                <button onClick={() => { setReminderTargetId(staff.userId); setMobileMoreMenu(null); }} className="w-full text-left px-4 py-2.5 text-[12px] font-medium text-[#0f1c3f] hover:bg-gray-50 flex items-center gap-2">
+                                  <Bell className="h-3.5 w-3.5 text-blue-500" strokeWidth={1.5} /> Kirim Pengingat
+                                </button>
+                                <button onClick={() => { setNoteTargetId(staff.userId); setMobileMoreMenu(null); }} className="w-full text-left px-4 py-2.5 text-[12px] font-medium text-[#0f1c3f] hover:bg-gray-50 flex items-center gap-2">
+                                  <StickyNote className="h-3.5 w-3.5 text-green-500" strokeWidth={1.5} /> Catat Note
+                                </button>
+                                <button onClick={() => { navigate(`/staff/${staff.userId}`); setMobileMoreMenu(null); }} className="w-full text-left px-4 py-2.5 text-[12px] font-medium text-[#0f1c3f] hover:bg-gray-50 flex items-center gap-2">
+                                  <ExternalLink className="h-3.5 w-3.5 text-[#64748b]" strokeWidth={1.5} /> Profil Lengkap
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 capitalize">{staff.role}</span>
+                          {online && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">● Online</span>}
+                          {alerts.length > 0 && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">⚠ Alert</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Email + phone */}
+                    <div className="mt-2.5 space-y-1">
+                      <p className="text-[11px] text-[#64748b] truncate">{staff.email}</p>
+                      {extra?.whatsapp_number && (
+                        <p className="text-[11px] text-[#64748b]">📱 {extra.whatsapp_number}</p>
+                      )}
+                      {lastActive && (
+                        <p className="text-[10px] text-[#94a3b8]">Aktif: {fmtRelative(lastActive)}</p>
+                      )}
+                    </div>
+
+                    {/* Stats row */}
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      {[
+                        { label: "Selesai",    value: completed,    color: "text-green-600" },
+                        { label: "Aktif",      value: activeOrders, color: "text-blue-600"  },
+                        { label: "Rate",       value: `${Math.round(completionRate)}%`, color: completionRate >= 80 ? "text-green-600" : completionRate >= 50 ? "text-amber-600" : "text-red-500" },
+                      ].map((stat) => (
+                        <div key={stat.label} className="bg-gray-50 rounded-xl p-2 text-center">
+                          <div className={`text-[14px] font-bold ${stat.color}`}>{stat.value}</div>
+                          <div className="text-[9px] text-[#94a3b8] mt-0.5">{stat.label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Completion bar */}
+                    <div className="mt-3">
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${completionRate >= 80 ? "bg-green-500" : completionRate >= 50 ? "bg-amber-500" : "bg-red-400"}`}
+                          style={{ width: `${Math.min(100, completionRate)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Badges */}
+                    {badges.length > 0 && (
+                      <div className="mt-2.5 flex gap-1.5 flex-wrap">
+                        {badges.slice(0, 3).map((b) => (
+                          <span key={b} className="text-[10px] bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-full font-medium">{b}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Fee + action */}
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-[#64748b]">Total Fee</span>
+                        <p className="text-[12px] font-bold text-[#0f1c3f]">{fmtIDR(totalFee)}</p>
+                      </div>
+                      <button
+                        onClick={() => setDrawerStaffId(staff.userId)}
+                        className="flex items-center gap-1 text-[12px] font-bold text-[#0066FF] active:opacity-60"
+                      >
+                        Detail <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {mobileTotalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 py-2">
+            <button onClick={() => setMobilePage((p) => Math.max(1, p - 1))} disabled={mobilePage === 1}
+              className="w-9 h-9 rounded-xl bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40 active:opacity-60">
+              <ChevronLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+            </button>
+            <span className="text-[13px] font-semibold text-[#0f1c3f]">{mobilePage} / {mobileTotalPages}</span>
+            <button onClick={() => setMobilePage((p) => Math.min(mobileTotalPages, p + 1))} disabled={mobilePage === mobileTotalPages}
+              className="w-9 h-9 rounded-xl bg-white shadow-sm border border-gray-200 flex items-center justify-center disabled:opacity-40 active:opacity-60">
+              <ChevronRight className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+            </button>
+          </div>
+        )}
+
+        {/* Aksi Cepat */}
+        <div className="bg-white rounded-3xl shadow-sm p-4">
+          <h3 className="text-[14px] font-bold text-[#0f1c3f] mb-3">Aksi Cepat</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { icon: Plus,     label: "Tambah Agent",     sub: "Daftarkan agent baru",   bg: "bg-blue-50",   ic: "text-blue-600",   action: () => navigate("/settings?tab=members") },
+              { icon: Send,     label: "Undang Agent",     sub: "Kirim undangan bergabung", bg: "bg-green-50",  ic: "text-green-600",  action: () => toast.info("Segera hadir! 🚀") },
+              { icon: Settings2,label: "Kelola Role",      sub: "Atur hak akses agent",   bg: "bg-purple-50", ic: "text-purple-600", action: () => navigate("/settings?tab=members") },
+              { icon: BarChart3, label: "Laporan Performa", sub: "Analitik & statistik",   bg: "bg-amber-50",  ic: "text-amber-600",  action: () => navigate("/staff-performance") },
+            ].map((item) => (
+              <button key={item.label} onClick={item.action}
+                className="text-left p-3 rounded-2xl border border-gray-100 bg-gray-50/60 active:opacity-60 transition-opacity">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-2 ${item.bg} ${item.ic}`}>
+                  <item.icon className="h-4 w-4" strokeWidth={1.5} />
+                </div>
+                <div className="text-[12px] font-semibold text-[#0f1c3f] leading-tight">{item.label}</div>
+                <div className="text-[10px] text-[#64748b] mt-0.5">{item.sub}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+      </div>{/* end px-4 space-y-4 */}
+
+      {/* Filter bottom sheet */}
+      {showMobileFilter && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMobileFilter(false)} />
+          <div className="relative bg-white rounded-t-3xl">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+              <h3 className="text-[16px] font-bold text-[#0f1c3f]">Filter &amp; Urutkan</h3>
+              <button onClick={() => setShowMobileFilter(false)} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center active:opacity-60">
+                <X className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-4 pb-8">
+              <div>
+                <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wide mb-2">Periode</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {PERIOD_OPTS.map((opt) => (
+                    <button key={opt.id} onClick={() => setPeriod(opt.id)}
+                      className={`py-2.5 rounded-xl text-[12px] font-medium transition-all active:opacity-60 ${period === opt.id ? "text-white" : "bg-gray-50 text-[#0f1c3f] border border-gray-200"}`}
+                      style={period === opt.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : undefined}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wide mb-2">Urutkan</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([["completed","Terbanyak Selesai"],["fee","Fee Terbesar"],["active","Paling Aktif"],["rate","Rate Tertinggi"],["name","Nama A-Z"]] as [SortKey, string][]).map(([k, lbl]) => (
+                    <button key={k} onClick={() => setSortBy(k)}
+                      className={`py-2.5 rounded-xl text-[12px] font-medium transition-all active:opacity-60 ${sortBy === k ? "text-white" : "bg-gray-50 text-[#0f1c3f] border border-gray-200"}`}
+                      style={sortBy === k ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : undefined}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>{/* end md:hidden */}
+
+    {/* ══════════════ DESKTOP LAYOUT ══════════════ */}
+    <div className="hidden md:block max-w-[1400px] mx-auto px-4 sm:px-6 pb-16 space-y-6">
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 pt-2">
@@ -1361,6 +1696,7 @@ export default function StaffManagementCenter() {
         existingNotes={notes.filter((n) => n.target_user_id === noteTargetId)}
         onSaved={(note) => setNotes((prev) => [note, ...prev])}
       />
-    </div>
+    </div>{/* end hidden md:block desktop layout */}
+    </>{/* end fragment */}
   );
 }
