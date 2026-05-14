@@ -909,17 +909,6 @@ function registerWalletRoutes(app) {
       return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
-
-  // Alias used by pullWalletTxs on the client
-  app.get('/api/wallet-txs/:agentId', requireMember, async (req, res) => {
-    try {
-      const { rows } = await pool.query(
-        'SELECT * FROM agent_wallet_transactions WHERE agency_id = $1 AND agent_id = $2 ORDER BY created_at DESC',
-        [req.agency.agency_id, req.params.agentId],
-      );
-      return ok(res, rows);
-    } catch (e) { return fail(res, 500, e.message); }
-  });
 }
 
 // ── MISSIONS ─────────────────────────────────────────────────────────────────

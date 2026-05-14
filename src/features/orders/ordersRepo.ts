@@ -133,6 +133,7 @@ export async function listOrders(filter?: { type?: OrderType; clientId?: string 
       const { data, error } = await q;
       if (error) throw error;
       const items = (data ?? []).map(fromRow);
+      // Update cache incrementally — kalau filter, cuma overwrite subset.
       if (!filter) saveCache(items);
       return items;
     } catch (err) {
@@ -143,22 +144,6 @@ export async function listOrders(filter?: { type?: OrderType; clientId?: string 
       if (filter?.clientId) out = out.filter((o) => o.clientId === filter.clientId);
       return out;
     }
-  }
-  // Try API route when Supabase not configured
-  try {
-    const params = new URLSearchParams();
-    if (filter?.type) params.set("type", filter.type);
-    if (filter?.clientId) params.set("client_id", filter.clientId);
-    const url = `/api/orders${params.size ? "?" + params.toString() : ""}`;
-    const res = await fetch(url, { credentials: "include" });
-    if (res.ok) {
-      const data = await res.json() as Record<string, unknown>[];
-      const items = (data ?? []).map(fromRow);
-      if (!filter) saveCache(items);
-      return items;
-    }
-  } catch (err) {
-    console.warn("[orders] API fetch gagal, pakai cache lokal:", err);
   }
   let out = loadCache();
   if (filter?.type) out = out.filter((o) => o.type === filter.type);

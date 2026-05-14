@@ -35,7 +35,7 @@ const MODEL_TEXT         = 'google/gemini-2.0-flash-001'; // teks ringan / rapik
 // Header standar OpenRouter
 function openrouterHeaders() {
   const referer = process.env.APP_URL
-    || (process.env.REPL_ID ? 'https://temantiket.replit.app' : 'https://temantiket.vercel.app');
+    || 'https://temantiket.vercel.app';
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
@@ -64,18 +64,9 @@ const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
 
-// ── Replit Auth (must be wired BEFORE routes) ────────────────────────────────
-// setupAuth is async — we start it immediately and let Express handle requests
-// after the promise resolves. The server listen() call is inside the then().
-let _authReady = false;
-const _authSetup = setupAuth(app).then(() => {
-  _authReady = true;
-  registerAuthRoutes(app);
-  registerDataRoutes(app);
-}).catch((e) => {
-  console.error('[server] Auth setup failed (continuing without auth):', e.message);
-  _authReady = true; // allow server to start even if OIDC discovery fails
-});
+// ── Auth routes (Supabase Bearer JWT) ────────────────────────────────────────
+registerAuthRoutes(app);
+registerDataRoutes(app);
 
 // ─── H. Structured request logging middleware ──────────────────────────────
 // Logs every request with a unique requestId for traceability.
@@ -161,9 +152,15 @@ async function getCallerAgencyFromSession(req) {
   return rows[0] ?? null;
 }
 
-/** Legacy: attempt to get user from auth header (no-op now — always returns null). */
-async function getCallerUser(_authHeader) {
-  return null; // Auth is session-based now
+/** Get caller user from Supabase Bearer JWT header. */
+async function getCallerUser(authHeader) {
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  try {
+    const parts = authHeader.slice(7).split('.');
+    if (parts.length < 2) return null;
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    return payload?.sub ? { id: payload.sub, email: payload.email ?? null } : null;
+  } catch { return null; }
 }
 
 function withTimeout(promise, ms, message) {
@@ -791,7 +788,7 @@ app.post('/api/export/igh', async (req, res) => {
 /* ──────────────────────────────────────────────
    POST /api/ocr-passport
    Dedicated passport OCR via OpenRouter vision.
-   Requires Replit session + agency membership.
+   Requires Supabase Bearer JWT.
 ────────────────────────────────────────────── */
 app.post('/api/ocr-passport', isAuthenticatedOrBearer, async (req, res) => {
   try {
@@ -1303,7 +1300,7 @@ app.get('/api/health-check', async (req, res) => {
     errors.push(`Database: ${e.message}`);
   }
 
-  const provider = process.env.REPL_ID ? 'replit' : (process.env.VERCEL ? 'vercel' : 'local');
+  const provider = process.env.VERCEL ? 'vercel' : 'local';
 
   // serviceRole: true when we have a working DB (no Supabase service role needed — we use PostgreSQL directly)
   // storage: true optimistically — Supabase Storage is used directly from the frontend with the anon key
@@ -1446,10 +1443,11 @@ app.post('/api/backfill-field-fees', isAuthenticatedOrBearer, async (req, res) =
 app.post('/api/migrate-progress-steps', async (req, res) => {
   const ROUTE = '[migrate-progress-steps]';
   try {
-    if (req.isAuthenticated && req.isAuthenticated()) {
+    const callerUser = await getCallerUser(req.headers['authorization'] ?? '');
+    if (callerUser) {
       const { rows: memberRows } = await pool.query(
         'SELECT role FROM agency_members WHERE user_id = $1 LIMIT 1',
-        [req.user.id],
+        [callerUser.id],
       );
       if (!memberRows[0] || !['owner', 'staff'].includes(memberRows[0].role)) {
         return err(res, 403, 'Hanya owner/staff yang dapat menjalankan migrasi');
@@ -1549,7 +1547,7 @@ void runWalletMigration();
 const _server = app.listen(PORT, '0.0.0.0', () => {
   const mode = isProd ? 'production' : 'development';
   console.log(`[server] API running on port ${PORT} (${mode})`);
-  const authMode = process.env.REPL_ID ? 'Replit OIDC + Bearer JWT' : 'Bearer JWT (Supabase)';
+  const authMode = 'Bearer JWT (Supabase)';
   console.log(`[server] Auth: ${authMode}`);
   console.log(`[server] Database: ${process.env.DATABASE_URL ? 'PostgreSQL (DATABASE_URL)' : 'not configured'}`);
   console.log(`[server] ── Caption Generator & OCR (OpenRouter) ──`);

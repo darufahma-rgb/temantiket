@@ -89,22 +89,7 @@ export async function listMySubmissions(
   agencyId: string,
   agentId: string,
 ): Promise<MissionSubmission[]> {
-  if (!isSupabaseConfigured() || !supabase) {
-    // Try API route when Supabase not configured
-    try {
-      const res = await fetch(
-        `/api/mission-submissions?agent_id=${encodeURIComponent(agentId)}`,
-        { credentials: "include" },
-      );
-      if (res.ok) {
-        const data = await res.json() as Record<string, unknown>[];
-        return (data ?? []).map(submissionFromRow);
-      }
-    } catch (err) {
-      console.warn("[missions] API fetch gagal:", err);
-    }
-    return [];
-  }
+  if (!isSupabaseConfigured() || !supabase) return [];
   const { data, error } = await supabase
     .from("mission_submissions")
     .select("*")
