@@ -7,6 +7,7 @@ import {
   Clock, MapPin, ArrowRight, ExternalLink, Instagram, Link2,
   ArrowLeftRight, RotateCcw, Search, Calendar, SlidersHorizontal, ArrowUpDown,
   FlaskConical, ClipboardPaste, ArrowLeft, TrendingUp, Calculator, Bell,
+  FileSpreadsheet, LayoutGrid, ArrowDown, ArrowUp, Star, Database, History,
 } from "lucide-react";
 import { MobileFAB } from "@/components/MobileFAB";
 import { Button } from "@/components/ui/button";
@@ -1611,6 +1612,145 @@ function OcrSegmentRow({ leg, segNum, totalInDir, nextEtd }: {
   );
 }
 
+// ── Desktop Ticket Card (matches screenshot design) ──────────────────────────
+function DesktopTicketCard({
+  item, markup, rates, onView, waNumber,
+}: {
+  item: TicketPrice;
+  markup: number;
+  rates: Record<string, number>;
+  isAdmin: boolean;
+  onEdit?: (item: TicketPrice) => void;
+  onDelete?: (id: string) => void;
+  onTogglePublish?: (id: string, val: boolean) => void;
+  onView?: (item: TicketPrice) => void;
+  waNumber: string;
+  showBasePrice?: boolean;
+}) {
+  const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
+  const { ml: mlData } = decodeMultiLeg(item.notes);
+  const isML = !!mlData;
+  const { leg: returnLeg } = isML ? { leg: null } : decodeReturnLeg(item.notes);
+  const isRT = !!returnLeg;
+  const isDirect = !item.transitCode;
+
+  function calcDuration(etd: string | null, eta: string | null): string | null {
+    if (!etd || !eta) return null;
+    const [h1, m1] = etd.split(":").map(Number);
+    const [h2, m2] = eta.split(":").map(Number);
+    if (isNaN(h1) || isNaN(h2)) return null;
+    let mins = (h2 * 60 + m2) - (h1 * 60 + m1);
+    if (mins < 0) mins += 24 * 60;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m > 0 ? `${h}j ${m}m` : `${h}j`;
+  }
+
+  function fmtIDDate(iso: string | null): string {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+    const days = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${days[d.getDay()]}`;
+  }
+
+  function fmtUpdateDate(iso: string): string {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  }
+
+  const duration = calcDuration(item.etd, item.eta);
+  const transitLabel = isML ? "Multi-Leg" : isRT ? "Pulang Pergi" : isDirect ? "Langsung" : `1 Transit`;
+  const routeLabel = `${item.fromCode} → ${item.toCode}`;
+  const waText = encodeURIComponent(
+    `Halo! Saya tertarik dengan tiket ${item.airline} rute ${routeLabel}. Harga: ${fmtIDR(sell)}`
+  );
+  const waLink = waNumber ? `${whatsappUrl(waNumber)}?text=${waText}` : `https://wa.me/?text=${waText}`;
+  const updatedAt = (item as unknown as Record<string, string>).updatedAt ?? (item as unknown as Record<string, string>).createdAt ?? "";
+
+  return (
+    <div
+      className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => onView?.(item)}
+    >
+      <div className="p-4 space-y-3">
+        {/* Row 1: Airline logo + name + badge */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <AirlineLogo code={item.airlineCode} airline={item.airline} size={32} />
+            <span className="text-[13px] font-bold text-slate-900 leading-tight truncate max-w-[120px]">{item.airline}</span>
+          </div>
+          <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full shrink-0">Ekonomi</span>
+        </div>
+
+        {/* Row 2: Route + date/duration */}
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[17px] font-black text-slate-900 font-mono">{item.fromCode}</span>
+              <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
+              <span className="text-[17px] font-black text-slate-900 font-mono">{item.toCode}</span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[11px] text-slate-400">{item.fromCity || item.fromCode}</span>
+              <span className="text-[11px] text-slate-300">|</span>
+              <span className="text-[11px] text-slate-400">{item.toCity || item.toCode}</span>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            {item.departDate && (
+              <p className="text-[11px] font-medium text-slate-600">{fmtIDDate(item.departDate)}</p>
+            )}
+            {duration && (
+              <p className="text-[11px] text-slate-400 mt-0.5">{duration}</p>
+            )}
+            <p className="text-[10px] font-medium text-slate-500 mt-0.5">{transitLabel}</p>
+          </div>
+        </div>
+
+        {/* Row 3: Price + update */}
+        <div>
+          <p className="text-[15px] font-black text-blue-700">{fmtIDR(sell)}</p>
+          {updatedAt && (
+            <p className="text-[10px] text-slate-400 mt-0.5">Update: {fmtUpdateDate(updatedAt)}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div
+        className="border-t border-slate-100 px-4 py-2.5 flex items-center gap-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <a
+          href={waLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+        >
+          <MessageCircle className="w-3 h-3" />
+          Pesan via WA
+        </a>
+        <button
+          className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors"
+          onClick={() => onView?.(item)}
+        >
+          <Plus className="w-3 h-3" />
+          Order
+        </button>
+        <button
+          className="ml-auto h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
+          onClick={() => toast.info("Fitur favorit segera hadir")}
+        >
+          <Star className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function TicketPrices() {
   const { user } = useAuthStore();
@@ -2102,6 +2242,63 @@ export default function TicketPrices() {
   const publishedCount = prices.filter(p => p.isPublished).length;
   const hiddenCount    = prices.filter(p => !p.isPublished).length;
 
+  // ── Desktop-specific state ─────────────────────────────────────────────────
+  const [deskTab, setDeskTab] = useState<"semua"|"domestik"|"internasional"|"promo"|"favorit">("semua");
+  const [deskSheetUrl, setDeskSheetUrl] = useState("");
+  const [deskSyncBanner, setDeskSyncBanner] = useState(false);
+  const [filterAirlineCode, setFilterAirlineCode] = useState("all");
+  const [expandedSource, setExpandedSource] = useState<"share"|"upload"|"manual"|null>("upload");
+
+  const IDN_CODES = useMemo(() => new Set([
+    "CGK","HLP","SUB","DPS","MES","BDJ","UPG","BPN","MDC","PLW","SRG","JOG","SOC",
+    "KOE","AMQ","BTH","DJJ","GTO","BIK","PDG","PKU","TKG","BTJ","PLM","PNK","SRI",
+    "LOP","MOF","TTR","BEJ","LLO","GNS","BIK","FKQ","SOQ","MKQ","NAM","MPC",
+  ]), []);
+
+  const tabPrices = useMemo(() => {
+    let list = filteredPrices;
+    if (filterAirlineCode !== "all") list = list.filter(p => p.airlineCode === filterAirlineCode);
+    if (deskTab === "domestik") list = list.filter(p => IDN_CODES.has(p.fromCode) && IDN_CODES.has(p.toCode));
+    else if (deskTab === "internasional") list = list.filter(p => !IDN_CODES.has(p.fromCode) || !IDN_CODES.has(p.toCode));
+    else if (deskTab === "promo") list = list.filter(p => (p.notes ?? "").toLowerCase().includes("promo") || p.basePrice < 3_000_000);
+    else if (deskTab === "favorit") list = [];
+    return list;
+  }, [filteredPrices, deskTab, filterAirlineCode, IDN_CODES]);
+
+  const uniqueAirlines = useMemo(() => {
+    const seen = new Map<string, string>();
+    prices.forEach(p => { if (!seen.has(p.airlineCode)) seen.set(p.airlineCode, p.airline); });
+    return Array.from(seen.entries()).map(([code, name]) => ({ code, name }));
+  }, [prices]);
+
+  const domCount = useMemo(() =>
+    filteredPrices.filter(p => IDN_CODES.has(p.fromCode) && IDN_CODES.has(p.toCode)).length,
+  [filteredPrices, IDN_CODES]);
+
+  const intlCount = useMemo(() =>
+    filteredPrices.filter(p => !IDN_CODES.has(p.fromCode) || !IDN_CODES.has(p.toCode)).length,
+  [filteredPrices, IDN_CODES]);
+
+  const promoCount = useMemo(() =>
+    filteredPrices.filter(p => (p.notes ?? "").toLowerCase().includes("promo") || p.basePrice < 3_000_000).length,
+  [filteredPrices]);
+
+  const sidebarStats = useMemo(() => {
+    const totalRoutes = prices.length;
+    const airlineCount = new Set(prices.map(p => p.airlineCode)).size;
+    const available = publishedCount;
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const changed = prices.filter(p => {
+      const rec = p as unknown as Record<string, string>;
+      const ts = new Date(rec.updatedAt ?? rec.createdAt ?? 0).getTime();
+      return ts > thirtyDaysAgo;
+    }).length;
+    const sells = prices.map(p => sellingPrice(p.basePrice, p.currency, rates, markup)).filter(v => v > 0);
+    const minPrice = sells.length ? Math.min(...sells) : 0;
+    const maxPrice = sells.length ? Math.max(...sells) : 0;
+    return { totalRoutes, airlineCount, available, changed, minPrice, maxPrice };
+  }, [prices, publishedCount, rates, markup]);
+
   function ticketTimeAgo(iso: string): string {
     const diff = Date.now() - new Date(iso).getTime();
     const m = Math.floor(diff / 60000);
@@ -2564,624 +2761,435 @@ export default function TicketPrices() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════
-           DESKTOP LAYOUT  (hidden md:block)
+           DESKTOP LAYOUT  (hidden md:flex)
       ══════════════════════════════════════════════════════════ */}
-      <div className="hidden md:block space-y-6">
+      <div className="hidden md:flex gap-6 items-start">
 
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <Plane className="w-6 h-6 shrink-0 text-blue-600" />
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Daftar Harga Tiket</h1>
-              <p className="text-sm text-slate-500 mt-0.5">AI ekstrak nomor penerbangan, jam, transit otomatis dari screenshot</p>
+        {/* ── LEFT / MAIN CONTENT ── */}
+        <div className="flex-1 min-w-0 space-y-5">
+
+          {/* Header */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                <Plane className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">Harga Tiket</h1>
+                <p className="text-sm text-slate-500 mt-0.5">Kelola harga tiket maskapai secara mudah dan terstruktur.</p>
+              </div>
             </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            size="sm" variant="outline"
-            className="text-sky-600 border-sky-200 hover:bg-sky-50 hover:border-sky-300"
-            onClick={handleSharePublic}
-          >
-            <Share2 className="w-3.5 h-3.5 mr-1.5" />
-            Share Link Publik
-          </Button>
-          <button
-            onClick={() => setMarkupOpen((v) => !v)}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors",
-              markup > 0
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200",
-            )}
-          >
-            <Tag className="w-3 h-3" />
-            Markup: {markup > 0 ? fmtIDR(markup) : "Belum diset"}
-            {markupOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
-          {isAdmin && (
-            <>
-              <Button size="sm" variant="outline" onClick={() => void refreshTicketPrices()} disabled={loading}>
-                <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
-              </Button>
+            <div className="flex items-center gap-2 shrink-0">
               <Button
-                size="sm" variant="outline"
-                className="border-amber-200 text-amber-700 hover:bg-amber-50"
-                onClick={() => void handleInjectSample()}
-                disabled={injecting}
+                variant="outline" size="sm"
+                className="text-slate-600 border-slate-200 hover:bg-slate-50"
+                onClick={() => toast.info("Riwayat perubahan segera hadir")}
               >
-                {injecting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5 mr-1" />}
-                Contoh Data
+                <History className="w-3.5 h-3.5 mr-1.5" />
+                Riwayat Perubahan
               </Button>
-              <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white" onClick={openAdd}>
-                <Plus className="w-3.5 h-3.5 mr-1" />Tambah Manual
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* ── Share Panel ── */}
-      <SharePanel publicUrl={publicUrl} />
-
-      {/* ── Markup popover ── */}
-      {markupOpen && (
-        <Card className="border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-end gap-3">
-              <div className="flex-1 space-y-1">
-                <Label className="text-xs font-semibold text-emerald-800">
-                  <Settings2 className="w-3 h-3 inline mr-1" />
-                  Global Mark-up Keuntungan (IDR/pax)
-                </Label>
-                <Input
-                  type="number" min="0" step="50000" placeholder="0"
-                  className="bg-white"
-                  value={markupInput}
-                  onChange={(e) => setMarkupInput(e.target.value)}
-                />
-                <p className="text-[11px] text-emerald-600">
-                  Ditambahkan ke semua harga modal sebelum ditampilkan ke klien. Kurs konversi otomatis.
-                </p>
-              </div>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0" onClick={applyMarkup}>
-                <Check className="w-4 h-4 mr-1" />Terapkan
-              </Button>
-              <Button variant="ghost" onClick={() => setMarkupOpen(false)}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Admin: Screenshot OCR section ── */}
-      {isAdmin && (
-        <Card className="border-sky-200 dark:border-sky-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-sky-500" />
-              Import dari Screenshot via AI — Deep Extraction
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const file = e.dataTransfer.files[0];
-                if (file) void handleFileSelect(file);
-              }}
-              className={cn(
-                "border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 py-8 cursor-pointer transition-colors",
-                scanning
-                  ? "border-sky-400 bg-sky-50"
-                  : "border-slate-200 hover:border-sky-300 hover:bg-sky-50",
-              )}
-            >
-              {scanning ? (
-                <>
-                  <Loader2 className="w-7 h-7 text-sky-500 animate-spin" />
-                  <p className="text-sm font-medium text-sky-700">AI sedang menganalisis tiket…</p>
-                  <p className="text-xs text-slate-400">Mengekstrak nomor penerbangan, jam, transit…</p>
-                </>
-              ) : (
-                <>
-                  <ImagePlus className="w-7 h-7 text-slate-400" />
-                  <p className="text-sm font-medium text-slate-600">
-                    Drop screenshot atau <span className="text-sky-600 underline">klik untuk pilih</span>
-                  </p>
-                  <p className="text-xs text-slate-400">AI ekstrak: maskapai · nomor penerbangan · ETD/ETA · transit · harga</p>
-                </>
-              )}
-            </div>
-            <input
-              ref={fileInputRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void handleFileSelect(f);
-                e.target.value = "";
-              }}
-            />
-
-            {/* ── BC / Kode Sistem text paste ── */}
-            <div className="space-y-1.5" data-bc-paste-section>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
-                  Atau paste BC / Kode Sistem (Galileo, WhatsApp BC, booking text):
-                </span>
-              </div>
-              <Textarea
-                placeholder={
-                  "Contoh Galileo display:\n  1 GF  70  N  03JUN  CAI  BAH  1715  2015   WE\n  2 GF 284  N  03JUN  BAH  GOI  2115  0340#  WE\n  TOTAL AMOUNT 29283.80 EGP\n\nContoh WhatsApp BC:\n  ✈️ GF70 CAI→GOI via BAH | 03 Jun 2025\n  Harga: 29.283 EGP | ETD 17:15"
-                }
-                className="font-mono text-[11px] min-h-[90px] resize-y bg-slate-50 border-slate-200 text-slate-700 placeholder:text-slate-300"
-                value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
-              />
               <Button
                 size="sm"
-                variant="outline"
-                className="w-full border-slate-300 text-slate-700 hover:bg-slate-100 text-[12px]"
-                disabled={!pasteText.trim() || scanningText}
-                onClick={() => void handleParseText()}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={openAdd}
               >
-                {scanningText
-                  ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Menganalisis via AI…</>
-                  : <><Sparkles className="w-3.5 h-3.5 mr-1.5 text-sky-500" />Analisis BC / Kode Sistem</>
-                }
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Tambah Harga
+                <ChevronDown className="w-3 h-3 ml-1" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Sumber Data Harga Tiket */}
+          <Card className="border-slate-200">
+            <CardContent className="p-0">
+              {/* Card header */}
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                  <Database className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">Sumber Data Harga Tiket</h2>
+                  <p className="text-xs text-slate-500">Pilih atau masukkan sumber harga tiket yang akan digunakan.</p>
+                </div>
+              </div>
+
+              {/* Option 1: Share Link Publik */}
+              <div className="border-b border-slate-100">
+                <div
+                  className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                  onClick={() => setExpandedSource(s => s === "share" ? null : "share")}
+                >
+                  <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center shrink-0">
+                    <Link2 className="w-4 h-4 text-sky-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-700 flex-1">Share Link Publik</span>
+                  <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", expandedSource === "share" && "rotate-180")} />
+                </div>
+                {expandedSource === "share" && (
+                  <div className="px-5 pb-4">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        readOnly
+                        value={publicUrl}
+                        className="h-8 text-xs bg-slate-50 border-slate-200 text-slate-600 flex-1 font-mono"
+                      />
+                      <Button
+                        size="sm"
+                        className="h-8 text-xs shrink-0 bg-sky-600 hover:bg-sky-700 text-white"
+                        onClick={handleSharePublic}
+                      >
+                        Salin
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Option 2: Upload File (Excel) */}
+              <div className="border-b border-slate-100">
+                <div
+                  className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                  onClick={() => setExpandedSource(s => s === "upload" ? null : "upload")}
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-700 flex-1">Upload File (Excel)</span>
+                  {deskSheetUrl && (
+                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full mr-1">
+                      TERHUBUNG
+                    </span>
+                  )}
+                  <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", expandedSource === "upload" && "rotate-180")} />
+                </div>
+                {expandedSource === "upload" && (
+                  <div className="px-5 pb-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="Tempel link publik (Google Sheet, CSV, atau TXT)"
+                        className="h-8 text-xs flex-1"
+                        value={deskSheetUrl}
+                        onChange={(e) => setDeskSheetUrl(e.target.value)}
+                      />
+                      <Button
+                        size="sm"
+                        className="h-8 text-xs shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={() => {
+                          if (deskSheetUrl.trim()) {
+                            setDeskSyncBanner(true);
+                            toast.success("URL berhasil disimpan!");
+                          } else {
+                            toast.error("Masukkan URL terlebih dahulu");
+                          }
+                        }}
+                      >
+                        Simpan
+                      </Button>
+                    </div>
+                    {deskSyncBanner && deskSheetUrl && (
+                      <>
+                        <div className="flex items-center justify-between rounded-lg bg-white border border-slate-200 px-3 py-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full shrink-0">TERHUBUNG</span>
+                            <span className="text-xs text-slate-500 font-mono truncate">{deskSheetUrl}</span>
+                          </div>
+                          <span className="text-xs text-slate-400 shrink-0 ml-3">Terakhir diperbarui: —</span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span className="text-xs text-emerald-700 font-medium">Data berhasil disinkronkan</span>
+                          </div>
+                          <button
+                            onClick={() => setDeskSyncBanner(false)}
+                            className="text-slate-400 hover:text-slate-600 ml-2"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" className="h-8 text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+                            <RefreshCw className="w-3 h-3 mr-1.5" />
+                            Sinkronkan Sekarang
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-8 text-xs text-slate-600 border-slate-200 hover:bg-slate-50">
+                            <Settings2 className="w-3 h-3 mr-1.5" />
+                            Pengaturan Kolom
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Option 3: Input Manual */}
+              <div
+                className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors rounded-b-xl"
+                onClick={openAdd}
+              >
+                <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                  <Edit3 className="w-4 h-4 text-violet-600" />
+                </div>
+                <span className="text-sm font-medium text-slate-700 flex-1">Input Manual</span>
+                <ChevronDown className="w-4 h-4 text-slate-400 -rotate-90" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Daftar Harga Tiket */}
+          <div className="space-y-4">
+            {/* Section header */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                  <Plane className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">Daftar Harga Tiket</h2>
+                  <p className="text-xs text-slate-500">
+                    {filteredPrices.length} rute tersedia
+                    {loading && " · Memuat…"}
+                  </p>
+                </div>
+              </div>
+              <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                Teransinkron
+              </span>
+            </div>
+
+            {/* Search + filter row */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Cari rute, kota, atau maskapai..."
+                  className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Select value={filterAirlineCode} onValueChange={setFilterAirlineCode}>
+                <SelectTrigger className="h-9 w-44 text-xs border-slate-200">
+                  <SelectValue placeholder="Semua Maskapai" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-xs">Semua Maskapai</SelectItem>
+                  {uniqueAirlines.map(a => (
+                    <SelectItem key={a.code} value={a.code} className="text-xs">{a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value="all" onValueChange={() => {}}>
+                <SelectTrigger className="h-9 w-36 text-xs border-slate-200">
+                  <SelectValue placeholder="Semua Kelas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-xs">Semua Kelas</SelectItem>
+                  <SelectItem value="ekonomi" className="text-xs">Ekonomi</SelectItem>
+                  <SelectItem value="bisnis" className="text-xs">Bisnis</SelectItem>
+                  <SelectItem value="first" className="text-xs">First Class</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" className="h-9 text-xs text-slate-600 border-slate-200 hover:bg-slate-50 gap-1.5">
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                Filter
+              </Button>
+              <Button variant="outline" size="icon" className="h-9 w-9 border-slate-200 bg-white shrink-0">
+                <LayoutGrid className="w-4 h-4 text-slate-500" />
               </Button>
             </div>
 
-            {scanError && (
-              <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200">
-                <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-red-700">Gagal baca screenshot</p>
-                  <p className="text-xs text-red-600 mt-0.5">{scanError}</p>
-                </div>
-              </div>
-            )}
+            {/* Tabs */}
+            <div className="flex items-center border-b border-slate-200">
+              {[
+                { key: "semua",         label: "Semua",          count: filteredPrices.length },
+                { key: "domestik",      label: "Domestik",       count: domCount },
+                { key: "internasional", label: "Internasional",  count: intlCount },
+                { key: "promo",         label: "Promo",          count: promoCount },
+                { key: "favorit",       label: "Favorit",        count: 0 },
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setDeskTab(tab.key as typeof deskTab)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                    deskTab === tab.key
+                      ? "border-blue-600 text-blue-600"
+                      : "border-transparent text-slate-500 hover:text-slate-700",
+                  )}
+                >
+                  {tab.label}
+                  <span className={cn(
+                    "text-[11px] font-semibold rounded-full px-1.5 py-0.5",
+                    deskTab === tab.key ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500",
+                  )}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-            {/* Pending tickets from AI */}
-            {pendingForms.length > 0 && (
-              <div className="space-y-3">
-                {saveProgress && (
-                  <div className="flex items-center gap-2 px-1 text-[12px] text-sky-700 font-medium">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                    Menyimpan tiket {saveProgress.current} dari {saveProgress.total}…
+            {/* Ticket grid */}
+            {loading ? (
+              <div className="grid grid-cols-3 gap-4">
+                {[1,2,3,4,5,6].map(i => (
+                  <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 animate-pulse">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 shrink-0" />
+                      <div className="h-4 bg-slate-100 rounded flex-1" />
+                    </div>
+                    <div className="h-5 bg-slate-100 rounded mb-2" />
+                    <div className="h-3 bg-slate-100 rounded w-3/4 mb-4" />
+                    <div className="h-5 bg-slate-100 rounded w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : tabPrices.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
+                <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center">
+                  <Plane className="w-6 h-6 text-slate-300" />
+                </div>
+                {visiblePrices.length === 0 ? (
+                  <>
+                    <p className="text-sm font-medium text-slate-600">Belum ada harga tiket</p>
+                    <p className="text-xs text-slate-400 text-center max-w-xs">
+                      Klik &ldquo;+ Tambah Harga&rdquo; untuk menambah tiket pertama Anda.
+                    </p>
+                    {isAdmin && (
+                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white mt-1" onClick={openAdd}>
+                        <Plus className="w-3.5 h-3.5 mr-1.5" />
+                        Tambah Harga Tiket
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-slate-600">Tidak ada tiket yang cocok</p>
+                    <p className="text-xs text-slate-400 text-center max-w-xs">Coba ubah kata kunci atau filter.</p>
+                    <button
+                      onClick={resetFilters}
+                      className="inline-flex items-center gap-1.5 h-8 px-4 rounded-lg text-[12px] font-semibold text-red-500 border border-red-200 hover:bg-red-50 transition-colors"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-4">
+                {tabPrices.map(item => (
+                  <DesktopTicketCard
+                    key={item.id}
+                    item={item}
+                    markup={markup}
+                    rates={rates}
+                    isAdmin={isAdmin}
+                    onEdit={openEdit}
+                    onDelete={handleDelete}
+                    onTogglePublish={handleTogglePublish}
+                    onView={openView}
+                    waNumber={waNumber}
+                    showBasePrice={isOwner}
+                  />
+                ))}
+                {/* Promo empty-slot card matching screenshot */}
+                {isAdmin && tabPrices.length > 0 && tabPrices.length % 3 !== 0 && (
+                  <div className="rounded-xl border-2 border-dashed border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center gap-3 p-6 text-center min-h-[200px]">
+                    <div className="w-16 h-16 rounded-2xl bg-white shadow-sm flex items-center justify-center">
+                      <Plane className="w-7 h-7 text-slate-300" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-700">Kelola Harga dengan Mudah</p>
+                      <p className="text-xs text-slate-400 mt-1 leading-snug">
+                        Tambahkan, perbarui, dan pantau harga tiket dari berbagai maskapai dalam satu tempat.
+                      </p>
+                    </div>
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={openAdd}>
+                      <Plus className="w-3.5 h-3.5 mr-1.5" />
+                      Tambah Harga Tiket
+                    </Button>
                   </div>
                 )}
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-700">
-                    {saving
-                      ? `Menyimpan… (${saveProgress?.current ?? 0}/${pendingForms.length})`
-                      : `✅ ${pendingForms.length} entri ditemukan — periksa dan simpan:`
-                    }
-                  </p>
-                  <Button
-                    size="sm"
-                    className="bg-sky-600 hover:bg-sky-700 text-white shrink-0"
-                    disabled={saving}
-                    onClick={() => void savePending()}
-                  >
-                    {saving
-                      ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Menyimpan…</>
-                      : <><Check className="w-3.5 h-3.5 mr-1.5" />Simpan Semua ({pendingForms.length})</>
-                    }
-                  </Button>
-                </div>
-                <div className="space-y-4">
-                  {pendingForms.map((form, idx) => {
-                    // Decode multi-leg and simple-RT from notes
-                    const { ml: pendingML } = decodeMultiLeg(form.notes);
-                    const isMLForm = !!pendingML;
-                    const { leg: rtLeg } = isMLForm ? { leg: null } : decodeReturnLeg(form.notes);
-                    const isRTForm = !!rtLeg;
-                    const isPPForm = isMLForm || isRTForm;
-                    const isMLReturn = isMLForm && (pendingML?.returnLegs?.length ?? 0) > 0;
-                    const debugInfo = scanDebugInfos[idx];
-
-                    // Type labels
-                    const typeLabel = isMLReturn ? "Return / PP" : isRTForm ? "Pulang-Pergi" : isMLForm ? "Multi-city" : "One Way";
-                    const typeBadgeCls = isPPForm
-                      ? "bg-violet-100 text-violet-700 border border-violet-200"
-                      : "bg-sky-100 text-sky-700 border border-sky-200";
-
-                    // Route summary
-                    const routeSummary = isMLForm
-                      ? buildRouteLabel(pendingML!)
-                      : isRTForm
-                        ? `${form.fromCode} ⇄ ${form.toCode}${form.transitCode ? ` via ${form.transitCode}` : ""}`
-                        : `${form.fromCode} → ${form.toCode}${form.transitCode ? ` via ${form.transitCode}` : ""}`;
-
-                    // Segment counts
-                    const outCount = pendingML?.outboundLegs?.length ?? 1;
-                    const retCount = pendingML?.returnLegs?.length ?? (isRTForm ? 1 : 0);
-                    const totalSegs = outCount + retCount;
-
-                    return (
-                    <div key={idx} className={cn(
-                      "border rounded-xl overflow-hidden",
-                      isPPForm ? "border-violet-200" : "border-sky-200",
-                    )}>
-                      {/* ── HEADER ── */}
-                      <div className={cn(
-                        "flex items-center gap-2 px-3 py-2.5",
-                        isPPForm ? "bg-violet-50/70" : "bg-sky-50/70",
-                      )}>
-                        <AirlineLogo code={form.airlineCode} airline={form.airline} size={30} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {pendingForms.length > 1 && (
-                              <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">
-                                Opsi {idx + 1}
-                              </span>
-                            )}
-                            <span className="text-[11.5px] font-bold text-slate-900">{form.airline || "—"}</span>
-                            <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5", typeBadgeCls)}>
-                              {isPPForm && <ArrowLeftRight className="w-2.5 h-2.5" />}
-                              {typeLabel}
-                            </span>
-                            {parsedTickets[idx]?.confidence === "high" && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">✓ Lengkap</span>
-                            )}
-                            {parsedTickets[idx]?.confidence === "medium" && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">⚠ Perlu Cek</span>
-                            )}
-                            {parsedTickets[idx]?.confidence === "low" && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">✗ Data Kurang</span>
-                            )}
-                          </div>
-                          <p className="text-[9.5px] text-slate-500 font-mono mt-0.5 truncate">{routeSummary}</p>
-                        </div>
-                        <Button
-                          size="icon" variant="ghost"
-                          className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0"
-                          onClick={() => removePending(idx)}
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-
-                      <div className="p-3 space-y-3">
-                        {/* ── RINGKASAN ── */}
-                        <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1.5">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <Plane className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span className="text-[10px] text-slate-600 font-medium truncate">{routeSummary}</span>
-                            {totalSegs > 1 && (
-                              <span className="text-[9px] bg-slate-200 text-slate-600 rounded-md px-1 py-0.5 font-mono shrink-0">
-                                {totalSegs} seg
-                              </span>
-                            )}
-                          </div>
-                          {form.basePrice > 0 && (
-                            <span className="text-[10px] font-bold text-slate-700 shrink-0 font-mono">
-                              {form.currency} {form.basePrice.toLocaleString("id-ID")}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* ── WARNINGS ── */}
-                        {(parsedTickets[idx]?.warnings?.length ?? 0) > 0 && (
-                          <div className="flex items-start gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1.5">
-                            <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
-                            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                              {parsedTickets[idx]!.warnings!.map((w, wi) => (
-                                <span key={wi} className="text-[9.5px] text-amber-700">{w}</span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* ── MULTI-LEG: Keberangkatan + Kepulangan sections ── */}
-                        {isMLForm && pendingML && (
-                          <div className="space-y-2">
-                            {/* Outbound */}
-                            <div className="space-y-0.5">
-                              <p className="text-[9px] font-bold text-sky-600 uppercase tracking-widest px-1">
-                                ↗ Keberangkatan · {outCount} segmen
-                              </p>
-                              <div className="space-y-0.5">
-                                {pendingML.outboundLegs.map((leg, li) => (
-                                  <OcrSegmentRow
-                                    key={li} leg={leg} segNum={li + 1} totalInDir={outCount}
-                                    nextEtd={li < outCount - 1 ? (pendingML.outboundLegs[li + 1]?.etd ?? null) : undefined}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Return */}
-                            {isMLReturn && (
-                              <>
-                                <div className="flex items-center gap-2">
-                                  <div className="h-px flex-1 bg-violet-200" />
-                                  <ArrowLeftRight className="w-3 h-3 text-violet-400" />
-                                  <div className="h-px flex-1 bg-violet-200" />
-                                </div>
-                                <div className="space-y-0.5">
-                                  <p className="text-[9px] font-bold text-violet-600 uppercase tracking-widest px-1">
-                                    ↩ Kepulangan · {retCount} segmen
-                                  </p>
-                                  <div className="space-y-0.5">
-                                    {pendingML.returnLegs!.map((leg, li) => (
-                                      <OcrSegmentRow
-                                        key={li} leg={leg} segNum={li + 1} totalInDir={retCount}
-                                        nextEtd={li < retCount - 1 ? (pendingML.returnLegs![li + 1]?.etd ?? null) : undefined}
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {/* ── SIMPLE RT (non-ML) ── */}
-                        {!isMLForm && isRTForm && rtLeg && (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white border border-sky-100">
-                              <span className="text-[9px] font-bold text-sky-500 w-12 shrink-0">↗ Berangkat</span>
-                              <span className="text-[11px] font-bold text-slate-900 font-mono">{form.fromCode}→{form.toCode}</span>
-                              {form.flightNumber && <span className="text-[9px] bg-slate-100 text-slate-600 rounded-md px-1.5 font-mono">{form.flightNumber}</span>}
-                              {form.etd && <span className="text-[9.5px] text-slate-600 font-mono ml-auto">{form.etd}{form.eta ? `→${form.eta}` : ""}</span>}
-                              {form.departDate && <span className="text-[9px] text-slate-400">{fmtDate(form.departDate)}</span>}
-                            </div>
-                            <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white border border-violet-100">
-                              <span className="text-[9px] font-bold text-violet-500 w-12 shrink-0">↩ Pulang</span>
-                              <span className="text-[11px] font-bold text-slate-900 font-mono">{rtLeg.returnFromCode ?? "—"}→{rtLeg.returnToCode ?? "—"}</span>
-                              {rtLeg.returnFlightNumber && <span className="text-[9px] bg-slate-100 text-slate-600 rounded-md px-1.5 font-mono">{rtLeg.returnFlightNumber}</span>}
-                              {rtLeg.returnEtd && <span className="text-[9.5px] text-slate-600 font-mono ml-auto">{rtLeg.returnEtd}{rtLeg.returnEta ? `→${rtLeg.returnEta}` : ""}</span>}
-                              {rtLeg.returnDate && <span className="text-[9px] text-slate-400">{fmtDate(rtLeg.returnDate)}</span>}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* ── ONEWAY single segment display ── */}
-                        {!isPPForm && (
-                          <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white border border-sky-100">
-                            <span className="text-[11px] font-bold text-slate-900 font-mono">{form.fromCode}→{form.toCode}</span>
-                            {form.flightNumber && <span className="text-[9px] bg-slate-100 text-slate-600 rounded-md px-1.5 font-mono">{form.flightNumber}</span>}
-                            {form.transitCode && <span className="text-[9px] text-amber-600 font-medium">via {form.transitCode}</span>}
-                            {form.etd && <span className="text-[9.5px] text-slate-600 font-mono ml-auto">{form.etd}{form.eta ? `→${form.eta}` : ""}</span>}
-                            {form.departDate && <span className="text-[9px] text-slate-400">{fmtDate(form.departDate)}</span>}
-                          </div>
-                        )}
-
-                        {/* ── EDITABLE FIELDS ── */}
-                        <div className="border-t border-slate-100 pt-2.5 space-y-2">
-                          {/* Row 1: Maskapai + IATA */}
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="col-span-2 space-y-0.5">
-                              <Label className="text-[9.5px] text-slate-500">Maskapai</Label>
-                              <Input className="h-7 text-xs" value={form.airline}
-                                onChange={(e) => updatePending(idx, { airline: e.target.value })} />
-                            </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-[9.5px] text-slate-500">Kode IATA</Label>
-                              <Input className="h-7 text-xs font-mono uppercase" maxLength={2} value={form.airlineCode}
-                                onChange={(e) => updatePending(idx, { airlineCode: e.target.value.toUpperCase() })} />
-                            </div>
-                          </div>
-                          {/* Row 2: For oneway — show route fields */}
-                          {!isPPForm && (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                              <div className="space-y-0.5">
-                                <Label className="text-[9.5px] text-slate-500">No. Penerbangan</Label>
-                                <Input className="h-7 text-xs font-mono uppercase" value={form.flightNumber ?? ""}
-                                  onChange={(e) => updatePending(idx, { flightNumber: e.target.value.toUpperCase() || null })} />
-                              </div>
-                              <div className="space-y-0.5">
-                                <Label className="text-[9.5px] text-slate-500">Dari</Label>
-                                <Input className="h-7 text-xs font-mono uppercase" maxLength={3} value={form.fromCode}
-                                  onChange={(e) => updatePending(idx, { fromCode: e.target.value.toUpperCase() })} />
-                              </div>
-                              <div className="space-y-0.5">
-                                <Label className="text-[9.5px] text-slate-500">Ke</Label>
-                                <Input className="h-7 text-xs font-mono uppercase" maxLength={3} value={form.toCode}
-                                  onChange={(e) => updatePending(idx, { toCode: e.target.value.toUpperCase() })} />
-                              </div>
-                              <div className="space-y-0.5">
-                                <Label className="text-[9.5px] text-slate-500">Tgl Berangkat</Label>
-                                <Input className="h-7 text-xs" type="date" value={form.departDate ?? ""}
-                                  onChange={(e) => updatePending(idx, { departDate: e.target.value || null })} />
-                              </div>
-                              <div className="space-y-0.5">
-                                <Label className="text-[9.5px] text-slate-500">ETD</Label>
-                                <Input className="h-7 text-xs font-mono" placeholder="23:55" value={form.etd ?? ""}
-                                  onChange={(e) => updatePending(idx, { etd: e.target.value || null })} />
-                              </div>
-                              <div className="space-y-0.5">
-                                <Label className="text-[9.5px] text-slate-500">ETA</Label>
-                                <Input className="h-7 text-xs font-mono" placeholder="05:30" value={form.eta ?? ""}
-                                  onChange={(e) => updatePending(idx, { eta: e.target.value || null })} />
-                              </div>
-                              {(form.transitCode || form.transitCity) && (
-                                <div className="col-span-2 space-y-0.5">
-                                  <Label className="text-[9.5px] text-slate-500">Transit</Label>
-                                  <div className="flex gap-1">
-                                    <Input className="h-7 text-xs font-mono uppercase w-16" maxLength={3}
-                                      placeholder="DOH" value={form.transitCode ?? ""}
-                                      onChange={(e) => updatePending(idx, { transitCode: e.target.value.toUpperCase() || null })} />
-                                    <Input className="h-7 text-xs flex-1" placeholder="Doha" value={form.transitCity ?? ""}
-                                      onChange={(e) => updatePending(idx, { transitCity: e.target.value || null })} />
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {/* Row 3: Harga + Currency + ValidUntil */}
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="space-y-0.5">
-                              <Label className="text-[9.5px] text-slate-500">Harga Modal</Label>
-                              <Input className="h-7 text-xs" type="number" value={form.basePrice || ""}
-                                onChange={(e) => updatePending(idx, { basePrice: Number(e.target.value) })} />
-                            </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-[9.5px] text-slate-500">Mata Uang</Label>
-                              <Select value={form.currency} onValueChange={(v) => updatePending(idx, { currency: v as TicketCurrency })}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {(["IDR","EGP","USD","SAR"] as TicketCurrency[]).map((c) => (
-                                    <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-[9.5px] text-slate-500">Berlaku Hingga</Label>
-                              <Input className="h-7 text-xs" type="date" value={form.validUntil ?? ""}
-                                onChange={(e) => updatePending(idx, { validUntil: e.target.value || null })} />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* ── SELLING PRICE ── */}
-                        {form.basePrice > 0 && (
-                          <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-100 px-2.5 py-1.5">
-                            <span className="text-[10px] text-emerald-700 font-medium">
-                              {isPPForm ? "💰 Harga paket PP" : "💰 Harga jual"}
-                            </span>
-                            <div className="text-right">
-                              <span className="text-[11px] font-bold text-emerald-700">
-                                {fmtIDR(sellingPrice(form.basePrice, form.currency, rates, markup))}
-                              </span>
-                              {markup > 0 && (
-                                <p className="text-[9px] text-emerald-500">
-                                  modal {form.currency} {form.basePrice.toLocaleString("id-ID")} + markup {fmtIDR(markup)}
-                                  {isPPForm ? " (sekali/paket)" : ""}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* ── DEV DEBUG PANEL ── */}
-                        {import.meta.env.DEV && debugInfo && (
-                          <details className="text-[9px] border border-amber-200 rounded-lg overflow-hidden">
-                            <summary className="px-2 py-1.5 bg-amber-50 text-amber-700 font-bold cursor-pointer select-none flex items-center gap-1.5">
-                              🔬 Debug — klik untuk lihat info parser
-                            </summary>
-                            <div className="px-2 py-2 bg-amber-50/60 space-y-1 font-mono">
-                              <p className="text-amber-800 font-bold">Sumber: {debugInfo.source === "ai" ? "AI Vision" : "Regex Parser"}</p>
-                              <p>Raw segments dari AI/parser: <span className="font-bold text-amber-900">{debugInfo.rawSegmentsCount}</span></p>
-                              <p>firstOrigin: <span className="font-bold">{debugInfo.firstOrigin ?? "null"}</span> · lastDest: <span className="font-bold">{debugInfo.lastDestination ?? "null"}</span></p>
-                              <p>Return trip detected: <span className="font-bold">{debugInfo.firstOrigin === debugInfo.lastDestination ? "✓ YA (origin === dest)" : "✗ TIDAK"}</span></p>
-                              <p>Hasil setelah grouper: <span className="font-bold">{debugInfo.groupedCount}</span> tiket, tipe: <span className="font-bold">{debugInfo.detectedType}</span></p>
-                              {debugInfo.rawSegmentsCount < 4 && debugInfo.rawSegmentsCount > 0 && debugInfo.source === "ai" && (
-                                <p className="text-red-700 font-bold">⚠ AI hanya mengembalikan {debugInfo.rawSegmentsCount} segment — Galileo 4-segment mungkin tidak terbaca penuh</p>
-                              )}
-                              <div className="mt-1 space-y-0.5">
-                                <p className="text-amber-700 font-bold">Segmen mentah:</p>
-                                {debugInfo.rawSegments.map((s, si) => (
-                                  <p key={si} className="pl-2 text-slate-600">
-                                    {si + 1}. {s.from}→{s.to} · {s.flight ?? "—"} · {s.date ?? "?"} · [{s.tripType}]
-                                  </p>
-                                ))}
-                              </div>
-                            </div>
-                          </details>
-                        )}
-                      </div>
-                    </div>
-                    );
-                  })}
-                </div>
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Search & Filter (desktop) ── */}
-      {!loading && visiblePrices.length > 0 && (
-        <SearchFilterBar
-          searchQuery={searchQuery} onSearchChange={setSearchQuery}
-          filterTripType={filterTripType} onTripTypeChange={setFilterTripType}
-          filterDateRange={filterDateRange} onDateRangeChange={setFilterDateRange}
-          filterPublish={filterPublish} onPublishChange={setFilterPublish}
-          isOwner={isOwner} totalCount={visiblePrices.length}
-          filteredCount={filteredPrices.length} onReset={resetFilters}
-          sortBy={sortBy} onSortByChange={setSortBy}
-          sortDir={sortDir} onSortDirChange={setSortDir}
-        />
-      )}
-
-      {/* ── Price grid ── */}
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-slate-400 gap-2">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm">Memuat daftar harga…</span>
-        </div>
-      ) : filteredPrices.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
-          <div className="p-4 rounded-2xl bg-slate-100">
-            <Plane className="w-8 h-8 text-slate-300" />
           </div>
-          {visiblePrices.length === 0 ? (
-            <>
-              <p className="text-sm font-medium">Belum ada harga tiket</p>
-              {isAdmin && (
-                <p className="text-xs text-center max-w-xs">
-                  Upload screenshot harga tiket di atas untuk mulai menambahkan data via AI,
-                  atau klik "Tambah Manual".
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-medium text-slate-600">Tidak ada hasil yang cocok</p>
-              <p className="text-xs text-center max-w-xs text-slate-400">
-                Tidak ada tiket yang sesuai filter. Coba ubah kata kunci atau filter.
-              </p>
-              <button
-                onClick={resetFilters}
-                className="inline-flex items-center gap-1.5 h-8 px-4 rounded-lg text-[12px] font-semibold text-red-500 border border-red-200 hover:bg-red-50 transition-colors"
-              >
-                <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
-              </button>
-            </>
+
+        </div>{/* end left main */}
+
+        {/* ── RIGHT SIDEBAR ── */}
+        <div className="w-64 shrink-0 space-y-4">
+          <Card className="border-slate-200">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center justify-between mb-4 gap-2">
+                <h3 className="text-sm font-bold text-slate-900">Ringkasan Data</h3>
+                <Select defaultValue="30d">
+                  <SelectTrigger className="h-7 w-36 text-[11px] border-slate-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30d" className="text-xs">30 Hari Terakhir</SelectItem>
+                    <SelectItem value="7d"  className="text-xs">7 Hari Terakhir</SelectItem>
+                    <SelectItem value="all" className="text-xs">Semua Waktu</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-3.5">
+                {[
+                  { icon: <MapPin className="w-4 h-4 text-blue-500" />,     bg: "bg-blue-50",   label: "Total Rute",       value: sidebarStats.totalRoutes.toLocaleString("id-ID") },
+                  { icon: <Plane   className="w-4 h-4 text-violet-500" />,  bg: "bg-violet-50", label: "Maskapai",         value: sidebarStats.airlineCount.toLocaleString("id-ID") },
+                  { icon: <Tag     className="w-4 h-4 text-emerald-500" />, bg: "bg-emerald-50",label: "Harga Tersedia",   value: sidebarStats.available.toLocaleString("id-ID") },
+                  { icon: <TrendingUp className="w-4 h-4 text-amber-500" />,bg: "bg-amber-50",  label: "Perubahan Harga", value: sidebarStats.changed.toLocaleString("id-ID"), badge: "+1%" },
+                  { icon: <ArrowDown className="w-4 h-4 text-red-500" />,   bg: "bg-red-50",    label: "Harga Termurah",  value: sidebarStats.minPrice > 0 ? fmtIDR(sidebarStats.minPrice) : "—" },
+                  { icon: <ArrowUp  className="w-4 h-4 text-orange-500" />, bg: "bg-orange-50", label: "Harga Tertinggi", value: sidebarStats.maxPrice > 0 ? fmtIDR(sidebarStats.maxPrice) : "—" },
+                ].map(s => (
+                  <div key={s.label} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", s.bg)}>
+                        {s.icon}
+                      </div>
+                      <span className="text-[12px] text-slate-500">{s.label}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[13px] font-bold text-slate-900 tabular-nums">{s.value}</span>
+                      {s.badge && (
+                        <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1 py-0.5 rounded-full">
+                          {s.badge}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Empty-state helper card */}
+          {visiblePrices.length === 0 && isAdmin && (
+            <Card className="border-dashed border-slate-200">
+              <CardContent className="pt-6 pb-6 flex flex-col items-center gap-3 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
+                  <Plane className="w-7 h-7 text-slate-300" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-700">Kelola Harga dengan Mudah</p>
+                  <p className="text-xs text-slate-400 mt-1 leading-snug">
+                    Tambahkan, perbarui, dan pantau harga tiket dari berbagai maskapai dalam satu tempat.
+                  </p>
+                </div>
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white w-full" onClick={openAdd}>
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
+                  Tambah Harga Tiket
+                </Button>
+              </CardContent>
+            </Card>
           )}
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">
-              {filteredPrices.length} rute tersedia
-              {markup > 0 && <span className="ml-2 text-emerald-600">• Markup {fmtIDR(markup)}/pax sudah termasuk</span>}
-            </p>
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <img src="/temantiket-icon.svg" alt="" className="h-4 w-4 object-contain opacity-50 icon-adaptive" />
-              <span>Temantiket</span>
-            </div>
-          </div>
+        </div>{/* end right sidebar */}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredPrices.map((item) => (
-              <BoardingPassCard
-                key={item.id}
-                item={item}
-                markup={markup}
-                rates={rates}
-                isAdmin={isAdmin}
-                onEdit={openEdit}
-                onDelete={handleDelete}
-                onTogglePublish={handleTogglePublish}
-                onView={openView}
-                waNumber={waNumber}
-                showBasePrice={isOwner}
-              />
-            ))}
-          </div>
-        </>
-      )}
-
-      </div>{/* end hidden md:block */}
+      </div>{/* end hidden md:flex */}
 
       <MobileFAB
         actions={[
