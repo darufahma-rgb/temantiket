@@ -34,6 +34,7 @@ import { usePackagesStore } from "@/store/packagesStore";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
 import { useAuthStore } from "@/store/authStore";
+import { revenueIDR, netProfitIDR } from "@/lib/profit";
 import { formatDateStr, getLocale, useT } from "@/lib/regional";
 import { useRegionalStore } from "@/store/regionalStore";
 import { toast } from "sonner";
@@ -508,7 +509,7 @@ function RightPanel({ trips, totalJamaah }: { trips: Trip[]; totalJamaah: number
         {/* Laporan ringkasan */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[13px] font-semibold text-[hsl(var(--foreground))]">Laporan</h3>
+            <h3 className="text-[13px] font-semibold text-[hsl(var(--foreground))]">Ringkasan Laporan</h3>
             <button
               onClick={() => navigate("/progress")}
               className="text-[11px] text-[hsl(var(--primary))] font-medium hover:underline"
@@ -520,8 +521,7 @@ function RightPanel({ trips, totalJamaah }: { trips: Trip[]; totalJamaah: number
             {[
               { icon: Plane, label: "Total Paket Trip", value: trips.length },
               { icon: CheckCircle, label: "Trip Selesai", value: done },
-              { icon: TrendingUp, label: "Trip Aktif", value: active },
-              { icon: Users, label: "Total Jamaah", value: totalJamaah },
+              { icon: TrendingUp, label: "Trip Berjalan", value: active },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-3">
                 <div className="h-8 w-8 flex items-center justify-center shrink-0">
@@ -734,6 +734,42 @@ export default function Dashboard() {
   const [tab, setTab] = useState<"all" | "upcoming" | "done">("all");
   const [totalJamaah, setTotalJamaah] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+
+  // ── Financial stats for desktop summary cards ─────────────────────────────
+  const egpRate = useRatesStore((s) => s.rates.EGP);
+  const now = new Date();
+  const thisMonthStr = now.toISOString().slice(0, 7);
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthStr = prevDate.toISOString().slice(0, 7);
+
+  const thisMonthOrders = orders.filter((o) => o.createdAt?.startsWith(thisMonthStr));
+  const lastMonthOrders = orders.filter((o) => o.createdAt?.startsWith(lastMonthStr));
+  const thisMonthClients = clients.filter((c) => c.createdAt?.startsWith(thisMonthStr)).length;
+  const lastMonthClients = clients.filter((c) => c.createdAt?.startsWith(lastMonthStr)).length;
+
+  const totalRevenue = orders.reduce((s, o) => s + revenueIDR(o, egpRate), 0);
+  const totalProfit = orders.reduce((s, o) => s + netProfitIDR(o, egpRate), 0);
+  const thisMonthRevenue = thisMonthOrders.reduce((s, o) => s + revenueIDR(o, egpRate), 0);
+  const lastMonthRevenue = lastMonthOrders.reduce((s, o) => s + revenueIDR(o, egpRate), 0);
+  const thisMonthProfit = thisMonthOrders.reduce((s, o) => s + netProfitIDR(o, egpRate), 0);
+  const lastMonthProfit = lastMonthOrders.reduce((s, o) => s + netProfitIDR(o, egpRate), 0);
+
+  function growthPct(curr: number, prev: number): number {
+    if (prev === 0) return curr > 0 ? 100 : 0;
+    return Math.round(((curr - prev) / prev) * 100);
+  }
+
+  function fmtStatValue(n: number): string {
+    if (n >= 1_000_000_000) return `Rp ${(n / 1_000_000_000).toFixed(2)} M`;
+    if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(2)} Jt`;
+    if (n >= 1_000) return `Rp ${Math.round(n / 1_000)} rb`;
+    return `Rp ${n.toLocaleString("id-ID")}`;
+  }
+
+  const clientsGrowth = growthPct(thisMonthClients, lastMonthClients);
+  const ordersGrowth = growthPct(thisMonthOrders.length, lastMonthOrders.length);
+  const revenueGrowth = growthPct(thisMonthRevenue, lastMonthRevenue);
+  const profitGrowth = growthPct(thisMonthProfit, lastMonthProfit);
 
   const STATUS_LABELS: Record<string, string> = {
     Draft: t.status_draft,
@@ -1182,317 +1218,86 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* ── Live Clock (multi-timezone) ── */}
+        {/* ── 4 Stats cards ── */}
         <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <div className="md:hidden"><LiveClock compact /></div>
-          <div className="hidden md:block"><LiveClock /></div>
-        </motion.div>
-
-        {/* ── Admin WhatsApp quick-contact (untuk admin internal) ── */}
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.07, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <AdminWhatsappCard />
-        </motion.div>
-
-        {/* ── Mitra (Agent) Leaderboard preview — owner only ── */}
-        {user?.role === "owner" && (
-          <div className="mb-6">
-            <MitraLeaderboardCard />
-          </div>
-        )}
-
-        {/* ── CEO Daily Quest — owner only ── */}
-        {user?.role === "owner" && <div className="mb-6"><CeoDailyQuest /></div>}
-
-        {/* ── Primary stat cards (4 main metrics) ── */}
-        <motion.div
-          className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5"
           variants={stagger}
           initial="hidden"
           animate="visible"
         >
           {[
-            { icon: Plane,       label: t.dash_total_trip,   value: trips.length, onClick: () => setTab("all") },
-            { icon: TrendingUp,  label: t.dash_active_trip,  value: activeTrips,  onClick: () => setTab("upcoming") },
-            { icon: CheckCircle, label: t.dash_done_trip,    value: doneTrips,    onClick: () => setTab("done") },
-            { icon: Users,       label: t.dash_total_jamaah, value: totalJamaah,  onClick: () => navigate("/progress") },
+            {
+              icon: Users,
+              label: "Total Klien",
+              value: clients.length.toLocaleString("id-ID"),
+              growth: clientsGrowth,
+              iconColor: "#f59e0b",
+              iconBg: "rgba(245,158,11,0.1)",
+              onClick: () => navigate("/clients"),
+            },
+            {
+              icon: ShoppingBag,
+              label: "Total Order",
+              value: orders.length.toLocaleString("id-ID"),
+              growth: ordersGrowth,
+              iconColor: "#10b981",
+              iconBg: "rgba(16,185,129,0.1)",
+              onClick: () => navigate("/orders"),
+            },
+            {
+              icon: TrendingUp,
+              label: "Total Pendapatan",
+              value: fmtStatValue(totalRevenue),
+              growth: revenueGrowth,
+              iconColor: "#6366f1",
+              iconBg: "rgba(99,102,241,0.1)",
+              onClick: () => navigate("/reports"),
+            },
+            {
+              icon: FileBarChart,
+              label: "Total Keuntungan",
+              value: fmtStatValue(totalProfit),
+              growth: profitGrowth,
+              iconColor: "#0ea5e9",
+              iconBg: "rgba(14,165,233,0.1)",
+              onClick: () => navigate("/reports"),
+            },
           ].map((stat) => (
             <motion.button
               key={stat.label}
               onClick={stat.onClick}
-              className="relative overflow-hidden flex flex-col gap-3 rounded-2xl border border-blue-100 bg-white p-4 md:p-5 hover:shadow-md hover:border-blue-300 hover:-translate-y-[1px] transition-all duration-200 text-left active:scale-[0.98] group"
               variants={fadeUp}
+              className="relative text-left bg-white border border-[hsl(var(--border))] rounded-2xl p-4 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200 active:scale-[0.98] overflow-hidden"
             >
-              <div className="absolute -bottom-3 -right-3 opacity-[0.05] group-hover:opacity-[0.09] transition-opacity duration-300 pointer-events-none">
-                <stat.icon strokeWidth={0.7} className="h-20 w-20 text-blue-700" />
+              <div
+                className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 mb-3"
+                style={{ background: stat.iconBg }}
+              >
+                <stat.icon strokeWidth={1.6} className="h-5 w-5" style={{ color: stat.iconColor }} />
               </div>
-              <div className="h-10 w-10 rounded-xl border border-blue-200 bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-blue-100 group-hover:border-blue-300 transition-colors">
-                <stat.icon strokeWidth={1.6} className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-[30px] font-black text-slate-900 leading-none tracking-tight tabular-nums">{stat.value}</p>
-                <p className="text-[11px] text-slate-500 mt-1 font-medium leading-tight">{stat.label}</p>
+              <p className="text-[26px] font-black text-slate-900 leading-none tracking-tight tabular-nums">{stat.value}</p>
+              <p className="text-[11px] text-slate-500 mt-1.5 font-medium">{stat.label}</p>
+              <div className="mt-2 flex items-center gap-1">
+                <TrendingUp strokeWidth={2} className="h-3 w-3 text-emerald-500 shrink-0" />
+                <span className="text-[10.5px] font-bold text-emerald-600">+{Math.abs(stat.growth)}%</span>
+                <span className="text-[10px] text-slate-400 ml-0.5">vs bulan lalu</span>
               </div>
             </motion.button>
           ))}
         </motion.div>
 
-        {/* ── Secondary package stats (desktop only — too dense on mobile) ── */}
-        <motion.div
-          className="hidden md:grid grid-cols-4 gap-3 mb-5"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
-        >
-          {[
-            { icon: Star,        label: t.dash_total_packages,     value: packages.length,                                       dot: "bg-blue-400" },
-            { icon: AlertCircle, label: t.dash_need_action,        value: pendingPackages.length,                                dot: pendingPackages.length > 0 ? "bg-red-400" : "bg-slate-300" },
-            { icon: Clock,       label: t.dash_paid_packages,      value: packages.filter(p => p.status === "Paid").length,      dot: "bg-emerald-400" },
-            { icon: CheckCircle, label: t.dash_completed_packages, value: packages.filter(p => p.status === "Completed").length, dot: "bg-violet-400" },
-          ].map((item) => (
-            <button
-              key={item.label}
-              onClick={() => navigate("/packages")}
-              className="group relative flex items-center gap-3 rounded-2xl bg-white border border-blue-100 p-3.5 hover:border-blue-300 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200 text-left active:scale-[0.98] overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl bg-blue-100 group-hover:bg-blue-300 transition-colors" />
-              <div className="h-9 w-9 rounded-xl border border-blue-200 bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
-                <item.icon strokeWidth={1.6} className="h-4.5 w-4.5 text-blue-600" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[22px] font-black text-slate-900 leading-none tabular-nums">{item.value}</p>
-                <p className="text-[10.5px] text-slate-500 mt-0.5 font-medium leading-tight truncate">{item.label}</p>
-              </div>
-              <div className={cn("h-2 w-2 rounded-full shrink-0", item.dot)} />
-            </button>
-          ))}
-        </motion.div>
-
-        {/* ── Mobile: compact package summary chips ── */}
-        <motion.div
-          className="md:hidden flex items-center gap-1.5 mb-1.5 overflow-x-auto scrollbar-none"
-          style={{ scrollSnapType: "x proximity" }}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
-        >
-          {[
-            { icon: Star, label: t.dash_total_packages, value: packages.length, color: "text-amber-600 bg-amber-50 border-amber-100" },
-            { icon: AlertCircle, label: t.dash_need_action, value: pendingPackages.length, color: pendingPackages.length > 0 ? "text-red-600 bg-red-50 border-red-100" : "text-gray-400 bg-gray-50 border-gray-100" },
-            { icon: Clock, label: t.dash_paid_packages, value: packages.filter(p => p.status === "Paid").length, color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
-            { icon: CheckCircle, label: t.dash_completed_packages, value: packages.filter(p => p.status === "Completed").length, color: "text-purple-600 bg-purple-50 border-purple-100" },
-          ].map((item) => (
-            <button
-              key={item.label}
-              onClick={() => navigate("/packages")}
-              className={cn("shrink-0 flex items-center gap-1 h-7 px-2.5 rounded-full border text-[10.5px] font-semibold active:scale-95 transition-transform", item.color)}
-              style={{ scrollSnapAlign: "start" }}
-            >
-              <item.icon strokeWidth={2} className="h-3.5 w-3.5" />
-              <span className="tabular-nums font-extrabold">{item.value}</span>
-              <span className="opacity-80">{item.label}</span>
-            </button>
-          ))}
-        </motion.div>
-
-        {/* ── PNR Command Center ── */}
-        <PNRCommandCenter />
-
-        {/* ── Departure / Return 24h alerts ── */}
-        <DepartureTodayAlert packages={packages} orders={orders} clients={clients} />
-
-        {/* ── Payment alerts H-30 ── */}
-        <PaymentAlerts trips={trips} />
-
-        {/* ── Perlu Perhatian ── */}
-        {pendingPackages.length > 0 && (
-          <motion.div
-            className="mb-6"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.18, ease: "easeOut" }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-1.5">
-                <AlertCircle strokeWidth={1.5} className="h-3.5 w-3.5 text-amber-500" />
-                <h2 className="text-[12px] md:text-[14px] font-bold text-[hsl(var(--foreground))]">{t.dash_needs_attention}</h2>
-                <span className="h-4 px-1.5 rounded-full bg-amber-100 text-amber-700 text-[9.5px] font-bold flex items-center">{pendingPackages.length}</span>
-              </div>
-              <button onClick={() => navigate("/packages")}
-                className="text-[10px] text-[hsl(var(--primary))] font-medium hover:underline flex items-center gap-0.5">
-                {t.dash_view_all} <ChevronRight strokeWidth={2} className="h-2.5 w-2.5" />
-              </button>
-            </div>
-            <div className="space-y-2.5">
-              {pendingPackages.slice(0, 4).map((pkg) => (
-                <div
-                  key={pkg.id}
-                  onClick={() => navigate("/packages")}
-                  className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--border))] bg-white px-3.5 py-2.5 cursor-pointer hover:border-[hsl(var(--primary))]/40 hover:shadow-sm transition-all"
-                >
-                  <div className="h-8 w-8 md:h-9 md:w-9 rounded-lg md:rounded-xl flex items-center justify-center text-base shrink-0"
-                    style={{ background: "linear-gradient(135deg,#f0f9ff,#bae6fd)" }}>
-                    {pkg.emoji}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11.5px] font-semibold text-[hsl(var(--foreground))] truncate">{pkg.name}</p>
-                    <div className="flex items-center gap-1 mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">
-                      <MapPin strokeWidth={1.5} className="h-2.5 w-2.5 shrink-0" />
-                      <span className="truncate">{pkg.destination}</span>
-                      {pkg.departureDate && (
-                        <>
-                          <span>·</span>
-                          <CalendarIcon strokeWidth={1.5} className="h-2.5 w-2.5 shrink-0" />
-                          <span>{daysUntil(pkg.departureDate)}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <span className={cn("text-[9.5px] font-semibold px-1.5 py-0.5 rounded-full shrink-0", STATUS_COLORS[pkg.status] ?? "bg-gray-100 text-gray-500")}>
-                    {STATUS_LABELS[pkg.status] ?? pkg.status}
-                  </span>
-                </div>
-              ))}
-              {pendingPackages.length > 4 && (
-                <button onClick={() => navigate("/packages")}
-                  className="w-full py-2 text-[12px] text-[hsl(var(--primary))] font-medium rounded-xl border border-dashed border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
-                  +{pendingPackages.length - 4} paket lainnya
-                </button>
-              )}
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Kalkulator & Laporan & Order shortcut bar ── */}
-        <motion.div
-          className="grid grid-cols-3 gap-4 mb-6"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.22, ease: "easeOut" }}
-        >
-          {[
-            { icon: Calculator,   label: t.dash_open_calculator, path: "/calculator" },
-            { icon: ShoppingBag,  label: "Order Hub",             path: "/orders"     },
-            { icon: FileBarChart, label: t.dash_progress_report,  path: "/progress"   },
-          ].map((btn) => (
-            <button
-              key={btn.path}
-              onClick={() => navigate(btn.path)}
-              className="flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3.5 hover:border-[hsl(var(--primary))]/40 hover:shadow-md transition-all duration-200 group text-left active:scale-[0.98]"
-            >
-              <btn.icon
-                strokeWidth={1.5}
-                className="h-6 w-6 shrink-0 text-[hsl(var(--primary))] transition-all duration-200 group-hover:text-sky-400 group-hover:stroke-[1.8]"
-              />
-              <span className="text-[13px] font-semibold text-[hsl(var(--foreground))] flex-1 truncate">{btn.label}</span>
-              <ArrowRight strokeWidth={1.5} className="h-4 w-4 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] transition-colors shrink-0" />
-            </button>
-          ))}
-        </motion.div>
-
-        {/* Section header */}
-        <div className="flex items-center justify-between gap-3 mb-5">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-[hsl(var(--foreground))]">{t.dash_packages_title}</h1>
-            <div className="flex gap-3 mt-1">
-              {[["all", t.dash_filter_all], ["upcoming", t.dash_filter_active], ["done", t.dash_filter_done]].map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => setTab(key as typeof tab)}
-                  className={cn(
-                    "text-[13px] font-medium pb-1 border-b-2 transition-smooth",
-                    tab === key
-                      ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]"
-                      : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <button
-            onClick={() => setAddOpen(true)}
-            className="flex items-center gap-2 h-9 px-4 rounded-xl text-white text-[12.5px] font-bold shadow-md hover:opacity-90 active:scale-95 transition-all shrink-0"
-            style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}
-          >
-            <Plus strokeWidth={2.5} className="h-3.5 w-3.5" />
-            <span>Tambah Trip</span>
-          </button>
+        {/* ── 2-col: Waktu Dunia | WhatsApp Admin ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+          <LiveClock />
+          <AdminWhatsappCard />
         </div>
 
-        {/* Cards grid */}
-        {loadingTrips ? (
-          <div className="grid gap-4 md:gap-5 grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-2xl border border-[hsl(var(--border))] overflow-hidden animate-pulse">
-                <div className="h-36 bg-[hsl(var(--secondary))]" />
-                <div className="p-3.5 space-y-2">
-                  <div className="h-3.5 bg-[hsl(var(--secondary))] rounded w-3/4" />
-                  <div className="h-3 bg-[hsl(var(--secondary))] rounded w-1/2" />
-                  <div className="h-3 bg-[hsl(var(--secondary))] rounded w-2/3" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            className="relative overflow-hidden rounded-3xl border border-sky-100 bg-gradient-to-br from-white via-sky-50/40 to-sky-100/60 px-5 py-8 md:p-10 text-center flex flex-col items-center justify-center"
-          >
-            {/* Decorative blob */}
-            <div
-              className="absolute -top-16 -right-12 h-40 w-40 rounded-full pointer-events-none opacity-50"
-              style={{ background: "radial-gradient(circle, #6694ff44, transparent 70%)" }}
-            />
-            <div
-              className="absolute -bottom-12 -left-10 h-32 w-32 rounded-full pointer-events-none opacity-40"
-              style={{ background: "radial-gradient(circle, #1a44d444, transparent 70%)" }}
-            />
+        {/* ── CEO Daily Quest — owner only ── */}
+        {user?.role === "owner" && <CeoDailyQuest />}
 
-            <div className="relative">
-              <div className="inline-flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-white shadow-sm border border-sky-100 mb-4">
-                <Plane strokeWidth={1.5} className="h-8 w-8 md:h-10 md:w-10 text-sky-500" />
-              </div>
-              <h2 className="text-[16px] md:text-lg font-bold text-[hsl(var(--foreground))]">{t.dash_no_packages}</h2>
-              <p className="text-[12.5px] md:text-sm text-[hsl(var(--muted-foreground))] mt-1.5 max-w-xs mx-auto leading-relaxed">
-                {t.dash_no_packages_desc}
-              </p>
-              <Button
-                onClick={() => navigate("/packages")}
-                className="mt-5 rounded-2xl px-5 h-11 text-[13px] font-bold shadow-md"
-                style={{ background: "linear-gradient(135deg,#1a44d4,#123499)", color: "white" }}
-              >
-                <Plus strokeWidth={2} className="h-4 w-4 mr-1.5" /> {t.dash_create_first}
-              </Button>
-            </div>
-          </motion.div>
-        ) : (
-          <div className="grid gap-4 md:gap-5 grid-cols-2 lg:grid-cols-3">
-            {filtered.map((trip) => (
-              <TripCard key={trip.id} trip={trip} onDelete={setDeleteTarget} />
-            ))}
-            {/* Add card */}
-            <button onClick={() => setAddOpen(true)}
-              className="rounded-xl md:rounded-2xl border-2 border-dashed border-[hsl(var(--border))] flex flex-col items-center justify-center gap-1.5 md:gap-3 min-h-[80px] sm:min-h-[200px] hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))] transition-all group">
-              <div className="h-8 w-8 md:h-11 md:w-11 flex items-center justify-center transition-colors">
-                <Plus strokeWidth={1.5} className="h-4 w-4 md:h-5 md:w-5 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))]" />
-              </div>
-              <span className="text-[11px] md:text-sm text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] font-medium">{t.dash_add_package}</span>
-            </button>
-          </div>
-        )}
+
+
+
       </div>
 
       {/* ── Right panel (desktop only) ── */}

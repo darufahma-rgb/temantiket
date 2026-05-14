@@ -2,12 +2,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Crown, Target, CheckCircle2, Circle, Plus, Sparkles,
+  Crown, CheckCircle2, Circle, Plus, Sparkles,
   TrendingUp, TrendingDown, FileBarChart, Users, Trash2,
   ChevronDown, ChevronUp, RefreshCw, Zap,
+  ShoppingBag, Package, MessageSquare, ArrowRight,
 } from "lucide-react";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useRatesStore } from "@/store/ratesStore";
+import { useClientsStore } from "@/store/clientsStore";
+import { useTripsStore } from "@/store/tripsStore";
 import { netProfitIDR, revenueIDR, fmtIDR } from "@/lib/profit";
 import { MissionConfetti } from "@/components/MissionConfetti";
 import { cn } from "@/lib/utils";
@@ -85,6 +88,8 @@ export function CeoDailyQuest() {
   const navigate = useNavigate();
   const { orders, fetchOrders } = useOrdersStore();
   const egpRate = useRatesStore((s) => s.rates.EGP);
+  const { clients } = useClientsStore();
+  const { trips } = useTripsStore();
 
   const [missions, setMissions] = useState<CeoMission[]>(() => loadMissions());
   const [collapsed, setCollapsed] = useState(false);
@@ -99,7 +104,7 @@ export function CeoDailyQuest() {
     if (orders.length === 0) fetchOrders();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Today's financial snapshot ─ filter orders created today
+  // Today's financial + activity snapshot
   const todayStats = useMemo(() => {
     const todayStr = new Date().toISOString().slice(0, 10);
     const todayOrders = orders.filter(
@@ -108,8 +113,15 @@ export function CeoDailyQuest() {
     const profit = todayOrders.reduce((sum, o) => sum + netProfitIDR(o, egpRate), 0);
     const revenue = todayOrders.reduce((sum, o) => sum + revenueIDR(o, egpRate), 0);
     const count = todayOrders.length;
-    return { profit, revenue, count };
-  }, [orders, egpRate]);
+    const newClients = clients.filter((c) => c.createdAt?.startsWith(todayStr)).length;
+    const activeTrips = trips.filter((t) => {
+      const start = new Date(t.startDate).getTime();
+      const end = new Date(t.endDate).getTime();
+      const now = Date.now();
+      return start <= now && end >= now;
+    }).length;
+    return { profit, revenue, count, newClients, activeTrips };
+  }, [orders, egpRate, clients, trips]);
 
   // Progress
   const total = missions.length;
@@ -249,15 +261,16 @@ export function CeoDailyQuest() {
                 transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
                 className="overflow-hidden bg-white"
               >
-                {/* ── Financial Snapshot ─────────────────────────────────── */}
-                <div className="px-3 pt-2.5 pb-2 border-b border-slate-100">
-                  <p className="text-[9.5px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                    Financial Snapshot · Hari Ini
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {/* Net Profit Today */}
+                {/* ── 3-col summary panels ─────────────────────────────── */}
+                <div className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
+
+                  {/* Financial Snapshot */}
+                  <div className="px-3 pt-2.5 pb-3">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                      Financial Snapshot – Hari Ini
+                    </p>
                     <div
-                      className="col-span-2 rounded-xl p-2.5 cursor-pointer hover:opacity-90 transition-opacity"
+                      className="rounded-xl p-2.5 cursor-pointer hover:opacity-90 transition-opacity mb-2"
                       style={{
                         background: todayStats.profit >= 0
                           ? "linear-gradient(135deg,#ecfdf5,#d1fae5)"
@@ -265,53 +278,84 @@ export function CeoDailyQuest() {
                       }}
                       onClick={() => navigate("/reports")}
                     >
-                      <div className="flex items-center gap-1.5 mb-1">
+                      <div className="flex items-center gap-1 mb-0.5">
                         {todayStats.profit >= 0
-                          ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                          : <TrendingDown className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                          ? <TrendingUp className="h-3 w-3 text-emerald-600 shrink-0" />
+                          : <TrendingDown className="h-3 w-3 text-red-500 shrink-0" />
                         }
-                        <span className="text-[10px] font-semibold text-slate-500">Net Profit Hari Ini</span>
+                        <span className="text-[9px] font-semibold text-slate-500">Net Profit</span>
                       </div>
                       <p className={cn(
-                        "text-[18px] font-extrabold leading-none tabular-nums",
+                        "text-[17px] font-extrabold leading-none tabular-nums",
                         todayStats.profit >= 0 ? "text-emerald-700" : "text-red-600"
                       )}>
                         {todayStats.profit >= 0 ? "+" : ""}{fmtShort(todayStats.profit)}
                       </p>
-                      {todayStats.revenue > 0 && (
-                        <p className="text-[9.5px] text-slate-400 mt-1">
+                      {todayStats.revenue > 0 ? (
+                        <p className="text-[8.5px] text-slate-400 mt-0.5">
                           Revenue: {fmtShort(todayStats.revenue)}
                         </p>
-                      )}
-                      {todayStats.count === 0 && (
-                        <p className="text-[9.5px] text-slate-400 mt-1 italic">
-                          Belum ada order hari ini
-                        </p>
+                      ) : (
+                        <p className="text-[8.5px] text-slate-400 mt-0.5 italic">Belum ada order</p>
                       )}
                     </div>
+                    <button
+                      onClick={() => navigate("/reports")}
+                      className="w-full rounded-lg bg-blue-50 px-2 py-1 flex items-center justify-center gap-1 hover:bg-blue-100 transition-colors"
+                    >
+                      <FileBarChart className="h-3 w-3 text-blue-600 shrink-0" />
+                      <span className="text-[9px] font-semibold text-blue-700">Lihat Laporan</span>
+                      <ArrowRight className="h-2.5 w-2.5 text-blue-500 ml-auto" />
+                    </button>
+                  </div>
 
-                    {/* Order count + quick links */}
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex-1 rounded-xl bg-sky-50 p-2 flex flex-col items-center justify-center">
-                        <p className="text-[18px] font-extrabold text-sky-700 leading-none tabular-nums">
-                          {todayStats.count}
-                        </p>
-                        <p className="text-[9px] text-slate-400 mt-0.5 text-center leading-tight">order<br />hari ini</p>
-                      </div>
-                      <button
-                        onClick={() => navigate("/reports")}
-                        className="rounded-xl bg-blue-50 p-1.5 flex items-center justify-center gap-1 hover:bg-blue-100 transition-colors"
-                      >
-                        <FileBarChart className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                        <span className="text-[9.5px] font-semibold text-blue-700">Laporan</span>
-                      </button>
-                      <button
-                        onClick={() => navigate("/agent-leaderboard")}
-                        className="rounded-xl bg-violet-50 p-1.5 flex items-center justify-center gap-1 hover:bg-violet-100 transition-colors"
-                      >
-                        <Users className="h-3.5 w-3.5 text-violet-600 shrink-0" />
-                        <span className="text-[9.5px] font-semibold text-violet-700">Agen</span>
-                      </button>
+                  {/* Aktivitas Hari Ini */}
+                  <div className="px-3 pt-2.5 pb-3">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">
+                      Aktivitas Hari Ini
+                    </p>
+                    <div className="space-y-2">
+                      {[
+                        { icon: ShoppingBag, label: "Order Hari Ini", value: todayStats.count,       color: "#6366f1" },
+                        { icon: Package,     label: "Trip Berjalan",  value: todayStats.activeTrips,  color: "#10b981" },
+                        { icon: Users,       label: "Klien Baru",     value: todayStats.newClients,   color: "#f59e0b" },
+                      ].map((item) => (
+                        <div key={item.label} className="flex items-center gap-2">
+                          <div
+                            className="h-6 w-6 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ background: `${item.color}15` }}
+                          >
+                            <item.icon className="h-3 w-3 shrink-0" style={{ color: item.color }} strokeWidth={2} />
+                          </div>
+                          <span className="flex-1 text-[10.5px] text-slate-600 leading-tight">{item.label}</span>
+                          <span className="text-[14px] font-black text-slate-800 tabular-nums">{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Quick Action */}
+                  <div className="px-3 pt-2.5 pb-3">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">
+                      Quick Action
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[
+                        { icon: ShoppingBag,  label: "Buat Order",    path: "/orders",        color: "#6366f1", bg: "rgba(99,102,241,0.08)"   },
+                        { icon: Users,        label: "Tambah Klien",  path: "/clients",       color: "#10b981", bg: "rgba(16,185,129,0.08)"   },
+                        { icon: Package,      label: "Buat Trip",     path: "/packages",      color: "#f59e0b", bg: "rgba(245,158,11,0.08)"   },
+                        { icon: MessageSquare,label: "Broadcast",     path: "/bc-templates",  color: "#0ea5e9", bg: "rgba(14,165,233,0.08)"   },
+                      ].map((action) => (
+                        <button
+                          key={action.path}
+                          onClick={() => navigate(action.path)}
+                          className="flex flex-col items-start gap-1 rounded-xl p-2 text-left hover:opacity-80 active:scale-95 transition-all"
+                          style={{ background: action.bg }}
+                        >
+                          <action.icon className="h-3.5 w-3.5 shrink-0" style={{ color: action.color }} strokeWidth={1.8} />
+                          <span className="text-[9px] font-semibold leading-tight" style={{ color: action.color }}>{action.label}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>

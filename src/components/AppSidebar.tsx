@@ -222,29 +222,37 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
         className="shrink-0 px-3 pt-2.5 pb-4 space-y-1.5"
         style={{ borderTop: "1px solid hsl(var(--border))" }}
       >
-        {/* AI CTA — owner/agent only */}
+        {/* Upgrade ke AI Power CTA — owner/agent only */}
         {!isStaff && (
-          <button
-            onClick={() => { navigate("/itinerary"); onClose?.(); }}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-150 hover:scale-[1.01] active:scale-[0.99]"
-            style={{ background: `linear-gradient(135deg, ${ACCENT}18 0%, #0a247215 100%)`, border: `1px solid ${ACCENT}22` }}
+          <div
+            className="w-full rounded-xl overflow-hidden relative"
+            style={{ background: "linear-gradient(135deg, #0c1e3e 0%, #1a44d4 100%)" }}
           >
-            <div
-              className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: `linear-gradient(135deg, ${ACCENT}, #0a2472)` }}
-            >
-              <ChatGPTIcon className="h-3.5 w-3.5 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11.5px] font-bold leading-tight" style={{ color: ACCENT }}>
-                Itinerary
+            <div className="absolute -top-4 -right-4 h-16 w-16 rounded-full bg-sky-400/20 pointer-events-none" />
+            <div className="absolute -bottom-2 -left-2 h-10 w-10 rounded-full bg-blue-300/15 pointer-events-none" />
+            <div className="relative px-3 pt-2.5 pb-2.5">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div
+                  className="h-6 w-6 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: "rgba(255,255,255,0.15)" }}
+                >
+                  <ChatGPTIcon className="h-3 w-3 text-white" />
+                </div>
+                <p className="text-[11px] font-bold text-white leading-tight">Upgrade ke AI Power</p>
+              </div>
+              <p className="text-[9px] text-blue-200/80 leading-snug mb-2">
+                Nikmati fitur AI untuk mengoptimasi bisnis travel Anda.
               </p>
-              <p className="text-[9.5px] text-[hsl(var(--muted-foreground))] leading-tight mt-[1px]" style={{ opacity: 0.7 }}>
-                Buat program perjalanan otomatis
-              </p>
+              <button
+                onClick={() => { navigate("/itinerary"); onClose?.(); }}
+                className="w-full flex items-center justify-center gap-1.5 h-7 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95"
+                style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)" }}
+              >
+                <Sparkles className="h-3 w-3" strokeWidth={2} />
+                Upgrade Sekarang
+              </button>
             </div>
-            <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: ACCENT, opacity: 0.6 }} strokeWidth={2} />
-          </button>
+          </div>
         )}
 
         {/* Logout */}
