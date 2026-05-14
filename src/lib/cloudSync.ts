@@ -66,6 +66,7 @@ export interface NoteCloud {
   color: string;
   pinned?: boolean;
   tags?: string[];
+  category?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -88,6 +89,7 @@ const noteFromRow = (r: Record<string, unknown>): NoteCloud => {
     color: String(r.color ?? "bg-white border-slate-200"),
     pinned: Boolean(r.pinned),
     tags: (r.tags as string[]) ?? [],
+    category: String(r.category ?? "general"),
     createdAt: parseTs(r.created_at),
     updatedAt: parseTs(r.updated_at),
   };
@@ -112,8 +114,9 @@ const noteToRow = (n: NoteCloud, agencyId?: string) => {
     color: n.color,
     pinned: !!n.pinned,
     tags: n.tags ?? [],
-    created_at: createdAt,   // bigint → kirim sebagai number (ms epoch)
-    updated_at: updatedAt,   // bigint → kirim sebagai number (ms epoch)
+    category: n.category ?? "general",
+    created_at: createdAt,
+    updated_at: updatedAt,
     ...(agencyId ? { agency_id: agencyId } : {}),
   };
 };
