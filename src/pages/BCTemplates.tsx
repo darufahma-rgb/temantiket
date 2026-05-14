@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronUp, Sparkles, X, Rocket,
   LayoutGrid, Moon, Stamp, BookOpen, Plane, MessageCircle, type LucideProps,
   ArrowLeft, SlidersHorizontal, ChevronRight, TrendingUp, MoreVertical,
-  ChevronLeft, FileText, Layers, Tag, Eye, Send, Loader2, Upload,
+  ChevronLeft, FileText, Layers, Tag, Eye, Send, Loader2, Upload, ImagePlus,
 } from "lucide-react";
 import { PieChart, Pie, Cell } from "recharts";
 import type { ComponentType } from "react";
