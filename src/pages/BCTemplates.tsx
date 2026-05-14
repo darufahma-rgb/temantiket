@@ -4,8 +4,9 @@ import {
   ChevronDown, ChevronUp, Sparkles, X, Rocket,
   LayoutGrid, Moon, Stamp, BookOpen, Plane, MessageCircle, type LucideProps,
   ArrowLeft, SlidersHorizontal, ChevronRight, TrendingUp, MoreVertical,
-  ChevronLeft, FileText, Layers, Tag,
+  ChevronLeft, FileText, Layers, Tag, Eye, Send,
 } from "lucide-react";
+import { PieChart, Pie, Cell } from "recharts";
 import type { ComponentType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -746,116 +747,148 @@ export default function BCTemplates() {
     </div>{/* end md:hidden */}
 
     {/* ══════════════════════════════════════════════════════════
-        DESKTOP LAYOUT — hidden md:flex
+        DESKTOP LAYOUT — hidden md:flex — Redesigned 2-col
     ══════════════════════════════════════════════════════════ */}
-    <div className="hidden md:flex flex-col min-h-full bg-[#f0f4f8]">
+    <div className="hidden md:flex gap-5 p-5 xl:p-6 max-w-[1440px] mx-auto w-full">
 
-      {/* ── Hero Section ──────────────────────────────────────────────── */}
-      <div className="bg-white px-4 pt-5 pb-4 border-b border-slate-100">
-        {/* Icon + title */}
-        <div className="flex items-start gap-3 mb-3">
-          <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <MessageSquare className="h-5 w-5 text-blue-600" />
+      {/* ─── MAIN COLUMN ─────────────────────────────────────────────── */}
+      <motion.div
+        className="flex-1 min-w-0"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-5">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-2xl bg-blue-100 flex items-center justify-center shrink-0">
+              <MessageSquare className="h-7 w-7 text-blue-600" strokeWidth={1.8} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h1 className="text-[28px] font-black text-slate-900 leading-tight tracking-tight">Template Broadcast</h1>
+                <span className="bg-blue-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0">Kelola Template</span>
+              </div>
+              <p className="text-[13px] text-slate-500">Kelola template pesan siap kirim untuk follow-up, closing &amp; broadcast klien. 🚀</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-[18px] font-extrabold text-slate-900 leading-tight">
-              Template Broadcast
-              <span className="text-blue-600"> Temantiket</span>
-            </h1>
-            <p className="text-[12px] text-slate-500 mt-0.5 leading-relaxed">
-              Pesan siap kirim untuk follow-up, closing & broadcast klien Umrah, Haji & tiket. 🚀
-            </p>
+          <div className="flex items-center gap-2 shrink-0">
+            {canEdit && (
+              <button
+                onClick={openAdd}
+                className="flex items-center gap-2 h-10 pl-4 pr-3 rounded-xl text-white text-[13px] font-bold shadow-md hover:opacity-90 active:scale-95 transition-all"
+                style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}
+              >
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
+                Tambah Template
+                <span className="w-px h-5 bg-white/30 mx-0.5" />
+                <ChevronDown className="h-3.5 w-3.5 opacity-80" />
+              </button>
+            )}
+            <button
+              onClick={() => toast.info("Import template — segera hadir")}
+              className="flex items-center gap-2 h-10 px-4 rounded-xl bg-white border border-slate-200 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors shrink-0"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Import Template
+            </button>
           </div>
         </div>
 
-        {/* Add button — full width on mobile */}
-        {canEdit && (
-          <button
-            onClick={openAdd}
-            className="w-full flex items-center justify-center gap-2 h-11 rounded-2xl bg-blue-600 active:bg-blue-700 text-white text-[14px] font-bold shadow-sm transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Tambah Template
-          </button>
-        )}
-      </div>
-
-      {/* ── Sticky Search + Tabs ───────────────────────────────────────── */}
-      <div className="sticky top-0 z-20 bg-[#f0f4f8] shadow-[0_1px_0_0_rgba(0,0,0,0.06)]">
-
-        {/* Search bar */}
-        <div className="px-4 pt-3 pb-2">
-          <div className="relative flex items-center">
-            <div className="absolute left-3.5 flex items-center justify-center w-7 h-7 rounded-xl bg-blue-50 pointer-events-none">
-              <Search className="h-3.5 w-3.5 text-blue-500" />
-            </div>
+        {/* Search + Filter */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari template…"
-              className="w-full h-12 pl-12 pr-10 rounded-2xl border border-slate-200 bg-white text-[13.5px] font-medium text-slate-800 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-all"
+              placeholder="Cari template berdasarkan judul atau kategori..."
+              className="w-full h-10 pl-9 pr-10 rounded-xl text-[13px] bg-white border border-slate-200 text-slate-700 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
             />
-            {search ? (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-3 w-6 h-6 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center transition-colors"
-              >
-                <X className="h-3 w-3 text-slate-600" />
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-200 flex items-center justify-center hover:bg-slate-300 transition-colors">
+                <X className="h-3 w-3 text-slate-500" />
               </button>
-            ) : (
-              <span className="absolute right-3.5 text-[10px] font-semibold text-slate-300 select-none hidden sm:block">
-                ⌘K
-              </span>
             )}
           </div>
+          <button className="flex items-center gap-1.5 h-10 px-3.5 rounded-xl bg-white border border-slate-200 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors shrink-0">
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            Filter
+          </button>
         </div>
 
-        {/* Category tabs — horizontal scroll, no wrap */}
-        <div
-          ref={tabsRef}
-          className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-none"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-        >
-          <TabChip
-            active={activeTab === "all"}
+        {/* Category tabs */}
+        <div className="flex items-center gap-2 mb-5 overflow-x-auto scrollbar-none pb-0.5">
+          <button
             onClick={() => setActiveTab("all")}
-            label="Semua"
-            categoryKey="all"
-            count={counts.get("all") ?? 0}
-          />
-          {BC_CATEGORIES.map((cat) => (
-            <TabChip
-              key={cat.key}
-              active={activeTab === cat.key}
-              onClick={() => setActiveTab(cat.key)}
-              label={cat.label}
-              categoryKey={cat.key}
-              count={counts.get(cat.key) ?? 0}
-            />
-          ))}
+            className={cn(
+              "shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[12.5px] font-semibold border transition-colors whitespace-nowrap",
+              activeTab === "all" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+            )}
+          >
+            Semua
+            <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full", activeTab === "all" ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500")}>
+              {templates.length}
+            </span>
+          </button>
+          {BC_CATEGORIES.map((cat) => {
+            const count = counts.get(cat.key) ?? 0;
+            const active = activeTab === cat.key;
+            return (
+              <button
+                key={cat.key}
+                onClick={() => setActiveTab(cat.key)}
+                className={cn(
+                  "shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[12.5px] font-semibold border transition-colors whitespace-nowrap",
+                  active ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+                )}
+              >
+                {cat.emoji} {cat.label}
+                <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full", active ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500")}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
-      </div>
 
-      {/* ── Content ───────────────────────────────────────────────────── */}
-      <div className="flex-1 px-4 py-3 pb-24">
+        {/* Template list */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-[13px] text-slate-500">Memuat template…</p>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 animate-pulse flex items-start gap-4">
+                <div className="h-20 w-20 rounded-xl bg-slate-100 shrink-0" />
+                <div className="flex-1 space-y-2.5">
+                  <div className="h-4 bg-slate-100 rounded w-2/5" />
+                  <div className="h-3 bg-slate-100 rounded w-1/3" />
+                  <div className="h-3 bg-slate-100 rounded w-full" />
+                  <div className="h-3 bg-slate-100 rounded w-3/4" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState
-            hasSearch={!!search}
-            canEdit={canEdit}
-            onAdd={openAdd}
-          />
+          <div className="bg-white rounded-xl border border-dashed border-slate-300 p-14 text-center">
+            <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-3">
+              <MessageSquare className="h-6 w-6 text-blue-500" strokeWidth={1.8} />
+            </div>
+            <p className="text-[14px] font-bold text-slate-700">Tidak ada template</p>
+            <p className="text-[12px] text-slate-400 mt-1">
+              {search ? "Coba kata kunci lain atau hapus filter." : "Buat template baru untuk memulai."}
+            </p>
+            {canEdit && !search && (
+              <button onClick={openAdd} className="mt-4 inline-flex items-center gap-1.5 h-9 px-4 rounded-xl text-[12px] font-bold text-white" style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}>
+                <Plus className="h-3.5 w-3.5" /> Tambah Template
+              </button>
+            )}
+          </div>
         ) : activeTab === "all" ? (
-          <div className="space-y-3">
+          <div className="space-y-5">
             {BC_CATEGORIES.map((cat) => {
               const items = grouped.get(cat.key);
               if (!items?.length) return null;
               return (
-                <CategorySection
+                <DesktopCategorySection
                   key={cat.key}
                   cat={cat}
                   items={items}
@@ -869,9 +902,9 @@ export default function BCTemplates() {
             })}
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {filtered.map((t) => (
-              <TemplateCard
+              <DesktopTemplateCard
                 key={t.id}
                 template={t}
                 canEdit={canEdit}
@@ -883,6 +916,105 @@ export default function BCTemplates() {
             ))}
           </div>
         )}
+      </motion.div>
+
+      {/* ─── RIGHT SIDEBAR ───────────────────────────────────────────── */}
+      <div className="w-[276px] xl:w-[292px] shrink-0 space-y-4">
+
+        {/* Ringkasan Template */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[13px] font-extrabold text-slate-800">Ringkasan Template</h3>
+            <span className="text-[10.5px] text-slate-500 border border-slate-200 px-2 py-0.5 rounded-lg font-medium cursor-pointer hover:bg-slate-50">
+              30 Hari Terakhir ▾
+            </span>
+          </div>
+          {templates.length > 0 ? (
+            <div className="flex items-center gap-3">
+              <div className="shrink-0 relative">
+                <PieChart width={116} height={116}>
+                  <Pie
+                    data={[
+                      { value: Math.max(templates.length, 0.01), color: "#10b981" },
+                      { value: 0.01, color: "#f59e0b" },
+                      { value: 0.01, color: "#94a3b8" },
+                    ]}
+                    cx={52} cy={52} innerRadius={30} outerRadius={50}
+                    paddingAngle={2} dataKey="value" stroke="none"
+                  >
+                    {["#10b981", "#f59e0b", "#94a3b8"].map((color, i) => (
+                      <Cell key={i} fill={color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-[20px] font-black text-slate-800 leading-none">{templates.length}</span>
+                  <span className="text-[9px] text-slate-400 font-medium">Total</span>
+                </div>
+              </div>
+              <div className="flex-1 space-y-2">
+                {[
+                  { label: "Aktif", value: templates.length, color: "#10b981" },
+                  { label: "Draft", value: 0, color: "#f59e0b" },
+                  { label: "Tidak Aktif", value: 0, color: "#94a3b8" },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      <span className="text-[11px] text-slate-600">{item.label}</span>
+                    </div>
+                    <span className="text-[11px] font-bold text-slate-700">
+                      {item.value} ({templates.length > 0 ? Math.round((item.value / templates.length) * 100) : 0}%)
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-center text-[12px] text-slate-400 py-6">Belum ada template</p>
+          )}
+        </div>
+
+        {/* Stat cards */}
+        {([
+          { label: "Total Digunakan", value: "—", growth: 18, icon: <TrendingUp className="h-4 w-4" style={{ color: "#10b981" }} strokeWidth={1.8} />, iconBg: "#ecfdf5" },
+          { label: "Total Terkirim", value: "—", growth: 21, icon: <Send className="h-4 w-4" style={{ color: "#3b82f6" }} strokeWidth={1.8} />, iconBg: "#eff6ff" },
+          { label: "Template Dibuat", value: String(templates.length), growth: 14, icon: <Layers className="h-4 w-4" style={{ color: "#8b5cf6" }} strokeWidth={1.8} />, iconBg: "#f5f3ff" },
+        ] as Array<{ label: string; value: string; growth: number; icon: React.ReactNode; iconBg: string }>).map((card) => (
+          <div key={card.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <div className="flex items-start justify-between mb-2">
+              <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: card.iconBg }}>
+                {card.icon}
+              </div>
+              <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium mb-0.5">{card.label}</p>
+            <p className="text-[24px] font-black text-slate-900 leading-none tabular-nums">{card.value}</p>
+            <div className="flex items-center gap-1 mt-1.5">
+              <span className="text-[10px] font-bold text-emerald-600">+{card.growth}%</span>
+              <span className="text-[10px] text-slate-400">vs periode lalu</span>
+            </div>
+          </div>
+        ))}
+
+        {/* AI Promo */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <p className="text-[12.5px] font-extrabold text-slate-800 mb-1">Kelola Template Lebih Cepat</p>
+              <p className="text-[11px] text-slate-500 leading-snug">Gunakan AI untuk membuat template pesan yang lebih efektif dan menarik.</p>
+              <button
+                onClick={() => toast.info("Fitur AI template segera hadir")}
+                className="mt-3 flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-bold text-white transition-all hover:opacity-90 active:scale-95"
+                style={{ background: "linear-gradient(135deg,#2563eb,#7c3aed)" }}
+              >
+                <Sparkles className="h-3 w-3" />
+                Buat dengan AI
+              </button>
+            </div>
+            <Sparkles className="h-8 w-8 text-purple-300 shrink-0 opacity-70" />
+          </div>
+        </div>
       </div>
 
       {/* ── Form Dialog (Add / Edit) ───────────────────────────────────── */}
@@ -1382,6 +1514,241 @@ function TemplateCard({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Desktop thumbnail gradients ───────────────────────────────────────────────
+const THUMB_GRADIENT: Record<string, string> = {
+  umrah:           "linear-gradient(135deg,#0ea5e9,#6366f1)",
+  haji:            "linear-gradient(135deg,#10b981,#059669)",
+  visa_on_arrival: "linear-gradient(135deg,#8b5cf6,#6d28d9)",
+  visa_pelajar:    "linear-gradient(135deg,#4f46e5,#2563eb)",
+  tiket_pesawat:   "linear-gradient(135deg,#f97316,#dc2626)",
+  general:         "linear-gradient(135deg,#64748b,#334155)",
+};
+
+// ── DesktopTemplateCard ───────────────────────────────────────────────────────
+
+function DesktopTemplateCard({
+  template, canEdit, isCopied, onCopy, onEdit, onDelete,
+}: {
+  template: BCTemplate;
+  canEdit: boolean;
+  isCopied: boolean;
+  onCopy: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const cat = BC_CATEGORIES.find((c) => c.key === template.category)!;
+  const vars = extractVariables(template.body);
+
+  const plainPreview = template.body
+    .replace(/\{\{[A-Z0-9_]+\}\}/g, "...")
+    .replace(/[*_~`]/g, "")
+    .split("\n")
+    .filter((l) => l.trim())
+    .slice(0, 3)
+    .join(" · ")
+    .slice(0, 140);
+
+  const fmtDateTime = (iso: string) =>
+    new Intl.DateTimeFormat("id-ID", {
+      day: "numeric", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    }).format(new Date(iso));
+
+  const fmtDate = (iso: string) =>
+    new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso));
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md hover:border-blue-200 transition-all group">
+      <div className="flex items-stretch">
+        {/* Thumbnail */}
+        <div
+          className="w-[90px] shrink-0 flex items-center justify-center text-[36px] select-none"
+          style={{ background: THUMB_GRADIENT[cat.key] ?? THUMB_GRADIENT.general }}
+        >
+          {cat.emoji}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 px-4 py-3">
+          {/* Row 1: title + status */}
+          <div className="flex items-start justify-between gap-3 mb-1">
+            <p className="text-[14px] font-extrabold text-slate-800 leading-snug line-clamp-1 flex-1">
+              {template.title}
+            </p>
+            <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Aktif
+            </span>
+          </div>
+
+          {/* Row 2: category badge + last used */}
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className={cn("inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded border", cat.color)}>
+              {cat.label}
+            </span>
+            <span className="text-[10.5px] text-slate-400">
+              Terakhir digunakan: {fmtDateTime(template.updatedAt)}
+            </span>
+            {vars.length > 0 && (
+              <span className="text-[10px] text-amber-600 font-medium">{vars.length} variabel</span>
+            )}
+          </div>
+
+          {/* Row 3: plain preview */}
+          <p className="text-[12px] text-slate-500 leading-snug line-clamp-2 mb-2.5">
+            {plainPreview || "(Template kosong)"}
+          </p>
+
+          {/* Row 4: stats */}
+          <div className="flex items-center gap-5 text-[11px] border-t border-slate-100 pt-2">
+            <div className="flex items-center gap-1">
+              <span className="text-slate-400">Digunakan</span>
+              <span className="font-bold text-slate-700">—</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-slate-400">Terkirim</span>
+              <span className="font-bold text-slate-700">—</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-slate-400">Dibuat</span>
+              <span className="font-bold text-slate-700">{fmtDate(template.createdAt)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Action column */}
+        <div className="flex flex-col items-center justify-center gap-1 px-3 border-l border-slate-100 shrink-0">
+          <button
+            onClick={() => toast.info("Preview template")}
+            title="Preview"
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onCopy}
+            title={vars.length > 0 ? "Copy & Isi Variabel" : "Copy"}
+            className={cn(
+              "h-8 w-8 rounded-lg flex items-center justify-center transition-colors",
+              isCopied
+                ? "bg-emerald-500 text-white"
+                : "text-slate-400 hover:bg-slate-100 hover:text-slate-600",
+            )}
+          >
+            {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          </button>
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              title="Lainnya"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-xl border border-slate-200 shadow-lg z-20 overflow-hidden">
+                  {canEdit && (
+                    <button
+                      onClick={() => { onEdit(); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <Pencil className="h-3.5 w-3.5 text-slate-400" /> Edit
+                    </button>
+                  )}
+                  {canEdit && (
+                    <button
+                      onClick={() => { onDelete(); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] font-medium text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Hapus
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { onCopy(); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <Copy className="h-3.5 w-3.5 text-slate-400" /> Copy
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── DesktopCategorySection ────────────────────────────────────────────────────
+
+function DesktopCategorySection({
+  cat, items, canEdit, copiedId, onCopy, onEdit, onDelete,
+}: {
+  cat: typeof BC_CATEGORIES[number];
+  items: BCTemplate[];
+  canEdit: boolean;
+  copiedId: string | null;
+  onCopy: (t: BCTemplate) => void;
+  onEdit: (t: BCTemplate) => void;
+  onDelete: (t: BCTemplate) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const Icon = CATEGORY_ICONS[cat.key] ?? MessageCircle;
+
+  return (
+    <div>
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-3">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-2 group"
+        >
+          <ChevronDown className={cn(
+            "h-4 w-4 text-slate-400 transition-transform shrink-0",
+            !open && "-rotate-90"
+          )} />
+          <Icon className="h-4 w-4 text-slate-500 shrink-0" />
+          <span className="text-[12px] font-bold text-slate-600 uppercase tracking-wider">
+            {cat.label.toUpperCase()}
+          </span>
+          <span className="text-[11.5px] font-bold text-slate-400">{items.length}</span>
+        </button>
+        <button className="text-[11px] text-blue-600 font-semibold hover:text-blue-700 transition-colors">
+          Lihat semua
+        </button>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-2.5 mb-2">
+              {items.map((t) => (
+                <DesktopTemplateCard
+                  key={t.id}
+                  template={t}
+                  canEdit={canEdit}
+                  isCopied={copiedId === t.id}
+                  onCopy={() => onCopy(t)}
+                  onEdit={() => onEdit(t)}
+                  onDelete={() => onDelete(t)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
