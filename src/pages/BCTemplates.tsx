@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronUp, Sparkles, X, Rocket,
   LayoutGrid, Moon, Stamp, BookOpen, Plane, MessageCircle, type LucideProps,
   ArrowLeft, SlidersHorizontal, ChevronRight, TrendingUp, MoreVertical,
-  ChevronLeft, FileText, Layers, Tag, Eye, Send,
+  ChevronLeft, FileText, Layers, Tag, Eye, Send, Loader2, Upload,
 } from "lucide-react";
 import { PieChart, Pie, Cell } from "recharts";
 import type { ComponentType } from "react";
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   listTemplates, createTemplate, updateTemplate, deleteTemplate,
+  uploadTemplateImage,
   extractVariables, applyVariables,
   BC_CATEGORIES, type BCTemplate, type BCTemplateDraft, type BCCategory,
 } from "@/features/bcTemplates/bcTemplatesRepo";
@@ -48,6 +49,7 @@ const EMPTY_DRAFT: BCTemplateDraft = {
   title: "",
   category: "umrah",
   body: "",
+  imageUrl: null,
 };
 
 const VAR_SUGGESTIONS: { label: string; var: string }[] = [
@@ -92,6 +94,11 @@ export default function BCTemplates() {
   const [deleting, setDeleting] = useState(false);
 
   const tabsRef = useRef<HTMLDivElement>(null);
+  const [viewTarget, setViewTarget] = useState<BCTemplate | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // ── AITEM context wiring ─────────────────────────────────────────────────
   const { setPageContext, setActiveItem, setOnApplyEdit, setPageData, clearContext } = useAIContextStore();
@@ -184,27 +191,48 @@ export default function BCTemplates() {
   const openAdd = () => {
     setEditTarget(null);
     setDraft(EMPTY_DRAFT);
+    setImageFile(null);
+    setImagePreview(null);
     setFormOpen(true);
   };
   const openEdit = (t: BCTemplate) => {
     setEditTarget(t);
-    setDraft({ title: t.title, category: t.category, body: t.body, sortOrder: t.sortOrder });
+    setDraft({ title: t.title, category: t.category, body: t.body, sortOrder: t.sortOrder, imageUrl: t.imageUrl ?? null });
+    setImageFile(null);
+    setImagePreview(t.imageUrl ?? null);
     setFormOpen(true);
   };
   const handleSave = async () => {
     if (!draft.title.trim()) { toast.error("Judul template wajib diisi."); return; }
     if (!draft.body.trim()) { toast.error("Isi template wajib diisi."); return; }
 
+    // ── Upload gambar jika ada file baru dipilih ─────────────────────────
+    let resolvedImageUrl: string | null = draft.imageUrl ?? null;
+    if (imageFile) {
+      setUploadingImage(true);
+      try {
+        const targetId = editTarget?.id ?? `new-${Date.now()}`;
+        const uploadedUrl = await uploadTemplateImage(imageFile, targetId);
+        resolvedImageUrl = uploadedUrl ?? imagePreview; // fallback: data URL (local mode)
+      } catch (err) {
+        toast.error(`Gagal upload gambar: ${err instanceof Error ? err.message : String(err)}`);
+        setUploadingImage(false);
+        return;
+      }
+      setUploadingImage(false);
+    }
+
+    const finalDraft = { ...draft, imageUrl: resolvedImageUrl };
     const now = new Date().toISOString();
 
     if (editTarget) {
       // Optimistic update: patch state instantly, close form, sync in background
-      const optimistic: BCTemplate = { ...editTarget, ...draft, updatedAt: now };
+      const optimistic: BCTemplate = { ...editTarget, ...finalDraft, updatedAt: now };
       setTemplates((prev) => prev.map((t) => t.id === editTarget.id ? optimistic : t));
       setFormOpen(false);
       setSaving(true);
       try {
-        const real = await updateTemplate(editTarget.id, draft);
+        const real = await updateTemplate(editTarget.id, finalDraft);
         setTemplates((prev) => prev.map((t) => t.id === editTarget.id ? real : t));
         toast.success("Template diperbarui!");
       } catch (err) {
@@ -218,10 +246,11 @@ export default function BCTemplates() {
       // Optimistic insert: add temp item instantly, close form, sync in background
       const tempId = `bct-opt-${Date.now()}`;
       const optimistic: BCTemplate = {
-        ...draft,
+        ...finalDraft,
         id: tempId,
         agencyId: user?.agencyId ?? "local",
-        sortOrder: draft.sortOrder ?? 0,
+        sortOrder: finalDraft.sortOrder ?? 0,
+        imageUrl: resolvedImageUrl,
         createdAt: now,
         updatedAt: now,
       };
@@ -229,7 +258,7 @@ export default function BCTemplates() {
       setFormOpen(false);
       setSaving(true);
       try {
-        const real = await createTemplate(draft);
+        const real = await createTemplate(finalDraft);
         setTemplates((prev) => prev.map((t) => t.id === tempId ? real : t));
         toast.success("Template baru disimpan!");
       } catch (err) {
@@ -268,6 +297,20 @@ export default function BCTemplates() {
     copyToClipboard(filled, copyTarget.id);
     setCopyTarget(null);
   };
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Validate: max 5 MB
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ukuran gambar maksimal 5 MB");
+      return;
+    }
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  }
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -897,6 +940,7 @@ export default function BCTemplates() {
                   onCopy={handleCopyClick}
                   onEdit={openEdit}
                   onDelete={setDeleteTarget}
+                  onView={setViewTarget}
                 />
               );
             })}
@@ -912,6 +956,7 @@ export default function BCTemplates() {
                 onCopy={() => handleCopyClick(t)}
                 onEdit={() => openEdit(t)}
                 onDelete={() => setDeleteTarget(t)}
+                onView={() => setViewTarget(t)}
               />
             ))}
           </div>
@@ -1030,6 +1075,58 @@ export default function BCTemplates() {
           </DialogHeader>
 
           <div className="space-y-4 py-4 px-5 overflow-y-auto flex-1">
+
+            {/* ── Gambar Template (1:1) ── */}
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <ImagePlus className="h-3 w-3 text-slate-400" />
+                Gambar Template <span className="text-slate-400 normal-case font-normal">(opsional · rasio 1:1)</span>
+              </Label>
+              <div className="flex items-start gap-4">
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  className="relative w-[100px] h-[100px] rounded-xl border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50 hover:border-blue-400 transition-colors shrink-0 group"
+                >
+                  {imagePreview ? (
+                    <>
+                      <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                        <Upload className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full gap-1.5 text-slate-400">
+                      <ImagePlus className="h-7 w-7" />
+                      <p className="text-[10px] font-medium text-center leading-tight">Klik untuk<br/>upload</p>
+                    </div>
+                  )}
+                </button>
+                <div className="flex-1 space-y-2 pt-1">
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Gambar akan tampil sebagai thumbnail di kartu template. Gunakan rasio <strong>1:1</strong> untuk hasil terbaik.
+                  </p>
+                  <p className="text-[10px] text-slate-400">Format: JPG, PNG, WEBP · Maks 5 MB</p>
+                  {imagePreview && (
+                    <button
+                      type="button"
+                      onClick={() => { setImagePreview(null); setImageFile(null); setDraft(d => ({ ...d, imageUrl: null })); }}
+                      className="text-[11px] text-red-500 hover:text-red-700 font-medium flex items-center gap-1"
+                    >
+                      <X className="h-3 w-3" /> Hapus gambar
+                    </button>
+                  )}
+                </div>
+              </div>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                className="hidden"
+                onChange={handleImageChange}
+              />
+            </div>
+
             <div className="grid grid-cols-1 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -1120,15 +1217,17 @@ export default function BCTemplates() {
           </div>
 
           <DialogFooter className="gap-2 px-5 py-4 border-t border-slate-100 flex-shrink-0 bg-white">
-            <Button variant="outline" onClick={() => setFormOpen(false)} disabled={saving} className="rounded-xl h-11">
+            <Button variant="outline" onClick={() => setFormOpen(false)} disabled={saving || uploadingImage} className="rounded-xl h-11">
               Batal
             </Button>
             <Button
               onClick={() => void handleSave()}
-              disabled={saving}
+              disabled={saving || uploadingImage}
               className="bg-blue-600 hover:bg-blue-700 rounded-xl h-11 flex-1"
             >
-              {saving ? "Menyimpan…" : editTarget ? "Simpan Perubahan" : "Simpan Template"}
+              {uploadingImage ? (
+                <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Upload gambar…</>
+              ) : saving ? "Menyimpan…" : editTarget ? "Simpan Perubahan" : "Simpan Template"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1190,6 +1289,93 @@ export default function BCTemplates() {
               Copy Pesan
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── View / Preview Dialog ─────────────────────────────────────── */}
+      <Dialog open={!!viewTarget} onOpenChange={(v) => !v && setViewTarget(null)}>
+        <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl mx-4 sm:mx-auto p-0 gap-0">
+          {viewTarget && (() => {
+            const cat = BC_CATEGORIES.find((c) => c.key === viewTarget.category)!;
+            const vars = extractVariables(viewTarget.body);
+            const gradient = THUMB_GRADIENT[viewTarget.category] ?? THUMB_GRADIENT.general;
+            const fmtDate = (iso: string) =>
+              new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
+            return (
+              <>
+                {/* Header thumbnail (image or gradient) */}
+                <div
+                  className="w-full aspect-square relative overflow-hidden"
+                  style={viewTarget.imageUrl ? {} : { background: gradient }}
+                >
+                  {viewTarget.imageUrl ? (
+                    <img src={viewTarget.imageUrl} alt={viewTarget.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full gap-3">
+                      <span className="text-[64px]">{cat.emoji}</span>
+                      <span className="text-white/80 text-sm font-bold uppercase tracking-widest">{cat.label}</span>
+                    </div>
+                  )}
+                  {/* Close button */}
+                  <button
+                    onClick={() => setViewTarget(null)}
+                    className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/40 flex items-center justify-center text-white hover:bg-black/60 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  {/* Category badge overlay */}
+                  <div className="absolute bottom-3 left-3">
+                    <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border bg-white/95 ${cat.color}`}>
+                      {cat.emoji} {cat.label}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="px-5 py-4 space-y-3">
+                  <div>
+                    <h2 className="text-[18px] font-extrabold text-slate-900 leading-snug">{viewTarget.title}</h2>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Dibuat {fmtDate(viewTarget.createdAt)}</p>
+                  </div>
+
+                  {vars.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {vars.map((v) => (
+                        <span key={v} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                          {"{{"}{v}{"}}"}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Full body rendered */}
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <MarkdownContent content={viewTarget.body} size="sm" />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 pt-1">
+                    {canEdit && (
+                      <Button
+                        variant="outline"
+                        className="flex-1 rounded-xl h-11 gap-2"
+                        onClick={() => { setViewTarget(null); openEdit(viewTarget); }}
+                      >
+                        <Pencil className="h-4 w-4" /> Edit
+                      </Button>
+                    )}
+                    <Button
+                      className="flex-1 rounded-xl h-11 gap-2 bg-blue-600 hover:bg-blue-700"
+                      onClick={() => { handleCopyClick(viewTarget); setViewTarget(null); }}
+                    >
+                      <Copy className="h-4 w-4" />
+                      {vars.length > 0 ? "Copy & Isi Variabel" : "Copy Template"}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
@@ -1531,7 +1717,7 @@ const THUMB_GRADIENT: Record<string, string> = {
 // ── DesktopTemplateCard ───────────────────────────────────────────────────────
 
 function DesktopTemplateCard({
-  template, canEdit, isCopied, onCopy, onEdit, onDelete,
+  template, canEdit, isCopied, onCopy, onEdit, onDelete, onView,
 }: {
   template: BCTemplate;
   canEdit: boolean;
@@ -1539,6 +1725,7 @@ function DesktopTemplateCard({
   onCopy: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onView: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const cat = BC_CATEGORIES.find((c) => c.key === template.category)!;
@@ -1565,12 +1752,17 @@ function DesktopTemplateCard({
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md hover:border-blue-200 transition-all group">
       <div className="flex items-stretch">
-        {/* Thumbnail */}
+        {/* Thumbnail — 1:1 image or gradient fallback */}
         <div
-          className="w-[90px] shrink-0 flex items-center justify-center text-[36px] select-none"
-          style={{ background: THUMB_GRADIENT[cat.key] ?? THUMB_GRADIENT.general }}
+          className="w-[90px] h-[90px] shrink-0 flex items-center justify-center text-[36px] select-none overflow-hidden relative cursor-pointer"
+          style={template.imageUrl ? {} : { background: THUMB_GRADIENT[cat.key] ?? THUMB_GRADIENT.general }}
+          onClick={onView}
         >
-          {cat.emoji}
+          {template.imageUrl ? (
+            <img src={template.imageUrl} alt={template.title} className="w-full h-full object-cover" />
+          ) : (
+            cat.emoji
+          )}
         </div>
 
         {/* Content */}
@@ -1623,9 +1815,9 @@ function DesktopTemplateCard({
         {/* Action column */}
         <div className="flex flex-col items-center justify-center gap-1 px-3 border-l border-slate-100 shrink-0">
           <button
-            onClick={() => toast.info("Preview template")}
-            title="Preview"
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            onClick={onView}
+            title="Lihat Template"
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
           >
             <Eye className="h-4 w-4" />
           </button>
@@ -1688,7 +1880,7 @@ function DesktopTemplateCard({
 // ── DesktopCategorySection ────────────────────────────────────────────────────
 
 function DesktopCategorySection({
-  cat, items, canEdit, copiedId, onCopy, onEdit, onDelete,
+  cat, items, canEdit, copiedId, onCopy, onEdit, onDelete, onView,
 }: {
   cat: typeof BC_CATEGORIES[number];
   items: BCTemplate[];
@@ -1697,6 +1889,7 @@ function DesktopCategorySection({
   onCopy: (t: BCTemplate) => void;
   onEdit: (t: BCTemplate) => void;
   onDelete: (t: BCTemplate) => void;
+  onView: (t: BCTemplate) => void;
 }) {
   const [open, setOpen] = useState(true);
   const Icon = CATEGORY_ICONS[cat.key] ?? MessageCircle;
@@ -1743,6 +1936,7 @@ function DesktopCategorySection({
                   onCopy={() => onCopy(t)}
                   onEdit={() => onEdit(t)}
                   onDelete={() => onDelete(t)}
+                  onView={() => onView(t)}
                 />
               ))}
             </div>

@@ -37,6 +37,7 @@ export interface BCTemplate {
   title: string;
   category: BCCategory;
   body: string;
+  imageUrl: string | null;
   sortOrder: number;
   createdBy?: string | null;
   createdAt: string;
@@ -47,6 +48,7 @@ export interface BCTemplateDraft {
   title: string;
   category: BCCategory;
   body: string;
+  imageUrl?: string | null;
   sortOrder?: number;
 }
 
@@ -87,6 +89,7 @@ function fromRow(r: Record<string, unknown>): BCTemplate {
     title:      String(r.title ?? ""),
     category:   String(r.category ?? "general") as BCCategory,
     body:       String(r.body ?? ""),
+    imageUrl:   (r.image_url as string) ?? null,
     sortOrder:  Number(r.sort_order ?? 0),
     createdBy:  (r.created_by as string) ?? null,
     createdAt:  String(r.created_at ?? new Date().toISOString()),
@@ -101,8 +104,26 @@ function toRow(d: Partial<BCTemplateDraft> & { agency_id?: string; created_by?: 
   if (d.title      !== undefined) out.title        = d.title;
   if (d.category   !== undefined) out.category     = d.category;
   if (d.body       !== undefined) out.body         = d.body;
+  if (d.imageUrl   !== undefined) out.image_url    = d.imageUrl ?? null;
   if (d.sortOrder  !== undefined) out.sort_order   = d.sortOrder;
   return out;
+}
+
+/** Upload gambar template ke Supabase Storage bucket "bc-template-images".
+ *  Mengembalikan public URL. Untuk mode lokal (tanpa Supabase), kembalikan null. */
+export async function uploadTemplateImage(file: File, templateId: string): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  const agencyId = getCurrentAgencyId();
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const path = `${agencyId}/${templateId}/cover.${ext}`;
+  const { data, error } = await supabase!.storage
+    .from("bc-template-images")
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (error) throw error;
+  const { data: { publicUrl } } = supabase!.storage
+    .from("bc-template-images")
+    .getPublicUrl(data.path);
+  return publicUrl;
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────
