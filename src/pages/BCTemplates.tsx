@@ -3,6 +3,8 @@ import {
   Copy, Plus, Pencil, Trash2, Check, Search, MessageSquare,
   ChevronDown, ChevronUp, Sparkles, X, Rocket,
   LayoutGrid, Moon, Stamp, BookOpen, Plane, MessageCircle, type LucideProps,
+  ArrowLeft, SlidersHorizontal, ChevronRight, TrendingUp, MoreVertical,
+  ChevronLeft, FileText, Layers, Tag,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -287,8 +289,466 @@ export default function BCTemplates() {
 
   const livePreview = copyTarget ? applyVariables(copyTarget.body, varValues) : "";
 
+  // ── Mobile-only UI state ────────────────────────────────────────────────
+  const [showMobileFilter, setShowMobileFilter] = useState(false);
+  const [mobileMoreMenu, setMobileMoreMenu] = useState<string | null>(null);
+  const [mobilePage, setMobilePage] = useState(1);
+  const MOBILE_PAGE_SIZE = 5;
+
+  useEffect(() => { setMobilePage(1); }, [search, activeTab]);
+
+  const mobilePaged = filtered.slice((mobilePage - 1) * MOBILE_PAGE_SIZE, mobilePage * MOBILE_PAGE_SIZE);
+  const mobilePageCount = Math.ceil(filtered.length / MOBILE_PAGE_SIZE);
+
+  const CAT_GRADIENTS: Record<string, string> = {
+    umrah:           "linear-gradient(135deg,#1d4ed8,#7c3aed)",
+    haji:            "linear-gradient(135deg,#059669,#065f46)",
+    visa_on_arrival: "linear-gradient(135deg,#d97706,#b45309)",
+    visa_pelajar:    "linear-gradient(135deg,#4f46e5,#2563eb)",
+    tiket_pesawat:   "linear-gradient(135deg,#0284c7,#0369a1)",
+    general:         "linear-gradient(135deg,#475569,#334155)",
+  };
+
   return (
-    <div className="flex flex-col min-h-full bg-[#f0f4f8]">
+    <>
+    {/* ══════════════════════════════════════════════════════════
+        MOBILE LAYOUT — md:hidden
+    ══════════════════════════════════════════════════════════ */}
+    <div className="md:hidden min-h-screen bg-[#F0F4FB] pb-28">
+
+      {/* ── TOP HEADER ── */}
+      <div className="bg-white px-4 pt-12 pb-4 shadow-sm">
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => window.history.back()}
+              className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+            </button>
+            <div>
+              <h1 className="text-[22px] font-extrabold text-[#0f1c3f] leading-tight">Template Broadcast</h1>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Kelola template BC untuk mempermudah pembuatan broadcast.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 mt-1">
+            <button
+              onClick={() => { setSearch(""); setActiveTab("all"); }}
+              className="h-9 px-3 rounded-2xl bg-[#F0F4FB] flex items-center gap-1.5 text-[11px] font-bold text-[#0f1c3f] active:opacity-60 transition-opacity"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              Reset
+            </button>
+            {canEdit && (
+              <button
+                onClick={openAdd}
+                className="h-9 w-9 rounded-2xl flex items-center justify-center text-white shadow-sm active:opacity-80 transition-opacity"
+                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+              >
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Search row */}
+        <div className="flex items-center gap-2 mt-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari template berdasarkan nama atau kategori…"
+              className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-[#F0F4FB] border border-transparent text-[#0f1c3f] placeholder-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all"
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-300/40 flex items-center justify-center active:opacity-60">
+                <X className="h-3 w-3 text-slate-500" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setShowMobileFilter((s) => !s)}
+            className={cn(
+              "h-11 px-3 rounded-2xl flex items-center gap-1.5 text-[11px] font-bold transition-all active:opacity-60 shrink-0",
+              showMobileFilter || activeTab !== "all" ? "bg-[#0066FF] text-white" : "bg-[#F0F4FB] text-[#0f1c3f]"
+            )}
+            style={{ WebkitTapHighlightColor: "transparent" }}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} />
+            Filter
+            {activeTab !== "all" && (
+              <span className="h-4 w-4 rounded-full bg-white text-[#0066FF] text-[9px] font-black flex items-center justify-center">1</span>
+            )}
+          </button>
+        </div>
+
+        {/* Filter panel */}
+        <AnimatePresence>
+          {showMobileFilter && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Filter Kategori</p>
+                  {activeTab !== "all" && (
+                    <button onClick={() => setActiveTab("all")} className="text-[11px] text-[#0066FF] font-semibold active:opacity-60">
+                      Reset Filter
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => { setActiveTab("all"); setShowMobileFilter(false); }}
+                    className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95", activeTab === "all" ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                  >
+                    Semua
+                  </button>
+                  {BC_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.key}
+                      onClick={() => { setActiveTab(cat.key); setShowMobileFilter(false); }}
+                      className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95", activeTab === cat.key ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
+                      style={{ WebkitTapHighlightColor: "transparent" }}
+                    >
+                      {cat.emoji} {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ── CATEGORY TABS ── */}
+      <div className="bg-white mt-px px-4 pb-3 shadow-sm">
+        <div className="flex gap-2 overflow-x-auto scrollbar-none pt-3">
+          {([{ key: "all", label: "Semua", emoji: "📋" }, ...BC_CATEGORIES] as { key: BCCategory | "all"; label: string; emoji: string }[]).map((cat) => {
+            const count = cat.key === "all" ? templates.length : counts.get(cat.key as BCCategory) ?? 0;
+            const active = activeTab === cat.key;
+            return (
+              <button
+                key={cat.key}
+                onClick={() => setActiveTab(cat.key)}
+                className={cn(
+                  "shrink-0 h-9 px-4 rounded-full text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95",
+                  active ? "text-white shadow-md" : "bg-[#F0F4FB] text-slate-500"
+                )}
+                style={active ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
+              >
+                {cat.emoji} {cat.label}
+                <span className={cn("text-[9px] font-extrabold px-1.5 py-0.5 rounded-full", active ? "bg-white/25 text-white" : "bg-slate-200 text-slate-500")}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── CONTENT AREA ── */}
+      <div className="px-4 pt-5 space-y-5">
+
+        {/* ── STATS CARD ── */}
+        <div className="bg-white rounded-3xl px-5 py-4 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Ringkasan Template</h3>
+            <span className="text-[11px] text-slate-400 font-medium">
+              {new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date())}
+            </span>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: "Total",      value: templates.length,  iconBg: "#dbeafe", color: "#0066FF" },
+              { label: "Aktif",      value: templates.length,  iconBg: "#d1fae5", color: "#10b981" },
+              { label: "Draft",      value: 0,                 iconBg: "#fef3c7", color: "#f59e0b" },
+              { label: "Diarsipkan", value: 0,                 iconBg: "#fee2e2", color: "#ef4444" },
+            ].map((stat, i) => (
+              <div key={i} className="flex flex-col items-center gap-1.5">
+                <div className="h-9 w-9 rounded-2xl flex items-center justify-center" style={{ backgroundColor: stat.iconBg }}>
+                  <MessageSquare className="h-4 w-4" style={{ color: stat.color }} strokeWidth={1.8} />
+                </div>
+                <p className="text-[22px] font-black text-[#0f1c3f] tabular-nums leading-none">{stat.value}</p>
+                <p className="text-[9px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide">{stat.label}</p>
+                <div className="flex items-center gap-0.5">
+                  <TrendingUp className="h-2.5 w-2.5 text-emerald-400" strokeWidth={2.5} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── DAFTAR TEMPLATE ── */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Daftar Template</h3>
+            <span className="text-[11px] font-semibold text-slate-400">
+              {filtered.length} template
+            </span>
+          </div>
+
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-3xl p-4 animate-pulse flex items-start gap-3">
+                  <div className="h-14 w-14 rounded-2xl bg-slate-200 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-slate-200 rounded-full w-3/4" />
+                    <div className="h-3 bg-slate-100 rounded-full w-1/2" />
+                    <div className="h-3 bg-slate-100 rounded-full w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 text-center shadow-sm">
+              <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-20 text-slate-400" />
+              <p className="text-[13px] font-semibold text-slate-400">
+                {search || activeTab !== "all" ? "Template tidak ditemukan" : "Belum ada template"}
+              </p>
+              {canEdit && !search && activeTab === "all" && (
+                <button
+                  onClick={openAdd}
+                  className="mt-3 text-[12px] text-[#0066FF] font-bold active:opacity-60"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  + Tambah template pertama
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {mobilePaged.map((t) => {
+                const cat = BC_CATEGORIES.find((c) => c.key === t.category);
+                const vars = extractVariables(t.body);
+                const gradient = CAT_GRADIENTS[t.category] ?? CAT_GRADIENTS.general;
+                const previewLines = t.body.split("\n").filter((l) => l.trim()).slice(0, 2).join(" • ");
+
+                return (
+                  <div key={t.id} className="bg-white rounded-3xl shadow-sm overflow-hidden">
+                    <div className="flex items-stretch gap-0">
+                      {/* Thumbnail */}
+                      <div
+                        className="w-[72px] shrink-0 flex flex-col items-center justify-center px-2 py-3"
+                        style={{ background: gradient }}
+                      >
+                        <MessageSquare className="h-6 w-6 text-white/80 mb-1" strokeWidth={1.5} />
+                        <p className="text-white text-[8px] font-extrabold text-center leading-tight uppercase tracking-wide line-clamp-3 px-1">
+                          {cat?.label ?? t.category}
+                        </p>
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 p-3">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              {cat && (
+                                <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full border", cat.color)}>
+                                  {cat.emoji} {cat.label}
+                                </span>
+                              )}
+                              {vars.length > 0 && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                                  {vars.length} var
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-[13px] font-extrabold text-[#0f1c3f] leading-tight line-clamp-2">
+                              {t.title}
+                            </h3>
+                          </div>
+                          {/* More menu */}
+                          <div className="relative shrink-0">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setMobileMoreMenu(mobileMoreMenu === t.id ? null : t.id); }}
+                              className="h-7 w-7 rounded-xl flex items-center justify-center text-slate-300 hover:bg-slate-50 hover:text-slate-500 transition-all active:scale-90"
+                              style={{ WebkitTapHighlightColor: "transparent" }}
+                            >
+                              <MoreVertical className="h-3.5 w-3.5" strokeWidth={2} />
+                            </button>
+                            {mobileMoreMenu === t.id && (
+                              <div className="absolute right-0 top-8 z-20 bg-white rounded-2xl shadow-xl border border-slate-100 py-1 min-w-[150px]" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  onClick={() => { handleCopyClick(t); setMobileMoreMenu(null); }}
+                                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-semibold text-slate-700 hover:bg-[#F0F4FB] transition-colors"
+                                >
+                                  <Copy className="h-3.5 w-3.5 text-blue-500" /> Copy Template
+                                </button>
+                                {canEdit && (
+                                  <>
+                                    <button
+                                      onClick={() => { openEdit(t); setMobileMoreMenu(null); }}
+                                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-semibold text-slate-700 hover:bg-[#F0F4FB] transition-colors"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5 text-sky-500" /> Edit
+                                    </button>
+                                    <div className="mx-3 border-t border-slate-100 my-1" />
+                                    <button
+                                      onClick={() => { setDeleteTarget(t); setMobileMoreMenu(null); }}
+                                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-semibold text-red-500 hover:bg-red-50 transition-colors"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" /> Hapus
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {previewLines && (
+                          <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2 mb-2">
+                            {previewLines}
+                          </p>
+                        )}
+
+                        {/* Footer actions */}
+                        <div className="flex items-center gap-2 mt-1">
+                          <button
+                            onClick={() => handleCopyClick(t)}
+                            className={cn(
+                              "flex items-center gap-1.5 h-7 px-3 rounded-xl text-[11px] font-bold transition-all active:scale-95 flex-1 justify-center",
+                              "bg-[#0066FF] text-white"
+                            )}
+                            style={{ WebkitTapHighlightColor: "transparent" }}
+                          >
+                            <Copy className="h-3 w-3" strokeWidth={2.5} />
+                            {vars.length > 0 ? "Copy & Isi Var" : "Copy"}
+                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => openEdit(t)}
+                              className="h-7 w-7 rounded-xl flex items-center justify-center bg-[#F0F4FB] text-slate-500 active:scale-95 transition-all"
+                              style={{ WebkitTapHighlightColor: "transparent" }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── PAGINATION ── */}
+          {mobilePageCount > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-4 pt-2">
+              <button
+                onClick={() => setMobilePage((p) => Math.max(1, p - 1))}
+                disabled={mobilePage === 1}
+                className="h-9 w-9 rounded-2xl bg-white shadow-sm flex items-center justify-center disabled:opacity-40 active:opacity-60 transition-opacity"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <ChevronLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+              </button>
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: mobilePageCount }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setMobilePage(p)}
+                    className={cn(
+                      "h-8 w-8 rounded-xl text-[12px] font-bold transition-all active:scale-95",
+                      p === mobilePage ? "text-white shadow-sm" : "bg-white text-slate-500 shadow-sm"
+                    )}
+                    style={p === mobilePage ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setMobilePage((p) => Math.min(mobilePageCount, p + 1))}
+                disabled={mobilePage === mobilePageCount}
+                className="h-9 w-9 rounded-2xl bg-white shadow-sm flex items-center justify-center disabled:opacity-40 active:opacity-60 transition-opacity"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <ChevronRight className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ── AKSI CEPAT ── */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Aksi Cepat</h3>
+            <span className="text-[11px] font-semibold text-[#0066FF] active:opacity-60 cursor-pointer">Lihat Semua</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              {
+                icon: <Plus className="h-5 w-5" style={{ color: "#0066FF" }} strokeWidth={1.8} />,
+                iconBg: "#dbeafe",
+                title: "Template Baru",
+                subtitle: "Buat template BC baru",
+                action: () => canEdit ? openAdd() : toast.error("Hanya admin yang bisa membuat template"),
+              },
+              {
+                icon: <Layers className="h-5 w-5" style={{ color: "#10b981" }} strokeWidth={1.8} />,
+                iconBg: "#d1fae5",
+                title: "Duplikasi Template",
+                subtitle: "Salin template yang ada",
+                action: () => toast.info("Segera hadir"),
+              },
+              {
+                icon: <FileText className="h-5 w-5" style={{ color: "#f59e0b" }} strokeWidth={1.8} />,
+                iconBg: "#fef3c7",
+                title: "Import Template",
+                subtitle: "Import dari file atau teks",
+                action: () => toast.info("Segera hadir"),
+              },
+              {
+                icon: <Tag className="h-5 w-5" style={{ color: "#8b5cf6" }} strokeWidth={1.8} />,
+                iconBg: "#ede9fe",
+                title: "Kelola Kategori",
+                subtitle: "Atur kategori template",
+                action: () => toast.info("Segera hadir"),
+              },
+            ].map((item, i) => (
+              <button
+                key={i}
+                onClick={item.action}
+                className="bg-white rounded-2xl p-4 shadow-sm flex items-start gap-3 text-left active:opacity-70 transition-opacity"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <div className="h-10 w-10 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: item.iconBg }}>
+                  {item.icon}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-extrabold text-[#0f1c3f] leading-tight">{item.title}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{item.subtitle}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+      </div>{/* end content area */}
+
+      {/* Backdrop to close more menu */}
+      {mobileMoreMenu && (
+        <div className="fixed inset-0 z-[9]" onClick={() => setMobileMoreMenu(null)} />
+      )}
+
+    </div>{/* end md:hidden */}
+
+    {/* ══════════════════════════════════════════════════════════
+        DESKTOP LAYOUT — hidden md:flex
+    ══════════════════════════════════════════════════════════ */}
+    <div className="hidden md:flex flex-col min-h-full bg-[#f0f4f8]">
 
       {/* ── Hero Section ──────────────────────────────────────────────── */}
       <div className="bg-white px-4 pt-5 pb-4 border-b border-slate-100">
@@ -622,7 +1082,8 @@ export default function BCTemplates() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </div>{/* end hidden md:flex desktop layout */}
+    </>{/* end fragment */}
   );
 }
 
