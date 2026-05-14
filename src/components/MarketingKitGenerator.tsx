@@ -70,6 +70,16 @@ Atau:
 
 Broadcast follow up jamaah yang belum pelunasan paket Umrah Ramadan. Keberangkatan 3 bulan lagi.`;
 
+/* ─── History helper ────────────────────────────────────── */
+const HISTORY_KEY = "temantiket.caption.history.v1";
+function saveToHistory(caption: string) {
+  try {
+    const existing: unknown[] = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]");
+    const entry = { id: Date.now().toString(), caption, createdAt: new Date().toISOString() };
+    localStorage.setItem(HISTORY_KEY, JSON.stringify([entry, ...existing].slice(0, 50)));
+  } catch { /* silent */ }
+}
+
 /* ─── Image helpers ─────────────────────────────────────── */
 function compressImage(file: File, maxWidth = 900, quality = 0.80): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -216,12 +226,12 @@ export function CaptionGenerator() {
         const { caption, usage } = await generateCaptionFromPoster({
           imageBase64: dataUrl, tone: activeTone, waNumber, onStatus: setPosterStatus,
         });
-        setResult(caption); setLastUsage(usage);
+        setResult(caption); setLastUsage(usage); saveToHistory(caption);
       } else {
         const { caption, usage } = await generateCaptionFromContext({
           userContext, tone: activeTone, platform, captionLength, useEmoji, audience, waNumber,
         });
-        setResult(caption); setLastUsage(usage);
+        setResult(caption); setLastUsage(usage); saveToHistory(caption);
       }
     } catch (err) {
       toast.error(`Gagal generate: ${err instanceof Error ? err.message : String(err)}`);
