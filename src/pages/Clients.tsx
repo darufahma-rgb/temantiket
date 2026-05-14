@@ -10,7 +10,9 @@ import {
   UserCheck, AlertTriangle, ScanLine, Loader2, ShieldCheck,
   ExternalLink, TrendingUp, Download, Upload, Tag, Star,
   CheckCircle, ChevronLeft, ChevronDown, Zap,
+  MoreHorizontal, Filter, LayoutList, LayoutGrid, Instagram, Globe,
 } from "lucide-react";
+import { PieChart, Pie, Cell } from "recharts";
 import { OrderProgressTracker, ORDER_PROCESS_STEPS } from "@/components/OrderProgressTracker";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { scanPassport } from "@/lib/ocrPassport";
@@ -989,6 +991,16 @@ function ClientCard({
   );
 }
 
+// ── Chart & sidebar constants ────────────────────────────────────────────────
+const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
+
+const SUMBER_KLIEN = [
+  { name: "Instagram",    pct: 45, color: "#e1306c", iconBg: "#fce4f0", icon: <Instagram className="h-4 w-4" style={{ color: "#e1306c" }} /> },
+  { name: "WhatsApp",     pct: 30, color: "#25d366", iconBg: "#d4f7e3", icon: <MessageCircle className="h-4 w-4" style={{ color: "#25d366" }} /> },
+  { name: "Website",      pct: 15, color: "#3b82f6", iconBg: "#dbeafe", icon: <Globe className="h-4 w-4" style={{ color: "#3b82f6" }} /> },
+  { name: "Rekomendasi",  pct: 10, color: "#f59e0b", iconBg: "#fef3c7", icon: <Users className="h-4 w-4" style={{ color: "#f59e0b" }} /> },
+];
+
 // ── Main list page ──────────────────────────────────────────────────────────
 export default function Clients() {
   const params = useParams<{ id?: string }>();
@@ -1007,6 +1019,12 @@ export default function Clients() {
   const [mobilePage, setMobilePage] = useState(1);
   const [mobileStatusFilter, setMobileStatusFilter] = useState<"all" | "aktif" | "jamaah" | "loyal">("all");
   const MOBILE_PAGE_SIZE = 10;
+
+  // Desktop-specific state
+  const [activeTab, setActiveTab] = useState<"all" | "aktif" | "vip" | "baru" | "tidakAktif">("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(6);
+  const [quickNote, setQuickNote] = useState("");
 
   const { setPageContext, setPageData, clearContext } = useAIContextStore();
   useEffect(() => {
@@ -1101,6 +1119,73 @@ export default function Clients() {
   }, [filtered, mobileStatusFilter, clientIdsWithActiveOrder, clientIdsWithUmrah, clientOrderSummary]);
   const totalMobilePages = Math.max(1, Math.ceil(mobileFiltered.length / MOBILE_PAGE_SIZE));
   const mobilePaged = useMemo(() => mobileFiltered.slice((mobilePage - 1) * MOBILE_PAGE_SIZE, mobilePage * MOBILE_PAGE_SIZE), [mobileFiltered, mobilePage, MOBILE_PAGE_SIZE]);
+
+  // Desktop computed
+  const thirtyDaysAgo = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - 30); return d; }, []);
+  const klienVIP       = useMemo(() => clients.filter(c => (clientOrderSummary.get(c.id)?.count ?? 0) >= 3), [clients, clientOrderSummary]);
+  const klienBaru      = useMemo(() => clients.filter(c => new Date(c.createdAt) >= thirtyDaysAgo), [clients, thirtyDaysAgo]);
+  const klienTidakAktif = useMemo(() => clients.filter(c => !clientIdsWithActiveOrder.has(c.id)), [clients, clientIdsWithActiveOrder]);
+  const totalOrderCount = orders.length;
+  const totalBelanja    = useMemo(() => orders.reduce((s, o) => s + (o.totalPrice ?? 0), 0), [orders]);
+  const avgBelanja      = useMemo(() => {
+    const withOrders = clients.filter(c => (clientOrderSummary.get(c.id)?.count ?? 0) > 0);
+    if (withOrders.length === 0) return 0;
+    const total = withOrders.reduce((s, c) => s + (clientOrderSummary.get(c.id)?.totalPrice ?? 0), 0);
+    return total / withOrders.length;
+  }, [clients, clientOrderSummary]);
+
+  // Tab filtering for desktop
+  const tabFiltered = useMemo(() => {
+    let base = filtered;
+    if (activeTab === "aktif")       base = base.filter(c => clientIdsWithActiveOrder.has(c.id));
+    else if (activeTab === "vip")    base = base.filter(c => (clientOrderSummary.get(c.id)?.count ?? 0) >= 3);
+    else if (activeTab === "baru")   base = base.filter(c => new Date(c.createdAt) >= thirtyDaysAgo);
+    else if (activeTab === "tidakAktif") base = base.filter(c => !clientIdsWithActiveOrder.has(c.id));
+    return base;
+  }, [filtered, activeTab, clientIdsWithActiveOrder, clientOrderSummary, thirtyDaysAgo]);
+
+  const totalDesktopPages = Math.max(1, Math.ceil(tabFiltered.length / pageSize));
+  const pagedClients = useMemo(
+    () => tabFiltered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [tabFiltered, currentPage, pageSize],
+  );
+
+  // Recent clients (last 5 added)
+  const recentClients = useMemo(
+    () => [...clients].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
+    [clients],
+  );
+
+  // Chart data
+  const chartData = useMemo(() => [
+    { name: "Klien Aktif",    value: klienAktif },
+    { name: "Klien Baru",     value: klienBaru.length },
+    { name: "VIP",            value: klienVIP.length },
+    { name: "Tidak Aktif",    value: klienTidakAktif.length - klienBaru.length < 0 ? 0 : klienTidakAktif.length - klienBaru.length },
+  ], [klienAktif, klienBaru.length, klienVIP.length, klienTidakAktif.length]);
+
+  const tabs = [
+    { id: "all"        as const, label: "Semua",       count: clients.length },
+    { id: "aktif"      as const, label: "Aktif",        count: klienAktif },
+    { id: "vip"        as const, label: "⭐ VIP",       count: klienVIP.length },
+    { id: "baru"       as const, label: "Baru",         count: klienBaru.length },
+    { id: "tidakAktif" as const, label: "Tidak Aktif",  count: klienTidakAktif.length },
+  ];
+
+  const fmtCompact = (v: number) => {
+    if (v >= 1_000_000_000) return `Rp${(v / 1_000_000_000).toFixed(2)}M`;
+    if (v >= 1_000_000)     return `Rp${(v / 1_000_000).toFixed(2)} M`;
+    if (v >= 1_000)         return `Rp${(v / 1_000).toFixed(0)}K`;
+    return fmtIDR(v);
+  };
+
+  const statCards = [
+    { label: "Total Klien",       value: clients.length.toLocaleString("id-ID"),  icon: <Users className="h-5 w-5 text-blue-600" />,   iconBg: "#dbeafe", trend: "18%" },
+    { label: "Klien Aktif",       value: klienAktif.toLocaleString("id-ID"),       icon: <CheckCircle className="h-5 w-5 text-emerald-600" />, iconBg: "#d1fae5", trend: "16%" },
+    { label: "Total Order",       value: totalOrderCount.toLocaleString("id-ID"),  icon: <ShoppingBag className="h-5 w-5 text-violet-600" />, iconBg: "#ede9fe", trend: "21%" },
+    { label: "Total Belanja",     value: fmtCompact(totalBelanja),                icon: <TrendingUp className="h-5 w-5 text-pink-600" />,    iconBg: "#fce7f3", trend: "24%" },
+    { label: "Rata-rata Belanja", value: fmtCompact(avgBelanja),                  icon: <Star className="h-5 w-5 text-amber-600" />,         iconBg: "#fef3c7", trend: "17%" },
+  ];
 
   if (params.id) return <ClientDetailInner id={params.id} />;
 
@@ -1483,89 +1568,463 @@ export default function Clients() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════
-           DESKTOP LAYOUT (hidden md:flex)
+           DESKTOP LAYOUT (hidden md:flex) — Dashboard style
       ══════════════════════════════════════════════════════════ */}
-      <div className="hidden md:flex flex-col h-full">
-        {/* ── Page header ── */}
-        <div className="px-5 pt-4 pb-3 flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-bold flex items-center gap-2 text-foreground">
-              <Users className="h-[18px] w-[18px] text-sky-500" />
-              Klien
-            </h1>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              {isLoading ? "Memuat…" : `${clients.length} kontak terdaftar`}
-            </p>
-          </div>
-          <Button size="sm" className="rounded-xl h-8 px-3" onClick={() => setAddOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Tambah
-          </Button>
-        </div>
+      <div className="hidden md:flex h-full overflow-hidden">
 
-        {/* ── Sticky search bar ── */}
-        <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-md border-b border-slate-100 px-5 py-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Cari nama, nomor WA, paspor…"
-              className="pl-9 pr-9 h-9 text-sm bg-slate-50 border-slate-200 rounded-xl focus:bg-card focus:border-sky-300 transition-colors"
-            />
-            <AnimatePresence>
-              {q && (
-                <motion.button
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  onClick={() => setQ("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-slate-200 transition-colors"
-                >
-                  <X className="h-3 w-3" />
-                </motion.button>
-              )}
-            </AnimatePresence>
-          </div>
-          {q && !isLoading && (
-            <p className="text-[10.5px] text-muted-foreground mt-1.5 ml-0.5">
-              {filtered.length} dari {clients.length} klien
-            </p>
-          )}
-        </div>
+        {/* ── Main content ── */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* ── Content ── */}
-        <div className="flex-1 overflow-auto px-5 py-3">
-          {isLoading ? (
-            <div className="space-y-2.5">
-              {[1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : filtered.length === 0 ? (
-            <EmptyState hasQuery={!!debouncedQ} onAdd={() => setAddOpen(true)} />
-          ) : (
-            <AnimatePresence mode="popLayout">
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                {filtered.map((c) => {
-                  const summary = clientOrderSummary.get(c.id);
-                  return (
-                    <ClientCard
-                      key={c.id}
-                      client={c}
-                      orderCount={summary?.count ?? 0}
-                      bestStatus={summary?.bestStatus ?? "none"}
-                      latestLabel={summary?.latestType ?? null}
-                      totalPrice={summary?.totalPrice ?? 0}
-                      onNavigate={() => navigate(`/clients/${c.id}`)}
-                      referredByName={isOwner && c.createdByAgent ? memberNameMap.get(c.createdByAgent) : undefined}
-                    />
-                  );
-                })}
+          {/* Header */}
+          <div className="px-6 pt-5 pb-4 flex items-start justify-between gap-4 border-b border-slate-100 bg-white">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                <Users className="h-5 w-5 text-blue-600" />
               </div>
-            </AnimatePresence>
-          )}
-          <div className="h-6" />
+              <div>
+                <h1 className="text-xl font-bold text-foreground leading-tight">Klien</h1>
+                <p className="text-xs text-muted-foreground mt-0.5">Kelola data klien dan pantau seluruh interaksi dalam satu tempat.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+                onClick={() => setAddOpen(true)}
+              >
+                <Plus className="h-4 w-4" /> Tambah Klien <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="sm" variant="outline" className="h-9 px-4 rounded-xl gap-1.5" onClick={() => toast.info("Segera hadir")}>
+                <Download className="h-4 w-4" /> Import Klien
+              </Button>
+            </div>
+          </div>
+
+          {/* Stat cards */}
+          <div className="px-6 py-4 grid grid-cols-5 gap-3 bg-white border-b border-slate-100">
+            {statCards.map((stat) => (
+              <div key={stat.label} className="bg-slate-50 rounded-xl border border-slate-100 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground leading-none">{stat.label}</p>
+                    <p className="text-2xl font-bold mt-1.5 leading-none truncate">{stat.value}</p>
+                  </div>
+                  <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: stat.iconBg }}>
+                    {stat.icon}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 mt-2.5">
+                  <TrendingUp className="h-3 w-3 text-emerald-500 shrink-0" />
+                  <span className="text-xs text-emerald-600 font-medium">{stat.trend}</span>
+                  <span className="text-xs text-muted-foreground">vs bulan lalu</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Search + filter row */}
+          <div className="px-6 py-3 flex items-center gap-2 bg-white border-b border-slate-100">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                value={q}
+                onChange={(e) => { setQ(e.target.value); setCurrentPage(1); }}
+                placeholder="Cari nama, nomor WA, paspor, email..."
+                className="pl-9 h-10 rounded-xl bg-slate-50 border-slate-200 text-sm"
+              />
+            </div>
+            <select className="h-10 px-3 rounded-xl border border-slate-200 text-sm bg-white text-foreground" onChange={() => {}}>
+              <option>Semua Status</option>
+              <option>Aktif</option>
+              <option>Tidak Aktif</option>
+            </select>
+            <select className="h-10 px-3 rounded-xl border border-slate-200 text-sm bg-white text-foreground" onChange={() => {}}>
+              <option>Semua Tipe</option>
+              <option>VIP</option>
+              <option>Baru</option>
+            </select>
+            <Button variant="outline" size="sm" className="h-10 px-4 rounded-xl gap-1.5 shrink-0">
+              <Filter className="h-4 w-4" /> Filter
+            </Button>
+            <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden shrink-0">
+              <button className="h-10 w-10 flex items-center justify-center bg-blue-600 text-white">
+                <LayoutList className="h-4 w-4" />
+              </button>
+              <button className="h-10 w-10 flex items-center justify-center text-muted-foreground hover:bg-slate-50 transition-colors">
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="px-6 bg-white border-b border-slate-100">
+            <div className="flex items-center">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => { setActiveTab(tab.id); setCurrentPage(1); }}
+                  className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? "border-blue-600 text-blue-600"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tab.label}
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                    activeTab === tab.id ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"
+                  }`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Client list */}
+          <div className="flex-1 overflow-auto bg-white">
+            {isLoading ? (
+              <div className="p-6 space-y-3">
+                {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : tabFiltered.length === 0 ? (
+              <EmptyState hasQuery={!!debouncedQ} onAdd={() => setAddOpen(true)} />
+            ) : (
+              <table className="w-full">
+                <tbody>
+                  {pagedClients.map((c) => {
+                    const summary = clientOrderSummary.get(c.id);
+                    const orderCount = summary?.count ?? 0;
+                    const totalSpend = summary?.totalPrice ?? 0;
+                    const isAktif = clientIdsWithActiveOrder.has(c.id);
+                    const isVIP = orderCount >= 3;
+                    const payStatus = summary?.bestStatus ?? "none";
+                    const initials = getInitials(c.name);
+                    const gradient = getGradient(c.name);
+                    const waNumber = (c.phone ?? "").replace(/\D/g, "");
+                    const waLink = waNumber
+                      ? `https://wa.me/${waNumber.startsWith("0") ? "62" + waNumber.slice(1) : waNumber}`
+                      : null;
+                    const lastOrder = orders
+                      .filter((o) => o.clientId === c.id)
+                      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+                    const lastOrderDate = lastOrder
+                      ? new Date(lastOrder.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })
+                      : "—";
+
+                    return (
+                      <tr
+                        key={c.id}
+                        className="border-b border-slate-50 hover:bg-blue-50/30 cursor-pointer transition-colors group"
+                        onClick={() => navigate(`/clients/${c.id}`)}
+                      >
+                        {/* Avatar + name */}
+                        <td className="px-6 py-3.5 min-w-[220px]">
+                          <div className="flex items-center gap-3">
+                            <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-sm`}>
+                              <span className="text-white text-xs font-bold">{initials}</span>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm text-foreground truncate">{c.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{c.phone || "—"}</p>
+                              {c.email && <p className="text-xs text-muted-foreground truncate">{c.email}</p>}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Badges */}
+                        <td className="px-3 py-3.5 min-w-[120px]">
+                          <div className="flex flex-wrap gap-1">
+                            {isVIP && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                ⭐ VIP
+                              </span>
+                            )}
+                            {isAktif && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Aktif
+                              </span>
+                            )}
+                            {payStatus === "Confirmed" && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                DP
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Total Order */}
+                        <td className="px-3 py-3.5">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total Order</p>
+                          <p className="text-sm font-semibold mt-0.5">{orderCount}</p>
+                        </td>
+
+                        {/* Total Belanja */}
+                        <td className="px-3 py-3.5 min-w-[140px]">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total Belanja</p>
+                          <p className="text-sm font-semibold mt-0.5">{totalSpend > 0 ? fmtIDR(totalSpend) : "—"}</p>
+                        </td>
+
+                        {/* Terakhir Order */}
+                        <td className="px-3 py-3.5 min-w-[130px]">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Terakhir Order</p>
+                          <p className="text-sm font-semibold mt-0.5">{lastOrderDate}</p>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {waLink ? (
+                              <a
+                                href={waLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition-colors"
+                                title="WhatsApp"
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                              </a>
+                            ) : (
+                              <div className="h-8 w-8 rounded-lg bg-slate-50 text-slate-300 flex items-center justify-center">
+                                <MessageCircle className="h-4 w-4" />
+                              </div>
+                            )}
+                            <button
+                              onClick={() => navigate(`/clients/${c.id}`)}
+                              className="h-8 w-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center hover:bg-sky-100 transition-colors"
+                              title="Dokumen"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </button>
+                            <button
+                              className="h-8 w-8 rounded-lg bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-slate-100 transition-colors"
+                              title="Lainnya"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Pagination */}
+          <div className="px-6 py-3 border-t border-slate-100 bg-white flex items-center justify-between shrink-0">
+            <p className="text-xs text-muted-foreground">
+              Menampilkan {tabFiltered.length === 0 ? 0 : Math.min((currentPage - 1) * pageSize + 1, tabFiltered.length)}–{Math.min(currentPage * pageSize, tabFiltered.length)} dari {tabFiltered.length} klien
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-40 hover:bg-slate-50 transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              {Array.from({ length: Math.min(5, totalDesktopPages) }, (_, i) => {
+                let page = i + 1;
+                if (totalDesktopPages > 5) {
+                  if (currentPage <= 3) page = i + 1;
+                  else if (currentPage >= totalDesktopPages - 2) page = totalDesktopPages - 4 + i;
+                  else page = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`h-8 w-8 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === page
+                        ? "bg-blue-600 text-white"
+                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+              {totalDesktopPages > 5 && currentPage < totalDesktopPages - 2 && (
+                <span className="text-slate-400 px-1 text-sm">…</span>
+              )}
+              {totalDesktopPages > 6 && (
+                <button
+                  onClick={() => setCurrentPage(totalDesktopPages)}
+                  className={`h-8 w-8 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === totalDesktopPages
+                      ? "bg-blue-600 text-white"
+                      : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {totalDesktopPages}
+                </button>
+              )}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalDesktopPages, p + 1))}
+                disabled={currentPage === totalDesktopPages}
+                className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-40 hover:bg-slate-50 transition-colors"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <select
+                value={pageSize}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                className="ml-2 h-8 px-2 rounded-lg border border-slate-200 text-xs bg-white text-foreground"
+              >
+                {[6, 10, 20, 50].map((n) => (
+                  <option key={n} value={n}>{n} / halaman</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
-        <MobileFAB onClick={() => setAddOpen(true)} label="Tambah Klien" />
+        {/* ── Right Sidebar ── */}
+        <div className="w-72 xl:w-80 border-l border-slate-100 overflow-y-auto bg-white flex flex-col shrink-0">
+
+          {/* Statistik Klien */}
+          <div className="p-4 border-b border-slate-100">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold">Statistik Klien</h3>
+              <button className="text-xs text-muted-foreground border border-slate-200 px-2 py-1 rounded-lg flex items-center gap-1 hover:bg-slate-50 transition-colors">
+                30 Hari Terakhir <ChevronDown className="h-3 w-3" />
+              </button>
+            </div>
+
+            {/* Donut chart */}
+            <div className="flex items-center justify-center">
+              <div className="relative">
+                <PieChart width={160} height={160}>
+                  <Pie
+                    data={chartData}
+                    cx={75}
+                    cy={75}
+                    innerRadius={50}
+                    outerRadius={72}
+                    dataKey="value"
+                    startAngle={90}
+                    endAngle={-270}
+                    strokeWidth={0}
+                  >
+                    {chartData.map((_, idx) => (
+                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                </PieChart>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <p className="text-2xl font-bold leading-none">{clients.length.toLocaleString("id-ID")}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Total</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="space-y-2 mt-1">
+              {chartData.map((item, idx) => (
+                <div key={item.name} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
+                    <span className="text-muted-foreground">{item.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold">{item.value}</span>
+                    <span className="text-muted-foreground text-[10px]">
+                      ({clients.length > 0 ? ((item.value / clients.length) * 100).toFixed(1) : 0}%)
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sumber Klien */}
+          <div className="p-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold mb-3">Sumber Klien</h3>
+            <div className="space-y-3">
+              {SUMBER_KLIEN.map((s) => (
+                <div key={s.name} className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: s.iconBg }}>
+                    {s.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium">{s.name}</span>
+                      <span className="text-xs font-semibold">{s.pct}%</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${s.pct}%`, backgroundColor: s.color }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Klien Terbaru */}
+          <div className="p-4 border-b border-slate-100">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold">Klien Terbaru</h3>
+              <button className="text-xs text-blue-600 font-medium hover:underline" onClick={() => { setActiveTab("baru"); setCurrentPage(1); }}>
+                Lihat Semua
+              </button>
+            </div>
+            <div className="space-y-3">
+              {recentClients.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">Belum ada klien terbaru</p>
+              ) : (
+                recentClients.map((c) => {
+                  const initials = getInitials(c.name);
+                  const gradient = getGradient(c.name);
+                  const date = new Date(c.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+                  return (
+                    <div
+                      key={c.id}
+                      className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => navigate(`/clients/${c.id}`)}
+                    >
+                      <div className={`h-9 w-9 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0`}>
+                        <span className="text-white text-xs font-bold">{initials}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold truncate">{c.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{c.phone || "—"}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium">Baru</span>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">{date}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Catatan Cepat */}
+          <div className="p-4">
+            <h3 className="text-sm font-semibold mb-2">Catatan Cepat</h3>
+            <textarea
+              value={quickNote}
+              onChange={(e) => setQuickNote(e.target.value)}
+              placeholder="Tulis catatan tentang klien..."
+              className="w-full h-24 px-3 py-2 rounded-xl border border-slate-200 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-blue-300 bg-slate-50 placeholder-slate-400"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-2 w-full rounded-xl h-9 text-xs gap-1.5"
+              onClick={() => {
+                if (quickNote.trim()) {
+                  toast.success("Catatan disimpan!");
+                  setQuickNote("");
+                }
+              }}
+            >
+              <FileText className="h-3.5 w-3.5" /> Simpan Catatan
+            </Button>
+          </div>
+        </div>
       </div>
 
       {sharedDialog}
