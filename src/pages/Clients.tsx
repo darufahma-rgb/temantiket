@@ -1039,6 +1039,23 @@ export default function Clients() {
     if (prev === 0) return curr > 0 ? 100 : 0;
     return Math.round(((curr - prev) / prev) * 100);
   }
+  // Per-client order summary — must be declared before lastMonthLoyal which depends on it
+  const clientOrderSummary = useMemo(() => {
+    const map = new Map<string, { count: number; bestStatus: string; latestType: string | null; totalPrice: number }>();
+    for (const o of orders) {
+      if (!o.clientId) continue;
+      const cur = map.get(o.clientId) ?? { count: 0, bestStatus: "none", latestType: null, totalPrice: 0 };
+      cur.count++;
+      cur.totalPrice += o.totalPrice;
+      if ((STATUS_RANK[o.status] ?? 0) > (STATUS_RANK[cur.bestStatus] ?? 0)) {
+        cur.bestStatus = o.status;
+        cur.latestType = o.type;
+      }
+      map.set(o.clientId, cur);
+    }
+    return map;
+  }, [orders]);
+
   const lastMonthClients     = useMemo(() => clients.filter(c => (c.createdAt ?? "").startsWith(lastMonthStr2)).length, [clients, lastMonthStr2]);
   const lastMonthAktif       = useMemo(() => {
     const lastOrders = orders.filter(o => (o.createdAt ?? "").startsWith(lastMonthStr2) && ["Confirmed","Paid","Done","Completed"].includes(o.status));
@@ -1103,23 +1120,6 @@ export default function Clients() {
       })
       .catch(() => {});
   }, [isOwner]);
-
-  // Per-client order summary
-  const clientOrderSummary = useMemo(() => {
-    const map = new Map<string, { count: number; bestStatus: string; latestType: string | null; totalPrice: number }>();
-    for (const o of orders) {
-      if (!o.clientId) continue;
-      const cur = map.get(o.clientId) ?? { count: 0, bestStatus: "none", latestType: null, totalPrice: 0 };
-      cur.count++;
-      cur.totalPrice += o.totalPrice;
-      if ((STATUS_RANK[o.status] ?? 0) > (STATUS_RANK[cur.bestStatus] ?? 0)) {
-        cur.bestStatus = o.status;
-        cur.latestType = o.type;
-      }
-      map.set(o.clientId, cur);
-    }
-    return map;
-  }, [orders]);
 
   const filtered = useMemo(() => {
     const s = debouncedQ.trim().toLowerCase();
