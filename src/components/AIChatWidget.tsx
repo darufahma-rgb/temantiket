@@ -834,7 +834,7 @@ export function AIChatWidget() {
   const isEmpty = history.length === 0;
 
   return (
-    <>
+    <div className="hidden md:contents">
       {/* Floating button */}
       <div className="fixed bottom-24 right-4 z-50 md:bottom-6 md:right-6">
         <AnimatePresence>
@@ -1026,6 +1026,6 @@ export function AIChatWidget() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 }
