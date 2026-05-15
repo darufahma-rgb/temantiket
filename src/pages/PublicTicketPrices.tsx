@@ -961,22 +961,52 @@ export default function PublicTicketPrices() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link to="/" className="flex items-center shrink-0 hover:opacity-80 transition-opacity">
-            <BrandLogo subtitle="Daftar Harga Tiket Penerbangan" />
+      <header
+        className="sticky top-0 z-20 border-b border-slate-200/80"
+        style={{
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+        }}
+      >
+        <div className="max-w-5xl mx-auto px-4 flex items-center justify-between" style={{ height: 56 }}>
+          {/* Logo full — icon + wordmark */}
+          <Link
+            to="/"
+            className="flex items-center shrink-0 active:opacity-70 transition-opacity"
+            style={{ WebkitTapHighlightColor: "transparent" }}
+          >
+            <img
+              src="/temantiket-logo.png"
+              alt="Temantiket"
+              className="object-contain"
+              style={{ height: 28, width: "auto" }}
+              loading="eager"
+            />
           </Link>
-          {waNumber && (
-            <a
-              href={whatsappUrl(waNumber)}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-xl transition-colors"
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-              Hubungi Kami
-            </a>
-          )}
+
+          {/* Right side: badge + WA button */}
+          <div className="flex items-center gap-2.5">
+            {/* Tagline pill — hanya muncul di md ke atas */}
+            <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+              Mudah · Cepat · Amanah
+            </span>
+
+            {/* WA Button */}
+            {waNumber && (
+              <a
+                href={whatsappUrl(waNumber)}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 text-[12px] font-semibold text-white bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 px-3.5 py-2 rounded-xl transition-colors shadow-sm"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>Hubungi Kami</span>
+              </a>
+            )}
+          </div>
         </div>
       </header>
 
