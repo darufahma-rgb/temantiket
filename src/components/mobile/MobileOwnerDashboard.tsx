@@ -126,31 +126,29 @@ const TABS = [
   { icon: MoreHorizontal, label: "Lainnya", path: "/settings" },
 ];
 
-// ── DECORATIVE plane SVG ──────────────────────────────────────────────────────
+// ── DECORATIVE elegant pattern ────────────────────────────────────────────────
 
-function PlaneSVG() {
+function ElegantPattern() {
   return (
-    <svg width="130" height="110" viewBox="0 0 130 110" fill="none" xmlns="http://www.w3.org/2000/svg" className="pointer-events-none select-none">
-      {/* Cloud big */}
-      <ellipse cx="95" cy="26" rx="22" ry="14" fill="white" fillOpacity="0.22" />
-      <ellipse cx="107" cy="22" rx="14" ry="10" fill="white" fillOpacity="0.18" />
-      <ellipse cx="82" cy="24" rx="13" ry="9" fill="white" fillOpacity="0.15" />
-      {/* Cloud small */}
-      <ellipse cx="30" cy="70" rx="14" ry="9" fill="white" fillOpacity="0.13" />
-      <ellipse cx="40" cy="66" rx="10" ry="7" fill="white" fillOpacity="0.10" />
-      {/* Luggage body */}
-      <rect x="54" y="62" width="36" height="30" rx="6" fill="white" fillOpacity="0.30" />
-      <rect x="58" y="58" width="10" height="7" rx="3" fill="white" fillOpacity="0.22" />
-      <rect x="78" y="58" width="10" height="7" rx="3" fill="white" fillOpacity="0.22" />
-      <line x1="72" y1="62" x2="72" y2="92" stroke="white" strokeOpacity="0.25" strokeWidth="1.5" />
-      <line x1="54" y1="77" x2="90" y2="77" stroke="white" strokeOpacity="0.25" strokeWidth="1.5" />
-      {/* Plane body */}
-      <path d="M18 48 C22 44 32 42 44 46 L88 34 C92 33 96 35 95 39 C94 42 90 43 86 43 L60 48 L80 56 C83 58 82 62 79 62 L64 60 L54 68 C52 70 49 69 49 67 L52 58 L38 56 L30 62 C28 64 25 63 25 61 L28 54 L18 52 C14 51 14 49 18 48Z" fill="white" fillOpacity="0.85" />
-      {/* Engine */}
-      <ellipse cx="60" cy="47" rx="5" ry="3" fill="white" fillOpacity="0.50" />
-      {/* Window */}
-      <ellipse cx="72" cy="41" rx="3" ry="2" fill="#7dd3fc" fillOpacity="0.70" />
-      <ellipse cx="80" cy="39" rx="3" ry="2" fill="#7dd3fc" fillOpacity="0.70" />
+    <svg width="160" height="130" viewBox="0 0 160 130" fill="none" xmlns="http://www.w3.org/2000/svg" className="pointer-events-none select-none">
+      {/* Concentric rings — top-right anchor */}
+      <circle cx="140" cy="20" r="52" stroke="white" strokeOpacity="0.07" strokeWidth="1" fill="none" />
+      <circle cx="140" cy="20" r="36" stroke="white" strokeOpacity="0.09" strokeWidth="1" fill="none" />
+      <circle cx="140" cy="20" r="20" stroke="white" strokeOpacity="0.12" strokeWidth="1.5" fill="none" />
+      <circle cx="140" cy="20" r="7"  fill="white" fillOpacity="0.09" />
+      {/* Dot grid */}
+      {[0,1,2,3,4,5].map(col =>
+        [0,1,2,3].map(row => (
+          <circle key={`${col}-${row}`} cx={8 + col * 20} cy={60 + row * 20} r="1.4" fill="white" fillOpacity={0.08 + col * 0.012} />
+        ))
+      )}
+      {/* Diagonal accent lines */}
+      <line x1="80" y1="110" x2="160" y2="70"  stroke="white" strokeOpacity="0.06" strokeWidth="1" />
+      <line x1="90" y1="128" x2="160" y2="90"  stroke="white" strokeOpacity="0.04" strokeWidth="1" />
+      {/* Small diamonds */}
+      <rect x="50" y="96" width="7" height="7" rx="1" transform="rotate(45 53.5 99.5)" fill="white" fillOpacity="0.10" />
+      <rect x="20" y="50" width="5" height="5" rx="1" transform="rotate(45 22.5 52.5)" fill="white" fillOpacity="0.07" />
+      <rect x="110" y="100" width="6" height="6" rx="1" transform="rotate(45 113 103)" fill="white" fillOpacity="0.08" />
     </svg>
   );
 }
@@ -314,28 +312,44 @@ export function MobileOwnerDashboard() {
         }}
       >
         {/* Logo */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#0038B8] to-[#33A6FF] flex items-center justify-center">
-            <svg viewBox="0 0 24 24" className="h-4 w-4 text-white" fill="currentColor">
-              <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z"/>
-            </svg>
-          </div>
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2 shrink-0 active:opacity-70"
+          style={{ WebkitTapHighlightColor: "transparent" }}
+        >
+          <img
+            src="/temantiket-icon-mark.svg"
+            alt="Temantiket"
+            className="h-8 w-8 object-contain"
+          />
           <div>
             <p className="text-[13px] font-black text-[#0f1c3f] leading-none tracking-tight">temantiket</p>
             <p className="text-[8px] text-slate-400 font-medium leading-none mt-0.5">mudah, cepat, amanah</p>
           </div>
-        </div>
+        </button>
 
-        {/* Center: USD revenue */}
+        {/* Center: live exchange rates */}
         <button
           onClick={() => navigate("/reports")}
           className="flex items-center gap-1.5 bg-[#F2F5FB] rounded-full px-3 py-1.5 active:opacity-70"
           style={{ WebkitTapHighlightColor: "transparent" }}
         >
-          <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
-          <span className="text-[12px] font-bold text-[#0f1c3f]">
-            USD {fmtUSD(totalRevenue, usdRate)}
-          </span>
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" style={{ boxShadow: "0 0 4px #34d399" }} />
+          <div className="flex items-center gap-1 leading-none">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">USD</span>
+            <span className="text-[12px] font-extrabold text-[#1a44d4]">
+              {rates.USD ? `${(rates.USD / 1000).toFixed(1)}k` : "—"}
+            </span>
+            {rates.SAR && (
+              <>
+                <span className="text-[9px] text-slate-300 mx-0.5">·</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">SAR</span>
+                <span className="text-[12px] font-extrabold text-[#1a44d4]">
+                  {rates.SAR.toLocaleString("id-ID")}
+                </span>
+              </>
+            )}
+          </div>
         </button>
 
         {/* Right: bell + avatar */}
@@ -384,9 +398,9 @@ export function MobileOwnerDashboard() {
             <div className="absolute -bottom-10 -left-10 h-36 w-36 rounded-full" style={{ background: "radial-gradient(circle, rgba(45,77,212,0.5) 0%, transparent 70%)" }} />
           </div>
 
-          {/* Plane illustration */}
+          {/* Elegant decorative pattern */}
           <div className="pointer-events-none absolute right-0 top-0">
-            <PlaneSVG />
+            <ElegantPattern />
           </div>
 
           {/* Greeting */}
