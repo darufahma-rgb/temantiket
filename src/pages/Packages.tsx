@@ -252,33 +252,34 @@ export default function Packages() {
       >
         {/* ── Header ── */}
         <div
-          className="sticky top-0 z-30 px-5 pt-safe-area"
+          className="sticky top-0 z-30 px-5"
           style={{
-            background: "rgba(240,244,251,0.92)",
+            background: "rgba(240,244,251,0.96)",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
-            paddingTop: "env(safe-area-inset-top, 16px)",
+            paddingTop: "calc(60px + env(safe-area-inset-top, 0px))",
           }}
         >
-          <div className="flex items-center gap-3 pt-4 pb-3">
+          <div className="flex items-center gap-2 pb-3">
             <button
               onClick={() => navigate(-1)}
-              className="h-9 w-9 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+              className="h-9 w-9 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 active:opacity-60 transition-opacity"
+              style={{ WebkitTapHighlightColor: "transparent" }}
             >
               <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2.2} />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-[18px] font-extrabold text-[#0f1c3f] leading-tight">Paket &amp; Trip</h1>
-              <p className="text-[11px] text-slate-500 font-medium leading-tight">
-                Kelola dan kalkulasi paket perjalanan Umroh, Haji &amp; Trip.
+              <h1 className="text-[17px] font-extrabold text-[#0f1c3f] leading-tight truncate">Paket &amp; Trip</h1>
+              <p className="text-[10px] text-slate-500 font-medium leading-none mt-0.5 truncate">
+                Kelola dan kalkulasi paket Umroh, Haji &amp; Trip.
               </p>
             </div>
             <button
               onClick={openCreate}
-              className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 active:scale-95 transition-transform text-white shadow-sm"
-              style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+              className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 active:opacity-80 transition-opacity text-white shadow-sm"
+              style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
             >
-              <Plus className="h-4.5 w-4.5" strokeWidth={2.5} />
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
             </button>
           </div>
 

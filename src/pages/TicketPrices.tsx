@@ -2351,32 +2351,35 @@ export default function TicketPrices() {
       <div className="md:hidden min-h-screen bg-[#F2F5FB]" style={{ paddingBottom: "calc(88px + env(safe-area-inset-bottom, 0px))" }}>
 
         {/* ── PAGE HEADER ── */}
-        <div className="bg-white px-4 pt-4 pb-4" style={{ boxShadow: "0 1px 0 rgba(0,0,0,0.06)" }}>
-          <div className="flex items-center gap-3">
+        <div
+          className="bg-white px-4 pb-3 sticky top-0 z-20"
+          style={{ paddingTop: "calc(60px + env(safe-area-inset-top, 0px))", boxShadow: "0 1px 0 rgba(0,0,0,0.06)" }}
+        >
+          <div className="flex items-center gap-2">
             <button
               onClick={() => navigate(-1)}
-              className="h-9 w-9 rounded-2xl bg-[#F2F5FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
+              className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
               <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2.2} />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-[20px] font-extrabold text-[#0f1c3f] leading-tight">Harga Tiket</h1>
-              <p className="text-[11px] text-slate-400 font-medium leading-tight mt-0.5">
-                Extract tiket via AI • screenshot atau kode booking
+              <h1 className="text-[17px] font-extrabold text-[#0f1c3f] leading-tight truncate">Harga Tiket</h1>
+              <p className="text-[10px] text-slate-400 font-medium leading-none mt-0.5 truncate">
+                Extract tiket via AI · screenshot atau kode booking
               </p>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => void refreshTicketPrices()} disabled={loading}
-                className="h-9 w-9 rounded-2xl bg-[#F2F5FB] flex items-center justify-center active:opacity-60 transition-opacity disabled:opacity-40"
+                className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60 transition-opacity disabled:opacity-40"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 <RefreshCw className={cn("h-4 w-4 text-slate-500", loading && "animate-spin")} strokeWidth={2} />
               </button>
               <button
                 onClick={() => ticketListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="h-9 px-3 rounded-2xl flex items-center gap-1.5 text-[12px] font-bold active:opacity-80 transition-opacity shrink-0"
+                className="h-9 px-3 rounded-full flex items-center gap-1.5 text-[12px] font-bold active:opacity-80 transition-opacity shrink-0"
                 style={{ background: "#EEF2FF", color: "#0038B8", WebkitTapHighlightColor: "transparent" }}
               >
                 <History className="h-3.5 w-3.5" strokeWidth={2} />

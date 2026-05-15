@@ -1270,51 +1270,25 @@ export default function Clients() {
       ══════════════════════════════════════════════════════════ */}
       <div className="md:hidden min-h-screen bg-[#F2F5FB] pb-[76px] -mx-4">
 
-        {/* ── GLOBAL APP HEADER ── */}
-        <div className="bg-white px-5 pt-12 pb-3 flex items-center justify-between gap-3" style={{ boxShadow: "0 1px 0 rgba(0,0,0,0.06)" }}>
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#0038B8] to-[#33A6FF] flex items-center justify-center">
-              <svg viewBox="0 0 24 24" className="h-4 w-4 text-white" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z"/></svg>
-            </div>
-            <div>
-              <p className="text-[13px] font-black text-[#0f1c3f] leading-none tracking-tight">temantiket</p>
-              <p className="text-[8px] text-slate-400 font-medium leading-none mt-0.5">mudah, cepat, amanah</p>
-            </div>
-          </div>
-          <button onClick={() => navigate("/reports")} className="flex items-center gap-1.5 bg-[#F2F5FB] rounded-full px-3 py-1.5 active:opacity-70" style={{ WebkitTapHighlightColor: "transparent" }}>
-            <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
-            <span className="text-[12px] font-bold text-[#0f1c3f]">USD {mFmtUSD(totalClientRevIDR)}</span>
-          </button>
-          <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => navigate("/notifications")} className="relative h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-70" style={{ WebkitTapHighlightColor: "transparent" }}>
-              <svg viewBox="0 0 24 24" className="h-5 w-5 text-slate-600" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              {mUnread > 0 && <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-0.5 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center">{mUnread > 9 ? "9+" : mUnread}</span>}
-            </button>
-            <button onClick={() => navigate("/settings")} className="h-9 w-9 rounded-full bg-gradient-to-br from-[#0038B8] to-[#33A6FF] flex items-center justify-center shadow-sm active:opacity-80" style={{ WebkitTapHighlightColor: "transparent" }}>
-              <span className="text-white text-[12px] font-extrabold">{mGetInitials(mUser?.displayName)}</span>
-            </button>
-          </div>
-        </div>
-
         {/* ── PAGE HEADER ── */}
-        <div className="bg-white px-4 pt-4 pb-3 border-b border-slate-100">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <button onClick={() => navigate(-1)} className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60 shrink-0" style={{ WebkitTapHighlightColor: "transparent" }}>
-                <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
-              </button>
-              <div className="min-w-0">
-                <h1 className="text-[20px] font-black text-[#0f1c3f] leading-tight">Klien & Jamaah</h1>
-                <p className="text-[10px] text-slate-400 font-medium mt-0.5 leading-snug">Kelola data klien, jamaah,<br />dan riwayat perjalanan</p>
-              </div>
+        <div
+          className="bg-white px-4 pb-3 sticky top-0 z-20"
+          style={{ paddingTop: "calc(60px + env(safe-area-inset-top, 0px))", boxShadow: "0 1px 0 rgba(0,0,0,0.06)" }}
+        >
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate(-1)} className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60 shrink-0" style={{ WebkitTapHighlightColor: "transparent" }}>
+              <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
+            </button>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-[17px] font-extrabold text-[#0f1c3f] leading-tight truncate">Klien & Jamaah</h1>
+              <p className="text-[10px] text-slate-400 font-medium leading-none mt-0.5 truncate">Kelola data klien, jamaah, dan riwayat perjalanan</p>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(""); }} className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>
                 {showSearch ? <X className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} /> : <Search className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />}
               </button>
-              <button onClick={() => setAddOpen(true)} className="h-9 px-3.5 rounded-full flex items-center gap-1.5 text-[12px] font-bold text-white shadow-md active:opacity-80" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}>
-                <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
-                Tambah Klien
+              <button onClick={() => setAddOpen(true)} className="h-9 w-9 rounded-full flex items-center justify-center text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}>
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
               </button>
             </div>
           </div>
