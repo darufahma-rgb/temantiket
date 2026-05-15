@@ -3104,6 +3104,77 @@ export default function TicketPrices() {
             </CardContent>
           </Card>
 
+          {/* ── PENDING FORMS (AI Scan Results) — Desktop ── */}
+          {isAdmin && pendingForms.length > 0 && (
+            <Card className="border-blue-200 bg-blue-50/40">
+              <CardContent className="p-0">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-blue-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">
+                        {saving
+                          ? `Menyimpan… (${saveProgress?.current ?? 0}/${pendingForms.length})`
+                          : `${pendingForms.length} Tiket Ditemukan oleh AI`}
+                      </p>
+                      <p className="text-xs text-slate-500">Periksa detail lalu klik Simpan Semua</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs border-slate-200 text-slate-500"
+                      onClick={() => { setPendingForms([]); setParsedTickets([]); }}
+                      disabled={saving}
+                    >
+                      <X className="w-3.5 h-3.5 mr-1" />
+                      Batal
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => void savePending()}
+                      disabled={saving}
+                    >
+                      {saving ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1.5" />}
+                      {saving ? `${saveProgress?.current ?? "…"}/${pendingForms.length}` : "Simpan Semua"}
+                    </Button>
+                  </div>
+                </div>
+                <div className="px-5 py-4 grid grid-cols-2 gap-3">
+                  {pendingForms.map((form, idx) => (
+                    <div key={idx} className="bg-white rounded-xl border border-blue-100 px-4 py-3 flex items-center gap-3 shadow-sm">
+                      <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                        <Plane className="w-4 h-4 text-blue-600" strokeWidth={1.8} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-900 truncate">{form.airline || "Maskapai"}</p>
+                        <p className="text-xs text-slate-400 truncate">
+                          {form.fromCode} → {form.toCode}
+                          {form.departDate ? ` · ${fmtDate(form.departDate)}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <p className="text-sm font-bold text-slate-900">
+                          {form.currency} {form.basePrice > 0 ? form.basePrice.toLocaleString("id") : "—"}
+                        </p>
+                        <button
+                          onClick={() => removePending(idx)}
+                          className="w-6 h-6 rounded-lg bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors"
+                        >
+                          <X className="w-3 h-3 text-red-500" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Daftar Harga Tiket */}
           <div className="space-y-4">
             {/* Section header */}
