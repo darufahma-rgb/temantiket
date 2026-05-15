@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link, useLocation } from "react-router-dom";
+import { useNotificationStore } from "@/store/notificationStore";
+import { useRatesStore } from "@/store/ratesStore";
 import { MobileFAB } from "@/components/MobileFAB";
 import {
   Users, Plus, Search, Phone, Mail, Pencil, Trash2,
@@ -1019,6 +1021,48 @@ export default function Clients() {
   const [mobilePage, setMobilePage] = useState(1);
   const [mobileStatusFilter, setMobileStatusFilter] = useState<"all" | "aktif" | "jamaah" | "loyal">("all");
   const MOBILE_PAGE_SIZE = 10;
+  const location = useLocation();
+
+  // ── Mobile: notification + rates ──────────────────────────────────
+  const { notifications, fetchNotifications } = useNotificationStore();
+  useEffect(() => { void fetchNotifications(); }, [fetchNotifications]);
+  const mUnread = useMemo(() => notifications.filter(n => !n.is_read).length, [notifications]);
+  const usdRate = useRatesStore((s) => s.rates.USD ?? 16_000);
+  const mUser   = useAuthStore((s) => s.user);
+
+  // month-over-month comparisons for stats card
+  const nowD2 = new Date();
+  const thisMonthStr2 = `${nowD2.getFullYear()}-${String(nowD2.getMonth()+1).padStart(2,"0")}`;
+  const lastMonthD2   = new Date(nowD2.getFullYear(), nowD2.getMonth()-1, 1);
+  const lastMonthStr2 = `${lastMonthD2.getFullYear()}-${String(lastMonthD2.getMonth()+1).padStart(2,"0")}`;
+  function mGrow(curr: number, prev: number): number {
+    if (prev === 0) return curr > 0 ? 100 : 0;
+    return Math.round(((curr - prev) / prev) * 100);
+  }
+  const lastMonthClients     = useMemo(() => clients.filter(c => (c.createdAt ?? "").startsWith(lastMonthStr2)).length, [clients, lastMonthStr2]);
+  const lastMonthAktif       = useMemo(() => {
+    const lastOrders = orders.filter(o => (o.createdAt ?? "").startsWith(lastMonthStr2) && ["Confirmed","Paid","Done","Completed"].includes(o.status));
+    const ids = new Set(lastOrders.map(o => o.clientId).filter(Boolean));
+    return ids.size;
+  }, [orders, lastMonthStr2]);
+  const lastMonthJamaah      = useMemo(() => {
+    const lastOrders = orders.filter(o => (o.createdAt ?? "").startsWith(lastMonthStr2) && o.type === "umrah");
+    const ids = new Set(lastOrders.map(o => o.clientId).filter(Boolean));
+    return ids.size;
+  }, [orders, lastMonthStr2]);
+  const lastMonthLoyal       = useMemo(() => clients.filter(c => (clientOrderSummary.get(c.id)?.count ?? 0) > 1 && (c.createdAt ?? "").startsWith(lastMonthStr2)).length, [clients, clientOrderSummary, lastMonthStr2]);
+
+  function mFmtUSD(idr: number) {
+    const v = idr / usdRate;
+    if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + "M";
+    if (v >= 1_000)     return (v / 1_000).toFixed(1) + "k";
+    return v.toFixed(0);
+  }
+  function mGetInitials(name?: string) {
+    if (!name) return "A";
+    return name.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase();
+  }
+  const totalClientRevIDR = useMemo(() => orders.filter(o => o.status !== "Cancelled").reduce((s, o) => s + (o.totalPrice ?? 0), 0), [orders]);
 
   // Desktop-specific state
   const [activeTab, setActiveTab] = useState<"all" | "aktif" | "vip" | "baru" | "tidakAktif">("all");
@@ -1224,37 +1268,51 @@ export default function Clients() {
       {/* ══════════════════════════════════════════════════════════
            MOBILE LAYOUT (md:hidden) — Native App Style
       ══════════════════════════════════════════════════════════ */}
-      <div className="md:hidden min-h-screen bg-secondary pb-28 -mx-4">
+      <div className="md:hidden min-h-screen bg-[#F2F5FB] pb-[76px] -mx-4">
 
-        {/* ── TOP HEADER ── */}
-        <div className="bg-card px-4 pt-12 pb-4 shadow-sm">
-          <div className="flex items-start justify-between gap-3 mb-1">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate(-1)}
-                className="h-9 w-9 rounded-2xl bg-secondary flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                <ArrowLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
+        {/* ── GLOBAL APP HEADER ── */}
+        <div className="bg-white px-5 pt-12 pb-3 flex items-center justify-between gap-3" style={{ boxShadow: "0 1px 0 rgba(0,0,0,0.06)" }}>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#0038B8] to-[#33A6FF] flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-white" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z"/></svg>
+            </div>
+            <div>
+              <p className="text-[13px] font-black text-[#0f1c3f] leading-none tracking-tight">temantiket</p>
+              <p className="text-[8px] text-slate-400 font-medium leading-none mt-0.5">mudah, cepat, amanah</p>
+            </div>
+          </div>
+          <button onClick={() => navigate("/reports")} className="flex items-center gap-1.5 bg-[#F2F5FB] rounded-full px-3 py-1.5 active:opacity-70" style={{ WebkitTapHighlightColor: "transparent" }}>
+            <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
+            <span className="text-[12px] font-bold text-[#0f1c3f]">USD {mFmtUSD(totalClientRevIDR)}</span>
+          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => navigate("/notifications")} className="relative h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-70" style={{ WebkitTapHighlightColor: "transparent" }}>
+              <svg viewBox="0 0 24 24" className="h-5 w-5 text-slate-600" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              {mUnread > 0 && <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-0.5 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center">{mUnread > 9 ? "9+" : mUnread}</span>}
+            </button>
+            <button onClick={() => navigate("/settings")} className="h-9 w-9 rounded-full bg-gradient-to-br from-[#0038B8] to-[#33A6FF] flex items-center justify-center shadow-sm active:opacity-80" style={{ WebkitTapHighlightColor: "transparent" }}>
+              <span className="text-white text-[12px] font-extrabold">{mGetInitials(mUser?.displayName)}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ── PAGE HEADER ── */}
+        <div className="bg-white px-4 pt-4 pb-3 border-b border-slate-100">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <button onClick={() => navigate(-1)} className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60 shrink-0" style={{ WebkitTapHighlightColor: "transparent" }}>
+                <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
               </button>
-              <div>
-                <h1 className="text-[22px] font-extrabold text-foreground leading-tight">Klien & Jamaah</h1>
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5">Kelola data klien, jamaah, dan riwayat perjalanan</p>
+              <div className="min-w-0">
+                <h1 className="text-[20px] font-black text-[#0f1c3f] leading-tight">Klien & Jamaah</h1>
+                <p className="text-[10px] text-slate-400 font-medium mt-0.5 leading-snug">Kelola data klien, jamaah,<br />dan riwayat perjalanan</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0 mt-1">
-              <button
-                onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(""); }}
-                className="h-9 w-9 rounded-2xl bg-secondary flex items-center justify-center active:opacity-60 transition-opacity"
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                {showSearch ? <X className="h-4 w-4 text-foreground" strokeWidth={2} /> : <Search className="h-4 w-4 text-foreground" strokeWidth={2} />}
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(""); }} className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>
+                {showSearch ? <X className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} /> : <Search className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />}
               </button>
-              <button
-                onClick={() => setAddOpen(true)}
-                className="h-9 px-3.5 rounded-2xl flex items-center gap-1.5 text-[12px] font-bold text-white shadow-sm active:opacity-80 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
-              >
+              <button onClick={() => setAddOpen(true)} className="h-9 px-3.5 rounded-full flex items-center gap-1.5 text-[12px] font-bold text-white shadow-md active:opacity-80" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}>
                 <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
                 Tambah Klien
               </button>
@@ -1264,69 +1322,51 @@ export default function Clients() {
           {/* Animated search bar */}
           <AnimatePresence>
             {showSearch && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.22 }}
-                className="overflow-hidden"
-              >
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.22 }} className="overflow-hidden">
                 <div className="relative mt-3">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                  <input
-                    autoFocus
-                    type="text"
-                    value={q}
-                    onChange={(e) => { setQ(e.target.value); setMobilePage(1); }}
-                    placeholder="Cari nama, email, atau nomor paspor…"
-                    className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-secondary border border-transparent text-foreground placeholder-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all"
-                  />
-                  {q && (
-                    <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-200/60 flex items-center justify-center active:opacity-60">
-                      <X className="h-3 w-3 text-slate-500" />
-                    </button>
-                  )}
+                  <input autoFocus type="text" value={q} onChange={(e) => { setQ(e.target.value); setMobilePage(1); }} placeholder="Cari nama, email, atau nomor paspor…" className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-[#F2F5FB] border border-transparent text-[#0f1c3f] placeholder-slate-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all" />
+                  {q && <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-200 flex items-center justify-center active:opacity-60"><X className="h-3 w-3 text-slate-500" /></button>}
                 </div>
-                {q && (
-                  <p className="text-[10.5px] text-slate-400 mt-1.5 ml-1">
-                    {mobileFiltered.length} dari {clients.length} klien
-                  </p>
-                )}
+                {q && <p className="text-[10.5px] text-slate-400 mt-1.5 ml-1">{mobileFiltered.length} dari {clients.length} klien</p>}
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        <div className="px-4 pt-5 space-y-5">
+        <div className="px-4 pt-4 space-y-4">
 
-          {/* ── STATS GRID ── */}
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: "Total Klien",   value: clients.length,  icon: <Users className="h-5 w-5" style={{ color: "#0066FF" }} strokeWidth={1.8} />, iconBg: "#dbeafe", filter: "all"    as const },
-              { label: "Klien Aktif",   value: klienAktif,      icon: <CheckCircle className="h-5 w-5" style={{ color: "#10b981" }} strokeWidth={1.8} />, iconBg: "#d1fae5", filter: "aktif"  as const },
-              { label: "Jamaah Aktif",  value: jamaahAktif,     icon: <Users className="h-5 w-5" style={{ color: "#8b5cf6" }} strokeWidth={1.8} />, iconBg: "#ede9fe", filter: "jamaah" as const },
-              { label: "Klien Loyal",   value: klienLoyal,      icon: <Star className="h-5 w-5" style={{ color: "#f59e0b" }} strokeWidth={1.8} />, iconBg: "#fef3c7", filter: "loyal"  as const },
-            ].map((stat) => (
-              <button
-                key={stat.label}
-                onClick={() => { setMobileStatusFilter(mobileStatusFilter === stat.filter ? "all" : stat.filter); setMobilePage(1); }}
-                className={`bg-card rounded-3xl p-4 text-left shadow-sm active:opacity-70 transition-all ${mobileStatusFilter === stat.filter ? "ring-2 ring-[#0066FF]/30" : ""}`}
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                <div className="h-10 w-10 rounded-2xl flex items-center justify-center mb-3" style={{ backgroundColor: stat.iconBg }}>
-                  {stat.icon}
-                </div>
-                <p className="text-[26px] font-black text-foreground tabular-nums leading-none">{stat.value}</p>
-                <p className="text-[10px] font-semibold text-slate-400 mt-1 uppercase tracking-wide">{stat.label}</p>
-                <div className="flex items-center gap-0.5 mt-1.5">
-                  <TrendingUp className="h-2.5 w-2.5 text-emerald-400" strokeWidth={2.5} />
-                  <span className="text-[9px] text-emerald-500 font-semibold">vs bulan lalu</span>
-                </div>
-              </button>
-            ))}
+          {/* ── STATS CARD (4-col single row) ── */}
+          <div className="bg-white rounded-[20px] px-2 py-4" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+            <div className="grid grid-cols-4 divide-x divide-slate-100">
+              {([
+                { label: "Total Klien",  value: clients.length, prev: lastMonthClients, icon: <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, color: "#2563eb", bg: "#eff6ff", filter: "all"    as const },
+                { label: "Klien Aktif", value: klienAktif,      prev: lastMonthAktif,  icon: <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>, color: "#16a34a", bg: "#ecfdf5", filter: "aktif"  as const },
+                { label: "Jamaah Aktif",value: jamaahAktif,     prev: lastMonthJamaah, icon: <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><circle cx="19" cy="8" r="3"/></svg>, color: "#7c3aed", bg: "#f5f3ff", filter: "jamaah" as const },
+                { label: "Klien Loyal", value: klienLoyal,      prev: lastMonthLoyal,  icon: <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>, color: "#d97706", bg: "#fffbeb", filter: "loyal"  as const },
+              ] as const).map((stat, i) => {
+                const change = mGrow(stat.value, stat.prev);
+                const up = change >= 0;
+                return (
+                  <button key={stat.label} onClick={() => { setMobileStatusFilter(mobileStatusFilter === stat.filter ? "all" : stat.filter); setMobilePage(1); }}
+                    className={`flex flex-col items-center gap-1 active:opacity-70 transition-opacity ${i > 0 ? "px-1" : "pr-1"}`}
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                  >
+                    <div className="h-10 w-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: stat.bg, color: stat.color }}>{stat.icon}</div>
+                    <p className="text-[22px] font-black text-[#0f1c3f] tabular-nums leading-none mt-0.5">{stat.value}</p>
+                    <p className="text-[8px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide px-0.5">{stat.label}</p>
+                    <div className="flex items-center gap-0.5">
+                      {up ? <TrendingUp className="h-2.5 w-2.5 text-emerald-500" strokeWidth={2.5} /> : <TrendingUp className="h-2.5 w-2.5 text-red-400 rotate-180" strokeWidth={2.5} />}
+                      <span className={`text-[8.5px] font-bold ${up ? "text-emerald-500" : "text-red-400"}`}>{change === 0 ? "0%" : `${up ? "+" : ""}${change}%`}</span>
+                    </div>
+                    <span className="text-[7.5px] text-slate-300 font-medium">vs bulan lalu</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* ── FILTER / SORT ROW ── */}
+          {/* ── FILTER PILLS ── */}
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
             {([
               { id: "all",    label: "Semua Status" },
@@ -1334,161 +1374,90 @@ export default function Clients() {
               { id: "jamaah", label: "Jamaah Umrah" },
               { id: "loyal",  label: "Klien Loyal" },
             ] as const).map((f) => (
-              <button
-                key={f.id}
-                onClick={() => { setMobileStatusFilter(f.id); setMobilePage(1); }}
-                className={`shrink-0 h-8 px-3.5 rounded-full text-[11px] font-bold border transition-all active:scale-95 whitespace-nowrap flex items-center gap-1 ${mobileStatusFilter === f.id ? "text-white border-transparent shadow-sm" : "bg-card text-slate-600 border-slate-200"}`}
+              <button key={f.id} onClick={() => { setMobileStatusFilter(f.id); setMobilePage(1); }}
+                className={`shrink-0 h-9 px-4 rounded-full text-[11px] font-bold border transition-all active:scale-95 whitespace-nowrap ${mobileStatusFilter === f.id ? "text-white border-transparent shadow-md" : "bg-white text-slate-500 border-slate-200"}`}
                 style={mobileStatusFilter === f.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
               >
                 {f.label}
               </button>
             ))}
-            <div className="ml-auto shrink-0 flex items-center gap-1 text-[11px] text-slate-400 font-semibold whitespace-nowrap">
-              Urutkan: Terbaru <ChevronDown className="h-3 w-3" />
-            </div>
+            <button className="shrink-0 h-9 w-9 rounded-full bg-white border border-slate-200 flex items-center justify-center active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+            </button>
           </div>
 
           {/* ── DAFTAR KLIEN ── */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[15px] font-extrabold text-foreground">Daftar Klien</h3>
+              <p className="text-[15px] font-extrabold text-[#0f1c3f]">Daftar Klien</p>
               <span className="text-[12px] font-semibold text-slate-400">{mobileFiltered.length} Klien</span>
             </div>
 
             {isLoading ? (
-              <div className="space-y-3">
-                {[1,2,3,4].map((i) => (
-                  <div key={i} className="bg-card rounded-3xl p-4 animate-pulse flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-slate-100 shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3.5 bg-slate-100 rounded-full w-3/4" />
-                      <div className="h-2.5 bg-slate-100 rounded-full w-1/2" />
-                      <div className="h-2 bg-slate-100 rounded-full w-1/3" />
-                    </div>
-                    <div className="h-6 w-14 bg-slate-100 rounded-full shrink-0" />
+              <div className="bg-white rounded-[20px] overflow-hidden divide-y divide-slate-100" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-3.5 animate-pulse">
+                    <div className="h-11 w-11 rounded-full bg-slate-100 shrink-0" />
+                    <div className="flex-1 space-y-2"><div className="h-3 bg-slate-100 rounded-full w-3/4" /><div className="h-2.5 bg-slate-100 rounded-full w-1/2" /><div className="flex gap-1.5 mt-1"><div className="h-4 w-10 bg-slate-100 rounded-full" /><div className="h-4 w-16 bg-slate-100 rounded-full" /></div></div>
+                    <div className="shrink-0 space-y-1.5"><div className="h-3 w-12 bg-slate-100 rounded-full" /><div className="h-3 w-3 bg-slate-100 rounded" /></div>
                   </div>
                 ))}
               </div>
             ) : mobileFiltered.length === 0 ? (
-              <div className="bg-card rounded-3xl px-4 py-12 text-center flex flex-col items-center shadow-sm">
-                <div className="h-14 w-14 rounded-2xl bg-[#dbeafe] flex items-center justify-center mb-3">
-                  <Users className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
-                </div>
-                <p className="text-[14px] font-bold text-foreground">Belum ada klien</p>
+              <div className="bg-white rounded-[20px] px-4 py-12 text-center flex flex-col items-center" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+                <div className="h-14 w-14 rounded-2xl bg-[#eff6ff] flex items-center justify-center mb-3"><Users className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} /></div>
+                <p className="text-[14px] font-bold text-[#0f1c3f]">Belum ada klien</p>
                 <p className="text-[11px] text-slate-400 mt-1">{q ? "Coba kata kunci lain." : "Tambahkan klien pertama untuk memulai."}</p>
-                {!q && (
-                  <button
-                    onClick={() => setAddOpen(true)}
-                    className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80"
-                    style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Tambah Klien
-                  </button>
-                )}
+                {!q && <button onClick={() => setAddOpen(true)} className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}><Plus className="h-3.5 w-3.5" /> Tambah Klien</button>}
               </div>
             ) : (
               <motion.div
-                className="space-y-3"
-                initial="hidden"
-                animate="visible"
-                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05, delayChildren: 0.03 } } }}
+                className="bg-white rounded-[20px] overflow-hidden divide-y divide-slate-100"
+                style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+                initial="hidden" animate="visible"
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04, delayChildren: 0.02 } } }}
               >
                 {mobilePaged.map((c) => {
-                  const summary = clientOrderSummary.get(c.id);
-                  const orderCount = summary?.count ?? 0;
-                  const bestStatus = summary?.bestStatus ?? "none";
-                  const latestType = summary?.latestType;
-                  const badge = deriveStatusBadge(bestStatus);
-                  const initials = getInitials(c.name);
-                  const gradient = getGradient(c.name);
-                  const isAktif = clientIdsWithActiveOrder.has(c.id);
-                  const isJamaah = clientIdsWithUmrah.has(c.id);
-                  const waNumber = c.phone.replace(/\D/g, "");
-                  const waLink = waNumber ? `https://wa.me/${waNumber.startsWith("0") ? "62" + waNumber.slice(1) : waNumber}` : null;
+                  const summary     = clientOrderSummary.get(c.id);
+                  const orderCount  = summary?.count ?? 0;
+                  const initials    = getInitials(c.name);
+                  const gradient    = getGradient(c.name);
+                  const isAktif     = clientIdsWithActiveOrder.has(c.id);
+                  const isJamaah    = clientIdsWithUmrah.has(c.id);
+                  const isLoyal     = orderCount > 1 || (c.referralStamps ?? 0) > 0;
                   return (
                     <motion.button
                       key={c.id}
-                      variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } } }}
-                      whileTap={{ scale: 0.985 }}
+                      variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } } }}
                       onClick={() => navigate(`/clients/${c.id}`)}
-                      className="w-full bg-card rounded-3xl p-4 shadow-sm text-left active:opacity-80 transition-opacity"
+                      className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-slate-50 transition-colors"
                       style={{ WebkitTapHighlightColor: "transparent" }}
                     >
-                      <div className="flex items-start gap-3">
-                        {/* Avatar */}
-                        <div className={`h-12 w-12 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-sm`}>
-                          <span className="text-white text-sm font-bold tracking-wide">{initials}</span>
-                        </div>
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <p className="text-[14px] font-extrabold text-foreground truncate">{c.name}</p>
-                          </div>
-                          {c.email && <p className="text-[11px] text-slate-400 truncate mt-0.5">{c.email}</p>}
-                          {c.passportNumber && (
-                            <p className="text-[10px] text-slate-400 mt-0.5 font-mono">Paspor: {c.passportNumber}</p>
-                          )}
-                          <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                            <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border ${badge.bg} ${badge.text} ${badge.border}`}>
-                              {badge.label}
-                            </span>
-                            {isJamaah && (
-                              <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200">
-                                Jamaah Umrah
-                              </span>
-                            )}
-                            {isAktif && !isJamaah && (
-                              <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
-                                Aktif
-                              </span>
-                            )}
-                            {orderCount > 1 && (
-                              <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
-                                ★ Loyal
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {/* Right side */}
-                        <div className="flex flex-col items-end gap-1.5 shrink-0">
-                          <ChevronRight className="h-4 w-4 text-slate-300" />
-                          {orderCount > 0 && (
-                            <span className="text-[10px] text-slate-400 font-medium">{orderCount} order</span>
-                          )}
-                          {latestType && (
-                            <span className="text-[11px]">{ORDER_TYPE_EMOJI[latestType as keyof typeof ORDER_TYPE_EMOJI]}</span>
-                          )}
+                      {/* Avatar */}
+                      <div className={`h-11 w-11 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-sm`}>
+                        <span className="text-white text-[13px] font-extrabold tracking-wide">{initials}</span>
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-extrabold text-[#0f1c3f] truncate leading-snug">{c.name}</p>
+                        {c.passportNumber
+                          ? <p className="text-[10px] text-slate-400 mt-0.5 font-mono">Paspor: {c.passportNumber}</p>
+                          : c.phone
+                            ? <p className="text-[10px] text-slate-400 mt-0.5">{c.phone}</p>
+                            : null
+                        }
+                        <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                          {isAktif && <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Aktif</span>}
+                          {isJamaah && <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-[#eff6ff] text-[#2563eb] border border-blue-200">Jamaah Umrah</span>}
+                          {isLoyal && <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Klien Loyal</span>}
                         </div>
                       </div>
-                      {/* Quick action row */}
-                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100">
-                        {waLink ? (
-                          <a
-                            href={waLink}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 text-[11px] font-semibold active:opacity-70"
-                          >
-                            <MessageCircle className="h-3.5 w-3.5" /> WA
-                          </a>
-                        ) : (
-                          <div className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl bg-slate-50 text-slate-300 text-[11px] font-semibold">
-                            <MessageCircle className="h-3.5 w-3.5" /> WA
-                          </div>
-                        )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/clients/${c.id}`); }}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl bg-sky-50 text-sky-600 text-[11px] font-semibold active:opacity-70"
-                        >
-                          <BookOpen className="h-3.5 w-3.5" /> Dokumen
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/orders?clientId=${c.id}`); }}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl bg-blue-50 text-blue-600 text-[11px] font-semibold active:opacity-70"
-                        >
-                          <ShoppingBag className="h-3.5 w-3.5" /> Order
-                        </button>
+
+                      {/* Order count + chevron */}
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {orderCount > 0 && <span className="text-[10px] font-semibold text-slate-400 whitespace-nowrap">{orderCount} Order</span>}
+                        <ChevronRight className="h-4 w-4 text-slate-300" strokeWidth={2} />
                       </div>
                     </motion.button>
                   );
@@ -1496,15 +1465,10 @@ export default function Clients() {
               </motion.div>
             )}
 
-            {/* ── PAGINATION ── */}
+            {/* Pagination */}
             {totalMobilePages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-5">
-                <button
-                  onClick={() => setMobilePage(p => Math.max(1, p - 1))}
-                  disabled={mobilePage === 1}
-                  className="h-9 w-9 rounded-2xl bg-card shadow-sm flex items-center justify-center text-slate-500 disabled:opacity-30 active:opacity-60"
-                  style={{ WebkitTapHighlightColor: "transparent" }}
-                >
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <button onClick={() => setMobilePage(p => Math.max(1, p - 1))} disabled={mobilePage === 1} className="h-9 w-9 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-500 disabled:opacity-30 active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 {Array.from({ length: Math.min(5, totalMobilePages) }, (_, i) => {
@@ -1515,22 +1479,13 @@ export default function Clients() {
                     else page = mobilePage - 2 + i;
                   }
                   return (
-                    <button
-                      key={page}
-                      onClick={() => setMobilePage(page)}
-                      className={`h-9 w-9 rounded-2xl text-[12px] font-bold transition-all ${mobilePage === page ? "text-white shadow-md" : "bg-card text-slate-500 shadow-sm"}`}
+                    <button key={page} onClick={() => setMobilePage(page)}
+                      className={`h-9 w-9 rounded-full text-[12px] font-bold transition-all ${mobilePage === page ? "text-white shadow-md" : "bg-white text-slate-500 shadow-sm"}`}
                       style={mobilePage === page ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
-                    >
-                      {page}
-                    </button>
+                    >{page}</button>
                   );
                 })}
-                <button
-                  onClick={() => setMobilePage(p => Math.min(totalMobilePages, p + 1))}
-                  disabled={mobilePage === totalMobilePages}
-                  className="h-9 w-9 rounded-2xl bg-card shadow-sm flex items-center justify-center text-slate-500 disabled:opacity-30 active:opacity-60"
-                  style={{ WebkitTapHighlightColor: "transparent" }}
-                >
+                <button onClick={() => setMobilePage(p => Math.min(totalMobilePages, p + 1))} disabled={mobilePage === totalMobilePages} className="h-9 w-9 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-500 disabled:opacity-30 active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
@@ -1540,31 +1495,56 @@ export default function Clients() {
           {/* ── AKSI CEPAT ── */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[15px] font-extrabold text-foreground">Aksi Cepat</h3>
-              <span className="text-[11px] text-[#0066FF] font-semibold">Lihat Semua</span>
+              <p className="text-[15px] font-extrabold text-[#0f1c3f]">Aksi Cepat</p>
+              <button className="text-[11px] text-[#0066FF] font-bold active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>Lihat Semua</button>
             </div>
             <div className="grid grid-cols-4 gap-3">
               {[
-                { label: "Import Klien",  icon: <Upload className="h-5 w-5" style={{ color: "#0066FF" }} strokeWidth={1.8} />,  iconBg: "#dbeafe", action: () => toast.info("Segera hadir") },
-                { label: "Export Data",   icon: <Download className="h-5 w-5" style={{ color: "#10b981" }} strokeWidth={1.8} />, iconBg: "#d1fae5", action: () => toast.info("Segera hadir") },
-                { label: "Grup Klien",   icon: <Users className="h-5 w-5" style={{ color: "#8b5cf6" }} strokeWidth={1.8} />,   iconBg: "#ede9fe", action: () => toast.info("Segera hadir") },
-                { label: "Tag Klien",    icon: <Tag className="h-5 w-5" style={{ color: "#f59e0b" }} strokeWidth={1.8} />,    iconBg: "#fef3c7", action: () => toast.info("Segera hadir") },
+                { label: "Import Klien", icon: <Upload   className="h-5 w-5" style={{ color: "#2563eb" }} strokeWidth={1.8} />, iconBg: "#eff6ff", action: () => toast.info("Segera hadir") },
+                { label: "Export Data",  icon: <Download className="h-5 w-5" style={{ color: "#16a34a" }} strokeWidth={1.8} />, iconBg: "#ecfdf5", action: () => toast.info("Segera hadir") },
+                { label: "Grup Klien",  icon: <Users    className="h-5 w-5" style={{ color: "#7c3aed" }} strokeWidth={1.8} />, iconBg: "#f5f3ff", action: () => toast.info("Segera hadir") },
+                { label: "Tag Klien",   icon: <Tag      className="h-5 w-5" style={{ color: "#d97706" }} strokeWidth={1.8} />, iconBg: "#fffbeb", action: () => toast.info("Segera hadir") },
               ].map((item) => (
-                <button
-                  key={item.label}
-                  onClick={item.action}
-                  className="bg-card rounded-2xl p-3 flex flex-col items-center gap-2 shadow-sm active:opacity-70 transition-opacity"
-                  style={{ WebkitTapHighlightColor: "transparent" }}
-                >
-                  <div className="h-10 w-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: item.iconBg }}>
-                    {item.icon}
-                  </div>
-                  <p className="text-[9px] font-bold text-foreground text-center leading-tight">{item.label}</p>
+                <button key={item.label} onClick={item.action} className="bg-white rounded-[16px] p-3 flex flex-col items-center gap-2 active:opacity-70 transition-opacity" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)", WebkitTapHighlightColor: "transparent" }}>
+                  <div className="h-11 w-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: item.iconBg }}>{item.icon}</div>
+                  <p className="text-[9px] font-bold text-[#0f1c3f] text-center leading-tight">{item.label}</p>
                 </button>
               ))}
             </div>
           </div>
+
+          <div className="h-2" />
         </div>
+
+        {/* ── FAB ── */}
+        <button onClick={() => setAddOpen(true)} className="fixed bottom-20 right-4 h-14 w-14 rounded-full text-white flex items-center justify-center shadow-xl active:scale-95 transition-transform z-40" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", boxShadow: "0 8px 24px rgba(0,102,255,0.40)", WebkitTapHighlightColor: "transparent" }}>
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        </button>
+
+        {/* ── BOTTOM NAV ── */}
+        <div className="fixed bottom-0 left-0 right-0 z-50" style={{ background: "white", boxShadow: "0 -1px 0 rgba(0,0,0,0.06), 0 -4px 16px rgba(0,0,0,0.08)", paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="grid grid-cols-5 h-[60px]">
+            {([
+              { label: "Home",    path: "/",         icon: (a: boolean) => <svg viewBox="0 0 24 24" className="h-5 w-5" fill={a ? "currentColor" : "none"} stroke="currentColor" strokeWidth={a ? 0 : 1.8}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg> },
+              { label: "Order",   path: "/orders",   icon: (a: boolean) => <svg viewBox="0 0 24 24" className="h-5 w-5" fill={a ? "currentColor" : "none"} stroke="currentColor" strokeWidth={a ? 0 : 1.8}><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
+              { label: "Klien",   path: "/clients",  icon: (a: boolean) => <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={a ? 2.5 : 1.8}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+              { label: "Paket",   path: "/packages", icon: (a: boolean) => <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m16.5 9.4-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> },
+              { label: "Lainnya", path: "/settings", icon: (a: boolean) => <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> },
+            ] as const).map(tab => {
+              const isActive = tab.path === "/clients";
+              return (
+                <button key={tab.path} onClick={() => navigate(tab.path)}
+                  className={`flex flex-col items-center justify-center gap-1 transition-colors active:opacity-60 ${isActive ? "text-[#0066FF]" : "text-slate-400"}`}
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  {tab.icon(isActive)}
+                  <span className={`text-[9px] ${isActive ? "font-extrabold" : "font-semibold"}`}>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
       </div>
 
       {/* ══════════════════════════════════════════════════════════
