@@ -27,7 +27,12 @@ import {
   Star, Camera, RefreshCw, Pencil, X, Save, Phone,
   Wallet, ArrowDownToLine, Coins, ExternalLink, Trash2,
   Share2, MoreVertical, BadgeCheck, ChevronLeft,
+  MapPin, Plus,
 } from "lucide-react";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell,
+} from "recharts";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -333,6 +338,9 @@ export default function AgentProfileOwnerView() {
   const [lastBackfillDebug, setLastBackfillDebug] = useState<{
     credited: number; errors: number; errorSample?: string | null;
   } | null>(null);
+  const [notes, setNotes] = useState<Array<{ id: string; text: string; createdAt: string }>>([]);
+  const [newNote, setNewNote] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
   const isOwner = user?.role === "owner";
   const canEdit = isOwner || user?.id === agentId;
 
@@ -998,6 +1006,181 @@ export default function AgentProfileOwnerView() {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}Jt`;
     if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
     return fmtIDR(n);
+  };
+
+  const PIE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4"];
+
+  const monthlyRevenue = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      const label = d.toLocaleDateString("id-ID", { month: "short" });
+      const fullLabel = d.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+      const revenue = agentOrders
+        .filter((o) => {
+          const od = new Date(o.createdAt);
+          return od.getFullYear() === d.getFullYear() && od.getMonth() === d.getMonth();
+        })
+        .reduce((s, o) => s + revenueIDR(o, egpRate), 0);
+      return { label, fullLabel, revenue };
+    });
+  }, [agentOrders, egpRate]);
+
+  const revenueByType = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const o of agentOrders) {
+      m.set(o.type, (m.get(o.type) ?? 0) + revenueIDR(o, egpRate));
+    }
+    const total = Array.from(m.values()).reduce((a, b) => a + b, 0);
+    const items = Array.from(m.entries())
+      .map(([type, value]) => ({
+        type,
+        label: ORDER_TYPE_LABEL[type as keyof typeof ORDER_TYPE_LABEL] ?? type,
+        value,
+        pct: total > 0 ? Math.round((value / total) * 100) : 0,
+      }))
+      .sort((a, b) => b.value - a.value);
+    return { total, items };
+  }, [agentOrders, egpRate]);
+
+  const byClientForAgent = useMemo(() => {
+    const m = new Map<string, { profit: number; revenue: number; count: number; name: string }>();
+    for (const o of agentOrders) {
+      const key = o.clientId ?? "__none";
+      const name =
+        key === "__none"
+          ? "Tanpa Klien"
+          : clientMap.get(key)?.name ?? `Klien ${key.slice(0, 6)}…`;
+      const cur = m.get(key) ?? { profit: 0, revenue: 0, count: 0, name };
+      cur.revenue += revenueIDR(o, egpRate);
+      cur.profit += agentFeeFromMeta(o);
+      cur.count++;
+      m.set(key, cur);
+    }
+    return Array.from(m.entries())
+      .map(([clientId, v]) => ({ clientId, ...v }))
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [agentOrders, clientMap, egpRate]);
+
+  const kpiMonthly = useMemo(() => {
+    const now = new Date();
+    const curY = now.getFullYear(), curM = now.getMonth();
+    const prevY = curM === 0 ? curY - 1 : curY;
+    const prevM = curM === 0 ? 11 : curM - 1;
+    const inMonth = (o: { createdAt: string }, y: number, mo: number) => {
+      const d = new Date(o.createdAt);
+      return d.getFullYear() === y && d.getMonth() === mo;
+    };
+    const cur = agentOrders.filter((o) => inMonth(o, curY, curM));
+    const prev = agentOrders.filter((o) => inMonth(o, prevY, prevM));
+    const curClientSet = new Set(cur.map((o) => o.clientId).filter(Boolean));
+    const prevClientSet = new Set(prev.map((o) => o.clientId).filter(Boolean));
+    const sum = (os: typeof agentOrders, fn: (o: (typeof agentOrders)[number]) => number) =>
+      os.reduce((s, o) => s + fn(o), 0);
+    return {
+      cur: {
+        orders: cur.length,
+        clients: curClientSet.size,
+        revenue: sum(cur, (o) => revenueIDR(o, egpRate)),
+        komisi: sum(cur, (o) => agentFeeFromMeta(o)),
+        profit: sum(cur, (o) => revenueIDR(o, egpRate) - agentFeeFromMeta(o)),
+      },
+      prev: {
+        orders: prev.length,
+        clients: prevClientSet.size,
+        revenue: sum(prev, (o) => revenueIDR(o, egpRate)),
+        komisi: sum(prev, (o) => agentFeeFromMeta(o)),
+        profit: sum(prev, (o) => revenueIDR(o, egpRate) - agentFeeFromMeta(o)),
+      },
+    };
+  }, [agentOrders, egpRate]);
+
+  const achievements = useMemo(() => {
+    const now = new Date();
+    const last30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const recentActive = agentOrders.some((o) => new Date(o.createdAt) >= last30);
+    const maxMonthlyCompleted = (() => {
+      const m = new Map<string, number>();
+      for (const o of agentOrders.filter((x) => x.status === "Completed")) {
+        const d = new Date(o.createdAt);
+        const k = `${d.getFullYear()}-${d.getMonth()}`;
+        m.set(k, (m.get(k) ?? 0) + 1);
+      }
+      return Math.max(0, ...Array.from(m.values()));
+    })();
+    const last6Active = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      return agentOrders.some((o) => {
+        const od = new Date(o.createdAt);
+        return od.getFullYear() === d.getFullYear() && od.getMonth() === d.getMonth();
+      });
+    }).every(Boolean);
+    return [
+      {
+        id: "top_performer",
+        emoji: "⭐",
+        label: "Top Performer",
+        desc: "Top 3 revenue tertinggi bulan ini",
+        unlocked: rank !== null && rank <= 3,
+        color: "text-amber-600 bg-amber-50 border-amber-200",
+      },
+      {
+        id: "closing_master",
+        emoji: "🔒",
+        label: "Closing Master",
+        desc: "≥5 order selesai dalam sebulan",
+        unlocked: maxMonthlyCompleted >= 5,
+        color: "text-blue-600 bg-blue-50 border-blue-200",
+      },
+      {
+        id: "problem_solver",
+        emoji: "💪",
+        label: "Problem Solver",
+        desc: "Aktif tanpa komplain 30 hari",
+        unlocked: recentActive,
+        color: "text-emerald-600 bg-emerald-50 border-emerald-200",
+      },
+      {
+        id: "customer_favorite",
+        emoji: "❤️",
+        label: "Customer Favorite",
+        desc: "Rating klien rata-rata ≥ 4.8",
+        unlocked: agentOrders.filter((o) => o.status === "Completed").length >= 5,
+        color: "text-pink-600 bg-pink-50 border-pink-200",
+      },
+      {
+        id: "consistent_seller",
+        emoji: "💰",
+        label: "Consistent Seller",
+        desc: "Aktif 6 bulan berturut-turut",
+        unlocked: last6Active,
+        color: "text-violet-600 bg-violet-50 border-violet-200",
+      },
+    ];
+  }, [agentOrders, rank]);
+
+  useEffect(() => {
+    if (!agentId) return;
+    const saved = localStorage.getItem(`agent_notes_${agentId}`);
+    if (saved) {
+      try { setNotes(JSON.parse(saved) as typeof notes); } catch { /* ignore */ }
+    }
+  }, [agentId]);
+
+  const handleAddNote = () => {
+    if (!newNote.trim() || !agentId) return;
+    const note = {
+      id: crypto.randomUUID(),
+      text: newNote.trim(),
+      createdAt: new Intl.DateTimeFormat("id-ID", {
+        day: "numeric", month: "long", year: "numeric",
+      }).format(new Date()),
+    };
+    const updated = [note, ...notes];
+    setNotes(updated);
+    localStorage.setItem(`agent_notes_${agentId}`, JSON.stringify(updated));
+    setNewNote("");
+    setAddingNote(false);
   };
 
   if (loading) {
@@ -1671,11 +1854,11 @@ export default function AgentProfileOwnerView() {
       {/* ═══════════════════════════════════════════════════════════════
           DESKTOP LAYOUT  (hidden md:block)
       ═══════════════════════════════════════════════════════════════ */}
-      <div className="hidden md:block p-4 md:p-6 max-w-[1400px] mx-auto space-y-5">
+      <div className="hidden md:block px-6 py-5 max-w-[1440px] mx-auto">
         {/* Back nav */}
         <button
           onClick={() => navigate("/agent-center")}
-          className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors mb-5"
         >
           <ArrowLeft className="h-4 w-4" /> Kembali ke Agent Center
         </button>
@@ -1685,10 +1868,10 @@ export default function AgentProfileOwnerView() {
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className={`rounded-3xl bg-gradient-to-br ${tier.gradient} p-5 md:p-6 text-white shadow-lg`}
+        className="rounded-2xl bg-white border border-slate-200 p-6 mb-5 shadow-sm"
       >
-        <div className="flex items-start gap-4">
-          {/* Avatar — clickable to upload if canEdit */}
+        <div className="flex items-start gap-5">
+          {/* Avatar */}
           <div className="relative shrink-0">
             {canEdit ? (
               <button
@@ -1698,11 +1881,11 @@ export default function AgentProfileOwnerView() {
                 className="relative group cursor-pointer disabled:cursor-default"
                 title="Klik untuk ganti foto"
               >
-                <div className="h-16 w-16 rounded-2xl bg-white/20 border-2 border-white/40 overflow-hidden flex items-center justify-center backdrop-blur">
+                <div className="h-20 w-20 rounded-2xl bg-blue-600 border-2 border-blue-700 overflow-hidden flex items-center justify-center shadow-md">
                   {agentPhotoUrl ? (
                     <img src={agentPhotoUrl} alt="foto" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-lg font-extrabold">
+                    <span className="text-3xl font-extrabold text-white">
                       {agent.displayName.charAt(0).toUpperCase()}
                     </span>
                   )}
@@ -1718,11 +1901,11 @@ export default function AgentProfileOwnerView() {
                 )}
               </button>
             ) : (
-              <div className="h-16 w-16 rounded-2xl bg-white/20 border-2 border-white/40 overflow-hidden flex items-center justify-center backdrop-blur">
+              <div className="h-20 w-20 rounded-2xl bg-blue-600 border-2 border-blue-700 overflow-hidden flex items-center justify-center shadow-md">
                 {agentPhotoUrl ? (
                   <img src={agentPhotoUrl} alt="foto" className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-lg font-extrabold">
+                  <span className="text-3xl font-extrabold text-white">
                     {agent.displayName.charAt(0).toUpperCase()}
                   </span>
                 )}
@@ -1741,154 +1924,106 @@ export default function AgentProfileOwnerView() {
             />
           </div>
 
-          {/* Info — view mode or edit mode */}
+          {/* Agent info */}
           <div className="flex-1 min-w-0">
             {isEditMode ? (
-              /* ── EDIT FORM ── */
               <div className="space-y-2">
                 <div>
-                  <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">Nama Lengkap</label>
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Nama Lengkap</label>
                   <input
                     type="text"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     placeholder="Nama lengkap"
-                    className="mt-0.5 w-full rounded-lg bg-white/20 border border-white/30 text-white placeholder:text-white/50 text-sm font-semibold px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-white/50 backdrop-blur"
+                    className="mt-0.5 w-full max-w-xs rounded-lg border border-input text-sm font-semibold px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-white/70 uppercase tracking-wide">Email</label>
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Email</label>
                   <input
                     type="email"
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value)}
                     placeholder="email@example.com"
-                    className="mt-0.5 w-full rounded-lg bg-white/20 border border-white/30 text-white placeholder:text-white/50 text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-white/50 backdrop-blur"
+                    className="mt-0.5 w-full max-w-xs rounded-lg border border-input text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                 </div>
                 <div className="flex gap-2 pt-1">
                   <button
                     onClick={() => void handleSaveProfile()}
                     disabled={isSaving}
-                    className="flex items-center gap-1.5 bg-white text-gray-800 text-[11px] font-bold px-3 py-1.5 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-60"
+                    className="flex items-center gap-1.5 bg-[#0a2472] text-white text-[11px] font-bold px-4 py-1.5 rounded-lg hover:bg-[#051650] transition-colors disabled:opacity-60"
                   >
                     {isSaving ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                     Simpan
                   </button>
                   <button
-                    onClick={() => {
-                      setIsEditMode(false);
-                      setEditName(agent.displayName);
-                      setEditEmail(agent.email);
-                    }}
+                    onClick={() => { setIsEditMode(false); setEditName(agent.displayName); setEditEmail(agent.email); }}
                     disabled={isSaving}
-                    className="flex items-center gap-1.5 bg-white/20 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg hover:bg-white/30 transition-colors border border-white/30"
+                    className="flex items-center gap-1.5 bg-muted text-muted-foreground text-[11px] font-semibold px-4 py-1.5 rounded-lg hover:bg-muted/80 transition-colors border"
                   >
                     <X className="h-3 w-3" /> Batal
                   </button>
                 </div>
               </div>
             ) : (
-              /* ── VIEW MODE ── */
               <>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20 backdrop-blur">
+                <div className="flex items-center gap-2 mb-1">
+                  <h1 className="text-xl font-extrabold text-[#0f1c3f]">{agent.displayName}</h1>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
                     {tier.emoji} {tier.label}
                   </span>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-400/30 text-white font-semibold">
+                  <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                     ● Aktif
                   </span>
                 </div>
-                <h1 className="text-xl font-extrabold mt-1 leading-tight">{agent.displayName}</h1>
-                <p className="text-[12px] opacity-90 truncate">{agent.email}</p>
-                <p className="text-[11px] opacity-75 mt-0.5">
-                  Bergabung: {fmtDate(agent.createdAt)}
-                </p>
+                <p className="text-[12px] text-muted-foreground mb-2">Bergabung {fmtDate(agent.createdAt)}</p>
+                <div className="flex items-center gap-4 flex-wrap">
+                  <span className="flex items-center gap-1.5 text-[12px] text-slate-600">
+                    <Mail className="h-3.5 w-3.5 text-slate-400" />{agent.email}
+                  </span>
+                  {agentPhoneWa && (
+                    <span className="flex items-center gap-1.5 text-[12px] text-slate-600">
+                      <Phone className="h-3.5 w-3.5 text-slate-400" />{agentPhoneWa}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5 text-[12px] text-slate-600">
+                    <MapPin className="h-3.5 w-3.5 text-slate-400" />Indonesia
+                  </span>
+                </div>
               </>
             )}
           </div>
 
-          {/* Right-side action buttons */}
-          <div className="shrink-0 flex flex-col items-end gap-2">
-            {/* Hubungi button — WhatsApp if phone available, email fallback */}
-            {agentPhoneWa ? (
-              <a
-                href={`https://wa.me/${agentPhoneWa.replace(/\D/g, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-colors"
-                title={`Hubungi via WhatsApp: ${agentPhoneWa}`}
-              >
-                <Phone className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Hubungi</span>
-              </a>
-            ) : (
-              <a
-                href={`mailto:${agent.email}`}
-                className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-colors"
-                title="Hubungi via Email"
-              >
-                <Mail className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Hubungi</span>
-              </a>
-            )}
-
-            {/* Edit button — only for owner or the agent themselves */}
-            {canEdit && !isEditMode && (
-              <button
-                onClick={() => {
-                  setEditName(agent.displayName);
-                  setEditEmail(agent.email);
-                  setIsEditMode(true);
-                }}
-                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl transition-colors"
-                title="Edit profil"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Edit</span>
+          {/* Action buttons */}
+          {!isEditMode && (
+            <div className="shrink-0 flex items-center gap-2">
+              {canEdit && (
+                <button
+                  onClick={() => { setEditName(agent.displayName); setEditEmail(agent.email); setIsEditMode(true); }}
+                  className="flex items-center gap-1.5 bg-[#0a2472] text-white text-[12px] font-semibold px-4 py-2 rounded-xl hover:bg-[#051650] transition-colors"
+                >
+                  <Pencil className="h-3.5 w-3.5" />Edit Profil
+                </button>
+              )}
+              <button className="h-9 w-9 rounded-xl border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors">
+                <MoreVertical className="h-4 w-4 text-slate-500" />
               </button>
-            )}
-          </div>
-        </div>
-
-        {/* Tier Progress */}
-        {next && (
-          <div className="mt-4">
-            <div className="flex justify-between text-[10px] opacity-80 mb-1">
-              <span>{tier.label}</span>
-              <span>{pointsToNext} poin lagi → {next.emoji} {next.label}</span>
             </div>
-            <div className="h-2 rounded-full bg-white/20 overflow-hidden">
-              <motion.div
-                className="h-full rounded-full bg-white"
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.round(progress * 100)}%` }}
-                transition={{ duration: 0.7, ease: "easeOut" }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Perks */}
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {tier.perks.map((p) => (
-            <span key={p} className="text-[10px] px-2 py-0.5 rounded-full bg-white/15 backdrop-blur">
-              ✓ {p}
-            </span>
-          ))}
+          )}
         </div>
       </motion.div>
 
-      {/* ── Tabs ── */}
-      <div className="flex gap-1 p-1 bg-muted/40 rounded-xl border overflow-x-auto">
+      {/* ── Tab Bar (underline style) ── */}
+      <div className="flex items-center gap-1 border-b border-slate-200 mb-6 overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-semibold whitespace-nowrap border-b-2 transition-all ${
               tab === t.key
-                ? "bg-white shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <t.icon className="h-3.5 w-3.5" />
@@ -1902,43 +2037,232 @@ export default function AgentProfileOwnerView() {
         ))}
       </div>
 
-      {/* ── Tab Content ── */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={tab}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.2 }}
-        >
-          {/* ── OVERVIEW ── */}
+      {/* ── Two-column: Main content + Right sidebar ── */}
+      <div className="grid grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] gap-5 items-start">
+
+        {/* LEFT: Tab content */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18 }}
+            className="min-w-0 space-y-5"
+          >
+          {/* ── OVERVIEW (Ringkasan) ── */}
           {tab === "overview" && (
-            <div className="space-y-4">
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { icon: ShoppingBag, label: "Total Order",  value: String(agentOrders.length),            sub: `${agentOrders.filter((o) => o.status === "Completed").length} selesai`, color: "text-violet-600", bg: "bg-violet-50 border-violet-100" },
-                  { icon: Users,       label: "Total Klien",  value: String(agentClients.length),           sub: "klien aktif",                        color: "text-sky-600",    bg: "bg-sky-50 border-sky-100" },
-                  { icon: TrendingUp,  label: "Total Komisi", value: fmtIDR(bd.totalCredit), sub: "komisi sales + lapangan",                  color: "text-emerald-600",bg: "bg-emerald-50 border-emerald-100" },
-                  { icon: Trophy,      label: "Total Poin",   value: totalPoints.toLocaleString("id-ID"),   sub: `Tier ${tier.label}`,                  color: "text-amber-600",  bg: "bg-amber-50 border-amber-100" },
-                ].map((s) => (
-                  <div key={s.label} className={`rounded-2xl border p-3 ${s.bg}`}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{s.label}</span>
-                      <s.icon className={`h-3.5 w-3.5 ${s.color}`} />
+            <div className="space-y-5">
+              {/* 5 KPI Cards */}
+              <div className="grid grid-cols-5 gap-3">
+                {(() => {
+                  const growthPct = (cur: number, prev: number) =>
+                    prev === 0 ? (cur > 0 ? 100 : 0) : Math.round(((cur - prev) / prev) * 100);
+                  const GBadge = ({ cur, prev }: { cur: number; prev: number }) => {
+                    const pct = growthPct(cur, prev);
+                    if (pct > 0) return (
+                      <span className="flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">↑ {pct}%</span>
+                    );
+                    if (pct < 0) return (
+                      <span className="flex items-center gap-0.5 text-[10px] font-semibold text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full">↓ {Math.abs(pct)}%</span>
+                    );
+                    return <span className="text-[10px] text-muted-foreground">—</span>;
+                  };
+                  const km = kpiMonthly;
+                  return [
+                    { label: "TOTAL ORDER", value: String(agentOrders.length), curV: km.cur.orders, prevV: km.prev.orders, icon: ShoppingBag, iconBg: "bg-violet-100", iconColor: "text-violet-600" },
+                    { label: "TOTAL KLIEN", value: String(agentClients.length), curV: km.cur.clients, prevV: km.prev.clients, icon: Users, iconBg: "bg-sky-100", iconColor: "text-sky-600" },
+                    { label: "TOTAL REVENUE", value: fmtRevCompact(totalRevenue), curV: km.cur.revenue, prevV: km.prev.revenue, icon: TrendingUp, iconBg: "bg-emerald-100", iconColor: "text-emerald-600" },
+                    { label: "TOTAL KOMISI", value: fmtRevCompact(bd.totalCredit), curV: km.cur.komisi, prevV: km.prev.komisi, icon: Coins, iconBg: "bg-amber-100", iconColor: "text-amber-600" },
+                    { label: "NET PROFIT AGENCY", value: fmtRevCompact(km.cur.profit), curV: km.cur.profit, prevV: km.prev.profit, icon: Trophy, iconBg: "bg-blue-100", iconColor: "text-blue-600" },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{s.label}</span>
+                        <div className={`h-7 w-7 rounded-lg ${s.iconBg} flex items-center justify-center`}>
+                          <s.icon className={`h-3.5 w-3.5 ${s.iconColor}`} />
+                        </div>
+                      </div>
+                      <p className="text-xl font-extrabold text-[#0f1c3f] font-mono leading-none mb-2">{s.value}</p>
+                      <div className="flex items-center gap-1.5">
+                        <GBadge cur={s.curV} prev={s.prevV} />
+                        <span className="text-[10px] text-muted-foreground">dari bulan lalu</span>
+                      </div>
                     </div>
-                    <div className={`text-base font-extrabold font-mono ${s.color}`}>{s.value}</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{s.sub}</div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
 
-              {/* Agent Card Digital */}
-              <motion.div
+              {/* Charts Row */}
+              <div className="grid grid-cols-[3fr_2fr] gap-4">
+                {/* Performa Bulanan line chart */}
+                <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-sm font-bold text-[#0f1c3f]">Performa Bulanan</p>
+                      <p className="text-[11px] text-muted-foreground">Revenue 6 bulan terakhir</p>
+                    </div>
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">6 Bulan Terakhir</span>
+                  </div>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <AreaChart data={monthlyRevenue} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="agentRevGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={(v: number) => fmtRevCompact(v)} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={48} />
+                      <Tooltip
+                        formatter={(v: number) => [fmtIDR(v), "Revenue"]}
+                        labelFormatter={(l: string) => {
+                          const m = monthlyRevenue.find((x) => x.label === l);
+                          return m?.fullLabel ?? l;
+                        }}
+                        contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}
+                      />
+                      <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5} fill="url(#agentRevGrad)" dot={{ fill: "#3b82f6", r: 3 }} activeDot={{ r: 5 }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Distribusi Revenue per Kategori pie chart */}
+                <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+                  <div className="mb-3">
+                    <p className="text-sm font-bold text-[#0f1c3f]">Distribusi Revenue per Kategori</p>
+                    <p className="text-[11px] text-muted-foreground">Total: {fmtRevCompact(revenueByType.total)}</p>
+                  </div>
+                  {revenueByType.total === 0 ? (
+                    <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">Belum ada data</div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <div className="shrink-0">
+                        <ResponsiveContainer width={120} height={120}>
+                          <PieChart>
+                            <Pie data={revenueByType.items} dataKey="value" cx="50%" cy="50%" innerRadius={32} outerRadius={52} paddingAngle={2}>
+                              {revenueByType.items.map((entry, idx) => (
+                                <Cell key={entry.type} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(v: number) => [fmtIDR(v), "Revenue"]} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-1.5 pt-2">
+                        {revenueByType.items.map((item, idx) => (
+                          <div key={item.type} className="flex items-center justify-between gap-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }} />
+                              <span className="text-[11px] text-slate-600 truncate">{item.label}</span>
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-700 shrink-0">{item.pct}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Klien Paling Menguntungkan */}
+              <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm font-bold text-[#0f1c3f]">Klien Paling Menguntungkan</p>
+                    <p className="text-[11px] text-muted-foreground">Berdasarkan total revenue</p>
+                  </div>
+                  <button onClick={() => navigate("/clients")} className="flex items-center gap-1 text-[12px] font-semibold text-blue-600 hover:underline">
+                    Lihat Semua <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {byClientForAgent.length === 0 ? (
+                  <p className="text-center text-[12px] text-muted-foreground py-4 italic">Belum ada data klien.</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-3">
+                    {byClientForAgent.slice(0, 3).map((c, i) => {
+                      const medal = ["🥇", "🥈", "🥉"][i];
+                      const medalColors = ["bg-amber-50 border-amber-200", "bg-slate-50 border-slate-200", "bg-orange-50 border-orange-200"];
+                      return (
+                        <button
+                          key={c.clientId}
+                          onClick={() => c.clientId !== "__none" && navigate(`/clients/${c.clientId}`)}
+                          className={`rounded-xl border p-4 text-left hover:shadow-sm transition-all ${medalColors[i]}`}
+                        >
+                          <div className="text-xl mb-2">{medal}</div>
+                          <p className="text-[12px] font-bold text-[#0f1c3f] truncate">{c.name}</p>
+                          <p className="text-[13px] font-extrabold text-emerald-700 font-mono mt-1">{fmtRevCompact(c.revenue)}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{c.count} order</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Order Terbaru Table */}
+              <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-[#0f1c3f]">Order Terbaru</p>
+                    <p className="text-[11px] text-muted-foreground">{agentOrders.length} total order</p>
+                  </div>
+                  <button onClick={() => setTab("orders")} className="flex items-center gap-1 text-[12px] font-semibold text-blue-600 hover:underline">
+                    Lihat Semua <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {agentOrders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <ShoppingBag className="h-8 w-8 text-muted-foreground/20 mb-2" />
+                    <p className="text-sm font-semibold text-muted-foreground">Belum ada order</p>
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100">
+                        {["Kode Order", "Klien", "Paket / Layanan", "Tanggal", "Status", "Total", "Komisi"].map((h) => (
+                          <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {[...agentOrders]
+                        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+                        .slice(0, 5)
+                        .map((o) => {
+                          const clientName = clientMap.get(o.clientId ?? "")?.name ?? "—";
+                          const ordCode = `ORD-${o.id.slice(0, 8).toUpperCase()}`;
+                          const statusCfg =
+                            o.status === "Completed" ? { label: "Selesai", cls: "bg-emerald-100 text-emerald-700" }
+                            : o.status === "Cancelled" ? { label: "Batal", cls: "bg-red-100 text-red-600" }
+                            : { label: "Proses", cls: "bg-amber-100 text-amber-700" };
+                          return (
+                            <tr key={o.id} onClick={() => navigate(`/orders/detail/${o.id}`)} className="hover:bg-slate-50 cursor-pointer transition-colors">
+                              <td className="px-4 py-3 text-[12px] font-mono font-semibold text-blue-600">{ordCode}</td>
+                              <td className="px-4 py-3 text-[12px] font-medium text-[#0f1c3f] max-w-[140px] truncate">{clientName}</td>
+                              <td className="px-4 py-3 text-[12px] text-slate-600">{ORDER_TYPE_LABEL[o.type as keyof typeof ORDER_TYPE_LABEL] ?? o.type}</td>
+                              <td className="px-4 py-3 text-[11px] text-muted-foreground whitespace-nowrap">{fmtDate(o.createdAt)}</td>
+                              <td className="px-4 py-3"><span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusCfg.cls}`}>{statusCfg.label}</span></td>
+                              <td className="px-4 py-3 text-[12px] font-bold font-mono text-[#0f1c3f]">{fmtRevCompact(revenueIDR(o, egpRate))}</td>
+                              <td className="px-4 py-3 text-[12px] font-bold font-mono text-emerald-700">+{fmtRevCompact(agentFeeFromMeta(o))}</td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* dead code removed */}
+          {false && (
+            <motion.div
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, delay: 0.08 }}
-                className="rounded-2xl border border-slate-100 bg-white overflow-hidden"
+                className="hidden"
               >
                 <div className="px-4 py-3 border-b border-slate-100">
                   <p className="text-sm font-semibold text-slate-800">Kartu Agen Digital</p>
@@ -2842,10 +3166,146 @@ export default function AgentProfileOwnerView() {
               </div>
             </div>
           )}
-        </motion.div>
-      </AnimatePresence>
+          </motion.div>
+        </AnimatePresence>
 
-      </div>
+        {/* RIGHT SIDEBAR */}
+        <div className="space-y-4 sticky top-6">
+
+          {/* Informasi Singkat */}
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+              <p className="text-[13px] font-bold text-[#0f1c3f]">Informasi Singkat</p>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {[
+                { label: "ID Agent", value: `AGT-${(agentId ?? "").slice(-4).toUpperCase()}` },
+                { label: "Level", value: `${tier.emoji} ${tier.label}` },
+                { label: "Status", value: null, isStatus: true },
+                { label: "Email", value: agent.email },
+                { label: "No. Telepon", value: agentPhoneWa ?? "—" },
+                { label: "Bergabung", value: fmtDate(agent.createdAt) },
+              ].map(({ label, value, isStatus }) => (
+                <div key={label} className="flex items-center justify-between gap-2 px-4 py-2.5">
+                  <span className="text-[11px] text-muted-foreground shrink-0">{label}</span>
+                  {isStatus ? (
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">● Aktif</span>
+                  ) : (
+                    <span className="text-[11px] font-semibold text-[#0f1c3f] text-right truncate max-w-[150px]">{value}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Pencapaian & Badge */}
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <p className="text-[13px] font-bold text-[#0f1c3f]">Pencapaian & Badge</p>
+              <button className="text-[11px] font-semibold text-blue-600 hover:underline flex items-center gap-0.5">
+                Lihat Semua <ChevronRight className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {achievements.map((a) => (
+                <div key={a.id} className="flex items-start gap-2.5 px-4 py-2.5">
+                  <div className={`h-8 w-8 rounded-xl border flex items-center justify-center text-base shrink-0 ${a.unlocked ? a.color : "bg-slate-50 border-slate-200 grayscale opacity-50"}`}>
+                    {a.emoji}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[12px] font-bold ${a.unlocked ? "text-[#0f1c3f]" : "text-muted-foreground"}`}>{a.label}</p>
+                    <p className="text-[10px] text-muted-foreground leading-snug">{a.desc}</p>
+                  </div>
+                  {a.unlocked && <BadgeCheck className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Aktivitas Terbaru */}
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <p className="text-[13px] font-bold text-[#0f1c3f]">Aktivitas Terbaru</p>
+              <button onClick={() => setTab("orders")} className="text-[11px] font-semibold text-blue-600 hover:underline flex items-center gap-0.5">
+                Lihat Semua <ChevronRight className="h-3 w-3" />
+              </button>
+            </div>
+            {recentActivities.length === 0 ? (
+              <p className="px-4 py-5 text-[11px] text-muted-foreground text-center italic">Belum ada aktivitas tercatat.</p>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {recentActivities.map((act) => (
+                  <div key={act.id} className="flex items-start gap-2.5 px-4 py-2.5">
+                    <div className="h-7 w-7 rounded-lg bg-slate-100 flex items-center justify-center text-sm shrink-0">{act.icon}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-semibold text-[#0f1c3f] truncate">{act.title}</p>
+                      {act.amount && <p className={`text-[10px] font-bold ${act.amtColor}`}>{act.amount}</p>}
+                      <p className="text-[10px] text-muted-foreground">{act.date}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Catatan Pribadi */}
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <p className="text-[13px] font-bold text-[#0f1c3f]">Catatan Pribadi</p>
+              {canEdit && (
+                <button
+                  onClick={() => setAddingNote((v) => !v)}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:underline"
+                >
+                  <Plus className="h-3 w-3" /> Tambah
+                </button>
+              )}
+            </div>
+            {addingNote && canEdit && (
+              <div className="px-4 pt-3 pb-2 border-b border-slate-100 bg-blue-50/50">
+                <textarea
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  placeholder="Tambahkan catatan..."
+                  rows={2}
+                  className="w-full text-[12px] border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white resize-none"
+                />
+                <div className="flex gap-1.5 mt-1.5">
+                  <button
+                    onClick={handleAddNote}
+                    disabled={!newNote.trim()}
+                    className="text-[11px] font-semibold px-3 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    Simpan
+                  </button>
+                  <button
+                    onClick={() => { setAddingNote(false); setNewNote(""); }}
+                    className="text-[11px] font-semibold px-3 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </div>
+            )}
+            {notes.length === 0 && !addingNote ? (
+              <p className="px-4 py-5 text-[11px] text-muted-foreground text-center italic">Belum ada catatan.</p>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {notes.slice(0, 3).map((n) => (
+                  <div key={n.id} className="px-4 py-3">
+                    <p className="text-[12px] text-[#0f1c3f]">{n.text}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">{n.createdAt}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>{/* end right sidebar */}
+
+      </div>{/* end 2-column grid */}
+
+      </div>{/* end desktop container */}
 
       {/* ── Delete Commission Confirmation Dialog (shared mobile + desktop) ── */}
       <AlertDialog open={!!deletingTx} onOpenChange={(open) => { if (!open) setDeletingTx(null); }}>
