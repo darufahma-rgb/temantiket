@@ -879,7 +879,7 @@ export default function Dashboard() {
                   ].map((s, i) => (
                     <div key={s.label} className={cn("flex-1 text-center flex flex-col items-center gap-0.5", i > 0 && "border-l border-white/15")}>
                       <span className="text-[15px] leading-none">{s.emoji}</span>
-                      <p className="text-[22px] font-black text-white tabular-nums leading-none mt-0.5">{s.value}</p>
+                      <p className="text-[22px] font-black font-mono text-white tabular-nums leading-none mt-0.5">{s.value}</p>
                       <p className="text-[7px] text-sky-200/70 uppercase tracking-wide font-semibold leading-tight mt-0.5 px-1">{s.label}</p>
                     </div>
                   ))}
@@ -1275,7 +1275,7 @@ export default function Dashboard() {
               >
                 <stat.icon strokeWidth={1.6} className="h-5 w-5" style={{ color: stat.iconColor }} />
               </div>
-              <p className="text-[26px] font-black text-slate-900 leading-none tracking-tight tabular-nums">{stat.value}</p>
+              <p className="text-[26px] font-black font-mono text-slate-900 leading-none tabular-nums">{stat.value}</p>
               <p className="text-[11px] text-slate-500 mt-1.5 font-medium">{stat.label}</p>
               <div className="mt-2 flex items-center gap-1">
                 <TrendingUp strokeWidth={2} className="h-3 w-3 text-emerald-500 shrink-0" />

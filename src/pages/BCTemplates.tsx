@@ -522,7 +522,7 @@ export default function BCTemplates() {
                 <div className="h-9 w-9 rounded-2xl flex items-center justify-center" style={{ backgroundColor: stat.iconBg }}>
                   <MessageSquare className="h-4 w-4" style={{ color: stat.color }} strokeWidth={1.8} />
                 </div>
-                <p className="text-[22px] font-black text-[#0f1c3f] tabular-nums leading-none">{stat.value}</p>
+                <p className="text-[22px] font-black font-mono text-[#0f1c3f] tabular-nums leading-none">{stat.value}</p>
                 <p className="text-[9px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide">{stat.label}</p>
                 <div className="flex items-center gap-0.5">
                   <TrendingUp className="h-2.5 w-2.5 text-emerald-400" strokeWidth={2.5} />
@@ -1035,7 +1035,7 @@ export default function BCTemplates() {
               <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
             </div>
             <p className="text-[11px] text-slate-500 font-medium mb-0.5">{card.label}</p>
-            <p className="text-[24px] font-black text-slate-900 leading-none tabular-nums">{card.value}</p>
+            <p className="text-[24px] font-black font-mono text-slate-900 leading-none tabular-nums">{card.value}</p>
             <div className="flex items-center gap-1 mt-1.5">
               <span className="text-[10px] font-bold text-emerald-600">+{card.growth}%</span>
               <span className="text-[10px] text-slate-400">vs periode lalu</span>

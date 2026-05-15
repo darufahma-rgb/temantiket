@@ -655,7 +655,7 @@ export default function Reports() {
                     </div>
                   </div>
                   <div>
-                    <p className="text-[20px] font-black tabular-nums leading-none text-foreground">
+                    <p className="text-[20px] font-black font-mono tabular-nums leading-none text-foreground">
                       {fmtIDR(card.value)}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">{card.sub}</p>
@@ -699,7 +699,7 @@ export default function Reports() {
               <div className="px-4 pt-4 pb-3 border-b border-[hsl(var(--border))]">
                 <p className="text-[9.5px] font-bold uppercase tracking-widest text-sky-600">Profit Langsung</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">order tanpa mitra</p>
-                <p className="text-[22px] font-black tabular-nums text-foreground mt-1 leading-none">
+                <p className="text-[22px] font-black font-mono tabular-nums text-foreground mt-1 leading-none">
                   {fmtIDR(split.directProfit)}
                 </p>
                 {prevLabel && (
@@ -736,7 +736,7 @@ export default function Reports() {
               <div className="px-4 pt-4 pb-3 border-b border-[hsl(var(--border))]">
                 <p className="text-[9.5px] font-bold uppercase tracking-widest text-orange-600">Lewat Mitra</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">bersih setelah semua fee mitra</p>
-                <p className="text-[22px] font-black tabular-nums text-foreground mt-1 leading-none">
+                <p className="text-[22px] font-black font-mono tabular-nums text-foreground mt-1 leading-none">
                   {fmtIDR(split.agentNetForAgency)}
                 </p>
                 {prevLabel && (
@@ -785,7 +785,7 @@ export default function Reports() {
               <div className="px-4 pt-4 pb-3">
                 <p className="text-[9.5px] font-bold uppercase tracking-widest text-emerald-600">Profit Bersih Agensi</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">langsung + lewat mitra</p>
-                <p className="text-[22px] font-black tabular-nums text-foreground mt-1 leading-none">
+                <p className="text-[22px] font-black font-mono tabular-nums text-foreground mt-1 leading-none">
                   {fmtIDR(split.netAgencyProfit)}
                 </p>
                 {prevLabel && (
@@ -890,7 +890,7 @@ export default function Reports() {
                       >
                         <div className="text-base">{medals[i]}</div>
                         <div className="text-[11px] font-semibold truncate mt-0.5">{c.name}</div>
-                        <div className="text-[12px] font-black tabular-nums text-emerald-700 mt-0.5">{fmtIDRShort(c.profit)}</div>
+                        <div className="text-[12px] font-black font-mono tabular-nums text-emerald-700 mt-0.5">{fmtIDRShort(c.profit)}</div>
                         <div className="text-[9.5px] text-muted-foreground">{c.count} order</div>
                       </div>
                     );
@@ -969,7 +969,7 @@ export default function Reports() {
               </div>
               <div className="mt-4 pt-3 border-t border-[hsl(var(--border))] flex items-center justify-between">
                 <span className="text-[12px] font-bold text-foreground">Total Cash Masuk</span>
-                <span className="text-[14px] font-black tabular-nums text-foreground">{fmtIDR(sumberDana.total)}</span>
+                <span className="text-[14px] font-black font-mono tabular-nums text-foreground">{fmtIDR(sumberDana.total)}</span>
               </div>
               <button
                 onClick={() => setActiveTab("arus_kas")}
@@ -1049,7 +1049,7 @@ export default function Reports() {
               {byOrderFiltered.length > 0 && (
                 <div className="px-4 py-3 bg-blue-50/50 flex items-center justify-between">
                   <span className="text-[11.5px] font-bold text-blue-800">Total ({byOrderFiltered.length} order)</span>
-                  <span className={cn("text-[13px] font-black tabular-nums", byOrderFiltered.reduce((s,r)=>s+r.profit,0) >= 0 ? "text-emerald-700" : "text-red-600")}>
+                  <span className={cn("text-[13px] font-black font-mono tabular-nums", byOrderFiltered.reduce((s,r)=>s+r.profit,0) >= 0 ? "text-emerald-700" : "text-red-600")}>
                     {(() => { const t = byOrderFiltered.reduce((s, r) => s + r.profit, 0); return `${t >= 0 ? "+" : ""}${fmtIDRShort(t)}`; })()}
                   </span>
                 </div>
@@ -1268,7 +1268,7 @@ export default function Reports() {
                 })}
                 <div className="px-4 py-3 bg-emerald-50/50 flex items-center justify-between">
                   <span className="text-[11.5px] font-bold text-emerald-800">Total ({ledgerStats.count} order)</span>
-                  <span className={cn("text-[13px] font-black tabular-nums", ledgerStats.netProfit >= 0 ? "text-emerald-700" : "text-red-600")}>
+                  <span className={cn("text-[13px] font-black font-mono tabular-nums", ledgerStats.netProfit >= 0 ? "text-emerald-700" : "text-red-600")}>
                     {fmtIDRShort(ledgerStats.netProfit)}
                   </span>
                 </div>
@@ -1400,7 +1400,7 @@ export default function Reports() {
                           <span className={cn("inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border", PAYMENT_STATUS_STYLE[ps])}>
                             {PAYMENT_STATUS_EMOJI[ps]} {PAYMENT_STATUS_LABEL[ps]}
                           </span>
-                          <span className="text-[12px] font-black tabular-nums text-red-600">{fmtIDRShort(remaining)}</span>
+                          <span className="text-[12px] font-black font-mono tabular-nums text-red-600">{fmtIDRShort(remaining)}</span>
                         </div>
                       </div>
                       <div className="space-y-1">

@@ -898,7 +898,7 @@ export default function AgentCommandCenter() {
                   </div>
                 </div>
                 <p className="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wide">{stat.label}</p>
-                <p className={`font-black text-slate-900 mt-0.5 leading-none ${stat.large ? "text-[18px]" : "text-[26px]"}`}>{stat.value}</p>
+                <p className={`font-black font-mono text-slate-900 mt-0.5 leading-none ${stat.large ? "text-[18px]" : "text-[26px]"}`}>{stat.value}</p>
                 <p className="text-[10.5px] text-emerald-600 mt-1.5 font-medium flex items-center gap-0.5">
                   <TrendingUp className="h-3 w-3" />{stat.sub}
                 </p>

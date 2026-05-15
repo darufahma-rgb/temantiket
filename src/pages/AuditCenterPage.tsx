@@ -124,7 +124,7 @@ function AuditItemCard({ item, mode }: { item: AuditItem; mode: DisplayMode }) {
 function StatCard({ label, value, sub, color }: { label: string; value: number | string; sub?: string; color: string }) {
   return (
     <div className="rounded-xl border border-gray-100 bg-white px-3 py-2.5 text-center">
-      <div className="text-xl font-black leading-none" style={{ color }}>{value}</div>
+      <div className="text-xl font-black font-mono leading-none" style={{ color }}>{value}</div>
       <div className="text-[11px] font-semibold text-gray-700 mt-0.5">{label}</div>
       {sub && <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>}
     </div>

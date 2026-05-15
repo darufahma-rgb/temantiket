@@ -416,7 +416,7 @@ export default function Orders() {
                 return (
                   <button key={stat.label} onClick={stat.onClick} className={cn("flex flex-col items-center gap-1 active:opacity-70 transition-opacity", i > 0 ? "px-1" : "pr-1")} style={{ WebkitTapHighlightColor: "transparent" }}>
                     <div className="h-10 w-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: stat.bg, color: stat.color }}>{stat.icon}</div>
-                    <p className="text-[22px] font-black text-[#0f1c3f] tabular-nums leading-none mt-0.5">{stat.value}</p>
+                    <p className="text-[22px] font-black font-mono text-[#0f1c3f] tabular-nums leading-none mt-0.5">{stat.value}</p>
                     <p className="text-[11px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide px-0.5">{stat.label}</p>
                     <div className="flex items-center gap-0.5">
                       {up ? <TrendingUp className="h-2.5 w-2.5 text-emerald-500" strokeWidth={2.5} /> : <TrendingUp className="h-2.5 w-2.5 text-red-400 rotate-180" strokeWidth={2.5} />}
@@ -661,7 +661,7 @@ export default function Orders() {
                   <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
                 </div>
                 <p className="text-[11px] text-slate-500 font-medium mb-0.5">{card.label}</p>
-                <p className={cn("font-black leading-none tabular-nums text-slate-900", card.isCurrency ? "text-[17px]" : "text-[24px]")}>
+                <p className={cn("font-black font-mono leading-none tabular-nums text-slate-900", card.isCurrency ? "text-[17px]" : "text-[24px]")}>
                   {card.isCurrency
                     ? (card.value >= 1_000_000_000
                         ? `Rp ${(card.value/1_000_000_000).toFixed(2)} M`
@@ -827,7 +827,7 @@ export default function Orders() {
                     )}
                     {/* Bottom: price + HPP */}
                     <div className="flex items-center justify-between mt-auto pt-1 border-t border-slate-100">
-                      <p className="text-[14px] font-black text-slate-800 tabular-nums">{fmtOrderPrice(o.totalPrice, o.currency)}</p>
+                      <p className="text-[14px] font-black font-mono text-slate-800 tabular-nums">{fmtOrderPrice(o.totalPrice, o.currency)}</p>
                       <div className="flex items-center gap-1">
                         {user?.role !== "agent" && (!o.costPrice || o.costPrice === 0) && (
                           <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
@@ -948,7 +948,7 @@ export default function Orders() {
                             )} />
                             {PAYMENT_STATUS_LABEL[ps]}
                           </span>
-                          <p className="text-[13.5px] font-black text-slate-800 tabular-nums text-right">
+                          <p className="text-[13.5px] font-black font-mono text-slate-800 tabular-nums text-right">
                             {fmtOrderPrice(o.totalPrice, o.currency)}
                           </p>
                         </div>

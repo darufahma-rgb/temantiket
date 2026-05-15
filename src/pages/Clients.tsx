@@ -1327,7 +1327,7 @@ export default function Clients() {
                     style={{ WebkitTapHighlightColor: "transparent" }}
                   >
                     <div className="h-10 w-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: stat.bg, color: stat.color }}>{stat.icon}</div>
-                    <p className="text-[22px] font-black text-[#0f1c3f] tabular-nums leading-none mt-0.5">{stat.value}</p>
+                    <p className="text-[22px] font-black font-mono text-[#0f1c3f] tabular-nums leading-none mt-0.5">{stat.value}</p>
                     <p className="text-[11px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide px-0.5">{stat.label}</p>
                     <div className="flex items-center gap-0.5">
                       {up ? <TrendingUp className="h-2.5 w-2.5 text-emerald-500" strokeWidth={2.5} /> : <TrendingUp className="h-2.5 w-2.5 text-red-400 rotate-180" strokeWidth={2.5} />}

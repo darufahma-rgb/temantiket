@@ -705,7 +705,7 @@ function TicketDetailModal({
                   <p className="text-[10px] font-semibold text-sky-600 uppercase tracking-wide">
                     {isML || isRT ? "Harga Paket PP" : "Harga"}
                   </p>
-                  <p className="text-[28px] font-black text-sky-700 leading-none tabular-nums mt-0.5">
+                  <p className="text-[28px] font-black font-mono text-sky-700 leading-none tabular-nums mt-0.5">
                     {fmtIDR(sell)}
                   </p>
                 </div>
@@ -726,7 +726,7 @@ function TicketDetailModal({
               <p className="text-[10px] font-semibold text-sky-600 uppercase tracking-wide mb-0.5">
                 {isML || isRT ? "Harga Paket PP" : "Harga"}
               </p>
-              <p className="text-[26px] font-black text-sky-700 leading-none tabular-nums">
+              <p className="text-[26px] font-black font-mono text-sky-700 leading-none tabular-nums">
                 {fmtIDR(sell)}
               </p>
               <p className="text-[10px] text-slate-400 mt-1">

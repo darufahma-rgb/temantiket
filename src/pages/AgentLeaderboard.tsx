@@ -387,7 +387,7 @@ export default function AgentLeaderboard() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide leading-none">{s.label}</p>
-                  <p className={cn("font-black text-slate-900 leading-tight mt-1 tabular-nums", s.small ? "text-[16px]" : "text-[22px]")}>
+                  <p className={cn("font-black font-mono text-slate-900 leading-tight mt-1 tabular-nums", s.small ? "text-[16px]" : "text-[22px]")}>
                     {s.value}
                   </p>
                   {s.growth !== null && s.growth !== undefined ? (
