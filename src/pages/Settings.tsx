@@ -112,20 +112,58 @@ export default function Settings() {
   const [bcastMembers,  setBcastMembers]  = useState<MemberInfo[]>([]);
 
   const isStaffUser = currentSessionUser?.role === "staff";
-  const ALL_TABS = [
-    { key: "profile",       label: t.settings_profile,       icon: User,       staffAllowed: true  },
-    { key: "notifications", label: t.settings_notifications, icon: Bell,       staffAllowed: true  },
-    { key: "security",      label: t.settings_security,      icon: Shield,     staffAllowed: true  },
-    { key: "appearance",    label: t.settings_appearance,    icon: Palette,    staffAllowed: true  },
-    { key: "regional",      label: t.settings_regional,      icon: Globe,      staffAllowed: false },
-    { key: "rates",         label: t.settings_rates,         icon: TrendingUp, staffAllowed: false },
-    { key: "agents",        label: t.settings_agents,        icon: Users,      staffAllowed: false },
-    { key: "promo",         label: "Promo",                  icon: Megaphone,  staffAllowed: false },
-    { key: "invoice",       label: "Invoice",                icon: FileText,   staffAllowed: false },
-    { key: "audit",         label: "Audit Log",              icon: History,    staffAllowed: false },
-    { key: "status",        label: "Status",                 icon: Activity,   staffAllowed: false },
+
+  type TabGroup = {
+    group: string;
+    ownerOnly: boolean;
+    items: { key: string; label: string; icon: typeof User }[];
+  };
+
+  const ALL_TAB_GROUPS: TabGroup[] = [
+    {
+      group: "Akun",
+      ownerOnly: false,
+      items: [
+        { key: "profile",       label: t.settings_profile,       icon: User    },
+        { key: "security",      label: t.settings_security,      icon: Shield  },
+        { key: "notifications", label: t.settings_notifications, icon: Bell    },
+      ],
+    },
+    {
+      group: "Tampilan",
+      ownerOnly: false,
+      items: [
+        { key: "appearance", label: t.settings_appearance, icon: Palette },
+        { key: "regional",   label: t.settings_regional,   icon: Globe   },
+      ],
+    },
+    {
+      group: "Agency",
+      ownerOnly: true,
+      items: [
+        { key: "rates",   label: t.settings_rates,  icon: TrendingUp },
+        { key: "agents",  label: t.settings_agents, icon: Users      },
+        { key: "invoice", label: "Invoice",          icon: FileText   },
+        { key: "promo",   label: "Promo",            icon: Megaphone  },
+      ],
+    },
+    {
+      group: "Sistem",
+      ownerOnly: true,
+      items: [
+        { key: "audit",  label: "Audit Log", icon: History  },
+        { key: "status", label: "Status",    icon: Activity },
+      ],
+    },
   ];
-  const TABS = isStaffUser ? ALL_TABS.filter((t) => t.staffAllowed) : ALL_TABS;
+
+  const TAB_GROUPS = isStaffUser
+    ? ALL_TAB_GROUPS
+        .map((g) => ({ ...g, items: g.ownerOnly ? [] : g.items }))
+        .filter((g) => g.items.length > 0)
+    : ALL_TAB_GROUPS;
+
+  const TABS = TAB_GROUPS.flatMap((g) => g.items);
 
   const [profile, setProfile] = useState({
     name: "",
@@ -568,42 +606,58 @@ export default function Settings() {
     <div className="flex flex-col md:flex-row gap-3 md:gap-6">
 
       {/* ── Tab nav: horizontal scroll on mobile, vertical sidebar on desktop ── */}
-      <div className="md:w-44 md:shrink-0 -mx-3 md:mx-0 px-3 md:px-0 sticky top-0 z-10 bg-[hsl(var(--card))] py-1 md:py-0 md:static md:bg-transparent">
-        {/* Mobile: horizontal pill tabs */}
-        <div className="flex md:hidden gap-1 overflow-x-auto no-scrollbar -mx-1 px-1">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={cn(
-                "flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-semibold whitespace-nowrap shrink-0 transition-all border",
-                tab === t.key
-                  ? "bg-[hsl(var(--primary))] text-white border-[hsl(var(--primary))]"
-                  : "bg-white text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
+      <div className="md:w-48 md:shrink-0 -mx-3 md:mx-0 px-3 md:px-0 sticky top-0 z-10 bg-[hsl(var(--card))] py-1 md:py-0 md:static md:bg-transparent">
+        {/* Mobile: horizontal pill tabs with group separators */}
+        <div className="flex md:hidden gap-1 overflow-x-auto no-scrollbar -mx-1 px-1 items-center">
+          {TAB_GROUPS.map((group, gi) => (
+            <div key={group.group} className="flex items-center gap-1 shrink-0">
+              {gi > 0 && (
+                <span className="w-px h-4 bg-[hsl(var(--border))] mx-0.5 shrink-0" />
               )}
-            >
-              <t.icon strokeWidth={1.5} className="h-3 w-3" />
-              {t.label}
-            </button>
+              {group.items.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => setTab(item.key)}
+                  className={cn(
+                    "flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-semibold whitespace-nowrap shrink-0 transition-all border",
+                    tab === item.key
+                      ? "bg-[hsl(var(--primary))] text-white border-[hsl(var(--primary))]"
+                      : "bg-white text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
+                  )}
+                >
+                  <item.icon strokeWidth={1.5} className="h-3 w-3" />
+                  {item.label}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
 
-        {/* Desktop: vertical nav */}
-        <nav className="hidden md:block space-y-0.5">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={cn(
-                "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all",
-                tab === t.key
-                  ? "bg-[hsl(var(--accent))] text-[hsl(var(--primary))]"
-                  : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
-              )}
-            >
-              <t.icon strokeWidth={1.5} className="h-4 w-4 shrink-0" />
-              {t.label}
-            </button>
+        {/* Desktop: grouped vertical nav */}
+        <nav className="hidden md:block space-y-4">
+          {TAB_GROUPS.map((group) => (
+            <div key={group.group}>
+              <p className="px-3 mb-1 text-[9.5px] font-bold uppercase tracking-widest text-[hsl(var(--muted-foreground)/0.6)]">
+                {group.group}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setTab(item.key)}
+                    className={cn(
+                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12.5px] font-medium transition-all",
+                      tab === item.key
+                        ? "bg-[hsl(var(--accent))] text-[hsl(var(--primary))]"
+                        : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
+                    )}
+                  >
+                    <item.icon strokeWidth={1.5} className="h-3.5 w-3.5 shrink-0" />
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
       </div>
