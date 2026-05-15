@@ -634,10 +634,10 @@ export default function Reports() {
                 {cashflow.unpaidCount > 0 && <> · <strong>{cashflow.unpaidCount}</strong> order belum bayar</>}
                 {cashflow.dpCount > 0     && <> · <strong>{cashflow.dpCount}</strong> baru DP</>}
                 {". "}Total piutang aktif:{" "}
-                <span className="font-mono font-bold">{fmtIDR(piutang.totalPiutang)}</span>
+                <span className="tabular-nums font-bold">{fmtIDR(piutang.totalPiutang)}</span>
               </span>
               <span className="ml-auto text-[11.5px] text-muted-foreground font-medium whitespace-nowrap">
-                Estimasi profit bersih: <span className="font-mono font-bold text-foreground">{fmtIDR(split.netAgencyProfit)}</span>
+                Estimasi profit bersih: <span className="tabular-nums font-bold text-foreground">{fmtIDR(split.netAgencyProfit)}</span>
               </span>
             </div>
           )}
@@ -656,7 +656,7 @@ export default function Reports() {
                 {prevLabel && (
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Total pengeluaran:{" "}
-                    <span className="font-mono font-semibold text-foreground">
+                    <span className="tabular-nums font-semibold text-foreground">
                       {fmtIDR(split.directRevenue - split.directProfit)}
                     </span>
                   </p>
@@ -672,7 +672,7 @@ export default function Reports() {
                     ].map((row) => (
                       <tr key={row.label} className="border-b border-[hsl(var(--border))] last:border-0">
                         <td className="py-2 text-muted-foreground">{row.label}</td>
-                        <td className="py-2 text-right font-mono font-semibold text-foreground">
+                        <td className="py-2 text-right tabular-nums font-semibold text-foreground">
                           {fmtIDR(row.value)}
                         </td>
                       </tr>
@@ -693,7 +693,7 @@ export default function Reports() {
                 {prevLabel && (
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Total fee mitra:{" "}
-                    <span className="font-mono font-semibold text-foreground">
+                    <span className="tabular-nums font-semibold text-foreground">
                       {fmtIDR(split.totalCommission + split.totalFieldFee + split.totalTransportOpex)}
                     </span>
                   </p>
@@ -711,7 +711,7 @@ export default function Reports() {
                     ].map((row) => (
                       <tr key={row.label} className="border-b border-[hsl(var(--border))] last:border-0">
                         <td className="py-1.5 text-muted-foreground">{row.label}</td>
-                        <td className={cn("py-1.5 text-right font-mono font-semibold", row.color || "text-foreground")}>
+                        <td className={cn("py-1.5 text-right tabular-nums font-semibold", row.color || "text-foreground")}>
                           {row.color.includes("orange") || row.color.includes("violet") || row.color.includes("amber")
                             ? `−${fmtIDR(row.value)}`
                             : fmtIDR(row.value)}
@@ -742,7 +742,7 @@ export default function Reports() {
                 {prevLabel && (
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Total biaya:{" "}
-                    <span className="font-mono font-semibold text-foreground">
+                    <span className="tabular-nums font-semibold text-foreground">
                       {fmtIDR(totals.cost + split.totalCommission + split.totalFieldFee + split.totalTransportOpex)}
                     </span>
                   </p>
@@ -815,7 +815,7 @@ export default function Reports() {
                         <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: TYPE_COLOR[t.type] ?? "#94a3b8" }} />
                         <span>{t.emoji} {t.label} ({pct}%)</span>
                       </div>
-                      <span className="font-mono font-semibold text-emerald-700">{fmtIDR(t.profit)}</span>
+                      <span className="tabular-nums font-semibold text-emerald-700">{fmtIDR(t.profit)}</span>
                     </div>
                   );
                 })}
@@ -841,7 +841,7 @@ export default function Reports() {
                       >
                         <div className="text-base">{medals[i]}</div>
                         <div className="text-[11px] font-semibold truncate mt-0.5">{c.name}</div>
-                        <div className="text-[12px] font-black font-mono text-emerald-700 mt-0.5">{fmtIDRShort(c.profit)}</div>
+                        <div className="text-[12px] font-black tabular-nums text-emerald-700 mt-0.5">{fmtIDRShort(c.profit)}</div>
                         <div className="text-[9.5px] text-muted-foreground">{c.count} order</div>
                       </div>
                     );
@@ -869,8 +869,8 @@ export default function Reports() {
                         <td className="py-1.5 px-1 text-muted-foreground">{i + 1}</td>
                         <td className="py-1.5 px-1 font-medium truncate max-w-[130px]">{c.name}</td>
                         <td className="py-1.5 px-1 text-right">{c.count}</td>
-                        <td className="py-1.5 px-1 text-right font-mono">{fmtIDRShort(c.revenue)}</td>
-                        <td className={cn("py-1.5 px-1 text-right font-mono font-bold", c.profit >= 0 ? "text-emerald-700" : "text-red-600")}>
+                        <td className="py-1.5 px-1 text-right tabular-nums">{fmtIDRShort(c.revenue)}</td>
+                        <td className={cn("py-1.5 px-1 text-right tabular-nums font-bold", c.profit >= 0 ? "text-emerald-700" : "text-red-600")}>
                           {fmtIDRShort(c.profit)}
                         </td>
                       </tr>
@@ -901,7 +901,7 @@ export default function Reports() {
                         <span>{item.icon}</span>
                         <span className="font-medium text-foreground">{item.label}</span>
                       </span>
-                      <span className="font-mono font-semibold text-foreground">{fmtIDR(item.amount)}</span>
+                      <span className="tabular-nums font-semibold text-foreground">{fmtIDR(item.amount)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1.5 bg-[hsl(var(--secondary))] rounded-full overflow-hidden">
@@ -920,7 +920,7 @@ export default function Reports() {
               </div>
               <div className="mt-4 pt-3 border-t border-[hsl(var(--border))] flex items-center justify-between">
                 <span className="text-[12px] font-bold text-foreground">Total Cash Masuk</span>
-                <span className="text-[14px] font-black font-mono text-foreground">{fmtIDR(sumberDana.total)}</span>
+                <span className="text-[14px] font-black tabular-nums text-foreground">{fmtIDR(sumberDana.total)}</span>
               </div>
               <button
                 onClick={() => setActiveTab("arus_kas")}
@@ -1007,27 +1007,27 @@ export default function Reports() {
                               {badge.label}
                             </span>
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono">{fmtIDR(row.revenue)}</td>
-                          <td className="py-2.5 px-3 text-right font-mono text-rose-700">
+                          <td className="py-2.5 px-3 text-right tabular-nums">{fmtIDR(row.revenue)}</td>
+                          <td className="py-2.5 px-3 text-right tabular-nums text-rose-700">
                             {row.modal > 0 ? fmtIDR(row.modal) : <span className="text-muted-foreground">—</span>}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-amber-700" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-2.5 px-3 text-right tabular-nums text-amber-700" onClick={(e) => e.stopPropagation()}>
                             {row.biaya > 0 ? (
                               <span className="relative group/biaya inline-block">
                                 {fmtIDR(row.biaya)}
                                 <span className="pointer-events-none absolute right-0 bottom-full mb-2 z-50 hidden group-hover/biaya:flex flex-col w-60 rounded-xl border border-amber-200 bg-white shadow-2xl p-2.5 text-[10.5px] text-left gap-0.5">
                                   <span className="font-bold text-foreground mb-1 border-b pb-1">Rincian Biaya</span>
-                                  {row.agentFee > 0   && <span className="flex justify-between gap-2 text-orange-700"><span>Fee Agen{row.agentName ? ` (${row.agentName})` : ""}</span><span className="font-mono">{fmtIDR(row.agentFee)}</span></span>}
-                                  {row.pelFee > 0     && <span className="flex justify-between gap-2 text-violet-700"><span>Fee Pelaksana</span><span className="font-mono">{fmtIDR(row.pelFee)}</span></span>}
-                                  {row.voaAgentFeeAmt > 0 && <span className="flex justify-between gap-2 text-purple-700"><span>Fee Agent Lapangan</span><span className="font-mono">{fmtIDR(row.voaAgentFeeAmt)}</span></span>}
-                                  {row.kurirFeeAmt > 0    && <span className="flex justify-between gap-2 text-amber-700"><span>Fee Kurir</span><span className="font-mono">{fmtIDR(row.kurirFeeAmt)}</span></span>}
-                                  {row.internalOpex > 0   && <span className="flex justify-between gap-2 text-slate-600"><span>Biaya Internal</span><span className="font-mono">{fmtIDR(row.internalOpex)}</span></span>}
-                                  <span className="flex justify-between gap-2 font-bold text-amber-800 border-t pt-1 mt-0.5"><span>Total</span><span className="font-mono">{fmtIDR(row.biaya)}</span></span>
+                                  {row.agentFee > 0   && <span className="flex justify-between gap-2 text-orange-700"><span>Fee Agen{row.agentName ? ` (${row.agentName})` : ""}</span><span className="tabular-nums">{fmtIDR(row.agentFee)}</span></span>}
+                                  {row.pelFee > 0     && <span className="flex justify-between gap-2 text-violet-700"><span>Fee Pelaksana</span><span className="tabular-nums">{fmtIDR(row.pelFee)}</span></span>}
+                                  {row.voaAgentFeeAmt > 0 && <span className="flex justify-between gap-2 text-purple-700"><span>Fee Agent Lapangan</span><span className="tabular-nums">{fmtIDR(row.voaAgentFeeAmt)}</span></span>}
+                                  {row.kurirFeeAmt > 0    && <span className="flex justify-between gap-2 text-amber-700"><span>Fee Kurir</span><span className="tabular-nums">{fmtIDR(row.kurirFeeAmt)}</span></span>}
+                                  {row.internalOpex > 0   && <span className="flex justify-between gap-2 text-slate-600"><span>Biaya Internal</span><span className="tabular-nums">{fmtIDR(row.internalOpex)}</span></span>}
+                                  <span className="flex justify-between gap-2 font-bold text-amber-800 border-t pt-1 mt-0.5"><span>Total</span><span className="tabular-nums">{fmtIDR(row.biaya)}</span></span>
                                 </span>
                               </span>
                             ) : <span className="text-muted-foreground">—</span>}
                           </td>
-                          <td className={cn("py-2.5 px-3 text-right font-mono font-bold", profitColor)} onClick={(e) => e.stopPropagation()}>
+                          <td className={cn("py-2.5 px-3 text-right tabular-nums font-bold", profitColor)} onClick={(e) => e.stopPropagation()}>
                             <span className="relative group/profit inline-block">
                               <span className="flex items-center justify-end gap-1">
                                 {row.profit >= 0 ? "+" : ""}{fmtIDR(row.profit)}
@@ -1035,15 +1035,15 @@ export default function Reports() {
                               </span>
                               <span className="pointer-events-none absolute right-0 bottom-full mb-2 z-50 hidden group-hover/profit:flex flex-col w-60 rounded-xl border border-blue-200 bg-white shadow-2xl p-2.5 text-[10.5px] text-left gap-0.5">
                                 <span className="font-bold text-foreground mb-1 border-b pb-1">Breakdown Profit Bersih</span>
-                                <span className="flex justify-between gap-2 text-sky-700"><span>Revenue</span><span className="font-mono">{fmtIDR(row.revenue)}</span></span>
-                                <span className="flex justify-between gap-2 text-rose-700"><span>− Modal</span><span className="font-mono">{fmtIDR(row.modal)}</span></span>
-                                <span className="flex justify-between gap-2 font-semibold text-slate-700 border-t pt-1 mt-0.5"><span>= Gross</span><span className="font-mono">{fmtIDR(row.grossProfit)}</span></span>
-                                {row.agentFee > 0 && <span className="flex justify-between gap-2 text-orange-700"><span>− Fee Agen</span><span className="font-mono">{fmtIDR(row.agentFee)}</span></span>}
-                                {row.pelFee > 0   && <span className="flex justify-between gap-2 text-violet-700"><span>− Fee Pelaksana</span><span className="font-mono">{fmtIDR(row.pelFee)}</span></span>}
-                                {row.voaOpexIDR>0  && <span className="flex justify-between gap-2 text-purple-700"><span>− Biaya VOA</span><span className="font-mono">{fmtIDR(row.voaOpexIDR)}</span></span>}
-                                {row.kurirIDR>0    && <span className="flex justify-between gap-2 text-amber-700"><span>− Biaya Kurir</span><span className="font-mono">{fmtIDR(row.kurirIDR)}</span></span>}
+                                <span className="flex justify-between gap-2 text-sky-700"><span>Revenue</span><span className="tabular-nums">{fmtIDR(row.revenue)}</span></span>
+                                <span className="flex justify-between gap-2 text-rose-700"><span>− Modal</span><span className="tabular-nums">{fmtIDR(row.modal)}</span></span>
+                                <span className="flex justify-between gap-2 font-semibold text-slate-700 border-t pt-1 mt-0.5"><span>= Gross</span><span className="tabular-nums">{fmtIDR(row.grossProfit)}</span></span>
+                                {row.agentFee > 0 && <span className="flex justify-between gap-2 text-orange-700"><span>− Fee Agen</span><span className="tabular-nums">{fmtIDR(row.agentFee)}</span></span>}
+                                {row.pelFee > 0   && <span className="flex justify-between gap-2 text-violet-700"><span>− Fee Pelaksana</span><span className="tabular-nums">{fmtIDR(row.pelFee)}</span></span>}
+                                {row.voaOpexIDR>0  && <span className="flex justify-between gap-2 text-purple-700"><span>− Biaya VOA</span><span className="tabular-nums">{fmtIDR(row.voaOpexIDR)}</span></span>}
+                                {row.kurirIDR>0    && <span className="flex justify-between gap-2 text-amber-700"><span>− Biaya Kurir</span><span className="tabular-nums">{fmtIDR(row.kurirIDR)}</span></span>}
                                 <span className={cn("flex justify-between gap-2 font-bold border-t pt-1 mt-0.5", row.profit >= 0 ? "text-emerald-700" : "text-red-600")}>
-                                  <span>= Profit Bersih</span><span className="font-mono">{fmtIDR(row.profit)}</span>
+                                  <span>= Profit Bersih</span><span className="tabular-nums">{fmtIDR(row.profit)}</span>
                                 </span>
                               </span>
                             </span>
@@ -1065,10 +1065,10 @@ export default function Reports() {
                   <tfoot>
                     <tr className="border-t-2 border-blue-200 bg-blue-50/50 font-bold text-[12px]">
                       <td colSpan={3} className="py-2.5 px-3 text-blue-800">Total ({byOrderFiltered.length} order)</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-sky-700">{fmtIDR(byOrderFiltered.reduce((s, r) => s + r.revenue, 0))}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-rose-700">{fmtIDR(byOrderFiltered.reduce((s, r) => s + r.modal, 0))}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-amber-700">{fmtIDR(byOrderFiltered.reduce((s, r) => s + r.biaya, 0))}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-emerald-700">
+                      <td className="py-2.5 px-3 text-right tabular-nums text-sky-700">{fmtIDR(byOrderFiltered.reduce((s, r) => s + r.revenue, 0))}</td>
+                      <td className="py-2.5 px-3 text-right tabular-nums text-rose-700">{fmtIDR(byOrderFiltered.reduce((s, r) => s + r.modal, 0))}</td>
+                      <td className="py-2.5 px-3 text-right tabular-nums text-amber-700">{fmtIDR(byOrderFiltered.reduce((s, r) => s + r.biaya, 0))}</td>
+                      <td className="py-2.5 px-3 text-right tabular-nums text-emerald-700">
                         {(() => { const t = byOrderFiltered.reduce((s, r) => s + r.profit, 0); return `${t >= 0 ? "+" : ""}${fmtIDR(t)}`; })()}
                       </td>
                       <td className="py-2.5 px-3 text-right text-blue-700">
@@ -1103,7 +1103,7 @@ export default function Reports() {
                 "from-orange-50 to-white border-orange-100 text-orange-700"
               )}>
                 <p className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">{r.label}</p>
-                <p className="text-lg font-extrabold font-mono mt-1">{r.value}</p>
+                <p className="text-lg font-extrabold tabular-nums mt-1">{r.value}</p>
                 {r.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{r.sub}</p>}
               </div>
             ))}
@@ -1144,15 +1144,15 @@ export default function Reports() {
                           <td className="py-2 px-2 whitespace-nowrap text-muted-foreground">{fmtDate(e.paidAt)}</td>
                           <td className={cn("py-2 px-2 max-w-[100px] truncate", isDebit ? `${textColor}/70` : "")} title={e.clientName}>{e.clientName}</td>
                           <td className={cn("py-2 px-2 max-w-[180px] truncate font-medium", textColor)} title={e.orderTitle}>{e.orderTitle}</td>
-                          <td className="py-2 px-2 text-right font-mono">{isDebit ? "—" : fmtIDR(e.revenueIDR)}</td>
-                          <td className={cn("py-2 px-2 text-right font-mono", isDebit ? `${textColor} font-semibold` : "text-rose-700")}>{isDebit ? `−${fmtIDR(e.costIDR)}` : fmtIDR(e.costIDR)}</td>
-                          <td className={cn("py-2 px-2 text-right font-mono font-semibold", isDebit ? textColor : profitColor)}>
+                          <td className="py-2 px-2 text-right tabular-nums">{isDebit ? "—" : fmtIDR(e.revenueIDR)}</td>
+                          <td className={cn("py-2 px-2 text-right tabular-nums", isDebit ? `${textColor} font-semibold` : "text-rose-700")}>{isDebit ? `−${fmtIDR(e.costIDR)}` : fmtIDR(e.costIDR)}</td>
+                          <td className={cn("py-2 px-2 text-right tabular-nums font-semibold", isDebit ? textColor : profitColor)}>
                             {isDebit ? `−${fmtIDR(Math.abs(e.profitIDR))}` : `${e.profitIDR >= 0 ? "+" : ""}${fmtIDR(e.profitIDR)}`}
                           </td>
                           <td className={cn("py-2 px-2 text-right", isDebit ? "text-muted-foreground" : (e.marginPct >= 20 ? "text-emerald-700" : e.marginPct >= 10 ? "text-sky-700" : "text-amber-700"))}>
                             {isDebit ? "—" : `${e.marginPct.toFixed(1)}%`}
                           </td>
-                          <td className={cn("py-2 px-2 text-right font-mono", balColor)}>{fmtIDR(e.runningBalance)}</td>
+                          <td className={cn("py-2 px-2 text-right tabular-nums", balColor)}>{fmtIDR(e.runningBalance)}</td>
                         </tr>
                       );
                     })}
@@ -1160,13 +1160,13 @@ export default function Reports() {
                   <tfoot>
                     <tr className="border-t-2 border-emerald-200 bg-emerald-50/50 font-bold text-[12px]">
                       <td colSpan={4} className="py-2.5 px-2 text-emerald-800">Total ({ledgerStats.count} order)</td>
-                      <td className="py-2.5 px-2 text-right font-mono text-sky-700">{fmtIDR(ledgerStats.totalRevenue)}</td>
-                      <td className="py-2.5 px-2 text-right font-mono text-rose-700">{fmtIDR(ledgerStats.totalCost)}</td>
-                      <td className={cn("py-2.5 px-2 text-right font-mono", ledgerStats.totalProfit >= 0 ? "text-emerald-700" : "text-red-600")}>
+                      <td className="py-2.5 px-2 text-right tabular-nums text-sky-700">{fmtIDR(ledgerStats.totalRevenue)}</td>
+                      <td className="py-2.5 px-2 text-right tabular-nums text-rose-700">{fmtIDR(ledgerStats.totalCost)}</td>
+                      <td className={cn("py-2.5 px-2 text-right tabular-nums", ledgerStats.totalProfit >= 0 ? "text-emerald-700" : "text-red-600")}>
                         {ledgerStats.totalProfit >= 0 ? "+" : ""}{fmtIDR(ledgerStats.totalProfit)}
                       </td>
                       <td className="py-2.5 px-2 text-right text-emerald-700">{ledgerStats.avgMargin.toFixed(1)}%</td>
-                      <td className={cn("py-2.5 px-2 text-right font-mono", ledgerStats.netProfit >= 0 ? "text-emerald-700" : "text-red-600")}>
+                      <td className={cn("py-2.5 px-2 text-right tabular-nums", ledgerStats.netProfit >= 0 ? "text-emerald-700" : "text-red-600")}>
                         {fmtIDR(ledgerStats.netProfit)}
                       </td>
                     </tr>
@@ -1193,7 +1193,7 @@ export default function Reports() {
                 "from-red-50 to-white border-red-100 text-red-600"
               )}>
                 <p className="text-[10.5px] uppercase tracking-wide font-semibold text-muted-foreground">{r.label}</p>
-                <p className="text-xl font-extrabold font-mono mt-1">{r.value}</p>
+                <p className="text-xl font-extrabold tabular-nums mt-1">{r.value}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{r.sub}</p>
               </div>
             ))}
@@ -1202,7 +1202,7 @@ export default function Reports() {
             <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-4 space-y-2">
               <div className="flex justify-between text-[11px] text-muted-foreground">
                 <span>Progres Koleksi Pembayaran</span>
-                <span className="font-mono font-bold">{fmtIDRShort(piutang.totalCair)} / {fmtIDRShort(piutang.totalTagihan)}</span>
+                <span className="tabular-nums font-bold">{fmtIDRShort(piutang.totalCair)} / {fmtIDRShort(piutang.totalTagihan)}</span>
               </div>
               <div className="h-3 rounded-full bg-gray-100 overflow-hidden flex">
                 <div className="h-full bg-emerald-500 rounded-l-full transition-all" style={{ width: `${Math.min(100, (piutang.totalCair / piutang.totalTagihan) * 100)}%` }} />
@@ -1243,9 +1243,9 @@ export default function Reports() {
                             {PAYMENT_STATUS_LABEL[derivePaymentStatus(Number(o.paidAmount ?? 0), Number(o.totalPrice ?? 0), o.paymentStatus)]}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono">{fmtIDR(revenueIDR(o, egpRate))}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">{fmtIDR(paidAmountIDR(o, egpRate))}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-red-600">{fmtIDR(remaining)}</td>
+                        <td className="py-2.5 px-3 text-right tabular-nums">{fmtIDR(revenueIDR(o, egpRate))}</td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-emerald-700">{fmtIDR(paidAmountIDR(o, egpRate))}</td>
+                        <td className="py-2.5 px-3 text-right tabular-nums font-bold text-red-600">{fmtIDR(remaining)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1271,7 +1271,7 @@ export default function Reports() {
                 "from-emerald-50 to-white border-emerald-100 text-emerald-700"
               )}>
                 <p className="text-[10.5px] uppercase tracking-wide font-semibold text-muted-foreground">{r.label}</p>
-                <p className="text-xl font-extrabold font-mono mt-1">{r.value}</p>
+                <p className="text-xl font-extrabold tabular-nums mt-1">{r.value}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{r.sub}</p>
               </div>
             ))}
@@ -1302,10 +1302,10 @@ export default function Reports() {
                         <td className="py-2 px-2 text-muted-foreground">{i < 3 ? medals[i] : i + 1}</td>
                         <td className="py-2 px-2 font-medium text-sky-700 hover:underline truncate max-w-[180px]">{row.name}</td>
                         <td className="py-2 px-2 text-right">{row.orders}</td>
-                        <td className="py-2 px-2 text-right font-mono">{fmtIDR(row.revenue)}</td>
-                        <td className={cn("py-2 px-2 text-right font-mono font-semibold", row.profit >= 0 ? "text-emerald-700" : "text-red-600")}>{fmtIDR(row.profit)}</td>
-                        <td className="py-2 px-2 text-right font-mono font-bold text-orange-700">{fmtIDR(row.commission)}</td>
-                        <td className="py-2 px-2 text-right font-mono font-bold text-amber-700">{row.lifetimePoints}</td>
+                        <td className="py-2 px-2 text-right tabular-nums">{fmtIDR(row.revenue)}</td>
+                        <td className={cn("py-2 px-2 text-right tabular-nums font-semibold", row.profit >= 0 ? "text-emerald-700" : "text-red-600")}>{fmtIDR(row.profit)}</td>
+                        <td className="py-2 px-2 text-right tabular-nums font-bold text-orange-700">{fmtIDR(row.commission)}</td>
+                        <td className="py-2 px-2 text-right tabular-nums font-bold text-amber-700">{row.lifetimePoints}</td>
                       </tr>
                     );
                   })}
