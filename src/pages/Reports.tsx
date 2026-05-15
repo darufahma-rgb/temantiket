@@ -567,36 +567,36 @@ export default function Reports() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               {
-                label: "NET PROFIT REAL",
+                label: "Keuntungan Bersih",
                 value: cashflow.netProfitReal,
                 prev:  prevCashflow.netProfitReal,
                 icon:  TrendingUp,
                 iconBg: "bg-blue-600",
-                sub: `${cashflow.paidCount} order lunas`,
+                sub: `dari ${cashflow.paidCount} order sudah lunas`,
               },
               {
-                label: "CASH MASUK (ACTUAL)",
+                label: "Uang Masuk",
                 value: cashflow.cashReceived,
                 prev:  prevCashflow.cashReceived,
                 icon:  Banknote,
                 iconBg: "bg-emerald-500",
-                sub: "uang sudah diterima",
+                sub: "kas yang sudah diterima",
               },
               {
-                label: "TOTAL MODAL & HPP",
+                label: "Total Modal Keluar",
                 value: totals.cost,
                 prev:  prevCashflow.cost,
                 icon:  Receipt,
                 iconBg: "bg-orange-500",
-                sub: `${totals.count} order aktif`,
+                sub: `biaya & modal dari ${totals.count} order`,
               },
               {
-                label: "PROFIT PENDING",
+                label: "Potensi Keuntungan",
                 value: cashflow.profitPending,
                 prev:  prevCashflow.profitPending,
                 icon:  Clock,
                 iconBg: "bg-violet-500",
-                sub: `${cashflow.dpCount + cashflow.unpaidCount} belum lunas`,
+                sub: `dari ${cashflow.dpCount + cashflow.unpaidCount} order belum lunas`,
               },
             ].map((card) => {
               const growth = growthPct(card.value, card.prev);
@@ -611,8 +611,8 @@ export default function Reports() {
                     </div>
                   </div>
                   <div>
-                    <p className="text-[22px] font-black tabular-nums leading-none text-foreground">
-                      {fmtIDRShort(card.value)}
+                    <p className="text-[20px] font-black tabular-nums leading-none text-foreground">
+                      {fmtIDR(card.value)}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">{card.sub}</p>
                   </div>
@@ -628,16 +628,16 @@ export default function Reports() {
           {(cashflow.dpCount > 0 || cashflow.unpaidCount > 0) && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
               <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-              <span className="text-[11.5px] font-semibold text-amber-800">Perhatian Keuangan:</span>
+              <span className="text-[11.5px] font-semibold text-amber-800">Info:</span>
               <span className="text-[11.5px] text-amber-700">
-                Total komisi dibayar — lebih dihitung sebagai Cost of Sales.
+                Komisi mitra sudah masuk sebagai biaya operasional.
                 {cashflow.unpaidCount > 0 && <> · <strong>{cashflow.unpaidCount}</strong> order belum bayar</>}
-                {cashflow.dpCount > 0     && <> · <strong>{cashflow.dpCount}</strong> DP sebagian</>}
-                {". "}Tagihan outstanding:{" "}
+                {cashflow.dpCount > 0     && <> · <strong>{cashflow.dpCount}</strong> baru DP</>}
+                {". "}Total piutang aktif:{" "}
                 <span className="font-mono font-bold">{fmtIDR(piutang.totalPiutang)}</span>
               </span>
               <span className="ml-auto text-[11.5px] text-muted-foreground font-medium whitespace-nowrap">
-                Sisa saldo kas: <span className="font-mono font-bold text-foreground">{fmtIDR(split.netAgencyProfit)}</span>
+                Estimasi profit bersih: <span className="font-mono font-bold text-foreground">{fmtIDR(split.netAgencyProfit)}</span>
               </span>
             </div>
           )}
@@ -648,13 +648,14 @@ export default function Reports() {
             {/* Card 1: Direct Commission */}
             <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
               <div className="px-4 pt-4 pb-3 border-b border-[hsl(var(--border))]">
-                <p className="text-[9.5px] font-bold uppercase tracking-widest text-sky-600">DIRECT COMMISSION (TANPA PPH)</p>
-                <p className="text-[26px] font-black tabular-nums text-foreground mt-1 leading-none">
-                  {fmtIDRShort(split.directProfit)}
+                <p className="text-[9.5px] font-bold uppercase tracking-widest text-sky-600">Profit Langsung</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">order tanpa mitra</p>
+                <p className="text-[22px] font-black tabular-nums text-foreground mt-1 leading-none">
+                  {fmtIDR(split.directProfit)}
                 </p>
                 {prevLabel && (
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Penurunan:{" "}
+                    Total pengeluaran:{" "}
                     <span className="font-mono font-semibold text-foreground">
                       {fmtIDR(split.directRevenue - split.directProfit)}
                     </span>
@@ -665,9 +666,9 @@ export default function Reports() {
                 <table className="w-full text-[11.5px]">
                   <tbody>
                     {[
-                      { label: "Komisi Tersedia", value: split.directRevenue },
-                      { label: "Total Penurunan", value: split.directRevenue - split.directProfit },
-                      { label: "Tertunda",         value: cashflow.profitPending },
+                      { label: "Revenue Langsung", value: split.directRevenue },
+                      { label: "Biaya & Modal",    value: split.directRevenue - split.directProfit },
+                      { label: "Profit Menunggu",  value: cashflow.profitPending },
                     ].map((row) => (
                       <tr key={row.label} className="border-b border-[hsl(var(--border))] last:border-0">
                         <td className="py-2 text-muted-foreground">{row.label}</td>
@@ -684,13 +685,14 @@ export default function Reports() {
             {/* Card 2: Via Mitra */}
             <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
               <div className="px-4 pt-4 pb-3 border-b border-[hsl(var(--border))]">
-                <p className="text-[9.5px] font-bold uppercase tracking-widest text-orange-600">VIA MITRA (AGENT)</p>
-                <p className="text-[26px] font-black tabular-nums text-foreground mt-1 leading-none">
-                  {fmtIDRShort(split.agentNetForAgency)}
+                <p className="text-[9.5px] font-bold uppercase tracking-widest text-orange-600">Lewat Mitra</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">bersih setelah semua fee mitra</p>
+                <p className="text-[22px] font-black tabular-nums text-foreground mt-1 leading-none">
+                  {fmtIDR(split.agentNetForAgency)}
                 </p>
                 {prevLabel && (
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Penurunan:{" "}
+                    Total fee mitra:{" "}
                     <span className="font-mono font-semibold text-foreground">
                       {fmtIDR(split.totalCommission + split.totalFieldFee + split.totalTransportOpex)}
                     </span>
@@ -701,11 +703,11 @@ export default function Reports() {
                 <table className="w-full text-[11.5px]">
                   <tbody>
                     {[
-                      { label: "Gross Profit Mitra", value: split.agentGrossProfit,  color: "" },
-                      { label: "Komisi Agent",        value: split.totalCommission,   color: "text-orange-600" },
-                      { label: "Fee Lapangan",         value: split.totalFieldFee,     color: "text-violet-600" },
-                      { label: "Biaya Transport",      value: split.totalTransportOpex,color: "text-amber-600" },
-                      { label: "Net ke Agency",        value: split.agentNetForAgency, color: "text-emerald-700 font-bold" },
+                      { label: "Profit Kotor Order Mitra", value: split.agentGrossProfit,  color: "" },
+                      { label: "Komisi Mitra",             value: split.totalCommission,   color: "text-orange-600" },
+                      { label: "Biaya Lapangan",           value: split.totalFieldFee,     color: "text-violet-600" },
+                      { label: "Biaya Transportasi",       value: split.totalTransportOpex,color: "text-amber-600" },
+                      { label: "Bersih ke Agensi",         value: split.agentNetForAgency, color: "text-emerald-700 font-bold" },
                     ].map((row) => (
                       <tr key={row.label} className="border-b border-[hsl(var(--border))] last:border-0">
                         <td className="py-1.5 text-muted-foreground">{row.label}</td>
@@ -732,13 +734,14 @@ export default function Reports() {
             {/* Card 3: Net Profit Agency (with sparkline) */}
             <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
               <div className="px-4 pt-4 pb-3">
-                <p className="text-[9.5px] font-bold uppercase tracking-widest text-emerald-600">NET PROFIT AGENCY</p>
-                <p className="text-[26px] font-black tabular-nums text-foreground mt-1 leading-none">
-                  {fmtIDRShort(split.netAgencyProfit)}
+                <p className="text-[9.5px] font-bold uppercase tracking-widest text-emerald-600">Profit Bersih Agensi</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">langsung + lewat mitra</p>
+                <p className="text-[22px] font-black tabular-nums text-foreground mt-1 leading-none">
+                  {fmtIDR(split.netAgencyProfit)}
                 </p>
                 {prevLabel && (
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Penurunan:{" "}
+                    Total biaya:{" "}
                     <span className="font-mono font-semibold text-foreground">
                       {fmtIDR(totals.cost + split.totalCommission + split.totalFieldFee + split.totalTransportOpex)}
                     </span>
