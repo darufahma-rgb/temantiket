@@ -1563,7 +1563,8 @@ export default function StaffManagementCenter() {
               </button>
             </div>
           ) : (
-            <table className="w-full border-collapse">
+            <div className="overflow-x-auto">
+            <table className="w-full border-collapse min-w-[780px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   {["STAFF", "ROLE", "STATUS", "PERFORMA", "ORDER HARI INI", "ORDER AKTIF", "TOTAL FEE 30 HARI", "AKSI"].map((h) => (
@@ -1691,6 +1692,7 @@ export default function StaffManagementCenter() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
 
           {/* Pagination */}
