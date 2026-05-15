@@ -316,7 +316,7 @@ export default function OrderDetail() {
           {
             agentId:     voaFieldAgentId!,
             type:        "voa_agent_fee",
-            pointsDelta: 0,
+            pointsDelta: 5,
             amountIDR:   voaFieldFee,
             description: `Fee Agent Lapangan VOA #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy:   currentUser?.id ?? "system",
@@ -326,7 +326,7 @@ export default function OrderDetail() {
         );
         if (persisted) {
           flagsPatch.voaFeeCredited = true;
-          toast.success(`Fee VOA masuk wallet ${agentName}: ${fmtIDR(voaFieldFee)}`, {
+          toast.success(`Fee VOA masuk wallet ${agentName}: ${fmtIDR(voaFieldFee)} · +5 poin`, {
             description: "Pemasukan agent lapangan VOA otomatis terekap di akun mereka.",
             duration: 5000,
           });
@@ -349,7 +349,7 @@ export default function OrderDetail() {
           {
             agentId:     kurirAgentIdPre!,
             type:        "kurir_fee",
-            pointsDelta: 0,
+            pointsDelta: 5,
             amountIDR:   kurirFeeAmountPre,
             description: `Fee Kurir Setoran #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy:   currentUser?.id ?? "system",
@@ -359,7 +359,7 @@ export default function OrderDetail() {
         );
         if (persisted) {
           flagsPatch.kurirFeeCredited = true;
-          toast.success(`Fee kurir dicatat ke wallet ${kurirName}: ${fmtIDR(kurirFeeAmountPre)}`, {
+          toast.success(`Fee kurir dicatat ke wallet ${kurirName}: ${fmtIDR(kurirFeeAmountPre)} · +5 poin`, {
             description: "Agen kurir otomatis mendapat kredit dari fee setoran uang.",
             duration: 5000,
           });
@@ -405,14 +405,14 @@ export default function OrderDetail() {
         }
       }
 
-      // ── Points: award/revoke 20 pts ke agent penjual ───────────────────────
+      // ── Points: award/revoke 10 pts ke agent penjual ───────────────────────
       // Selalu award saat order → Completed untuk agent penjual valid,
       // tanpa bergantung pada apakah ada komisi/fee (idempotent via upsert).
       if (willBeCompleted && !!agentCommId) {
         void awardOrderCompletionPoints(agentCommId!, order.id);
         // Hanya tampilkan toast tambahan jika agent tidak punya fee (shouldCreditAgent sudah tampilkan)
         if (!shouldCreditAgent && order.status !== "Completed") {
-          toast.success(`Order selesai · +20 poin diberikan ke agen`, { duration: 3500 });
+          toast.success(`Order selesai · +10 poin diberikan ke agen`, { duration: 3500 });
         }
       }
 
@@ -432,7 +432,7 @@ export default function OrderDetail() {
           {
             agentId:     pelaksanaIdForCredit!,
             type:        "pelaksana_fee",
-            pointsDelta: 0,
+            pointsDelta: 5,
             amountIDR:   pelaksanaFeeForCredit,
             description: `Fee Pelaksana Visa Student #${orderId8}${order.title ? ` — ${order.title}` : ""}`,
             createdBy:   currentUser?.id ?? "system",
@@ -442,7 +442,7 @@ export default function OrderDetail() {
         );
         if (persisted) {
           flagsPatch.pelaksanaFeeCredited = true;
-          toast.success(`Fee pelaksana otomatis dikreditkan ke wallet ${pelaksanaName}: ${fmtIDR(pelaksanaFeeForCredit)}`, {
+          toast.success(`Fee pelaksana otomatis dikreditkan ke wallet ${pelaksanaName}: ${fmtIDR(pelaksanaFeeForCredit)} · +5 poin`, {
             description: "Fee langsung dipotong dari harga customer dan masuk wallet pelaksana.",
             duration: 5000,
           });

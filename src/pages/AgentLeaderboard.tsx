@@ -668,10 +668,10 @@ export default function AgentLeaderboard() {
 
             <div className="p-4 space-y-3">
               {[
-                { icon: "✅", label: "Menyelesaikan Order",    pts: "10 - 50 poin",       ptsBg: "#dcfce7", ptsColor: "#15803d" },
-                { icon: "👥", label: "Menambahkan Klien Baru", pts: "5 - 20 poin",        ptsBg: "#dbeafe", ptsColor: "#1d4ed8" },
-                { icon: "🔁", label: "Order Repeat",           pts: "15 - 40 poin",       ptsBg: "#fef3c7", ptsColor: "#92400e" },
-                { icon: "🎯", label: "Pencapaian Target",       pts: "Bonus poin tambahan", ptsBg: "#ede9fe", ptsColor: "#6d28d9" },
+                { icon: "🏆", label: "Closing Order",             pts: "10 poin",        ptsBg: "#dcfce7", ptsColor: "#15803d" },
+                { icon: "🛵", label: "Tugas Kurir / Agt. Lapangan", pts: "5 poin",        ptsBg: "#dbeafe", ptsColor: "#1d4ed8" },
+                { icon: "✅", label: "Selesaikan Misi",            pts: "1 poin",         ptsBg: "#fef3c7", ptsColor: "#92400e" },
+                { icon: "🎯", label: "Misi Event (Khusus)",        pts: "Sesuai misi",    ptsBg: "#ede9fe", ptsColor: "#6d28d9" },
               ].map((item, i) => (
                 <div key={i} className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">

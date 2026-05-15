@@ -446,7 +446,7 @@ app.post('/api/remove-member', isAuthenticatedOrBearer, async (req, res) => {
 
 /* ──────────────────────────────────────────────
    POST /api/award-completion-points
-   Owner menandai order selesai → agen mendapat 20 poin di agent_points.
+   Owner menandai order selesai → agen mendapat 10 poin di agent_points.
 ────────────────────────────────────────────── */
 app.post('/api/award-completion-points', isAuthenticatedOrBearer, async (req, res) => {
   try {
@@ -483,12 +483,12 @@ app.post('/api/award-completion-points', isAuthenticatedOrBearer, async (req, re
         agency_id:  agencyId,
         agent_id:   agentId,
         order_id:   orderId,
-        points:     20,
+        points:     10,
         reason:     'order_completed',
         awarded_at: new Date().toISOString(),
       }, { onConflict: 'order_id', ignoreDuplicates: true });
 
-    return ok(res, { ok: true, points: 20 });
+    return ok(res, { ok: true, points: 10 });
   } catch (e) {
     return err(res, 500, e.message);
   }
@@ -1318,7 +1318,7 @@ app.delete('/api/wallet-tx/:txId', isAuthenticatedOrBearer, async (req, res) => 
 
 /* ──────────────────────────────────────────────
    POST /api/award-commission-points
-   Award 20 points to agent when commission is earned.
+   Award 10 points to agent when commission is earned.
 ────────────────────────────────────────────── */
 app.post('/api/award-commission-points', isAuthenticatedOrBearer, async (req, res) => {
   try {
@@ -1344,12 +1344,12 @@ app.post('/api/award-commission-points', isAuthenticatedOrBearer, async (req, re
         agency_id:  agencyId,
         agent_id:   agentId,
         order_id:   orderId,
-        points:     20,
+        points:     10,
         reason:     'commission_received',
         awarded_at: new Date().toISOString(),
       }, { onConflict: 'order_id', ignoreDuplicates: true });
 
-    return ok(res, { awarded: 20, reason: 'commission_received' });
+    return ok(res, { awarded: 10, reason: 'commission_received' });
   } catch (e) {
     return err(res, 500, e instanceof Error ? e.message : 'Internal server error');
   }

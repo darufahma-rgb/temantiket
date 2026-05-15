@@ -5,10 +5,13 @@ import { getBearer } from "@/lib/authFetch";
 /**
  * agent_points = log poin gamification yg di-award otomatis lewat trigger
  * Postgres `tr_award_points_on_completion` (10 pts fallback) dan/atau via
- * server endpoint `/api/award-completion-points` (20 pts, upsert override).
+ * server endpoint `/api/award-completion-points` (10 pts, upsert override).
  *
- * Setiap order agent yang berhasil di-Completed menghasilkan TEPAT 20 poin.
- * unique(order_id) memastikan tidak ada double-point per order.
+ * Sistem poin:
+ *  - Closing/complete order → 10 poin (masuk agent_points, idempotent per order_id)
+ *  - Tugas kurir / agent lapangan / pelaksana → 5 poin (masuk pointsDelta wallet tx)
+ *  - Menyelesaikan misi biasa → 1 poin (via mission submission approval)
+ *  - Misi event → sesuai rewardPoints yang diatur owner di DailyMission
  */
 export interface AgentPoint {
   id: string;
@@ -25,9 +28,11 @@ export interface AgentPoint {
 }
 
 export const REASON_LABEL: Record<string, string> = {
-  order_completed:    "Order Selesai",
+  order_completed:    "Order Closing (+10 poin)",
   commission_received: "Komisi Diterima",
   mission_reward:     "Reward Misi",
+  kurir_task:         "Tugas Kurir (+5 poin)",
+  lapangan_task:      "Tugas Agent Lapangan (+5 poin)",
   bonus:              "Bonus Khusus",
 };
 
@@ -93,9 +98,10 @@ export function sumPointsByAgent(rows: AgentPoint[]): Map<string, number> {
 // ── Shared write helpers ──────────────────────────────────────────────────────
 
 /**
- * Award 20 poin ke agent penjual saat order → Completed.
+ * Award 10 poin ke agent penjual saat order → Completed.
  * Idempotent: server uses ON CONFLICT (order_id) DO NOTHING — safe to call
  * multiple times for the same order.
+ * Note: kurir/lapangan +5 poin diberikan via pointsDelta pada wallet transaction.
  */
 export async function awardOrderCompletionPoints(
   agentId: string,
