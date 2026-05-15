@@ -482,38 +482,81 @@ export default function Reports() {
   const prevLabel = PREV_LABEL[range];
 
   return (
-    <div className="max-w-[1400px] mx-auto pb-10 space-y-0">
+    <div className="max-w-[1400px] mx-auto pb-16 md:pb-10 space-y-0">
 
       {/* ── HEADER ── */}
-      <div className="px-4 md:px-6 pt-5 pb-4 flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          {/* Left */}
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0"
-              style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}>
-              <Wallet className="h-5 w-5 text-white" />
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-[hsl(var(--border))]">
+        <div className="px-4 md:px-6 pt-4 pb-0 flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            {/* Left */}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}>
+                <Wallet className="h-4 w-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-[17px] font-bold text-foreground leading-tight">Laporan Keuangan</h1>
+                <p className="text-[10.5px] text-muted-foreground hidden sm:block">
+                  Ringkasan performa keuangan & profitabilitas bisnis Anda
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-[20px] font-bold text-foreground leading-tight">Laporan Keuangan</h1>
-              <p className="text-[11.5px] text-muted-foreground mt-0.5">
-                Ringkasan performa keuangan & profitabilitas bisnis Anda
-              </p>
+            {/* Right — desktop */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline" size="sm"
+                className="h-8 text-[12px] gap-1.5 border-[hsl(var(--border))] font-semibold"
+                onClick={() => navigate("/exports")}
+              >
+                <FileDown className="h-3.5 w-3.5 text-blue-600" /> Export Data
+              </Button>
+              <div className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[hsl(var(--border))] bg-white text-[12px] font-medium text-foreground cursor-pointer">
+                <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
+                  <SelectTrigger className="border-0 shadow-none h-auto p-0 text-[12px] font-medium focus:ring-0 w-auto">
+                    <SelectValue>{dateRangeDisplay}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => (
+                      <SelectItem key={k} value={k}>{RANGE_LABEL[k]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Select value={agentFilter} onValueChange={(v) => setAgentFilter(v as AgentFilter)}>
+                <SelectTrigger className="h-8 w-[140px] text-[12px] font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <SelectValue placeholder="Semua Sumber" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Sumber</SelectItem>
+                  <SelectItem value="direct">Direct</SelectItem>
+                  {agentMembers.map((a) => (
+                    <SelectItem key={a.userId} value={a.userId}>{a.displayName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Right — mobile icon buttons */}
+            <div className="flex sm:hidden items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => navigate("/exports")}
+                className="h-8 w-8 flex items-center justify-center rounded-lg border border-[hsl(var(--border))] bg-white"
+              >
+                <FileDown className="h-4 w-4 text-blue-600" />
+              </button>
             </div>
           </div>
-          {/* Right */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="outline" size="sm"
-              className="h-8 text-[12px] gap-1.5 border-[hsl(var(--border))] font-semibold"
-              onClick={() => navigate("/exports")}
-            >
-              <FileDown className="h-3.5 w-3.5 text-blue-600" /> Export Data
-            </Button>
-            <div className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[hsl(var(--border))] bg-white text-[12px] font-medium text-foreground cursor-pointer">
-              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+
+          {/* Mobile filter row */}
+          <div className="flex sm:hidden items-center gap-2 pb-1 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[hsl(var(--border))] bg-white text-[12px] font-medium text-foreground shrink-0">
+              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
                 <SelectTrigger className="border-0 shadow-none h-auto p-0 text-[12px] font-medium focus:ring-0 w-auto">
-                  <SelectValue>{dateRangeDisplay}</SelectValue>
+                  <SelectValue>{RANGE_LABEL[range]}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {(Object.keys(RANGE_LABEL) as RangeKey[]).map((k) => (
@@ -523,7 +566,7 @@ export default function Reports() {
               </Select>
             </div>
             <Select value={agentFilter} onValueChange={(v) => setAgentFilter(v as AgentFilter)}>
-              <SelectTrigger className="h-8 w-[140px] text-[12px] font-medium">
+              <SelectTrigger className="h-8 w-auto min-w-[120px] text-[12px] font-medium shrink-0">
                 <div className="flex items-center gap-1.5">
                   <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   <SelectValue placeholder="Semua Sumber" />
@@ -538,30 +581,31 @@ export default function Reports() {
               </SelectContent>
             </Select>
           </div>
-        </div>
 
-        {/* ── Tab bar ── */}
-        <div className="flex items-center gap-0 border-b border-[hsl(var(--border))]">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={cn(
-                "px-4 py-2.5 text-[12.5px] font-semibold transition-all border-b-2 -mb-px whitespace-nowrap",
-                activeTab === tab.key
-                  ? "border-blue-600 text-blue-700"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {/* ── Tab bar ── */}
+          <div className="flex items-center gap-0 overflow-x-auto scrollbar-none -mx-4 md:-mx-6 px-4 md:px-6">
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  "px-4 py-2.5 text-[12.5px] font-semibold transition-all border-b-2 -mb-px whitespace-nowrap shrink-0",
+                  activeTab === tab.key
+                    ? "border-blue-600 text-blue-700"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+            <div className="flex-1 border-b border-[hsl(var(--border))] -mb-px" />
+          </div>
         </div>
       </div>
 
       {/* ════════════════════ RINGKASAN TAB ════════════════════ */}
       {activeTab === "ringkasan" && (
-        <div className="px-4 md:px-6 space-y-4">
+        <div className="px-4 md:px-6 space-y-4 pt-4">
 
           {/* ── 4 KPI Cards ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -626,19 +670,24 @@ export default function Reports() {
 
           {/* ── Alert Banner ── */}
           {(cashflow.dpCount > 0 || cashflow.unpaidCount > 0) && (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-              <span className="text-[11.5px] font-semibold text-amber-800">Info:</span>
-              <span className="text-[11.5px] text-amber-700">
-                Komisi mitra sudah masuk sebagai biaya operasional.
-                {cashflow.unpaidCount > 0 && <> · <strong>{cashflow.unpaidCount}</strong> order belum bayar</>}
-                {cashflow.dpCount > 0     && <> · <strong>{cashflow.dpCount}</strong> baru DP</>}
-                {". "}Total piutang aktif:{" "}
-                <span className="tabular-nums font-bold">{fmtIDR(piutang.totalPiutang)}</span>
-              </span>
-              <span className="ml-auto text-[11.5px] text-muted-foreground font-medium whitespace-nowrap">
-                Estimasi profit bersih: <span className="tabular-nums font-bold text-foreground">{fmtIDR(split.netAgencyProfit)}</span>
-              </span>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11.5px] font-semibold text-amber-800 leading-snug">
+                    Komisi mitra sudah masuk sebagai biaya operasional.
+                  </p>
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    {cashflow.unpaidCount > 0 && <><strong>{cashflow.unpaidCount}</strong> order belum bayar · </>}
+                    {cashflow.dpCount > 0     && <><strong>{cashflow.dpCount}</strong> baru DP · </>}
+                    Piutang aktif: <span className="tabular-nums font-bold">{fmtIDR(piutang.totalPiutang)}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="mt-2 pt-2 border-t border-amber-200 flex items-center justify-between">
+                <span className="text-[11px] text-amber-700">Estimasi profit bersih</span>
+                <span className="tabular-nums font-bold text-[12px] text-foreground">{fmtIDR(split.netAgencyProfit)}</span>
+              </div>
             </div>
           )}
 
@@ -945,11 +994,70 @@ export default function Reports() {
                 <input
                   type="text" value={pkgSearch} onChange={(e) => setPkgSearch(e.target.value)}
                   placeholder="Cari nama paket…"
-                  className="pl-8 pr-3 h-8 w-[180px] rounded-lg border border-[hsl(var(--border))] text-[12px] focus:outline-none focus:ring-1 focus:ring-blue-300 bg-white"
+                  className="pl-8 pr-3 h-8 w-full sm:w-[180px] rounded-lg border border-[hsl(var(--border))] text-[12px] focus:outline-none focus:ring-1 focus:ring-blue-300 bg-white"
                 />
               </div>
             </div>
-            <div className="overflow-x-auto">
+
+            {/* Mobile card list */}
+            <div className="md:hidden divide-y divide-[hsl(var(--border))]">
+              {byOrderFiltered.length === 0 ? (
+                <div className="py-10 text-center text-muted-foreground text-[12px]">
+                  {pkgSearch ? "Tidak ada paket yang cocok." : "Belum ada order di periode ini."}
+                </div>
+              ) : (
+                byOrderFiltered.map((row) => {
+                  const profitColor = row.profit >= 0 ? "text-emerald-700" : "text-red-600";
+                  const badge = TYPE_BADGE[row.type] ?? { bg: "bg-slate-100", text: "text-slate-700", label: ORDER_TYPE_LABEL[row.type as OrderType] ?? row.type };
+                  const marginColor = row.margin >= 20 ? "text-emerald-700" : row.margin >= 10 ? "text-sky-700" : row.margin >= 0 ? "text-amber-700" : "text-red-600";
+                  return (
+                    <div
+                      key={row.id}
+                      className="px-4 py-3 active:bg-blue-50/60 cursor-pointer"
+                      onClick={() => navigate(`/orders/detail/${row.id}`)}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-sky-700 truncate">{row.title}</p>
+                          <p className="text-[10.5px] text-muted-foreground mt-0.5">{fmtDate(row.date)}</p>
+                        </div>
+                        <span className={cn("inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0", badge.bg, badge.text)}>
+                          {badge.label}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <p className="text-[9.5px] text-muted-foreground uppercase tracking-wide">Revenue</p>
+                          <p className="text-[12px] font-semibold tabular-nums text-foreground">{fmtIDRShort(row.revenue)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9.5px] text-muted-foreground uppercase tracking-wide">Biaya</p>
+                          <p className="text-[12px] font-semibold tabular-nums text-amber-700">{row.biaya > 0 ? fmtIDRShort(row.biaya) : "—"}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9.5px] text-muted-foreground uppercase tracking-wide">Profit</p>
+                          <p className={cn("text-[13px] font-bold tabular-nums", profitColor)}>
+                            {row.profit >= 0 ? "+" : ""}{fmtIDRShort(row.profit)}
+                            <span className={cn("text-[10px] font-semibold ml-1", marginColor)}>{row.margin !== 0 ? `${row.margin.toFixed(0)}%` : ""}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              {byOrderFiltered.length > 0 && (
+                <div className="px-4 py-3 bg-blue-50/50 flex items-center justify-between">
+                  <span className="text-[11.5px] font-bold text-blue-800">Total ({byOrderFiltered.length} order)</span>
+                  <span className={cn("text-[13px] font-black tabular-nums", byOrderFiltered.reduce((s,r)=>s+r.profit,0) >= 0 ? "text-emerald-700" : "text-red-600")}>
+                    {(() => { const t = byOrderFiltered.reduce((s, r) => s + r.profit, 0); return `${t >= 0 ? "+" : ""}${fmtIDRShort(t)}`; })()}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-[12px] min-w-[780px]" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
                 <thead>
                   <tr className="text-muted-foreground border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary)/0.5)]">
@@ -1086,7 +1194,7 @@ export default function Reports() {
 
       {/* ════════════════════ ARUS KAS TAB ════════════════════ */}
       {activeTab === "arus_kas" && (
-        <div className="px-4 md:px-6 space-y-4">
+        <div className="px-4 md:px-6 space-y-4 pt-4">
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
@@ -1119,7 +1227,55 @@ export default function Reports() {
                 <h2 className="text-[13px] font-bold">📒 Buku Besar — Transaksi Lunas</h2>
                 <span className="text-[10.5px] text-muted-foreground">{ledgerEntries.length} entri · semua waktu</span>
               </div>
-              <div className="overflow-x-auto">
+
+              {/* Mobile card list */}
+              <div className="md:hidden divide-y divide-[hsl(var(--border))]">
+                {ledgerEntries.map((e) => {
+                  const isDebit = e.isCommission || e.isVoaOpex || e.isKurirOpex || e.isPelaksanaFee;
+                  const textColor = e.isCommission ? "text-orange-700" : e.isVoaOpex ? "text-purple-700" : e.isKurirOpex ? "text-amber-800" : e.isPelaksanaFee ? "text-violet-700" : "";
+                  const cardBg = e.isCommission ? "bg-orange-50/40" : e.isVoaOpex ? "bg-purple-50/40" : e.isKurirOpex ? "bg-amber-50/40" : e.isPelaksanaFee ? "bg-violet-50/40" : "";
+                  const profitColor = e.profitIDR >= 0 ? "text-emerald-700" : "text-red-600";
+                  const balColor = e.runningBalance >= 0 ? "text-emerald-700" : "text-red-600";
+                  return (
+                    <div
+                      key={e.orderId}
+                      className={cn("px-4 py-3 cursor-pointer active:brightness-95", cardBg)}
+                      onClick={() => navigate(`/orders/detail/${e.orderId.replace(/^(voa_opex_|kurir_opex_|commission_|pelaksana_fee_)/, "")}`)}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div className="flex-1 min-w-0">
+                          <p className={cn("text-[12.5px] font-semibold truncate", isDebit ? textColor : "text-foreground")}>{e.orderTitle}</p>
+                          <p className="text-[10.5px] text-muted-foreground">{e.clientName} · {fmtDate(e.paidAt)}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className={cn("text-[13px] font-bold tabular-nums", isDebit ? textColor : profitColor)}>
+                            {isDebit ? `−${fmtIDRShort(Math.abs(e.profitIDR))}` : `${e.profitIDR >= 0 ? "+" : ""}${fmtIDRShort(e.profitIDR)}`}
+                          </p>
+                          <p className={cn("text-[10px] tabular-nums font-semibold", balColor)}>Saldo {fmtIDRShort(e.runningBalance)}</p>
+                        </div>
+                      </div>
+                      {!isDebit && (
+                        <div className="flex items-center gap-3 text-[10.5px] text-muted-foreground">
+                          <span>Rev <span className="tabular-nums text-foreground font-medium">{fmtIDRShort(e.revenueIDR)}</span></span>
+                          <span>·</span>
+                          <span>Modal <span className="tabular-nums text-rose-700 font-medium">{fmtIDRShort(e.costIDR)}</span></span>
+                          <span>·</span>
+                          <span>Margin <span className={cn("font-semibold", e.marginPct >= 20 ? "text-emerald-700" : e.marginPct >= 10 ? "text-sky-700" : "text-amber-700")}>{e.marginPct.toFixed(1)}%</span></span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <div className="px-4 py-3 bg-emerald-50/50 flex items-center justify-between">
+                  <span className="text-[11.5px] font-bold text-emerald-800">Total ({ledgerStats.count} order)</span>
+                  <span className={cn("text-[13px] font-black tabular-nums", ledgerStats.netProfit >= 0 ? "text-emerald-700" : "text-red-600")}>
+                    {fmtIDRShort(ledgerStats.netProfit)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-[12px] min-w-[720px]">
                   <thead>
                     <tr className="text-muted-foreground border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary)/0.4)]">
@@ -1180,7 +1336,7 @@ export default function Reports() {
 
       {/* ════════════════════ PIUTANG TAB ════════════════════ */}
       {activeTab === "piutang" && (
-        <div className="px-4 md:px-6 space-y-4">
+        <div className="px-4 md:px-6 space-y-4 pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { label: "Total Tagihan",   value: fmtIDR(piutang.totalTagihan), tone: "sky",     sub: "Semua order aktif" },
@@ -1221,7 +1377,48 @@ export default function Reports() {
                 <h3 className="text-[13px] font-bold">Order Belum Lunas</h3>
                 <span className="text-[10.5px] text-muted-foreground">{piutang.piutangCount} order</span>
               </div>
-              <div className="overflow-x-auto">
+
+              {/* Mobile card list */}
+              <div className="md:hidden divide-y divide-[hsl(var(--border))]">
+                {piutang.piutangOrders.map(({ order: o, remaining, clientName }) => {
+                  const ps = derivePaymentStatus(Number(o.paidAmount ?? 0), Number(o.totalPrice ?? 0), o.paymentStatus);
+                  const paid = paidAmountIDR(o, egpRate);
+                  const total = revenueIDR(o, egpRate);
+                  const pctPaid = total > 0 ? Math.round((paid / total) * 100) : 0;
+                  return (
+                    <div
+                      key={o.id}
+                      className="px-4 py-3 cursor-pointer active:bg-muted/30"
+                      onClick={() => navigate(`/orders/detail/${o.id}`)}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-foreground truncate">{clientName}</p>
+                          <p className="text-[10.5px] text-muted-foreground truncate">{o.title || o.type}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span className={cn("inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border", PAYMENT_STATUS_STYLE[ps])}>
+                            {PAYMENT_STATUS_EMOJI[ps]} {PAYMENT_STATUS_LABEL[ps]}
+                          </span>
+                          <span className="text-[12px] font-black tabular-nums text-red-600">{fmtIDRShort(remaining)}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10.5px] text-muted-foreground">
+                          <span>Dibayar <span className="tabular-nums text-emerald-700 font-medium">{fmtIDRShort(paid)}</span></span>
+                          <span>Total <span className="tabular-nums text-foreground font-medium">{fmtIDRShort(total)}</span></span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pctPaid}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-[12px]">
                   <thead>
                     <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary)/0.4)] text-muted-foreground">
@@ -1258,7 +1455,7 @@ export default function Reports() {
 
       {/* ════════════════════ AGEN & KOMISI TAB ════════════════════ */}
       {activeTab === "agen_komisi" && (
-        <div className="px-4 md:px-6 space-y-4">
+        <div className="px-4 md:px-6 space-y-4 pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { label: "Total Mitra Aktif", value: String(agentMembers.length), tone: "sky", sub: "terdaftar" },
@@ -1284,7 +1481,46 @@ export default function Reports() {
               </h2>
               <span className="text-[10.5px] text-muted-foreground">{agentMembers.length} mitra</span>
             </div>
-            <div className="overflow-x-auto">
+
+            {/* Mobile card list */}
+            <div className="md:hidden divide-y divide-[hsl(var(--border))]">
+              {leaderboard.length === 0 ? (
+                <div className="py-10 text-center text-muted-foreground text-[11.5px]">Belum ada mitra terdaftar.</div>
+              ) : (
+                leaderboard.map((row, i) => {
+                  const medals = ["🥇", "🥈", "🥉"];
+                  const badge = i < 3 ? medals[i] : `#${i + 1}`;
+                  return (
+                    <div
+                      key={row.agentId}
+                      className="px-4 py-3 cursor-pointer active:bg-sky-50/50"
+                      onClick={() => navigate(`/agents/${row.agentId}`)}
+                    >
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-xl w-8 text-center shrink-0">{badge}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-sky-700 truncate">{row.name}</p>
+                          <p className="text-[10.5px] text-muted-foreground">{row.orders} order · ⭐ {row.lifetimePoints} poin</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className={cn("text-[13px] font-bold tabular-nums", row.profit >= 0 ? "text-emerald-700" : "text-red-600")}>
+                            {fmtIDRShort(row.profit)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">net profit</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 pl-11 text-[10.5px] text-muted-foreground">
+                        <span>Revenue <span className="tabular-nums text-foreground font-medium">{fmtIDRShort(row.revenue)}</span></span>
+                        <span>Komisi <span className="tabular-nums text-orange-700 font-medium">{fmtIDRShort(row.commission)}</span></span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-[12px] min-w-[640px]">
                 <thead>
                   <tr className="text-muted-foreground border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary)/0.4)]">
