@@ -1772,6 +1772,7 @@ export default function TicketPrices() {
   const [saveProgress, setSaveProgress] = useState<{ current: number; total: number } | null>(null);
   const [scanDebugInfos, setScanDebugInfos] = useState<(ScanDebugInfo | undefined)[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadFileInputRef = useRef<HTMLInputElement>(null);
   const screenshotSectionRef = useRef<HTMLDivElement>(null);
   const pasteSectionRef = useRef<HTMLDivElement>(null);
   const ticketListRef = useRef<HTMLDivElement>(null);
@@ -1874,10 +1875,30 @@ export default function TicketPrices() {
     }
   }
 
-  // ── Screenshot scan ─────────────────────────────────────────────────────
+  // ── PDF first-page → JPEG data URL (using pdfjs-dist) ───────────────────
+  async function pdfFirstPageToDataUrl(file: File): Promise<string> {
+    const pdfjs = await import("pdfjs-dist");
+    const workerUrl = (await import("pdfjs-dist/build/pdf.worker.mjs?url")).default;
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const doc = await pdfjs.getDocument({ data: bytes }).promise;
+    const page = await doc.getPage(1);
+    const viewport = page.getViewport({ scale: 2.5 });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d")!;
+    await page.render({ canvasContext: ctx as unknown as Parameters<typeof page.render>[0]["canvasContext"], viewport }).promise;
+    return canvas.toDataURL("image/jpeg", 0.90);
+  }
+
+  // ── Screenshot / file scan (JPG, PNG, PDF) ───────────────────────────────
   async function handleFileSelect(file: File) {
-    if (!file.type.startsWith("image/")) {
-      toast.error("File harus berupa gambar (JPG, PNG, WebP)");
+    const isImage = file.type.startsWith("image/");
+    const isPdf   = file.type === "application/pdf";
+
+    if (!isImage && !isPdf) {
+      toast.error("Format tidak didukung. Gunakan JPG, PNG, atau PDF.");
       return;
     }
     setScanning(true);
@@ -1886,7 +1907,19 @@ export default function TicketPrices() {
     setPendingForms([]);
     setScanDebugInfos([]);
 
-    const result = await scanTicketPriceScreenshot(file);
+    let imageSource: File | string = file;
+    if (isPdf) {
+      try {
+        toast.info("Mengkonversi halaman pertama PDF…", { duration: 2000 });
+        imageSource = await pdfFirstPageToDataUrl(file);
+      } catch {
+        setScanning(false);
+        setScanError("Gagal membaca PDF. Pastikan file tidak terenkripsi/terproteksi.");
+        return;
+      }
+    }
+
+    const result = await scanTicketPriceScreenshot(imageSource);
     setScanning(false);
 
     if (result.error) {
@@ -2485,7 +2518,7 @@ export default function TicketPrices() {
                       </div>
                       <div className="text-center">
                         <p className="text-[13px] font-bold text-[#0f1c3f]">Upload screenshot tiket Anda</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Format: JPG, PNG • Maks. 10MB</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Format: JPG, PNG, PDF • Maks. 10MB</p>
                       </div>
                       <div
                         className="h-10 px-5 rounded-2xl text-white text-[12px] font-bold flex items-center gap-2"
@@ -2846,16 +2879,19 @@ export default function TicketPrices() {
                 )}
               </div>
 
-              {/* Option 2: Upload File (Excel) */}
+              {/* Option 2: Upload File (Gambar / PDF) */}
               <div className="border-b border-slate-100">
                 <div
                   className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors"
                   onClick={() => setExpandedSource(s => s === "upload" ? null : "upload")}
                 >
                   <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    <ImagePlus className="w-4 h-4 text-emerald-600" />
                   </div>
-                  <span className="text-sm font-medium text-slate-700 flex-1">Upload File (Excel)</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-slate-700">Upload File</span>
+                    <span className="ml-2 text-[10px] text-slate-400">PNG · JPG · PDF</span>
+                  </div>
                   {deskSheetUrl && (
                     <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full mr-1">
                       TERHUBUNG
@@ -2864,7 +2900,62 @@ export default function TicketPrices() {
                   <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", expandedSource === "upload" && "rotate-180")} />
                 </div>
                 {expandedSource === "upload" && (
-                  <div className="px-5 pb-4 space-y-3">
+                  <div className="px-5 pb-5 space-y-4">
+                    {/* ── Drop zone ── */}
+                    <div
+                      className={cn(
+                        "border-2 border-dashed rounded-xl py-7 flex flex-col items-center gap-3 cursor-pointer transition-colors",
+                        scanning ? "border-sky-400 bg-sky-50 pointer-events-none" : "border-slate-200 bg-slate-50 hover:border-emerald-400 hover:bg-emerald-50/40"
+                      )}
+                      onClick={() => !scanning && uploadFileInputRef.current?.click()}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const f = e.dataTransfer.files[0];
+                        if (f) void handleFileSelect(f);
+                      }}
+                    >
+                      {scanning ? (
+                        <>
+                          <div className="h-10 w-10 rounded-xl bg-sky-100 flex items-center justify-center">
+                            <Loader2 className="h-5 w-5 text-sky-500 animate-spin" />
+                          </div>
+                          <p className="text-xs font-semibold text-sky-700">AI sedang menganalisis…</p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                            <Upload className="h-5 w-5 text-emerald-600" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-semibold text-slate-700">Klik atau seret file ke sini</p>
+                            <p className="text-xs text-slate-400 mt-0.5">PNG, JPG, atau PDF • Maks. 10MB</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {["PNG", "JPG", "PDF"].map((fmt) => (
+                              <span key={fmt} className="text-[10px] font-bold bg-white border border-slate-200 text-slate-500 px-2 py-0.5 rounded-full">
+                                {fmt}
+                              </span>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {scanError && (
+                      <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+                        <p className="text-xs text-red-700">{scanError}</p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-px bg-slate-100" />
+                      <span className="text-[10px] text-slate-400 font-medium">atau link Google Sheet</span>
+                      <div className="flex-1 h-px bg-slate-100" />
+                    </div>
+
+                    {/* ── Sheet URL input ── */}
                     <div className="flex items-center gap-2">
                       <Input
                         placeholder="Tempel link publik (Google Sheet, CSV, atau TXT)"
@@ -3285,6 +3376,22 @@ export default function TicketPrices() {
             },
           },
         ]}
+      />
+
+      {/* ── Hidden file inputs (mobile screenshot + desktop upload) ── */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,application/pdf"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFileSelect(f); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+      />
+      <input
+        ref={uploadFileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,application/pdf"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFileSelect(f); if (uploadFileInputRef.current) uploadFileInputRef.current.value = ""; }}
       />
 
       {/* ── Edit / Add Dialog — rendered at root level for both mobile & desktop ── */}
