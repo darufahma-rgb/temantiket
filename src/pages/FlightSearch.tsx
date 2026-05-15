@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
-import { saveTicketPrice } from "@/features/ticketPrices/ticketPricesRepo";
+import { createTicketPrice } from "@/features/ticketPrices/ticketPricesRepo";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Layover { duration: number; code: string; name: string; }
@@ -251,7 +251,7 @@ export default function FlightSearch() {
   async function doSave(idx: number, r: FlightResult) {
     setSavingIdx((s) => new Set(s).add(idx));
     try {
-      await saveTicketPrice({
+      await createTicketPrice({
         airline: r.airline,
         airlineCode: r.airlineCode,
         flightNumber: r.flightNumber || null,
