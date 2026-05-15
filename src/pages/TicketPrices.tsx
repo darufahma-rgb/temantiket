@@ -3431,24 +3431,6 @@ export default function TicketPrices() {
 
       </div>{/* end hidden md:flex */}
 
-      <MobileFAB
-        actions={[
-          {
-            icon: <Plus className="h-4 w-4" />,
-            label: "Tambah BC",
-            onClick: openAdd,
-          },
-          {
-            icon: <ClipboardPaste className="h-4 w-4" />,
-            label: "Import BC",
-            onClick: () => {
-              const el = document.querySelector("[data-bc-paste-section]");
-              el?.scrollIntoView({ behavior: "smooth", block: "start" });
-            },
-          },
-        ]}
-      />
-
       {/* ── Hidden file inputs (mobile screenshot + desktop upload) ── */}
       <input
         ref={fileInputRef}

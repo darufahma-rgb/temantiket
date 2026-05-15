@@ -833,10 +833,22 @@ export function AIChatWidget() {
 
   const isEmpty = history.length === 0;
 
+  const [isMD, setIsMD] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
+  useEffect(() => {
+    const check = () => setIsMD(window.innerWidth >= 768);
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  const fabBottom = isMD ? "24px" : "calc(78px + env(safe-area-inset-bottom, 0px))";
+  const fabRight  = isMD ? "24px" : "16px";
+  const fabSize   = isMD ? "w-14 h-14" : "w-12 h-12";
+  const iconSize  = isMD ? "w-7 h-7" : "w-6 h-6";
+
   return (
-    <div className="hidden md:contents">
+    <>
       {/* Floating button */}
-      <div className="fixed bottom-24 right-4 z-50 md:bottom-6 md:right-6">
+      <div className="fixed z-50" style={{ bottom: fabBottom, right: fabRight }}>
         <AnimatePresence>
           {!isOpen && (
             <motion.button
@@ -844,14 +856,14 @@ export function AIChatWidget() {
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0, opacity: 0 }}
-              whileTap={{ scale: 0.92 }}
+              whileTap={{ scale: 0.88 }}
               onClick={open}
-              className="relative w-14 h-14 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 shadow-lg shadow-sky-500/30 flex items-center justify-center text-white hover:shadow-xl hover:shadow-sky-500/40 transition-shadow"
+              className={`relative ${fabSize} rounded-full bg-gradient-to-br from-sky-500 to-blue-600 shadow-lg shadow-sky-500/30 flex items-center justify-center text-white hover:shadow-xl hover:shadow-sky-500/40 transition-shadow`}
             >
               <motion.img
                 src="/chatgpt-icon.png"
                 alt="AI"
-                className="w-7 h-7 object-contain"
+                className={`${iconSize} object-contain`}
                 animate={loading ? { rotate: 360 } : { rotate: 0 }}
                 transition={loading
                   ? { duration: 1.8, repeat: Infinity, ease: "linear" }
@@ -859,11 +871,10 @@ export function AIChatWidget() {
                 }
               />
               {hasUnread && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
+                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 md:w-4 md:h-4 bg-red-500 rounded-full border-2 border-white" />
               )}
-              {/* Context dot — shows when page/item context is active */}
               {activeItem && (
-                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-white" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 md:w-3.5 md:h-3.5 bg-emerald-400 rounded-full border-2 border-white" />
               )}
             </motion.button>
           )}
@@ -879,8 +890,12 @@ export function AIChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="fixed bottom-24 right-4 z-50 md:bottom-6 md:right-6 w-[calc(100vw-2rem)] max-w-sm flex flex-col bg-white rounded-2xl shadow-2xl shadow-sky-500/10 border border-border/60 overflow-hidden"
-            style={{ maxHeight: "min(620px, calc(100svh - 8rem))" }}
+            className="fixed z-50 w-[calc(100vw-2rem)] max-w-sm flex flex-col bg-white rounded-2xl shadow-2xl shadow-sky-500/10 border border-border/60 overflow-hidden"
+            style={{
+              bottom: isMD ? "24px" : "calc(78px + 12px + env(safe-area-inset-bottom, 0px))",
+              right: fabRight,
+              maxHeight: "min(620px, calc(100svh - 8rem))",
+            }}
           >
             {/* Header */}
             <div
@@ -1026,6 +1041,6 @@ export function AIChatWidget() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

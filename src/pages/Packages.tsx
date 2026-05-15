@@ -893,8 +893,6 @@ export default function Packages() {
               </motion.div>
             )}
 
-            <MobileFAB onClick={openCreate} label="Tambah Paket" />
-
             <PackageFormDialog
               open={formOpen}
               onOpenChange={setFormOpen}
@@ -927,7 +925,6 @@ export default function Packages() {
 
       {/* ── Dialogs also available in mobile context (portals) ── */}
       <div className="md:hidden">
-        <MobileFAB onClick={openCreate} label="Tambah Paket" />
         <PackageFormDialog
           open={formOpen}
           onOpenChange={setFormOpen}

@@ -1490,11 +1490,6 @@ export default function Clients() {
           <div className="h-2" />
         </div>
 
-        {/* ── FAB ── */}
-        <button onClick={() => setAddOpen(true)} className="fixed bottom-20 right-4 h-14 w-14 rounded-full text-white flex items-center justify-center shadow-xl active:scale-95 transition-transform z-40" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", boxShadow: "0 8px 24px rgba(0,102,255,0.40)", WebkitTapHighlightColor: "transparent" }}>
-          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-        </button>
-
         {/* ── BOTTOM NAV ── */}
         <div className="fixed bottom-0 left-0 right-0 z-50" style={{ background: "white", boxShadow: "0 -1px 0 rgba(0,0,0,0.06), 0 -4px 16px rgba(0,0,0,0.08)", paddingBottom: "env(safe-area-inset-bottom)" }}>
           <div className="grid grid-cols-5 h-[60px]">

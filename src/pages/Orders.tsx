@@ -584,15 +584,6 @@ export default function Orders() {
           <div className="h-2" />
         </div>
 
-        {/* ── FLOATING ACTION BUTTON ── */}
-        <button
-          onClick={() => setAddOpen(true)}
-          className="fixed bottom-20 right-4 h-14 w-14 rounded-full text-white flex items-center justify-center shadow-xl active:scale-95 transition-transform z-40"
-          style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", boxShadow: "0 8px 24px rgba(0,102,255,0.40)", WebkitTapHighlightColor: "transparent" }}
-        >
-          <Plus className="h-6 w-6" strokeWidth={2.5} />
-        </button>
-
         {/* ── BOTTOM NAV BAR ── */}
         <div className="fixed bottom-0 left-0 right-0 z-50" style={{ background: "white", boxShadow: "0 -1px 0 rgba(0,0,0,0.06), 0 -4px 16px rgba(0,0,0,0.08)", paddingBottom: "env(safe-area-inset-bottom)" }}>
           <div className="grid grid-cols-5 h-[60px]">
@@ -1163,7 +1154,6 @@ export default function Orders() {
         }}
       />
 
-      <MobileFAB onClick={() => setAddOpen(true)} label="Order Baru" />
     </>
   );
 }
