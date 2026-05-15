@@ -1612,9 +1612,9 @@ function OcrSegmentRow({ leg, segNum, totalInDir, nextEtd }: {
   );
 }
 
-// ── Desktop Ticket Card (matches screenshot design) ──────────────────────────
+// ── Desktop Ticket Card (redesigned) ─────────────────────────────────────────
 function DesktopTicketCard({
-  item, markup, rates, onView, waNumber,
+  item, markup, rates, onView, waNumber, isAdmin, onEdit, onDelete, showBasePrice,
 }: {
   item: TicketPrice;
   markup: number;
@@ -1634,119 +1634,203 @@ function DesktopTicketCard({
   const isRT = !!returnLeg;
   const isDirect = !item.transitCode;
 
-  function calcDuration(etd: string | null, eta: string | null): string | null {
-    if (!etd || !eta) return null;
-    const [h1, m1] = etd.split(":").map(Number);
-    const [h2, m2] = eta.split(":").map(Number);
-    if (isNaN(h1) || isNaN(h2)) return null;
-    let mins = (h2 * 60 + m2) - (h1 * 60 + m1);
-    if (mins < 0) mins += 24 * 60;
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return m > 0 ? `${h}j ${m}m` : `${h}j`;
-  }
+  const tripTypeLabel = isML ? "Multi-Leg PP" : isRT ? "Pulang Pergi" : isDirect ? "Langsung" : "Transit";
 
-  function fmtIDDate(iso: string | null): string {
+  const returnDate = isML
+    ? (mlData?.returnLegs?.[0]?.date ?? null)
+    : isRT ? (returnLeg?.returnDate ?? null) : null;
+  const returnEtd = isML
+    ? (mlData?.returnLegs?.[0]?.etd ?? null)
+    : isRT ? (returnLeg?.returnEtd ?? null) : null;
+  const returnToCode = isML
+    ? (mlData?.returnLegs?.[mlData.returnLegs.length - 1]?.toCode ?? item.toCode)
+    : isRT ? (returnLeg?.returnToCode ?? item.toCode) : null;
+
+  function fmtShortDate(iso: string | null): string {
     if (!iso) return "—";
     const d = new Date(iso);
     const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
-    const days = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
-    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${days[d.getDay()]}`;
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   }
 
-  function fmtUpdateDate(iso: string): string {
+  function fmtRelative(iso: string): string {
     if (!iso) return "";
-    const d = new Date(iso);
-    const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
-    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+    const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 60) return `${mins} menit lalu`;
+    const h = Math.floor(mins / 60);
+    if (h < 24) return `${h} jam lalu`;
+    return `${Math.floor(h / 24)} hari lalu`;
   }
 
-  const duration = calcDuration(item.etd, item.eta);
-  const transitLabel = isML ? "Multi-Leg" : isRT ? "Pulang Pergi" : isDirect ? "Langsung" : `1 Transit`;
-  const routeLabel = `${item.fromCode} → ${item.toCode}`;
+  const updatedAt = (item as unknown as Record<string, string>).updatedAt ?? (item as unknown as Record<string, string>).createdAt ?? "";
+  const createdAt = (item as unknown as Record<string, string>).createdAt ?? "";
+  const isNew = createdAt && (Date.now() - new Date(createdAt).getTime()) < 48 * 3600 * 1000;
+
+  const baseInIDR = item.currency === "IDR" ? item.basePrice : item.basePrice * (rates[item.currency] || 1);
+  const markupAmount = Math.max(0, sell - Math.round(baseInIDR));
+
   const waText = encodeURIComponent(
-    `Halo! Saya tertarik dengan tiket ${item.airline} rute ${routeLabel}. Harga: ${fmtIDR(sell)}`
+    `Halo! Saya tertarik dengan tiket ${item.airline} rute ${item.fromCode}–${item.toCode}. Harga: ${fmtIDR(sell)}`
   );
   const waLink = waNumber ? `${whatsappUrl(waNumber)}?text=${waText}` : `https://wa.me/?text=${waText}`;
-  const updatedAt = (item as unknown as Record<string, string>).updatedAt ?? (item as unknown as Record<string, string>).createdAt ?? "";
 
   return (
-    <div
-      className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-      onClick={() => onView?.(item)}
-    >
-      <div className="p-4 space-y-3">
-        {/* Row 1: Airline logo + name + badge */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <AirlineLogo code={item.airlineCode} airline={item.airline} size={32} />
-            <span className="text-[13px] font-bold text-slate-900 leading-tight truncate max-w-[120px]">{item.airline}</span>
-          </div>
-          <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full shrink-0">Ekonomi</span>
-        </div>
-
-        {/* Row 2: Route + date/duration */}
+    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col">
+      {/* ── Header: logo + name + badge ─── */}
+      <div className="p-4 pb-0 space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[17px] font-black text-slate-900 font-mono">{item.fromCode}</span>
-              <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
-              <span className="text-[17px] font-black text-slate-900 font-mono">{item.toCode}</span>
-            </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-[11px] text-slate-400">{item.fromCity || item.fromCode}</span>
-              <span className="text-[11px] text-slate-300">|</span>
-              <span className="text-[11px] text-slate-400">{item.toCity || item.toCode}</span>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <AirlineLogo code={item.airlineCode} airline={item.airline} size={36} />
+            <div className="min-w-0">
+              <p className="text-[13.5px] font-bold text-slate-900 leading-tight truncate">{item.airline}</p>
+              <p className="text-[10.5px] text-slate-400 font-mono mt-0.5">{item.airlineCode} · {tripTypeLabel}</p>
             </div>
           </div>
-          <div className="text-right shrink-0">
-            {item.departDate && (
-              <p className="text-[11px] font-medium text-slate-600">{fmtIDDate(item.departDate)}</p>
+          <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+            {isNew && (
+              <span className="flex items-center gap-1 text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                TERBARU
+              </span>
             )}
-            {duration && (
-              <p className="text-[11px] text-slate-400 mt-0.5">{duration}</p>
-            )}
-            <p className="text-[10px] font-medium text-slate-500 mt-0.5">{transitLabel}</p>
           </div>
         </div>
 
-        {/* Row 3: Price + update */}
-        <div>
-          <p className="text-[15px] font-black text-blue-700">{fmtIDR(sell)}</p>
-          {updatedAt && (
-            <p className="text-[10px] text-slate-400 mt-0.5">Update: {fmtUpdateDate(updatedAt)}</p>
+        {/* ── Route row (clickable) ─── */}
+        <button
+          className="w-full flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 hover:bg-slate-100 active:scale-[0.99] transition-all text-left"
+          onClick={() => onView?.(item)}
+        >
+          <Plane className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="text-[15px] font-black text-slate-900 font-mono">{item.fromCode}</span>
+          {isRT || isML
+            ? <ArrowLeftRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            : <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          }
+          <span className="text-[15px] font-black text-slate-900 font-mono">{item.toCode}</span>
+          {item.transitCode && (
+            <span className="text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md shrink-0">
+              via {item.transitCode}
+            </span>
+          )}
+          <ChevronDown className="w-3.5 h-3.5 text-slate-300 ml-auto shrink-0 -rotate-90" />
+        </button>
+
+        {/* ── Date/time grid ─── */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Berangkat</p>
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3 h-3 text-sky-500 shrink-0" />
+              <span className="text-[11.5px] font-semibold text-slate-800">{fmtShortDate(item.departDate)}</span>
+            </div>
+            {item.etd && (
+              <p className="text-[10.5px] text-slate-500 mt-0.5 pl-4 font-mono">
+                {item.etd} <span className="text-slate-400">{item.fromCode}</span>
+              </p>
+            )}
+          </div>
+          {(isRT || isML) ? (
+            <div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Pulang</p>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3 h-3 text-violet-500 shrink-0" />
+                <span className="text-[11.5px] font-semibold text-slate-800">{fmtShortDate(returnDate)}</span>
+              </div>
+              {returnEtd && (
+                <p className="text-[10.5px] text-slate-500 mt-0.5 pl-4 font-mono">
+                  {returnEtd} <span className="text-slate-400">{returnToCode ?? item.toCode}</span>
+                </p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tipe</p>
+              <span className="inline-flex items-center text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full mt-0.5">
+                {tripTypeLabel}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ── Price row ─── */}
+        <div className="flex items-end justify-between gap-2 pb-4">
+          <div className="min-w-0">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Harga</p>
+            <p className="text-[22px] font-black font-mono text-blue-700 leading-none">{fmtIDR(sell)}</p>
+            {showBasePrice && (
+              <p className="text-[9.5px] text-slate-400 mt-1 leading-snug">
+                Modal: {item.currency} {item.basePrice.toLocaleString("id-ID")}
+                {markupAmount > 0 && ` · Markup: ${fmtIDR(markupAmount)}`}
+              </p>
+            )}
+          </div>
+          {showBasePrice && markupAmount > 0 && (
+            <div className="shrink-0 bg-blue-50 border border-blue-100 rounded-xl px-2.5 py-1.5 text-right">
+              <p className="text-[8px] font-bold text-blue-400 uppercase tracking-wider">Markup / Pax</p>
+              <p className="text-[13px] font-black font-mono text-blue-700 leading-none mt-0.5">+{fmtIDR(markupAmount)}</p>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Actions */}
+      {/* ── Divider ─── */}
+      <div className="h-px bg-slate-100" />
+
+      {/* ── Actions ─── */}
       <div
-        className="border-t border-slate-100 px-4 py-2.5 flex items-center gap-2"
+        className="px-4 py-3 flex items-center gap-2"
         onClick={(e) => e.stopPropagation()}
       >
         <a
           href={waLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+          className="flex items-center gap-1.5 h-8 px-3.5 rounded-xl text-[12px] font-semibold text-white bg-emerald-500 hover:bg-emerald-600 transition-colors shadow-sm"
         >
-          <MessageCircle className="w-3 h-3" />
+          <MessageCircle className="w-3.5 h-3.5" />
           Pesan via WA
         </a>
         <button
-          className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors"
+          className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-[12px] font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors"
           onClick={() => onView?.(item)}
         >
-          <Plus className="w-3 h-3" />
+          <Plus className="w-3.5 h-3.5" />
           Order
         </button>
-        <button
-          className="ml-auto h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
-          onClick={() => toast.info("Fitur favorit segera hadir")}
-        >
-          <Star className="w-3.5 h-3.5" />
-        </button>
+        {isAdmin && (
+          <>
+            <button
+              className="ml-auto h-8 w-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-sky-600 hover:bg-sky-50 border border-transparent hover:border-sky-100 transition-colors"
+              onClick={() => onView?.(item)}
+              title="Lihat detail"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+            <button
+              className="h-8 w-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-100 transition-colors"
+              onClick={() => onEdit?.(item)}
+              title="Edit"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              className="h-8 w-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 transition-colors"
+              onClick={() => onDelete?.(item.id)}
+              title="Hapus"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
       </div>
+
+      {/* ── Footer timestamp ─── */}
+      {updatedAt && (
+        <div className="px-4 pb-3 -mt-1">
+          <p className="text-[9px] text-slate-400 text-right">Extracted {fmtRelative(updatedAt)}</p>
+        </div>
+      )}
     </div>
   );
 }
