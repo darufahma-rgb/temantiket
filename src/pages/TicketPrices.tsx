@@ -935,14 +935,6 @@ function TicketDetailModal({
                   </p>
                 )}
               </div>
-              {isOwner && markupAmount > 0 && (
-                <div className="shrink-0 bg-white border border-blue-200 rounded-xl px-2.5 py-2 text-right">
-                  <p className="text-[8px] font-bold uppercase tracking-wider text-blue-400">Markup / Pax</p>
-                  <p className="text-[13px] font-black font-mono text-blue-700 leading-none mt-0.5">
-                    +{fmtIDR(markupAmount)}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -2003,12 +1995,6 @@ function DesktopTicketCard({
               </p>
             )}
           </div>
-          {showBasePrice && markupAmount > 0 && (
-            <div className="shrink-0 bg-blue-50 border border-blue-100 rounded-xl px-2.5 py-1.5 text-right">
-              <p className="text-[8px] font-bold text-blue-400 uppercase tracking-wider">Markup / Pax</p>
-              <p className="text-[13px] font-black font-mono text-blue-700 leading-none mt-0.5">+{fmtIDR(markupAmount)}</p>
-            </div>
-          )}
         </div>
       </div>
 
