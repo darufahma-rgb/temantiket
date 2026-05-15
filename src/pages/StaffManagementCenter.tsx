@@ -290,7 +290,7 @@ function TaskModal({
             <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Deskripsi</label>
             <Textarea className="mt-1 resize-none" rows={2} placeholder="Detail tugas..." value={desc} onChange={(e) => setDesc(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Prioritas</label>
               <Select value={priority} onValueChange={(v) => setPriority(v as StaffTask["priority"])}>

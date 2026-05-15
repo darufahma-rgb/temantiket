@@ -1259,7 +1259,7 @@ export default function Calculator() {
               type="button"
               onClick={() => setCalcSection(key)}
               className={cn(
-                "flex-1 flex flex-col items-center gap-0.5 py-2.5 rounded-xl text-[10px] font-bold transition-all",
+                "flex-1 flex flex-col items-center gap-0.5 py-2.5 rounded-xl text-[11px] font-bold transition-all",
                 calcSection === key
                   ? "text-white"
                   : "text-slate-500"
@@ -1307,7 +1307,7 @@ export default function Calculator() {
                 type="button"
                 onClick={() => setField("mode", mode)}
                 className={cn(
-                  "flex-1 flex flex-col items-center gap-0.5 py-2.5 rounded-xl text-[10px] font-bold transition-all",
+                  "flex-1 flex flex-col items-center gap-0.5 py-2.5 rounded-xl text-[11px] font-bold transition-all",
                   calc.mode === mode ? "bg-sky-500 text-white" : "text-slate-500"
                 )}
               >
@@ -1320,7 +1320,7 @@ export default function Calculator() {
           {/* ── Override Kurs Card ── */}
           <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
             <div className="px-5 pt-4 pb-2">
-              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Override Kurs (Khusus Halaman Ini)</p>
+              <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Override Kurs (Khusus Halaman Ini)</p>
             </div>
             <div className="px-4 pb-4 grid grid-cols-3 gap-2">
               {(["SAR", "USD"] as const).map((cur) => {
@@ -1330,9 +1330,9 @@ export default function Calculator() {
                 return (
                   <div key={cur} className={cn("rounded-2xl border p-3 space-y-1.5", active ? "bg-sky-50 border-sky-200" : "bg-[#F0F4FB] border-sky-100")}>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-extrabold text-sky-700">{cur}</span>
+                      <span className="text-[11px] font-extrabold text-sky-700">{cur}</span>
                       {active && (
-                        <button type="button" onClick={() => setField(cur === "SAR" ? "localRateSAR" : "localRateUSD", 0)} className="text-[9px] text-sky-400 font-medium">↩</button>
+                        <button type="button" onClick={() => setField(cur === "SAR" ? "localRateSAR" : "localRateUSD", 0)} className="text-[11px] text-sky-400 font-medium">↩</button>
                       )}
                     </div>
                     <input
@@ -1346,14 +1346,14 @@ export default function Calculator() {
                       }}
                       className="w-full text-[11px] font-bold bg-transparent border-0 p-0 focus:outline-none text-[#0f1c3f]"
                     />
-                    <p className="text-[9px] text-slate-400">{active ? `Rp ${localVal.toLocaleString("id-ID")}` : "(dari Pengaturan)"}</p>
+                    <p className="text-[11px] text-slate-400">{active ? `Rp ${localVal.toLocaleString("id-ID")}` : "(dari Pengaturan)"}</p>
                   </div>
                 );
               })}
               <div className="rounded-2xl border border-sky-100 bg-[#F0F4FB] p-3 space-y-1.5">
-                <span className="text-[10px] font-extrabold text-sky-700">IDR</span>
+                <span className="text-[11px] font-extrabold text-sky-700">IDR</span>
                 <p className="text-[11px] font-bold text-[#0f1c3f]">1</p>
-                <p className="text-[9px] text-slate-400">(basis)</p>
+                <p className="text-[11px] text-slate-400">(basis)</p>
               </div>
             </div>
           </div>
@@ -1361,11 +1361,11 @@ export default function Calculator() {
           {/* ── Info Paket Card ── */}
           <div className="bg-white rounded-3xl shadow-sm border border-sky-100 overflow-hidden">
             <div className="px-5 pt-4 pb-2">
-              <p className="text-[10px] font-extrabold text-sky-600 uppercase tracking-wider">Info Paket</p>
+              <p className="text-[11px] font-extrabold text-sky-600 uppercase tracking-wider">Info Paket</p>
             </div>
             <div className="px-4 pb-4 space-y-3">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Nama Paket</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Nama Paket</label>
                 <input
                   type="text"
                   value={calc.packageName}
@@ -1376,7 +1376,7 @@ export default function Calculator() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Destinasi</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Destinasi</label>
                   <select
                     value={calc.destination}
                     onChange={(e) => setField("destination", e.target.value)}
@@ -1387,7 +1387,7 @@ export default function Calculator() {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Jumlah Pax</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Jumlah Pax</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1443,18 +1443,18 @@ export default function Calculator() {
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Tipe</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Tipe</p>
                           <select value={h.roomType ?? ""} onChange={(e) => updateHotel(h.id, { roomType: (e.target.value || undefined) as HotelRow["roomType"] })} className="w-full h-8 rounded-xl border border-sky-200 bg-white px-1 text-[11px] focus:outline-none">
                             <option value="">—</option>
                             {ROOM_TYPES.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Hari</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Hari</p>
                           <NumCell value={h.days} onChange={(v) => updateHotel(h.id, { days: v })} />
                         </div>
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Kamar</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Kamar</p>
                           <NumCell value={h.rooms} onChange={(v) => updateHotel(h.id, { rooms: v })} />
                         </div>
                       </div>
@@ -1463,7 +1463,7 @@ export default function Calculator() {
                         <RowCurrencyToggle value={cur as "IDR"|"SAR"|"USD"|"EGP"} onChange={(v) => updateHotel(h.id, { currency: v })} />
                         <div className="text-right">
                           <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
-                          <p className="text-[9px] text-slate-400">{formatCurrency(perPaxIDR)}/pax</p>
+                          <p className="text-[10px] text-slate-400">{formatCurrency(perPaxIDR)}/pax</p>
                         </div>
                       </div>
                     </div>
@@ -1474,7 +1474,7 @@ export default function Calculator() {
                     <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal Hotel</span>
                     <div className="text-right">
                       <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.hotelIDR)}</p>
-                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.hotelIDR / safePax)}/pax</p>
+                      <p className="text-[10px] text-sky-600">{formatCurrency(quote.hotelIDR / safePax)}/pax</p>
                     </div>
                   </div>
                 )}
@@ -1506,21 +1506,21 @@ export default function Calculator() {
                     <div key={t.id} className="bg-[#F0F4FB] rounded-2xl p-3 space-y-2.5 border border-sky-100">
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Jenis</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Jenis</p>
                           <SelectCell value={t.label} onChange={(v) => updateTransport(t.id, { label: v })} options={TRANSPORT_TYPES} placeholder="Jenis" />
                         </div>
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Rute</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Rute</p>
                           <SelectCell value={t.route ?? ""} onChange={(v) => updateTransport(t.id, { route: v })} options={ROUTE_OPTIONS} placeholder="Rute" />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Jumlah</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Jumlah</p>
                           <NumCell value={t.fleet} onChange={(v) => updateTransport(t.id, { fleet: v })} />
                         </div>
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Harga</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Harga</p>
                           <NumCell value={t.pricePerFleet} onChange={(v) => updateTransport(t.id, { pricePerFleet: v })} />
                         </div>
                       </div>
@@ -1533,7 +1533,7 @@ export default function Calculator() {
                         </div>
                         <div className="text-right">
                           <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
-                          <p className="text-[9px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
+                          <p className="text-[10px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
                         </div>
                       </div>
                     </div>
@@ -1544,7 +1544,7 @@ export default function Calculator() {
                     <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal Transport</span>
                     <div className="text-right">
                       <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.transportIDR)}</p>
-                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.transportIDR / safePax)}/pax</p>
+                      <p className="text-[10px] text-sky-600">{formatCurrency(quote.transportIDR / safePax)}/pax</p>
                     </div>
                   </div>
                 )}
@@ -1578,11 +1578,11 @@ export default function Calculator() {
                     <div key={tk.id} className="bg-[#F0F4FB] rounded-2xl p-3 space-y-2.5 border border-sky-100">
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Maskapai</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Maskapai</p>
                           <SelectCell value={tk.airline ?? ""} onChange={(v) => updateTicket(tk.id, { airline: v })} options={AIRLINES} placeholder="Maskapai" />
                         </div>
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Jenis</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Jenis</p>
                           <select value={tk.flightType === "Open Jaw" ? "Return" : tk.flightType} onChange={(e) => updateTicket(tk.id, { flightType: e.target.value })} className="w-full h-7 rounded-lg border border-sky-200 bg-white px-1.5 text-[12px] focus:outline-none">
                             <option value="Return">Return</option>
                             <option value="One Way">One Way</option>
@@ -1590,11 +1590,11 @@ export default function Calculator() {
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Rute</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Rute</p>
                         <TextCell value={tk.label} onChange={(v) => updateTicket(tk.id, { label: v })} placeholder="cth: CGK - JED - CGK" suggestions={FLIGHT_ROUTE_SUGGESTIONS} listId={`mob-flight-${tk.id}`} />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Harga / Pax</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Harga / Pax</p>
                         <NumCell value={tk.pricePerPax} onChange={(v) => updateTicket(tk.id, { pricePerPax: v })} />
                       </div>
                       <div className="flex items-center justify-between">
@@ -1606,7 +1606,7 @@ export default function Calculator() {
                         </div>
                         <div className="text-right">
                           <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
-                          <p className="text-[9px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
+                          <p className="text-[10px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
                         </div>
                       </div>
                     </div>
@@ -1617,7 +1617,7 @@ export default function Calculator() {
                     <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal Tiket</span>
                     <div className="text-right">
                       <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.ticketIDR)}</p>
-                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.ticketIDR / safePax)}/pax</p>
+                      <p className="text-[10px] text-sky-600">{formatCurrency(quote.ticketIDR / safePax)}/pax</p>
                     </div>
                   </div>
                 )}
@@ -1652,14 +1652,14 @@ export default function Calculator() {
                         <button type="button" onClick={() => removeVisa(v.id)} className="h-9 w-9 rounded-xl flex items-center justify-center text-red-400 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Harga / Pax</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Harga / Pax</p>
                         <NumCell value={v.pricePerPax} onChange={(val) => updateVisa(v.id, { pricePerPax: val })} />
                       </div>
                       <div className="flex items-center justify-between">
                         <RowCurrencyToggle value={cur as "IDR"|"SAR"|"USD"|"EGP"} onChange={(val) => updateVisa(v.id, { currency: val })} />
                         <div className="text-right">
                           <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
-                          <p className="text-[9px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
+                          <p className="text-[10px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
                         </div>
                       </div>
                     </div>
@@ -1670,7 +1670,7 @@ export default function Calculator() {
                     <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal Visa</span>
                     <div className="text-right">
                       <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.visaIDR)}</p>
-                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.visaIDR / safePax)}/pax</p>
+                      <p className="text-[10px] text-sky-600">{formatCurrency(quote.visaIDR / safePax)}/pax</p>
                     </div>
                   </div>
                 )}
@@ -1704,14 +1704,14 @@ export default function Calculator() {
                         <button type="button" onClick={() => removeDest(d.id)} className="h-9 w-9 rounded-xl flex items-center justify-center text-red-400 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Harga / Pax</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Harga / Pax</p>
                         <NumCell value={d.pricePerPax} onChange={(v) => updateDest(d.id, { pricePerPax: v })} />
                       </div>
                       <div className="flex items-center justify-between">
                         <RowCurrencyToggle value={cur as "IDR"|"SAR"|"USD"|"EGP"} onChange={(v) => updateDest(d.id, { currency: v })} />
                         <div className="text-right">
                           <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
-                          <p className="text-[9px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
+                          <p className="text-[10px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
                         </div>
                       </div>
                     </div>
@@ -1722,7 +1722,7 @@ export default function Calculator() {
                     <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal Destinasi</span>
                     <div className="text-right">
                       <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.destinationIDR)}</p>
-                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.destinationIDR / safePax)}/pax</p>
+                      <p className="text-[10px] text-sky-600">{formatCurrency(quote.destinationIDR / safePax)}/pax</p>
                     </div>
                   </div>
                 )}
@@ -1756,14 +1756,14 @@ export default function Calculator() {
                         <button type="button" onClick={() => removeFnB(f.id)} className="h-9 w-9 rounded-xl flex items-center justify-center text-red-400 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Harga / Pax</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Harga / Pax</p>
                         <NumCell value={f.pricePerPax} onChange={(v) => updateFnB(f.id, { pricePerPax: v })} />
                       </div>
                       <div className="flex items-center justify-between">
                         <RowCurrencyToggle value={cur as "IDR"|"SAR"|"USD"|"EGP"} onChange={(v) => updateFnB(f.id, { currency: v })} />
                         <div className="text-right">
                           <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
-                          <p className="text-[9px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
+                          <p className="text-[10px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
                         </div>
                       </div>
                     </div>
@@ -1774,7 +1774,7 @@ export default function Calculator() {
                     <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal F&amp;B</span>
                     <div className="text-right">
                       <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.fnbIDR)}</p>
-                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.fnbIDR / safePax)}/pax</p>
+                      <p className="text-[10px] text-sky-600">{formatCurrency(quote.fnbIDR / safePax)}/pax</p>
                     </div>
                   </div>
                 )}
@@ -1810,11 +1810,11 @@ export default function Calculator() {
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Jml Staff</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Jml Staff</p>
                           <NumCell value={(s as StaffRow).numStaff ?? 1} onChange={(v) => updateStaff(s.id, { numStaff: v })} />
                         </div>
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Total Biaya</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Total Biaya</p>
                           <NumCell value={s.totalCost} onChange={(v) => updateStaff(s.id, { totalCost: v })} />
                         </div>
                       </div>
@@ -1822,7 +1822,7 @@ export default function Calculator() {
                         <RowCurrencyToggle value={cur as "IDR"|"SAR"|"USD"|"EGP"} onChange={(v) => updateStaff(s.id, { currency: v })} />
                         <div className="text-right">
                           <p className="text-[11px] font-extrabold text-[#0f1c3f]">{formatCurrency(totalIDR)}</p>
-                          <p className="text-[9px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
+                          <p className="text-[10px] text-slate-400">{formatCurrency(totalIDR / safePax)}/pax</p>
                         </div>
                       </div>
                     </div>
@@ -1833,7 +1833,7 @@ export default function Calculator() {
                     <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-wide">Subtotal Staff</span>
                     <div className="text-right">
                       <p className="text-[12px] font-extrabold text-sky-800">{formatCurrency(quote.staffIDR)}</p>
-                      <p className="text-[9px] text-sky-600">{formatCurrency(quote.staffIDR / safePax)}/pax</p>
+                      <p className="text-[10px] text-sky-600">{formatCurrency(quote.staffIDR / safePax)}/pax</p>
                     </div>
                   </div>
                 )}

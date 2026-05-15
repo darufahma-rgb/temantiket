@@ -190,7 +190,7 @@ function AddAgentDialog({ open, onClose, onSuccess }: {
         <div className="space-y-4 mt-1">
           {/* ── Seksi: Identitas ─────────────────────── */}
           <div className="space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Identitas Agen</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Identitas Agen</p>
 
             {/* Nama */}
             <div className="space-y-1.5">

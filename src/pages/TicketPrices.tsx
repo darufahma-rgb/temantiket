@@ -273,10 +273,10 @@ export function BoardingPassCard({
               {item.airline}
             </p>
             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-              <span className="text-[9px] text-slate-400 font-mono tracking-wide">{item.airlineCode}</span>
+              <span className="text-[10px] text-slate-400 font-mono tracking-wide">{item.airlineCode}</span>
               {!isRT && !isML && item.flightNumber && (
                 <span
-                  className="text-[9px] bg-slate-100 text-slate-600 rounded-md px-1.5 py-0.5 font-mono"
+                  className="text-[10px] bg-slate-100 text-slate-600 rounded-md px-1.5 py-0.5 font-mono"
                   style={{ fontWeight: 600 }}
                 >
                   {item.flightNumber}
@@ -287,7 +287,7 @@ export function BoardingPassCard({
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className={cn(
-            "text-[8.5px] px-2 py-0.5 rounded-full",
+            "text-[10px] px-2 py-0.5 rounded-full",
             isML || isRT ? "bg-violet-50 text-violet-600 border border-violet-100"
             : isDirect ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
             : "bg-amber-50 text-amber-600 border border-amber-100",
@@ -295,12 +295,12 @@ export function BoardingPassCard({
             {isML ? "Multi-Leg PP" : isRT ? "Pulang-Pergi" : isDirect ? "One Way" : "Transit"}
           </span>
           {isAdmin && !item.isPublished && (
-            <Badge variant="outline" className="text-[9px] bg-slate-50 text-slate-400 border-slate-200 py-0">
+            <Badge variant="outline" className="text-[10px] bg-slate-50 text-slate-400 border-slate-200 py-0">
               Tersembunyi
             </Badge>
           )}
           {expired && (
-            <Badge className="text-[9px] bg-red-50 text-red-500 border border-red-100 py-0">Expired</Badge>
+            <Badge className="text-[10px] bg-red-50 text-red-500 border border-red-100 py-0">Expired</Badge>
           )}
         </div>
       </div>
@@ -327,7 +327,7 @@ export function BoardingPassCard({
             <div className="flex items-stretch gap-0">
               {/* Berangkat */}
               <div className="flex-1 min-w-0">
-                <p className="text-[9px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">Berangkat</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">Berangkat</p>
                 <div className="flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
                   <span className="text-[11.5px] text-slate-700 font-semibold leading-none">
@@ -349,7 +349,7 @@ export function BoardingPassCard({
               <div className="w-px bg-slate-100 mx-3 self-stretch" />
               {/* Pulang */}
               <div className="flex-1 min-w-0">
-                <p className="text-[9px] text-violet-400 uppercase tracking-wide font-semibold mb-0.5">Pulang</p>
+                <p className="text-[10px] text-violet-400 uppercase tracking-wide font-semibold mb-0.5">Pulang</p>
                 <div className="flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-violet-400 shrink-0" />
                   <span className="text-[11.5px] text-violet-700 font-semibold leading-none">
@@ -2365,7 +2365,7 @@ export default function TicketPrices() {
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="text-[17px] font-extrabold text-[#0f1c3f] leading-tight truncate">Harga Tiket</h1>
-              <p className="text-[10px] text-slate-400 font-medium leading-none mt-0.5 truncate">
+              <p className="text-[11px] text-slate-400 font-medium leading-none mt-0.5 truncate">
                 Extract tiket via AI · screenshot atau kode booking
               </p>
             </div>
@@ -2653,7 +2653,7 @@ export default function TicketPrices() {
                       <div className="relative">
                         {isNew && idx === 0 && (
                           <div
-                            className="absolute top-4 right-14 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide pointer-events-none"
+                            className="absolute top-4 right-14 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide pointer-events-none"
                             style={{ background: "#d1fae5", color: "#059669" }}
                           >
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />

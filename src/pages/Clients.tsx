@@ -1281,7 +1281,7 @@ export default function Clients() {
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="text-[17px] font-extrabold text-[#0f1c3f] leading-tight truncate">Klien & Jamaah</h1>
-              <p className="text-[10px] text-slate-400 font-medium leading-none mt-0.5 truncate">Kelola data klien, jamaah, dan riwayat perjalanan</p>
+              <p className="text-[11px] text-slate-400 font-medium leading-none mt-0.5 truncate">Kelola data klien, jamaah, dan riwayat perjalanan</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(""); }} className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>
@@ -1302,7 +1302,7 @@ export default function Clients() {
                   <input autoFocus type="text" value={q} onChange={(e) => { setQ(e.target.value); setMobilePage(1); }} placeholder="Cari nama, email, atau nomor paspor…" className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-[#F2F5FB] border border-transparent text-[#0f1c3f] placeholder-slate-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all" />
                   {q && <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-200 flex items-center justify-center active:opacity-60"><X className="h-3 w-3 text-slate-500" /></button>}
                 </div>
-                {q && <p className="text-[10.5px] text-slate-400 mt-1.5 ml-1">{mobileFiltered.length} dari {clients.length} klien</p>}
+                {q && <p className="text-[11px] text-slate-400 mt-1.5 ml-1">{mobileFiltered.length} dari {clients.length} klien</p>}
               </motion.div>
             )}
           </AnimatePresence>
@@ -1328,12 +1328,12 @@ export default function Clients() {
                   >
                     <div className="h-10 w-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: stat.bg, color: stat.color }}>{stat.icon}</div>
                     <p className="text-[22px] font-black text-[#0f1c3f] tabular-nums leading-none mt-0.5">{stat.value}</p>
-                    <p className="text-[8px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide px-0.5">{stat.label}</p>
+                    <p className="text-[11px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide px-0.5">{stat.label}</p>
                     <div className="flex items-center gap-0.5">
                       {up ? <TrendingUp className="h-2.5 w-2.5 text-emerald-500" strokeWidth={2.5} /> : <TrendingUp className="h-2.5 w-2.5 text-red-400 rotate-180" strokeWidth={2.5} />}
-                      <span className={`text-[8.5px] font-bold ${up ? "text-emerald-500" : "text-red-400"}`}>{change === 0 ? "0%" : `${up ? "+" : ""}${change}%`}</span>
+                      <span className={`text-[11px] font-bold ${up ? "text-emerald-500" : "text-red-400"}`}>{change === 0 ? "0%" : `${up ? "+" : ""}${change}%`}</span>
                     </div>
-                    <span className="text-[7.5px] text-slate-300 font-medium">vs bulan lalu</span>
+                    <span className="text-[10px] text-slate-300 font-medium">vs bulan lalu</span>
                   </button>
                 );
               })}
@@ -1422,9 +1422,9 @@ export default function Clients() {
                             : null
                         }
                         <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                          {isAktif && <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Aktif</span>}
-                          {isJamaah && <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-[#eff6ff] text-[#2563eb] border border-blue-200">Jamaah Umrah</span>}
-                          {isLoyal && <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Klien Loyal</span>}
+                          {isAktif && <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Aktif</span>}
+                          {isJamaah && <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#eff6ff] text-[#2563eb] border border-blue-200">Jamaah Umrah</span>}
+                          {isLoyal && <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Klien Loyal</span>}
                         </div>
                       </div>
 

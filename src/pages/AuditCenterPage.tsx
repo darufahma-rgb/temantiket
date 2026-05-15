@@ -87,29 +87,29 @@ function AuditItemCard({ item, mode }: { item: AuditItem; mode: DisplayMode }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <span className="text-[11px] font-semibold text-gray-800 leading-tight">{item.title}</span>
+              <span className="text-[12px] font-semibold text-gray-800 leading-tight">{item.title}</span>
               {mode === "technical" && item.ts && (
-                <span className="ml-2 text-[9px] text-gray-400 font-mono">{fmtDt(item.ts)}</span>
+                <span className="ml-2 text-[10px] text-gray-400 font-mono">{fmtDt(item.ts)}</span>
               )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <Badge variant="outline" className={cn("text-[9px] px-1.5 h-4", cfg.badgeCls)}>{cfg.label}</Badge>
-              <Badge variant="outline" className="text-[9px] px-1.5 h-4 text-gray-400">{item.category}</Badge>
+              <Badge variant="outline" className={cn("text-[10px] px-2 h-5", cfg.badgeCls)}>{cfg.label}</Badge>
+              <Badge variant="outline" className="text-[10px] px-2 h-5 text-gray-400">{item.category}</Badge>
             </div>
           </div>
-          <p className="text-[10.5px] text-gray-600 mt-0.5 leading-relaxed">{item.description}</p>
+          <p className="text-[11px] text-gray-600 mt-0.5 leading-relaxed">{item.description}</p>
           {mode === "technical" && hasMeta && (
             <button
               type="button"
               onClick={() => setExpanded(v => !v)}
-              className="text-[9px] text-blue-500 mt-1 flex items-center gap-0.5"
+              className="text-[11px] text-blue-500 mt-1 flex items-center gap-0.5"
             >
-              {expanded ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               {expanded ? "Sembunyikan" : "Detail teknis"}
             </button>
           )}
           {expanded && item.meta && (
-            <pre className="mt-1.5 text-[9px] font-mono bg-white/60 border border-white/80 rounded p-2 overflow-x-auto text-gray-600 leading-relaxed">
+            <pre className="mt-1.5 text-[10px] font-mono bg-white/60 border border-white/80 rounded p-2 overflow-x-auto text-gray-600 leading-relaxed">
               {JSON.stringify(item.meta, null, 2)}
             </pre>
           )}
@@ -124,9 +124,9 @@ function AuditItemCard({ item, mode }: { item: AuditItem; mode: DisplayMode }) {
 function StatCard({ label, value, sub, color }: { label: string; value: number | string; sub?: string; color: string }) {
   return (
     <div className="rounded-xl border border-gray-100 bg-white px-3 py-2.5 text-center">
-      <div className="text-lg font-black leading-none" style={{ color }}>{value}</div>
-      <div className="text-[10px] font-semibold text-gray-700 mt-0.5">{label}</div>
-      {sub && <div className="text-[9px] text-gray-400 mt-0.5">{sub}</div>}
+      <div className="text-xl font-black leading-none" style={{ color }}>{value}</div>
+      <div className="text-[11px] font-semibold text-gray-700 mt-0.5">{label}</div>
+      {sub && <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -479,7 +479,7 @@ export default function AuditCenterPage() {
       </motion.div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <StatCard label="Error"   value={counts.error}   color="#ef4444" />
         <StatCard label="Perhatian" value={counts.warning} color="#f59e0b" />
         <StatCard label="Info"    value={counts.info}    color="#3b82f6" />
@@ -524,7 +524,7 @@ export default function AuditCenterPage() {
             key={f}
             size="sm"
             variant={sevFilter === f ? "default" : "outline"}
-            className={cn("h-8 text-[10px] px-2.5 capitalize", sevFilter === f && "bg-blue-600 text-white hover:bg-blue-700")}
+            className={cn("h-8 text-[11px] px-2.5 capitalize", sevFilter === f && "bg-blue-600 text-white hover:bg-blue-700")}
             onClick={() => setSevFilter(f)}
           >
             {f === "all" ? "Semua" : SEV_CFG[f as AuditSeverity].label}
@@ -532,11 +532,11 @@ export default function AuditCenterPage() {
           </Button>
         ))}
         <div className="flex items-center gap-1.5 ml-auto">
-          <Button size="sm" variant="outline" className="h-8 text-[10px] gap-1" onClick={handleCopyReport}>
+          <Button size="sm" variant="outline" className="h-8 text-[11px] gap-1" onClick={handleCopyReport}>
             {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
             {copied ? "Tersalin" : "Salin Laporan"}
           </Button>
-          <Button size="sm" variant="outline" className="h-8 text-[10px] gap-1" onClick={handleExportCSV}>
+          <Button size="sm" variant="outline" className="h-8 text-[11px] gap-1" onClick={handleExportCSV}>
             <Download className="h-3 w-3" /> CSV
           </Button>
           <Button size="sm" variant="outline" className="h-8 text-[10px] gap-1" onClick={handleExportJSON}>

@@ -386,17 +386,17 @@ export default function AgentLeaderboard() {
                   <s.icon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wide leading-none">{s.label}</p>
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide leading-none">{s.label}</p>
                   <p className={cn("font-black text-slate-900 leading-tight mt-1 tabular-nums", s.small ? "text-[16px]" : "text-[22px]")}>
                     {s.value}
                   </p>
                   {s.growth !== null && s.growth !== undefined ? (
-                    <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-0.5 font-semibold">
+                    <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-0.5 font-semibold">
                       <TrendingUp className="h-3 w-3" />
                       ↑ {s.growth}% dari periode lalu
                     </p>
                   ) : (
-                    <p className="text-[10px] text-slate-400 mt-1">dari periode lalu</p>
+                    <p className="text-[11px] text-slate-400 mt-1">dari periode lalu</p>
                   )}
                 </div>
               </div>

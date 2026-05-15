@@ -425,7 +425,7 @@ export default function BCTemplates() {
             <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} />
             Filter
             {activeTab !== "all" && (
-              <span className="h-4 w-4 rounded-full bg-white text-[#0066FF] text-[9px] font-black flex items-center justify-center">1</span>
+              <span className="h-4 w-4 rounded-full bg-white text-[#0066FF] text-[10px] font-black flex items-center justify-center">1</span>
             )}
           </button>
         </div>
@@ -442,7 +442,7 @@ export default function BCTemplates() {
             >
               <div className="mt-3 pt-3 border-t border-slate-100">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Filter Kategori</p>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Filter Kategori</p>
                   {activeTab !== "all" && (
                     <button onClick={() => setActiveTab("all")} className="text-[11px] text-[#0066FF] font-semibold active:opacity-60">
                       Reset Filter

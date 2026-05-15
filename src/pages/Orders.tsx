@@ -313,7 +313,7 @@ export default function Orders() {
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="text-[17px] font-extrabold text-[#0f1c3f] leading-tight truncate">Order Hub</h1>
-              <p className="text-[10px] text-slate-400 font-medium leading-none mt-0.5 truncate">Kelola semua pesanan dalam satu tempat</p>
+              <p className="text-[11px] text-slate-400 font-medium leading-none mt-0.5 truncate">Kelola semua pesanan dalam satu tempat</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(""); }} className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>
@@ -322,7 +322,7 @@ export default function Orders() {
               <button onClick={() => setShowFilter(s => !s)} className={cn("h-9 px-3 rounded-full flex items-center gap-1.5 text-[11px] font-bold active:opacity-60 transition-all", showFilter || mobileStatus !== "all" ? "bg-[#0066FF] text-white" : "bg-[#F2F5FB] text-[#0f1c3f]")} style={{ WebkitTapHighlightColor: "transparent" }}>
                 <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} />
                 Filter
-                {mobileStatus !== "all" && <span className="h-4 w-4 rounded-full bg-white text-[#0066FF] text-[9px] font-black flex items-center justify-center">1</span>}
+                {mobileStatus !== "all" && <span className="h-4 w-4 rounded-full bg-white text-[#0066FF] text-[10px] font-black flex items-center justify-center">1</span>}
               </button>
               <button onClick={() => setAddOpen(true)} className="h-9 w-9 rounded-full flex items-center justify-center text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}>
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
@@ -348,7 +348,7 @@ export default function Orders() {
             {showFilter && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                 <div className="mt-3 pt-3 border-t border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Status Order</p>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Status Order</p>
                   <div className="flex flex-wrap gap-2">
                     {[{ id: "all", label: "Semua", count: orders.length }, { id: "diproses", label: "Diproses", count: mDiproses }, { id: "selesai", label: "Selesai", count: mSelesai }, { id: "dibatalkan", label: "Dibatalkan", count: mDibatalkan }].map(f => (
                       <button key={f.id} onClick={() => setMobileStatus(f.id)} className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95", mobileStatus === f.id ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")} style={{ WebkitTapHighlightColor: "transparent" }}>
@@ -378,7 +378,7 @@ export default function Orders() {
                 style={mobileCat === tab.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
               >
                 {tab.label}
-                <span className={cn("text-[9px] font-extrabold px-1.5 py-0.5 rounded-full", mobileCat === tab.id ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500")}>{tab.count}</span>
+                <span className={cn("text-[10px] font-extrabold px-1.5 py-0.5 rounded-full", mobileCat === tab.id ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500")}>{tab.count}</span>
               </button>
             ))}
           </div>
@@ -417,12 +417,12 @@ export default function Orders() {
                   <button key={stat.label} onClick={stat.onClick} className={cn("flex flex-col items-center gap-1 active:opacity-70 transition-opacity", i > 0 ? "px-1" : "pr-1")} style={{ WebkitTapHighlightColor: "transparent" }}>
                     <div className="h-10 w-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: stat.bg, color: stat.color }}>{stat.icon}</div>
                     <p className="text-[22px] font-black text-[#0f1c3f] tabular-nums leading-none mt-0.5">{stat.value}</p>
-                    <p className="text-[8.5px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide px-0.5">{stat.label}</p>
+                    <p className="text-[11px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide px-0.5">{stat.label}</p>
                     <div className="flex items-center gap-0.5">
                       {up ? <TrendingUp className="h-2.5 w-2.5 text-emerald-500" strokeWidth={2.5} /> : <TrendingUp className="h-2.5 w-2.5 text-red-400 rotate-180" strokeWidth={2.5} />}
-                      <span className={cn("text-[8.5px] font-bold", up ? "text-emerald-500" : "text-red-400")}>{change === 0 ? "0%" : `${up ? "+" : ""}${change}%`}</span>
+                      <span className={cn("text-[10px] font-bold", up ? "text-emerald-500" : "text-red-400")}>{change === 0 ? "0%" : `${up ? "+" : ""}${change}%`}</span>
                     </div>
-                    <span className="text-[7.5px] text-slate-300 font-medium">vs kemarin</span>
+                    <span className="text-[10px] text-slate-300 font-medium">vs kemarin</span>
                   </button>
                 );
               })}
@@ -550,18 +550,18 @@ export default function Orders() {
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-[9px] font-extrabold uppercase tracking-wider mb-0.5" style={{ color: tc.labelColor }}>{tc.label}</p>
+                          <p className="text-[10px] font-extrabold uppercase tracking-wider mb-0.5" style={{ color: tc.labelColor }}>{tc.label}</p>
                           <p className="text-[12.5px] font-extrabold text-[#0f1c3f] leading-snug truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</p>
-                          {clientName && <p className="text-[10px] text-slate-400 mt-0.5 truncate font-medium">{clientName}</p>}
-                          <p className="text-[9px] text-slate-400 mt-0.5">{dateStr}</p>
+                          {clientName && <p className="text-[11px] text-slate-400 mt-0.5 truncate font-medium">{clientName}</p>}
+                          <p className="text-[10px] text-slate-400 mt-0.5">{dateStr}</p>
                           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full" style={{ backgroundColor: sb.bg, color: sb.text }}>{sb.label}</span>
-                            <span className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: (PAYMENT_DOT[ps] ?? "#64748b") + "20", color: PAYMENT_DOT[ps] ?? "#64748b" }}>
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full" style={{ backgroundColor: sb.bg, color: sb.text }}>{sb.label}</span>
+                            <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: (PAYMENT_DOT[ps] ?? "#64748b") + "20", color: PAYMENT_DOT[ps] ?? "#64748b" }}>
                               <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: PAYMENT_DOT[ps] ?? "#64748b" }} />
                               {PAYMENT_LBL[ps] ?? ps}
                             </span>
                             {user?.role !== "agent" && (!o.costPrice || o.costPrice === 0) && (
-                              <span className="inline-flex items-center gap-0.5 text-[8.5px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600">
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600">
                                 <AlertTriangle className="h-2.5 w-2.5" />HPP
                               </span>
                             )}
@@ -600,7 +600,7 @@ export default function Orders() {
               return (
                 <button key={tab.path} onClick={() => navigate(tab.path)} className={cn("flex flex-col items-center justify-center gap-1 transition-colors active:opacity-60", active ? "text-[#0066FF]" : "text-slate-400")} style={{ WebkitTapHighlightColor: "transparent" }}>
                   {tab.icon(active)}
-                  <span className={cn("text-[9px] font-semibold", active && "font-extrabold")}>{tab.label}</span>
+                  <span className={cn("text-[11px] font-semibold", active && "font-extrabold")}>{tab.label}</span>
                 </button>
               );
             })}
@@ -806,7 +806,7 @@ export default function Orders() {
                         )}>
                           {isCompleted ? "Completed" : o.status}
                         </span>
-                        <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full border", PAYMENT_STATUS_STYLE[ps])}>
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", PAYMENT_STATUS_STYLE[ps])}>
                           {PAYMENT_STATUS_LABEL[ps]}
                         </span>
                       </div>
@@ -830,12 +830,12 @@ export default function Orders() {
                       <p className="text-[14px] font-black text-slate-800 tabular-nums">{fmtOrderPrice(o.totalPrice, o.currency)}</p>
                       <div className="flex items-center gap-1">
                         {user?.role !== "agent" && (!o.costPrice || o.costPrice === 0) && (
-                          <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                          <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
                             <AlertTriangle className="h-2.5 w-2.5" /> HPP
                           </span>
                         )}
                         {o.paidAmount > 0 && o.paidAmount < o.totalPrice && (
-                          <span className="text-[9px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded-full">
+                          <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded-full">
                             DP
                           </span>
                         )}

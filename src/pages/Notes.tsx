@@ -279,7 +279,7 @@ function NoteCard({ note, viewMode, authorName, onView, onEdit, onDelete, onPin,
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <h3 className="text-[14px] font-bold text-slate-900 truncate">{note.title}</h3>
-            <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0", cat.badgeBg, cat.badgeText)}>{cat.label}</span>
+            <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0", cat.badgeBg, cat.badgeText)}>{cat.label}</span>
             {note.pinned && <Pin className="h-3 w-3 text-amber-400 fill-amber-400 rotate-45 shrink-0" />}
           </div>
           {preview && <p className="text-[12px] text-slate-500 truncate">{preview}</p>}

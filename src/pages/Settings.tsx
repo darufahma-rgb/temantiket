@@ -80,8 +80,8 @@ async function resizeImageToDataUrl(file: File, maxSize = 320, quality = 0.85): 
 function SectionHeader({ title, desc }: { title: string; desc: string }) {
   return (
     <div className="mb-3">
-      <h2 className="text-[13px] md:text-[14px] font-bold text-[hsl(var(--foreground))]">{title}</h2>
-      <p className="text-[10px] md:text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">{desc}</p>
+      <h2 className="text-[14px] md:text-[15px] font-bold text-[hsl(var(--foreground))]">{title}</h2>
+      <p className="text-[11px] md:text-[12px] text-[hsl(var(--muted-foreground))] mt-0.5">{desc}</p>
     </div>
   );
 }
@@ -90,8 +90,8 @@ function ToggleRow({ label, desc, checked, onChange }: { label: string; desc: st
   return (
     <div className="flex items-center justify-between py-2.5 px-3 rounded-xl border border-[hsl(var(--border))] bg-white gap-3">
       <div className="min-w-0">
-        <p className="text-[12px] md:text-[12.5px] font-medium text-[hsl(var(--foreground))] leading-tight">{label}</p>
-        <p className="text-[10px] md:text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5 leading-tight">{desc}</p>
+        <p className="text-[13px] md:text-[13.5px] font-medium text-[hsl(var(--foreground))] leading-tight">{label}</p>
+        <p className="text-[11px] md:text-[12px] text-[hsl(var(--muted-foreground))] mt-0.5 leading-tight">{desc}</p>
       </div>
       <Switch checked={checked} onCheckedChange={onChange} className="shrink-0" />
     </div>
@@ -1840,43 +1840,43 @@ export default function Settings() {
                             <div className="grid grid-cols-2 gap-1.5">
                               {bd.salesCommission > 0 && (
                                 <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2">
-                                  <p className="text-[9px] text-emerald-700 font-bold uppercase tracking-wide">Dari Closing</p>
+                                  <p className="text-[10px] text-emerald-700 font-bold uppercase tracking-wide">Dari Closing</p>
                                   <p className="text-[12px] font-bold font-mono text-emerald-700 mt-0.5">{fmtRp(bd.salesCommission)}</p>
                                 </div>
                               )}
                               {bd.fieldAgentFee > 0 && (
                                 <div className="rounded-xl bg-indigo-50 border border-indigo-100 px-3 py-2">
-                                  <p className="text-[9px] text-indigo-700 font-bold uppercase tracking-wide">Agent Lapangan</p>
+                                  <p className="text-[10px] text-indigo-700 font-bold uppercase tracking-wide">Agent Lapangan</p>
                                   <p className="text-[12px] font-bold font-mono text-indigo-700 mt-0.5">{fmtRp(bd.fieldAgentFee)}</p>
                                 </div>
                               )}
                               {bd.pelaksanaFee > 0 && (
                                 <div className="rounded-xl bg-purple-50 border border-purple-100 px-3 py-2">
-                                  <p className="text-[9px] text-purple-700 font-bold uppercase tracking-wide">Pelaksana</p>
+                                  <p className="text-[10px] text-purple-700 font-bold uppercase tracking-wide">Pelaksana</p>
                                   <p className="text-[12px] font-bold font-mono text-purple-700 mt-0.5">{fmtRp(bd.pelaksanaFee)}</p>
                                 </div>
                               )}
                               {bd.kurirFee > 0 && (
                                 <div className="rounded-xl bg-cyan-50 border border-cyan-100 px-3 py-2">
-                                  <p className="text-[9px] text-cyan-700 font-bold uppercase tracking-wide">Kurir / Ops</p>
+                                  <p className="text-[10px] text-cyan-700 font-bold uppercase tracking-wide">Kurir / Ops</p>
                                   <p className="text-[12px] font-bold font-mono text-cyan-700 mt-0.5">{fmtRp(bd.kurirFee)}</p>
                                 </div>
                               )}
                               {bd.bonusManual > 0 && (
                                 <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2">
-                                  <p className="text-[9px] text-blue-700 font-bold uppercase tracking-wide">Bonus / Misi</p>
+                                  <p className="text-[10px] text-blue-700 font-bold uppercase tracking-wide">Bonus / Misi</p>
                                   <p className="text-[12px] font-bold font-mono text-blue-700 mt-0.5">{fmtRp(bd.bonusManual)}</p>
                                 </div>
                               )}
                               {totalPending > 0 && (
                                 <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
-                                  <p className="text-[9px] text-amber-700 font-bold uppercase tracking-wide">Pending Payout</p>
+                                  <p className="text-[10px] text-amber-700 font-bold uppercase tracking-wide">Pending Payout</p>
                                   <p className="text-[12px] font-bold font-mono text-amber-700 mt-0.5">{fmtRp(totalPending)}</p>
                                 </div>
                               )}
                               {manuallyPaid > 0 && (
                                 <div className="rounded-xl bg-rose-50 border border-rose-100 px-3 py-2">
-                                  <p className="text-[9px] text-rose-700 font-bold uppercase tracking-wide">Manual Dibayar</p>
+                                  <p className="text-[10px] text-rose-700 font-bold uppercase tracking-wide">Manual Dibayar</p>
                                   <p className="text-[12px] font-bold font-mono text-rose-700 mt-0.5">{fmtRp(manuallyPaid)}</p>
                                 </div>
                               )}

@@ -897,7 +897,7 @@ export default function ItineraryGenerator() {
                 <div className="h-7 w-7 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                   <Sparkles className="h-4 w-4 text-yellow-300" strokeWidth={1.8} />
                 </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-purple-200/80">AI Itinerary Generator</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-purple-200/80">AI Itinerary Generator</p>
               </div>
               <h2 className="text-[20px] font-black text-white leading-tight mb-1">
                 Ubah data penerbangan menjadi itinerary rapi siap copy-paste ✨
@@ -931,7 +931,7 @@ export default function ItineraryGenerator() {
                 <p className="text-[11px] font-bold text-[#0066FF] uppercase tracking-widest mb-0.5">Langkah 1</p>
                 <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Extract Data Penerbangan</h3>
               </div>
-              <span className="text-[9px] font-extrabold px-2.5 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 uppercase tracking-wide shrink-0">AI Deep Extraction</span>
+              <span className="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 uppercase tracking-wide shrink-0">AI Deep Extraction</span>
             </div>
             <div className="mx-5 mb-5 space-y-3">
               <button
