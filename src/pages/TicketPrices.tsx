@@ -621,7 +621,7 @@ function _buildMLStops(legs: LegInfo[]): _StopData[] {
 
 function _buildSimpleStops(
   fromCode: string, fromCity: string | null, etd: string | null,
-  transitCode: string | null, transitCity: string | null,
+  transitCode: string | null, transitCity: string | null, transitDuration: string | null,
   toCode: string, toCity: string | null, eta: string | null,
   flightNumber: string | null,
 ): _StopData[] {
@@ -638,7 +638,7 @@ function _buildSimpleStops(
     stops.push({
       time: null, code: transitCode, city: transitCity,
       flightNumber: parts[1] ?? parts[0] ?? null,
-      duration: null, layover: null, isTransit: true, isFirst: false, isLast: false,
+      duration: null, layover: transitDuration ?? null, isTransit: true, isFirst: false, isLast: false,
     });
   }
   stops.push({
@@ -767,7 +767,7 @@ function TicketDetailModal({
     ? _buildMLStops(mlData.outboundLegs)
     : _buildSimpleStops(
         item.fromCode, item.fromCity ?? null, item.etd ?? null,
-        item.transitCode ?? null, item.transitCity ?? null,
+        item.transitCode ?? null, item.transitCity ?? null, item.transitDuration ?? null,
         item.toCode, item.toCity ?? null, item.eta ?? null,
         item.flightNumber ?? null,
       );
@@ -778,7 +778,7 @@ function TicketDetailModal({
     : isRT && returnLeg
       ? _buildSimpleStops(
           returnLeg.returnFromCode ?? item.toCode, returnLeg.returnFromCity ?? null, returnLeg.returnEtd ?? null,
-          returnLeg.returnTransitCode ?? null, returnLeg.returnTransitCity ?? null,
+          returnLeg.returnTransitCode ?? null, returnLeg.returnTransitCity ?? null, returnLeg.returnTransitDuration ?? null,
           returnLeg.returnToCode ?? item.fromCode, returnLeg.returnToCity ?? null, returnLeg.returnEta ?? null,
           returnLeg.returnFlightNumber ?? null,
         )

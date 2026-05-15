@@ -21,8 +21,7 @@ import {
 import {
   Dialog, DialogContent, DialogTitle,
 } from "@/components/ui/dialog";
-import { RouteTimeline } from "@/components/RouteTimeline";
-import { MultiLegTimeline } from "@/components/MultiLegTimeline";
+import { FlightSection, buildMLStops, buildSimpleStops } from "@/components/FlightStopDetail";
 import { cn } from "@/lib/utils";
 import {
   getAirlineGradient, getAirlineLogoUrl,
@@ -408,6 +407,32 @@ function PublicDetailModal({
   );
   const waLink = waNumber ? `${whatsappUrl(waNumber)}?text=${waText}` : `https://wa.me/?text=${waText}`;
 
+  // Build flight stops for the detailed section display
+  const outboundDate = item.departDate ? fmtDate(item.departDate) : null;
+  const returnDate = isML
+    ? (mlData?.returnLegs?.[0]?.date ? fmtDate(mlData.returnLegs[0].date) : null)
+    : (returnLeg?.returnDate ? fmtDate(returnLeg.returnDate) : null);
+
+  const outboundStops = isML && mlData?.outboundLegs
+    ? buildMLStops(mlData.outboundLegs)
+    : buildSimpleStops(
+        item.fromCode, item.fromCity ?? null, item.etd ?? null,
+        item.transitCode ?? null, item.transitCity ?? null, item.transitDuration ?? null,
+        item.toCode, item.toCity ?? null, item.eta ?? null,
+        item.flightNumber ?? null,
+      );
+
+  const returnStops = isML && (mlData?.returnLegs?.length ?? 0) > 0
+    ? buildMLStops(mlData!.returnLegs!)
+    : isRT && returnLeg
+      ? buildSimpleStops(
+          returnLeg.returnFromCode ?? item.toCode, returnLeg.returnFromCity ?? null, returnLeg.returnEtd ?? null,
+          returnLeg.returnTransitCode ?? null, returnLeg.returnTransitCity ?? null, returnLeg.returnTransitDuration ?? null,
+          returnLeg.returnToCode ?? item.fromCode, returnLeg.returnToCity ?? null, returnLeg.returnEta ?? null,
+          returnLeg.returnFlightNumber ?? null,
+        )
+      : [];
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0 gap-0">
@@ -438,50 +463,20 @@ function PublicDetailModal({
         </div>
 
         <div className="px-5 py-4 space-y-4">
-          {/* Route timeline */}
-          <div className="rounded-xl border border-slate-100 bg-white px-4 py-4">
-            {isML && mlData ? (
-              <div className="space-y-4">
-                <MultiLegTimeline legs={mlData.outboundLegs} label="Berangkat" />
-                {(mlData.returnLegs?.length ?? 0) > 0 && (
-                  <>
-                    <div className="border-t border-dashed border-slate-200" />
-                    <MultiLegTimeline legs={mlData.returnLegs!} label="Pulang" />
-                  </>
-                )}
-              </div>
-            ) : isRT && returnLeg ? (
-              <RouteTimeline
-                outbound={{
-                  origin: { code: item.fromCode, city: item.fromCity, time: item.etd },
-                  destination: { code: item.toCode, city: item.toCity, time: item.eta },
-                  transit: item.transitCode
-                    ? { code: item.transitCode, city: item.transitCity, duration: item.transitDuration ?? undefined }
-                    : null,
-                  date: item.departDate ? fmtDate(item.departDate) : null,
-                  flightNumber: item.flightNumber,
-                }}
-                returnTrip={{
-                  origin: { code: returnLeg.returnFromCode ?? "—", city: returnLeg.returnFromCity, time: returnLeg.returnEtd },
-                  destination: { code: returnLeg.returnToCode ?? "—", city: returnLeg.returnToCity, time: returnLeg.returnEta },
-                  transit: returnLeg.returnTransitCode
-                    ? { code: returnLeg.returnTransitCode, city: returnLeg.returnTransitCity, duration: returnLeg.returnTransitDuration ?? undefined }
-                    : null,
-                  date: returnLeg.returnDate ? fmtDate(returnLeg.returnDate) : null,
-                  flightNumber: returnLeg.returnFlightNumber,
-                }}
-              />
-            ) : (
-              <RouteTimeline
-                outbound={{
-                  origin: { code: item.fromCode, city: item.fromCity, time: item.etd },
-                  destination: { code: item.toCode, city: item.toCity, time: item.eta },
-                  transit: item.transitCode
-                    ? { code: item.transitCode, city: item.transitCity, duration: item.transitDuration ?? undefined }
-                    : null,
-                  date: item.departDate ? fmtDate(item.departDate) : null,
-                  flightNumber: item.flightNumber,
-                }}
+          {/* Flight detail sections */}
+          <div className="space-y-3">
+            <FlightSection
+              label="Berangkat"
+              date={outboundDate}
+              stops={outboundStops}
+              isReturn={false}
+            />
+            {returnStops.length > 0 && (
+              <FlightSection
+                label="Pulang"
+                date={returnDate}
+                stops={returnStops}
+                isReturn={true}
               />
             )}
           </div>
