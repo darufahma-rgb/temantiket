@@ -130,39 +130,51 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
 
           {/* ── Mobile floating header ── */}
           {!hideMobileChrome && <header
-            className="md:hidden fixed z-50 flex items-center gap-2 px-4"
+            className="md:hidden fixed z-50 flex items-center gap-0 px-3"
             style={{
-              top: "calc(8px + env(safe-area-inset-top, 0px))",
-              left: "8px",
-              right: "8px",
-              height: "48px",
-              borderRadius: "16px",
-              background: "color-mix(in srgb, hsl(var(--card)) 97%, transparent)",
-              backdropFilter: "blur(28px) saturate(1.9)",
-              WebkitBackdropFilter: "blur(28px) saturate(1.9)",
-              boxShadow: "0 2px 16px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
+              top: "calc(10px + env(safe-area-inset-top, 0px))",
+              left: "10px",
+              right: "10px",
+              height: "54px",
+              borderRadius: "20px",
+              background: "rgba(255,255,255,0.96)",
+              backdropFilter: "blur(32px) saturate(2)",
+              WebkitBackdropFilter: "blur(32px) saturate(2)",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)",
+              border: "1px solid rgba(255,255,255,0.6)",
             }}
           >
-            {/* Logo — rounded app-icon style */}
+            {/* Full Temantiket logo — left side */}
             <button
               onClick={() => navigate(homeRoute)}
-              className="shrink-0 active:opacity-60 transition-opacity flex items-center justify-center"
-              style={{ WebkitTapHighlightColor: "transparent", width: 32, height: 32 }}
+              className="shrink-0 active:opacity-60 transition-opacity flex items-center"
+              style={{ WebkitTapHighlightColor: "transparent", paddingRight: 6 }}
               aria-label="Home"
             >
               <img
-                src="/temantiket-logo.png"
+                src="/temantiket-logo-full.png"
                 alt="Temantiket"
-                style={{ height: 24, width: "auto", objectFit: "contain" }}
+                style={{ height: 22, width: "auto", objectFit: "contain", maxWidth: 130 }}
               />
             </button>
 
-            {/* Currency — inline, fills remaining space, vertically centered */}
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Currency pill */}
             <button
               onClick={() => refreshRates()}
               title={lastUpdated ? `Diperbarui: ${lastUpdated.toLocaleTimeString("id-ID")}` : "Tap untuk perbarui"}
-              className="flex-1 flex items-center gap-1.5 active:opacity-55 transition-opacity min-w-0 overflow-hidden"
-              style={{ WebkitTapHighlightColor: "transparent", height: 32 }}
+              className="flex items-center gap-1 active:opacity-55 transition-opacity shrink-0"
+              style={{
+                WebkitTapHighlightColor: "transparent",
+                height: 30,
+                paddingLeft: 8,
+                paddingRight: 8,
+                borderRadius: 10,
+                background: "rgba(67,97,238,0.07)",
+                border: "1px solid rgba(67,97,238,0.13)",
+              }}
             >
               <span
                 className="h-[5px] w-[5px] rounded-full shrink-0"
@@ -171,53 +183,52 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
                   boxShadow: rateMode === "manual" ? "0 0 5px rgba(37,99,235,0.8)" : "0 0 5px rgba(16,185,129,0.8)",
                 }}
               />
-              <span className="text-[11px] font-semibold tabular-nums leading-none truncate" style={{ color: "hsl(var(--foreground))" }}>
-                <span style={{ color: "hsl(var(--muted-foreground))", fontSize: "8.5px", fontWeight: 700, letterSpacing: "0.06em" }}>USD </span>
-                <span className="font-extrabold" style={{ color: "#4361EE" }}>{rates.USD ? `${(rates.USD / 1000).toFixed(1)}k` : "—"}</span>
-                {rates.SAR && (
-                  <>
-                    <span style={{ margin: "0 4px", opacity: 0.2 }}>·</span>
-                    <span style={{ color: "hsl(var(--muted-foreground))", fontSize: "8.5px", fontWeight: 700, letterSpacing: "0.06em" }}>SAR </span>
-                    <span className="font-extrabold" style={{ color: "#4361EE" }}>{rates.SAR.toLocaleString("id-ID")}</span>
-                  </>
-                )}
+              <span className="tabular-nums leading-none" style={{ fontSize: "11px", fontWeight: 700, color: "#4361EE" }}>
+                {rates.USD ? `${(rates.USD / 1000).toFixed(1)}k` : "—"}
               </span>
+              <span style={{ fontSize: "9px", fontWeight: 600, color: "rgba(67,97,238,0.55)", letterSpacing: "0.04em" }}>USD</span>
               <RefreshCw
-                className={cn("h-[9px] w-[9px] shrink-0", ratesLoading && "animate-spin")}
-                style={{ color: "hsl(var(--muted-foreground))", opacity: 0.3 }}
+                className={cn("h-[8px] w-[8px] shrink-0 ml-0.5", ratesLoading && "animate-spin")}
+                style={{ color: "#4361EE", opacity: 0.4 }}
                 strokeWidth={2.5}
               />
             </button>
 
-            {/* Search — bare icon, 32×32 tap area, vertically centered */}
+            {/* Search icon */}
             <button
               onClick={() => setSearchOpen(true)}
               className="shrink-0 flex items-center justify-center active:opacity-55 transition-opacity"
-              style={{ WebkitTapHighlightColor: "transparent", width: 32, height: 32 }}
+              style={{ WebkitTapHighlightColor: "transparent", width: 38, height: 38 }}
               aria-label="Cari"
             >
-              <Search strokeWidth={1.75} className="h-[15px] w-[15px]" style={{ color: "hsl(var(--muted-foreground))" }} />
+              <Search strokeWidth={1.8} className="h-[16px] w-[16px]" style={{ color: "#6b7280" }} />
             </button>
 
-            {/* Notification Bell — mobile */}
+            {/* Notification Bell */}
             <NotificationBell mobileMode />
 
-            {/* Avatar — 32×32 tap area, 27px circular avatar, sync dot */}
+            {/* Avatar with sync dot */}
             <button
               onClick={() => navigate("/settings")}
-              className="relative shrink-0 flex items-center justify-center active:opacity-70 transition-opacity"
+              className="relative shrink-0 flex items-center justify-center active:opacity-70 transition-opacity ml-0.5"
               title={syncTitle}
-              style={{ WebkitTapHighlightColor: "transparent", width: 32, height: 32 }}
+              style={{ WebkitTapHighlightColor: "transparent", width: 38, height: 38 }}
             >
               <div
-                className="rounded-full flex items-center justify-center text-white text-[10.5px] font-black"
-                style={{ width: 27, height: 27, background: "linear-gradient(140deg, #2563eb 0%, #1a44d4 55%, #0a2472 100%)" }}
+                className="rounded-full flex items-center justify-center text-white font-black"
+                style={{
+                  width: 30,
+                  height: 30,
+                  fontSize: "11.5px",
+                  background: "linear-gradient(140deg, #2563eb 0%, #1a44d4 55%, #0a2472 100%)",
+                  boxShadow: "0 2px 8px rgba(26,68,212,0.35)",
+                }}
               >
                 {displayName.charAt(0).toUpperCase()}
               </div>
               <span
                 className="absolute rounded-full border-[1.5px]"
-                style={{ width: 7, height: 7, bottom: 3, right: 3, background: syncInfo.color, borderColor: "hsl(var(--card))" }}
+                style={{ width: 8, height: 8, bottom: 3, right: 3, background: syncInfo.color, borderColor: "rgba(255,255,255,0.96)", boxShadow: `0 0 4px ${syncInfo.color}` }}
               />
             </button>
           </header>}
