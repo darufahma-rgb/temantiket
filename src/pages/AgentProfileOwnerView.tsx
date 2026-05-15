@@ -2258,6 +2258,7 @@ export default function AgentProfileOwnerView() {
 
           {/* dead code removed */}
           {false && (
+            <>
             <motion.div
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -2560,6 +2561,7 @@ export default function AgentProfileOwnerView() {
                 </div>
               </div>
             </div>
+            </>
           )}
 
           {/* ── MISI ── */}
