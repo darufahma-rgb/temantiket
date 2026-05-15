@@ -552,8 +552,188 @@ function DetailRow({ label, value, mono }: { label: string; value: ReactNode; mo
   );
 }
 
+// ── Airport name lookup for detail modal ─────────────────────────────────────
+const AIRPORT_NAMES: Record<string, string> = {
+  JED: "King Abdulaziz Intl Airport", MED: "Prince Mohammad Bin Abdulaziz Airport",
+  CAI: "Cairo International Airport", CGK: "Soekarno-Hatta Intl Airport",
+  SUB: "Juanda International Airport", DXB: "Dubai International Airport",
+  AUH: "Abu Dhabi International Airport", DOH: "Hamad International Airport",
+  AMM: "Queen Alia International Airport", IST: "Istanbul Airport",
+  KUL: "Kuala Lumpur Intl Airport", SIN: "Singapore Changi Airport",
+  MCT: "Muscat International Airport", RUH: "King Khalid Intl Airport",
+  BAH: "Bahrain International Airport", KWI: "Kuwait International Airport",
+  ADD: "Addis Ababa Bole International", BOM: "Chhatrapati Shivaji Maharaj Intl",
+  GYD: "Heydar Aliyev International", CDG: "Paris Charles de Gaulle",
+  LHR: "London Heathrow Airport", FRA: "Frankfurt Airport",
+};
+
+function _legDuration(etd?: string | null, eta?: string | null): string | null {
+  if (!etd || !eta) return null;
+  const [h1, m1] = etd.split(":").map(Number);
+  const [h2, m2] = eta.split(":").map(Number);
+  if (isNaN(h1) || isNaN(h2)) return null;
+  let m = (h2 * 60 + m2) - (h1 * 60 + m1);
+  if (m < 0) m += 24 * 60;
+  return `${Math.floor(m / 60)}j ${String(m % 60).padStart(2, "0")}m`;
+}
+function _layoverStr(eta?: string | null, nextEtd?: string | null): string | null {
+  if (!eta || !nextEtd) return null;
+  const [h1, m1] = eta.split(":").map(Number);
+  const [h2, m2] = nextEtd.split(":").map(Number);
+  if (isNaN(h1) || isNaN(h2)) return null;
+  let m = (h2 * 60 + m2) - (h1 * 60 + m1);
+  if (m < 0) m += 24 * 60;
+  if (m <= 0) return null;
+  return `${Math.floor(m / 60)}j ${String(m % 60).padStart(2, "0")}m`;
+}
+
+interface _StopData {
+  time: string | null; code: string; city?: string | null;
+  flightNumber?: string | null; duration?: string | null; layover?: string | null;
+  isTransit: boolean; isFirst: boolean; isLast: boolean;
+}
+
+function _buildMLStops(legs: LegInfo[]): _StopData[] {
+  if (!legs.length) return [];
+  const stops: _StopData[] = [];
+  stops.push({
+    time: legs[0].etd ?? null, code: legs[0].fromCode, city: legs[0].fromCity ?? null,
+    flightNumber: legs[0].flightNumber ?? null, duration: _legDuration(legs[0].etd, legs[0].eta),
+    layover: null, isTransit: false, isFirst: true, isLast: false,
+  });
+  for (let i = 0; i < legs.length - 1; i++) {
+    stops.push({
+      time: legs[i].eta ?? null, code: legs[i].toCode, city: legs[i].toCity ?? null,
+      flightNumber: legs[i + 1].flightNumber ?? null,
+      duration: _legDuration(legs[i + 1].etd, legs[i + 1].eta),
+      layover: _layoverStr(legs[i].eta, legs[i + 1].etd),
+      isTransit: true, isFirst: false, isLast: false,
+    });
+  }
+  const last = legs[legs.length - 1];
+  stops.push({
+    time: last.eta ?? null, code: last.toCode, city: last.toCity ?? null,
+    flightNumber: null, duration: null, layover: null,
+    isTransit: false, isFirst: false, isLast: true,
+  });
+  return stops;
+}
+
+function _buildSimpleStops(
+  fromCode: string, fromCity: string | null, etd: string | null,
+  transitCode: string | null, transitCity: string | null,
+  toCode: string, toCity: string | null, eta: string | null,
+  flightNumber: string | null,
+): _StopData[] {
+  const parts = flightNumber ? flightNumber.split("/").map(s => s.trim()).filter(Boolean) : [];
+  const isDirect = !transitCode;
+  const stops: _StopData[] = [];
+  stops.push({
+    time: etd, code: fromCode, city: fromCity,
+    flightNumber: parts[0] ?? null,
+    duration: isDirect ? _legDuration(etd, eta) : null,
+    layover: null, isTransit: false, isFirst: true, isLast: isDirect,
+  });
+  if (!isDirect && transitCode) {
+    stops.push({
+      time: null, code: transitCode, city: transitCity,
+      flightNumber: parts[1] ?? parts[0] ?? null,
+      duration: null, layover: null, isTransit: true, isFirst: false, isLast: false,
+    });
+  }
+  stops.push({
+    time: eta, code: toCode, city: toCity,
+    flightNumber: null, duration: null, layover: null,
+    isTransit: false, isFirst: false, isLast: true,
+  });
+  return stops;
+}
+
+function FlightStopRow({ time, code, city, flightNumber, duration, layover, isTransit, isFirst, isLast }: _StopData) {
+  const airportName = AIRPORT_NAMES[code.toUpperCase()] ?? city ?? null;
+  return (
+    <div className="flex items-start gap-2">
+      {/* Time */}
+      <span className="w-10 text-right text-[11px] font-mono font-bold text-slate-500 pt-1 shrink-0 leading-none">
+        {time ?? "—"}
+      </span>
+      {/* Spine */}
+      <div className="flex flex-col items-center w-4 shrink-0 pt-0.5">
+        {isFirst ? (
+          <div className="w-3.5 h-3.5 rounded-full border-[2.5px] border-slate-400 bg-white shrink-0" style={{ borderStyle: "dotted" }} />
+        ) : isTransit ? (
+          <div className="w-3.5 h-3.5 rounded-full bg-amber-400 border border-amber-300 shrink-0" />
+        ) : (
+          <div className="w-3.5 h-3.5 rounded-full bg-slate-700 shrink-0" />
+        )}
+        {!isLast && <div className="w-px flex-1 bg-slate-200 my-1.5" style={{ minHeight: 28 }} />}
+      </div>
+      {/* Content */}
+      <div className="flex-1 min-w-0 pb-3.5">
+        <div className="flex items-start justify-between gap-1.5">
+          <div className="min-w-0">
+            <p className={cn("text-[17px] font-black leading-none", isTransit ? "text-amber-600" : "text-slate-900")}>
+              {code}
+            </p>
+            {airportName && (
+              <p className="text-[10.5px] text-slate-400 mt-0.5 leading-tight">{airportName}</p>
+            )}
+            {isTransit && (
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                <span className="text-[9px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">TRANSIT</span>
+                {layover && (
+                  <span className="flex items-center gap-0.5 text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                    <Clock className="w-2.5 h-2.5 shrink-0" />Transit {layover}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0 pt-0.5">
+            {flightNumber && (
+              <span className="text-[9.5px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md leading-none">
+                {flightNumber}
+              </span>
+            )}
+            {duration && (
+              <span className="flex items-center gap-0.5 text-[9.5px] font-semibold text-slate-500">
+                <Clock className="w-2.5 h-2.5 shrink-0" />{duration}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FlightSection({ label, date, stops, isReturn }: {
+  label: string; date?: string | null; stops: _StopData[]; isReturn?: boolean;
+}) {
+  if (!stops.length) return null;
+  return (
+    <div className="rounded-2xl bg-slate-50/80 border border-slate-100 px-4 pt-3.5 pb-1">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          {isReturn
+            ? <ArrowLeftRight className="w-3.5 h-3.5 text-violet-500" />
+            : <Plane className="w-3.5 h-3.5 text-blue-500" />
+          }
+          <span className={cn("text-[10px] font-bold uppercase tracking-widest",
+            isReturn ? "text-violet-600" : "text-blue-600"
+          )}>{label}</span>
+        </div>
+        {date && <span className="text-[10px] text-slate-400 font-medium">{date}</span>}
+      </div>
+      {stops.map((stop, i) => (
+        <FlightStopRow key={i} {...stop} />
+      ))}
+    </div>
+  );
+}
+
 function TicketDetailModal({
-  open, item, markup, rates, isOwner, onClose, onEdit, onTogglePublish,
+  open, item, markup, rates, isOwner, onClose, onEdit, onTogglePublish, waNumber,
 }: {
   open: boolean;
   item: TicketPrice | null;
@@ -563,6 +743,7 @@ function TicketDetailModal({
   onClose: () => void;
   onEdit?: (item: TicketPrice) => void;
   onTogglePublish?: (id: string, val: boolean) => void;
+  waNumber?: string;
 }) {
   const [toggling, setToggling] = useState(false);
 
@@ -580,11 +761,56 @@ function TicketDetailModal({
   const isRT = !!returnLeg;
 
   const tripType = isML ? "Multi-Leg PP" : isRT ? "Pulang-Pergi" : isDirect ? "Direct" : "Transit";
-  const tripBadgeColor = isML || isRT
-    ? "bg-violet-100 text-violet-700"
-    : isDirect
-    ? "bg-sky-100 text-sky-700"
-    : "bg-amber-100 text-amber-700";
+
+  // Build stops for outbound
+  const outboundStops: _StopData[] = isML && mlData?.outboundLegs
+    ? _buildMLStops(mlData.outboundLegs)
+    : _buildSimpleStops(
+        item.fromCode, item.fromCity ?? null, item.etd ?? null,
+        item.transitCode ?? null, item.transitCity ?? null,
+        item.toCode, item.toCity ?? null, item.eta ?? null,
+        item.flightNumber ?? null,
+      );
+
+  // Build stops for return
+  const returnStops: _StopData[] = isML && (mlData?.returnLegs?.length ?? 0) > 0
+    ? _buildMLStops(mlData!.returnLegs!)
+    : isRT && returnLeg
+      ? _buildSimpleStops(
+          returnLeg.returnFromCode ?? item.toCode, returnLeg.returnFromCity ?? null, returnLeg.returnEtd ?? null,
+          returnLeg.returnTransitCode ?? null, returnLeg.returnTransitCity ?? null,
+          returnLeg.returnToCode ?? item.fromCode, returnLeg.returnToCity ?? null, returnLeg.returnEta ?? null,
+          returnLeg.returnFlightNumber ?? null,
+        )
+      : [];
+
+  // Date labels
+  function fmtShortDate(iso: string | null | undefined): string {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  const outboundDate = item.departDate ? fmtShortDate(item.departDate) : null;
+  const returnDate = isML
+    ? (mlData?.returnLegs?.[0]?.date ? fmtShortDate(mlData.returnLegs[0].date) : null)
+    : (returnLeg?.returnDate ? fmtShortDate(returnLeg.returnDate) : null);
+
+  // Price & markup
+  const baseInIDR = item.currency === "IDR" ? item.basePrice : item.basePrice * (rates[item.currency] || 1);
+  const markupAmount = Math.max(0, sell - Math.round(baseInIDR));
+
+  // WA link
+  const waText = encodeURIComponent(
+    `Halo Temantiket! Saya tertarik dengan tiket ${item.airline} rute ${item.fromCode}–${item.toCode}. Harga: ${fmtIDR(sell)}`
+  );
+  const waLink = waNumber ? `${whatsappUrl(waNumber)}?text=${waText}` : `https://wa.me/?text=${waText}`;
+
+  // Route summary info
+  const summaryFrom = item.fromCity ? `${item.fromCity} (${item.fromCode})` : item.fromCode;
+  const summaryTo = item.toCity ? `${item.toCity} (${item.toCode})` : item.toCode;
+  const transitVia = item.transitCode ?? (mlData?.transitCodes?.[0] ?? null);
 
   async function doToggle() {
     if (!onTogglePublish) return;
@@ -595,170 +821,169 @@ function TicketDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
-        {/* ── Airline header strip ── */}
+      <DialogContent className="max-w-md max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-2xl">
+
+        {/* ── Gradient Header ── */}
         <div className={cn(
-          "flex items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r text-white rounded-t-lg",
+          "relative flex items-start gap-3 px-4 pt-5 pb-5 bg-gradient-to-br text-white rounded-t-2xl",
           getAirlineGradient(item.airlineCode),
         )}>
-          <div className="flex items-center gap-3 min-w-0">
-            <AirlineLogo code={item.airlineCode} airline={item.airline} size={40} white />
-            <div className="min-w-0">
-              <p className="font-bold text-[15px] leading-tight truncate">{item.airline}</p>
-              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                <span className="text-[10px] text-white/70 font-mono">{item.airlineCode}</span>
-                {item.flightNumber && !isRT && !isML && (
-                  <span className="text-[10px] bg-white/20 rounded px-1.5 py-0.5 font-mono font-semibold">
-                    {item.flightNumber}
-                  </span>
-                )}
-              </div>
-            </div>
+          <AirlineLogo code={item.airlineCode} airline={item.airline} size={44} white />
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-[16px] leading-tight">{item.airline}</p>
+            <p className="text-[11px] text-white/70 font-mono mt-0.5">
+              {item.airlineCode} · {tripType}
+            </p>
           </div>
-          <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", tripBadgeColor)}>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <span className="text-[10px] font-bold border border-white/40 text-white px-2.5 py-1 rounded-full">
               {tripType}
             </span>
             {expired && (
-              <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full">
+              <span className="text-[10px] bg-red-500 text-white font-bold px-2 py-0.5 rounded-full">
                 Expired
               </span>
             )}
           </div>
         </div>
 
-        <div className="px-5 py-4 space-y-3">
-
-          {/* ── Route section — vertical timeline ── */}
-          <div className="rounded-xl border border-slate-100 bg-white px-4 py-4">
-            {isML && mlData ? (
-              <div className="space-y-4">
-                <MultiLegTimeline legs={mlData.outboundLegs} label="Berangkat" />
-                {(mlData.returnLegs?.length ?? 0) > 0 && (
-                  <>
-                    <div className="border-t border-dashed border-slate-200" />
-                    <MultiLegTimeline legs={mlData.returnLegs!} label="Pulang" />
-                  </>
+        <div className="bg-slate-50 rounded-b-2xl">
+          {/* ── Route Summary Bar ── */}
+          <div className="mx-4 mt-4 bg-white border border-slate-200 rounded-2xl px-4 py-3.5 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-black text-slate-900 leading-none">{summaryFrom}</p>
+                <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5">
+                  {outboundDate && <span>{outboundDate}</span>}
+                  {item.etd && <><span>·</span><span className="font-mono font-semibold">{item.etd}</span></>}
+                  {item.fromCode && (
+                    <span className="bg-slate-100 text-slate-500 text-[9px] font-mono px-1.5 py-0.5 rounded">{item.fromCode}</span>
+                  )}
+                </p>
+              </div>
+              <div className="flex flex-col items-center shrink-0 gap-0.5">
+                <div className="flex items-center gap-1">
+                  <div className="w-5 h-px bg-slate-300" />
+                  <Plane className="w-3.5 h-3.5 text-slate-400 rotate-90" />
+                  <div className="w-5 h-px bg-slate-300" />
+                </div>
+                {transitVia && (
+                  <span className="text-[8.5px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">
+                    via {transitVia}
+                  </span>
                 )}
               </div>
-            ) : isRT && returnLeg ? (
-              <RouteTimeline
-                outbound={{
-                  origin: { code: item.fromCode, city: item.fromCity, time: item.etd },
-                  destination: { code: item.toCode, city: item.toCity, time: item.eta },
-                  transit: item.transitCode
-                    ? { code: item.transitCode, city: item.transitCity, duration: item.transitDuration ?? undefined }
-                    : null,
-                  date: item.departDate ? fmtDate(item.departDate) : null,
-                  flightNumber: item.flightNumber,
-                }}
-                returnTrip={{
-                  origin: { code: returnLeg.returnFromCode ?? "—", city: returnLeg.returnFromCity, time: returnLeg.returnEtd },
-                  destination: { code: returnLeg.returnToCode ?? "—", city: returnLeg.returnToCity, time: returnLeg.returnEta },
-                  transit: returnLeg.returnTransitCode
-                    ? { code: returnLeg.returnTransitCode, city: returnLeg.returnTransitCity, duration: returnLeg.returnTransitDuration ?? undefined }
-                    : null,
-                  date: returnLeg.returnDate ? fmtDate(returnLeg.returnDate) : null,
-                  flightNumber: returnLeg.returnFlightNumber,
-                }}
-              />
-            ) : (
-              <RouteTimeline
-                outbound={{
-                  origin: { code: item.fromCode, city: item.fromCity, time: item.etd },
-                  destination: { code: item.toCode, city: item.toCity, time: item.eta },
-                  transit: item.transitCode
-                    ? { code: item.transitCode, city: item.transitCity, duration: item.transitDuration ?? undefined }
-                    : null,
-                  date: item.departDate ? fmtDate(item.departDate) : null,
-                  flightNumber: item.flightNumber,
-                }}
+              <div className="text-right min-w-0 flex-1">
+                <p className="text-[14px] font-black text-slate-900 leading-none">{summaryTo}</p>
+                <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 justify-end">
+                  {(isRT || isML) ? (
+                    <>
+                      {returnDate && <span>{returnDate}</span>}
+                      {returnLeg?.returnEtd && <><span>·</span><span className="font-mono font-semibold">{returnLeg.returnEtd}</span></>}
+                      {mlData?.returnLegs?.[0]?.etd && <><span>·</span><span className="font-mono font-semibold">{mlData.returnLegs[0].etd}</span></>}
+                      <span className="bg-slate-100 text-slate-500 text-[9px] font-mono px-1.5 py-0.5 rounded">{item.toCode}</span>
+                    </>
+                  ) : (
+                    <>
+                      {outboundDate && <span>{outboundDate}</span>}
+                      {item.eta && <><span>·</span><span className="font-mono font-semibold">{item.eta}</span></>}
+                      <span className="bg-slate-100 text-slate-500 text-[9px] font-mono px-1.5 py-0.5 rounded">{item.toCode}</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Flight Sections ── */}
+          <div className="px-4 mt-3 space-y-3">
+            <FlightSection
+              label="Berangkat"
+              date={outboundDate}
+              stops={outboundStops}
+              isReturn={false}
+            />
+            {returnStops.length > 0 && (
+              <FlightSection
+                label="Pulang"
+                date={returnDate}
+                stops={returnStops}
+                isReturn={true}
               />
             )}
           </div>
 
-          {/* ── Detail rows ── */}
-          <div className="pt-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Detail</p>
-            <div className="divide-y divide-slate-100">
-              {item.terminal && <DetailRow label="Terminal" value={item.terminal} mono />}
-              {item.baggageInfo && <DetailRow label="Bagasi" value={item.baggageInfo} />}
-              {item.validUntil && (
-                <DetailRow
-                  label="Berlaku Hingga"
-                  value={
-                    <span className={expired ? "text-red-600" : "text-slate-800"}>
-                      {expired ? "⛔ " : ""}{fmtDate(item.validUntil)}
-                    </span>
-                  }
-                />
+          {/* ── Price Section ── */}
+          <div className="mx-4 mt-3 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3.5">
+            <p className="text-[9.5px] font-bold uppercase tracking-widest text-blue-500 mb-1">
+              Harga {isML || isRT ? "/ Paket PP" : ""}
+            </p>
+            <div className="flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[26px] font-black font-mono text-blue-800 leading-none tabular-nums">
+                  {fmtIDR(sell)}
+                </p>
+                {isOwner && (
+                  <p className="text-[10px] text-blue-400 mt-1.5 flex items-center gap-1 flex-wrap">
+                    <span>Modal: {item.currency} {item.basePrice.toLocaleString("id-ID")}</span>
+                    {markupAmount > 0 && (
+                      <>
+                        <span className="text-blue-300">·</span>
+                        <span className="text-blue-500 font-semibold">Markup: {fmtIDR(markupAmount)}</span>
+                      </>
+                    )}
+                  </p>
+                )}
+              </div>
+              {isOwner && markupAmount > 0 && (
+                <div className="shrink-0 bg-white border border-blue-200 rounded-xl px-2.5 py-2 text-right">
+                  <p className="text-[8px] font-bold uppercase tracking-wider text-blue-400">Markup / Pax</p>
+                  <p className="text-[13px] font-black font-mono text-blue-700 leading-none mt-0.5">
+                    +{fmtIDR(markupAmount)}
+                  </p>
+                </div>
               )}
             </div>
           </div>
 
-          {/* ── Pricing — owner sees base + markup; non-owner sees final price only ── */}
-          {isOwner ? (
-            <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Harga</p>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-[10px] font-semibold text-sky-600 uppercase tracking-wide">
-                    {isML || isRT ? "Harga Paket PP" : "Harga"}
-                  </p>
-                  <p className="text-[28px] font-black font-mono text-sky-700 leading-none tabular-nums mt-0.5">
-                    {fmtIDR(sell)}
-                  </p>
-                </div>
-                <div className="text-right space-y-0.5">
-                  <p className="text-[10.5px] text-slate-500">
-                    Modal: <span className="font-semibold text-slate-700">{item.currency} {item.basePrice.toLocaleString("id-ID")}</span>
-                  </p>
-                  {markup > 0 && (
-                    <p className="text-[10.5px] text-slate-500">
-                      Markup: <span className="font-semibold text-emerald-600">+{fmtIDR(markup)}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-xl bg-sky-50 border border-sky-100 px-4 py-3">
-              <p className="text-[10px] font-semibold text-sky-600 uppercase tracking-wide mb-0.5">
-                {isML || isRT ? "Harga Paket PP" : "Harga"}
-              </p>
-              <p className="text-[26px] font-black font-mono text-sky-700 leading-none tabular-nums">
-                {fmtIDR(sell)}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-1">
-                {isML || isRT ? "harga paket pulang-pergi, sudah termasuk margin" : "sudah termasuk margin keuntungan"}
-              </p>
+          {/* ── Detail rows (terminal, bagasi, validity) ── */}
+          {(item.terminal || item.baggageInfo || item.validUntil) && (
+            <div className="mx-4 mt-3 divide-y divide-slate-100 rounded-2xl bg-white border border-slate-100 overflow-hidden">
+              {item.terminal && <DetailRow label="Terminal" value={item.terminal} mono />}
+              {item.baggageInfo && <DetailRow label="Bagasi" value={item.baggageInfo} />}
+              {item.validUntil && (
+                <DetailRow label="Berlaku Hingga" value={
+                  <span className={expired ? "text-red-600 font-semibold" : "text-slate-800"}>
+                    {expired ? "⛔ " : ""}{fmtDate(item.validUntil)}
+                  </span>
+                } />
+              )}
             </div>
           )}
 
           {/* ── Notes (owner only) ── */}
           {isOwner && userNotes && (
-            <div className="rounded-xl bg-yellow-50 border border-yellow-100 px-3 py-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-600 mb-1">Catatan</p>
-              <p className="text-[12px] text-yellow-800 leading-snug">{userNotes}</p>
+            <div className="mx-4 mt-3 rounded-2xl bg-amber-50 border border-amber-100 px-3.5 py-2.5">
+              <p className="text-[9.5px] font-bold uppercase tracking-widest text-amber-600 mb-1">Catatan</p>
+              <p className="text-[12px] text-amber-800 leading-snug">{userNotes}</p>
             </div>
           )}
           {isOwner && !isRT && !isML && item.notes && !item.notes.startsWith("__") && (
-            <div className="rounded-xl bg-yellow-50 border border-yellow-100 px-3 py-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-600 mb-1">Catatan</p>
-              <p className="text-[12px] text-yellow-800 leading-snug">{item.notes}</p>
+            <div className="mx-4 mt-3 rounded-2xl bg-amber-50 border border-amber-100 px-3.5 py-2.5">
+              <p className="text-[9.5px] font-bold uppercase tracking-widest text-amber-600 mb-1">Catatan</p>
+              <p className="text-[12px] text-amber-800 leading-snug">{item.notes}</p>
             </div>
           )}
 
-          {/* ── Status (publish toggle) ── */}
+          {/* ── Publish toggle (owner only) ── */}
           {onTogglePublish && (
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-100 px-4 py-2.5">
+            <div className="mx-4 mt-3 flex items-center justify-between rounded-2xl bg-white border border-slate-100 px-4 py-3">
               <div>
                 <p className="text-[12px] font-semibold text-slate-700">Tampil di Daftar Publik</p>
-                <p className="text-[10px] text-slate-400">{item.isPublished ? "Dipublikasikan" : "Disembunyikan (draft)"}</p>
+                <p className="text-[10px] text-slate-400">{item.isPublished ? "Dipublikasikan" : "Draft (tersembunyi)"}</p>
               </div>
               <button
-                onClick={() => void doToggle()}
-                disabled={toggling}
+                onClick={() => void doToggle()} disabled={toggling}
                 className={cn(
                   "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-60",
                   item.isPublished ? "bg-emerald-500" : "bg-slate-300",
@@ -771,20 +996,33 @@ function TicketDetailModal({
               </button>
             </div>
           )}
-        </div>
 
-        {/* ── Footer ── */}
-        <DialogFooter className="px-5 pb-5 pt-0 gap-2">
-          <Button variant="outline" onClick={onClose} className="flex-1">Tutup</Button>
+          {/* ── Edit button (owner only) ── */}
           {onEdit && (
-            <Button
-              className="flex-1 bg-sky-600 hover:bg-sky-700 text-white"
-              onClick={() => { onClose(); onEdit(item); }}
-            >
-              <Edit3 className="w-3.5 h-3.5 mr-1.5" />Edit
-            </Button>
+            <div className="mx-4 mt-3">
+              <Button
+                className="w-full h-10 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-[13px] font-semibold"
+                onClick={() => { onClose(); onEdit(item); }}
+              >
+                <Edit3 className="w-3.5 h-3.5 mr-1.5" />Edit Tiket
+              </Button>
+            </div>
           )}
-        </DialogFooter>
+
+          {/* ── WA Button (full-width) ── */}
+          <div className="px-4 pt-3 pb-5">
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full h-12 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-bold text-[14px] rounded-2xl transition-colors shadow-sm"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <MessageCircle className="w-4.5 h-4.5 shrink-0" />
+              Pesan via WhatsApp
+            </a>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -3548,6 +3786,7 @@ export default function TicketPrices() {
         markup={markup}
         rates={rates}
         isOwner={isOwner}
+        waNumber={waNumber}
         onClose={() => { setViewOpen(false); }}
         onEdit={isOwner ? (item) => { setViewOpen(false); openEdit(item); } : undefined}
         onTogglePublish={isOwner ? (async (id, val) => {
