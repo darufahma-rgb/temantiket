@@ -43,6 +43,7 @@ import { toast } from "sonner";
 import { useAuthStore, type MemberInfo } from "@/store/authStore";
 import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore } from "@/store/clientsStore";
+import { useRatesStore } from "@/store/ratesStore";
 import {
   listAgentPointsWithOrders, sumPointsByAgent, type AgentPoint, REASON_LABEL,
 } from "@/features/agentPoints/agentPointsRepo";
@@ -310,6 +311,7 @@ export default function AgentProfileOwnerView() {
   const listMembers = useAuthStore((s) => s.listMembers);
   const { orders, fetchOrders, patchOrder, loaded: ordersLoaded } = useOrdersStore();
   const { clients, fetchClients } = useClientsStore();
+  const egpRate = useRatesStore((s) => s.rates.EGP ?? 515);
 
   const [tab, setTab] = useState<Tab>("overview");
   const [agent, setAgent] = useState<MemberInfo | null>(null);
