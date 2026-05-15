@@ -88,11 +88,11 @@ const STAFF_COMMISSION: NavItemConfig = { icon: Wallet,   title: "Komisi Saya", 
 
 export const OWNER_SIDEBAR_SECTIONS: SidebarSectionConfig[] = [
   { key: "home",       label: "",            items: [DASHBOARD_OWNER]                                        },
-  { key: "bisnis",     label: "Bisnis",      emoji: "💼", items: [CLIENTS, ORDERS, PACKAGES]               },
-  { key: "alat-bantu", label: "Alat Bantu",  emoji: "🛠️", items: [TICKETS, ITINERARY, CALC]                },
-  { key: "pemasaran",  label: "Pemasaran",   emoji: "📢", items: [BC, CAPTION, NOTES]                      },
-  { key: "keuangan",   label: "Keuangan",    emoji: "💰", items: [REPORTS, EXPORTS]                        },
-  { key: "tim-agen",   label: "Tim & Agen",  emoji: "👥", items: [VISA_TRACKER, AGENT_CENTER, LEADERBOARD, STAFF_MGMT, AUDIT] },
+  { key: "bisnis",     label: "Bisnis",      items: [CLIENTS, ORDERS, PACKAGES]                             },
+  { key: "alat-bantu", label: "Alat Bantu",  items: [TICKETS, ITINERARY, CALC]                              },
+  { key: "pemasaran",  label: "Pemasaran",   items: [BC, CAPTION, NOTES]                                    },
+  { key: "keuangan",   label: "Keuangan",    items: [REPORTS, EXPORTS]                                      },
+  { key: "tim-agen",   label: "Tim & Agen",  items: [VISA_TRACKER, AGENT_CENTER, LEADERBOARD, STAFF_MGMT, AUDIT] },
   { key: "settings",   label: "",            items: [SETTINGS]                                               },
 ];
 
@@ -100,19 +100,19 @@ export const OWNER_SIDEBAR_SECTIONS: SidebarSectionConfig[] = [
 
 export const AGENT_SIDEBAR_SECTIONS: SidebarSectionConfig[] = [
   { key: "home",       label: "",            items: [DASHBOARD_AGENT]                     },
-  { key: "bisnis",     label: "Bisnis",      emoji: "💼", items: [CLIENTS, ORDERS, PACKAGES] },
-  { key: "alat-bantu", label: "Alat Bantu",  emoji: "🛠️", items: [TICKETS, ITINERARY, CALC] },
-  { key: "pemasaran",  label: "Pemasaran",   emoji: "📢", items: [BC, NOTES]               },
-  { key: "agen",       label: "Agen Saya",   emoji: "🏆", items: [LEADERBOARD, AGENT_CENTER] },
-  { key: "settings",   label: "",            items: [SETTINGS]                             },
+  { key: "bisnis",     label: "Bisnis",      items: [CLIENTS, ORDERS, PACKAGES]           },
+  { key: "alat-bantu", label: "Alat Bantu",  items: [TICKETS, ITINERARY, CALC]            },
+  { key: "pemasaran",  label: "Pemasaran",   items: [BC, NOTES]                           },
+  { key: "agen",       label: "Agen Saya",   items: [LEADERBOARD, AGENT_CENTER]           },
+  { key: "settings",   label: "",            items: [SETTINGS]                            },
 ];
 
 // ── Staff sidebar sections ─────────────────────────────────────────────────────
 
 export const STAFF_SIDEBAR_SECTIONS: SidebarSectionConfig[] = [
   { key: "home",        label: "",              items: [DASHBOARD_STAFF, STAFF_PROFILE]     },
-  { key: "tugas",       label: "Tugas Saya",    emoji: "📋", items: [STAFF_VISA, STAFF_COMMISSION] },
-  { key: "operasional", label: "Operasional",   emoji: "⚙️", items: [CALC, AGENT_CENTER]   },
+  { key: "tugas",       label: "Tugas Saya",    items: [STAFF_VISA, STAFF_COMMISSION]       },
+  { key: "operasional", label: "Operasional",   items: [CALC, AGENT_CENTER]                 },
   { key: "settings",    label: "",              items: [SETTINGS]                           },
 ];
 
