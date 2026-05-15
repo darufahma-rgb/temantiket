@@ -2348,267 +2348,199 @@ export default function TicketPrices() {
       {/* ══════════════════════════════════════════════════════════
            MOBILE LAYOUT  (md:hidden) — Native App Style
       ══════════════════════════════════════════════════════════ */}
-      <div className="md:hidden min-h-screen bg-[#F0F4FB] pb-28">
+      <div className="md:hidden min-h-screen bg-[#F2F5FB]" style={{ paddingBottom: "calc(88px + env(safe-area-inset-bottom, 0px))" }}>
 
-        {/* ── TOP HEADER ── */}
-        <div className="bg-white px-5 pt-12 pb-5 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <button
-                onClick={() => navigate(-1)}
-                className="h-10 w-10 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                <ArrowLeft className="h-4.5 w-4.5 text-[#0f1c3f]" strokeWidth={2} />
-              </button>
-              <div className="min-w-0">
-                <h1 className="text-[26px] font-extrabold text-[#0f1c3f] leading-tight">Harga Tiket</h1>
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5 leading-snug">
-                  Extract harga tiket dari screenshot atau kode booking dengan AI Deep Extraction.
-                </p>
-              </div>
+        {/* ── PAGE HEADER ── */}
+        <div className="bg-white px-4 pt-4 pb-4" style={{ boxShadow: "0 1px 0 rgba(0,0,0,0.06)" }}>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="h-9 w-9 rounded-2xl bg-[#F2F5FB] flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2.2} />
+            </button>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-[20px] font-extrabold text-[#0f1c3f] leading-tight">Harga Tiket</h1>
+              <p className="text-[11px] text-slate-400 font-medium leading-tight mt-0.5">
+                Extract tiket via AI • screenshot atau kode booking
+              </p>
             </div>
-            <div className="flex items-center gap-2 shrink-0 mt-1">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => void refreshTicketPrices()} disabled={loading}
-                className="h-9 w-9 rounded-2xl bg-[#F0F4FB] flex items-center justify-center active:opacity-60 transition-opacity disabled:opacity-40"
+                className="h-9 w-9 rounded-2xl bg-[#F2F5FB] flex items-center justify-center active:opacity-60 transition-opacity disabled:opacity-40"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 <RefreshCw className={cn("h-4 w-4 text-slate-500", loading && "animate-spin")} strokeWidth={2} />
               </button>
               <button
                 onClick={() => ticketListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="h-9 px-3.5 rounded-2xl flex items-center gap-1.5 text-[11px] font-bold text-white shadow-sm active:opacity-80 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+                className="h-9 px-3 rounded-2xl flex items-center gap-1.5 text-[12px] font-bold active:opacity-80 transition-opacity shrink-0"
+                style={{ background: "#EEF2FF", color: "#0038B8", WebkitTapHighlightColor: "transparent" }}
               >
-                <Clock className="h-3.5 w-3.5" strokeWidth={2} />
+                <History className="h-3.5 w-3.5" strokeWidth={2} />
                 Riwayat
               </button>
             </div>
           </div>
         </div>
 
-        <div className="px-4 pt-5 space-y-5">
+        <div className="px-4 pt-4 space-y-3">
 
-          {/* ── HERO AI CARD ── */}
-          <div
-            className="rounded-3xl px-5 py-6 text-white relative overflow-hidden"
-            style={{ background: "linear-gradient(135deg,#00072d 0%,#0038B8 55%,#0066FF 100%)" }}
-          >
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              <div className="absolute -top-14 -right-14 h-52 w-52 rounded-full opacity-10 bg-white" />
-              <div className="absolute top-4 right-4 h-20 w-20 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)" }} />
-              <div className="absolute -bottom-10 left-0 right-0 h-28" style={{ background: "radial-gradient(ellipse at 50% 100%, rgba(0,102,255,0.4) 0%, transparent 70%)" }} />
-              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "18px 18px" }} />
+          {/* ── SEARCH BAR ── */}
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" strokeWidth={2} />
+            <input
+              type="text"
+              placeholder="Cari maskapai, kode, atau rute…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 pl-10 pr-9 rounded-2xl text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none bg-white"
+              style={{ boxShadow: "0 1px 6px rgba(0,0,0,0.07)", border: "1.5px solid rgba(0,0,0,0.06)" }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 flex items-center justify-center rounded-full bg-slate-200 active:opacity-70"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <X className="h-3 w-3 text-slate-500" />
+              </button>
+            )}
+          </div>
+
+          {/* ── FILTER ROW ── */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <SlidersHorizontal className="h-3.5 w-3.5 text-slate-400" strokeWidth={2} />
+                <span className="text-[12px] font-bold text-[#0f1c3f]">Filter</span>
+              </div>
+              {(searchQuery.trim() !== "" || filterTripType !== "all" || filterDateRange !== "all" || filterPublish !== "all" || sortBy !== "default") && (
+                <button
+                  onClick={resetFilters}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-[#0066FF] active:opacity-60"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  Reset <RotateCcw className="h-3 w-3" strokeWidth={2.5} />
+                </button>
+              )}
             </div>
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="h-7 w-7 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                  <Sparkles className="h-4 w-4 text-yellow-300" strokeWidth={1.8} />
-                </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-sky-300/80">Extract Harga Tiket dengan AI</p>
+            <div className="flex items-center gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+
+              {/* Semua Rute dropdown */}
+              <div className="relative shrink-0">
+                <select
+                  value={filterTripType}
+                  onChange={(e) => setFilterTripType(e.target.value as TripTypeFilter)}
+                  className={cn(
+                    "appearance-none h-8 pl-3 pr-7 rounded-xl text-[12px] font-semibold border focus:outline-none cursor-pointer transition-colors",
+                    filterTripType !== "all"
+                      ? "bg-sky-600 text-white border-sky-600"
+                      : "bg-white text-slate-700 border-slate-200"
+                  )}
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <option value="all">Semua Rute</option>
+                  <option value="direct">Direct</option>
+                  <option value="transit">Transit</option>
+                  <option value="pp">Pulang-Pergi</option>
+                </select>
+                <ChevronDown className={cn("absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none", filterTripType !== "all" ? "text-white" : "text-slate-400")} strokeWidth={2.5} />
               </div>
-              <h2 className="text-[22px] font-black text-white leading-tight mb-1">Cepat, Akurat, dan Otomatis ✨</h2>
-              <p className="text-[12px] text-white/60 mb-4 leading-snug">Upload screenshot tiket atau paste kode booking GDS / WhatsApp BC untuk ekstraksi otomatis.</p>
-              <div className="flex gap-3 mb-5">
-                {[
-                  { label: "Total Tiket", value: String(visiblePrices.length) },
-                  { label: "Publik",      value: String(publishedCount)        },
-                  { label: "Markup",      value: markup > 0 ? `+${fmtIDR(markup)}` : "—" },
-                ].map((s, i) => (
-                  <div key={s.label} className={cn("flex-1 text-center", i > 0 && "border-l border-white/10")}>
-                    <p className="text-[17px] font-black text-white tabular-nums leading-none">{s.value}</p>
-                    <p className="text-[8px] text-sky-300/60 uppercase tracking-wide mt-1 font-semibold">{s.label}</p>
-                  </div>
-                ))}
+
+              {/* Tanggal dropdown */}
+              <div className="relative shrink-0">
+                <Calendar className={cn("absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none", filterDateRange !== "all" ? "text-white" : "text-slate-400")} strokeWidth={1.8} />
+                <select
+                  value={filterDateRange}
+                  onChange={(e) => setFilterDateRange(e.target.value as DateFilter)}
+                  className={cn(
+                    "appearance-none h-8 pl-8 pr-7 rounded-xl text-[12px] font-semibold border focus:outline-none cursor-pointer transition-colors",
+                    filterDateRange !== "all"
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-slate-700 border-slate-200"
+                  )}
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <option value="all">Tanggal</option>
+                  <option value="today">Hari Ini</option>
+                  <option value="week">Minggu Ini</option>
+                  <option value="month">Bulan Ini</option>
+                </select>
+                <ChevronDown className={cn("absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none", filterDateRange !== "all" ? "text-white" : "text-slate-400")} strokeWidth={2.5} />
               </div>
-              {isAdmin && (
-                <div className="flex gap-2.5">
-                  <button
-                    onClick={() => screenshotSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                    className="flex-1 h-10 rounded-2xl bg-white text-[#0038B8] text-[12px] font-extrabold flex items-center justify-center gap-1.5 active:opacity-80 transition-opacity shadow-sm"
+
+              {/* Maskapai/Sort dropdown */}
+              <div className="relative shrink-0">
+                <Plane className={cn("absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none", sortBy !== "default" ? "text-white" : "text-slate-400")} strokeWidth={1.8} />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortBy)}
+                  className={cn(
+                    "appearance-none h-8 pl-8 pr-7 rounded-xl text-[12px] font-semibold border focus:outline-none cursor-pointer transition-colors",
+                    sortBy !== "default"
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white text-slate-700 border-slate-200"
+                  )}
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <option value="default">Maskapai</option>
+                  <option value="airline">Urut: Maskapai</option>
+                  <option value="price">Urut: Harga</option>
+                  <option value="date">Urut: Tanggal</option>
+                </select>
+                <ChevronDown className={cn("absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none", sortBy !== "default" ? "text-white" : "text-slate-400")} strokeWidth={2.5} />
+              </div>
+
+              {/* Status (owner only) */}
+              {isOwner && (
+                <div className="relative shrink-0">
+                  <select
+                    value={filterPublish}
+                    onChange={(e) => setFilterPublish(e.target.value as PublishFilter)}
+                    className={cn(
+                      "appearance-none h-8 pl-3 pr-7 rounded-xl text-[12px] font-semibold border focus:outline-none cursor-pointer transition-colors",
+                      filterPublish !== "all"
+                        ? "bg-emerald-600 text-white border-emerald-600"
+                        : "bg-white text-slate-700 border-slate-200"
+                    )}
                     style={{ WebkitTapHighlightColor: "transparent" }}
                   >
-                    <ImagePlus className="h-3.5 w-3.5" strokeWidth={2} />
-                    Screenshot Tiket
-                  </button>
-                  <button
-                    onClick={() => pasteSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                    className="flex-1 h-10 rounded-2xl bg-white/15 border border-white/25 text-white text-[12px] font-extrabold flex items-center justify-center gap-1.5 active:opacity-80 transition-opacity"
-                    style={{ WebkitTapHighlightColor: "transparent" }}
-                  >
-                    <ClipboardPaste className="h-3.5 w-3.5" strokeWidth={2} />
-                    Paste Kode Booking
-                  </button>
+                    <option value="all">Semua Status</option>
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                  </select>
+                  <ChevronDown className={cn("absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none", filterPublish !== "all" ? "text-white" : "text-slate-400")} strokeWidth={2.5} />
                 </div>
               )}
             </div>
           </div>
 
-          {/* ── MARKUP CARD ── */}
-          <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
+          {/* ── SORT + RESULT COUNT ── */}
+          <div className="flex items-center justify-between">
             <button
-              onClick={() => setMarkupOpen(v => !v)}
-              className="w-full px-5 py-4 flex items-center gap-3 active:opacity-70 transition-opacity"
+              onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-white border border-slate-200 text-[12px] font-semibold text-slate-600 active:opacity-70 transition-opacity"
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
-              <div className="h-10 w-10 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0">
-                <Tag className="h-5 w-5 text-emerald-600" strokeWidth={1.8} />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-[13px] font-extrabold text-[#0f1c3f]">Global Markup</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">{markup > 0 ? `+${fmtIDR(markup)} per pax` : "Belum diset — tap untuk mengatur"}</p>
-              </div>
-              {markup > 0 && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">Aktif</span>}
-              <ChevronDown className={cn("h-4 w-4 text-slate-400 transition-transform shrink-0", markupOpen && "rotate-180")} />
+              <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" strokeWidth={2} />
+              {sortDir === "asc" ? "Terbaru" : "Terlama"}
+              <ChevronDown className={cn("h-3.5 w-3.5 text-slate-400 transition-transform", sortDir === "desc" && "rotate-180")} strokeWidth={2.5} />
             </button>
-            {markupOpen && (
-              <div className="border-t border-slate-100 px-5 pb-5 pt-4 space-y-3">
-                <Input
-                  type="number" min="0" step="50000" placeholder="0"
-                  className="bg-[#F0F4FB] h-12 rounded-2xl text-[13px] border-0"
-                  value={markupInput}
-                  onChange={(e) => setMarkupInput(e.target.value)}
-                />
-                <p className="text-[11px] text-slate-400 leading-snug">Ditambahkan ke semua harga modal sebelum ditampilkan ke klien.</p>
-                <button
-                  onClick={applyMarkup}
-                  className="w-full h-11 rounded-2xl text-[13px] font-bold text-white flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
-                  style={{ background: "linear-gradient(135deg,#059669,#047857)", WebkitTapHighlightColor: "transparent" }}
-                >
-                  <Check className="w-4 h-4" /> Terapkan Markup
-                </button>
-              </div>
-            )}
+            <span className="text-[12px] font-semibold text-slate-500">
+              {filteredPrices.length} hasil ditemukan
+            </span>
           </div>
 
-          {/* ── SECTION 1: SCREENSHOT UPLOAD ── */}
-          {isAdmin && (
-            <div ref={screenshotSectionRef} className="bg-white rounded-3xl shadow-sm overflow-hidden">
-              <div className="px-5 pt-5 pb-4 flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] font-bold text-[#0066FF] uppercase tracking-widest mb-0.5">Langkah 1</p>
-                  <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Extract dari Screenshot</h3>
-                </div>
-                <span className="text-[9px] font-extrabold px-2.5 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 uppercase tracking-wide shrink-0">AI Deep Extraction</span>
-              </div>
-
-              <div className="mx-5 mb-5 space-y-3">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={scanning}
-                  className={cn(
-                    "w-full border-2 border-dashed rounded-2xl py-8 px-4 flex flex-col items-center gap-3 transition-colors active:opacity-80",
-                    scanning ? "border-sky-400 bg-sky-50" : "border-slate-200 bg-[#F0F4FB]"
-                  )}
-                  style={{ WebkitTapHighlightColor: "transparent" }}
-                >
-                  {scanning ? (
-                    <>
-                      <div className="h-12 w-12 rounded-2xl bg-sky-100 flex items-center justify-center">
-                        <Loader2 className="h-6 w-6 text-sky-500 animate-spin" strokeWidth={1.8} />
-                      </div>
-                      <p className="text-[13px] font-bold text-sky-700">AI sedang menganalisis tiket…</p>
-                      <p className="text-[11px] text-slate-400">Mengekstrak nomor penerbangan, jam, transit…</p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="h-12 w-12 rounded-2xl bg-[#dbeafe] flex items-center justify-center">
-                        <ImagePlus className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[13px] font-bold text-[#0f1c3f]">Upload screenshot tiket Anda</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Format: JPG, PNG, PDF • Maks. 10MB</p>
-                      </div>
-                      <div
-                        className="h-10 px-5 rounded-2xl text-white text-[12px] font-bold flex items-center gap-2"
-                        style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
-                      >
-                        <Upload className="h-3.5 w-3.5" /> Pilih Gambar
-                      </div>
-                    </>
-                  )}
-                </button>
-
-                <div className="bg-amber-50 rounded-2xl px-4 py-3 border border-amber-100">
-                  <p className="text-[10px] font-extrabold text-amber-700 uppercase tracking-wide mb-2">Tips untuk hasil terbaik</p>
-                  {[
-                    "Pastikan detail penerbangan terlihat jelas",
-                    "Foto atau gambar tidak terpotong",
-                    "Pencahayaan cukup",
-                    "Hindari pantulan cahaya",
-                  ].map((tip) => (
-                    <div key={tip} className="flex items-start gap-1.5 mb-1 last:mb-0">
-                      <div className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0 mt-1.5" />
-                      <p className="text-[11px] text-amber-700">{tip}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {scanError && (
-                  <div className="flex items-start gap-2 p-3 rounded-2xl bg-red-50 border border-red-100">
-                    <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-red-700">{scanError}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── ATAU DIVIDER ── */}
-          {isAdmin && (
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Atau</span>
-              <div className="flex-1 h-px bg-slate-200" />
-            </div>
-          )}
-
-          {/* ── SECTION 2: PASTE KODE BOOKING ── */}
-          {isAdmin && (
-            <div ref={pasteSectionRef} className="bg-white rounded-3xl shadow-sm overflow-hidden" data-bc-paste-section>
-              <div className="px-5 pt-5 pb-4 flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] font-bold text-[#0066FF] uppercase tracking-widest mb-0.5">Langkah 2</p>
-                  <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Paste Kode Booking / GDS</h3>
-                </div>
-                <button
-                  onClick={openAdd}
-                  className="text-[11px] font-semibold text-[#0066FF] active:opacity-60 shrink-0"
-                  style={{ WebkitTapHighlightColor: "transparent" }}
-                >
-                  Manual Input
-                </button>
-              </div>
-              <div className="px-5 pb-5 space-y-3">
-                <Textarea
-                  placeholder={"Masukkan kode booking (PNR) / kode sistem (GDS)\n\nContoh:\n  1 GF70 CAI→BAH 03JUN 17:15\n  TOTAL AMOUNT 29283 EGP"}
-                  className="font-mono text-[11px] min-h-[110px] resize-y bg-[#F0F4FB] border-0 rounded-2xl text-slate-700 placeholder:text-slate-300"
-                  value={pasteText}
-                  onChange={(e) => setPasteText(e.target.value)}
-                />
-                <button
-                  onClick={() => void handleParseText()}
-                  disabled={!pasteText.trim() || scanningText}
-                  className="w-full h-12 rounded-2xl text-[13px] font-extrabold text-white flex items-center justify-center gap-2 active:opacity-80 transition-opacity disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
-                >
-                  {scanningText
-                    ? <><Loader2 className="h-4 w-4 animate-spin" />Menganalisis via AI…</>
-                    : <><Sparkles className="h-4 w-4 text-yellow-300" />Extract Sekarang</>
-                  }
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── AI SCAN RESULTS / PENDING FORMS ── */}
+          {/* ── PENDING FORMS (AI Scan Results) ── */}
           {isAdmin && pendingForms.length > 0 && (
-            <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
-              <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100">
+            <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+              <div className="px-4 pt-3.5 pb-3 flex items-center justify-between border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
-                    <Check className="h-4 w-4 text-sky-500" strokeWidth={2} />
+                  <div className="h-7 w-7 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
+                    <Check className="h-3.5 w-3.5 text-sky-500" strokeWidth={2} />
                   </div>
                   <div>
                     <p className="text-[13px] font-extrabold text-[#0f1c3f]">
@@ -2619,31 +2551,31 @@ export default function TicketPrices() {
                 </div>
                 <button
                   onClick={() => void savePending()} disabled={saving}
-                  className="h-9 px-4 rounded-2xl text-[11px] font-bold text-white flex items-center gap-1.5 active:opacity-80 transition-opacity disabled:opacity-50 shrink-0"
+                  className="h-8 px-3.5 rounded-xl text-[11px] font-bold text-white flex items-center gap-1.5 active:opacity-80 transition-opacity disabled:opacity-50 shrink-0"
                   style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
                 >
-                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                   {saving ? `${saveProgress?.current ?? "…"}/${pendingForms.length}` : "Simpan Semua"}
                 </button>
               </div>
-              <div className="px-5 py-4 space-y-2">
+              <div className="px-4 py-3 space-y-2">
                 {saveProgress && (
-                  <div className="flex items-center gap-2 text-[11px] text-sky-700 font-medium mb-2">
+                  <div className="flex items-center gap-2 text-[11px] text-sky-700 font-medium mb-1">
                     <Loader2 className="h-3 w-3 animate-spin shrink-0" />
                     Menyimpan tiket {saveProgress.current} dari {saveProgress.total}…
                   </div>
                 )}
                 {pendingForms.map((form, idx) => (
-                  <div key={idx} className="bg-[#F0F4FB] rounded-2xl px-4 py-3 flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-xl bg-[#dbeafe] flex items-center justify-center shrink-0">
-                      <Plane className="h-4 w-4 text-[#0066FF]" strokeWidth={1.8} />
+                  <div key={idx} className="bg-[#F2F5FB] rounded-xl px-3.5 py-2.5 flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-xl bg-[#dbeafe] flex items-center justify-center shrink-0">
+                      <Plane className="h-3.5 w-3.5 text-[#0066FF]" strokeWidth={1.8} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-extrabold text-[#0f1c3f] truncate">{form.airline || "Maskapai"}</p>
                       <p className="text-[10px] text-slate-400">{form.fromCode} → {form.toCode} {form.departDate ? `· ${form.departDate}` : ""}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <p className="text-[12px] font-extrabold text-[#0f1c3f]">{form.currency} {form.basePrice > 0 ? form.basePrice.toLocaleString("id") : "—"}</p>
+                      <p className="text-[11px] font-extrabold text-[#0f1c3f]">{form.currency} {form.basePrice > 0 ? form.basePrice.toLocaleString("id") : "—"}</p>
                       <button onClick={() => removePending(idx)} className="h-6 w-6 rounded-lg bg-red-50 flex items-center justify-center active:opacity-70">
                         <X className="h-3 w-3 text-red-500" />
                       </button>
@@ -2654,44 +2586,29 @@ export default function TicketPrices() {
             </div>
           )}
 
-          {/* ── SECTION 3: DAFTAR TIKET ── */}
+          {/* ── TICKET LIST ── */}
           <div ref={ticketListRef}>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Hasil Extract Terbaru</h3>
                 {markup > 0 && (
-                  <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">+{fmtIDR(markup)} markup/pax</p>
+                  <p className="text-[11px] font-semibold text-emerald-600 mt-0.5">+{fmtIDR(markup)} markup/pax</p>
                 )}
               </div>
               <button
                 onClick={resetFilters}
-                className="text-[11px] font-semibold text-[#0066FF] active:opacity-60 shrink-0"
+                className="text-[12px] font-semibold text-[#0066FF] active:opacity-60 shrink-0"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 Lihat Semua
               </button>
             </div>
 
-            {!loading && visiblePrices.length > 0 && (
-              <div className="mb-4">
-                <SearchFilterBar
-                  searchQuery={searchQuery} onSearchChange={setSearchQuery}
-                  filterTripType={filterTripType} onTripTypeChange={setFilterTripType}
-                  filterDateRange={filterDateRange} onDateRangeChange={setFilterDateRange}
-                  filterPublish={filterPublish} onPublishChange={setFilterPublish}
-                  isOwner={isOwner} totalCount={visiblePrices.length}
-                  filteredCount={filteredPrices.length} onReset={resetFilters}
-                  sortBy={sortBy} onSortByChange={setSortBy}
-                  sortDir={sortDir} onSortDirChange={setSortDir}
-                />
-              </div>
-            )}
-
             {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-white rounded-3xl overflow-hidden animate-pulse shadow-sm">
-                    <div className="h-20 bg-slate-100" />
+                  <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+                    <div className="h-16 bg-slate-100" />
                     <div className="p-4 space-y-2">
                       <div className="h-3 bg-slate-100 rounded-full w-3/4" />
                       <div className="h-2.5 bg-slate-100 rounded-full w-1/2" />
@@ -2700,7 +2617,7 @@ export default function TicketPrices() {
                 ))}
               </div>
             ) : filteredPrices.length === 0 ? (
-              <div className="bg-white rounded-3xl px-4 py-12 text-center flex flex-col items-center shadow-sm">
+              <div className="bg-white rounded-2xl px-4 py-12 text-center flex flex-col items-center" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
                 <div className="h-14 w-14 rounded-2xl bg-[#dbeafe] flex items-center justify-center mb-3">
                   <Plane className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
                 </div>
@@ -2726,35 +2643,139 @@ export default function TicketPrices() {
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold text-slate-400">{filteredPrices.length} rute tersedia</p>
-                {filteredPrices.map((item) => (
-                  <div key={item.id}>
-                    <BoardingPassCard
-                      item={item} markup={markup} rates={rates}
-                      isAdmin={isAdmin} onEdit={openEdit} onDelete={handleDelete}
-                      onTogglePublish={handleTogglePublish} onView={openView}
-                      waNumber={waNumber} showBasePrice={isOwner}
-                    />
-                    <p className="text-[10px] text-slate-400 text-right px-2 mt-1.5">
-                      <Clock className="inline h-3 w-3 mr-1 -mt-px" strokeWidth={1.8} />
-                      Extracted {ticketTimeAgo(item.createdAt)}
-                    </p>
-                  </div>
-                ))}
+                {filteredPrices.map((item, idx) => {
+                  const isNew = !!item.createdAt && (Date.now() - new Date(item.createdAt).getTime()) < 48 * 60 * 60 * 1000;
+                  return (
+                    <div key={item.id}>
+                      <div className="relative">
+                        {isNew && idx === 0 && (
+                          <div
+                            className="absolute top-4 right-14 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide pointer-events-none"
+                            style={{ background: "#d1fae5", color: "#059669" }}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
+                            Terbaru
+                          </div>
+                        )}
+                        <BoardingPassCard
+                          item={item} markup={markup} rates={rates}
+                          isAdmin={isAdmin} onEdit={openEdit} onDelete={handleDelete}
+                          onTogglePublish={handleTogglePublish} onView={openView}
+                          waNumber={waNumber} showBasePrice={isOwner}
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 text-right px-2 mt-1.5 flex items-center justify-end gap-1">
+                        <Clock className="h-3 w-3 shrink-0" strokeWidth={1.8} />
+                        Extracted {ticketTimeAgo(item.createdAt)}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* ── ADMIN ACTIONS ── */}
+          {/* ── TAMBAH TIKET (Admin) ── */}
           {isAdmin && (
-            <div className="flex gap-2">
-              <button
-                onClick={openAdd}
-                className="flex-1 h-11 rounded-2xl flex items-center justify-center gap-1.5 text-[12px] font-bold bg-white border border-slate-200 text-[#0f1c3f] active:opacity-70 transition-opacity shadow-sm"
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                <Plus className="h-4 w-4" /> Tambah Manual
-              </button>
+            <div className="space-y-3 pt-1">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">Tambah Tiket</span>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+
+              {/* Quick-action row */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={scanning}
+                  className="flex-1 h-12 rounded-2xl flex items-center justify-center gap-2 text-[12px] font-bold text-[#0038B8] bg-white border border-slate-200 active:opacity-70 transition-opacity shadow-sm disabled:opacity-50"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  {scanning
+                    ? <Loader2 className="h-4 w-4 animate-spin text-sky-500" />
+                    : <ImagePlus className="h-4 w-4" strokeWidth={2} />}
+                  {scanning ? "Menganalisis…" : "Screenshot Tiket"}
+                </button>
+                <button
+                  onClick={openAdd}
+                  className="flex-1 h-12 rounded-2xl flex items-center justify-center gap-2 text-[12px] font-bold text-white active:opacity-80 transition-opacity"
+                  style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+                >
+                  <Plus className="h-4 w-4" strokeWidth={2.5} />
+                  Tambah Manual
+                </button>
+              </div>
+
+              {scanError && (
+                <div className="flex items-start gap-2 p-3 rounded-2xl bg-red-50 border border-red-100">
+                  <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-red-700">{scanError}</p>
+                </div>
+              )}
+
+              {/* Paste kode */}
+              <div ref={pasteSectionRef} className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }} data-bc-paste-section>
+                <div className="px-4 pt-4 pb-4">
+                  <p className="text-[13px] font-extrabold text-[#0f1c3f] mb-0.5">Paste Kode Booking / GDS</p>
+                  <p className="text-[11px] text-slate-400 mb-3">PNR, Galileo, Amadeus, atau BC WhatsApp</p>
+                  <Textarea
+                    placeholder={"Contoh:\n  1 GF70 CAI→BAH 03JUN 17:15\n  TOTAL AMOUNT 29283 EGP"}
+                    className="font-mono text-[11px] min-h-[90px] resize-none bg-[#F2F5FB] border-0 rounded-xl text-slate-700 placeholder:text-slate-300"
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                  />
+                  <button
+                    onClick={() => void handleParseText()}
+                    disabled={!pasteText.trim() || scanningText}
+                    className="w-full h-10 rounded-xl mt-3 text-[12px] font-extrabold text-white flex items-center justify-center gap-2 active:opacity-80 transition-opacity disabled:opacity-50"
+                    style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+                  >
+                    {scanningText
+                      ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Menganalisis…</>
+                      : <><Sparkles className="h-3.5 w-3.5 text-yellow-300" strokeWidth={2} />Extract via AI</>}
+                  </button>
+                </div>
+              </div>
+
+              {/* Markup */}
+              <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+                <button
+                  onClick={() => setMarkupOpen(v => !v)}
+                  className="w-full px-4 py-3.5 flex items-center gap-3 active:opacity-70 transition-opacity"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <div className="h-9 w-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                    <Tag className="h-4 w-4 text-emerald-600" strokeWidth={1.8} />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-[13px] font-extrabold text-[#0f1c3f]">Global Markup</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{markup > 0 ? `+${fmtIDR(markup)} per pax` : "Tap untuk mengatur"}</p>
+                  </div>
+                  {markup > 0 && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">Aktif</span>}
+                  <ChevronDown className={cn("h-4 w-4 text-slate-400 transition-transform shrink-0", markupOpen && "rotate-180")} />
+                </button>
+                {markupOpen && (
+                  <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-2.5">
+                    <Input
+                      type="number" min="0" step="50000" placeholder="0"
+                      className="bg-[#F2F5FB] h-11 rounded-xl text-[13px] border-0"
+                      value={markupInput}
+                      onChange={(e) => setMarkupInput(e.target.value)}
+                    />
+                    <p className="text-[11px] text-slate-400 leading-snug">Ditambahkan ke semua harga modal sebelum ditampilkan ke klien.</p>
+                    <button
+                      onClick={applyMarkup}
+                      className="w-full h-10 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+                      style={{ background: "linear-gradient(135deg,#059669,#047857)", WebkitTapHighlightColor: "transparent" }}
+                    >
+                      <Check className="w-3.5 h-3.5" /> Terapkan Markup
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Inject sample */}
               <button
                 onClick={() => void handleInjectSample()} disabled={injecting}
                 className="flex-1 h-11 rounded-2xl flex items-center justify-center gap-1.5 text-[12px] font-bold bg-amber-50 border border-amber-200 text-amber-700 active:opacity-70 transition-opacity shadow-sm disabled:opacity-50"
@@ -2766,30 +2787,6 @@ export default function TicketPrices() {
             </div>
           )}
 
-          {/* ── FITUR LAINNYA ── */}
-          <div className="pb-2">
-            <h3 className="text-[15px] font-extrabold text-[#0f1c3f] mb-3">Fitur Lainnya</h3>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: "Pencarian Manual",  icon: <Search className="h-5 w-5" style={{ color: "#0066FF" }} strokeWidth={1.8} />,    iconBg: "#dbeafe", action: () => screenshotSectionRef.current?.scrollIntoView({ behavior: "smooth" }) },
-                { label: "Kalkulator & Kurs", icon: <Calculator className="h-5 w-5" style={{ color: "#10b981" }} strokeWidth={1.8} />, iconBg: "#d1fae5", action: () => toast.info("Segera hadir") },
-                { label: "Notifikasi Harga", icon: <Bell className="h-5 w-5" style={{ color: "#f59e0b" }} strokeWidth={1.8} />,       iconBg: "#fef3c7", action: () => toast.info("Segera hadir") },
-              ].map((feat) => (
-                <button
-                  key={feat.label}
-                  onClick={feat.action}
-                  className="bg-white rounded-2xl p-3.5 flex flex-col items-center gap-2 shadow-sm active:opacity-70 transition-opacity"
-                  style={{ WebkitTapHighlightColor: "transparent" }}
-                >
-                  <div className="h-11 w-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: feat.iconBg }}>
-                    {feat.icon}
-                  </div>
-                  <p className="text-[10px] font-bold text-[#0f1c3f] text-center leading-snug">{feat.label}</p>
-                  <ChevronDown className="h-3 w-3 text-slate-300 -rotate-90" />
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 
