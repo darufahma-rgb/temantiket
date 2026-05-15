@@ -1683,6 +1683,81 @@ if (isProd) {
 }
 
 /* ──────────────────────────────────────────────
+   GET /api/flight-search  — SerpAPI Google Flights
+────────────────────────────────────────────── */
+const SERPAPI_KEY = (process.env.SERPAPI_KEY || '').trim();
+
+app.get('/api/flight-search', isAuthenticatedOrBearer, async (req, res) => {
+  if (!SERPAPI_KEY) return fail(res, 503, 'SERPAPI_KEY tidak dikonfigurasi di server.');
+
+  const { departure_id, arrival_id, outbound_date, return_date, currency = 'IDR', adults = 1, travel_class = 1 } = req.query;
+  if (!departure_id || !arrival_id || !outbound_date) {
+    return fail(res, 400, 'Parameter departure_id, arrival_id, dan outbound_date wajib diisi.');
+  }
+
+  try {
+    const params = new URLSearchParams({
+      engine: 'google_flights',
+      departure_id: String(departure_id),
+      arrival_id: String(arrival_id),
+      outbound_date: String(outbound_date),
+      currency: String(currency),
+      hl: 'id',
+      adults: String(adults),
+      travel_class: String(travel_class),
+      api_key: SERPAPI_KEY,
+    });
+    if (return_date) {
+      params.set('return_date', String(return_date));
+      params.set('type', '1'); // round-trip
+    } else {
+      params.set('type', '2'); // one-way
+    }
+
+    const resp = await fetch(`https://serpapi.com/search?${params.toString()}`);
+    if (!resp.ok) {
+      const text = await resp.text();
+      console.error('[flight-search] SerpAPI error:', resp.status, text.slice(0, 300));
+      return fail(res, resp.status, `SerpAPI error: ${resp.statusText}`);
+    }
+    const data = await resp.json();
+
+    // Normalise results — gabungkan best_flights + other_flights
+    const raw = [...(data.best_flights ?? []), ...(data.other_flights ?? [])];
+    const results = raw.map((f) => {
+      const firstLeg = f.flights?.[0] ?? {};
+      const lastLeg  = f.flights?.[f.flights.length - 1] ?? {};
+      const transit  = f.flights?.length > 1 ? f.flights.slice(0, -1).map((l) => l.arrival_airport?.id ?? '').filter(Boolean) : [];
+      return {
+        airline:      firstLeg.airline ?? '',
+        airlineCode:  firstLeg.airline_logo ? (firstLeg.airline_logo.match(/airlines\/(\w+)\./)?.[1] ?? '') : '',
+        flightNumber: f.flights?.map((l) => l.flight_number).filter(Boolean).join('/') ?? '',
+        fromCode:     firstLeg.departure_airport?.id ?? '',
+        fromCity:     firstLeg.departure_airport?.name ?? '',
+        toCode:       lastLeg.arrival_airport?.id ?? '',
+        toCity:       lastLeg.arrival_airport?.name ?? '',
+        transitCodes: transit,
+        transitCode:  transit[0] ?? null,
+        transitCity:  f.flights?.[0]?.arrival_airport?.name ?? null,
+        etd:          firstLeg.departure_airport?.time?.slice(11, 16) ?? null,
+        eta:          lastLeg.arrival_airport?.time?.slice(11, 16) ?? null,
+        duration:     f.total_duration ?? null,
+        price:        f.price ?? null,
+        currency:     'IDR',
+        carbonEmissions: f.carbon_emissions?.this_flight ?? null,
+        layovers:     (f.layovers ?? []).map((l) => ({ duration: l.duration, code: l.id, name: l.name })),
+        isBest:       !!(data.best_flights ?? []).includes(f),
+      };
+    });
+
+    return ok(res, { results, searchedAt: new Date().toISOString() });
+  } catch (err) {
+    console.error('[flight-search]', err.message);
+    return fail(res, 500, err.message);
+  }
+});
+
+/* ──────────────────────────────────────────────
    POST /api/setup-card-back  (Supabase Storage removed — no-op)
 ────────────────────────────────────────────── */
 app.post('/api/setup-card-back', (req, res) => {

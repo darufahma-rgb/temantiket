@@ -60,6 +60,7 @@ const ItineraryGenerator  = lazy(() => import("./pages/ItineraryGenerator"));
 const DemoSeed            = lazy(() => import("./pages/DemoSeed"));
 const TicketPrices        = lazy(() => import("./pages/TicketPrices"));
 const PublicTicketPrices  = lazy(() => import("./pages/PublicTicketPrices"));
+const FlightSearch        = lazy(() => import("./pages/FlightSearch"));
 const StaffVisaDashboard  = lazy(() => import("./pages/StaffVisaDashboard"));
 const StaffDashboardPage  = lazy(() => import("./pages/StaffDashboardPage"));
 const StaffCommissionPage = lazy(() => import("./pages/StaffCommissionPage"));
@@ -422,6 +423,7 @@ function AnimatedRoutes() {
       <Route path="/itinerary" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><P name="Itinerary Generator"><ItineraryGenerator /></P></DashboardLayout></RequireRole></RequireAuth>} />
       <Route path="/demo-seed" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><P name="Demo Seed"><DemoSeed /></P></DashboardLayout></RequireRole></RequireAuth>} />
       <Route path="/ticket-prices" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><P name="Harga Tiket"><TicketPrices /></P></DashboardLayout></RequireRole></RequireAuth>} />
+      <Route path="/flight-search" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><P name="Cari Harga Tiket"><FlightSearch /></P></DashboardLayout></RequireRole></RequireAuth>} />
       <Route path="/visa-tracker" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><P name="Visa Tracker"><OwnerVisaTrackerPage /></P></DashboardLayout></RequireRole></RequireAuth>} />
       <Route path="/staff/dashboard" element={<RequireAuth><RequireRole roles={["staff"]}><DashboardLayout><P name="Dashboard Staff"><StaffDashboardPage /></P></DashboardLayout></RequireRole></RequireAuth>} />
       <Route path="/staff/visa" element={<RequireAuth><RequireRole roles={["staff"]}><DashboardLayout><P name="Visa Staff"><StaffVisaDashboard /></P></DashboardLayout></RequireRole></RequireAuth>} />
