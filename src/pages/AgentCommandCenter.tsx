@@ -994,7 +994,8 @@ export default function AgentCommandCenter() {
                   </button>
                 )}
               </div>
-            ) : (
+            ) : viewMode === "list" ? (
+              /* ── LIST VIEW (table) ── */
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[960px]">
                   <thead>
@@ -1097,6 +1098,104 @@ export default function AgentCommandCenter() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            ) : (
+              /* ── GRID VIEW (cards) ── */
+              <div className="p-5 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {pagedRows.map((agent) => {
+                  const globalRank = dirFilteredRows.findIndex((a) => a.userId === agent.userId) + 1;
+                  const isActive = (agent.agentStatus ?? "active") === "active";
+                  const { current: tier } = agent.tierInfo;
+                  const maxPts = Math.max(...agentRows.map((a) => a.totalPoints), 1);
+                  const ptsGrowthPct = Math.round((agent.totalPoints / maxPts) * 100);
+                  const orderGrowthPct = agent.totalOrders > 0 ? Math.round((agent.completedOrders / agent.totalOrders) * 100) : 0;
+                  const clientGrowthPct = totalDirClients > 0 ? Math.round((agent.clientCount / totalDirClients) * 100) : 0;
+                  return (
+                    <div
+                      key={agent.userId}
+                      className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all overflow-hidden flex flex-col"
+                    >
+                      {/* Card header — colored band with avatar */}
+                      <div className="relative h-[72px] shrink-0" style={{ background: agent.color ?? "#3b82f6" }}>
+                        {/* Rank badge */}
+                        <span className="absolute top-2 left-2.5 text-[10px] font-extrabold text-white/80 bg-black/20 px-1.5 py-0.5 rounded-full">
+                          #{globalRank}
+                        </span>
+                        {/* Status dot */}
+                        <span className={`absolute top-2 right-2.5 h-2 w-2 rounded-full border-2 border-white ${isActive ? "bg-emerald-400" : "bg-red-400"}`} />
+                        {/* Avatar — centered, overflows below band */}
+                        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2">
+                          <div
+                            className="h-14 w-14 rounded-2xl border-4 border-white shadow-md flex items-center justify-center text-white text-[20px] font-extrabold overflow-hidden"
+                            style={{ background: agent.photoUrl ? "transparent" : agent.color }}
+                          >
+                            {agent.photoUrl
+                              ? <img src={agent.photoUrl} alt={agent.displayName} className="h-full w-full object-cover" />
+                              : agent.displayName.charAt(0).toUpperCase()
+                            }
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Name + tier */}
+                      <div className="pt-9 pb-2 px-3 text-center flex-shrink-0">
+                        <p className="text-[13px] font-extrabold text-slate-900 leading-tight truncate">{agent.displayName}</p>
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5">{agent.email}</p>
+                        <div className="mt-2 flex justify-center">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold ${tier.softBg} ${tier.softText}`}>
+                            {tier.emoji} {tier.label}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Stats grid — 2×2 */}
+                      <div className="mx-3 mb-3 grid grid-cols-2 gap-1.5 flex-shrink-0">
+                        {[
+                          { label: "Order",   value: String(agent.totalOrders),  pct: orderGrowthPct  },
+                          { label: "Klien",   value: String(agent.clientCount),  pct: clientGrowthPct },
+                          { label: "Poin",    value: agent.totalPoints.toLocaleString("id-ID"), pct: ptsGrowthPct, suffix: "pts" },
+                          { label: "Revenue", value: fmtIDR(agent.totalRevenue), pct: null },
+                        ].map(({ label, value, pct, suffix }) => (
+                          <div key={label} className="bg-slate-50 rounded-xl px-2.5 py-2 text-center border border-slate-100">
+                            <p className="text-[9.5px] font-bold uppercase tracking-wide text-slate-400 mb-0.5">{label}</p>
+                            <p className="text-[12px] font-extrabold text-slate-800 tabular-nums leading-tight truncate">
+                              {value}{suffix ? <span className="text-[9px] font-normal text-slate-400 ml-0.5">{suffix}</span> : null}
+                            </p>
+                            {pct !== null && (
+                              <p className="text-[9px] font-semibold text-emerald-600 flex items-center justify-center gap-0.5 mt-0.5">
+                                <TrendingUp className="h-2 w-2" />{pct}%
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Komisi row */}
+                      <div className="mx-3 mb-3 bg-blue-50 rounded-xl px-3 py-2 flex items-center justify-between border border-blue-100 flex-shrink-0">
+                        <span className="text-[10px] font-semibold text-blue-600">Komisi</span>
+                        <span className="text-[11px] font-extrabold font-mono text-blue-700">{fmtIDR(agent.commissionOwed)}</span>
+                      </div>
+
+                      {/* Footer actions */}
+                      <div className="border-t border-slate-100 px-3 py-2.5 flex items-center gap-1.5 mt-auto">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 h-7 text-[11px] gap-1 border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600"
+                          onClick={() => navigate(`/agents/${agent.userId}`)}
+                        >
+                          <Eye className="h-3 w-3" /> Profil
+                        </Button>
+                        <button
+                          className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors shrink-0"
+                          onClick={() => { setSelectedAgent(agent); setProfileOpen(true); }}
+                        >
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
