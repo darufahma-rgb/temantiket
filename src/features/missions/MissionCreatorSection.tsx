@@ -349,6 +349,8 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
   const [deployingTemplateId, setDeployingTemplateId] = useState<string | null>(null);
   const [deploying, setDeploying] = useState(false);
   const [injectingTemplateId, setInjectingTemplateId] = useState<string | null>(null);
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set());
+  const [bulkInjecting, setBulkInjecting] = useState(false);
 
   const [showTemplateForm, setShowTemplateForm] = useState(false);
   const [tmplTitle, setTmplTitle] = useState("");
@@ -487,6 +489,52 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
       toast.error("Gagal injeksi misi. Cek SQL migration sudah dijalankan.");
     }
     setInjectingTemplateId(null);
+  }
+
+  async function handleBulkInject() {
+    if (selectedTemplateIds.size === 0) {
+      toast.error("Pilih setidaknya satu template untuk di-inject.");
+      return;
+    }
+    const targets = templates.filter((t) => selectedTemplateIds.has(t.id));
+    setBulkInjecting(true);
+    let successCount = 0;
+    let updatedMeta = { ...missionMeta };
+    for (const template of targets) {
+      const meta = templateMeta[template.id];
+      const feeIDR = meta?.feeIDR ?? 0;
+      const targetMode = meta?.targetMode ?? "all";
+      const targetAgentIds: string[] | "all" =
+        targetMode === "all" ? "all" : (meta?.targetAgentIds ?? []);
+      if (targetMode === "specific" && (meta?.targetAgentIds ?? []).length === 0) {
+        toast.warning(`"${template.title}" dilewati — belum ada target agen.`);
+        continue;
+      }
+      const result = await createMission(
+        agencyId,
+        {
+          title: template.title,
+          description: template.description,
+          rewardPoints: template.defaultPoints,
+          deadline: deadlineToday(),
+        },
+        ownerId,
+      );
+      if (result) {
+        updatedMeta = await saveMissionMetaEntry(updatedMeta, result.id, { feeIDR, targetAgentIds });
+        await incrementTemplateUseCount(template.id);
+        successCount++;
+      } else {
+        toast.error(`Gagal injeksi "${template.title}".`);
+      }
+    }
+    setMissionMeta(updatedMeta);
+    setBulkInjecting(false);
+    setSelectedTemplateIds(new Set());
+    if (successCount > 0) {
+      toast.success(`${successCount} misi berhasil diinjeksi! Deadline hari ini 23:59.`);
+    }
+    void reload();
   }
 
   async function handleDeleteTemplate(id: string) {
@@ -670,23 +718,82 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
               <div className="bg-sky-50 border border-sky-200 rounded-xl px-3.5 py-2.5 flex items-start gap-2.5">
                 <CalendarClock className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-semibold text-sky-800">Cara pakai Template Injeksi</p>
+                  <p className="text-xs font-semibold text-sky-800">Sistem Misi Harian</p>
                   <p className="text-[11px] text-sky-700 mt-0.5 leading-relaxed">
-                    Simpan misi sekali sebagai template — besok atau kapanpun, tinggal klik <strong>⚡ Inject Hari Ini</strong> untuk deploy otomatis dengan deadline 23:59 malam ini.
+                    Setiap hari, klik <strong>⚡ Inject</strong> untuk mengaktifkan misi dengan deadline <strong>23:59 malam ini</strong>. Misi otomatis <strong>hangus</strong> di tengah malam — agen hanya melihat misi yang diinjeksi hari ini.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-slate-500">{templates.length} template tersimpan</p>
-                <Button
-                  size="sm" variant="outline"
-                  className="h-7 text-xs gap-1 border-sky-300 text-sky-700 hover:bg-sky-50"
-                  onClick={() => setShowTemplateForm((v) => !v)}
-                >
-                  <Plus className="w-3.5 h-3.5" /> Template Baru
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm" variant="outline"
+                    className="h-7 text-xs gap-1 border-slate-200 text-slate-600 hover:bg-slate-50"
+                    onClick={() => setShowTemplateForm((v) => !v)}
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Template Baru
+                  </Button>
+                </div>
               </div>
+
+              {/* ── Bulk Inject Bar ─────────────────────────────────────── */}
+              {templates.length > 0 && (
+                <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 transition-colors ${
+                  selectedTemplateIds.size > 0
+                    ? "bg-sky-50 border-sky-200"
+                    : "bg-slate-50 border-slate-200"
+                }`}>
+                  <button
+                    className="flex items-center gap-2 flex-1 text-left"
+                    onClick={() => {
+                      if (selectedTemplateIds.size === templates.length) {
+                        setSelectedTemplateIds(new Set());
+                      } else {
+                        setSelectedTemplateIds(new Set(templates.map((t) => t.id)));
+                      }
+                    }}
+                  >
+                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                      selectedTemplateIds.size === templates.length
+                        ? "bg-sky-600 border-sky-600"
+                        : selectedTemplateIds.size > 0
+                          ? "bg-sky-200 border-sky-400"
+                          : "border-slate-300 bg-white"
+                    }`}>
+                      {selectedTemplateIds.size > 0 && (
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 10">
+                          {selectedTemplateIds.size === templates.length
+                            ? <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            : <path d="M2 5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          }
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-xs font-medium text-slate-600">
+                      {selectedTemplateIds.size === 0
+                        ? "Pilih semua untuk Bulk Inject"
+                        : selectedTemplateIds.size === templates.length
+                          ? "Semua dipilih"
+                          : `${selectedTemplateIds.size} dari ${templates.length} dipilih`}
+                    </span>
+                  </button>
+                  {selectedTemplateIds.size > 0 && (
+                    <Button
+                      size="sm"
+                      className="h-7 bg-sky-600 hover:bg-sky-700 text-white text-xs px-3 gap-1.5 shrink-0"
+                      disabled={bulkInjecting}
+                      onClick={() => void handleBulkInject()}
+                    >
+                      <Zap className="w-3 h-3" />
+                      {bulkInjecting
+                        ? "Menginjeksi…"
+                        : `Inject ${selectedTemplateIds.size} Misi`}
+                    </Button>
+                  )}
+                </div>
+              )}
 
               <AnimatePresence>
                 {showTemplateForm && (
@@ -771,9 +878,30 @@ export function MissionCreatorSection({ agencyId, ownerId, agentNames, agentCoun
                     const isCustomizing = deployingTemplateId === t.id;
 
                     return (
-                      <Card key={t.id} className="overflow-hidden">
+                      <Card key={t.id} className={`overflow-hidden transition-colors ${selectedTemplateIds.has(t.id) ? "border-sky-300 bg-sky-50/40" : ""}`}>
                         <div className="p-3.5">
                           <div className="flex items-start gap-3">
+                            <button
+                              className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                selectedTemplateIds.has(t.id)
+                                  ? "bg-sky-600 border-sky-600"
+                                  : "border-slate-300 bg-white hover:border-sky-400"
+                              }`}
+                              onClick={() => {
+                                setSelectedTemplateIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(t.id)) next.delete(t.id);
+                                  else next.add(t.id);
+                                  return next;
+                                });
+                              }}
+                            >
+                              {selectedTemplateIds.has(t.id) && (
+                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 10">
+                                  <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </button>
                             <div className="w-9 h-9 rounded-lg bg-sky-100 flex items-center justify-center shrink-0">
                               <BookOpen className="w-4 h-4 text-sky-600" />
                             </div>

@@ -378,15 +378,16 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
     };
   }, [agencyId, agentId, reload]);
 
+  // Missions are "daily" — they hard-expire at their deadline and completely
+  // disappear from the active view. Completed missions still appear in "Riwayat".
   const activeMissions = useMemo(
     () => allMissions.filter((m) => {
-      const notExpiredOrHasSub = !isPast(new Date(m.deadline)) || submissions.some((s) => s.missionId === m.id);
-      if (!notExpiredOrHasSub) return false;
+      if (isPast(new Date(m.deadline))) return false;
       const meta = missionMeta[m.id];
       if (!meta || meta.targetAgentIds === "all") return true;
       return (meta.targetAgentIds as string[]).includes(agentId);
     }),
-    [allMissions, submissions, missionMeta, agentId],
+    [allMissions, missionMeta, agentId],
   );
 
   const totalReward = submissions.filter((s) => s.status === "approved").reduce((sum, s) => sum + s.rewardPoints, 0);
@@ -403,7 +404,8 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
     );
   }
 
-  if (allMissions.length === 0 && submissions.length === 0) return null;
+  // Hide widget entirely when there are no active missions AND no history
+  if (activeMissions.length === 0 && submissions.length === 0) return null;
 
   return (
     <>
@@ -429,7 +431,7 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
                 )}
               </div>
               <p className="text-[11px] text-slate-400">
-                {activeMissions.filter((m) => !isPast(new Date(m.deadline))).length} misi aktif untukmu
+                {activeMissions.length} misi aktif untukmu hari ini
               </p>
             </div>
           </div>
@@ -451,7 +453,7 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
 
         <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
           {([
-            { id: "active" as ActiveTab, label: "Misi Aktif", icon: <Target className="w-3.5 h-3.5" />, count: activeMissions.filter((m) => !isPast(new Date(m.deadline))).length },
+            { id: "active" as ActiveTab, label: "Misi Aktif", icon: <Target className="w-3.5 h-3.5" />, count: activeMissions.length },
             { id: "log"    as ActiveTab, label: "Riwayat",    icon: <History className="w-3.5 h-3.5" />, count: historyCount },
           ] as const).map((t) => (
             <button
@@ -472,30 +474,30 @@ export function AgentMissionWidget({ agencyId, agentId }: Props) {
         <AnimatePresence mode="wait">
           {tab === "active" && (
             <motion.div key="active" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-              {activeMissions.filter((m) => !isPast(new Date(m.deadline))).length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-4">Tidak ada misi aktif untukmu saat ini.</p>
+              {activeMissions.length === 0 ? (
+                <div className="py-6 text-center space-y-1">
+                  <p className="text-sm text-slate-400">Tidak ada misi aktif untukmu hari ini.</p>
+                  <p className="text-[10.5px] text-slate-300">Misi baru akan muncul setelah admin inject hari ini.</p>
+                </div>
               ) : (
-                activeMissions
-                  .filter((m) => !isPast(new Date(m.deadline)))
-                  .map((m) => (
-                    <MissionCard
-                      key={m.id}
-                      mission={m}
-                      submission={submissions.find((s) => s.missionId === m.id)}
-                      agencyId={agencyId}
-                      agentId={agentId}
-                      feeIDR={missionMeta[m.id]?.feeIDR ?? 0}
-                      onSubmitDone={() => void reload(false)}
-                      onNewApproval={() => setShowConfetti(true)}
-                    />
-                  ))
+                activeMissions.map((m) => (
+                  <MissionCard
+                    key={m.id}
+                    mission={m}
+                    submission={submissions.find((s) => s.missionId === m.id)}
+                    agencyId={agencyId}
+                    agentId={agentId}
+                    feeIDR={missionMeta[m.id]?.feeIDR ?? 0}
+                    onSubmitDone={() => void reload(false)}
+                    onNewApproval={() => setShowConfetti(true)}
+                  />
+                ))
               )}
-              {activeMissions.some((m) => submissions.some((s) => s.missionId === m.id && isPast(new Date(m.deadline)))) && (
-                <p className="text-[10.5px] text-slate-400 text-center">Misi kedaluwarsa tersembunyi. Lihat di Riwayat.</p>
+              {activeMissions.length > 0 && (
+                <p className="text-[10.5px] text-slate-400 text-center">
+                  Misi hangus otomatis pukul 23:59. Selesaikan sebelum tenggat!
+                </p>
               )}
-              <p className="text-[10.5px] text-slate-400 text-center">
-                Selesaikan side job untuk poin ekstra + fee IDR!
-              </p>
             </motion.div>
           )}
 
