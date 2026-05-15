@@ -108,18 +108,21 @@ function SidebarSection({
   return (
     <div>
       {hasLabel && (
-        <div className="flex items-center gap-2 px-3 mb-1.5 mt-1">
+        <div className="flex items-center gap-2 px-2 mb-1 mt-0.5">
+          {section.emoji && (
+            <span className="text-[11px] leading-none shrink-0 select-none">{section.emoji}</span>
+          )}
           <span
-            className="text-[10px] font-bold uppercase tracking-[0.16em] shrink-0"
-            style={{ color: "hsl(var(--muted-foreground))", opacity: 0.45 }}
+            className="text-[10px] font-extrabold uppercase tracking-[0.14em] shrink-0 leading-none"
+            style={{ color: "hsl(var(--muted-foreground))", opacity: 0.6 }}
           >
             {section.label}
           </span>
-          <div className="flex-1 h-px" style={{ background: "hsl(var(--border))", opacity: 0.6 }} />
+          <div className="flex-1 h-px" style={{ background: "hsl(var(--border))", opacity: 0.5 }} />
         </div>
       )}
 
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {visibleItems.map((item) => (
           <SidebarNavItem key={item.url} item={item} onClose={onClose} />
         ))}

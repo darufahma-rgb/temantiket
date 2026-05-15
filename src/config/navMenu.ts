@@ -35,6 +35,8 @@ export interface NavItemConfig {
 export interface SidebarSectionConfig {
   key: string;
   label: string;
+  /** Small emoji shown before the section label */
+  emoji?: string;
   items: NavItemConfig[];
 }
 
@@ -74,7 +76,7 @@ const VISA_TRACKER:  NavItemConfig = { icon: Landmark,        title: "Visa Track
 const AGENT_CENTER:  NavItemConfig = { icon: BookUser,        title: "Manajemen Agen",     label: "Mgt. Agen",     url: "/agent-center"      };
 const LEADERBOARD:   NavItemConfig = { icon: Trophy,          title: "Leaderboard",                                url: "/agent/leaderboard" };
 const STAFF_MGMT:    NavItemConfig = { icon: Activity,        title: "Manajemen Staff",    label: "Mgmt. Staff",   url: "/staff-performance", ownerOnly: true };
-const AUDIT:         NavItemConfig = { icon: ShieldCheck,     title: "Audit & Debug",      label: "Audit",         url: "/audit",             ownerOnly: true };
+const AUDIT:         NavItemConfig = { icon: ShieldCheck,     title: "Audit & Log",        label: "Audit",         url: "/audit",             ownerOnly: true };
 const SETTINGS:      NavItemConfig = { icon: Settings,        title: "Pengaturan",                                 url: "/settings"          };
 
 // Staff-specific pages
@@ -85,35 +87,33 @@ const STAFF_COMMISSION: NavItemConfig = { icon: Wallet,   title: "Komisi Saya", 
 // ── Owner sidebar sections ─────────────────────────────────────────────────────
 
 export const OWNER_SIDEBAR_SECTIONS: SidebarSectionConfig[] = [
-  { key: "home",      label: "",          items: [DASHBOARD_OWNER] },
-  { key: "bisnis",    label: "Bisnis",    items: [CLIENTS, ORDERS] },
-  { key: "tools",     label: "Tools",     items: [TICKETS, ITINERARY, CALC, PACKAGES] },
-  { key: "konten",    label: "Konten",    items: [BC, CAPTION, NOTES] },
-  { key: "keuangan",  label: "Keuangan",  items: [REPORTS, EXPORTS] },
-  { key: "manajemen", label: "Manajemen", items: [VISA_TRACKER, AGENT_CENTER, LEADERBOARD, STAFF_MGMT, AUDIT] },
-  { key: "settings",  label: "",          items: [SETTINGS] },
+  { key: "home",       label: "",            items: [DASHBOARD_OWNER]                                        },
+  { key: "bisnis",     label: "Bisnis",      emoji: "💼", items: [CLIENTS, ORDERS, PACKAGES]               },
+  { key: "alat-bantu", label: "Alat Bantu",  emoji: "🛠️", items: [TICKETS, ITINERARY, CALC]                },
+  { key: "pemasaran",  label: "Pemasaran",   emoji: "📢", items: [BC, CAPTION, NOTES]                      },
+  { key: "keuangan",   label: "Keuangan",    emoji: "💰", items: [REPORTS, EXPORTS]                        },
+  { key: "tim-agen",   label: "Tim & Agen",  emoji: "👥", items: [VISA_TRACKER, AGENT_CENTER, LEADERBOARD, STAFF_MGMT, AUDIT] },
+  { key: "settings",   label: "",            items: [SETTINGS]                                               },
 ];
 
 // ── Agent sidebar sections ─────────────────────────────────────────────────────
-// Agent can access: packages, itinerary, ticket-prices, calculator, notes, agent-center
 
 export const AGENT_SIDEBAR_SECTIONS: SidebarSectionConfig[] = [
-  { key: "home",     label: "",        items: [DASHBOARD_AGENT] },
-  { key: "bisnis",   label: "Bisnis",  items: [CLIENTS, ORDERS, PACKAGES] },
-  { key: "tools",    label: "Tools",   items: [TICKETS, ITINERARY, CALC] },
-  { key: "konten",   label: "Konten",  items: [BC, NOTES] },
-  { key: "agen",     label: "Agen",    items: [LEADERBOARD, AGENT_CENTER] },
-  { key: "settings", label: "",        items: [SETTINGS] },
+  { key: "home",       label: "",            items: [DASHBOARD_AGENT]                     },
+  { key: "bisnis",     label: "Bisnis",      emoji: "💼", items: [CLIENTS, ORDERS, PACKAGES] },
+  { key: "alat-bantu", label: "Alat Bantu",  emoji: "🛠️", items: [TICKETS, ITINERARY, CALC] },
+  { key: "pemasaran",  label: "Pemasaran",   emoji: "📢", items: [BC, NOTES]               },
+  { key: "agen",       label: "Agen Saya",   emoji: "🏆", items: [LEADERBOARD, AGENT_CENTER] },
+  { key: "settings",   label: "",            items: [SETTINGS]                             },
 ];
 
 // ── Staff sidebar sections ─────────────────────────────────────────────────────
-// Staff can access: calculator, agent-center, settings
 
 export const STAFF_SIDEBAR_SECTIONS: SidebarSectionConfig[] = [
-  { key: "home",        label: "",            items: [DASHBOARD_STAFF, STAFF_PROFILE] },
-  { key: "tugas",       label: "Tugas Saya",  items: [STAFF_VISA, STAFF_COMMISSION] },
-  { key: "operasional", label: "Operasional", items: [CALC, AGENT_CENTER] },
-  { key: "settings",    label: "",            items: [SETTINGS] },
+  { key: "home",        label: "",              items: [DASHBOARD_STAFF, STAFF_PROFILE]     },
+  { key: "tugas",       label: "Tugas Saya",    emoji: "📋", items: [STAFF_VISA, STAFF_COMMISSION] },
+  { key: "operasional", label: "Operasional",   emoji: "⚙️", items: [CALC, AGENT_CENTER]   },
+  { key: "settings",    label: "",              items: [SETTINGS]                           },
 ];
 
 // ── Owner mobile nav ───────────────────────────────────────────────────────────
