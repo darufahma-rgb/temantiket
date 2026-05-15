@@ -295,8 +295,11 @@ export function MobileOwnerDashboard() {
           HEADER
       ═══════════════════════════════════════════════════════════════ */}
       <div
-        className="bg-white px-5 pt-12 pb-3 flex items-center justify-between gap-3"
-        style={{ boxShadow: "0 1px 0 rgba(0,0,0,0.06)" }}
+        className="bg-white px-5 pb-3 flex items-center justify-between gap-3"
+        style={{
+          paddingTop: "calc(12px + env(safe-area-inset-top, 0px))",
+          boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
+        }}
       >
         {/* Logo */}
         <div className="flex items-center gap-2 shrink-0">

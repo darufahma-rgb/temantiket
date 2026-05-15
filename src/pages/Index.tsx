@@ -2,7 +2,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import Dashboard from "./Dashboard";
 
 const Index = () => (
-  <DashboardLayout noPadding>
+  <DashboardLayout noPadding hideMobileChrome>
     <Dashboard />
   </DashboardLayout>
 );

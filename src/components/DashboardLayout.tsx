@@ -36,10 +36,11 @@ function formatLastSync(d: Date | null): string {
 interface DashboardLayoutProps {
   children: React.ReactNode;
   noPadding?: boolean;
+  hideMobileChrome?: boolean;
 }
 
 
-export function DashboardLayout({ children, noPadding = false }: DashboardLayoutProps) {
+export function DashboardLayout({ children, noPadding = false, hideMobileChrome = false }: DashboardLayoutProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [moreOpen, setMoreOpen]     = useState(false);
@@ -128,7 +129,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
           {/* ── Mobile floating header ── */}
-          <header
+          {!hideMobileChrome && <header
             className="md:hidden fixed z-50 flex items-center gap-2 px-4"
             style={{
               top: "calc(8px + env(safe-area-inset-top, 0px))",
@@ -219,7 +220,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
                 style={{ width: 7, height: 7, bottom: 3, right: 3, background: syncInfo.color, borderColor: "hsl(var(--card))" }}
               />
             </button>
-          </header>
+          </header>}
 
           {/* ── Desktop full header ── */}
           <motion.header
@@ -298,7 +299,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
             <AnimatePresence mode="sync" initial={false}>
               <motion.main
                 key={location.pathname}
-                className={`absolute inset-0 overflow-auto layout-safe-inset ${
+                className={`absolute inset-0 overflow-auto ${hideMobileChrome ? "" : "layout-safe-inset"} ${
                   noPadding
                     ? "md:pt-0 md:pb-0"
                     : "px-4 md:pl-10 md:pr-8 md:py-7"
@@ -319,7 +320,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
       </div>
 
       {/* ── Mobile floating bottom nav ── */}
-      <nav
+      {!hideMobileChrome && <nav
         className={cn(
           "md:hidden fixed z-50 flex items-center px-1",
           keyboardOpen ? "pointer-events-none" : "",
@@ -388,7 +389,7 @@ export function DashboardLayout({ children, noPadding = false }: DashboardLayout
             </button>
           );
         })}
-      </nav>
+      </nav>}
 
       {/* ── "Lainnya" full-menu bottom sheet ── */}
       <AnimatePresence>
