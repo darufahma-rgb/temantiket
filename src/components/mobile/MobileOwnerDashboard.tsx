@@ -40,10 +40,22 @@ function fmtUSD(idr: number, usdRate: number): string {
 }
 
 function fmtIDR(n: number): string {
-  if (n >= 1_000_000_000) return "Rp " + (n / 1_000_000_000).toFixed(1) + "M";
-  if (n >= 1_000_000) return "Rp " + (n / 1_000_000).toFixed(0) + " Jt";
-  if (n >= 1_000) return "Rp " + (n / 1_000).toFixed(0) + " Rb";
-  return "Rp " + n;
+  if (n >= 1_000_000_000) {
+    const v = n / 1_000_000_000;
+    const s = parseFloat(v.toFixed(2)).toString().replace(".", ",");
+    return "Rp " + s + "M";
+  }
+  if (n >= 1_000_000) {
+    const v = n / 1_000_000;
+    const s = parseFloat(v.toFixed(2)).toString().replace(".", ",");
+    return "Rp " + s + "jt";
+  }
+  if (n >= 1_000) {
+    const v = n / 1_000;
+    const s = parseFloat(v.toFixed(1)).toString().replace(".", ",");
+    return "Rp " + s + "rb";
+  }
+  return "Rp " + n.toLocaleString("id-ID");
 }
 
 function fmtAxisY(n: number): string {
