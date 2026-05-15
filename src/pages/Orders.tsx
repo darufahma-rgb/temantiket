@@ -18,6 +18,7 @@ import { useOrdersStore } from "@/store/ordersStore";
 import { useClientsStore, type Client } from "@/store/clientsStore";
 import { useAuthStore } from "@/store/authStore";
 import { useRatesStore } from "@/store/ratesStore";
+import { useNotificationStore } from "@/store/notificationStore";
 import { revenueIDR } from "@/lib/profit";
 import {
   PAYMENT_STATUS_LABEL,
@@ -80,10 +81,11 @@ export default function Orders() {
 
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
-  const [mobileCat, setMobileCat] = useState<"all" | "flight" | "visa" | "paket">("all");
+  const [mobileCat, setMobileCat] = useState<"all" | "flight" | "arsip">("all");
   const [showSearch, setShowSearch] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
   const [mobileStatus, setMobileStatus] = useState<string>("all");
+  const [mobileSortOrder, setMobileSortOrder] = useState<"newest" | "oldest">("newest");
 
   const { setPageContext, setPageData, clearContext } = useAIContextStore();
   useEffect(() => {
@@ -144,9 +146,8 @@ export default function Orders() {
   const mobileFiltered = useMemo(() => {
     let out = orders;
     if (mobileCat === "flight") out = out.filter(o => o.type === "flight");
-    else if (mobileCat === "visa") out = out.filter(o => ["visa_voa", "visa_student"].includes(o.type));
-    else if (mobileCat === "paket") out = out.filter(o => o.type === "umrah");
-    if (mobileStatus !== "all") {
+    else if (mobileCat === "arsip") out = out.filter(o => o.status === "Cancelled");
+    else {
       if (mobileStatus === "selesai") out = out.filter(o => ["Done","Paid","Completed"].includes(o.status));
       else if (mobileStatus === "diproses") out = out.filter(o => ["Draft","Confirmed","Processing"].includes(o.status));
       else if (mobileStatus === "dibatalkan") out = out.filter(o => o.status === "Cancelled");
@@ -163,6 +164,39 @@ export default function Orders() {
   const mSelesai    = useMemo(() => orders.filter(o => ["Done","Paid","Completed"].includes(o.status)).length, [orders]);
   const mDiproses   = useMemo(() => orders.filter(o => ["Draft","Confirmed","Processing"].includes(o.status)).length, [orders]);
   const mDibatalkan = useMemo(() => orders.filter(o => o.status === "Cancelled").length, [orders]);
+
+  // ── Mobile: notification store + rates for header ──────────────────
+  const { notifications, fetchNotifications } = useNotificationStore();
+  useEffect(() => { void fetchNotifications(); }, [fetchNotifications]);
+  const mUnread = useMemo(() => notifications.filter(n => !n.is_read).length, [notifications]);
+  const usdRate = useRatesStore((s) => s.rates.USD ?? 16_000);
+  const mTotalRevIDR = useMemo(() => orders.filter(o => o.status !== "Cancelled").reduce((s, o) => s + revenueIDR(o, egpRate), 0), [orders, egpRate]);
+  function fmtUSD(idr: number): string {
+    const usd = idr / usdRate;
+    if (usd >= 1_000_000) return (usd / 1_000_000).toFixed(1) + "M";
+    if (usd >= 1_000) return (usd / 1_000).toFixed(1) + "k";
+    return usd.toFixed(0);
+  }
+  function getInitialsMob(name?: string): string {
+    if (!name) return "A";
+    return name.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase();
+  }
+
+  // ── Mobile: yesterday comparison ───────────────────────────────────
+  const todayS     = new Date().toISOString().slice(0, 10);
+  const yesterdayS = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  function mPct(curr: number, prev: number): number {
+    if (prev === 0) return curr > 0 ? 100 : 0;
+    return Math.round(((curr - prev) / prev) * 100);
+  }
+  const mTotalToday     = useMemo(() => orders.filter(o => (o.createdAt ?? "").startsWith(todayS)).length, [orders, todayS]);
+  const mTotalYest      = useMemo(() => orders.filter(o => (o.createdAt ?? "").startsWith(yesterdayS)).length, [orders, yesterdayS]);
+  const mSelesaiToday   = useMemo(() => orders.filter(o => ["Done","Paid","Completed"].includes(o.status) && (o.createdAt ?? "").startsWith(todayS)).length, [orders, todayS]);
+  const mSelesaiYest    = useMemo(() => orders.filter(o => ["Done","Paid","Completed"].includes(o.status) && (o.createdAt ?? "").startsWith(yesterdayS)).length, [orders, yesterdayS]);
+  const mDiprosesToday  = useMemo(() => orders.filter(o => ["Draft","Confirmed","Processing"].includes(o.status) && (o.createdAt ?? "").startsWith(todayS)).length, [orders, todayS]);
+  const mDiprosesYest   = useMemo(() => orders.filter(o => ["Draft","Confirmed","Processing"].includes(o.status) && (o.createdAt ?? "").startsWith(yesterdayS)).length, [orders, yesterdayS]);
+  const mBatalToday     = useMemo(() => orders.filter(o => o.status === "Cancelled" && (o.createdAt ?? "").startsWith(todayS)).length, [orders, todayS]);
+  const mBatalYest      = useMemo(() => orders.filter(o => o.status === "Cancelled" && (o.createdAt ?? "").startsWith(yesterdayS)).length, [orders, yesterdayS]);
 
   const heading = typeFilter
     ? `Order — ${ORDER_TYPE_LABEL[typeFilter]}`
@@ -266,124 +300,88 @@ export default function Orders() {
       {/* ══════════════════════════════════════════════════════════
            MOBILE LAYOUT  (md:hidden) — Native App Style
       ══════════════════════════════════════════════════════════ */}
-      <div className="md:hidden min-h-screen bg-secondary pb-28 -mx-4">
+      <div className="md:hidden min-h-screen bg-[#F2F5FB] pb-[76px] -mx-4">
 
-        {/* ── TOP HEADER ── */}
-        <div className="bg-card px-4 pt-12 pb-4 shadow-sm">
-          <div className="flex items-start justify-between gap-3 mb-1">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate(-1)}
-                className="h-9 w-9 rounded-2xl bg-secondary flex items-center justify-center active:opacity-60 transition-opacity shrink-0"
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                <ArrowLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
+        {/* ── GLOBAL APP HEADER ── */}
+        <div className="bg-white px-5 pt-12 pb-3 flex items-center justify-between gap-3" style={{ boxShadow: "0 1px 0 rgba(0,0,0,0.06)" }}>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#0038B8] to-[#33A6FF] flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-white" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z"/></svg>
+            </div>
+            <div>
+              <p className="text-[13px] font-black text-[#0f1c3f] leading-none tracking-tight">temantiket</p>
+              <p className="text-[8px] text-slate-400 font-medium leading-none mt-0.5">mudah, cepat, amanah</p>
+            </div>
+          </div>
+          <button onClick={() => navigate("/reports")} className="flex items-center gap-1.5 bg-[#F2F5FB] rounded-full px-3 py-1.5 active:opacity-70" style={{ WebkitTapHighlightColor: "transparent" }}>
+            <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
+            <span className="text-[12px] font-bold text-[#0f1c3f]">USD {fmtUSD(mTotalRevIDR)}</span>
+          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => navigate("/notifications")} className="relative h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-70" style={{ WebkitTapHighlightColor: "transparent" }}>
+              <svg viewBox="0 0 24 24" className="h-5 w-5 text-slate-600" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              {mUnread > 0 && <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-0.5 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center">{mUnread > 9 ? "9+" : mUnread}</span>}
+            </button>
+            <button onClick={() => navigate("/settings")} className="h-9 w-9 rounded-full bg-gradient-to-br from-[#0038B8] to-[#33A6FF] flex items-center justify-center shadow-sm active:opacity-80" style={{ WebkitTapHighlightColor: "transparent" }}>
+              <span className="text-white text-[12px] font-extrabold">{getInitialsMob(user?.displayName)}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ── PAGE HEADER ── */}
+        <div className="bg-white px-4 pt-4 pb-3 border-b border-slate-100">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <button onClick={() => navigate(-1)} className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60 shrink-0" style={{ WebkitTapHighlightColor: "transparent" }}>
+                <ArrowLeft className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />
               </button>
-              <div>
-                <h1 className="text-[22px] font-extrabold text-foreground leading-tight">Order Hub</h1>
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5">Kelola semua pesanan dalam satu tempat</p>
+              <div className="min-w-0">
+                <h1 className="text-[20px] font-black text-[#0f1c3f] leading-tight">Order Hub</h1>
+                <p className="text-[10px] text-slate-400 font-medium mt-0.5 leading-snug">Kelola semua pesanan<br />dalam satu tempat</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0 mt-1">
-              <button
-                onClick={() => { setShowSearch((s) => !s); if (showSearch) setQ(""); }}
-                className="h-9 w-9 rounded-2xl bg-secondary flex items-center justify-center active:opacity-60 transition-opacity"
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                {showSearch ? <X className="h-4 w-4 text-foreground" strokeWidth={2} /> : <Search className="h-4 w-4 text-foreground" strokeWidth={2} />}
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(""); }} className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>
+                {showSearch ? <X className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} /> : <Search className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />}
               </button>
-              <button
-                onClick={() => setShowFilter((s) => !s)}
-                className={cn(
-                  "h-9 px-3 rounded-2xl flex items-center gap-1.5 text-[11px] font-bold active:opacity-60 transition-all",
-                  showFilter || mobileStatus !== "all" ? "bg-[#0066FF] text-white" : "bg-secondary text-foreground"
-                )}
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
+              <button onClick={() => setShowFilter(s => !s)} className={cn("h-9 px-3 rounded-full flex items-center gap-1.5 text-[11px] font-bold active:opacity-60 transition-all", showFilter || mobileStatus !== "all" ? "bg-[#0066FF] text-white" : "bg-[#F2F5FB] text-[#0f1c3f]")} style={{ WebkitTapHighlightColor: "transparent" }}>
                 <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} />
                 Filter
-                {mobileStatus !== "all" && <span className="h-4 w-4 rounded-full bg-card text-[#0066FF] text-[9px] font-black flex items-center justify-center">1</span>}
+                {mobileStatus !== "all" && <span className="h-4 w-4 rounded-full bg-white text-[#0066FF] text-[9px] font-black flex items-center justify-center">1</span>}
               </button>
-              <button
-                onClick={() => setAddOpen(true)}
-                className="h-9 w-9 rounded-2xl flex items-center justify-center text-white shadow-sm active:opacity-80 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
-              >
+              <button onClick={() => setAddOpen(true)} className="h-9 w-9 rounded-full flex items-center justify-center text-white shadow-md active:opacity-80" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}>
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
               </button>
             </div>
           </div>
 
-          {/* Search input (animated) */}
+          {/* Search input */}
           <AnimatePresence>
             {showSearch && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.22 }}
-                className="overflow-hidden"
-              >
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                 <div className="relative mt-3">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <input
-                    autoFocus
-                    type="text"
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder="Cari judul, klien, status…"
-                    className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-secondary border border-transparent text-foreground placeholder-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100 transition-all"
-                  />
-                  {q && (
-                    <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-300/40 flex items-center justify-center active:opacity-60">
-                      <X className="h-3 w-3 text-slate-500" />
-                    </button>
-                  )}
+                  <input autoFocus type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Cari judul, klien, status…" className="w-full h-11 pl-10 pr-10 rounded-2xl text-[13px] outline-none bg-[#F2F5FB] border border-transparent text-[#0f1c3f] placeholder-slate-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all" />
+                  {q && <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-200 flex items-center justify-center active:opacity-60"><X className="h-3 w-3 text-slate-500" /></button>}
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Filter bottom sheet */}
+          {/* Filter chips */}
           <AnimatePresence>
             {showFilter && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.22 }}
-                className="overflow-hidden"
-              >
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                 <div className="mt-3 pt-3 border-t border-slate-100">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Status Order</p>
                   <div className="flex flex-wrap gap-2">
-                    {[
-                      { id: "all", label: "Semua", count: orders.length },
-                      { id: "diproses", label: "Diproses", count: mDiproses },
-                      { id: "selesai", label: "Selesai", count: mSelesai },
-                      { id: "dibatalkan", label: "Dibatalkan", count: mDibatalkan },
-                    ].map((f) => (
-                      <button
-                        key={f.id}
-                        onClick={() => setMobileStatus(f.id)}
-                        className={cn(
-                          "h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95",
-                          mobileStatus === f.id ? "bg-[#0066FF] text-white border-transparent" : "bg-card text-slate-600 border-slate-200"
-                        )}
-                        style={{ WebkitTapHighlightColor: "transparent" }}
-                      >
+                    {[{ id: "all", label: "Semua", count: orders.length }, { id: "diproses", label: "Diproses", count: mDiproses }, { id: "selesai", label: "Selesai", count: mSelesai }, { id: "dibatalkan", label: "Dibatalkan", count: mDibatalkan }].map(f => (
+                      <button key={f.id} onClick={() => setMobileStatus(f.id)} className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95", mobileStatus === f.id ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")} style={{ WebkitTapHighlightColor: "transparent" }}>
                         {f.label} <span className="opacity-70">({f.count})</span>
                       </button>
                     ))}
                   </div>
-                  {mobileStatus !== "all" && (
-                    <button
-                      onClick={() => setMobileStatus("all")}
-                      className="mt-2 text-[11px] text-[#0066FF] font-semibold active:opacity-60"
-                    >
-                      Reset Filter
-                    </button>
-                  )}
+                  {mobileStatus !== "all" && <button onClick={() => setMobileStatus("all")} className="mt-2 text-[11px] text-[#0066FF] font-semibold active:opacity-60">Reset Filter</button>}
                 </div>
               </motion.div>
             )}
@@ -391,248 +389,258 @@ export default function Orders() {
         </div>
 
         {/* ── CATEGORY TABS ── */}
-        <div className="bg-card mt-px px-4 pb-3 shadow-sm">
-          <div className="flex gap-2 overflow-x-auto scrollbar-none pt-3">
+        <div className="bg-white px-4 py-3 border-b border-slate-100">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none">
             {([
-              { id: "all",    label: "Semua Order",     count: orders.length },
-              { id: "flight", label: "Tiket Pesawat",   count: orders.filter(o => o.type === "flight").length },
-              { id: "visa",   label: "Visa & Dokumen",  count: orders.filter(o => ["visa_voa","visa_student"].includes(o.type)).length },
-              { id: "paket",  label: "Paket & Lainnya", count: orders.filter(o => o.type === "umrah").length },
-            ] as const).map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setMobileCat(tab.id)}
-                className={cn(
-                  "shrink-0 h-9 px-4 rounded-full text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95",
-                  mobileCat === tab.id
-                    ? "text-white shadow-md"
-                    : "bg-secondary text-slate-500"
+              { id: "all" as const,    label: "Semua Order",   count: orders.length },
+              { id: "flight" as const, label: "Tiket Pesawat", count: orders.filter(o => o.type === "flight").length },
+              { id: "arsip" as const,  label: "Arsip",         count: mDibatalkan },
+            ]).map(tab => (
+              <button key={tab.id} onClick={() => { setMobileCat(tab.id); setMobileStatus("all"); }}
+                className={cn("shrink-0 h-9 px-4 rounded-full text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95 border",
+                  mobileCat === tab.id ? "text-white border-transparent shadow-md" : "bg-white text-slate-500 border-slate-200"
                 )}
                 style={mobileCat === tab.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
               >
                 {tab.label}
-                <span className={cn(
-                  "text-[9px] font-extrabold px-1.5 py-0.5 rounded-full",
-                  mobileCat === tab.id ? "bg-card/25 text-white" : "bg-slate-200 text-slate-500"
-                )}>
-                  {tab.count}
-                </span>
+                <span className={cn("text-[9px] font-extrabold px-1.5 py-0.5 rounded-full", mobileCat === tab.id ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500")}>{tab.count}</span>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="px-4 pt-5 space-y-5">
+        <div className="px-4 pt-4 space-y-4">
 
           {/* ── CLIENT FILTER BADGE ── */}
           {clientIdParam && clientNameById.get(clientIdParam) && (
-            <div className="flex items-center gap-2.5 bg-card border border-sky-200 rounded-2xl px-4 py-3 shadow-sm">
-              <div className="h-8 w-8 rounded-xl bg-[#dbeafe] flex items-center justify-center text-[#0066FF] text-[12px] font-extrabold shrink-0">
-                {clientNameById.get(clientIdParam)!.charAt(0).toUpperCase()}
-              </div>
-              <p className="text-[12px] text-foreground font-semibold flex-1 truncate">
-                Klien: <span className="font-bold">{clientNameById.get(clientIdParam)}</span>
-              </p>
-              <button onClick={() => navigate("/orders")} className="text-[11px] text-[#0066FF] font-bold active:opacity-70 shrink-0 flex items-center gap-1">
-                <X className="h-3.5 w-3.5" /> Hapus
-              </button>
+            <div className="flex items-center gap-2.5 bg-white border border-sky-200 rounded-2xl px-4 py-3 shadow-sm">
+              <div className="h-8 w-8 rounded-xl bg-[#dbeafe] flex items-center justify-center text-[#0066FF] text-[12px] font-extrabold shrink-0">{clientNameById.get(clientIdParam)!.charAt(0).toUpperCase()}</div>
+              <p className="text-[12px] text-[#0f1c3f] font-semibold flex-1 truncate">Klien: <span className="font-bold">{clientNameById.get(clientIdParam)}</span></p>
+              <button onClick={() => navigate("/orders")} className="text-[11px] text-[#0066FF] font-bold active:opacity-70 shrink-0 flex items-center gap-1"><X className="h-3.5 w-3.5" /> Hapus</button>
             </div>
           )}
 
-          {/* ── RINGKASAN ORDER CARD ── */}
-          <div className="bg-card rounded-3xl px-5 py-4 shadow-sm">
+          {/* ── RINGKASAN ORDER ── */}
+          <div className="bg-white rounded-[20px] px-4 py-4" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[15px] font-extrabold text-foreground">Ringkasan Order</h3>
-              <span className="text-[11px] text-slate-400 font-medium">
-                {new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date())}
-              </span>
+              <p className="text-[15px] font-extrabold text-[#0f1c3f]">Ringkasan Order</p>
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span className="text-[11px] font-medium">{new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(new Date())}</span>
+              </div>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 divide-x divide-slate-100">
               {[
-                { label: "Total",      value: orders.length,  icon: <ShoppingBag className="h-4 w-4" style={{ color: "#0066FF" }} strokeWidth={1.8} />, iconBg: "#dbeafe", onClick: () => setMobileCat("all")       },
-                { label: "Selesai",    value: mSelesai,       icon: <CheckCircle  className="h-4 w-4" style={{ color: "#10b981" }} strokeWidth={1.8} />, iconBg: "#d1fae5", onClick: () => setMobileStatus("selesai")    },
-                { label: "Diproses",   value: mDiproses,      icon: <Clock        className="h-4 w-4" style={{ color: "#f59e0b" }} strokeWidth={1.8} />, iconBg: "#fef3c7", onClick: () => setMobileStatus("diproses")   },
-                { label: "Dibatalkan", value: mDibatalkan,    icon: <XCircle      className="h-4 w-4" style={{ color: "#ef4444" }} strokeWidth={1.8} />, iconBg: "#fee2e2", onClick: () => setMobileStatus("dibatalkan") },
-              ].map((stat) => (
-                <button
-                  key={stat.label}
-                  onClick={stat.onClick}
-                  className="flex flex-col items-center gap-1.5 active:opacity-70 transition-opacity"
-                  style={{ WebkitTapHighlightColor: "transparent" }}
-                >
-                  <div className="h-9 w-9 rounded-2xl flex items-center justify-center" style={{ backgroundColor: stat.iconBg }}>
-                    {stat.icon}
-                  </div>
-                  <p className="text-[22px] font-black text-foreground tabular-nums leading-none">{stat.value}</p>
-                  <p className="text-[9px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide">{stat.label}</p>
-                  <div className="flex items-center gap-0.5">
-                    <TrendingUp className="h-2.5 w-2.5 text-emerald-400" strokeWidth={2.5} />
-                  </div>
-                </button>
-              ))}
+                { label: "Total",      value: orders.length,  today: mTotalToday,    yest: mTotalYest,    icon: <ShoppingBag className="h-5 w-5" />, color: "#0066FF", bg: "#eff6ff", onClick: () => setMobileCat("all") },
+                { label: "Selesai",    value: mSelesai,       today: mSelesaiToday,  yest: mSelesaiYest,  icon: <CheckCircle  className="h-5 w-5" />, color: "#10b981", bg: "#ecfdf5", onClick: () => setMobileStatus("selesai") },
+                { label: "Diproses",   value: mDiproses,      today: mDiprosesToday, yest: mDiprosesYest, icon: <Clock        className="h-5 w-5" />, color: "#f59e0b", bg: "#fffbeb", onClick: () => setMobileStatus("diproses") },
+                { label: "Dibatalkan", value: mDibatalkan,    today: mBatalToday,    yest: mBatalYest,    icon: <XCircle      className="h-5 w-5" />, color: "#ef4444", bg: "#fef2f2", onClick: () => setMobileStatus("dibatalkan") },
+              ].map((stat, i) => {
+                const change = mPct(stat.today, stat.yest);
+                const up = change >= 0;
+                return (
+                  <button key={stat.label} onClick={stat.onClick} className={cn("flex flex-col items-center gap-1 active:opacity-70 transition-opacity", i > 0 ? "px-1" : "pr-1")} style={{ WebkitTapHighlightColor: "transparent" }}>
+                    <div className="h-10 w-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: stat.bg, color: stat.color }}>{stat.icon}</div>
+                    <p className="text-[22px] font-black text-[#0f1c3f] tabular-nums leading-none mt-0.5">{stat.value}</p>
+                    <p className="text-[8.5px] font-semibold text-slate-400 text-center leading-tight uppercase tracking-wide px-0.5">{stat.label}</p>
+                    <div className="flex items-center gap-0.5">
+                      {up ? <TrendingUp className="h-2.5 w-2.5 text-emerald-500" strokeWidth={2.5} /> : <TrendingUp className="h-2.5 w-2.5 text-red-400 rotate-180" strokeWidth={2.5} />}
+                      <span className={cn("text-[8.5px] font-bold", up ? "text-emerald-500" : "text-red-400")}>{change === 0 ? "0%" : `${up ? "+" : ""}${change}%`}</span>
+                    </div>
+                    <span className="text-[7.5px] text-slate-300 font-medium">vs kemarin</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
+
+          {/* ── INSIGHT BANNER ── */}
+          <button
+            onClick={() => navigate("/reports")}
+            className="w-full rounded-[20px] overflow-hidden text-left active:opacity-80 transition-opacity"
+            style={{ background: "linear-gradient(135deg,#1a2d8a 0%,#2d4dd4 45%,#4f6ef7 100%)", boxShadow: "0 8px 24px rgba(45,77,212,0.25)", WebkitTapHighlightColor: "transparent" }}
+          >
+            <div className="flex items-center gap-3 px-5 py-4">
+              <div className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}>
+                <svg viewBox="0 0 24 24" className="h-6 w-6 text-white" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-[14px] font-extrabold leading-snug">Kelola bisnis travel</p>
+                <p className="text-white/70 text-[10px] mt-0.5 leading-snug">Pantau semua order dan tingkatkan layanan untuk klien Anda.</p>
+                <div className="mt-2 inline-flex items-center gap-1.5 bg-white/20 border border-white/30 rounded-full px-3 py-1">
+                  <span className="text-white text-[10px] font-bold">Lihat Insight</span>
+                  <ChevronRight className="h-3 w-3 text-white" strokeWidth={2.5} />
+                </div>
+              </div>
+              {/* Decorative illustration */}
+              <div className="shrink-0 opacity-75 pointer-events-none">
+                <svg viewBox="0 0 80 70" width="80" height="70" fill="none">
+                  <rect x="12" y="8" width="36" height="48" rx="5" fill="white" fillOpacity="0.25"/>
+                  <rect x="17" y="16" width="26" height="3" rx="1.5" fill="white" fillOpacity="0.60"/>
+                  <rect x="17" y="22" width="20" height="2" rx="1" fill="white" fillOpacity="0.40"/>
+                  <rect x="17" y="27" width="23" height="2" rx="1" fill="white" fillOpacity="0.40"/>
+                  <circle cx="19" cy="35" r="2" fill="#4ade80"/>
+                  <rect x="23" y="33.5" width="14" height="2" rx="1" fill="white" fillOpacity="0.50"/>
+                  <circle cx="19" cy="42" r="2" fill="#4ade80"/>
+                  <rect x="23" y="40.5" width="10" height="2" rx="1" fill="white" fillOpacity="0.50"/>
+                  <path d="M55 30 C57 27 63 26 67 29 L70 27 C71 26.5 72 27.5 71.5 28.5 L68 29.5 L70 33 C70.5 34 70 35 69 34.5 L66 33 L64 36 C63 37 62 36.5 62 35.5 L63 32.5 L59 31.5 L55 34 C54 34.5 53.5 33.5 54 33 L56 31 L53 30 C52 29.5 52.5 28.5 55 30Z" fill="white" fillOpacity="0.80"/>
+                  <ellipse cx="32" cy="5" rx="10" ry="4.5" fill="white" fillOpacity="0.18"/>
+                  <ellipse cx="40" cy="3" rx="7" ry="3.5" fill="white" fillOpacity="0.14"/>
+                </svg>
+              </div>
+            </div>
+          </button>
 
           {/* ── DAFTAR ORDER ── */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[15px] font-extrabold text-foreground">Daftar Order</h3>
-              <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
-                Urutkan: Terbaru <ChevronRight className="h-3.5 w-3.5" />
-              </div>
+              <p className="text-[15px] font-extrabold text-[#0f1c3f]">Daftar Order</p>
+              <button onClick={() => setMobileSortOrder(s => s === "newest" ? "oldest" : "newest")} className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>
+                Urutkan: {mobileSortOrder === "newest" ? "Terbaru" : "Terlama"}
+                <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} />
+              </button>
             </div>
 
             {loadingOrders && orders.length === 0 ? (
-              <div className="space-y-3">
-                {[1,2,3].map((i) => (
-                  <div key={i} className="bg-card rounded-3xl p-4 animate-pulse flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-2xl bg-slate-100 shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3 bg-slate-100 rounded-full w-3/4" />
-                      <div className="h-2.5 bg-slate-100 rounded-full w-1/2" />
-                      <div className="h-2 bg-slate-100 rounded-full w-1/3" />
-                    </div>
-                    <div className="space-y-2 shrink-0">
-                      <div className="h-6 w-16 bg-slate-100 rounded-full" />
-                      <div className="h-3 bg-slate-100 rounded-full w-12" />
-                    </div>
+              <div className="bg-white rounded-[20px] overflow-hidden divide-y divide-slate-100" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+                {[1,2,3].map(i => (
+                  <div key={i} className="p-4 flex items-center gap-3 animate-pulse">
+                    <div className="h-11 w-11 rounded-2xl bg-slate-100 shrink-0" />
+                    <div className="flex-1 space-y-2"><div className="h-3 bg-slate-100 rounded-full w-3/4" /><div className="h-2.5 bg-slate-100 rounded-full w-1/2" /><div className="h-2 bg-slate-100 rounded-full w-1/3" /></div>
+                    <div className="space-y-2 shrink-0"><div className="h-4 w-16 bg-slate-100 rounded-full" /><div className="h-3 bg-slate-100 rounded-full w-12" /></div>
                   </div>
                 ))}
               </div>
             ) : mobileFiltered.length === 0 ? (
-              <div className="bg-card rounded-3xl px-4 py-12 text-center flex flex-col items-center shadow-sm">
-                <div className="h-14 w-14 rounded-2xl bg-[#dbeafe] flex items-center justify-center mb-3">
-                  <ShoppingBag className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
-                </div>
-                <p className="text-[14px] font-bold text-foreground">Belum ada order</p>
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
-                  {q ? "Tidak ada hasil untuk pencarian ini." : "Buat order baru untuk memulai."}
-                </p>
-                {!q && (
-                  <button
-                    onClick={() => setAddOpen(true)}
-                    className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80 transition-opacity"
-                    style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Order Baru
-                  </button>
-                )}
+              <div className="bg-white rounded-[20px] px-4 py-12 text-center flex flex-col items-center" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+                <div className="h-14 w-14 rounded-2xl bg-[#eff6ff] flex items-center justify-center mb-3"><ShoppingBag className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} /></div>
+                <p className="text-[14px] font-bold text-[#0f1c3f]">Belum ada order</p>
+                <p className="text-[11px] text-slate-400 mt-1 leading-snug">{q ? "Tidak ada hasil untuk pencarian ini." : "Buat order baru untuk memulai."}</p>
+                {!q && <button onClick={() => setAddOpen(true)} className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}><Plus className="h-3.5 w-3.5" /> Order Baru</button>}
               </div>
             ) : (
               <motion.div
-                className="space-y-3"
-                initial="hidden"
-                animate="visible"
-                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05, delayChildren: 0.03 } } }}
+                className="bg-white rounded-[20px] overflow-hidden divide-y divide-slate-100"
+                style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+                initial="hidden" animate="visible"
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04, delayChildren: 0.02 } } }}
               >
                 {[...mobileFiltered]
-                  .sort((a, b) => new Date(b.createdAt ?? "").getTime() - new Date(a.createdAt ?? "").getTime())
+                  .sort((a, b) => {
+                    const ta = new Date(a.createdAt ?? "").getTime();
+                    const tb = new Date(b.createdAt ?? "").getTime();
+                    return mobileSortOrder === "newest" ? tb - ta : ta - tb;
+                  })
                   .map((o) => {
-                  const clientName = o.clientId ? clientNameById.get(o.clientId) : null;
-                  const ps = derivePaymentStatus(o.paidAmount ?? 0, o.totalPrice, o.paymentStatus);
+                    const clientName = o.clientId ? clientNameById.get(o.clientId) : null;
+                    const ps = derivePaymentStatus(o.paidAmount ?? 0, o.totalPrice, o.paymentStatus);
 
-                  // Type style
-                  const TYPE_CONFIG: Record<string, { label: string; icon: React.ReactNode; iconBg: string; labelColor: string }> = {
-                    flight: {
-                      label: "TIKET PESAWAT",
-                      icon: <Plane className="h-5 w-5 text-[#0066FF]" strokeWidth={1.8} />,
-                      iconBg: "#dbeafe",
-                      labelColor: "text-[#0066FF]",
-                    },
-                    visa_voa: {
-                      label: "VISA VOA",
-                      icon: <FileText className="h-5 w-5 text-[#10b981]" strokeWidth={1.8} />,
-                      iconBg: "#d1fae5",
-                      labelColor: "text-[#10b981]",
-                    },
-                    visa_student: {
-                      label: "VISA PELAJAR",
-                      icon: <FileText className="h-5 w-5 text-[#f59e0b]" strokeWidth={1.8} />,
-                      iconBg: "#fef3c7",
-                      labelColor: "text-[#f59e0b]",
-                    },
-                    umrah: {
-                      label: "PAKET & TRIP",
-                      icon: <Package className="h-5 w-5 text-[#8b5cf6]" strokeWidth={1.8} />,
-                      iconBg: "#ede9fe",
-                      labelColor: "text-[#8b5cf6]",
-                    },
-                  };
-                  const tc = TYPE_CONFIG[o.type] ?? {
-                    label: ORDER_TYPE_LABEL[o.type]?.toUpperCase() ?? "ORDER",
-                    icon: <ShoppingBag className="h-5 w-5 text-slate-500" strokeWidth={1.8} />,
-                    iconBg: "#f1f5f9",
-                    labelColor: "text-slate-500",
-                  };
+                    const TC: Record<string, { label: string; icon: React.ReactNode; iconBg: string; labelColor: string }> = {
+                      flight:       { label: "TIKET PESAWAT", icon: <Plane    className="h-5 w-5 text-[#2563eb]" strokeWidth={1.8} />, iconBg: "#eff6ff", labelColor: "#2563eb" },
+                      visa_voa:     { label: "VISA VOA",      icon: <FileText className="h-5 w-5 text-[#10b981]" strokeWidth={1.8} />, iconBg: "#ecfdf5", labelColor: "#10b981" },
+                      visa_student: { label: "VISA PELAJAR",  icon: <FileText className="h-5 w-5 text-[#f59e0b]" strokeWidth={1.8} />, iconBg: "#fffbeb", labelColor: "#d97706" },
+                      umrah:        { label: "PAKET & TRIP",  icon: <Package  className="h-5 w-5 text-[#8b5cf6]" strokeWidth={1.8} />, iconBg: "#f5f3ff", labelColor: "#7c3aed" },
+                    };
+                    const tc = TC[o.type] ?? { label: (ORDER_TYPE_LABEL[o.type] ?? "ORDER").toUpperCase(), icon: <ShoppingBag className="h-5 w-5 text-slate-500" strokeWidth={1.8} />, iconBg: "#f1f5f9", labelColor: "#64748b" };
 
-                  const STATUS_BADGE: Record<string, string> = {
-                    Draft:      "bg-slate-100 text-slate-600",
-                    Confirmed:  "bg-amber-100 text-amber-700",
-                    Processing: "bg-blue-100 text-blue-700",
-                    Done:       "bg-emerald-100 text-emerald-700",
-                    Paid:       "bg-emerald-100 text-emerald-700",
-                    Completed:  "bg-emerald-100 text-emerald-700",
-                    Cancelled:  "bg-red-100 text-red-600",
-                  };
-                  const STATUS_LABEL_MAP: Record<string, string> = {
-                    Draft: "DRAFT", Confirmed: "CONFIRMED", Processing: "DIPROSES",
-                    Done: "SELESAI", Paid: "DIBAYAR", Completed: "SELESAI", Cancelled: "DIBATALKAN",
-                  };
+                    const SB: Record<string, { bg: string; text: string; label: string }> = {
+                      Draft:      { bg: "#f1f5f9", text: "#64748b", label: "DRAFT" },
+                      Confirmed:  { bg: "#fef3c7", text: "#d97706", label: "CONFIRMED" },
+                      Processing: { bg: "#dbeafe", text: "#2563eb", label: "DIPROSES" },
+                      Done:       { bg: "#dcfce7", text: "#16a34a", label: "SELESAI" },
+                      Paid:       { bg: "#dcfce7", text: "#16a34a", label: "DIBAYAR" },
+                      Completed:  { bg: "#dcfce7", text: "#16a34a", label: "SELESAI" },
+                      Cancelled:  { bg: "#fee2e2", text: "#dc2626", label: "DIBATALKAN" },
+                    };
+                    const sb = SB[o.status] ?? SB["Draft"];
 
-                  return (
-                    <motion.button
-                      key={o.id}
-                      variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } } }}
-                      whileTap={{ scale: 0.985 }}
-                      onClick={() => navigate(`/orders/detail/${o.id}`)}
-                      className="w-full bg-card rounded-3xl p-4 shadow-sm text-left flex items-start gap-3.5 active:opacity-80 transition-opacity"
-                      style={{ WebkitTapHighlightColor: "transparent" }}
-                    >
-                      {/* Icon */}
-                      <div className="h-12 w-12 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: tc.iconBg }}>
-                        {tc.icon}
-                      </div>
+                    const dateStr = o.createdAt
+                      ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(o.createdAt)) +
+                        " • " + new Date(o.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+                      : "—";
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <p className={cn("text-[9px] font-extrabold uppercase tracking-wider mb-0.5", tc.labelColor)}>
-                          {tc.label}
-                        </p>
-                        <p className="text-[13px] font-extrabold text-foreground leading-snug truncate">
-                          {o.title || ORDER_TYPE_LABEL[o.type]}
-                        </p>
-                        {clientName && (
-                          <p className="text-[11px] text-slate-400 mt-0.5 truncate font-medium">{clientName}</p>
-                        )}
-                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <span className={cn("text-[9.5px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap", STATUS_BADGE[o.status] ?? "bg-slate-100 text-slate-600")}>
-                            {STATUS_LABEL_MAP[o.status] ?? o.status}
-                          </span>
-                          <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full border whitespace-nowrap", PAYMENT_STATUS_STYLE[ps])}>
-                            {PAYMENT_STATUS_EMOJI[ps]} {PAYMENT_STATUS_LABEL[ps]}
-                          </span>
-                          {user?.role !== "agent" && (!o.costPrice || o.costPrice === 0) && (
-                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
-                              <AlertTriangle className="h-2.5 w-2.5" />HPP
+                    const PAYMENT_DOT: Record<string, string> = { lunas: "#16a34a", partial: "#d97706", belum: "#dc2626", free: "#16a34a" };
+                    const PAYMENT_LBL: Record<string, string> = { lunas: "Lunas", partial: "Sebagian", belum: "Belum Bayar", free: "Gratis" };
+
+                    return (
+                      <motion.button
+                        key={o.id}
+                        variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } } }}
+                        onClick={() => navigate(`/orders/detail/${o.id}`)}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-slate-50 transition-colors"
+                        style={{ WebkitTapHighlightColor: "transparent" }}
+                      >
+                        {/* Type icon */}
+                        <div className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: tc.iconBg }}>{tc.icon}</div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[9px] font-extrabold uppercase tracking-wider mb-0.5" style={{ color: tc.labelColor }}>{tc.label}</p>
+                          <p className="text-[12.5px] font-extrabold text-[#0f1c3f] leading-snug truncate">{o.title || ORDER_TYPE_LABEL[o.type]}</p>
+                          {clientName && <p className="text-[10px] text-slate-400 mt-0.5 truncate font-medium">{clientName}</p>}
+                          <p className="text-[9px] text-slate-400 mt-0.5">{dateStr}</p>
+                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full" style={{ backgroundColor: sb.bg, color: sb.text }}>{sb.label}</span>
+                            <span className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: (PAYMENT_DOT[ps] ?? "#64748b") + "20", color: PAYMENT_DOT[ps] ?? "#64748b" }}>
+                              <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: PAYMENT_DOT[ps] ?? "#64748b" }} />
+                              {PAYMENT_LBL[ps] ?? ps}
                             </span>
-                          )}
+                            {user?.role !== "agent" && (!o.costPrice || o.costPrice === 0) && (
+                              <span className="inline-flex items-center gap-0.5 text-[8.5px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600">
+                                <AlertTriangle className="h-2.5 w-2.5" />HPP
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Price + chevron */}
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <p className="text-[13px] font-extrabold text-foreground tabular-nums">
-                          {fmtOrderPrice(o.totalPrice, o.currency)}
-                        </p>
-                        <ChevronRight className="h-4 w-4 text-slate-300 mt-auto" />
-                      </div>
-                    </motion.button>
-                  );
-                })}
+                        {/* Price + chevron */}
+                        <div className="flex flex-col items-end gap-1.5 shrink-0 ml-1">
+                          <p className="text-[12px] font-extrabold text-[#0f1c3f] tabular-nums whitespace-nowrap">{fmtOrderPrice(o.totalPrice, o.currency)}</p>
+                          <ChevronRight className="h-4 w-4 text-slate-300" strokeWidth={2} />
+                        </div>
+                      </motion.button>
+                    );
+                  })}
               </motion.div>
             )}
           </div>
+
+          {/* bottom padding */}
+          <div className="h-2" />
         </div>
+
+        {/* ── FLOATING ACTION BUTTON ── */}
+        <button
+          onClick={() => setAddOpen(true)}
+          className="fixed bottom-20 right-4 h-14 w-14 rounded-full text-white flex items-center justify-center shadow-xl active:scale-95 transition-transform z-40"
+          style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", boxShadow: "0 8px 24px rgba(0,102,255,0.40)", WebkitTapHighlightColor: "transparent" }}
+        >
+          <Plus className="h-6 w-6" strokeWidth={2.5} />
+        </button>
+
+        {/* ── BOTTOM NAV BAR ── */}
+        <div className="fixed bottom-0 left-0 right-0 z-50" style={{ background: "white", boxShadow: "0 -1px 0 rgba(0,0,0,0.06), 0 -4px 16px rgba(0,0,0,0.08)", paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="grid grid-cols-5 h-[60px]">
+            {([
+              { label: "Home",    path: "/",        icon: (a: boolean) => <svg viewBox="0 0 24 24" className="h-5 w-5" fill={a ? "currentColor" : "none"} stroke="currentColor" strokeWidth={a ? 0 : 1.8}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg> },
+              { label: "Order",   path: "/orders",  icon: (a: boolean) => <svg viewBox="0 0 24 24" className="h-5 w-5" fill={a ? "currentColor" : "none"} stroke="currentColor" strokeWidth={a ? 0 : 1.8}><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
+              { label: "Klien",   path: "/clients", icon: (a: boolean) => <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+              { label: "Paket",   path: "/packages",icon: (a: boolean) => <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m16.5 9.4-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> },
+              { label: "Lainnya", path: "/settings",icon: (a: boolean) => <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> },
+            ] as const).map(tab => {
+              const isActive = tab.path === "/" ? false : location.pathname.startsWith(tab.path);
+              const isOrder  = tab.path === "/orders";
+              const active   = isOrder || isActive;
+              return (
+                <button key={tab.path} onClick={() => navigate(tab.path)} className={cn("flex flex-col items-center justify-center gap-1 transition-colors active:opacity-60", active ? "text-[#0066FF]" : "text-slate-400")} style={{ WebkitTapHighlightColor: "transparent" }}>
+                  {tab.icon(active)}
+                  <span className={cn("text-[9px] font-semibold", active && "font-extrabold")}>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
       </div>
 
       {/* ══════════════════════════════════════════════════════════
