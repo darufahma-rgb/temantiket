@@ -590,8 +590,17 @@ function _layoverStr(eta?: string | null, nextEtd?: string | null): string | nul
 
 interface _StopData {
   time: string | null; code: string; city?: string | null;
-  flightNumber?: string | null; duration?: string | null; layover?: string | null;
+  flightNumber?: string | null; duration?: string | null;
+  aircraftType?: string | null; layover?: string | null;
   isTransit: boolean; isFirst: boolean; isLast: boolean;
+}
+
+interface _SimpleStopOpts {
+  leg1Duration?: string | null;
+  leg1AircraftType?: string | null;
+  leg2FlightNumber?: string | null;
+  leg2AircraftType?: string | null;
+  leg2Duration?: string | null;
 }
 
 function _buildMLStops(legs: LegInfo[]): _StopData[] {
@@ -600,13 +609,14 @@ function _buildMLStops(legs: LegInfo[]): _StopData[] {
   stops.push({
     time: legs[0].etd ?? null, code: legs[0].fromCode, city: legs[0].fromCity ?? null,
     flightNumber: legs[0].flightNumber ?? null, duration: _legDuration(legs[0].etd, legs[0].eta),
-    layover: null, isTransit: false, isFirst: true, isLast: false,
+    aircraftType: null, layover: null, isTransit: false, isFirst: true, isLast: false,
   });
   for (let i = 0; i < legs.length - 1; i++) {
     stops.push({
       time: legs[i].eta ?? null, code: legs[i].toCode, city: legs[i].toCity ?? null,
       flightNumber: legs[i + 1].flightNumber ?? null,
       duration: _legDuration(legs[i + 1].etd, legs[i + 1].eta),
+      aircraftType: null,
       layover: _layoverStr(legs[i].eta, legs[i + 1].etd),
       isTransit: true, isFirst: false, isLast: false,
     });
@@ -614,7 +624,7 @@ function _buildMLStops(legs: LegInfo[]): _StopData[] {
   const last = legs[legs.length - 1];
   stops.push({
     time: last.eta ?? null, code: last.toCode, city: last.toCity ?? null,
-    flightNumber: null, duration: null, layover: null,
+    flightNumber: null, duration: null, aircraftType: null, layover: null,
     isTransit: false, isFirst: false, isLast: true,
   });
   return stops;
@@ -625,6 +635,7 @@ function _buildSimpleStops(
   transitCode: string | null, transitCity: string | null, transitDuration: string | null,
   toCode: string, toCity: string | null, eta: string | null,
   flightNumber: string | null,
+  opts?: _SimpleStopOpts,
 ): _StopData[] {
   const parts = flightNumber ? flightNumber.split("/").map(s => s.trim()).filter(Boolean) : [];
   const isDirect = !transitCode;
@@ -632,30 +643,34 @@ function _buildSimpleStops(
   stops.push({
     time: etd, code: fromCode, city: fromCity,
     flightNumber: parts[0] ?? null,
-    duration: isDirect ? _legDuration(etd, eta) : null,
+    duration: opts?.leg1Duration ?? (isDirect ? _legDuration(etd, eta) : null),
+    aircraftType: opts?.leg1AircraftType ?? null,
     layover: null, isTransit: false, isFirst: true, isLast: isDirect,
   });
   if (!isDirect && transitCode) {
     stops.push({
       time: null, code: transitCode, city: transitCity,
-      flightNumber: parts[1] ?? parts[0] ?? null,
-      duration: null, layover: transitDuration ?? null, isTransit: true, isFirst: false, isLast: false,
+      flightNumber: opts?.leg2FlightNumber ?? (parts[1] ?? parts[0] ?? null),
+      duration: opts?.leg2Duration ?? null,
+      aircraftType: opts?.leg2AircraftType ?? null,
+      layover: transitDuration ?? null,
+      isTransit: true, isFirst: false, isLast: false,
     });
   }
   stops.push({
     time: eta, code: toCode, city: toCity,
-    flightNumber: null, duration: null, layover: null,
+    flightNumber: null, duration: null, aircraftType: null, layover: null,
     isTransit: false, isFirst: false, isLast: true,
   });
   return stops;
 }
 
-function FlightStopRow({ time, code, city, flightNumber, duration, layover, isTransit, isFirst, isLast }: _StopData) {
+function FlightStopRow({ time, code, city, flightNumber, duration, aircraftType, layover, isTransit, isFirst, isLast }: _StopData) {
   const airportName = AIRPORT_NAMES[code.toUpperCase()] ?? city ?? null;
   return (
     <div className="flex items-start gap-2">
       {/* Time */}
-      <span className="w-10 text-right text-[11px] font-mono font-bold text-slate-500 pt-1 shrink-0 leading-none">
+      <span className="w-10 text-right text-[11px] font-mono font-bold text-slate-600 pt-1 shrink-0 leading-none">
         {time ?? "—"}
       </span>
       {/* Spine */}
@@ -673,7 +688,7 @@ function FlightStopRow({ time, code, city, flightNumber, duration, layover, isTr
       <div className="flex-1 min-w-0 pb-3.5">
         <div className="flex items-start justify-between gap-1.5">
           <div className="min-w-0">
-            <p className={cn("text-[17px] font-black leading-none", isTransit ? "text-amber-600" : "text-slate-900")}>
+            <p className={cn("text-[18px] font-black leading-none", isTransit ? "text-amber-600" : "text-slate-900")}>
               {code}
             </p>
             {airportName && (
@@ -684,24 +699,31 @@ function FlightStopRow({ time, code, city, flightNumber, duration, layover, isTr
                 <span className="text-[9px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">TRANSIT</span>
                 {layover && (
                   <span className="flex items-center gap-0.5 text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                    <Clock className="w-2.5 h-2.5 shrink-0" />Transit {layover}
+                    <Clock className="w-2.5 h-2.5 shrink-0" />{layover}
                   </span>
                 )}
               </div>
             )}
           </div>
-          <div className="flex flex-col items-end gap-1 shrink-0 pt-0.5">
-            {flightNumber && (
-              <span className="text-[9.5px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md leading-none">
-                {flightNumber}
-              </span>
-            )}
-            {duration && (
-              <span className="flex items-center gap-0.5 text-[9.5px] font-semibold text-slate-500">
-                <Clock className="w-2.5 h-2.5 shrink-0" />{duration}
-              </span>
-            )}
-          </div>
+          {(flightNumber || duration || aircraftType) && !isLast && (
+            <div className="flex flex-col items-end gap-0.5 shrink-0 pt-0.5">
+              {flightNumber && (
+                <span className="text-[9.5px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md leading-none">
+                  {flightNumber}
+                </span>
+              )}
+              {aircraftType && (
+                <span className="text-[8.5px] text-slate-400 text-right leading-tight max-w-[90px]">
+                  {aircraftType}
+                </span>
+              )}
+              {duration && (
+                <span className="flex items-center gap-0.5 text-[9.5px] font-semibold text-slate-500">
+                  <Clock className="w-2.5 h-2.5 shrink-0" />{duration}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -713,7 +735,7 @@ function FlightSection({ label, date, stops, isReturn }: {
 }) {
   if (!stops.length) return null;
   return (
-    <div className="rounded-2xl bg-slate-50/80 border border-slate-100 px-4 pt-3.5 pb-1">
+    <div className="rounded-2xl bg-white border border-slate-100 shadow-sm px-4 pt-3.5 pb-1">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5">
           {isReturn
@@ -772,6 +794,13 @@ function TicketDetailModal({
         item.transitCode ?? null, item.transitCity ?? null, item.transitDuration ?? null,
         item.toCode, item.toCity ?? null, item.eta ?? null,
         item.flightNumber ?? null,
+        extInfo ? {
+          leg1Duration: extInfo.flightDuration,
+          leg1AircraftType: extInfo.aircraftType,
+          leg2FlightNumber: extInfo.leg2FlightNumber,
+          leg2AircraftType: extInfo.leg2AircraftType,
+          leg2Duration: extInfo.leg2Duration,
+        } : undefined,
       );
 
   // Build stops for return
@@ -809,11 +838,6 @@ function TicketDetailModal({
   );
   const waLink = waNumber ? `${whatsappUrl(waNumber)}?text=${waText}` : `https://wa.me/?text=${waText}`;
 
-  // Route summary info
-  const summaryFrom = item.fromCity ? `${item.fromCity} (${item.fromCode})` : item.fromCode;
-  const summaryTo = item.toCity ? `${item.toCity} (${item.toCode})` : item.toCode;
-  const transitVia = item.transitCode ?? (mlData?.transitCodes?.[0] ?? null);
-
   async function doToggle() {
     if (!onTogglePublish) return;
     setToggling(true);
@@ -850,55 +874,8 @@ function TicketDetailModal({
         </div>
 
         <div className="bg-slate-50 rounded-b-2xl">
-          {/* ── Route Summary Bar ── */}
-          <div className="mx-4 mt-4 bg-white border border-slate-200 rounded-2xl px-4 py-3.5 shadow-sm">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-black text-slate-900 leading-none">{summaryFrom}</p>
-                <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5">
-                  {outboundDate && <span>{outboundDate}</span>}
-                  {item.etd && <><span>·</span><span className="font-mono font-semibold">{item.etd}</span></>}
-                  {item.fromCode && (
-                    <span className="bg-slate-100 text-slate-500 text-[9px] font-mono px-1.5 py-0.5 rounded">{item.fromCode}</span>
-                  )}
-                </p>
-              </div>
-              <div className="flex flex-col items-center shrink-0 gap-0.5">
-                <div className="flex items-center gap-1">
-                  <div className="w-5 h-px bg-slate-300" />
-                  <Plane className="w-3.5 h-3.5 text-slate-400 rotate-90" />
-                  <div className="w-5 h-px bg-slate-300" />
-                </div>
-                {transitVia && (
-                  <span className="text-[8.5px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">
-                    via {transitVia}
-                  </span>
-                )}
-              </div>
-              <div className="text-right min-w-0 flex-1">
-                <p className="text-[14px] font-black text-slate-900 leading-none">{summaryTo}</p>
-                <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 justify-end">
-                  {(isRT || isML) ? (
-                    <>
-                      {returnDate && <span>{returnDate}</span>}
-                      {returnLeg?.returnEtd && <><span>·</span><span className="font-mono font-semibold">{returnLeg.returnEtd}</span></>}
-                      {mlData?.returnLegs?.[0]?.etd && <><span>·</span><span className="font-mono font-semibold">{mlData.returnLegs[0].etd}</span></>}
-                      <span className="bg-slate-100 text-slate-500 text-[9px] font-mono px-1.5 py-0.5 rounded">{item.toCode}</span>
-                    </>
-                  ) : (
-                    <>
-                      {outboundDate && <span>{outboundDate}</span>}
-                      {item.eta && <><span>·</span><span className="font-mono font-semibold">{item.eta}</span></>}
-                      <span className="bg-slate-100 text-slate-500 text-[9px] font-mono px-1.5 py-0.5 rounded">{item.toCode}</span>
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* ── Flight Sections ── */}
-          <div className="px-4 mt-3 space-y-3">
+          <div className="px-4 mt-4 space-y-3">
             <FlightSection
               label="Berangkat"
               date={outboundDate}
@@ -916,38 +893,30 @@ function TicketDetailModal({
           </div>
 
           {/* ── Price Section ── */}
-          <div className="mx-4 mt-3 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3.5">
-            <p className="text-[9.5px] font-bold uppercase tracking-widest text-blue-500 mb-1">
-              Harga {isML || isRT ? "/ Paket PP" : ""}
+          <div className="mx-4 mt-3 bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-4">
+            <p className="text-[9.5px] font-bold uppercase tracking-widest text-indigo-400 mb-1.5">
+              Harga {isML || isRT ? "/ Paket PP" : "/ pax"}
             </p>
-            <div className="flex items-end justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[26px] font-black font-mono text-blue-800 leading-none tabular-nums">
-                  {fmtIDR(sell)}
-                </p>
-                {isOwner && (
-                  <p className="text-[10px] text-blue-400 mt-1.5 flex items-center gap-1 flex-wrap">
-                    <span>Modal: {item.currency} {item.basePrice.toLocaleString("id-ID")}</span>
-                    {markupAmount > 0 && (
-                      <>
-                        <span className="text-blue-300">·</span>
-                        <span className="text-blue-500 font-semibold">Markup: {fmtIDR(markupAmount)}</span>
-                      </>
-                    )}
-                  </p>
+            <p className="text-[28px] font-black text-indigo-900 leading-none tabular-nums">
+              {fmtIDR(sell)}
+            </p>
+            <p className="text-[10px] text-slate-400 mt-1">sudah termasuk semua biaya layanan</p>
+            {isOwner && (
+              <p className="text-[10px] text-indigo-400 mt-2 flex items-center gap-1 flex-wrap">
+                <span>Modal: {item.currency} {item.basePrice.toLocaleString("id-ID")}</span>
+                {markupAmount > 0 && (
+                  <>
+                    <span className="text-indigo-300">·</span>
+                    <span className="text-indigo-500 font-semibold">Markup: {fmtIDR(markupAmount)}</span>
+                  </>
                 )}
-              </div>
-            </div>
+              </p>
+            )}
           </div>
 
-          {/* ── Detail rows (aircraft, duration, terminal, bagasi, validity) ── */}
-          {(extInfo?.aircraftType || extInfo?.flightDuration || extInfo?.leg2FlightNumber || extInfo?.leg2AircraftType || extInfo?.leg2Duration || item.terminal || item.baggageInfo || item.validUntil) && (
+          {/* ── Detail rows (terminal, bagasi, validity) ── */}
+          {(item.terminal || item.baggageInfo || item.validUntil) && (
             <div className="mx-4 mt-3 divide-y divide-slate-100 rounded-2xl bg-white border border-slate-100 overflow-hidden">
-              {extInfo?.aircraftType && <DetailRow label="Tipe Pesawat" value={extInfo.aircraftType} />}
-              {extInfo?.flightDuration && <DetailRow label="Durasi Penerbangan" value={extInfo.flightDuration} mono />}
-              {extInfo?.leg2FlightNumber && <DetailRow label="No. Penerbangan Leg 2" value={extInfo.leg2FlightNumber} mono />}
-              {extInfo?.leg2AircraftType && <DetailRow label="Tipe Pesawat Leg 2" value={extInfo.leg2AircraftType} />}
-              {extInfo?.leg2Duration && <DetailRow label="Durasi Leg 2" value={extInfo.leg2Duration} mono />}
               {item.terminal && <DetailRow label="Terminal Keberangkatan" value={item.terminal} mono />}
               {item.baggageInfo && <DetailRow label="Bagasi" value={item.baggageInfo} />}
               {item.validUntil && (

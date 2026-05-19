@@ -26,6 +26,7 @@ export interface StopData {
   city?: string | null;
   flightNumber?: string | null;
   duration?: string | null;
+  aircraftType?: string | null;
   layover?: string | null;
   isTransit: boolean;
   isFirst: boolean;
@@ -60,6 +61,7 @@ export function buildMLStops(legs: LegInfo[]): StopData[] {
     time: legs[0].etd ?? null, code: legs[0].fromCode, city: legs[0].fromCity ?? null,
     flightNumber: legs[0].flightNumber ?? null,
     duration: calcLegDuration(legs[0].etd, legs[0].eta),
+    aircraftType: null,
     layover: null, isTransit: false, isFirst: true, isLast: false,
   });
   for (let i = 0; i < legs.length - 1; i++) {
@@ -67,6 +69,7 @@ export function buildMLStops(legs: LegInfo[]): StopData[] {
       time: legs[i].eta ?? null, code: legs[i].toCode, city: legs[i].toCity ?? null,
       flightNumber: legs[i + 1].flightNumber ?? null,
       duration: calcLegDuration(legs[i + 1].etd, legs[i + 1].eta),
+      aircraftType: null,
       layover: calcLayoverStr(legs[i].eta, legs[i + 1].etd),
       isTransit: true, isFirst: false, isLast: false,
     });
@@ -74,10 +77,18 @@ export function buildMLStops(legs: LegInfo[]): StopData[] {
   const last = legs[legs.length - 1];
   stops.push({
     time: last.eta ?? null, code: last.toCode, city: last.toCity ?? null,
-    flightNumber: null, duration: null, layover: null,
+    flightNumber: null, duration: null, aircraftType: null, layover: null,
     isTransit: false, isFirst: false, isLast: true,
   });
   return stops;
+}
+
+export interface SimpleStopOpts {
+  leg1Duration?: string | null;
+  leg1AircraftType?: string | null;
+  leg2FlightNumber?: string | null;
+  leg2AircraftType?: string | null;
+  leg2Duration?: string | null;
 }
 
 export function buildSimpleStops(
@@ -85,6 +96,7 @@ export function buildSimpleStops(
   transitCode: string | null, transitCity: string | null, transitDuration: string | null,
   toCode: string, toCity: string | null, eta: string | null,
   flightNumber: string | null,
+  opts?: SimpleStopOpts,
 ): StopData[] {
   const parts = flightNumber ? flightNumber.split("/").map((s) => s.trim()).filter(Boolean) : [];
   const isDirect = !transitCode;
@@ -92,34 +104,36 @@ export function buildSimpleStops(
   stops.push({
     time: etd, code: fromCode, city: fromCity,
     flightNumber: parts[0] ?? null,
-    duration: isDirect ? calcLegDuration(etd, eta) : null,
+    duration: opts?.leg1Duration ?? (isDirect ? calcLegDuration(etd, eta) : null),
+    aircraftType: opts?.leg1AircraftType ?? null,
     layover: null, isTransit: false, isFirst: true, isLast: isDirect,
   });
   if (!isDirect && transitCode) {
     stops.push({
       time: null, code: transitCode, city: transitCity,
-      flightNumber: parts[1] ?? parts[0] ?? null,
-      duration: null,
+      flightNumber: opts?.leg2FlightNumber ?? (parts[1] ?? parts[0] ?? null),
+      duration: opts?.leg2Duration ?? null,
+      aircraftType: opts?.leg2AircraftType ?? null,
       layover: transitDuration ?? null,
       isTransit: true, isFirst: false, isLast: false,
     });
   }
   stops.push({
     time: eta, code: toCode, city: toCity,
-    flightNumber: null, duration: null, layover: null,
+    flightNumber: null, duration: null, aircraftType: null, layover: null,
     isTransit: false, isFirst: false, isLast: true,
   });
   return stops;
 }
 
 export function FlightStopRow({
-  time, code, city, flightNumber, duration, layover,
+  time, code, city, flightNumber, duration, aircraftType, layover,
   isTransit, isFirst, isLast,
 }: StopData) {
   const airportName = AIRPORT_NAMES[code.toUpperCase()] ?? city ?? null;
   return (
     <div className="flex items-start gap-2">
-      <span className="w-10 text-right text-[11px] font-mono font-bold text-slate-500 pt-1 shrink-0 leading-none">
+      <span className="w-10 text-right text-[11px] font-mono font-bold text-slate-600 pt-1 shrink-0 leading-none">
         {time ?? "—"}
       </span>
       <div className="flex flex-col items-center w-4 shrink-0 pt-0.5">
@@ -140,7 +154,7 @@ export function FlightStopRow({
       <div className="flex-1 min-w-0 pb-3.5">
         <div className="flex items-start justify-between gap-1.5">
           <div className="min-w-0">
-            <p className={cn("text-[17px] font-black leading-none", isTransit ? "text-amber-600" : "text-slate-900")}>
+            <p className={cn("text-[18px] font-black leading-none", isTransit ? "text-amber-600" : "text-slate-900")}>
               {code}
             </p>
             {airportName && (
@@ -160,19 +174,25 @@ export function FlightStopRow({
               </div>
             )}
           </div>
-          <div className="flex flex-col items-end gap-1 shrink-0 pt-0.5">
-            {flightNumber && (
-              <span className="text-[9.5px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md leading-none">
-                {flightNumber}
-              </span>
-            )}
-            {duration && (
-              <span className="flex items-center gap-0.5 text-[9.5px] font-semibold text-slate-500">
-                <Clock className="w-2.5 h-2.5 shrink-0" />
-                {duration}
-              </span>
-            )}
-          </div>
+          {(flightNumber || duration || aircraftType) && !isLast && (
+            <div className="flex flex-col items-end gap-0.5 shrink-0 pt-0.5">
+              {flightNumber && (
+                <span className="text-[9.5px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md leading-none">
+                  {flightNumber}
+                </span>
+              )}
+              {aircraftType && (
+                <span className="text-[8.5px] text-slate-400 text-right leading-tight max-w-[90px]">
+                  {aircraftType}
+                </span>
+              )}
+              {duration && (
+                <span className="flex items-center gap-0.5 text-[9.5px] font-semibold text-slate-500">
+                  <Clock className="w-2.5 h-2.5 shrink-0" />{duration}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -189,7 +209,7 @@ export function FlightSection({
 }) {
   if (!stops.length) return null;
   return (
-    <div className="rounded-2xl bg-slate-50/80 border border-slate-100 px-4 pt-3.5 pb-1">
+    <div className="rounded-2xl bg-white border border-slate-100 shadow-sm px-4 pt-3.5 pb-1">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5">
           {isReturn

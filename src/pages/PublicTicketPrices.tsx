@@ -26,7 +26,6 @@ import { cn } from "@/lib/utils";
 import {
   getAirlineGradient, getAirlineLogoUrl,
   decodeMultiLeg, decodeReturnLeg, buildRouteLabel, decodeExtended,
-  type ExtendedFlightData,
 } from "@/lib/ticketPriceAI";
 import {
   loadMarkup, sellingPrice, isExpired, fmtIDR, fmtDate,
@@ -415,6 +414,14 @@ function PublicDetailModal({
     ? (mlData?.returnLegs?.[0]?.date ? fmtDate(mlData.returnLegs[0].date) : null)
     : (returnLeg?.returnDate ? fmtDate(returnLeg.returnDate) : null);
 
+  const extOpts = extInfo ? {
+    leg1Duration: extInfo.flightDuration,
+    leg1AircraftType: extInfo.aircraftType,
+    leg2FlightNumber: extInfo.leg2FlightNumber,
+    leg2AircraftType: extInfo.leg2AircraftType,
+    leg2Duration: extInfo.leg2Duration,
+  } : undefined;
+
   const outboundStops = isML && mlData?.outboundLegs
     ? buildMLStops(mlData.outboundLegs)
     : buildSimpleStops(
@@ -422,6 +429,7 @@ function PublicDetailModal({
         item.transitCode ?? null, item.transitCity ?? null, item.transitDuration ?? null,
         item.toCode, item.toCity ?? null, item.eta ?? null,
         item.flightNumber ?? null,
+        extOpts,
       );
 
   const returnStops = isML && (mlData?.returnLegs?.length ?? 0) > 0
@@ -483,56 +491,10 @@ function PublicDetailModal({
             )}
           </div>
 
-          {/* Detail rows */}
-          {(extInfo?.aircraftType || extInfo?.flightDuration || extInfo?.leg2FlightNumber || extInfo?.leg2AircraftType || extInfo?.leg2Duration || item.terminal || item.baggageInfo || item.validUntil) && (
+          {/* Detail rows (terminal, bagasi, validity only — aircraft/duration shown inline in stops) */}
+          {(item.terminal || item.baggageInfo || item.validUntil) && (
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Detail</p>
               <div className="divide-y divide-slate-100 rounded-xl border border-slate-100 overflow-hidden">
-                {extInfo?.aircraftType && (
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <Plane className="w-3.5 h-3.5 text-slate-400" />
-                      Tipe Pesawat
-                    </div>
-                    <span className="text-[11px] font-semibold text-slate-700">{extInfo.aircraftType}</span>
-                  </div>
-                )}
-                {extInfo?.flightDuration && (
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      Durasi Penerbangan
-                    </div>
-                    <span className="text-[11px] font-semibold text-slate-700 font-mono">{extInfo.flightDuration}</span>
-                  </div>
-                )}
-                {extInfo?.leg2FlightNumber && (
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <Plane className="w-3.5 h-3.5 text-amber-400" />
-                      No. Penerbangan Leg 2
-                    </div>
-                    <span className="text-[11px] font-semibold text-slate-700 font-mono">{extInfo.leg2FlightNumber}</span>
-                  </div>
-                )}
-                {extInfo?.leg2AircraftType && (
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <Plane className="w-3.5 h-3.5 text-amber-400" />
-                      Tipe Pesawat Leg 2
-                    </div>
-                    <span className="text-[11px] font-semibold text-slate-700">{extInfo.leg2AircraftType}</span>
-                  </div>
-                )}
-                {extInfo?.leg2Duration && (
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <Clock className="w-3.5 h-3.5 text-amber-400" />
-                      Durasi Leg 2
-                    </div>
-                    <span className="text-[11px] font-semibold text-slate-700 font-mono">{extInfo.leg2Duration}</span>
-                  </div>
-                )}
                 {item.terminal && (
                   <div className="flex items-center justify-between px-4 py-2.5 bg-white">
                     <div className="flex items-center gap-2 text-[11px] text-slate-500">
