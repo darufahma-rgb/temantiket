@@ -29,7 +29,7 @@ import {
   decodeMultiLeg, decodeReturnLeg, buildRouteLabel, decodeExtended,
 } from "@/lib/ticketPriceAI";
 import {
-  loadMarkup, sellingPrice, isExpired, fmtIDR, fmtDate, listTicketPrices,
+  loadMarkup, sellingPrice, isExpired, fmtIDR, fmtDate,
   type TicketPrice,
 } from "@/features/ticketPrices/ticketPricesRepo";
 import { useRatesStore } from "@/store/ratesStore";
@@ -1639,8 +1639,12 @@ export default function PublicTicketPrices() {
           <button
             onClick={() => {
               setLoading(true);
-              listTicketPrices(true)
-                .then(setTickets)
+              fetch("/api/public/ticket-prices")
+                .then((r) => {
+                  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                  return r.json() as Promise<TicketPrice[]>;
+                })
+                .then((items) => setTickets(items))
                 .catch(console.error)
                 .finally(() => setLoading(false));
             }}
