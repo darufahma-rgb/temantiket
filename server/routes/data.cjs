@@ -387,7 +387,6 @@ function registerTicketPriceRoutes(app) {
         transit_city:     b.transit_city ?? null,
         transit_duration: b.transit_duration ?? null,
         baggage_info:     b.baggage_info ?? null,
-        markup:           b.markup ?? 0,
       };
       if (b.id) payload.id = b.id;
       const { data, error } = await getSb().from('ticket_prices').insert(payload).select().single();
@@ -423,7 +422,6 @@ function registerTicketPriceRoutes(app) {
           transit_city:     b.transit_city,
           transit_duration: b.transit_duration,
           baggage_info:     b.baggage_info,
-          markup:           b.markup,
           updated_at:       new Date().toISOString(),
         }))
         .eq('id', req.params.id)

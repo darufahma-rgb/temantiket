@@ -54,6 +54,13 @@ export function resetTicketPricesCache() {
   _mem.items = undefined;
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+/** Treat empty string / "-" / "--" as null (means "direct flight, no transit"). */
+function normalizeTransit(v: string | null | undefined): string | null {
+  if (!v || v.trim() === "" || v === "-" || v === "--") return null;
+  return v;
+}
+
 // ── Row mappers ──────────────────────────────────────────────────────────────
 const fromRow = (r: Record<string, unknown>): TicketPrice => ({
   id:              String(r.id),
@@ -77,8 +84,8 @@ const fromRow = (r: Record<string, unknown>): TicketPrice => ({
   etd:             (r.etd as string) ?? null,
   eta:             (r.eta as string) ?? null,
   terminal:        (r.terminal as string) ?? null,
-  transitCode:     (r.transit_code as string) ?? null,
-  transitCity:     (r.transit_city as string) ?? null,
+  transitCode:     normalizeTransit(r.transit_code as string),
+  transitCity:     normalizeTransit(r.transit_city as string),
   transitDuration: (r.transit_duration as string) ?? null,
   baggageInfo:     (r.baggage_info as string) ?? null,
 });

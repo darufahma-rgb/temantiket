@@ -163,6 +163,12 @@ function withTimeout(promise, ms, message) {
    Uses service role to bypass RLS and return only
    is_published=true rows for the public price list.
 ────────────────────────────────────────────── */
+/** "-" / "--" / empty means direct flight — normalize to null. */
+function normTransit(v) {
+  if (!v || String(v).trim() === '' || v === '-' || v === '--') return null;
+  return v;
+}
+
 app.get('/api/public/ticket-prices', async (req, res) => {
   try {
     const sb = getSb();
@@ -195,12 +201,12 @@ app.get('/api/public/ticket-prices', async (req, res) => {
       etd:             r.etd ?? null,
       eta:             r.eta ?? null,
       terminal:        r.terminal ?? null,
-      transitCode:     r.transit_code ?? null,
-      transitCity:     r.transit_city ?? null,
+      transitCode:     normTransit(r.transit_code),
+      transitCity:     normTransit(r.transit_city),
       transitDuration: r.transit_duration ?? null,
       baggageInfo:     r.baggage_info ?? null,
     }));
-    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
     return res.status(200).json(items);
   } catch (e) {
     return res.status(500).json({ error: e.message });

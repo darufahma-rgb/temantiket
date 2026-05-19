@@ -1098,7 +1098,7 @@ export default function PublicTicketPrices() {
 
   useEffect(() => {
     void refresh();
-    fetch("/api/public/ticket-prices")
+    fetch("/api/public/ticket-prices", { cache: "no-store" })
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json() as Promise<TicketPrice[]>;
@@ -1143,8 +1143,9 @@ export default function PublicTicketPrices() {
       // Airline
       if (filters.airline && t.airline !== filters.airline) return false;
       // Flight type
-      if (filters.flightType === "direct" && t.transitCode) return false;
-      if (filters.flightType === "transit" && !t.transitCode) return false;
+      const hasTransit = !!t.transitCode;
+      if (filters.flightType === "direct" && hasTransit) return false;
+      if (filters.flightType === "transit" && !hasTransit) return false;
       return true;
     });
 
@@ -1639,7 +1640,7 @@ export default function PublicTicketPrices() {
           <button
             onClick={() => {
               setLoading(true);
-              fetch("/api/public/ticket-prices")
+              fetch("/api/public/ticket-prices", { cache: "no-store" })
                 .then((r) => {
                   if (!r.ok) throw new Error(`HTTP ${r.status}`);
                   return r.json() as Promise<TicketPrice[]>;
