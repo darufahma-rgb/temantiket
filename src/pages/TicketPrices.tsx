@@ -1095,166 +1095,206 @@ function TicketFormDialog({
     await onSave({ ...form, notes: finalNotes });
   };
 
+  /* ── reusable section header pill ── */
+  const Sec = ({ icon, label, color = "sky" }: { icon: ReactNode; label: string; color?: "sky" | "violet" | "emerald" | "slate" | "amber" }) => {
+    const cls: Record<string, string> = {
+      sky:    "bg-sky-100 text-sky-600",
+      violet: "bg-violet-100 text-violet-600",
+      emerald:"bg-emerald-100 text-emerald-600",
+      slate:  "bg-slate-100 text-slate-500",
+      amber:  "bg-amber-100 text-amber-700",
+    };
+    return (
+      <div className="flex items-center gap-2 mb-3">
+        <span className={cn("w-5 h-5 rounded-full flex items-center justify-center shrink-0", cls[color])}>
+          {icon}
+        </span>
+        <span className={cn("text-[11px] font-bold uppercase tracking-wider", cls[color].split(" ")[1])}>
+          {label}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 flex-wrap">
-            <Plane className="w-4 h-4 text-sky-600 shrink-0" />
-            {form.airline ? `Edit: ${form.airline}` : "Tambah Harga Tiket"}
-            {isML && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
-                <ArrowLeftRight className="w-3 h-3" />Multi-Leg PP
-              </span>
-            )}
-            {isRT && !isML && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
-                <ArrowLeftRight className="w-3 h-3" />PP
-              </span>
-            )}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="p-0 gap-0 max-w-lg w-full h-[100dvh] sm:h-auto sm:max-h-[92vh] flex flex-col overflow-hidden rounded-none sm:rounded-2xl border-0">
+        <DialogTitle className="sr-only">
+          {form.airline ? `Edit: ${form.airline}` : "Tambah Harga Tiket"}
+        </DialogTitle>
 
-        <div className="space-y-4">
-          {/* ── Airline ── */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2 space-y-1">
-              <Label className="text-xs">Nama Maskapai</Label>
-              <Input placeholder="Qatar Airways" value={form.airline}
-                onChange={(e) => set({ airline: e.target.value })} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Kode IATA</Label>
-              <Input placeholder="QR" maxLength={2} value={form.airlineCode}
-                onChange={(e) => set({ airlineCode: e.target.value.toUpperCase() })}
-                className="font-mono uppercase" />
+        {/* ── Sticky header ── */}
+        <div className="flex items-center gap-1 px-2 border-b border-slate-100 bg-white shrink-0" style={{ height: 52 }}>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-slate-100 active:bg-slate-200 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-slate-700" />
+          </button>
+          <div className="flex-1 ml-1 min-w-0">
+            <p className="font-bold text-[15px] text-slate-900 leading-none truncate">
+              {form.airline ? `Edit: ${form.airline}` : "Tambah Harga Tiket"}
+            </p>
+          </div>
+          {(isML || isRT) && (
+            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full mr-1">
+              <ArrowLeftRight className="w-3 h-3" />
+              {isML ? "Multi-Leg PP" : "PP"}
+            </span>
+          )}
+        </div>
+
+        {/* ── Scrollable body ── */}
+        <div className="flex-1 overflow-y-auto bg-[#f5f6f8] space-y-2 pb-2 pt-2">
+
+          {/* ══ Maskapai ══ */}
+          <div className="bg-white mx-0 px-4 pt-4 pb-4">
+            <Sec icon={<Plane className="w-3 h-3" />} label="Maskapai" color="sky" />
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2 space-y-1">
+                <Label className="text-xs text-slate-500">Nama Maskapai</Label>
+                <Input placeholder="Qatar Airways" value={form.airline}
+                  onChange={(e) => set({ airline: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">Kode IATA</Label>
+                <Input placeholder="QR" maxLength={2} value={form.airlineCode}
+                  onChange={(e) => set({ airlineCode: e.target.value.toUpperCase() })}
+                  className="font-mono uppercase" />
+              </div>
             </div>
           </div>
 
-          {isPP && <LegDivider label="↗ Leg Berangkat" />}
+          {/* ══ Penerbangan Pergi ══ */}
+          <div className="bg-white px-4 pt-4 pb-4 space-y-3">
+            <Sec
+              icon={<Plane className="w-3 h-3" />}
+              label={isPP ? "↗ Penerbangan Pergi" : "Penerbangan"}
+              color="violet"
+            />
 
-          {/* ── Outbound flight number + times ── */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">No. Penerbangan</Label>
-              <Input placeholder="QR818" value={form.flightNumber ?? ""}
-                onChange={(e) => set({ flightNumber: e.target.value.toUpperCase() || null })}
-                className="font-mono uppercase" />
+            {/* No. Penerbangan + ETD + ETA */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">No. Penerbangan</Label>
+                <Input placeholder="QR818" value={form.flightNumber ?? ""}
+                  onChange={(e) => set({ flightNumber: e.target.value.toUpperCase() || null })}
+                  className="font-mono uppercase" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">ETD</Label>
+                <Input placeholder="23:55" value={form.etd ?? ""}
+                  onChange={(e) => set({ etd: e.target.value || null })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">ETA</Label>
+                <Input placeholder="05:30" value={form.eta ?? ""}
+                  onChange={(e) => set({ eta: e.target.value || null })} />
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">ETD</Label>
-              <Input placeholder="23:55" value={form.etd ?? ""}
-                onChange={(e) => set({ etd: e.target.value || null })} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">ETA</Label>
-              <Input placeholder="05:30" value={form.eta ?? ""}
-                onChange={(e) => set({ eta: e.target.value || null })} />
-            </div>
-          </div>
 
-          {/* ── Tipe Pesawat + Durasi Penerbangan ── */}
-          {!isML && (
+            {/* Tipe Pesawat + Durasi */}
+            {!isML && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-500">Tipe Pesawat (opsional)</Label>
+                  <Input placeholder="Boeing 777-300ER" value={extData.aircraftType ?? ""}
+                    onChange={(e) => setExt({ aircraftType: e.target.value || null })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-500">Durasi Penerbangan</Label>
+                  <Input placeholder="7j 45m" value={extData.flightDuration ?? ""}
+                    onChange={(e) => setExt({ flightDuration: e.target.value || null })} />
+                </div>
+              </div>
+            )}
+
+            {/* Dari / Ke IATA + Kota */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">Tipe Pesawat (opsional)</Label>
-                <Input placeholder="Boeing 777-300ER" value={extData.aircraftType ?? ""}
-                  onChange={(e) => setExt({ aircraftType: e.target.value || null })} />
+                <Label className="text-xs text-slate-500">Dari (IATA)</Label>
+                <Input placeholder="CGK" maxLength={3} value={form.fromCode}
+                  onChange={(e) => set({ fromCode: e.target.value.toUpperCase() })}
+                  className="font-mono uppercase" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Durasi Penerbangan</Label>
-                <Input placeholder="7j 45m" value={extData.flightDuration ?? ""}
-                  onChange={(e) => setExt({ flightDuration: e.target.value || null })} />
+                <Label className="text-xs text-slate-500">Ke (IATA)</Label>
+                <Input placeholder="JED" maxLength={3} value={form.toCode}
+                  onChange={(e) => set({ toCode: e.target.value.toUpperCase() })}
+                  className="font-mono uppercase" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">Kota Asal</Label>
+                <Input placeholder="Jakarta" value={form.fromCity}
+                  onChange={(e) => set({ fromCity: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">Kota Tujuan</Label>
+                <Input placeholder="Jeddah" value={form.toCity}
+                  onChange={(e) => set({ toCity: e.target.value })} />
               </div>
             </div>
-          )}
 
-          {/* ── Outbound route ── */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Dari (IATA)</Label>
-              <Input placeholder="CGK" maxLength={3} value={form.fromCode}
-                onChange={(e) => set({ fromCode: e.target.value.toUpperCase() })}
-                className="font-mono uppercase" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Ke (IATA)</Label>
-              <Input placeholder="JED" maxLength={3} value={form.toCode}
-                onChange={(e) => set({ toCode: e.target.value.toUpperCase() })}
-                className="font-mono uppercase" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Kota Asal</Label>
-              <Input placeholder="Jakarta" value={form.fromCity}
-                onChange={(e) => set({ fromCity: e.target.value })} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Kota Tujuan</Label>
-              <Input placeholder="Jeddah" value={form.toCity}
-                onChange={(e) => set({ toCity: e.target.value })} />
-            </div>
-          </div>
-
-          {/* ── Outbound transit ── */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Transit (IATA)</Label>
-              <Input placeholder="DOH" maxLength={3} value={form.transitCode ?? ""}
-                onChange={(e) => set({ transitCode: e.target.value.toUpperCase() || null })}
-                className="font-mono uppercase" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Kota Transit</Label>
-              <Input placeholder="Doha" value={form.transitCity ?? ""}
-                onChange={(e) => set({ transitCity: e.target.value || null })} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Durasi Transit</Label>
-              <Input placeholder="2j 30m" value={form.transitDuration ?? ""}
-                onChange={(e) => set({ transitDuration: e.target.value || null })} />
-            </div>
-          </div>
-
-          {/* ── Leg 2 detail (after transit) ── */}
-          {!isML && form.transitCode && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-3 space-y-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 flex items-center gap-1.5">
-                <Plane className="w-3 h-3" />
-                Penerbangan Leg 2 · setelah transit {form.transitCode}
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">No. Penerbangan</Label>
-                  <Input placeholder="EK927" value={extData.leg2FlightNumber ?? ""}
-                    onChange={(e) => setExt({ leg2FlightNumber: e.target.value.toUpperCase() || null })}
-                    className="font-mono uppercase" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Tipe Pesawat</Label>
-                  <Input placeholder="A380-800" value={extData.leg2AircraftType ?? ""}
-                    onChange={(e) => setExt({ leg2AircraftType: e.target.value || null })} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Durasi</Label>
-                  <Input placeholder="3j 50m" value={extData.leg2Duration ?? ""}
-                    onChange={(e) => setExt({ leg2Duration: e.target.value || null })} />
-                </div>
+            {/* Transit */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">Transit (IATA)</Label>
+                <Input placeholder="DOH" maxLength={3} value={form.transitCode ?? ""}
+                  onChange={(e) => set({ transitCode: e.target.value.toUpperCase() || null })}
+                  className="font-mono uppercase" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">Kota Transit</Label>
+                <Input placeholder="Doha" value={form.transitCity ?? ""}
+                  onChange={(e) => set({ transitCity: e.target.value || null })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">Durasi Transit</Label>
+                <Input placeholder="2j 30m" value={form.transitDuration ?? ""}
+                  onChange={(e) => set({ transitDuration: e.target.value || null })} />
               </div>
             </div>
-          )}
 
-          {/* ── Outbound date ── */}
-          <div className="space-y-1">
-            <Label className="text-xs">Tanggal Keberangkatan</Label>
-            <Input type="date" value={form.departDate ?? ""}
-              onChange={(e) => set({ departDate: e.target.value || null })} />
+            {/* Leg 2 (after transit) */}
+            {!isML && form.transitCode && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 flex items-center gap-1.5">
+                  <Plane className="w-3 h-3" />
+                  Leg 2 · setelah transit {form.transitCode}
+                </p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">No. Penerbangan</Label>
+                    <Input placeholder="EK927" value={extData.leg2FlightNumber ?? ""}
+                      onChange={(e) => setExt({ leg2FlightNumber: e.target.value.toUpperCase() || null })}
+                      className="font-mono uppercase" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Tipe Pesawat</Label>
+                    <Input placeholder="A380-800" value={extData.leg2AircraftType ?? ""}
+                      onChange={(e) => setExt({ leg2AircraftType: e.target.value || null })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Durasi</Label>
+                    <Input placeholder="3j 50m" value={extData.leg2Duration ?? ""}
+                      onChange={(e) => setExt({ leg2Duration: e.target.value || null })} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tanggal Keberangkatan */}
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-500">Tanggal Keberangkatan</Label>
+              <Input type="date" value={form.departDate ?? ""}
+                onChange={(e) => set({ departDate: e.target.value || null })} />
+            </div>
           </div>
 
-          {/* ══ RETURN LEG SECTION ══ */}
+          {/* ══ Penerbangan Pulang ══ */}
           {!isML && (
-            <>
+            <div className="bg-white px-4 pt-4 pb-4">
               {!isRT ? (
-                /* ── Tombol Tambah Kepulangan ── */
                 <button
                   type="button"
                   onClick={addReturnLeg}
@@ -1269,16 +1309,15 @@ function TicketFormDialog({
                   Tambah Info Kepulangan (Pulang-Pergi)
                 </button>
               ) : (
-                /* ── Collapsible Return Leg Card ── */
-                <div className="rounded-xl border border-violet-200 bg-violet-50/30 overflow-hidden">
-                  {/* Header — always visible */}
+                <div className="rounded-xl border border-violet-200 bg-violet-50/20 overflow-hidden">
+                  {/* Header */}
                   <div
                     className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none hover:bg-violet-50/60 transition-colors"
                     onClick={() => setReturnOpen((v) => !v)}
                   >
                     <div className="flex items-center gap-1.5 flex-1 min-w-0">
                       <ArrowLeftRight className="w-3.5 h-3.5 text-violet-500 shrink-0" />
-                      <span className="text-[12px] font-bold text-violet-700">Leg Kepulangan</span>
+                      <span className="text-[12px] font-bold text-violet-700">↩ Penerbangan Pulang</span>
                       {returnForm?.returnFromCode && returnForm?.returnToCode && (
                         <span className="text-[10px] font-mono bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded">
                           {returnForm.returnFromCode} → {returnForm.returnToCode}
@@ -1294,7 +1333,6 @@ function TicketFormDialog({
                       type="button"
                       onClick={(e) => { e.stopPropagation(); removeReturnLeg(); }}
                       className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors shrink-0"
-                      title="Hapus info kepulangan"
                     >
                       <Trash2 className="w-3 h-3" />
                       <span className="hidden sm:inline">Hapus</span>
@@ -1304,80 +1342,71 @@ function TicketFormDialog({
                       : <ChevronDown className="w-4 h-4 text-violet-400 shrink-0" />
                     }
                   </div>
-
-                  {/* Body — collapsible */}
+                  {/* Body */}
                   {returnOpen && returnForm && (
-                    <div className="px-3 pb-3 space-y-3 border-t border-violet-100">
-                      <div className="h-1" />
-                      {/* No. Penerbangan + ETD + ETA */}
+                    <div className="px-3 pb-3 space-y-3 border-t border-violet-100 pt-3">
                       <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1">
-                          <Label className="text-xs">No. Penerbangan</Label>
+                          <Label className="text-xs text-slate-500">No. Penerbangan</Label>
                           <Input placeholder="QR819" value={returnForm.returnFlightNumber ?? ""}
                             onChange={(e) => setRt({ returnFlightNumber: e.target.value.toUpperCase() || null })}
                             className="font-mono uppercase" />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">ETD</Label>
+                          <Label className="text-xs text-slate-500">ETD</Label>
                           <Input placeholder="08:00" value={returnForm.returnEtd ?? ""}
                             onChange={(e) => setRt({ returnEtd: e.target.value || null })} />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">ETA</Label>
+                          <Label className="text-xs text-slate-500">ETA</Label>
                           <Input placeholder="18:30" value={returnForm.returnEta ?? ""}
                             onChange={(e) => setRt({ returnEta: e.target.value || null })} />
                         </div>
                       </div>
-
-                      {/* Dari / Ke IATA + Kota */}
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <Label className="text-xs">Dari (IATA)</Label>
+                          <Label className="text-xs text-slate-500">Dari (IATA)</Label>
                           <Input placeholder="JED" maxLength={3} value={returnForm.returnFromCode ?? ""}
                             onChange={(e) => setRt({ returnFromCode: e.target.value.toUpperCase() || null })}
                             className="font-mono uppercase" />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Ke (IATA)</Label>
+                          <Label className="text-xs text-slate-500">Ke (IATA)</Label>
                           <Input placeholder="CGK" maxLength={3} value={returnForm.returnToCode ?? ""}
                             onChange={(e) => setRt({ returnToCode: e.target.value.toUpperCase() || null })}
                             className="font-mono uppercase" />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Kota Asal Pulang</Label>
+                          <Label className="text-xs text-slate-500">Kota Asal Pulang</Label>
                           <Input placeholder="Jeddah" value={returnForm.returnFromCity ?? ""}
                             onChange={(e) => setRt({ returnFromCity: e.target.value || null })} />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Kota Tujuan Pulang</Label>
+                          <Label className="text-xs text-slate-500">Kota Tujuan Pulang</Label>
                           <Input placeholder="Jakarta" value={returnForm.returnToCity ?? ""}
                             onChange={(e) => setRt({ returnToCity: e.target.value || null })} />
                         </div>
                       </div>
-
-                      {/* Transit (opsional) */}
                       <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1">
-                          <Label className="text-xs">Transit (IATA)</Label>
+                          <Label className="text-xs text-slate-500">Transit (IATA)</Label>
                           <Input placeholder="DOH" maxLength={3} value={returnForm.returnTransitCode ?? ""}
                             onChange={(e) => setRt({ returnTransitCode: e.target.value.toUpperCase() || null })}
                             className="font-mono uppercase" />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Kota Transit</Label>
+                          <Label className="text-xs text-slate-500">Kota Transit</Label>
                           <Input placeholder="Doha" value={returnForm.returnTransitCity ?? ""}
                             onChange={(e) => setRt({ returnTransitCity: e.target.value || null })} />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Durasi Transit</Label>
+                          <Label className="text-xs text-slate-500">Durasi Transit</Label>
                           <Input placeholder="2j 30m" value={returnForm.returnTransitDuration ?? ""}
                             onChange={(e) => setRt({ returnTransitDuration: e.target.value || null })} />
                         </div>
                       </div>
-
-                      {/* Tanggal kepulangan */}
                       <div className="space-y-1">
-                        <Label className="text-xs">Tanggal Kepulangan</Label>
+                        <Label className="text-xs text-slate-500">Tanggal Kepulangan</Label>
                         <Input type="date" value={returnForm.returnDate ?? ""}
                           onChange={(e) => setRt({ returnDate: e.target.value || null })} />
                       </div>
@@ -1385,119 +1414,139 @@ function TicketFormDialog({
                   )}
                 </div>
               )}
-            </>
+            </div>
           )}
 
-          {/* ══ RETURN LEG — Multi-Leg (read-only summary, collapsible) ══ */}
+          {/* ══ Multi-Leg summary (read-only) ══ */}
           {isML && mlData && (
-            <div className="rounded-xl border border-violet-200 bg-violet-50/40 overflow-hidden">
-              <div
-                className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none hover:bg-violet-50/60 transition-colors"
-                onClick={() => setReturnOpen((v) => !v)}
-              >
-                <ArrowLeftRight className="w-3.5 h-3.5 text-violet-500 shrink-0" />
-                <span className="text-[12px] font-bold text-violet-700 flex-1">Detail Rute Multi-Leg</span>
-                <span className="text-[10px] text-violet-400 italic">scan ulang untuk ubah rute</span>
-                {returnOpen
-                  ? <ChevronUp className="w-4 h-4 text-violet-400 shrink-0" />
-                  : <ChevronDown className="w-4 h-4 text-violet-400 shrink-0" />
-                }
+            <div className="bg-white px-4 pt-4 pb-4">
+              <div className="rounded-xl border border-violet-200 bg-violet-50/20 overflow-hidden">
+                <div
+                  className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none hover:bg-violet-50/60 transition-colors"
+                  onClick={() => setReturnOpen((v) => !v)}
+                >
+                  <ArrowLeftRight className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                  <span className="text-[12px] font-bold text-violet-700 flex-1">Detail Rute Multi-Leg</span>
+                  <span className="text-[10px] text-violet-400 italic">scan ulang untuk ubah rute</span>
+                  {returnOpen
+                    ? <ChevronUp className="w-4 h-4 text-violet-400 shrink-0" />
+                    : <ChevronDown className="w-4 h-4 text-violet-400 shrink-0" />
+                  }
+                </div>
+                {returnOpen && (
+                  <div className="px-3 pb-3 space-y-1 border-t border-violet-100 pt-3">
+                    <p className="text-[10px] font-bold text-violet-600 mb-1">↗ Berangkat</p>
+                    {mlData.outboundLegs.map((leg, i) => (
+                      <p key={i} className="text-[11px] text-violet-700 pl-2 font-mono">
+                        {leg.fromCode}→{leg.toCode}{leg.flightNumber ? ` (${leg.flightNumber})` : ""}{leg.etd ? ` jam ${leg.etd}` : ""}{leg.date ? ` · ${fmtDate(leg.date)}` : ""}
+                      </p>
+                    ))}
+                    {(mlData.returnLegs?.length ?? 0) > 0 && (
+                      <>
+                        <p className="text-[10px] font-bold text-violet-600 pt-1">↩ Pulang</p>
+                        {mlData.returnLegs!.map((leg, i) => (
+                          <p key={i} className="text-[11px] text-violet-700 pl-2 font-mono">
+                            {leg.fromCode}→{leg.toCode}{leg.flightNumber ? ` (${leg.flightNumber})` : ""}{leg.etd ? ` jam ${leg.etd}` : ""}{leg.date ? ` · ${fmtDate(leg.date)}` : ""}
+                          </p>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
-              {returnOpen && (
-                <div className="px-3 pb-3 space-y-1 border-t border-violet-100">
-                  <div className="h-1" />
-                  <p className="text-[10px] font-bold text-violet-600 mb-1">↗ Berangkat</p>
-                  {mlData.outboundLegs.map((leg, i) => (
-                    <p key={i} className="text-[11px] text-violet-700 pl-2 font-mono">
-                      {leg.fromCode}→{leg.toCode}{leg.flightNumber ? ` (${leg.flightNumber})` : ""}{leg.etd ? ` jam ${leg.etd}` : ""}{leg.date ? ` · ${fmtDate(leg.date)}` : ""}
-                    </p>
-                  ))}
-                  {(mlData.returnLegs?.length ?? 0) > 0 && (
-                    <>
-                      <p className="text-[10px] font-bold text-violet-600 pt-1">↩ Pulang</p>
-                      {mlData.returnLegs!.map((leg, i) => (
-                        <p key={i} className="text-[11px] text-violet-700 pl-2 font-mono">
-                          {leg.fromCode}→{leg.toCode}{leg.flightNumber ? ` (${leg.flightNumber})` : ""}{leg.etd ? ` jam ${leg.etd}` : ""}{leg.date ? ` · ${fmtDate(leg.date)}` : ""}
-                        </p>
-                      ))}
-                    </>
-                  )}
+            </div>
+          )}
+
+          {/* ══ Info Penerbangan ══ */}
+          <div className="bg-white px-4 pt-4 pb-4 space-y-3">
+            <Sec icon={<MapPin className="w-3 h-3" />} label="Info Penerbangan" color="slate" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">Terminal Keberangkatan</Label>
+                <Input placeholder="T3 atau Terminal 2" value={form.terminal ?? ""}
+                  onChange={(e) => set({ terminal: e.target.value || null })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">Berlaku Hingga</Label>
+                <Input type="date" value={form.validUntil ?? ""}
+                  onChange={(e) => set({ validUntil: e.target.value || null })} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-500">Detail Bagasi</Label>
+              <Input placeholder="Contoh: 23kg + 7kg kabin" value={form.baggageInfo ?? ""}
+                onChange={(e) => set({ baggageInfo: e.target.value || null })} />
+            </div>
+          </div>
+
+          {/* ══ Harga ══ */}
+          <div className="bg-white px-4 pt-4 pb-4 space-y-3">
+            <Sec icon={<Tag className="w-3 h-3" />} label="Harga" color="emerald" />
+            <div className="grid grid-cols-3 gap-3">
+              {isOwner && (
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-xs text-slate-500">Harga Modal (base)</Label>
+                  <Input type="number" min="0" placeholder="0" value={form.basePrice || ""}
+                    onChange={(e) => set({ basePrice: Number(e.target.value) })} />
                 </div>
               )}
+              <div className={isOwner ? "space-y-1" : "col-span-3 space-y-1"}>
+                <Label className="text-xs text-slate-500">Mata Uang</Label>
+                <Select value={form.currency} onValueChange={(v) => set({ currency: v as TicketCurrency })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(CURRENCY_LABEL) as TicketCurrency[]).map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          )}
-
-          {/* ── Common fields ── */}
-          <div className="h-px bg-border/50" />
-
-          <div className="space-y-1">
-            <Label className="text-xs">Terminal Keberangkatan (opsional)</Label>
-            <Input placeholder="T3 atau Terminal 2" value={form.terminal ?? ""}
-              onChange={(e) => set({ terminal: e.target.value || null })} />
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs">Detail Bagasi (opsional)</Label>
-            <Input placeholder="Contoh: 23kg + 7kg kabin" value={form.baggageInfo ?? ""}
-              onChange={(e) => set({ baggageInfo: e.target.value || null })} />
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs">Berlaku Hingga</Label>
-            <Input type="date" value={form.validUntil ?? ""}
-              onChange={(e) => set({ validUntil: e.target.value || null })} />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            {isOwner && (
-              <div className="col-span-2 space-y-1">
-                <Label className="text-xs">Harga Modal (base)</Label>
-                <Input type="number" min="0" placeholder="0" value={form.basePrice || ""}
-                  onChange={(e) => set({ basePrice: Number(e.target.value) })} />
+            {!isML && (
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">Catatan (opsional)</Label>
+                <Textarea placeholder="Contoh: Termasuk bagasi 30kg, tersedia kelas bisnis" rows={2}
+                  value={userNotes}
+                  onChange={(e) => setUserNotes(e.target.value)} />
               </div>
             )}
-            <div className={isOwner ? "space-y-1" : "col-span-3 space-y-1"}>
-              <Label className="text-xs">Mata Uang</Label>
-              <Select value={form.currency} onValueChange={(v) => set({ currency: v as TicketCurrency })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(CURRENCY_LABEL) as TicketCurrency[]).map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          </div>
+
+          {/* ══ Visibilitas ══ */}
+          <div className="bg-white px-4 pt-4 pb-4">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <Switch checked={form.isPublished} onCheckedChange={(v) => set({ isPublished: v })} />
+              <div>
+                <p className="text-sm font-medium text-slate-800">Tampilkan di Daftar Harga</p>
+                <p className="text-xs text-slate-400">Matikan untuk menyembunyikan sementara</p>
+              </div>
             </div>
           </div>
 
-          {!isML && (
-            <div className="space-y-1">
-              <Label className="text-xs">Catatan (opsional)</Label>
-              <Textarea placeholder="Contoh: Termasuk bagasi 30kg, tersedia kelas bisnis" rows={2}
-                value={userNotes}
-                onChange={(e) => setUserNotes(e.target.value)} />
-            </div>
-          )}
-
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border">
-            <Switch checked={form.isPublished} onCheckedChange={(v) => set({ isPublished: v })} />
-            <div>
-              <p className="text-sm font-medium">Tampilkan di Daftar Harga</p>
-              <p className="text-xs text-slate-400">Matikan untuk menyembunyikan sementara</p>
-            </div>
-          </div>
+          <div className="h-1" />
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={loading}>Batal</Button>
+        {/* ── Sticky footer ── */}
+        <div className="shrink-0 bg-white border-t border-slate-100 px-4 py-3 flex gap-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
           <Button
-            className="bg-sky-600 hover:bg-sky-700 text-white"
+            variant="outline"
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 rounded-xl h-11 font-semibold border-slate-200"
+          >
+            Batal
+          </Button>
+          <Button
+            className="flex-1 rounded-xl h-11 font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-sm"
             disabled={loading || !form.airline || !form.fromCode || !form.toCode}
             onClick={() => void handleSave()}
           >
-            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+            {loading
+              ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              : <Check className="w-4 h-4 mr-2" />}
             Simpan
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
