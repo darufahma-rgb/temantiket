@@ -28,7 +28,7 @@ import {
   decodeMultiLeg, decodeReturnLeg, buildRouteLabel,
 } from "@/lib/ticketPriceAI";
 import {
-  listTicketPrices, loadMarkup, sellingPrice, isExpired, fmtIDR, fmtDate,
+  loadMarkup, sellingPrice, isExpired, fmtIDR, fmtDate,
   type TicketPrice,
 } from "@/features/ticketPrices/ticketPricesRepo";
 import { useRatesStore } from "@/store/ratesStore";
@@ -884,9 +884,13 @@ export default function PublicTicketPrices() {
 
   useEffect(() => {
     void refresh();
-    listTicketPrices(true)
+    fetch("/api/public/ticket-prices")
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<TicketPrice[]>;
+      })
       .then((items) => setTickets(items))
-      .catch((e) => console.error(e))
+      .catch((e) => console.error("[harga-tiket] fetch error:", e))
       .finally(() => setLoading(false));
   }, [refresh]);
 

@@ -23,8 +23,13 @@ function getSb() {
   }
   try {
     const { createClient } = require('@supabase/supabase-js');
+    // Node.js 20 doesn't have native WebSocket — pass the 'ws' package explicitly
+    // so @supabase/supabase-js v2.40+ doesn't throw on initialisation.
+    let wsImpl;
+    try { wsImpl = require('ws'); } catch { /* ws not available — realtime won't work but REST is fine */ }
     _sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false },
+      ...(wsImpl ? { realtime: { transport: wsImpl } } : {}),
     });
     return _sb;
   } catch (e) {

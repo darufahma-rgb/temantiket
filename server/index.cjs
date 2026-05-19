@@ -158,6 +158,56 @@ function withTimeout(promise, ms, message) {
 }
 
 /* ──────────────────────────────────────────────
+   GET /api/public/ticket-prices
+   Public endpoint — no auth required.
+   Uses service role to bypass RLS and return only
+   is_published=true rows for the public price list.
+────────────────────────────────────────────── */
+app.get('/api/public/ticket-prices', async (req, res) => {
+  try {
+    const sb = getSb();
+    const { data, error } = await sb
+      .from('ticket_prices')
+      .select('*')
+      .eq('is_published', true)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: error.message });
+    const items = (data ?? []).map((r) => ({
+      id:              String(r.id),
+      agencyId:        String(r.agency_id),
+      airline:         String(r.airline ?? ''),
+      airlineCode:     String(r.airline_code ?? ''),
+      fromCode:        String(r.from_code ?? ''),
+      fromCity:        String(r.from_city ?? ''),
+      toCode:          String(r.to_code ?? ''),
+      toCity:          String(r.to_city ?? ''),
+      departDate:      r.depart_date ?? null,
+      basePrice:       Number(r.base_price ?? 0),
+      currency:        r.currency ?? 'IDR',
+      validUntil:      r.valid_until ?? null,
+      notes:           r.notes ?? null,
+      isPublished:     r.is_published !== false,
+      sortOrder:       Number(r.sort_order ?? 0),
+      createdAt:       String(r.created_at ?? ''),
+      updatedAt:       String(r.updated_at ?? ''),
+      flightNumber:    r.flight_number ?? null,
+      etd:             r.etd ?? null,
+      eta:             r.eta ?? null,
+      terminal:        r.terminal ?? null,
+      transitCode:     r.transit_code ?? null,
+      transitCity:     r.transit_city ?? null,
+      transitDuration: r.transit_duration ?? null,
+      baggageInfo:     r.baggage_info ?? null,
+    }));
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    return res.status(200).json(items);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+/* ──────────────────────────────────────────────
    POST /api/bootstrap
    One-time setup: authenticated user creates their agency.
    User identity comes from the Supabase Bearer JWT.
