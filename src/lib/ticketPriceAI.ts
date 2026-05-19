@@ -954,10 +954,12 @@ const EXT_PREFIX = "__EXT__:";
 
 export interface ExtendedFlightData {
   aircraftType: string | null;      // e.g. "Boeing 777-300ER"
-  flightDuration: string | null;    // e.g. "7j 45m"
+  flightDuration: string | null;    // e.g. "7j 45m" (leg 1 or direct total)
   leg2FlightNumber: string | null;  // flight number for leg after transit, e.g. "EK927"
   leg2AircraftType: string | null;  // e.g. "Airbus A380-800"
-  leg2Duration: string | null;      // e.g. "3j 50m"
+  leg2Duration: string | null;      // e.g. "3j 50m" (leg 2 after transit)
+  leg1Eta: string | null;           // ETA arrival at transit airport e.g. "00:40"
+  leg2Etd: string | null;           // ETD departure from transit airport e.g. "03:25"
 }
 
 export function decodeExtended(notes: string | null): {

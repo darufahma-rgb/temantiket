@@ -568,24 +568,37 @@ const AIRPORT_NAMES: Record<string, string> = {
   LHR: "London Heathrow Airport", FRA: "Frankfurt Airport",
 };
 
+/** Parse "HH:MM" or "HHMM" time string → total minutes. Returns null on invalid. */
+function _parseMins(t: string | null | undefined): number | null {
+  if (!t) return null;
+  const clean = t.replace(/[.:]/g, "").trim();
+  if (/^\d{3,4}$/.test(clean)) {
+    const s = clean.padStart(4, "0");
+    const h = parseInt(s.slice(0, 2)), m = parseInt(s.slice(2));
+    if (h > 23 || m > 59) return null;
+    return h * 60 + m;
+  }
+  const parts = t.split(":").map(Number);
+  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) return parts[0] * 60 + parts[1];
+  return null;
+}
+
+/** Auto-calculate time difference between two HH:MM/HHMM times. Returns "Xj Ym" or null. */
+function calcTimeDiff(from: string | null | undefined, to: string | null | undefined): string | null {
+  const m1 = _parseMins(from), m2 = _parseMins(to);
+  if (m1 === null || m2 === null) return null;
+  let diff = m2 - m1;
+  if (diff <= 0) diff += 24 * 60;
+  const h = Math.floor(diff / 60), m = diff % 60;
+  return m > 0 ? `${h}j ${m}m` : `${h}j`;
+}
+
 function _legDuration(etd?: string | null, eta?: string | null): string | null {
-  if (!etd || !eta) return null;
-  const [h1, m1] = etd.split(":").map(Number);
-  const [h2, m2] = eta.split(":").map(Number);
-  if (isNaN(h1) || isNaN(h2)) return null;
-  let m = (h2 * 60 + m2) - (h1 * 60 + m1);
-  if (m < 0) m += 24 * 60;
-  return `${Math.floor(m / 60)}j ${String(m % 60).padStart(2, "0")}m`;
+  return calcTimeDiff(etd, eta);
 }
 function _layoverStr(eta?: string | null, nextEtd?: string | null): string | null {
-  if (!eta || !nextEtd) return null;
-  const [h1, m1] = eta.split(":").map(Number);
-  const [h2, m2] = nextEtd.split(":").map(Number);
-  if (isNaN(h1) || isNaN(h2)) return null;
-  let m = (h2 * 60 + m2) - (h1 * 60 + m1);
-  if (m < 0) m += 24 * 60;
-  if (m <= 0) return null;
-  return `${Math.floor(m / 60)}j ${String(m % 60).padStart(2, "0")}m`;
+  const d = calcTimeDiff(eta, nextEtd);
+  return d ?? null;
 }
 
 interface _StopData {
@@ -1026,6 +1039,7 @@ function TicketFormDialog({
   const EMPTY_EXT: ExtendedFlightData = {
     aircraftType: null, flightDuration: null,
     leg2FlightNumber: null, leg2AircraftType: null, leg2Duration: null,
+    leg1Eta: null, leg2Etd: null,
   };
   const [extData, setExtData] = useState<ExtendedFlightData>(EMPTY_EXT);
   const setExt = (patch: Partial<ExtendedFlightData>) =>
@@ -1184,12 +1198,32 @@ function TicketFormDialog({
               <div className="space-y-1">
                 <Label className="text-xs text-slate-500">ETD</Label>
                 <Input placeholder="23:55" value={form.etd ?? ""}
-                  onChange={(e) => set({ etd: e.target.value || null })} />
+                  onChange={(e) => {
+                    const v = e.target.value || null;
+                    set({ etd: v });
+                    if (!form.transitCode) {
+                      const d = calcTimeDiff(v, form.eta);
+                      if (d) setExt({ flightDuration: d });
+                    } else {
+                      const d = calcTimeDiff(v, extData.leg1Eta);
+                      if (d) setExt({ flightDuration: d });
+                    }
+                  }} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-slate-500">ETA</Label>
                 <Input placeholder="05:30" value={form.eta ?? ""}
-                  onChange={(e) => set({ eta: e.target.value || null })} />
+                  onChange={(e) => {
+                    const v = e.target.value || null;
+                    set({ eta: v });
+                    if (!form.transitCode) {
+                      const d = calcTimeDiff(form.etd, v);
+                      if (d) setExt({ flightDuration: d });
+                    } else {
+                      const d = calcTimeDiff(extData.leg2Etd, v);
+                      if (d) setExt({ leg2Duration: d });
+                    }
+                  }} />
               </div>
             </div>
 
@@ -1236,24 +1270,95 @@ function TicketFormDialog({
             </div>
 
             {/* Transit */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs text-slate-500">Transit (IATA)</Label>
                 <Input placeholder="DOH" maxLength={3} value={form.transitCode ?? ""}
-                  onChange={(e) => set({ transitCode: e.target.value.toUpperCase() || null })}
+                  onChange={(e) => {
+                    const v = e.target.value.toUpperCase() || null;
+                    set({ transitCode: v, ...(v ? {} : { transitDuration: null, transitCity: null }) });
+                    if (!v) setExt({ leg1Eta: null, leg2Etd: null, leg2Duration: null });
+                  }}
                   className="font-mono uppercase" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-slate-500">Kota Transit</Label>
-                <Input placeholder="Doha" value={form.transitCity ?? ""}
+                <Input placeholder="Dubai" value={form.transitCity ?? ""}
                   onChange={(e) => set({ transitCity: e.target.value || null })} />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-500">Durasi Transit</Label>
-                <Input placeholder="2j 30m" value={form.transitDuration ?? ""}
-                  onChange={(e) => set({ transitDuration: e.target.value || null })} />
-              </div>
             </div>
+
+            {/* Transit timing card — shown when transitCode is filled */}
+            {!isML && form.transitCode && (
+              <div className="rounded-xl border border-sky-200 bg-sky-50/40 p-3 space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-sky-700 flex items-center gap-1.5">
+                  <Clock className="w-3 h-3" />
+                  Jam di {form.transitCode} · {form.transitCity || "Transit"}
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">
+                      Tiba di {form.transitCode} (ETA Leg 1)
+                    </Label>
+                    <Input
+                      placeholder="00:40"
+                      value={extData.leg1Eta ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value || null;
+                        const patch: Partial<ExtendedFlightData> = { leg1Eta: v };
+                        const d1 = calcTimeDiff(form.etd, v);
+                        if (d1) patch.flightDuration = d1;
+                        const td = calcTimeDiff(v, extData.leg2Etd);
+                        if (td) set({ transitDuration: td });
+                        setExt(patch);
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">
+                      Berangkat dari {form.transitCode} (ETD Leg 2)
+                    </Label>
+                    <Input
+                      placeholder="03:25"
+                      value={extData.leg2Etd ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value || null;
+                        const patch: Partial<ExtendedFlightData> = { leg2Etd: v };
+                        const td = calcTimeDiff(extData.leg1Eta, v);
+                        if (td) set({ transitDuration: td });
+                        const d2 = calcTimeDiff(v, form.eta);
+                        if (d2) patch.leg2Duration = d2;
+                        setExt(patch);
+                      }}
+                    />
+                  </div>
+                </div>
+                {/* Auto-calculated transit duration */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-sky-600 font-medium">Durasi transit:</span>
+                  {form.transitDuration ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      <Check className="w-3 h-3" /> {form.transitDuration}
+                      {extData.leg1Eta && extData.leg2Etd && (
+                        <span className="text-emerald-500 font-normal ml-0.5">· otomatis</span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 italic">
+                      Isi jam tiba &amp; berangkat untuk otomatis dihitung
+                    </span>
+                  )}
+                  {/* Manual override */}
+                  <input
+                    type="text"
+                    placeholder="manual override"
+                    value={form.transitDuration ?? ""}
+                    onChange={(e) => set({ transitDuration: e.target.value || null })}
+                    className="ml-auto w-24 text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-300"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Leg 2 (after transit) */}
             {!isML && form.transitCode && (
@@ -1262,7 +1367,7 @@ function TicketFormDialog({
                   <Plane className="w-3 h-3" />
                   Leg 2 · setelah transit {form.transitCode}
                 </p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-slate-500">No. Penerbangan</Label>
                     <Input placeholder="EK927" value={extData.leg2FlightNumber ?? ""}
@@ -1274,11 +1379,29 @@ function TicketFormDialog({
                     <Input placeholder="A380-800" value={extData.leg2AircraftType ?? ""}
                       onChange={(e) => setExt({ leg2AircraftType: e.target.value || null })} />
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Durasi</Label>
-                    <Input placeholder="3j 50m" value={extData.leg2Duration ?? ""}
-                      onChange={(e) => setExt({ leg2Duration: e.target.value || null })} />
-                  </div>
+                </div>
+                {/* Auto-calculated leg 2 duration */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-amber-700 font-medium">Durasi Leg 2:</span>
+                  {extData.leg2Duration ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      <Check className="w-3 h-3" /> {extData.leg2Duration}
+                      {extData.leg2Etd && form.eta && (
+                        <span className="text-emerald-500 font-normal ml-0.5">· otomatis</span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 italic">
+                      Isi ETD Leg 2 &amp; ETA tujuan untuk otomatis
+                    </span>
+                  )}
+                  <input
+                    type="text"
+                    placeholder="manual"
+                    value={extData.leg2Duration ?? ""}
+                    onChange={(e) => setExt({ leg2Duration: e.target.value || null })}
+                    className="ml-auto w-20 text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-amber-300"
+                  />
                 </div>
               </div>
             )}
