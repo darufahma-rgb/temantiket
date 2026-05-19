@@ -34,8 +34,9 @@ import {
   getAirlineLogoUrl, getAirlineGradient,
   encodeReturnLeg, decodeReturnLeg,
   encodeMultiLeg, decodeMultiLeg, buildRouteLabel,
+  encodeExtended, decodeExtended,
   type ParsedTicketPrice, type ReturnLegData, type MultiLegData, type LegInfo,
-  type ScanDebugInfo,
+  type ExtendedFlightData, type ScanDebugInfo,
 } from "@/lib/ticketPriceAI";
 import {
   createTicketPrice, updateTicketPrice, deleteTicketPrice,
@@ -753,11 +754,12 @@ function TicketDetailModal({
   const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
   const isDirect = !item.transitCode;
 
-  const { ml: mlData } = decodeMultiLeg(item.notes);
+  const { ext: extInfo, restNotes: notesForDetail } = decodeExtended(item.notes);
+  const { ml: mlData } = decodeMultiLeg(notesForDetail);
   const isML = !!mlData;
   const { leg: returnLeg, userNotes } = isML
     ? { leg: null, userNotes: null }
-    : decodeReturnLeg(item.notes);
+    : decodeReturnLeg(notesForDetail);
   const isRT = !!returnLeg;
 
   const tripType = isML ? "Multi-Leg PP" : isRT ? "Pulang-Pergi" : isDirect ? "Direct" : "Transit";
@@ -938,10 +940,15 @@ function TicketDetailModal({
             </div>
           </div>
 
-          {/* ── Detail rows (terminal, bagasi, validity) ── */}
-          {(item.terminal || item.baggageInfo || item.validUntil) && (
+          {/* ── Detail rows (aircraft, duration, terminal, bagasi, validity) ── */}
+          {(extInfo?.aircraftType || extInfo?.flightDuration || extInfo?.leg2FlightNumber || extInfo?.leg2AircraftType || extInfo?.leg2Duration || item.terminal || item.baggageInfo || item.validUntil) && (
             <div className="mx-4 mt-3 divide-y divide-slate-100 rounded-2xl bg-white border border-slate-100 overflow-hidden">
-              {item.terminal && <DetailRow label="Terminal" value={item.terminal} mono />}
+              {extInfo?.aircraftType && <DetailRow label="Tipe Pesawat" value={extInfo.aircraftType} />}
+              {extInfo?.flightDuration && <DetailRow label="Durasi Penerbangan" value={extInfo.flightDuration} mono />}
+              {extInfo?.leg2FlightNumber && <DetailRow label="No. Penerbangan Leg 2" value={extInfo.leg2FlightNumber} mono />}
+              {extInfo?.leg2AircraftType && <DetailRow label="Tipe Pesawat Leg 2" value={extInfo.leg2AircraftType} />}
+              {extInfo?.leg2Duration && <DetailRow label="Durasi Leg 2" value={extInfo.leg2Duration} mono />}
+              {item.terminal && <DetailRow label="Terminal Keberangkatan" value={item.terminal} mono />}
               {item.baggageInfo && <DetailRow label="Bagasi" value={item.baggageInfo} />}
               {item.validUntil && (
                 <DetailRow label="Berlaku Hingga" value={
@@ -1047,9 +1054,19 @@ function TicketFormDialog({
   const [userNotes, setUserNotes] = useState<string>("");
   const [returnOpen, setReturnOpen] = useState(false);
 
+  const EMPTY_EXT: ExtendedFlightData = {
+    aircraftType: null, flightDuration: null,
+    leg2FlightNumber: null, leg2AircraftType: null, leg2Duration: null,
+  };
+  const [extData, setExtData] = useState<ExtendedFlightData>(EMPTY_EXT);
+  const setExt = (patch: Partial<ExtendedFlightData>) =>
+    setExtData((e) => ({ ...e, ...patch }));
+
   useEffect(() => {
     setForm(initial);
-    const { ml } = decodeMultiLeg(initial.notes);
+    const { ext, restNotes } = decodeExtended(initial.notes);
+    setExtData(ext ?? EMPTY_EXT);
+    const { ml } = decodeMultiLeg(restNotes);
     if (ml) {
       setMlData(ml);
       setReturnForm(null);
@@ -1057,11 +1074,12 @@ function TicketFormDialog({
       setUserNotes("");
     } else {
       setMlData(null);
-      const { leg, userNotes: un } = decodeReturnLeg(initial.notes);
+      const { leg, userNotes: un } = decodeReturnLeg(restNotes);
       setReturnForm(leg);
       setReturnOpen(!!leg);
       setUserNotes(un ?? "");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial, open]);
 
   const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
@@ -1104,6 +1122,7 @@ function TicketFormDialog({
     } else {
       finalNotes = userNotes.trim() || null;
     }
+    finalNotes = encodeExtended(extData, finalNotes);
     await onSave({ ...form, notes: finalNotes });
   };
 
@@ -1165,6 +1184,22 @@ function TicketFormDialog({
             </div>
           </div>
 
+          {/* ── Tipe Pesawat + Durasi Penerbangan ── */}
+          {!isML && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Tipe Pesawat (opsional)</Label>
+                <Input placeholder="Boeing 777-300ER" value={extData.aircraftType ?? ""}
+                  onChange={(e) => setExt({ aircraftType: e.target.value || null })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Durasi Penerbangan</Label>
+                <Input placeholder="7j 45m" value={extData.flightDuration ?? ""}
+                  onChange={(e) => setExt({ flightDuration: e.target.value || null })} />
+              </div>
+            </div>
+          )}
+
           {/* ── Outbound route ── */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -1206,10 +1241,38 @@ function TicketFormDialog({
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Durasi Transit</Label>
-              <Input placeholder="2h 30m" value={form.transitDuration ?? ""}
+              <Input placeholder="2j 30m" value={form.transitDuration ?? ""}
                 onChange={(e) => set({ transitDuration: e.target.value || null })} />
             </div>
           </div>
+
+          {/* ── Leg 2 detail (after transit) ── */}
+          {!isML && form.transitCode && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-3 space-y-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 flex items-center gap-1.5">
+                <Plane className="w-3 h-3" />
+                Penerbangan Leg 2 · setelah transit {form.transitCode}
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">No. Penerbangan</Label>
+                  <Input placeholder="EK927" value={extData.leg2FlightNumber ?? ""}
+                    onChange={(e) => setExt({ leg2FlightNumber: e.target.value.toUpperCase() || null })}
+                    className="font-mono uppercase" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Tipe Pesawat</Label>
+                  <Input placeholder="A380-800" value={extData.leg2AircraftType ?? ""}
+                    onChange={(e) => setExt({ leg2AircraftType: e.target.value || null })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Durasi</Label>
+                  <Input placeholder="3j 50m" value={extData.leg2Duration ?? ""}
+                    onChange={(e) => setExt({ leg2Duration: e.target.value || null })} />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── Outbound date ── */}
           <div className="space-y-1">

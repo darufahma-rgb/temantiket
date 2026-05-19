@@ -946,6 +946,46 @@ export function isReturnTrip(notes: string | null): boolean {
   return !!notes?.startsWith(RT_PREFIX);
 }
 
+// ── Encode/decode extended flight details in TicketPrice.notes ─────────────────
+// Stored as a JSON line in the notes field — no DB migration needed.
+// Format: "__EXT__:{...}\n[__RT__:{...}\n|__ML__:{...}]<user notes>"
+
+const EXT_PREFIX = "__EXT__:";
+
+export interface ExtendedFlightData {
+  aircraftType: string | null;      // e.g. "Boeing 777-300ER"
+  flightDuration: string | null;    // e.g. "7j 45m"
+  leg2FlightNumber: string | null;  // flight number for leg after transit, e.g. "EK927"
+  leg2AircraftType: string | null;  // e.g. "Airbus A380-800"
+  leg2Duration: string | null;      // e.g. "3j 50m"
+}
+
+export function decodeExtended(notes: string | null): {
+  ext: ExtendedFlightData | null;
+  restNotes: string | null;
+} {
+  if (!notes) return { ext: null, restNotes: notes };
+  const lines = notes.split("\n");
+  const extIdx = lines.findIndex((l) => l.startsWith(EXT_PREFIX));
+  if (extIdx < 0) return { ext: null, restNotes: notes };
+  try {
+    const ext = JSON.parse(lines[extIdx].slice(EXT_PREFIX.length)) as ExtendedFlightData;
+    const restLines = [...lines.slice(0, extIdx), ...lines.slice(extIdx + 1)];
+    const restNotes = restLines.join("\n").trim() || null;
+    return { ext, restNotes };
+  } catch {
+    return { ext: null, restNotes: notes };
+  }
+}
+
+/** Prepend EXT line to baseNotes. Returns baseNotes unchanged if all EXT fields are null. */
+export function encodeExtended(ext: ExtendedFlightData, baseNotes: string | null): string | null {
+  const hasData = Object.values(ext).some((v) => v !== null && v !== "");
+  if (!hasData) return baseNotes;
+  const extLine = `${EXT_PREFIX}${JSON.stringify(ext)}`;
+  return baseNotes ? `${extLine}\n${baseNotes}` : extLine;
+}
+
 // ── Main entry ────────────────────────────────────────────────────────────────
 
 export interface ScanDebugInfo {

@@ -25,7 +25,8 @@ import { FlightSection, buildMLStops, buildSimpleStops } from "@/components/Flig
 import { cn } from "@/lib/utils";
 import {
   getAirlineGradient, getAirlineLogoUrl,
-  decodeMultiLeg, decodeReturnLeg, buildRouteLabel,
+  decodeMultiLeg, decodeReturnLeg, buildRouteLabel, decodeExtended,
+  type ExtendedFlightData,
 } from "@/lib/ticketPriceAI";
 import {
   loadMarkup, sellingPrice, isExpired, fmtIDR, fmtDate,
@@ -386,11 +387,12 @@ function PublicDetailModal({
   const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
   const isDirect = !item.transitCode;
 
-  const { ml: mlData, userNotes: mlUserNotes } = decodeMultiLeg(item.notes);
+  const { ext: extInfo, restNotes: notesForDecode } = decodeExtended(item.notes);
+  const { ml: mlData, userNotes: mlUserNotes } = decodeMultiLeg(notesForDecode);
   const isML = !!mlData;
   const { leg: returnLeg, userNotes: rtUserNotes } = isML
     ? { leg: null, userNotes: null }
-    : decodeReturnLeg(item.notes);
+    : decodeReturnLeg(notesForDecode);
   const isRT = !!returnLeg;
   const userNotes = mlUserNotes ?? rtUserNotes;
   const isRTorML = isRT || isML;
@@ -482,10 +484,55 @@ function PublicDetailModal({
           </div>
 
           {/* Detail rows */}
-          {(item.terminal || item.baggageInfo || item.validUntil) && (
+          {(extInfo?.aircraftType || extInfo?.flightDuration || extInfo?.leg2FlightNumber || extInfo?.leg2AircraftType || extInfo?.leg2Duration || item.terminal || item.baggageInfo || item.validUntil) && (
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Detail</p>
               <div className="divide-y divide-slate-100 rounded-xl border border-slate-100 overflow-hidden">
+                {extInfo?.aircraftType && (
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <Plane className="w-3.5 h-3.5 text-slate-400" />
+                      Tipe Pesawat
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-700">{extInfo.aircraftType}</span>
+                  </div>
+                )}
+                {extInfo?.flightDuration && (
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      Durasi Penerbangan
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-700 font-mono">{extInfo.flightDuration}</span>
+                  </div>
+                )}
+                {extInfo?.leg2FlightNumber && (
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <Plane className="w-3.5 h-3.5 text-amber-400" />
+                      No. Penerbangan Leg 2
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-700 font-mono">{extInfo.leg2FlightNumber}</span>
+                  </div>
+                )}
+                {extInfo?.leg2AircraftType && (
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <Plane className="w-3.5 h-3.5 text-amber-400" />
+                      Tipe Pesawat Leg 2
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-700">{extInfo.leg2AircraftType}</span>
+                  </div>
+                )}
+                {extInfo?.leg2Duration && (
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <Clock className="w-3.5 h-3.5 text-amber-400" />
+                      Durasi Leg 2
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-700 font-mono">{extInfo.leg2Duration}</span>
+                  </div>
+                )}
                 {item.terminal && (
                   <div className="flex items-center justify-between px-4 py-2.5 bg-white">
                     <div className="flex items-center gap-2 text-[11px] text-slate-500">
@@ -587,12 +634,13 @@ function PublicCard({
   const sell = sellingPrice(item.basePrice, item.currency, rates, markup);
   const isDirect = !item.transitCode;
 
-  // Decode RT / ML encoded notes — same logic as internal BoardingPassCard
-  const { ml: mlData, userNotes: mlUserNotes } = decodeMultiLeg(item.notes);
+  // Decode EXT then RT / ML encoded notes — same logic as internal detail modal
+  const { ext: extInfo, restNotes: notesForDecode } = decodeExtended(item.notes);
+  const { ml: mlData, userNotes: mlUserNotes } = decodeMultiLeg(notesForDecode);
   const isML = !!mlData;
   const { leg: returnLeg, userNotes: rtUserNotes } = isML
     ? { leg: null, userNotes: null }
-    : decodeReturnLeg(item.notes);
+    : decodeReturnLeg(notesForDecode);
   const isRT = !!returnLeg;
   const userNotes = mlUserNotes ?? rtUserNotes;
   const isRTorML = isRT || isML;
@@ -777,10 +825,26 @@ function PublicCard({
       {/* ── PRICE ── */}
       <div className="px-4 pb-3">
         <div className="border-t border-slate-200 mb-2.5" />
-        {item.baggageInfo && (
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="text-[10px] text-slate-400">🧳</span>
-            <span className="text-[10px] text-slate-500 font-medium">{item.baggageInfo}</span>
+        {(extInfo?.aircraftType || extInfo?.flightDuration || extInfo?.leg2FlightNumber || extInfo?.leg2AircraftType || extInfo?.leg2Duration || item.baggageInfo) && (
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-2">
+            {extInfo?.aircraftType && (
+              <span className="text-[10px] text-slate-500">✈ {extInfo.aircraftType}</span>
+            )}
+            {extInfo?.flightDuration && (
+              <span className="text-[10px] text-slate-500 font-mono">⏱ {extInfo.flightDuration}</span>
+            )}
+            {extInfo?.leg2FlightNumber && (
+              <span className="text-[10px] text-amber-600 font-mono">✈ Leg 2: {extInfo.leg2FlightNumber}</span>
+            )}
+            {extInfo?.leg2AircraftType && (
+              <span className="text-[10px] text-amber-600">{extInfo.leg2AircraftType}</span>
+            )}
+            {extInfo?.leg2Duration && (
+              <span className="text-[10px] text-amber-600 font-mono">⏱ {extInfo.leg2Duration}</span>
+            )}
+            {item.baggageInfo && (
+              <span className="text-[10px] text-slate-500">🧳 {item.baggageInfo}</span>
+            )}
           </div>
         )}
         {!expired ? (
