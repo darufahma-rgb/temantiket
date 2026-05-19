@@ -17,18 +17,19 @@ import {
   Search, SlidersHorizontal, X, ArrowUpDown, ChevronDown,
   TrendingUp, CalendarDays, Filter, Globe, ShieldCheck, Zap, HeadphonesIcon,
   Calendar, Info, Luggage, MapPin,
+  ArrowLeft, Bell, MoreHorizontal, ChevronRight, CheckCircle2, ChevronUp, ArrowLeftRight,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogTitle,
 } from "@/components/ui/dialog";
-import { FlightSection, buildMLStops, buildSimpleStops } from "@/components/FlightStopDetail";
+import { buildMLStops, buildSimpleStops, AIRPORT_NAMES, type StopData } from "@/components/FlightStopDetail";
 import { cn } from "@/lib/utils";
 import {
   getAirlineGradient, getAirlineLogoUrl,
   decodeMultiLeg, decodeReturnLeg, buildRouteLabel, decodeExtended,
 } from "@/lib/ticketPriceAI";
 import {
-  loadMarkup, sellingPrice, isExpired, fmtIDR, fmtDate,
+  loadMarkup, sellingPrice, isExpired, fmtIDR, fmtDate, listTicketPrices,
   type TicketPrice,
 } from "@/features/ticketPrices/ticketPricesRepo";
 import { useRatesStore } from "@/store/ratesStore";
@@ -77,6 +78,13 @@ function activeFilterCount(f: Filters): number {
   if (f.flightType !== "all") n++;
   if (f.sort !== "default") n++;
   return n;
+}
+
+function fmtDateLong(dateStr: string): string {
+  try {
+    const d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" });
+  } catch { return dateStr; }
 }
 
 // ── Airline Logo ──────────────────────────────────────────────────────────────
@@ -370,6 +378,125 @@ function FilterBar({
 const SK = "'Sk-Modernist', 'Inter', sans-serif";
 
 // ── Public Detail Modal ───────────────────────────────────────────────────────
+// ── Traveloka-style Stop Row ──────────────────────────────────────────────────
+function TvkStopRow({
+  stop, airline, airlineCode, baggageInfo, isLastInSection, showDetail,
+}: {
+  stop: StopData;
+  airline: string;
+  airlineCode: string;
+  baggageInfo?: string | null;
+  isLastInSection: boolean;
+  showDetail: boolean;
+}) {
+  const airportName = AIRPORT_NAMES[stop.code.toUpperCase()] ?? stop.city ?? null;
+  const hasFlightInfo = !isLastInSection;
+
+  return (
+    <div className="flex">
+      {/* Time column */}
+      <div className="w-[52px] shrink-0 text-right pr-3 pt-[3px]">
+        {stop.time && (
+          <span className="text-[14px] font-bold text-slate-800 leading-none font-mono tabular-nums">
+            {stop.time.replace(":", ".")}
+          </span>
+        )}
+      </div>
+
+      {/* Timeline column */}
+      <div className="flex flex-col items-center w-5 shrink-0">
+        <div className={cn(
+          "w-[10px] h-[10px] rounded-full border-2 shrink-0 mt-[5px]",
+          stop.isFirst
+            ? "border-slate-600 bg-white"
+            : stop.isLast
+              ? "border-slate-800 bg-slate-800"
+              : "border-slate-400 bg-slate-300",
+        )} />
+        {!isLastInSection && (
+          <div className="w-[1.5px] bg-slate-200 flex-1 mt-1" style={{ minHeight: 32 }} />
+        )}
+      </div>
+
+      {/* Content column */}
+      <div className="flex-1 min-w-0 pl-3 pb-1">
+        {/* Airport name */}
+        <p className="text-[13.5px] font-bold text-slate-900 leading-snug">
+          <span>{stop.code}</span>
+          {airportName && (
+            <span className="font-normal text-slate-600"> {airportName}</span>
+          )}
+          {stop.isFirst && airline && (
+            <span className="text-slate-400 font-normal"> T3</span>
+          )}
+        </p>
+
+        {/* Transit layover card */}
+        {stop.isTransit && stop.layover && (
+          <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 mr-2">
+            <p className="text-[12px] font-semibold text-slate-700">
+              Transit di {stop.city ?? stop.code}, {stop.layover}
+            </p>
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+              <p className="text-[11px] text-sky-600 font-medium flex-1">
+                Tidak perlu mengambil bagasi & check-in ulang
+              </p>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+            </div>
+          </div>
+        )}
+
+        {/* Flight info (shown when showDetail=true and not last stop) */}
+        {hasFlightInfo && showDetail && (
+          <div className="mt-2 mb-3">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <AirlineLogo code={airlineCode} airline={airline} size={18} />
+              <span className="text-[12px] font-semibold text-slate-700">{airline}</span>
+              {stop.flightNumber && (
+                <span className="text-[11px] text-slate-400 font-mono">{stop.flightNumber}</span>
+              )}
+              {stop.aircraftType && (
+                <>
+                  <span className="text-slate-200 text-[10px] select-none">|</span>
+                  <span className="text-[11px] text-slate-400">{stop.aircraftType}</span>
+                </>
+              )}
+            </div>
+            {/* Amenity icons */}
+            <div className="flex items-center gap-2 mt-1.5 text-slate-400">
+              <span className="text-[13px]" title="Makanan">🍽</span>
+              <span className="text-[13px]" title="Layar hiburan">🖥</span>
+              <span className="text-[13px]" title="WiFi">📶</span>
+              <span className="text-[13px]" title="USB Charging">⚡</span>
+              <span className="text-[10px] font-medium text-slate-400">CO2e</span>
+              <ChevronRight className="w-3 h-3" />
+            </div>
+            {/* Duration */}
+            {stop.duration && (
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                <span className="text-[11px] text-slate-500">
+                  Durasi penerbangan: {stop.duration}
+                </span>
+              </div>
+            )}
+            {/* Baggage on first stop */}
+            {baggageInfo && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <Luggage className="w-3 h-3 text-slate-400 shrink-0" />
+                <span className="text-[11px] text-slate-500">{baggageInfo}</span>
+              </div>
+            )}
+          </div>
+        )}
+        {/* Spacer when detail is hidden */}
+        {hasFlightInfo && !showDetail && <div className="h-3" />}
+      </div>
+    </div>
+  );
+}
+
 function PublicDetailModal({
   open, item, markup, rates, waNumber, onClose,
 }: {
@@ -380,6 +507,8 @@ function PublicDetailModal({
   waNumber: string;
   onClose: () => void;
 }) {
+  const [showDetail, setShowDetail] = useState(true);
+
   if (!item) return null;
 
   const expired = isExpired(item.validUntil);
@@ -396,9 +525,6 @@ function PublicDetailModal({
   const userNotes = mlUserNotes ?? rtUserNotes;
   const isRTorML = isRT || isML;
 
-  const tripType = isML ? "Multi-Leg PP" : isRT ? "Pulang-Pergi" : isDirect ? "Langsung" : "Transit";
-  const grad = getAirlineGradient(item.airlineCode);
-
   const routeLabel = isML
     ? buildRouteLabel(mlData!)
     : isRT ? `${item.fromCode} ⇄ ${item.toCode}` : `${item.fromCode} → ${item.toCode}`;
@@ -408,8 +534,6 @@ function PublicDetailModal({
   );
   const waLink = waNumber ? `${whatsappUrl(waNumber)}?text=${waText}` : `https://wa.me/?text=${waText}`;
 
-  // Build flight stops for the detailed section display
-  const outboundDate = item.departDate ? fmtDate(item.departDate) : null;
   const returnDate = isML
     ? (mlData?.returnLegs?.[0]?.date ? fmtDate(mlData.returnLegs[0].date) : null)
     : (returnLeg?.returnDate ? fmtDate(returnLeg.returnDate) : null);
@@ -443,139 +567,203 @@ function PublicDetailModal({
         )
       : [];
 
+  const hasNotes = !!(
+    (userNotes && !String(userNotes).startsWith("__")) ||
+    (!isRTorML && item.notes && !item.notes.startsWith("__"))
+  );
+  const notesText = userNotes && !String(userNotes).startsWith("__")
+    ? userNotes
+    : (!isRTorML && item.notes && !item.notes.startsWith("__") ? item.notes : null);
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0 gap-0">
+      <DialogContent className="p-0 gap-0 max-w-md w-full h-[100dvh] sm:h-auto sm:max-h-[92vh] flex flex-col overflow-hidden rounded-none sm:rounded-2xl border-0">
         <DialogTitle className="sr-only">Detail Tiket {item.airline}</DialogTitle>
 
-        {/* Gradient airline header */}
-        <div className={cn("flex items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r text-white rounded-t-xl", grad)}>
-          <div className="flex items-center gap-3 min-w-0">
-            <AirlineLogo code={item.airlineCode} airline={item.airline} size={40} />
-            <div className="min-w-0">
-              <p className="font-bold text-[15px] leading-tight truncate">{item.airline}</p>
-              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                <span className="text-[10px] text-white/70 font-mono">{item.airlineCode}</span>
-                {item.flightNumber && !isRT && !isML && (
-                  <span className="text-[10px] bg-white/20 rounded px-1.5 py-0.5 font-mono font-semibold">
-                    {item.flightNumber}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <span className={cn(
-            "text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0",
-            isML || isRT ? "bg-violet-100 text-violet-700" : isDirect ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700",
-          )}>
-            {tripType}
-          </span>
+        {/* ── Sticky header ── */}
+        <div className="flex items-center gap-1 px-2 border-b border-slate-100 bg-white shrink-0" style={{ height: 52 }}>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-slate-100 active:bg-slate-200 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-slate-700" />
+          </button>
+          <span className="font-bold text-[16px] text-slate-900 flex-1 ml-1">Pilih Harga</span>
+          <button className="p-2 rounded-full hover:bg-slate-100 transition-colors relative">
+            <Bell className="w-4.5 h-4.5 text-slate-500" />
+            <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-orange-500 rounded-full" />
+          </button>
+          <button className="p-2 rounded-full hover:bg-slate-100 transition-colors">
+            <MoreHorizontal className="w-4.5 h-4.5 text-slate-500" />
+          </button>
         </div>
 
-        <div className="px-5 py-4 space-y-4">
-          {/* Flight detail sections */}
-          <div className="space-y-3">
-            <FlightSection
-              label="Berangkat"
-              date={outboundDate}
-              stops={outboundStops}
-              isReturn={false}
-            />
-            {returnStops.length > 0 && (
-              <FlightSection
-                label="Pulang"
-                date={returnDate}
-                stops={returnStops}
-                isReturn={true}
+        {/* ── Scrollable body ── */}
+        <div className="flex-1 overflow-y-auto bg-[#f5f6f8]">
+
+          {/* Date notice */}
+          {item.departDate && (
+            <div className="bg-white px-4 py-3 text-[12.5px] text-slate-500 leading-relaxed border-b border-slate-100">
+              Harap perhatikan tanggal keberangkatan Anda dan pastikan Anda tiba di bandara lebih awal pada{" "}
+              <span className="text-orange-500 font-semibold">{fmtDateLong(item.departDate)}</span>
+            </div>
+          )}
+
+          {/* ── Outbound section ── */}
+          <div className="bg-white mt-2 px-4 pt-4 pb-1">
+            {/* Section label */}
+            <div className="flex items-center gap-1.5 mb-3">
+              <Plane className="w-3.5 h-3.5 text-sky-500" />
+              <span className="text-[11px] font-bold text-sky-600 uppercase tracking-wider">
+                Penerbangan Pergi
+              </span>
+              {item.departDate && (
+                <span className="text-[11px] text-slate-400 ml-auto">{fmtDate(item.departDate)}</span>
+              )}
+            </div>
+
+            {outboundStops.map((stop, idx) => (
+              <TvkStopRow
+                key={idx}
+                stop={stop}
+                airline={item.airline}
+                airlineCode={item.airlineCode}
+                baggageInfo={idx === 0 ? item.baggageInfo : null}
+                isLastInSection={idx === outboundStops.length - 1}
+                showDetail={showDetail}
               />
-            )}
+            ))}
+
+            {/* Show/hide toggle */}
+            <button
+              onClick={() => setShowDetail((v) => !v)}
+              className="flex items-center gap-1 text-[12px] text-slate-500 font-medium py-3 w-full justify-center hover:text-slate-700 transition-colors"
+            >
+              {showDetail ? "Sembunyikan" : "Tampilkan detail"}
+              <ChevronUp className={cn("w-3.5 h-3.5 transition-transform duration-200", !showDetail && "rotate-180")} />
+            </button>
           </div>
 
-          {/* Detail rows (terminal, bagasi, validity only — aircraft/duration shown inline in stops) */}
-          {(item.terminal || item.baggageInfo || item.validUntil) && (
-            <div>
-              <div className="divide-y divide-slate-100 rounded-xl border border-slate-100 overflow-hidden">
-                {item.terminal && (
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                      Terminal
-                    </div>
-                    <span className="text-[11px] font-semibold text-slate-700 font-mono">{item.terminal}</span>
-                  </div>
-                )}
-                {item.baggageInfo && (
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <Luggage className="w-3.5 h-3.5 text-slate-400" />
-                      Bagasi
-                    </div>
-                    <span className="text-[11px] font-semibold text-slate-700">{item.baggageInfo}</span>
-                  </div>
-                )}
-                {item.validUntil && (
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      Harga berlaku hingga
-                    </div>
-                    <span className={cn("text-[11px] font-semibold", expired ? "text-red-600" : "text-slate-700")}>
-                      {expired ? "⛔ " : ""}{fmtDate(item.validUntil)}
-                    </span>
-                  </div>
+          {/* ── Return section ── */}
+          {returnStops.length > 0 && (
+            <div className="bg-white mt-2 px-4 pt-4 pb-1">
+              <div className="flex items-center gap-1.5 mb-3">
+                <ArrowLeftRight className="w-3.5 h-3.5 text-violet-500" />
+                <span className="text-[11px] font-bold text-violet-600 uppercase tracking-wider">
+                  Penerbangan Pulang
+                </span>
+                {returnDate && (
+                  <span className="text-[11px] text-slate-400 ml-auto">{returnDate}</span>
                 )}
               </div>
+              {returnStops.map((stop, idx) => (
+                <TvkStopRow
+                  key={idx}
+                  stop={stop}
+                  airline={item.airline}
+                  airlineCode={item.airlineCode}
+                  baggageInfo={null}
+                  isLastInSection={idx === returnStops.length - 1}
+                  showDetail={showDetail}
+                />
+              ))}
+              <div className="h-3" />
             </div>
           )}
 
-          {/* Notes for public (non-encoded) */}
-          {userNotes && !String(userNotes).startsWith("__") && (
-            <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-1">Info Tambahan</p>
-              <p className="text-[12px] text-amber-800 leading-snug">{userNotes}</p>
-            </div>
-          )}
-          {!isRTorML && item.notes && !item.notes.startsWith("__") && (
-            <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-1">Info Tambahan</p>
-              <p className="text-[12px] text-amber-800 leading-snug">{item.notes}</p>
-            </div>
-          )}
-
-          {/* Price */}
-          <div className={cn(
-            "rounded-xl px-4 py-4",
-            expired ? "bg-slate-50 border border-slate-200" : "bg-sky-50 border border-sky-100",
-          )}>
-            {expired ? (
-              <>
-                <p className="text-sm font-bold text-red-500 mb-0.5">Harga Expired</p>
-                <p className="text-[11px] text-slate-400">Hubungi admin untuk harga terbaru</p>
-              </>
-            ) : (
-              <>
-                <p className="text-[10px] font-semibold text-sky-500 uppercase tracking-widest mb-0.5">
-                  Harga {isRTorML ? "/ paket PP" : "/ pax"}
+          {/* ── Info / notes row ── */}
+          {hasNotes && notesText && (
+            <div className="bg-white mt-2 px-4 py-3.5 flex items-start gap-3">
+              <Info className="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[11.5px] font-semibold text-sky-600">
+                  Ketahui sebelum Anda pergi{" "}
+                  <span className="text-orange-500">1 Pesan</span>
                 </p>
-                <p className="text-[28px] font-black text-sky-700 leading-none tabular-nums">{fmtIDR(sell)}</p>
-                <p className="text-[10px] text-slate-400 mt-1">sudah termasuk semua biaya layanan</p>
-              </>
+                <p className="text-[11.5px] text-slate-500 mt-0.5 leading-relaxed line-clamp-3">
+                  {notesText}
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-300 shrink-0 mt-0.5" />
+            </div>
+          )}
+
+          {/* Bagasi & validity info row */}
+          {(item.terminal || item.validUntil) && (
+            <div className="bg-white mt-2 divide-y divide-slate-100">
+              {item.terminal && (
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-2 text-[12px] text-slate-500">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    Terminal keberangkatan
+                  </div>
+                  <span className="text-[12px] font-semibold text-slate-700 font-mono">{item.terminal}</span>
+                </div>
+              )}
+              {item.validUntil && (
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-2 text-[12px] text-slate-500">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    Harga berlaku hingga
+                  </div>
+                  <span className={cn("text-[12px] font-semibold", expired ? "text-red-600" : "text-slate-700")}>
+                    {expired ? "⛔ " : ""}{fmtDate(item.validUntil)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Spacer for bottom bar */}
+          <div className="h-6" />
+        </div>
+
+        {/* ── Sticky bottom bar ── */}
+        <div className="shrink-0 bg-white border-t border-slate-100 shadow-[0_-4px_24px_rgba(0,0,0,0.07)]">
+          {/* Class tabs */}
+          <div className="flex border-b border-slate-100">
+            <button className="flex-1 py-3.5 text-[13px] font-bold text-sky-600 border-b-2 border-sky-600 -mb-px transition-colors">
+              Ekonomi
+            </button>
+            <button className="flex-1 py-3.5 text-[13px] font-medium text-slate-400 hover:text-slate-600 transition-colors">
+              Bisnis/Utama
+            </button>
+          </div>
+
+          {/* Price row */}
+          <div className="px-4 pt-3 pb-1 flex items-end justify-between gap-3">
+            {expired ? (
+              <p className="text-[12px] font-semibold text-red-500">Harga sudah expired — hubungi admin</p>
+            ) : (
+              <p className="text-[11px] text-emerald-600 font-semibold leading-snug">
+                Harga terendah dengan<br />bagasi terdaftar
+              </p>
+            )}
+            {!expired && (
+              <div className="text-right shrink-0">
+                <p className="text-[10px] text-slate-400 leading-none mb-0.5">Dari</p>
+                <p className="text-[22px] font-black text-slate-900 tabular-nums leading-none">
+                  {fmtIDR(sell)}
+                </p>
+              </div>
             )}
           </div>
 
-          {/* WhatsApp CTA */}
-          <a
-            href={waLink}
-            target="_blank"
-            rel="noreferrer"
-            className={cn(
-              "flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-white transition-colors",
-              expired ? "bg-slate-500 hover:bg-slate-600" : "bg-green-600 hover:bg-green-700",
-            )}
-          >
-            <MessageCircle className="w-4 h-4" />
-            {expired ? "Hubungi Admin" : "Pesan via WhatsApp"}
-          </a>
+          {/* WA button */}
+          <div className="px-4 pb-5 pt-2.5">
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noreferrer"
+              className={cn(
+                "flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-[14px] text-white transition-colors shadow-sm",
+                expired ? "bg-slate-500 hover:bg-slate-600" : "bg-green-600 hover:bg-green-700 active:bg-green-800",
+              )}
+            >
+              <MessageCircle className="w-4 h-4" />
+              {expired ? "Hubungi Admin" : "Pesan via WhatsApp"}
+            </a>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
