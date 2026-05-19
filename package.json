@@ -72,7 +72,7 @@
     "lucide-react": "^0.462.0",
     "memoizee": "^0.4.17",
     "next-themes": "^0.3.0",
-    "openai": "^6.37.0",
+    "openai": "^6.38.0",
     "openid-client": "^6.8.4",
     "p-limit": "^7.3.0",
     "p-retry": "^7.1.1",
