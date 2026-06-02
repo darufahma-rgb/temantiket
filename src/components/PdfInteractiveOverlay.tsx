@@ -1030,7 +1030,7 @@ export function PdfInteractiveOverlay({ layout, mode, onChange, imgRect, enabled
                       width: 7,
                       height: 7,
                       background: "white",
-                      border: "1.25px solid #2563eb",
+                      border: "1.25px solid #0866FF",
                       borderRadius: 2,
                       cursor: p.cursor,
                       pointerEvents: "auto",

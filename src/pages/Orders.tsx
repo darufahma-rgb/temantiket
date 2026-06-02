@@ -324,12 +324,12 @@ export default function Orders() {
               <button onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(""); }} className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>
                 {showSearch ? <X className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} /> : <Search className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />}
               </button>
-              <button onClick={() => setShowFilter(s => !s)} className={cn("h-9 px-3 rounded-full flex items-center gap-1.5 text-[11px] font-bold active:opacity-60 transition-all", showFilter || mobileStatus !== "all" ? "bg-[#0066FF] text-white" : "bg-[#F2F5FB] text-[#0f1c3f]")} style={{ WebkitTapHighlightColor: "transparent" }}>
+              <button onClick={() => setShowFilter(s => !s)} className={cn("h-9 px-3 rounded-full flex items-center gap-1.5 text-[11px] font-bold active:opacity-60 transition-all", showFilter || mobileStatus !== "all" ? "bg-[#0866FF] text-white" : "bg-[#F2F5FB] text-[#0f1c3f]")} style={{ WebkitTapHighlightColor: "transparent" }}>
                 <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} />
                 Filter
-                {mobileStatus !== "all" && <span className="h-4 w-4 rounded-full bg-white text-[#0066FF] text-[10px] font-black flex items-center justify-center">1</span>}
+                {mobileStatus !== "all" && <span className="h-4 w-4 rounded-full bg-white text-[#0866FF] text-[10px] font-black flex items-center justify-center">1</span>}
               </button>
-              <button onClick={() => setAddOpen(true)} className="h-9 w-9 rounded-full flex items-center justify-center text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}>
+              <button onClick={() => setAddOpen(true)} className="h-9 w-9 rounded-full flex items-center justify-center text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" }}>
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
               </button>
             </div>
@@ -356,12 +356,12 @@ export default function Orders() {
                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Status Order</p>
                   <div className="flex flex-wrap gap-2">
                     {[{ id: "all", label: "Semua", count: orders.length }, { id: "diproses", label: "Diproses", count: mDiproses }, { id: "selesai", label: "Selesai", count: mSelesai }, { id: "dibatalkan", label: "Dibatalkan", count: mDibatalkan }].map(f => (
-                      <button key={f.id} onClick={() => setMobileStatus(f.id)} className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95", mobileStatus === f.id ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")} style={{ WebkitTapHighlightColor: "transparent" }}>
+                      <button key={f.id} onClick={() => setMobileStatus(f.id)} className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95", mobileStatus === f.id ? "bg-[#0866FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")} style={{ WebkitTapHighlightColor: "transparent" }}>
                         {f.label} <span className="opacity-70">({f.count})</span>
                       </button>
                     ))}
                   </div>
-                  {mobileStatus !== "all" && <button onClick={() => setMobileStatus("all")} className="mt-2 text-[11px] text-[#0066FF] font-semibold active:opacity-60">Reset Filter</button>}
+                  {mobileStatus !== "all" && <button onClick={() => setMobileStatus("all")} className="mt-2 text-[11px] text-[#0866FF] font-semibold active:opacity-60">Reset Filter</button>}
                 </div>
               </motion.div>
             )}
@@ -380,7 +380,7 @@ export default function Orders() {
                 className={cn("shrink-0 h-9 px-4 rounded-full text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95 border",
                   mobileCat === tab.id ? "text-white border-transparent shadow-md" : "bg-white text-slate-500 border-slate-200"
                 )}
-                style={mobileCat === tab.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
+                style={mobileCat === tab.id ? { background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
               >
                 {tab.label}
                 <span className={cn("text-[10px] font-extrabold px-1.5 py-0.5 rounded-full", mobileCat === tab.id ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500")}>{tab.count}</span>
@@ -394,9 +394,9 @@ export default function Orders() {
           {/* ── CLIENT FILTER BADGE ── */}
           {clientIdParam && clientNameById.get(clientIdParam) && (
             <div className="flex items-center gap-2.5 bg-white border border-sky-200 rounded-2xl px-4 py-3 shadow-sm">
-              <div className="h-8 w-8 rounded-xl bg-[#dbeafe] flex items-center justify-center text-[#0066FF] text-[12px] font-extrabold shrink-0">{clientNameById.get(clientIdParam)!.charAt(0).toUpperCase()}</div>
+              <div className="h-8 w-8 rounded-xl bg-[#dbeafe] flex items-center justify-center text-[#0866FF] text-[12px] font-extrabold shrink-0">{clientNameById.get(clientIdParam)!.charAt(0).toUpperCase()}</div>
               <p className="text-[12px] text-[#0f1c3f] font-semibold flex-1 truncate">Klien: <span className="font-bold">{clientNameById.get(clientIdParam)}</span></p>
-              <button onClick={() => navigate("/orders")} className="text-[11px] text-[#0066FF] font-bold active:opacity-70 shrink-0 flex items-center gap-1"><X className="h-3.5 w-3.5" /> Hapus</button>
+              <button onClick={() => navigate("/orders")} className="text-[11px] text-[#0866FF] font-bold active:opacity-70 shrink-0 flex items-center gap-1"><X className="h-3.5 w-3.5" /> Hapus</button>
             </div>
           )}
 
@@ -411,7 +411,7 @@ export default function Orders() {
             </div>
             <div className="grid grid-cols-4 divide-x divide-slate-100">
               {[
-                { label: "Total",      value: orders.length,  today: mTotalToday,    yest: mTotalYest,    icon: <ShoppingBag className="h-5 w-5" />, color: "#0066FF", bg: "#eff6ff", onClick: () => setMobileCat("all") },
+                { label: "Total",      value: orders.length,  today: mTotalToday,    yest: mTotalYest,    icon: <ShoppingBag className="h-5 w-5" />, color: "#0866FF", bg: "#eff6ff", onClick: () => setMobileCat("all") },
                 { label: "Selesai",    value: mSelesai,       today: mSelesaiToday,  yest: mSelesaiYest,  icon: <CheckCircle  className="h-5 w-5" />, color: "#10b981", bg: "#ecfdf5", onClick: () => setMobileStatus("selesai") },
                 { label: "Diproses",   value: mDiproses,      today: mDiprosesToday, yest: mDiprosesYest, icon: <Clock        className="h-5 w-5" />, color: "#f59e0b", bg: "#fffbeb", onClick: () => setMobileStatus("diproses") },
                 { label: "Dibatalkan", value: mDibatalkan,    today: mBatalToday,    yest: mBatalYest,    icon: <XCircle      className="h-5 w-5" />, color: "#ef4444", bg: "#fef2f2", onClick: () => setMobileStatus("dibatalkan") },
@@ -493,10 +493,10 @@ export default function Orders() {
               </div>
             ) : mobileFiltered.length === 0 ? (
               <div className="bg-white rounded-[20px] px-4 py-12 text-center flex flex-col items-center" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-                <div className="h-14 w-14 rounded-2xl bg-[#eff6ff] flex items-center justify-center mb-3"><ShoppingBag className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} /></div>
+                <div className="h-14 w-14 rounded-2xl bg-[#eff6ff] flex items-center justify-center mb-3"><ShoppingBag className="h-6 w-6 text-[#0866FF]" strokeWidth={1.8} /></div>
                 <p className="text-[14px] font-bold text-[#0f1c3f]">Belum ada order</p>
                 <p className="text-[11px] text-slate-400 mt-1 leading-snug">{q ? "Tidak ada hasil untuk pencarian ini." : "Buat order baru untuk memulai."}</p>
-                {!q && <button onClick={() => setAddOpen(true)} className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}><Plus className="h-3.5 w-3.5" /> Order Baru</button>}
+                {!q && <button onClick={() => setAddOpen(true)} className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}><Plus className="h-3.5 w-3.5" /> Order Baru</button>}
               </div>
             ) : (
               <motion.div
@@ -516,7 +516,7 @@ export default function Orders() {
                     const ps = derivePaymentStatus(o.paidAmount ?? 0, o.totalPrice, o.paymentStatus);
 
                     const TC: Record<string, { label: string; icon: React.ReactNode; iconBg: string; labelColor: string }> = {
-                      flight:       { label: "TIKET PESAWAT", icon: <Plane    className="h-5 w-5 text-[#2563eb]" strokeWidth={1.8} />, iconBg: "#eff6ff", labelColor: "#2563eb" },
+                      flight:       { label: "TIKET PESAWAT", icon: <Plane    className="h-5 w-5 text-[#0866FF]" strokeWidth={1.8} />, iconBg: "#eff6ff", labelColor: "#0866FF" },
                       visa_voa:     { label: "VISA VOA",      icon: <FileText className="h-5 w-5 text-[#10b981]" strokeWidth={1.8} />, iconBg: "#ecfdf5", labelColor: "#10b981" },
                       visa_student: { label: "VISA PELAJAR",  icon: <FileText className="h-5 w-5 text-[#f59e0b]" strokeWidth={1.8} />, iconBg: "#fffbeb", labelColor: "#d97706" },
                       umrah:        { label: "PAKET & TRIP",  icon: <Package  className="h-5 w-5 text-[#8b5cf6]" strokeWidth={1.8} />, iconBg: "#f5f3ff", labelColor: "#7c3aed" },
@@ -526,7 +526,7 @@ export default function Orders() {
                     const SB: Record<string, { bg: string; text: string; label: string }> = {
                       Draft:      { bg: "#f1f5f9", text: "#64748b", label: "DRAFT" },
                       Confirmed:  { bg: "#fef3c7", text: "#d97706", label: "CONFIRMED" },
-                      Processing: { bg: "#dbeafe", text: "#2563eb", label: "DIPROSES" },
+                      Processing: { bg: "#dbeafe", text: "#0866FF", label: "DIPROSES" },
                       Done:       { bg: "#dcfce7", text: "#16a34a", label: "SELESAI" },
                       Paid:       { bg: "#dcfce7", text: "#16a34a", label: "DIBAYAR" },
                       Completed:  { bg: "#dcfce7", text: "#16a34a", label: "SELESAI" },
@@ -608,7 +608,7 @@ export default function Orders() {
               const isOrder  = tab.path === "/orders";
               const active   = isOrder || isActive;
               return (
-                <button key={tab.path} onClick={() => navigate(tab.path)} className={cn("flex flex-col items-center justify-center gap-1 transition-colors active:opacity-60", active ? "text-[#0066FF]" : "text-slate-400")} style={{ WebkitTapHighlightColor: "transparent" }}>
+                <button key={tab.path} onClick={() => navigate(tab.path)} className={cn("flex flex-col items-center justify-center gap-1 transition-colors active:opacity-60", active ? "text-[#0866FF]" : "text-slate-400")} style={{ WebkitTapHighlightColor: "transparent" }}>
                   {tab.icon(active)}
                   <span className={cn("text-[11px] font-semibold", active && "font-extrabold")}>{tab.label}</span>
                 </button>
@@ -640,7 +640,7 @@ export default function Orders() {
             <button
               onClick={() => setAddOpen(true)}
               className="flex items-center gap-2 h-10 pl-4 pr-3 rounded-xl text-white text-[13px] font-bold shadow-md hover:opacity-90 active:scale-95 transition-all"
-              style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}
+              style={{ background: "linear-gradient(135deg,#0866FF,#1d4ed8)" }}
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} />
               Order Baru
@@ -653,7 +653,7 @@ export default function Orders() {
           <div className="grid grid-cols-5 gap-3 mb-5">
             {([
               { label: "Total Order", value: orders.length, growth: growTotal,
-                icon: <ShoppingBag className="h-5 w-5 shrink-0" style={{ color:"#2563eb" }} strokeWidth={1.8} />, iconBg:"#eff6ff" },
+                icon: <ShoppingBag className="h-5 w-5 shrink-0" style={{ color:"#0866FF" }} strokeWidth={1.8} />, iconBg:"#eff6ff" },
               { label: "Completed",   value: completedCount, growth: growCompleted,
                 icon: <CheckCircle   className="h-5 w-5 shrink-0" style={{ color:"#10b981" }} strokeWidth={1.8} />, iconBg:"#ecfdf5" },
               { label: "Confirmed",   value: confirmedCount, growth: growConfirmed,
@@ -780,7 +780,7 @@ export default function Orders() {
                 <button
                   onClick={() => setAddOpen(true)}
                   className="mt-4 inline-flex items-center gap-1.5 h-9 px-4 rounded-xl text-[12px] font-bold text-white"
-                  style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}
+                  style={{ background: "linear-gradient(135deg,#0866FF,#1d4ed8)" }}
                 >
                   <Plus className="h-3.5 w-3.5" /> Order Baru
                 </button>
@@ -1053,7 +1053,7 @@ export default function Orders() {
               </div>
               <button
                 className="w-full h-9 rounded-xl text-[12.5px] font-bold text-white transition-all hover:opacity-90 active:scale-95"
-                style={{ background:"linear-gradient(135deg,#2563eb,#1d4ed8)" }}
+                style={{ background:"linear-gradient(135deg,#0866FF,#1d4ed8)" }}
               >
                 Terapkan Filter
               </button>
@@ -1178,7 +1178,7 @@ export default function Orders() {
 
 const DESKTOP_TYPE_CONFIG: Record<string, { label: string; Icon: React.ComponentType<{ className?: string; style?: React.CSSProperties; strokeWidth?: number }>; bg: string; color: string }> = {
   umrah:        { label: "Umrah & Haji",  Icon: Package,        bg: "#f5f3ff", color: "#8b5cf6" },
-  flight:       { label: "Tiket Pesawat", Icon: Plane,           bg: "#eff6ff", color: "#2563eb" },
+  flight:       { label: "Tiket Pesawat", Icon: Plane,           bg: "#eff6ff", color: "#0866FF" },
   visa_voa:     { label: "Visa VOA",      Icon: FileText,        bg: "#ecfdf5", color: "#10b981" },
   visa_student: { label: "Visa Pelajar",  Icon: GraduationCap,  bg: "#fffbeb", color: "#f59e0b" },
 };

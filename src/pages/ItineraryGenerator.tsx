@@ -870,7 +870,7 @@ export default function ItineraryGenerator() {
                   setTimeout(() => mobileHistoryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
                 }}
                 className="h-9 px-3.5 rounded-2xl flex items-center gap-1.5 text-[11px] font-bold text-white shadow-sm active:opacity-80 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+                style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" }}
               >
                 <Clock className="h-3.5 w-3.5" strokeWidth={2} />
                 Riwayat
@@ -884,7 +884,7 @@ export default function ItineraryGenerator() {
           {/* ── HERO AI CARD ── */}
           <div
             className="rounded-3xl px-5 py-6 text-white relative overflow-hidden"
-            style={{ background: "linear-gradient(135deg,#1a0050 0%,#4c00b0 40%,#0038B8 80%,#0066FF 100%)" }}
+            style={{ background: "linear-gradient(135deg,#1a0050 0%,#4c00b0 40%,#0654D6 80%,#0866FF 100%)" }}
           >
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
               <div className="absolute -top-14 -right-14 h-52 w-52 rounded-full opacity-10 bg-white" />
@@ -906,7 +906,7 @@ export default function ItineraryGenerator() {
               <div className="flex gap-2.5">
                 <button
                   onClick={() => mobileScreenshotRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                  className="flex-1 h-10 rounded-2xl bg-white text-[#0038B8] text-[12px] font-extrabold flex items-center justify-center gap-1.5 active:opacity-80 transition-opacity shadow-sm"
+                  className="flex-1 h-10 rounded-2xl bg-white text-[#0654D6] text-[12px] font-extrabold flex items-center justify-center gap-1.5 active:opacity-80 transition-opacity shadow-sm"
                   style={{ WebkitTapHighlightColor: "transparent" }}
                 >
                   <ImagePlus className="h-3.5 w-3.5" strokeWidth={2} />
@@ -928,7 +928,7 @@ export default function ItineraryGenerator() {
           <div ref={mobileScreenshotRef} className="bg-white rounded-3xl shadow-sm overflow-hidden">
             <div className="px-5 pt-5 pb-4 flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold text-[#0066FF] uppercase tracking-widest mb-0.5">Langkah 1</p>
+                <p className="text-[11px] font-bold text-[#0866FF] uppercase tracking-widest mb-0.5">Langkah 1</p>
                 <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Extract Data Penerbangan</h3>
               </div>
               <span className="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 uppercase tracking-wide shrink-0">AI Deep Extraction</span>
@@ -954,7 +954,7 @@ export default function ItineraryGenerator() {
                 ) : (
                   <>
                     <div className="h-12 w-12 rounded-2xl bg-[#dbeafe] flex items-center justify-center">
-                      <ImagePlus className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
+                      <ImagePlus className="h-6 w-6 text-[#0866FF]" strokeWidth={1.8} />
                     </div>
                     <div className="text-center">
                       <p className="text-[13px] font-bold text-[#0f1c3f]">Upload screenshot tiket Anda</p>
@@ -962,7 +962,7 @@ export default function ItineraryGenerator() {
                     </div>
                     <div
                       className="h-10 px-5 rounded-2xl text-white text-[12px] font-bold flex items-center gap-2"
-                      style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+                      style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}
                     >
                       <ImagePlus className="h-3.5 w-3.5" /> Pilih Gambar
                     </div>
@@ -1012,12 +1012,12 @@ export default function ItineraryGenerator() {
           <div ref={mobilePasteRef} className="bg-white rounded-3xl shadow-sm overflow-hidden">
             <div className="px-5 pt-5 pb-4 flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold text-[#0066FF] uppercase tracking-widest mb-0.5">Langkah 2</p>
+                <p className="text-[11px] font-bold text-[#0866FF] uppercase tracking-widest mb-0.5">Langkah 2</p>
                 <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Paste Kode Booking / GDS</h3>
               </div>
               <button
                 onClick={() => setItinerary({ legs: [{}] })}
-                className="text-[11px] font-semibold text-[#0066FF] active:opacity-60 shrink-0"
+                className="text-[11px] font-semibold text-[#0866FF] active:opacity-60 shrink-0"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 Manual Input
@@ -1034,7 +1034,7 @@ export default function ItineraryGenerator() {
                 onClick={() => void handleProcess()}
                 disabled={!rawInput.trim() || isProcessing}
                 className="w-full h-12 rounded-2xl text-[13px] font-extrabold text-white flex items-center justify-center gap-2 active:opacity-80 transition-opacity disabled:opacity-50"
-                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+                style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" }}
               >
                 {isProcessing
                   ? <><Loader2 className="h-4 w-4 animate-spin" />Menganalisis via AI…</>
@@ -1066,7 +1066,7 @@ export default function ItineraryGenerator() {
               </div>
               <button
                 onClick={() => toast.info("Contoh tersedia di placeholder kode booking")}
-                className="text-[11px] font-semibold text-[#0066FF] active:opacity-60 shrink-0"
+                className="text-[11px] font-semibold text-[#0866FF] active:opacity-60 shrink-0"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 Lihat Contoh
@@ -1096,14 +1096,14 @@ export default function ItineraryGenerator() {
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Penerbangan {i + 1}</p>
                         {leg.flightNumber && (
-                          <span className="text-[10px] font-mono font-bold text-[#0066FF] bg-blue-50 px-2 py-0.5 rounded-lg">{leg.flightNumber}</span>
+                          <span className="text-[10px] font-mono font-bold text-[#0866FF] bg-blue-50 px-2 py-0.5 rounded-lg">{leg.flightNumber}</span>
                         )}
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-center min-w-[56px]">
                           <p className="text-[22px] font-black text-[#0f1c3f] leading-none">{leg.fromCode ?? "—"}</p>
                           <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[70px]">{leg.fromCity ?? ""}</p>
-                          {leg.etd && <p className="text-[12px] font-bold text-[#0066FF] mt-1">{leg.etd}</p>}
+                          {leg.etd && <p className="text-[12px] font-bold text-[#0866FF] mt-1">{leg.etd}</p>}
                         </div>
                         <div className="flex-1 flex flex-col items-center gap-1">
                           <div className="w-full flex items-center gap-1">
@@ -1121,7 +1121,7 @@ export default function ItineraryGenerator() {
                         <div className="text-center min-w-[56px]">
                           <p className="text-[22px] font-black text-[#0f1c3f] leading-none">{leg.toCode ?? "—"}</p>
                           <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[70px]">{leg.toCity ?? ""}</p>
-                          {leg.eta && <p className="text-[12px] font-bold text-[#0066FF] mt-1">{leg.eta}</p>}
+                          {leg.eta && <p className="text-[12px] font-bold text-[#0866FF] mt-1">{leg.eta}</p>}
                         </div>
                       </div>
                       {leg.departDate && (
@@ -1138,7 +1138,7 @@ export default function ItineraryGenerator() {
                     <button
                       onClick={() => void handleCopyWA()}
                       className="h-9 px-4 rounded-2xl text-[11px] font-bold flex items-center gap-1.5 active:opacity-80 transition-opacity"
-                      style={{ background: copied ? "linear-gradient(135deg,#059669,#047857)" : "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent", color: "white" }}
+                      style={{ background: copied ? "linear-gradient(135deg,#059669,#047857)" : "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent", color: "white" }}
                     >
                       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                       {copied ? "Tersalin!" : "Salin"}
@@ -1217,7 +1217,7 @@ export default function ItineraryGenerator() {
             ) : (
               <div className="bg-white rounded-3xl px-4 py-12 text-center flex flex-col items-center shadow-sm">
                 <div className="h-14 w-14 rounded-2xl bg-[#dbeafe] flex items-center justify-center mb-3">
-                  <Plane className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
+                  <Plane className="h-6 w-6 text-[#0866FF]" strokeWidth={1.8} />
                 </div>
                 <p className="text-[14px] font-bold text-[#0f1c3f]">Belum ada itinerary</p>
                 <p className="text-[11px] text-slate-400 mt-1 leading-snug max-w-[220px]">
@@ -1226,7 +1226,7 @@ export default function ItineraryGenerator() {
                 <button
                   onClick={() => mobileScreenshotRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
                   className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80"
-                  style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+                  style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}
                 >
                   <ImagePlus className="h-3.5 w-3.5" /> Mulai Extract
                 </button>
@@ -1240,7 +1240,7 @@ export default function ItineraryGenerator() {
               {[
                 {
                   label: "Template\nItinerary",
-                  icon: <FileText className="h-5 w-5" style={{ color: "#0066FF" }} strokeWidth={1.8} />,
+                  icon: <FileText className="h-5 w-5" style={{ color: "#0866FF" }} strokeWidth={1.8} />,
                   iconBg: "#dbeafe",
                   action: () => toast.info("Template segera hadir"),
                 },
@@ -1327,7 +1327,7 @@ export default function ItineraryGenerator() {
                               mobileResultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                               toast.success("Itinerary dimuat dari riwayat");
                             }}
-                            className="h-8 px-3 rounded-xl text-[11px] font-bold text-[#0066FF] bg-blue-50 active:opacity-70"
+                            className="h-8 px-3 rounded-xl text-[11px] font-bold text-[#0866FF] bg-blue-50 active:opacity-70"
                             style={{ WebkitTapHighlightColor: "transparent" }}
                           >
                             Muat

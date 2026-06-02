@@ -7,7 +7,7 @@ const TONE_STYLES: Record<Tone, { bg: string; text: string; icon: string }> = {
   green:  { bg: "bg-emerald-50 border-emerald-100", text: "text-emerald-700", icon: "bg-emerald-100 text-emerald-600" },
   yellow: { bg: "bg-amber-50 border-amber-100",  text: "text-amber-700",   icon: "bg-amber-100 text-amber-600"   },
   red:    { bg: "bg-red-50 border-red-100",      text: "text-red-700",     icon: "bg-red-100 text-red-600"     },
-  navy:   { bg: "bg-[#F0F4FF] border-[#D6E0FF]", text: "text-[#0A1F44]",  icon: "bg-[#D6E0FF] text-[#0066FF]"  },
+  navy:   { bg: "bg-[#F0F4FF] border-[#D6E0FF]", text: "text-[#0A1F44]",  icon: "bg-[#D6E0FF] text-[#0866FF]"  },
 };
 
 type TravelStatCardProps = {

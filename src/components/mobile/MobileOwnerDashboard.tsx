@@ -92,7 +92,7 @@ const TYPE_LABEL: Record<string, string> = {
 const STATUS_COLOR: Record<string, { bg: string; text: string }> = {
   Draft:       { bg: "#f1f5f9", text: "#64748b" },
   Confirmed:   { bg: "#fef3c7", text: "#d97706" },
-  Processing:  { bg: "#dbeafe", text: "#2563eb" },
+  Processing:  { bg: "#dbeafe", text: "#0866FF" },
   Paid:        { bg: "#d1fae5", text: "#059669" },
   Completed:   { bg: "#dcfce7", text: "#16a34a" },
   Cancelled:   { bg: "#fee2e2", text: "#dc2626" },
@@ -109,7 +109,7 @@ const QUICK_ROW_1 = [
 ];
 
 const QUICK_ROW_2 = [
-  { icon: Calculator,  label: "Kalkulator",        path: "/calculator",        color: "#0066FF", bg: "#eff6ff", ai: false },
+  { icon: Calculator,  label: "Kalkulator",        path: "/calculator",        color: "#0866FF", bg: "#eff6ff", ai: false },
   { icon: Package,     label: "Paket &\nTrip",     path: "/packages",          color: "#06b6d4", bg: "#ecfeff", ai: false },
   { icon: Sparkles,    label: "Caption\nAI",       path: "/caption-generator", color: "#f59e0b", bg: "#fffbeb", ai: true  },
   { icon: StickyNote,  label: "Catatan",           path: "/notes",             color: "#6366f1", bg: "#eef2ff", ai: false },
@@ -265,7 +265,7 @@ export function MobileOwnerDashboard() {
       value: ordersToday,
       pctChange: pct(ordersToday, ordersYesterday),
       icon: <ShoppingBag className="h-5 w-5" />,
-      color: "#0066FF", bg: "#eff6ff",
+      color: "#0866FF", bg: "#eff6ff",
     },
     {
       label: "Klien Aktif",
@@ -337,14 +337,14 @@ export function MobileOwnerDashboard() {
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" style={{ boxShadow: "0 0 4px #34d399" }} />
           <div className="flex items-center gap-1 leading-none">
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">USD</span>
-            <span className="text-[12px] font-extrabold text-[#0064E0]">
+            <span className="text-[12px] font-extrabold text-[#0866FF]">
               {rates.USD ? `${(rates.USD / 1000).toFixed(1)}k` : "—"}
             </span>
             {rates.SAR && (
               <>
                 <span className="text-[9px] text-slate-300 mx-0.5">·</span>
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">SAR</span>
-                <span className="text-[12px] font-extrabold text-[#0064E0]">
+                <span className="text-[12px] font-extrabold text-[#0866FF]">
                   {rates.SAR.toLocaleString("id-ID")}
                 </span>
               </>
@@ -368,7 +368,7 @@ export function MobileOwnerDashboard() {
           </button>
           <button
             onClick={() => navigate("/settings")}
-            className="h-9 w-9 rounded-full bg-gradient-to-br from-[#0038B8] to-[#33A6FF] flex items-center justify-center shadow-sm active:opacity-80"
+            className="h-9 w-9 rounded-full bg-gradient-to-br from-[#0654D6] to-[#33A6FF] flex items-center justify-center shadow-sm active:opacity-80"
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
             <span className="text-white text-[12px] font-extrabold">{getInitials(user?.displayName)}</span>
@@ -581,7 +581,7 @@ export function MobileOwnerDashboard() {
           onClick={() => navigate("/caption-generator")}
           className="w-full rounded-[20px] overflow-hidden active:opacity-80 transition-opacity text-left"
           style={{
-            background: "linear-gradient(135deg, #5b21b6 0%, #7c3aed 40%, #2563eb 100%)",
+            background: "linear-gradient(135deg, #5b21b6 0%, #7c3aed 40%, #0866FF 100%)",
             boxShadow: "0 8px 24px rgba(124,58,237,0.30)",
             WebkitTapHighlightColor: "transparent",
           }}
@@ -637,7 +637,7 @@ export function MobileOwnerDashboard() {
           <p className="text-[15px] font-extrabold text-[#0f1c3f]">Order Terbaru</p>
           <button
             onClick={() => navigate("/orders")}
-            className="flex items-center gap-0.5 text-[12px] font-semibold text-[#0066FF] active:opacity-60"
+            className="flex items-center gap-0.5 text-[12px] font-semibold text-[#0866FF] active:opacity-60"
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
             Lihat Semua <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -671,7 +671,7 @@ export function MobileOwnerDashboard() {
                 >
                   {/* Icon */}
                   <div className="h-10 w-10 rounded-xl bg-[#eff6ff] flex items-center justify-center shrink-0">
-                    <ShoppingBag className="h-4.5 w-4.5 text-[#0066FF]" strokeWidth={1.8} />
+                    <ShoppingBag className="h-4.5 w-4.5 text-[#0866FF]" strokeWidth={1.8} />
                   </div>
 
                   {/* Title + meta */}
@@ -726,7 +726,7 @@ export function MobileOwnerDashboard() {
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="text-[11px] font-semibold text-[#0066FF] bg-transparent border-none outline-none cursor-pointer appearance-none pr-3"
+                className="text-[11px] font-semibold text-[#0866FF] bg-transparent border-none outline-none cursor-pointer appearance-none pr-3"
                 style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%230066FF' strokeWidth='1.5' strokeLinecap='round'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0px center" }}
               >
                 {monthOptions.map((m) => (
@@ -738,7 +738,7 @@ export function MobileOwnerDashboard() {
 
           {/* Total */}
           <div className="flex items-baseline gap-1.5 mb-4 ml-1">
-            <span className="text-[20px] font-black text-[#0066FF] tabular-nums">{fmtIDR(totalMonthRevenue)}</span>
+            <span className="text-[20px] font-black text-[#0866FF] tabular-nums">{fmtIDR(totalMonthRevenue)}</span>
             <span className="text-[10px] text-slate-400 font-medium">{monthLabel(selectedMonth)}</span>
           </div>
 
@@ -768,15 +768,15 @@ export function MobileOwnerDashboard() {
                   }}
                   formatter={(v: number) => [fmtIDR(v), "Revenue"]}
                   labelFormatter={(l) => `Tgl ${l}`}
-                  cursor={{ stroke: "#0066FF", strokeWidth: 1, strokeDasharray: "4 2" }}
+                  cursor={{ stroke: "#0866FF", strokeWidth: 1, strokeDasharray: "4 2" }}
                 />
                 <Line
                   type="monotone"
                   dataKey="rev"
-                  stroke="#0066FF"
+                  stroke="#0866FF"
                   strokeWidth={2.5}
-                  dot={{ fill: "#0066FF", r: 3, strokeWidth: 0 }}
-                  activeDot={{ r: 5, fill: "#0066FF", strokeWidth: 2, stroke: "#fff" }}
+                  dot={{ fill: "#0866FF", r: 3, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: "#0866FF", strokeWidth: 2, stroke: "#fff" }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -807,7 +807,7 @@ export function MobileOwnerDashboard() {
                 onClick={() => navigate(tab.path)}
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 transition-colors active:opacity-60",
-                  isActive ? "text-[#0066FF]" : "text-slate-400"
+                  isActive ? "text-[#0866FF]" : "text-slate-400"
                 )}
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >

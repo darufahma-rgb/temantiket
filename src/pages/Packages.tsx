@@ -277,7 +277,7 @@ export default function Packages() {
             <button
               onClick={openCreate}
               className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 active:opacity-80 transition-opacity text-white shadow-sm"
-              style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+              style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" }}
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} />
             </button>
@@ -298,7 +298,7 @@ export default function Packages() {
                     ? "text-white shadow-sm"
                     : "bg-white text-slate-500"
                 )}
-                style={activeTab === key ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : {}}
+                style={activeTab === key ? { background: "linear-gradient(135deg,#0866FF,#0654D6)" } : {}}
               >
                 <Icon className="h-3.5 w-3.5" />
                 {label}
@@ -348,7 +348,7 @@ export default function Packages() {
                   onChange={(e) => setQuery(e.target.value)}
                   className="w-full h-11 pl-10 pr-4 rounded-2xl text-[13px] text-[#0f1c3f] font-medium outline-none transition-all bg-white shadow-sm"
                   style={{ border: "1.5px solid #E2E8F0" }}
-                  onFocus={(e) => { e.target.style.borderColor = "#0066FF"; e.target.style.boxShadow = "0 0 0 3px rgba(0,102,255,0.10)"; }}
+                  onFocus={(e) => { e.target.style.borderColor = "#0866FF"; e.target.style.boxShadow = "0 0 0 3px rgba(0,102,255,0.10)"; }}
                   onBlur={(e)  => { e.target.style.borderColor = "#E2E8F0"; e.target.style.boxShadow = "none"; }}
                 />
               </div>
@@ -370,7 +370,7 @@ export default function Packages() {
                           ? "text-white shadow-sm"
                           : "bg-white text-slate-600 border border-slate-200"
                       )}
-                      style={category === key ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : {}}
+                      style={category === key ? { background: "linear-gradient(135deg,#0866FF,#0654D6)" } : {}}
                     >
                       {label}
                       <span
@@ -411,7 +411,7 @@ export default function Packages() {
                     <button
                       onClick={openCreate}
                       className="inline-flex items-center gap-1.5 h-9 px-5 rounded-xl text-[12px] font-bold text-white active:scale-95 transition-transform"
-                      style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+                      style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}
                     >
                       <Plus className="h-3.5 w-3.5" /> Buat Paket Pertama
                     </button>
@@ -438,7 +438,7 @@ export default function Packages() {
                       const departure   = getDepartureInfo(enriched, occupied);
                       const logistics   = getLogistics(enriched);
                       const perPax      = pkg.people > 0 ? pkg.totalIDR / pkg.people : 0;
-                      const barColor    = occupancyPct >= 90 ? "#10B981" : occupancyPct >= 60 ? "#0066FF" : "#F59E0B";
+                      const barColor    = occupancyPct >= 90 ? "#10B981" : occupancyPct >= 60 ? "#0866FF" : "#F59E0B";
 
                       return (
                         <motion.div
@@ -460,7 +460,7 @@ export default function Packages() {
                             ) : (
                               <div
                                 className="w-full h-full flex items-center justify-center text-4xl"
-                                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+                                style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}
                               >
                                 {pkg.emoji}
                               </div>
@@ -552,7 +552,7 @@ export default function Packages() {
                               <button
                                 onClick={() => navigate(`/packages/${pkg.id}`)}
                                 className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl text-white text-[12px] font-bold active:scale-[0.98] transition-transform"
-                                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+                                style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}
                               >
                                 Lihat Detail
                                 <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -562,21 +562,21 @@ export default function Packages() {
                                 className="h-9 w-9 rounded-xl flex items-center justify-center bg-[#F0F4FB] active:scale-95 transition-transform"
                                 title="Kalkulasi"
                               >
-                                <Calculator className="h-4 w-4 text-[#0066FF]" strokeWidth={1.8} />
+                                <Calculator className="h-4 w-4 text-[#0866FF]" strokeWidth={1.8} />
                               </button>
                               <button
                                 onClick={(e) => openShortcut(e, `/packages/${pkg.id}?tab=jamaah`)}
                                 className="h-9 w-9 rounded-xl flex items-center justify-center bg-[#F0F4FB] active:scale-95 transition-transform"
                                 title="Jamaah"
                               >
-                                <Users className="h-4 w-4 text-[#0066FF]" strokeWidth={1.8} />
+                                <Users className="h-4 w-4 text-[#0866FF]" strokeWidth={1.8} />
                               </button>
                               <button
                                 onClick={(e) => openShortcut(e, `/packages/${pkg.id}?tab=jamaah&ocr=1`)}
                                 className="h-9 w-9 rounded-xl flex items-center justify-center bg-[#F0F4FB] active:scale-95 transition-transform"
                                 title="OCR Paspor"
                               >
-                                <ScanLine className="h-4 w-4 text-[#0066FF]" strokeWidth={1.8} />
+                                <ScanLine className="h-4 w-4 text-[#0866FF]" strokeWidth={1.8} />
                               </button>
                             </div>
                           </div>
@@ -609,7 +609,7 @@ export default function Packages() {
                             ? "text-white shadow-sm"
                             : "bg-white text-slate-600"
                         )}
-                        style={p === mobilePage ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : {}}
+                        style={p === mobilePage ? { background: "linear-gradient(135deg,#0866FF,#0654D6)" } : {}}
                       >
                         {p}
                       </button>
@@ -630,7 +630,7 @@ export default function Packages() {
               <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between">
                   <h2 className="text-[15px] font-extrabold text-[#0f1c3f]">Aksi Cepat</h2>
-                  <button className="text-[12px] font-bold text-[#0066FF] active:opacity-70" onClick={openCreate}>
+                  <button className="text-[12px] font-bold text-[#0866FF] active:opacity-70" onClick={openCreate}>
                     + Tambah Baru
                   </button>
                 </div>

@@ -44,7 +44,7 @@ export function TravelServiceGrid({
             <item.icon
               strokeWidth={1.8}
               className="h-[22px] w-[22px]"
-              style={{ color: item.color ?? "#0066FF" }}
+              style={{ color: item.color ?? "#0866FF" }}
             />
             {item.badge && (
               <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 rounded-full bg-[#F04438] text-white text-[8px] font-bold flex items-center justify-center">

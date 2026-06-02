@@ -23,7 +23,7 @@ export function TravelSection({
         {onSeeAll && (
           <button
             onClick={onSeeAll}
-            className="flex items-center gap-0.5 text-[11px] font-semibold text-[#0066FF] active:opacity-60 transition-opacity"
+            className="flex items-center gap-0.5 text-[11px] font-semibold text-[#0866FF] active:opacity-60 transition-opacity"
           >
             {seeAllLabel}
             <ChevronRight className="h-3 w-3" strokeWidth={2.5} />

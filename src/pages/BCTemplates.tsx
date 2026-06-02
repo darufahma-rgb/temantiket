@@ -349,7 +349,7 @@ export default function BCTemplates() {
     umrah:           "linear-gradient(135deg,#1d4ed8,#7c3aed)",
     haji:            "linear-gradient(135deg,#059669,#065f46)",
     visa_on_arrival: "linear-gradient(135deg,#d97706,#b45309)",
-    visa_pelajar:    "linear-gradient(135deg,#4f46e5,#2563eb)",
+    visa_pelajar:    "linear-gradient(135deg,#4f46e5,#0866FF)",
     tiket_pesawat:   "linear-gradient(135deg,#0284c7,#0369a1)",
     general:         "linear-gradient(135deg,#475569,#334155)",
   };
@@ -389,7 +389,7 @@ export default function BCTemplates() {
               <button
                 onClick={openAdd}
                 className="h-9 w-9 rounded-2xl flex items-center justify-center text-white shadow-sm active:opacity-80 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+                style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" }}
               >
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
               </button>
@@ -418,14 +418,14 @@ export default function BCTemplates() {
             onClick={() => setShowMobileFilter((s) => !s)}
             className={cn(
               "h-11 px-3 rounded-2xl flex items-center gap-1.5 text-[11px] font-bold transition-all active:opacity-60 shrink-0",
-              showMobileFilter || activeTab !== "all" ? "bg-[#0066FF] text-white" : "bg-[#F0F4FB] text-[#0f1c3f]"
+              showMobileFilter || activeTab !== "all" ? "bg-[#0866FF] text-white" : "bg-[#F0F4FB] text-[#0f1c3f]"
             )}
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} />
             Filter
             {activeTab !== "all" && (
-              <span className="h-4 w-4 rounded-full bg-white text-[#0066FF] text-[10px] font-black flex items-center justify-center">1</span>
+              <span className="h-4 w-4 rounded-full bg-white text-[#0866FF] text-[10px] font-black flex items-center justify-center">1</span>
             )}
           </button>
         </div>
@@ -444,7 +444,7 @@ export default function BCTemplates() {
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Filter Kategori</p>
                   {activeTab !== "all" && (
-                    <button onClick={() => setActiveTab("all")} className="text-[11px] text-[#0066FF] font-semibold active:opacity-60">
+                    <button onClick={() => setActiveTab("all")} className="text-[11px] text-[#0866FF] font-semibold active:opacity-60">
                       Reset Filter
                     </button>
                   )}
@@ -452,7 +452,7 @@ export default function BCTemplates() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => { setActiveTab("all"); setShowMobileFilter(false); }}
-                    className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95", activeTab === "all" ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
+                    className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95", activeTab === "all" ? "bg-[#0866FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
                     style={{ WebkitTapHighlightColor: "transparent" }}
                   >
                     Semua
@@ -461,7 +461,7 @@ export default function BCTemplates() {
                     <button
                       key={cat.key}
                       onClick={() => { setActiveTab(cat.key); setShowMobileFilter(false); }}
-                      className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95", activeTab === cat.key ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
+                      className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all active:scale-95", activeTab === cat.key ? "bg-[#0866FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
                       style={{ WebkitTapHighlightColor: "transparent" }}
                     >
                       {cat.emoji} {cat.label}
@@ -488,7 +488,7 @@ export default function BCTemplates() {
                   "shrink-0 h-9 px-4 rounded-full text-[12px] font-bold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95",
                   active ? "text-white shadow-md" : "bg-[#F0F4FB] text-slate-500"
                 )}
-                style={active ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
+                style={active ? { background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
               >
                 {cat.emoji} {cat.label}
                 <span className={cn("text-[9px] font-extrabold px-1.5 py-0.5 rounded-full", active ? "bg-white/25 text-white" : "bg-slate-200 text-slate-500")}>
@@ -513,7 +513,7 @@ export default function BCTemplates() {
           </div>
           <div className="grid grid-cols-4 gap-2">
             {[
-              { label: "Total",      value: templates.length,  iconBg: "#dbeafe", color: "#0066FF" },
+              { label: "Total",      value: templates.length,  iconBg: "#dbeafe", color: "#0866FF" },
               { label: "Aktif",      value: templates.length,  iconBg: "#d1fae5", color: "#10b981" },
               { label: "Draft",      value: 0,                 iconBg: "#fef3c7", color: "#f59e0b" },
               { label: "Diarsipkan", value: 0,                 iconBg: "#fee2e2", color: "#ef4444" },
@@ -563,7 +563,7 @@ export default function BCTemplates() {
               {canEdit && !search && activeTab === "all" && (
                 <button
                   onClick={openAdd}
-                  className="mt-3 text-[12px] text-[#0066FF] font-bold active:opacity-60"
+                  className="mt-3 text-[12px] text-[#0866FF] font-bold active:opacity-60"
                   style={{ WebkitTapHighlightColor: "transparent" }}
                 >
                   + Tambah template pertama
@@ -663,7 +663,7 @@ export default function BCTemplates() {
                             onClick={() => handleCopyClick(t)}
                             className={cn(
                               "flex items-center gap-1.5 h-7 px-3 rounded-xl text-[11px] font-bold transition-all active:scale-95 flex-1 justify-center",
-                              "bg-[#0066FF] text-white"
+                              "bg-[#0866FF] text-white"
                             )}
                             style={{ WebkitTapHighlightColor: "transparent" }}
                           >
@@ -708,7 +708,7 @@ export default function BCTemplates() {
                       "h-8 w-8 rounded-xl text-[12px] font-bold transition-all active:scale-95",
                       p === mobilePage ? "text-white shadow-sm" : "bg-white text-slate-500 shadow-sm"
                     )}
-                    style={p === mobilePage ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
+                    style={p === mobilePage ? { background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
                   >
                     {p}
                   </button>
@@ -730,12 +730,12 @@ export default function BCTemplates() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Aksi Cepat</h3>
-            <span className="text-[11px] font-semibold text-[#0066FF] active:opacity-60 cursor-pointer">Lihat Semua</span>
+            <span className="text-[11px] font-semibold text-[#0866FF] active:opacity-60 cursor-pointer">Lihat Semua</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {[
               {
-                icon: <Plus className="h-5 w-5" style={{ color: "#0066FF" }} strokeWidth={1.8} />,
+                icon: <Plus className="h-5 w-5" style={{ color: "#0866FF" }} strokeWidth={1.8} />,
                 iconBg: "#dbeafe",
                 title: "Template Baru",
                 subtitle: "Buat template BC baru",
@@ -821,7 +821,7 @@ export default function BCTemplates() {
               <button
                 onClick={openAdd}
                 className="flex items-center gap-2 h-10 pl-4 pr-3 rounded-xl text-white text-[13px] font-bold shadow-md hover:opacity-90 active:scale-95 transition-all"
-                style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}
+                style={{ background: "linear-gradient(135deg,#0866FF,#1d4ed8)" }}
               >
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
                 Tambah Template
@@ -921,7 +921,7 @@ export default function BCTemplates() {
               {search ? "Coba kata kunci lain atau hapus filter." : "Buat template baru untuk memulai."}
             </p>
             {canEdit && !search && (
-              <button onClick={openAdd} className="mt-4 inline-flex items-center gap-1.5 h-9 px-4 rounded-xl text-[12px] font-bold text-white" style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}>
+              <button onClick={openAdd} className="mt-4 inline-flex items-center gap-1.5 h-9 px-4 rounded-xl text-[12px] font-bold text-white" style={{ background: "linear-gradient(135deg,#0866FF,#1d4ed8)" }}>
                 <Plus className="h-3.5 w-3.5" /> Tambah Template
               </button>
             )}
@@ -1052,7 +1052,7 @@ export default function BCTemplates() {
               <button
                 onClick={() => toast.info("Fitur AI template segera hadir")}
                 className="mt-3 flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-bold text-white transition-all hover:opacity-90 active:scale-95"
-                style={{ background: "linear-gradient(135deg,#2563eb,#7c3aed)" }}
+                style={{ background: "linear-gradient(135deg,#0866FF,#7c3aed)" }}
               >
                 <Sparkles className="h-3 w-3" />
                 Buat dengan AI
@@ -1798,7 +1798,7 @@ const THUMB_GRADIENT: Record<string, string> = {
   umrah:           "linear-gradient(135deg,#0ea5e9,#6366f1)",
   haji:            "linear-gradient(135deg,#10b981,#059669)",
   visa_on_arrival: "linear-gradient(135deg,#8b5cf6,#6d28d9)",
-  visa_pelajar:    "linear-gradient(135deg,#4f46e5,#2563eb)",
+  visa_pelajar:    "linear-gradient(135deg,#4f46e5,#0866FF)",
   tiket_pesawat:   "linear-gradient(135deg,#f97316,#dc2626)",
   general:         "linear-gradient(135deg,#64748b,#334155)",
 };

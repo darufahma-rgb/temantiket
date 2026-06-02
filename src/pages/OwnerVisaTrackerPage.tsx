@@ -639,7 +639,7 @@ export default function OwnerVisaTrackerPage() {
               className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold transition-all ${
                 mobileFilterStatus === tab.key ? "text-white shadow-sm" : "bg-white text-[#64748b]"
               }`}
-              style={mobileFilterStatus === tab.key ? { background: "linear-gradient(135deg,#2563eb,#1d4ed8)" } : undefined}
+              style={mobileFilterStatus === tab.key ? { background: "linear-gradient(135deg,#0866FF,#1d4ed8)" } : undefined}
             >
               {tab.label}
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${mobileFilterStatus === tab.key ? "bg-white/20 text-white" : "bg-gray-100 text-[#64748b]"}`}>
@@ -819,7 +819,7 @@ export default function OwnerVisaTrackerPage() {
                           ? "text-white"
                           : "bg-gray-50 text-[#0f1c3f] border border-gray-200"
                       }`}
-                      style={mobileFilterStatus === opt.key ? { background: "linear-gradient(135deg,#2563eb,#1d4ed8)" } : undefined}
+                      style={mobileFilterStatus === opt.key ? { background: "linear-gradient(135deg,#0866FF,#1d4ed8)" } : undefined}
                     >
                       {opt.label}
                     </button>
@@ -857,7 +857,7 @@ export default function OwnerVisaTrackerPage() {
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}>
+              style={{ background: "linear-gradient(135deg,#0866FF,#1d4ed8)" }}>
               <FileCheck2 className="h-6 w-6 text-white" strokeWidth={1.5} />
             </div>
             <div>
@@ -923,7 +923,7 @@ export default function OwnerVisaTrackerPage() {
               value: stats.total,
               sub: "100% dari total",
               Icon: FileText,
-              iconColor: "#2563eb",
+              iconColor: "#0866FF",
               iconBg: "#eff6ff",
               borderLeft: "border-l-blue-500",
             },
@@ -1552,7 +1552,7 @@ export default function OwnerVisaTrackerPage() {
                           ? "text-white shadow-sm"
                           : "border border-gray-200 text-[#64748b] hover:bg-gray-50"
                       }`}
-                      style={p === page ? { background: "linear-gradient(135deg,#2563eb,#1d4ed8)" } : undefined}
+                      style={p === page ? { background: "linear-gradient(135deg,#0866FF,#1d4ed8)" } : undefined}
                     >
                       {p}
                     </button>
@@ -1611,7 +1611,7 @@ export default function OwnerVisaTrackerPage() {
               className="fixed right-0 top-0 bottom-0 z-50 w-[420px] bg-white shadow-2xl flex flex-col hidden md:flex"
             >
               {/* Panel header */}
-              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100" style={{ background: "linear-gradient(135deg,#1e40af,#2563eb)" }}>
+              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100" style={{ background: "linear-gradient(135deg,#1e40af,#0866FF)" }}>
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     className="w-11 h-11 rounded-2xl flex items-center justify-center text-white text-[13px] font-bold shrink-0 border-2 border-white/30"
@@ -1776,7 +1776,7 @@ export default function OwnerVisaTrackerPage() {
                 <button
                   onClick={() => navigate(`/orders/detail/${so.id}`)}
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-bold text-white transition-opacity hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}
+                  style={{ background: "linear-gradient(135deg,#0866FF,#1d4ed8)" }}
                 >
                   <Eye className="h-4 w-4" strokeWidth={2} />
                   Buka Detail Order

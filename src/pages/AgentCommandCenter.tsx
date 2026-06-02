@@ -45,7 +45,7 @@ import {
 const M = { fontFamily: "'Manrope', sans-serif" };
 
 const AGENT_COLORS = [
-  "#0064E0", "#f97316", "#10b981", "#8b5cf6",
+  "#0866FF", "#f97316", "#10b981", "#8b5cf6",
   "#ec4899", "#f59e0b", "#14b8a6", "#ef4444",
 ];
 
@@ -846,7 +846,7 @@ export default function AgentCommandCenter() {
           {isOwner && (
             <Button size="sm"
               className="h-9 rounded-xl font-semibold text-white pl-4 pr-3 gap-0"
-              style={{ background: "linear-gradient(135deg, #1d4ed8, #2563eb)" }}
+              style={{ background: "linear-gradient(135deg, #1d4ed8, #0866FF)" }}
               onClick={() => setAddOpen(true)}>
               <UserPlus className="h-3.5 w-3.5 mr-1.5" />
               + Tambah Agen
@@ -883,7 +883,7 @@ export default function AgentCommandCenter() {
           {/* ── 6 Stat Cards ── */}
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
             {[
-              { label: "Total Agen",    value: agentMembers.length,       sub: `${agentMembers.length} terdaftar`,    iconBg: "#dbeafe", iconColor: "#2563eb", Icon: Users },
+              { label: "Total Agen",    value: agentMembers.length,       sub: `${agentMembers.length} terdaftar`,    iconBg: "#dbeafe", iconColor: "#0866FF", Icon: Users },
               { label: "Total Order",   value: totalDirOrders,            sub: "dari semua agen",                     iconBg: "#fef3c7", iconColor: "#d97706", Icon: ShoppingBag },
               { label: "Total Klien",   value: totalDirClients,           sub: "dibawa agen",                         iconBg: "#ede9fe", iconColor: "#7c3aed", Icon: UserCheck },
               { label: "Total Revenue", value: fmtIDR(totalAgentRevenue), sub: "semua agen", large: true,             iconBg: "#fef3c7", iconColor: "#d97706", Icon: TrendingUp },

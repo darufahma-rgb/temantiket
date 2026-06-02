@@ -15,25 +15,22 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Poppins", "Sk-Modernist", "Manrope", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
       },
       colors: {
-        /* ── Brand palette override ──
-           Primary: #00072d → #051650 → #0a2472 → #123499
-           Interactive accent: #1a44d4 (sky-500) */
-        /* ── Meta cobalt palette (replaces old navy sky) ── */
+        /* ── Meta Design System 2023+ ── */
         sky: {
-          50:  "#e8f0fb",
-          100: "#cce0ff",
-          200: "#99c2ff",
-          300: "#5599ff",
-          400: "#2277f5",
-          500: "#0064E0",   /* Meta cobalt primary */
-          600: "#0457cb",   /* Meta cobalt deep */
-          700: "#0143b5",   /* selected/active */
-          800: "#02318a",
-          900: "#011d5c",
-          950: "#010e33",
+          50:  "#EEF3FF",
+          100: "#DDEAFF",
+          200: "#BACCFF",
+          300: "#82A1FF",
+          400: "#4D75FF",
+          500: "#0866FF",   /* Meta Blue primary */
+          600: "#0654D6",   /* pressed/active */
+          700: "#0443AD",
+          800: "#033183",
+          900: "#011D58",
+          950: "#010E2E",
         },
         /* ── Meta ink scale ── */
         ink: {

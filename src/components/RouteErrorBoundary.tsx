@@ -116,7 +116,7 @@ function ErrorFallback({
         <button
           onClick={onRetry}
           className="h-10 px-5 rounded-xl text-[13px] font-bold text-white shadow-sm active:scale-95 transition-transform"
-          style={{ background: "linear-gradient(135deg,#0064E0,#0457cb)" }}
+          style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}
         >
           Coba Lagi
         </button>

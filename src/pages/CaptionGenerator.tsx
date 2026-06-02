@@ -350,7 +350,7 @@ export default function CaptionGenerator() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-2xl flex items-center justify-center shrink-0"
-              style={{ background: "linear-gradient(135deg,#6366f1,#2563eb)" }}>
+              style={{ background: "linear-gradient(135deg,#6366f1,#0866FF)" }}>
               <Megaphone className="h-6 w-6 text-white" strokeWidth={1.8} />
             </div>
             <div>
@@ -657,7 +657,7 @@ export default function CaptionGenerator() {
               className={cn(
                 "w-full flex items-center justify-center gap-2 h-11 rounded-xl text-white text-[13px] font-bold transition-all shadow-md hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed",
               )}
-              style={{ background: "linear-gradient(135deg,#4f46e5,#2563eb)" }}
+              style={{ background: "linear-gradient(135deg,#4f46e5,#0866FF)" }}
             >
               {loading ? (
                 <>
@@ -884,7 +884,7 @@ export default function CaptionGenerator() {
 
       {/* ── Mobile fallback ── */}
       <div className="md:hidden flex flex-col items-center justify-center min-h-screen p-8 text-center bg-[#f1f5f9]">
-        <div className="h-16 w-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: "linear-gradient(135deg,#6366f1,#2563eb)" }}>
+        <div className="h-16 w-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: "linear-gradient(135deg,#6366f1,#0866FF)" }}>
           <Megaphone className="h-7 w-7 text-white" strokeWidth={1.8} />
         </div>
         <h2 className="text-[18px] font-black text-slate-800 mb-2">Caption Generator</h2>

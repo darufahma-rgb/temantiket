@@ -409,7 +409,7 @@ export default function PublicMemberCardPage() {
 
               {/* ── Hero Identity Banner ─────────────────────────────────── */}
               <div className="relative overflow-hidden px-4 pt-5 pb-10"
-                style={{ background: "linear-gradient(150deg, #0038B8 0%, #0066FF 55%, #338BFF 100%)" }}>
+                style={{ background: "linear-gradient(150deg, #0654D6 0%, #0866FF 55%, #338BFF 100%)" }}>
                 {/* decorative blobs */}
                 <div className="absolute -top-8 -right-8 h-40 w-40 rounded-full bg-white/5 pointer-events-none" />
                 <div className="absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-white/5 pointer-events-none" />
@@ -481,7 +481,7 @@ export default function PublicMemberCardPage() {
               {/* ── Stat Chips (3-col) ────────────────────────────────────── */}
               <div className="px-4 mt-3 grid grid-cols-3 gap-2.5">
                 {[
-                  { icon: Hash,     label: "Member ID",   value: memberIdStr,                         color: "#0066FF", bg: "#EEF4FF" },
+                  { icon: Hash,     label: "Member ID",   value: memberIdStr,                         color: "#0866FF", bg: "#EEF4FF" },
                   { icon: Star,     label: "Total Stamp", value: `${totalStamps}/16`,                 color: "#D97706", bg: "#FFFBEB" },
                   { icon: Calendar, label: "Bergabung",   value: fmtDateShort(data.client.createdAt), color: "#7C3AED", bg: "#F5F3FF" },
                 ].map(({ icon: Icon, label, value, color, bg }) => (

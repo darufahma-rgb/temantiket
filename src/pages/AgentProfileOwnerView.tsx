@@ -1296,7 +1296,7 @@ export default function AgentProfileOwnerView() {
                       )}
                     </div>
                   )}
-                  <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-[#0066FF] border-2 border-white flex items-center justify-center shadow-sm">
+                  <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-[#0866FF] border-2 border-white flex items-center justify-center shadow-sm">
                     <BadgeCheck className="h-3.5 w-3.5 text-white" />
                   </div>
                 </div>
@@ -1311,7 +1311,7 @@ export default function AgentProfileOwnerView() {
               <div className="mt-3">
                 <h2 className="text-[20px] font-extrabold text-[#0f1c3f] leading-tight">{agent.displayName}</h2>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-blue-100 text-[#0066FF]">{tier.emoji} {tier.label}</span>
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-blue-100 text-[#0866FF]">{tier.emoji} {tier.label}</span>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Mitra Agent</span>
                 </div>
                 <p className="text-[12px] text-slate-500 mt-2">{agent.email}</p>
@@ -1328,18 +1328,18 @@ export default function AgentProfileOwnerView() {
                   <div>
                     <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Nama Lengkap</label>
                     <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white text-[13px] font-semibold text-[#0f1c3f] px-3 py-2.5 focus:outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-blue-100 transition-all"
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white text-[13px] font-semibold text-[#0f1c3f] px-3 py-2.5 focus:outline-none focus:border-[#0866FF] focus:ring-2 focus:ring-blue-100 transition-all"
                     />
                   </div>
                   <div>
                     <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Email</label>
                     <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white text-[13px] text-[#0f1c3f] px-3 py-2.5 focus:outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-blue-100 transition-all"
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white text-[13px] text-[#0f1c3f] px-3 py-2.5 focus:outline-none focus:border-[#0866FF] focus:ring-2 focus:ring-blue-100 transition-all"
                     />
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => void handleSaveProfile()} disabled={isSaving}
-                      className="flex-1 h-10 rounded-xl bg-[#0066FF] text-white text-[12px] font-bold active:opacity-80 disabled:opacity-60 flex items-center justify-center gap-1.5 transition-opacity"
+                      className="flex-1 h-10 rounded-xl bg-[#0866FF] text-white text-[12px] font-bold active:opacity-80 disabled:opacity-60 flex items-center justify-center gap-1.5 transition-opacity"
                       style={{ WebkitTapHighlightColor: "transparent" }}
                     >
                       {isSaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Simpan
@@ -1381,7 +1381,7 @@ export default function AgentProfileOwnerView() {
                   </a>
                   {canEdit && (
                     <button onClick={() => { setEditName(agent.displayName); setEditEmail(agent.email); setIsEditMode(true); }}
-                      className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-[#0066FF] text-white text-[11px] font-bold active:opacity-80 shadow-sm transition-opacity"
+                      className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-[#0866FF] text-white text-[11px] font-bold active:opacity-80 shadow-sm transition-opacity"
                       style={{ WebkitTapHighlightColor: "transparent" }}
                     >
                       <Pencil className="h-3.5 w-3.5" /> Edit
@@ -1441,7 +1441,7 @@ export default function AgentProfileOwnerView() {
           <div className="bg-white rounded-3xl shadow-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Ringkasan Performa</h3>
-              <button onClick={() => setTab("orders")} className="text-[11px] font-semibold text-[#0066FF] active:opacity-70 flex items-center gap-0.5" style={{ WebkitTapHighlightColor: "transparent" }}>
+              <button onClick={() => setTab("orders")} className="text-[11px] font-semibold text-[#0866FF] active:opacity-70 flex items-center gap-0.5" style={{ WebkitTapHighlightColor: "transparent" }}>
                 Lihat Detail <ChevronRight className="h-3 w-3" />
               </button>
             </div>
@@ -1450,7 +1450,7 @@ export default function AgentProfileOwnerView() {
                 { label: "Total Order",     value: String(agentOrders.length),                                          sub: `${agentOrders.filter((o) => o.status === "Completed").length} selesai`, icon: "📦", color: "#8b5cf6", bg: "#ede9fe" },
                 { label: "Total Penjualan", value: fmtRevCompact(totalRevenue),                                         sub: "total pendapatan",   icon: "💰", color: "#10b981", bg: "#d1fae5" },
                 { label: "Rating",          value: "4.8 ★",                                                             sub: "performa agent",     icon: "⭐", color: "#f59e0b", bg: "#fef3c7" },
-                { label: "Total Klien",     value: String(agentClients.length),                                         sub: "klien terdaftar",    icon: "👥", color: "#0066FF", bg: "#dbeafe" },
+                { label: "Total Klien",     value: String(agentClients.length),                                         sub: "klien terdaftar",    icon: "👥", color: "#0866FF", bg: "#dbeafe" },
               ] as const).map((s) => (
                 <div key={s.label} className="rounded-2xl p-4" style={{ backgroundColor: s.bg }}>
                   <div className="text-xl mb-2">{s.icon}</div>
@@ -1475,7 +1475,7 @@ export default function AgentProfileOwnerView() {
                 <div key={a.id} className={`rounded-2xl p-3 flex flex-col items-center gap-1.5 ${a.unlocked ? "bg-gradient-to-b from-blue-50 to-indigo-50 border border-blue-100" : "bg-slate-50 border border-slate-100 opacity-50"}`}>
                   <span className={`text-2xl ${!a.unlocked ? "grayscale" : ""}`}>{a.emoji}</span>
                   <p className="text-[10px] font-bold text-center text-slate-700 leading-tight">{a.label}</p>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${a.unlocked ? "bg-[#0066FF] text-white" : "bg-slate-200 text-slate-500"}`}>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${a.unlocked ? "bg-[#0866FF] text-white" : "bg-slate-200 text-slate-500"}`}>
                     {a.unlocked ? "✓ Unlock" : "Terkunci"}
                   </span>
                 </div>
@@ -1494,7 +1494,7 @@ export default function AgentProfileOwnerView() {
                 const typeLabel = ORDER_TYPE_LABEL[type as keyof typeof ORDER_TYPE_LABEL] ?? type;
                 const typeRev = agentOrders.filter((o) => o.type === type).reduce((s, o) => s + revenueIDR(o), 0);
                 const colMap: Record<string, { color: string; bg: string }> = {
-                  umrah:        { color: "#0066FF", bg: "#dbeafe" },
+                  umrah:        { color: "#0866FF", bg: "#dbeafe" },
                   flight:       { color: "#8b5cf6", bg: "#ede9fe" },
                   visa_voa:     { color: "#10b981", bg: "#d1fae5" },
                   visa_student: { color: "#f59e0b", bg: "#fef3c7" },
@@ -1518,7 +1518,7 @@ export default function AgentProfileOwnerView() {
           <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <h3 className="text-[15px] font-extrabold text-[#0f1c3f]">Riwayat Aktivitas</h3>
-              <button onClick={() => setTab("orders")} className="text-[11px] font-semibold text-[#0066FF] active:opacity-70" style={{ WebkitTapHighlightColor: "transparent" }}>Lihat Semua</button>
+              <button onClick={() => setTab("orders")} className="text-[11px] font-semibold text-[#0866FF] active:opacity-70" style={{ WebkitTapHighlightColor: "transparent" }}>Lihat Semua</button>
             </div>
             {recentActivities.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-10 px-4 text-center">
@@ -1553,7 +1553,7 @@ export default function AgentProfileOwnerView() {
           <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
             {TABS.map((t) => (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className={`shrink-0 flex items-center gap-1.5 h-9 px-4 rounded-full text-[12px] font-semibold transition-all active:scale-95 ${tab === t.key ? "bg-[#0066FF] text-white shadow-md shadow-blue-200" : "bg-white text-slate-600 border border-slate-200"}`}
+                className={`shrink-0 flex items-center gap-1.5 h-9 px-4 rounded-full text-[12px] font-semibold transition-all active:scale-95 ${tab === t.key ? "bg-[#0866FF] text-white shadow-md shadow-blue-200" : "bg-white text-slate-600 border border-slate-200"}`}
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 <t.icon className="h-3.5 w-3.5" />
@@ -1587,7 +1587,7 @@ export default function AgentProfileOwnerView() {
                   <div className="bg-white rounded-2xl shadow-sm p-4">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-[13px] font-extrabold text-[#0f1c3f]">Ringkasan Komisi</p>
-                      <button onClick={() => setTab("komisi")} className="text-[11px] font-semibold text-[#0066FF]" style={{ WebkitTapHighlightColor: "transparent" }}>Detail</button>
+                      <button onClick={() => setTab("komisi")} className="text-[11px] font-semibold text-[#0866FF]" style={{ WebkitTapHighlightColor: "transparent" }}>Detail</button>
                     </div>
                     <div className="space-y-2">
                       {[
@@ -1632,7 +1632,7 @@ export default function AgentProfileOwnerView() {
                       { key: "none" as const,      label: "Belum dikerjakan" },
                     ]).map((f) => (
                       <button key={f.key} onClick={() => setMissionFilter(f.key)}
-                        className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${missionFilter === f.key ? "bg-[#0066FF] text-white border-[#0066FF]" : "bg-white text-slate-500 border-slate-200"}`}
+                        className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${missionFilter === f.key ? "bg-[#0866FF] text-white border-[#0866FF]" : "bg-white text-slate-500 border-slate-200"}`}
                         style={{ WebkitTapHighlightColor: "transparent" }}
                       >
                         {f.label}
@@ -1649,7 +1649,7 @@ export default function AgentProfileOwnerView() {
                     </div>
                   )}
                   <p className="text-[10px] text-slate-400 text-center pt-1">
-                    Buat misi baru di <button onClick={() => navigate("/agent-center")} className="text-[#0066FF] font-semibold" style={{ WebkitTapHighlightColor: "transparent" }}>Agent Center</button>
+                    Buat misi baru di <button onClick={() => navigate("/agent-center")} className="text-[#0866FF] font-semibold" style={{ WebkitTapHighlightColor: "transparent" }}>Agent Center</button>
                   </p>
                 </div>
               )}
@@ -1841,7 +1841,7 @@ export default function AgentProfileOwnerView() {
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate("/agent-center")}>
                       <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Kembali
                     </Button>
-                    <Button size="sm" className="flex-1 bg-[#0457cb] hover:bg-[#0a1317] text-white" onClick={() => navigate("/agent-center", { state: { focusAgent: agentId } })}>
+                    <Button size="sm" className="flex-1 bg-[#0654D6] hover:bg-[#0a1317] text-white" onClick={() => navigate("/agent-center", { state: { focusAgent: agentId } })}>
                       <BarChart3 className="h-3.5 w-3.5 mr-1" /> Lihat Analitik
                     </Button>
                   </div>
@@ -1954,7 +1954,7 @@ export default function AgentProfileOwnerView() {
                   <button
                     onClick={() => void handleSaveProfile()}
                     disabled={isSaving}
-                    className="flex items-center gap-1.5 bg-[#0457cb] text-white text-[11px] font-bold px-4 py-1.5 rounded-lg hover:bg-[#0a1317] transition-colors disabled:opacity-60"
+                    className="flex items-center gap-1.5 bg-[#0654D6] text-white text-[11px] font-bold px-4 py-1.5 rounded-lg hover:bg-[#0a1317] transition-colors disabled:opacity-60"
                   >
                     {isSaving ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                     Simpan
@@ -2003,7 +2003,7 @@ export default function AgentProfileOwnerView() {
               {canEdit && (
                 <button
                   onClick={() => { setEditName(agent.displayName); setEditEmail(agent.email); setIsEditMode(true); }}
-                  className="flex items-center gap-1.5 bg-[#0457cb] text-white text-[12px] font-semibold px-4 py-2 rounded-xl hover:bg-[#0a1317] transition-colors"
+                  className="flex items-center gap-1.5 bg-[#0654D6] text-white text-[12px] font-semibold px-4 py-2 rounded-xl hover:bg-[#0a1317] transition-colors"
                 >
                   <Pencil className="h-3.5 w-3.5" />Edit Profil
                 </button>
@@ -2851,7 +2851,7 @@ export default function AgentProfileOwnerView() {
                 </Button>
                 <Button
                   size="sm"
-                  className="flex-1 bg-[#0457cb] hover:bg-[#0a1317] text-white"
+                  className="flex-1 bg-[#0654D6] hover:bg-[#0a1317] text-white"
                   onClick={() =>
                     navigate("/agent-center", {
                       state: { focusAgent: agentId },

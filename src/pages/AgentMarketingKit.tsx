@@ -98,7 +98,7 @@ export default function AgentMarketingKit() {
           {/* Hero Card */}
           <div
             className="rounded-3xl overflow-hidden shadow-sm"
-            style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+            style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}
           >
             <div className="p-5">
               <div className="flex items-center gap-2 mb-2">
@@ -119,7 +119,7 @@ export default function AgentMarketingKit() {
                     .getElementById("caption-form-mobile")
                     ?.scrollIntoView({ behavior: "smooth", block: "start" })
                 }
-                className="mt-4 bg-white text-[#0038B8] text-[13px] font-bold px-5 py-2.5 rounded-2xl active:opacity-60 transition-opacity shadow-sm"
+                className="mt-4 bg-white text-[#0654D6] text-[13px] font-bold px-5 py-2.5 rounded-2xl active:opacity-60 transition-opacity shadow-sm"
               >
                 Buat Caption Baru
               </button>
@@ -143,7 +143,7 @@ export default function AgentMarketingKit() {
           <div id="caption-form-mobile" className="bg-white rounded-3xl shadow-sm overflow-hidden">
             <div className="px-4 pt-4 pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <Wand2 className="h-4 w-4 text-[#0066FF]" strokeWidth={1.5} />
+                <Wand2 className="h-4 w-4 text-[#0866FF]" strokeWidth={1.5} />
                 <h3 className="text-[14px] font-bold text-[#0f1c3f]">Buat Caption Baru</h3>
               </div>
               <p className="text-[11px] text-[#64748b] mt-0.5">Isi konteks lalu generate dengan AI</p>
@@ -156,7 +156,7 @@ export default function AgentMarketingKit() {
           {/* Inspirasi Cepat */}
           <div className="bg-white rounded-3xl shadow-sm p-4">
             <div className="flex items-center gap-2 mb-3">
-              <BookOpen className="h-4 w-4 text-[#0066FF]" strokeWidth={1.5} />
+              <BookOpen className="h-4 w-4 text-[#0866FF]" strokeWidth={1.5} />
               <h3 className="text-[14px] font-bold text-[#0f1c3f]">Inspirasi Cepat</h3>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -222,7 +222,7 @@ export default function AgentMarketingKit() {
                         <div className="flex gap-3">
                           <button
                             onClick={() => void handleCopyHistory(item.caption, item.id)}
-                            className="flex items-center gap-1.5 text-[11px] font-semibold text-[#0066FF] active:opacity-60"
+                            className="flex items-center gap-1.5 text-[11px] font-semibold text-[#0866FF] active:opacity-60"
                           >
                             <Copy className="h-3.5 w-3.5" strokeWidth={2} />
                             {copiedId === item.id ? "Disalin!" : "Salin"}

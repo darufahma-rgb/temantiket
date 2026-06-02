@@ -86,7 +86,7 @@ const NOTE_CATEGORIES = [
     label: "Follow Up",
     icon: ClipboardList,
     iconBg: "#dbeafe",
-    iconColor: "#2563eb",
+    iconColor: "#0866FF",
     badgeBg: "bg-blue-100",
     badgeText: "text-blue-700",
     tabEmoji: "📋",
@@ -716,7 +716,7 @@ export default function Notes() {
             </button>
             <button onClick={() => setShowAddForm(true)}
               className="h-9 w-9 rounded-2xl flex items-center justify-center text-white shadow-sm active:opacity-80"
-              style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}>
+              style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" }}>
               <Plus className="h-4 w-4" strokeWidth={2.5} />
             </button>
           </div>
@@ -734,7 +734,7 @@ export default function Notes() {
             )}
           </div>
           <button onClick={() => setShowMobileFilter((s) => !s)}
-            className={cn("h-11 px-3 rounded-2xl flex items-center gap-1.5 text-[11px] font-bold transition-all active:opacity-60 shrink-0", showMobileFilter || filterTag !== null ? "bg-[#0066FF] text-white" : "bg-[#F0F4FB] text-[#0f1c3f]")}
+            className={cn("h-11 px-3 rounded-2xl flex items-center gap-1.5 text-[11px] font-bold transition-all active:opacity-60 shrink-0", showMobileFilter || filterTag !== null ? "bg-[#0866FF] text-white" : "bg-[#F0F4FB] text-[#0f1c3f]")}
             style={{ WebkitTapHighlightColor: "transparent" }}>
             <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} />Filter
           </button>
@@ -745,10 +745,10 @@ export default function Notes() {
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.22 }} className="overflow-hidden">
               <div className="mt-3 pt-3 border-t border-slate-100">
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={() => setFilterTag(null)} className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all", filterTag === null ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")} style={{ WebkitTapHighlightColor: "transparent" }}>Semua</button>
+                  <button onClick={() => setFilterTag(null)} className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all", filterTag === null ? "bg-[#0866FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")} style={{ WebkitTapHighlightColor: "transparent" }}>Semua</button>
                   {allTags.map((tag) => (
                     <button key={tag} onClick={() => setFilterTag(filterTag === tag ? null : tag)}
-                      className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1", filterTag === tag ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
+                      className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1", filterTag === tag ? "bg-[#0866FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
                       style={{ WebkitTapHighlightColor: "transparent" }}>
                       <Hash className="h-3 w-3" strokeWidth={2} />{tag}
                     </button>
@@ -758,7 +758,7 @@ export default function Notes() {
                   <div className="flex gap-2 flex-wrap">
                     {([{ value: "newest", label: "Terbaru" }, { value: "oldest", label: "Terlama" }, { value: "az", label: "A–Z" }] as { value: SortMode; label: string }[]).map((s) => (
                       <button key={s.value} onClick={() => setSortMode(s.value)}
-                        className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all", sortMode === s.value ? "bg-[#0066FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
+                        className={cn("h-8 px-3 rounded-full text-[11px] font-bold border transition-all", sortMode === s.value ? "bg-[#0866FF] text-white border-transparent" : "bg-white text-slate-600 border-slate-200")}
                         style={{ WebkitTapHighlightColor: "transparent" }}>{s.label}</button>
                     ))}
                   </div>
@@ -776,7 +776,7 @@ export default function Notes() {
             <StickyNote className="h-10 w-10 mx-auto mb-3 opacity-20 text-slate-400" />
             <p className="text-[13px] font-semibold text-slate-400">{search || filterTag ? "Catatan tidak ditemukan" : "Belum ada catatan"}</p>
             {!search && !filterTag && (
-              <button onClick={() => setShowAddForm(true)} className="mt-3 text-[12px] text-[#0066FF] font-bold" style={{ WebkitTapHighlightColor: "transparent" }}>+ Tambah catatan pertama</button>
+              <button onClick={() => setShowAddForm(true)} className="mt-3 text-[12px] text-[#0866FF] font-bold" style={{ WebkitTapHighlightColor: "transparent" }}>+ Tambah catatan pertama</button>
             )}
           </div>
         )}
@@ -912,7 +912,7 @@ export default function Notes() {
                 </div>
                 <div className="flex gap-2 pt-1 pb-2">
                   <button onClick={() => setShowAddForm(false)} className="flex-1 h-11 rounded-2xl bg-[#F0F4FB] text-[13px] font-bold text-slate-600" style={{ WebkitTapHighlightColor: "transparent" }}>Batal</button>
-                  <button onClick={addMobileNote} className="flex-1 h-11 rounded-2xl text-[13px] font-bold text-white shadow-sm flex items-center justify-center gap-2" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}>
+                  <button onClick={addMobileNote} className="flex-1 h-11 rounded-2xl text-[13px] font-bold text-white shadow-sm flex items-center justify-center gap-2" style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" }}>
                     <Plus className="h-4 w-4" strokeWidth={2.5} />Simpan
                   </button>
                 </div>
@@ -937,7 +937,7 @@ export default function Notes() {
                 {[...notes].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 10).map((note) => (
                   <button key={note.id} onClick={() => { setExpandedNote(note); setShowHistory(false); }}
                     className="w-full flex items-center gap-3 bg-[#F0F4FB] rounded-2xl px-4 py-3 text-left" style={{ WebkitTapHighlightColor: "transparent" }}>
-                    <StickyNote className="h-4 w-4 text-[#0066FF] shrink-0" strokeWidth={1.8} />
+                    <StickyNote className="h-4 w-4 text-[#0866FF] shrink-0" strokeWidth={1.8} />
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-bold text-[#0f1c3f] truncate">{note.title}</p>
                       <p className="text-[11px] text-slate-400">{formatDate(note.updatedAt)}</p>
@@ -1016,7 +1016,7 @@ export default function Notes() {
                     active ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
                   )}
                 >
-                  <CatIcon className="h-3.5 w-3.5" strokeWidth={2} style={{ color: active ? "#2563eb" : undefined }} />
+                  <CatIcon className="h-3.5 w-3.5" strokeWidth={2} style={{ color: active ? "#0866FF" : undefined }} />
                   {cat.label}
                   <span className={cn("text-[11px] font-bold px-1.5 py-0.5 rounded-full ml-0.5", active ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500")}>
                     {count}
@@ -1198,7 +1198,7 @@ export default function Notes() {
                         : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                     )}
                   >
-                    <CatIcon className="h-3.5 w-3.5" style={{ color: active ? "#2563eb" : cat.iconColor }} strokeWidth={1.8} />
+                    <CatIcon className="h-3.5 w-3.5" style={{ color: active ? "#0866FF" : cat.iconColor }} strokeWidth={1.8} />
                     {cat.label}
                   </button>
                 );

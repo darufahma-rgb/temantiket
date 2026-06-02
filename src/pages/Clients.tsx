@@ -1301,7 +1301,7 @@ export default function Clients() {
               <button onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(""); }} className="h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>
                 {showSearch ? <X className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} /> : <Search className="h-4 w-4 text-[#0f1c3f]" strokeWidth={2} />}
               </button>
-              <button onClick={() => setAddOpen(true)} className="h-9 w-9 rounded-full flex items-center justify-center text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}>
+              <button onClick={() => setAddOpen(true)} className="h-9 w-9 rounded-full flex items-center justify-center text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" }}>
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
               </button>
             </div>
@@ -1328,7 +1328,7 @@ export default function Clients() {
           <div className="bg-white rounded-[20px] px-2 py-4" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
             <div className="grid grid-cols-4 divide-x divide-slate-100">
               {([
-                { label: "Total Klien",  value: clients.length, prev: lastMonthClients, icon: <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, color: "#2563eb", bg: "#eff6ff", filter: "all"    as const },
+                { label: "Total Klien",  value: clients.length, prev: lastMonthClients, icon: <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, color: "#0866FF", bg: "#eff6ff", filter: "all"    as const },
                 { label: "Klien Aktif", value: klienAktif,      prev: lastMonthAktif,  icon: <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>, color: "#16a34a", bg: "#ecfdf5", filter: "aktif"  as const },
                 { label: "Jamaah Aktif",value: jamaahAktif,     prev: lastMonthJamaah, icon: <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><circle cx="19" cy="8" r="3"/></svg>, color: "#7c3aed", bg: "#f5f3ff", filter: "jamaah" as const },
                 { label: "Klien Loyal", value: klienLoyal,      prev: lastMonthLoyal,  icon: <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>, color: "#d97706", bg: "#fffbeb", filter: "loyal"  as const },
@@ -1364,7 +1364,7 @@ export default function Clients() {
             ] as const).map((f) => (
               <button key={f.id} onClick={() => { setMobileStatusFilter(f.id); setMobilePage(1); }}
                 className={`shrink-0 h-9 px-4 rounded-full text-[11px] font-bold border transition-all active:scale-95 whitespace-nowrap ${mobileStatusFilter === f.id ? "text-white border-transparent shadow-md" : "bg-white text-slate-500 border-slate-200"}`}
-                style={mobileStatusFilter === f.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
+                style={mobileStatusFilter === f.id ? { background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
               >
                 {f.label}
               </button>
@@ -1393,10 +1393,10 @@ export default function Clients() {
               </div>
             ) : mobileFiltered.length === 0 ? (
               <div className="bg-white rounded-[20px] px-4 py-12 text-center flex flex-col items-center" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-                <div className="h-14 w-14 rounded-2xl bg-[#eff6ff] flex items-center justify-center mb-3"><Users className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} /></div>
+                <div className="h-14 w-14 rounded-2xl bg-[#eff6ff] flex items-center justify-center mb-3"><Users className="h-6 w-6 text-[#0866FF]" strokeWidth={1.8} /></div>
                 <p className="text-[14px] font-bold text-[#0f1c3f]">Belum ada klien</p>
                 <p className="text-[11px] text-slate-400 mt-1">{q ? "Coba kata kunci lain." : "Tambahkan klien pertama untuk memulai."}</p>
-                {!q && <button onClick={() => setAddOpen(true)} className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}><Plus className="h-3.5 w-3.5" /> Tambah Klien</button>}
+                {!q && <button onClick={() => setAddOpen(true)} className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}><Plus className="h-3.5 w-3.5" /> Tambah Klien</button>}
               </div>
             ) : (
               <motion.div
@@ -1437,7 +1437,7 @@ export default function Clients() {
                         }
                         <div className="flex flex-wrap items-center gap-1 mt-1.5">
                           {isAktif && <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Aktif</span>}
-                          {isJamaah && <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#eff6ff] text-[#2563eb] border border-blue-200">Jamaah Umrah</span>}
+                          {isJamaah && <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#eff6ff] text-[#0866FF] border border-blue-200">Jamaah Umrah</span>}
                           {isLoyal && <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Klien Loyal</span>}
                         </div>
                       </div>
@@ -1469,7 +1469,7 @@ export default function Clients() {
                   return (
                     <button key={page} onClick={() => setMobilePage(page)}
                       className={`h-9 w-9 rounded-full text-[12px] font-bold transition-all ${mobilePage === page ? "text-white shadow-md" : "bg-white text-slate-500 shadow-sm"}`}
-                      style={mobilePage === page ? { background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
+                      style={mobilePage === page ? { background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" } : { WebkitTapHighlightColor: "transparent" }}
                     >{page}</button>
                   );
                 })}
@@ -1484,11 +1484,11 @@ export default function Clients() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <p className="text-[15px] font-extrabold text-[#0f1c3f]">Aksi Cepat</p>
-              <button className="text-[11px] text-[#0066FF] font-bold active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>Lihat Semua</button>
+              <button className="text-[11px] text-[#0866FF] font-bold active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>Lihat Semua</button>
             </div>
             <div className="grid grid-cols-4 gap-3">
               {[
-                { label: "Import Klien", icon: <Upload   className="h-5 w-5" style={{ color: "#2563eb" }} strokeWidth={1.8} />, iconBg: "#eff6ff", action: () => toast.info("Segera hadir") },
+                { label: "Import Klien", icon: <Upload   className="h-5 w-5" style={{ color: "#0866FF" }} strokeWidth={1.8} />, iconBg: "#eff6ff", action: () => toast.info("Segera hadir") },
                 { label: "Export Data",  icon: <Download className="h-5 w-5" style={{ color: "#16a34a" }} strokeWidth={1.8} />, iconBg: "#ecfdf5", action: () => toast.info("Segera hadir") },
                 { label: "Grup Klien",  icon: <Users    className="h-5 w-5" style={{ color: "#7c3aed" }} strokeWidth={1.8} />, iconBg: "#f5f3ff", action: () => toast.info("Segera hadir") },
                 { label: "Tag Klien",   icon: <Tag      className="h-5 w-5" style={{ color: "#d97706" }} strokeWidth={1.8} />, iconBg: "#fffbeb", action: () => toast.info("Segera hadir") },
@@ -1517,7 +1517,7 @@ export default function Clients() {
               const isActive = tab.path === "/clients";
               return (
                 <button key={tab.path} onClick={() => navigate(tab.path)}
-                  className={`flex flex-col items-center justify-center gap-1 transition-colors active:opacity-60 ${isActive ? "text-[#0066FF]" : "text-slate-400"}`}
+                  className={`flex flex-col items-center justify-center gap-1 transition-colors active:opacity-60 ${isActive ? "text-[#0866FF]" : "text-slate-400"}`}
                   style={{ WebkitTapHighlightColor: "transparent" }}
                 >
                   {tab.icon(isActive)}

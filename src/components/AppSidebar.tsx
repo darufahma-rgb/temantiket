@@ -21,7 +21,7 @@ function ChatGPTIcon({ className }: { className?: string }) {
   );
 }
 
-const ACCENT = "#0064E0";
+const ACCENT = "#0866FF";  /* Meta Blue 2023+ */
 const SIDEBAR_W = 224;
 
 function useIsAnyActive(items: NavItemConfig[]): boolean {
@@ -53,7 +53,7 @@ function SidebarNavItem({ item, onClose }: { item: NavItemConfig; onClose?: () =
             <motion.span
               layoutId="sidebar-pill"
               className="absolute inset-0 rounded-lg"
-              style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #0457cb 100%)` }}
+              style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #0654D6 100%)` }}
               transition={{ type: "spring", stiffness: 500, damping: 40 }}
             />
           )}
@@ -163,7 +163,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
 
   const roleColor =
     user?.role === "owner" ? "#f59e0b" :
-    user?.role === "staff" ? "#0064E0" : "#10b981";
+    user?.role === "staff" ? "#0866FF" : "#10b981";
 
   const sidebarContent = (
     <div
@@ -191,7 +191,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
         >
           <div
             className="h-7 w-7 rounded-lg flex items-center justify-center text-white text-[11px] font-black shrink-0"
-            style={{ background: `linear-gradient(135deg, ${ACCENT}, #0457cb)` }}
+            style={{ background: `linear-gradient(135deg, ${ACCENT}, #0654D6)` }}
           >
             {user.displayName.charAt(0).toUpperCase()}
           </div>
@@ -235,7 +235,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
         {!isStaff && (
           <div
             className="w-full rounded-xl overflow-hidden relative"
-            style={{ background: "linear-gradient(135deg, #0a1317 0%, #0064E0 100%)" }}
+            style={{ background: "linear-gradient(135deg, #0a1317 0%, #0866FF 100%)" }}
           >
             <div className="absolute -top-4 -right-4 h-16 w-16 rounded-full bg-sky-400/20 pointer-events-none" />
             <div className="absolute -bottom-2 -left-2 h-10 w-10 rounded-full bg-blue-300/15 pointer-events-none" />

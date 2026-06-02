@@ -1235,7 +1235,7 @@ export default function Calculator() {
                   onClick={() => setPdfOpen(true)}
                   disabled={quote.finalPrice === 0}
                   className="h-9 w-9 rounded-2xl flex items-center justify-center text-white disabled:opacity-40"
-                  style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+                  style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}
                   title="PDF"
                 >
                   <FileText className="h-4 w-4" />
@@ -1264,7 +1264,7 @@ export default function Calculator() {
                   ? "text-white"
                   : "text-slate-500"
               )}
-              style={calcSection === key ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : {}}
+              style={calcSection === key ? { background: "linear-gradient(135deg,#0866FF,#0654D6)" } : {}}
             >
               <Icon className="h-4 w-4" strokeWidth={2} />
               <span className="leading-tight text-center">{label}</span>
@@ -1941,7 +1941,7 @@ export default function Calculator() {
               </div>
 
               {/* Harga Jual Final */}
-              <div className="rounded-3xl p-5 text-white relative overflow-hidden" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}>
+              <div className="rounded-3xl p-5 text-white relative overflow-hidden" style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}>
                 <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 90% 10%,white 0%,transparent 55%)" }} />
                 <div className="relative">
                   <p className="text-[10px] font-bold uppercase tracking-wide opacity-75">Harga Jual Final</p>
@@ -3112,7 +3112,7 @@ export default function Calculator() {
                 <div className="space-y-3">
                   <div
                     className="rounded-xl p-4 text-white relative overflow-hidden"
-                    style={{ background: "linear-gradient(135deg,#0064E0,#0064E0 60%,#6694ff)" }}
+                    style={{ background: "linear-gradient(135deg,#0866FF,#0866FF 60%,#6694ff)" }}
                   >
                     <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 90% 10%,white 0%,transparent 55%)" }} />
                     <div className="relative">
@@ -3263,7 +3263,7 @@ export default function Calculator() {
                               onClick={handleCreateOrder}
                               disabled={creatingOrder || quote.finalPrice === 0}
                               className="w-full h-9 rounded-xl text-sm font-bold text-white"
-                              style={{ background: "linear-gradient(135deg,#1d4ed8,#2563eb 60%,#3b82f6)", ...M }}
+                              style={{ background: "linear-gradient(135deg,#1d4ed8,#0866FF 60%,#3b82f6)", ...M }}
                             >
                               <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
                               {creatingOrder ? "Menyimpan…" : "Jadikan Order"}

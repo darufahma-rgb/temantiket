@@ -1170,7 +1170,7 @@ export default function Settings() {
                   onClick={handleSavePin}
                   disabled={pinLoading || pinInput.length < 4 || pinInput !== pinConfirm}
                   className="flex-1 h-9 rounded-xl text-[12px] font-bold text-white transition-all disabled:opacity-40"
-                  style={{ background: "linear-gradient(135deg,#0064E0,#0064E0)" }}
+                  style={{ background: "linear-gradient(135deg,#0866FF,#0866FF)" }}
                 >
                   {pinLoading ? "Menyimpan…" : "Aktifkan 2FA"}
                 </button>

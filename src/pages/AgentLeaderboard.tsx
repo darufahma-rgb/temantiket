@@ -373,7 +373,7 @@ export default function AgentLeaderboard() {
           {/* ── 4 Stat Cards ──────────────────────────────────── */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: "Total Agen",    value: String(totalAgents),        growth: null,         icon: Users,       iconBg: "#dbeafe", iconColor: "#2563eb" },
+              { label: "Total Agen",    value: String(totalAgents),        growth: null,         icon: Users,       iconBg: "#dbeafe", iconColor: "#0866FF" },
               { label: "Total Order",   value: String(totalOrders),        growth: orderGrowth,  icon: ShoppingBag, iconBg: "#fef3c7", iconColor: "#d97706" },
               { label: "Total Klien",   value: String(totalClients),       growth: null,         icon: UserCheck,   iconBg: "#ede9fe", iconColor: "#7c3aed" },
               { label: "Total Revenue", value: fmtIDR(totalRevenue),       growth: revenueGrowth,icon: TrendingUp,  iconBg: "#dcfce7", iconColor: "#16a34a", small: true },

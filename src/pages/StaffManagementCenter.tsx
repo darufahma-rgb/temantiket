@@ -1125,7 +1125,7 @@ export default function StaffManagementCenter() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari nama agent atau email…"
-                className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 text-[13px] text-[#0f1c3f] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/30 focus:border-[#0066FF]/50"
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 text-[13px] text-[#0f1c3f] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#0866FF]/30 focus:border-[#0866FF]/50"
               />
               {search && (
                 <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 active:opacity-60">
@@ -1160,7 +1160,7 @@ export default function StaffManagementCenter() {
                 className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all active:opacity-60 ${
                   filterBy === opt.id ? "text-white shadow-sm" : "bg-white text-[#64748b]"
                 }`}
-                style={filterBy === opt.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : undefined}
+                style={filterBy === opt.id ? { background: "linear-gradient(135deg,#0866FF,#0654D6)" } : undefined}
               >
                 {opt.label}
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${filterBy === opt.id ? "bg-white/20 text-white" : "bg-gray-100 text-[#64748b]"}`}>{cnt}</span>
@@ -1189,7 +1189,7 @@ export default function StaffManagementCenter() {
                     <div className="flex items-start gap-3">
                       <div className="relative shrink-0">
                         <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white text-[13px] font-bold"
-                          style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}>
+                          style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}>
                           {mobileInitials(staff.displayName)}
                         </div>
                         {online && (
@@ -1209,7 +1209,7 @@ export default function StaffManagementCenter() {
                             {mobileMoreMenu === staff.userId && (
                               <div className="absolute right-0 top-9 z-20 bg-white rounded-2xl shadow-lg border border-gray-100 py-1 w-48" onClick={(e) => e.stopPropagation()}>
                                 <button onClick={() => { setDrawerStaffId(staff.userId); setMobileMoreMenu(null); }} className="w-full text-left px-4 py-2.5 text-[12px] font-medium text-[#0f1c3f] hover:bg-gray-50 flex items-center gap-2">
-                                  <Eye className="h-3.5 w-3.5 text-[#0066FF]" strokeWidth={1.5} /> Lihat Detail
+                                  <Eye className="h-3.5 w-3.5 text-[#0866FF]" strokeWidth={1.5} /> Lihat Detail
                                 </button>
                                 <button onClick={() => { setTaskTargetId(staff.userId); setMobileMoreMenu(null); }} className="w-full text-left px-4 py-2.5 text-[12px] font-medium text-[#0f1c3f] hover:bg-gray-50 flex items-center gap-2">
                                   <ClipboardList className="h-3.5 w-3.5 text-amber-500" strokeWidth={1.5} /> Buat Tugas
@@ -1287,7 +1287,7 @@ export default function StaffManagementCenter() {
                       </div>
                       <button
                         onClick={() => setDrawerStaffId(staff.userId)}
-                        className="flex items-center gap-1 text-[12px] font-bold text-[#0066FF] active:opacity-60"
+                        className="flex items-center gap-1 text-[12px] font-bold text-[#0866FF] active:opacity-60"
                       >
                         Detail <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.5} />
                       </button>
@@ -1356,7 +1356,7 @@ export default function StaffManagementCenter() {
                   {PERIOD_OPTS.map((opt) => (
                     <button key={opt.id} onClick={() => setPeriod(opt.id)}
                       className={`py-2.5 rounded-xl text-[12px] font-medium transition-all active:opacity-60 ${period === opt.id ? "text-white" : "bg-gray-50 text-[#0f1c3f] border border-gray-200"}`}
-                      style={period === opt.id ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : undefined}>
+                      style={period === opt.id ? { background: "linear-gradient(135deg,#0866FF,#0654D6)" } : undefined}>
                       {opt.label}
                     </button>
                   ))}
@@ -1368,7 +1368,7 @@ export default function StaffManagementCenter() {
                   {([["completed","Terbanyak Selesai"],["fee","Fee Terbesar"],["active","Paling Aktif"],["rate","Rate Tertinggi"],["name","Nama A-Z"]] as [SortKey, string][]).map(([k, lbl]) => (
                     <button key={k} onClick={() => setSortBy(k)}
                       className={`py-2.5 rounded-xl text-[12px] font-medium transition-all active:opacity-60 ${sortBy === k ? "text-white" : "bg-gray-50 text-[#0f1c3f] border border-gray-200"}`}
-                      style={sortBy === k ? { background: "linear-gradient(135deg,#0066FF,#0038B8)" } : undefined}>
+                      style={sortBy === k ? { background: "linear-gradient(135deg,#0866FF,#0654D6)" } : undefined}>
                       {lbl}
                     </button>
                   ))}

@@ -278,7 +278,7 @@ function AddTripDialog({ open, onClose }: { open: boolean; onClose: () => void }
               type="submit"
               disabled={loading}
               className="flex-1 h-9 rounded-xl text-[12.5px] font-bold text-white transition-all disabled:opacity-50"
-              style={{ background: "#0064E0" }}
+              style={{ background: "#0866FF" }}
             >
               {loading ? "Menyimpan…" : "Simpan Paket"}
             </button>
@@ -970,7 +970,7 @@ export default function Dashboard() {
                     { icon: Ticket,       label: "Harga Tiket",path: "/ticket-prices", color: "#f59e0b", bg: "rgba(245,158,11,0.09)"   },
                     { icon: Package,      label: "Paket/Trip", path: "/packages",      color: "#10b981", bg: "rgba(16,185,129,0.09)"   },
                     { icon: StickyNote,   label: "Catatan",    path: "/notes",         color: "#ec4899", bg: "rgba(236,72,153,0.09)"   },
-                    { icon: Calculator,   label: "Kalkulator", path: "/calculator",    color: "#0066FF", bg: "rgba(0,102,255,0.09)"    },
+                    { icon: Calculator,   label: "Kalkulator", path: "/calculator",    color: "#0866FF", bg: "rgba(0,102,255,0.09)"    },
                     { icon: BookUser,     label: "Agen/Staff", path: "/agent-center",  color: "#f97316", bg: "rgba(249,115,22,0.09)"   },
                     { icon: Settings,     label: "Pengaturan", path: "/settings",      color: "#667085", bg: "rgba(102,112,133,0.09)"  },
                   ]}
@@ -1117,7 +1117,7 @@ export default function Dashboard() {
                             badgeTone={STATUS_TONE[order.status ?? ""] ?? "gray"}
                             avatar={
                               <div className="h-10 w-10 rounded-xl bg-[#F0F4FF] flex items-center justify-center shrink-0">
-                                <ShoppingBag className="h-[18px] w-[18px] text-[#0066FF]" strokeWidth={1.8} />
+                                <ShoppingBag className="h-[18px] w-[18px] text-[#0866FF]" strokeWidth={1.8} />
                               </div>
                             }
                             onClick={() => navigate(`/orders/${order.id}`)}
@@ -1165,7 +1165,7 @@ export default function Dashboard() {
                       <button
                         key={key}
                         onClick={() => setTab(key)}
-                        className={cn("text-[9px] font-semibold pb-0.5 border-b-2 transition-colors", tab === key ? "border-[#0066FF] text-[#0066FF]" : "border-transparent text-[#667085]")}
+                        className={cn("text-[9px] font-semibold pb-0.5 border-b-2 transition-colors", tab === key ? "border-[#0866FF] text-[#0866FF]" : "border-transparent text-[#667085]")}
                       >{labels[key]}</button>
                     );
                   })}
@@ -1187,14 +1187,14 @@ export default function Dashboard() {
               ) : filtered.length === 0 ? (
                 <div className="rounded-2xl border border-[#E5EAF3] bg-white px-4 py-8 text-center flex flex-col items-center" style={{ boxShadow: "0 8px 24px rgba(10,31,68,0.08)" }}>
                   <div className="h-14 w-14 rounded-2xl bg-[#F0F4FF] flex items-center justify-center mb-3">
-                    <Plane strokeWidth={1.5} className="h-7 w-7 text-[#0066FF]" />
+                    <Plane strokeWidth={1.5} className="h-7 w-7 text-[#0866FF]" />
                   </div>
                   <p className="text-[13px] font-bold text-[#071133]">{t.dash_no_packages}</p>
                   <p className="text-[10.5px] text-[#667085] mt-1 leading-snug max-w-[200px]">{t.dash_no_packages_desc}</p>
                   <button
                     onClick={() => setAddOpen(true)}
                     className="mt-4 inline-flex items-center gap-1.5 h-9 px-5 rounded-full text-[11.5px] font-bold text-white shadow-md active:scale-95 transition-transform"
-                    style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}
+                    style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}
                   >
                     <Plus strokeWidth={2} className="h-3.5 w-3.5" /> {t.dash_create_first}
                   </button>
@@ -1204,10 +1204,10 @@ export default function Dashboard() {
                   {filtered.map((trip) => <TripCard key={trip.id} trip={trip} onDelete={setDeleteTarget} />)}
                   <button
                     onClick={() => setAddOpen(true)}
-                    className="rounded-2xl border-2 border-dashed border-[#E5EAF3] flex flex-col items-center justify-center gap-2 min-h-[80px] hover:border-[#0066FF] hover:bg-[#F0F4FF] transition-all group active:scale-[0.98]"
+                    className="rounded-2xl border-2 border-dashed border-[#E5EAF3] flex flex-col items-center justify-center gap-2 min-h-[80px] hover:border-[#0866FF] hover:bg-[#F0F4FF] transition-all group active:scale-[0.98]"
                   >
-                    <Plus strokeWidth={1.5} className="h-4 w-4 text-[#667085] group-hover:text-[#0066FF]" />
-                    <span className="text-[10.5px] text-[#667085] group-hover:text-[#0066FF] font-medium">{t.dash_add_package}</span>
+                    <Plus strokeWidth={1.5} className="h-4 w-4 text-[#667085] group-hover:text-[#0866FF]" />
+                    <span className="text-[10.5px] text-[#667085] group-hover:text-[#0866FF] font-medium">{t.dash_add_package}</span>
                   </button>
                 </div>
               )}
@@ -1232,7 +1232,7 @@ export default function Dashboard() {
         >
           <div
             className="rounded-3xl p-6 md:p-8 relative overflow-hidden"
-            style={{ background: "linear-gradient(135deg,#0a1317 0%,#1c1e21 50%,#0064E0 100%)" }}
+            style={{ background: "linear-gradient(135deg,#0a1317 0%,#1c1e21 50%,#0866FF 100%)" }}
           >
             {/* Decorative background */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">

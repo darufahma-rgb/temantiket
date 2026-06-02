@@ -159,7 +159,7 @@ export default function Login() {
                         value={email}
                         onChange={(e) => { setEmail(e.target.value); clearError(); }}
                         disabled={isLoading}
-                        className="h-11 w-full rounded-lg border border-[#ced0d4] bg-white px-4 text-[14px] text-[#0a1317] placeholder-[#8595a4] outline-none transition-all focus:border-[#1876f2] focus:ring-2 focus:ring-[#1876f2]/20 disabled:opacity-50"
+                        className="h-11 w-full rounded-lg border border-[#ced0d4] bg-white px-4 text-[14px] text-[#0a1317] placeholder-[#8595a4] outline-none transition-all focus:border-[#0866FF] focus:ring-2 focus:ring-[#0866FF]/20 disabled:opacity-50"
                       />
                     </motion.div>
 
@@ -173,7 +173,7 @@ export default function Login() {
                           value={password}
                           onChange={(e) => { setPassword(e.target.value); clearError(); }}
                           disabled={isLoading}
-                          className="h-11 w-full rounded-lg border border-[#ced0d4] bg-white px-4 pr-11 text-[14px] text-[#0a1317] placeholder-[#8595a4] outline-none transition-all focus:border-[#1876f2] focus:ring-2 focus:ring-[#1876f2]/20 disabled:opacity-50"
+                          className="h-11 w-full rounded-lg border border-[#ced0d4] bg-white px-4 pr-11 text-[14px] text-[#0a1317] placeholder-[#8595a4] outline-none transition-all focus:border-[#0866FF] focus:ring-2 focus:ring-[#0866FF]/20 disabled:opacity-50"
                         />
                         <button
                           type="button"
@@ -192,10 +192,10 @@ export default function Login() {
                         disabled={isLoading || !email.trim() || !password}
                         className="flex h-12 w-full items-center justify-center gap-2 rounded-full text-[14px] font-bold tracking-[-0.14px] text-white transition-all disabled:opacity-50"
                         style={{
-                          background: "#0064E0",
+                          background: "#0866FF",
                           boxShadow: "rgba(20,22,26,0.20) 0px 2px 8px 0px",
                         }}
-                        whileHover={{ scale: 1.01, backgroundColor: "#0457cb" } as any}
+                        whileHover={{ scale: 1.01, backgroundColor: "#0654D6" } as any}
                         whileTap={{ scale: 0.99 }}
                       >
                         {isLoading ? (
@@ -216,7 +216,7 @@ export default function Login() {
                       <button
                         type="button"
                         onClick={handleForgotPassword}
-                        className="w-full text-center text-[13px] text-[#5d6c7b] hover:text-[#0064E0] transition-colors mt-1"
+                        className="w-full text-center text-[13px] text-[#5d6c7b] hover:text-[#0866FF] transition-colors mt-1"
                       >
                         Lupa password?
                       </button>
@@ -243,7 +243,7 @@ export default function Login() {
                   <motion.div variants={itemVariants} className="text-center">
                     <div className="flex justify-center mb-3">
                       <div className="h-12 w-12 rounded-2xl bg-[#e8f0fb] border border-[#cce0ff] flex items-center justify-center">
-                        <KeyRound className="h-5 w-5 text-[#0064E0]" />
+                        <KeyRound className="h-5 w-5 text-[#0866FF]" />
                       </div>
                     </div>
                     <h1 className="text-[22px] font-semibold tracking-tight text-[#0a1317]">Verifikasi 2FA</h1>
@@ -273,7 +273,7 @@ export default function Login() {
                         value={pin}
                         onChange={(e) => { setPin(e.target.value.replace(/\D/g, "")); clearError(); }}
                         disabled={isLoading}
-                        className="h-11 w-full rounded-lg border border-[#ced0d4] bg-white px-4 text-center text-xl font-bold tracking-[0.4em] text-[#0a1317] placeholder-[#8595a4] outline-none transition-all focus:border-[#1876f2] focus:ring-2 focus:ring-[#1876f2]/20 disabled:opacity-50"
+                        className="h-11 w-full rounded-lg border border-[#ced0d4] bg-white px-4 text-center text-xl font-bold tracking-[0.4em] text-[#0a1317] placeholder-[#8595a4] outline-none transition-all focus:border-[#0866FF] focus:ring-2 focus:ring-[#0866FF]/20 disabled:opacity-50"
                       />
                     </motion.div>
 
@@ -283,7 +283,7 @@ export default function Login() {
                         disabled={isLoading || !pin.trim()}
                         className="flex h-12 w-full items-center justify-center gap-2 rounded-full text-[14px] font-bold tracking-[-0.14px] text-white transition-all disabled:opacity-50"
                         style={{
-                          background: "#0064E0",
+                          background: "#0866FF",
                           boxShadow: "rgba(20,22,26,0.20) 0px 2px 8px 0px",
                         }}
                         whileHover={{ scale: 1.01 } as any}
@@ -307,7 +307,7 @@ export default function Login() {
                       <button
                         type="button"
                         onClick={() => { setPhase("form"); setPin(""); clearError(); }}
-                        className="w-full text-center text-[13px] text-[#5d6c7b] hover:text-[#0064E0] transition-colors"
+                        className="w-full text-center text-[13px] text-[#5d6c7b] hover:text-[#0866FF] transition-colors"
                       >
                         Kembali ke login
                       </button>

@@ -2892,7 +2892,7 @@ export default function TicketPrices() {
               <button
                 onClick={() => ticketListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 className="h-9 px-3 rounded-full flex items-center gap-1.5 text-[12px] font-bold active:opacity-80 transition-opacity shrink-0"
-                style={{ background: "#EEF2FF", color: "#0038B8", WebkitTapHighlightColor: "transparent" }}
+                style={{ background: "#EEF2FF", color: "#0654D6", WebkitTapHighlightColor: "transparent" }}
               >
                 <History className="h-3.5 w-3.5" strokeWidth={2} />
                 Riwayat
@@ -2935,7 +2935,7 @@ export default function TicketPrices() {
               {(searchQuery.trim() !== "" || filterTripType !== "all" || filterDateRange !== "all" || filterPublish !== "all" || sortBy !== "default") && (
                 <button
                   onClick={resetFilters}
-                  className="flex items-center gap-1 text-[11px] font-semibold text-[#0066FF] active:opacity-60"
+                  className="flex items-center gap-1 text-[11px] font-semibold text-[#0866FF] active:opacity-60"
                   style={{ WebkitTapHighlightColor: "transparent" }}
                 >
                   Reset <RotateCcw className="h-3 w-3" strokeWidth={2.5} />
@@ -3067,7 +3067,7 @@ export default function TicketPrices() {
                 <button
                   onClick={() => void savePending()} disabled={saving}
                   className="h-8 px-3.5 rounded-xl text-[11px] font-bold text-white flex items-center gap-1.5 active:opacity-80 transition-opacity disabled:opacity-50 shrink-0"
-                  style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+                  style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" }}
                 >
                   {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                   {saving ? `${saveProgress?.current ?? "…"}/${pendingForms.length}` : "Simpan Semua"}
@@ -3083,7 +3083,7 @@ export default function TicketPrices() {
                 {pendingForms.map((form, idx) => (
                   <div key={idx} className="bg-[#F2F5FB] rounded-xl px-3.5 py-2.5 flex items-center gap-2.5">
                     <div className="h-8 w-8 rounded-xl bg-[#dbeafe] flex items-center justify-center shrink-0">
-                      <Plane className="h-3.5 w-3.5 text-[#0066FF]" strokeWidth={1.8} />
+                      <Plane className="h-3.5 w-3.5 text-[#0866FF]" strokeWidth={1.8} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-extrabold text-[#0f1c3f] truncate">{form.airline || "Maskapai"}</p>
@@ -3112,7 +3112,7 @@ export default function TicketPrices() {
               </div>
               <button
                 onClick={resetFilters}
-                className="text-[12px] font-semibold text-[#0066FF] active:opacity-60 shrink-0"
+                className="text-[12px] font-semibold text-[#0866FF] active:opacity-60 shrink-0"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 Lihat Semua
@@ -3134,14 +3134,14 @@ export default function TicketPrices() {
             ) : filteredPrices.length === 0 ? (
               <div className="bg-white rounded-2xl px-4 py-12 text-center flex flex-col items-center" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
                 <div className="h-14 w-14 rounded-2xl bg-[#dbeafe] flex items-center justify-center mb-3">
-                  <Plane className="h-6 w-6 text-[#0066FF]" strokeWidth={1.8} />
+                  <Plane className="h-6 w-6 text-[#0866FF]" strokeWidth={1.8} />
                 </div>
                 {visiblePrices.length === 0 ? (
                   <>
                     <p className="text-[14px] font-bold text-[#0f1c3f]">Belum ada harga tiket</p>
                     <p className="text-[11px] text-slate-400 mt-1 leading-snug max-w-[220px]">Upload screenshot atau tambah manual untuk mulai.</p>
                     {isAdmin && (
-                      <button onClick={openAdd} className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)" }}>
+                      <button onClick={openAdd} className="mt-4 inline-flex items-center gap-1.5 h-10 px-5 rounded-2xl text-[12px] font-bold text-white shadow-sm active:opacity-80" style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}>
                         <Plus className="h-3.5 w-3.5" /> Tambah Manual
                       </button>
                     )}
@@ -3204,7 +3204,7 @@ export default function TicketPrices() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={scanning}
-                  className="flex-1 h-12 rounded-2xl flex items-center justify-center gap-2 text-[12px] font-bold text-[#0038B8] bg-white border border-slate-200 active:opacity-70 transition-opacity shadow-sm disabled:opacity-50"
+                  className="flex-1 h-12 rounded-2xl flex items-center justify-center gap-2 text-[12px] font-bold text-[#0654D6] bg-white border border-slate-200 active:opacity-70 transition-opacity shadow-sm disabled:opacity-50"
                   style={{ WebkitTapHighlightColor: "transparent" }}
                 >
                   {scanning
@@ -3215,7 +3215,7 @@ export default function TicketPrices() {
                 <button
                   onClick={openAdd}
                   className="flex-1 h-12 rounded-2xl flex items-center justify-center gap-2 text-[12px] font-bold text-white active:opacity-80 transition-opacity"
-                  style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+                  style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" }}
                 >
                   <Plus className="h-4 w-4" strokeWidth={2.5} />
                   Tambah Manual
@@ -3244,7 +3244,7 @@ export default function TicketPrices() {
                     onClick={() => void handleParseText()}
                     disabled={!pasteText.trim() || scanningText}
                     className="w-full h-10 rounded-xl mt-3 text-[12px] font-extrabold text-white flex items-center justify-center gap-2 active:opacity-80 transition-opacity disabled:opacity-50"
-                    style={{ background: "linear-gradient(135deg,#0066FF,#0038B8)", WebkitTapHighlightColor: "transparent" }}
+                    style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)", WebkitTapHighlightColor: "transparent" }}
                   >
                     {scanningText
                       ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Menganalisis…</>

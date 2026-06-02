@@ -21,7 +21,7 @@ export function TravelHeroCard({
     <div
       className={cn("relative rounded-3xl overflow-hidden px-5 pt-5 pb-4", className)}
       style={{
-        background: "linear-gradient(145deg, #0038B8 0%, #0066FF 48%, #33A6FF 100%)",
+        background: "linear-gradient(145deg, #0654D6 0%, #0866FF 48%, #33A6FF 100%)",
         boxShadow: "0 12px 30px rgba(0, 102, 255, 0.22)",
       }}
     >
