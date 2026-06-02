@@ -38,21 +38,7 @@ function openrouterHeaders() {
   };
 }
 
-// ── OpenAI — AITEM (Asisten AI) ──────────────────────────────────────────────
-// Digunakan HANYA untuk AITEM (AI Command Center / chat assistant).
-// Menggunakan Replit AI Integrations (AI_INTEGRATIONS_OPENAI_API_KEY) jika tersedia,
-// dengan fallback ke OPENAI_API_KEY yang di-set manual.
-const OPENAI_API_KEY = (process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '').trim();
-const OPENAI_BASE_URL = (process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || 'https://api.openai.com/v1').trim();
-const MODEL_ASSISTANT = 'gpt-4o-mini';  // AITEM
-
-// Header standar OpenAI
-function openaiHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${OPENAI_API_KEY}`,
-  };
-}
+const MODEL_ASSISTANT = 'openai/gpt-4o-mini';  // AITEM via OpenRouter
 
 const app = express();
 
@@ -1148,41 +1134,37 @@ app.post('/api/ai/chat', aiLimiter, isAuthenticatedOrBearer, async (req, res) =>
 /* ──────────────────────────────────────────────
    POST /api/ai/assistant
    AITEM (Asisten AI / AI Command Center).
-   Hanya menggunakan OpenAI — TIDAK ada OpenRouter di sini.
+   Menggunakan OpenRouter — satu API key untuk semua fitur AI.
    Mendukung function calling (tools) untuk kontrol penuh Temantiket.
 ────────────────────────────────────────────── */
 app.post('/api/ai/assistant', aiLimiter, isAuthenticatedOrBearer, async (req, res) => {
   try {
-    console.log(`[AITEM] OPENAI_API_KEY detected: ${!!OPENAI_API_KEY}`);
-    if (!OPENAI_API_KEY) {
-      return err(res, 503, 'OPENAI_API_KEY tidak ditemukan. Pastikan sudah diset di environment variables.');
+    console.log(`[AITEM] OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
+    if (!OPENROUTER_API_KEY) {
+      return err(res, 503, 'OPENROUTER_API_KEY tidak ditemukan. Pastikan sudah diset di environment variables.');
     }
 
-    // Inject model default jika caller tidak set.
-    // Model harus format OpenAI (bukan "provider/model" — itu format OpenRouter).
     const requestedModel = req.body.model || MODEL_ASSISTANT;
-
-    // Jika model mengandung slash (format OpenRouter), strip prefix dan ambil nama model saja.
-    const resolvedModel = (typeof requestedModel === 'string' && requestedModel.includes('/'))
-      ? requestedModel.split('/').slice(1).join('/')
+    // Pastikan format OpenRouter: "provider/model"
+    const resolvedModel = (typeof requestedModel === 'string' && !requestedModel.includes('/'))
+      ? `openai/${requestedModel}`
       : requestedModel;
 
-    console.log(`[AITEM] Using OpenAI with model: ${resolvedModel}`);
+    console.log(`[AITEM] Using OpenRouter with model: ${resolvedModel}`);
 
     const bodyWithModel = { ...req.body, model: resolvedModel };
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 90_000);
     try {
-      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+      const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
         method: 'POST',
-        headers: openaiHeaders(),
+        headers: openrouterHeaders(),
         body: JSON.stringify(bodyWithModel),
         signal: controller.signal,
       });
-      // Intercept upstream auth errors — return clear message instead of OpenAI's raw error
       if (response.status === 401 || response.status === 403) {
-        return err(res, 503, 'API key OpenAI tidak valid atau kedaluwarsa. Periksa konfigurasi AI Integrations di Replit.');
+        return err(res, 503, 'API key OpenRouter tidak valid atau kedaluwarsa. Periksa OPENROUTER_API_KEY di Replit Secrets.');
       }
       const text = await response.text();
       res.status(response.status).set('Content-Type', 'application/json').send(text);
@@ -1854,11 +1836,11 @@ const _server = app.listen(PORT, '0.0.0.0', () => {
     console.warn('[server] OPENROUTER_API_KEY tidak ditemukan — fitur OCR dan Caption Generator tidak akan berfungsi');
   }
   console.log(`[server] ── AITEM / Asisten AI ──`);
-  console.log(`[server]   OPENAI_API_KEY detected: ${!!OPENAI_API_KEY}`);
-  if (OPENAI_API_KEY) {
+  console.log(`[server]   OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
+  if (OPENROUTER_API_KEY) {
     console.log(`[server]   Assistant model : ${MODEL_ASSISTANT}`);
   } else {
-    console.warn('[server] OPENAI_API_KEY tidak ditemukan — fitur AITEM tidak akan berfungsi');
+    console.warn('[server] OPENROUTER_API_KEY tidak ditemukan — fitur AITEM tidak akan berfungsi');
   }
 });
 
