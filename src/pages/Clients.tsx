@@ -514,6 +514,7 @@ function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit, curren
   currentClientId?: string;
 }) {
   const [form, setForm] = useState<ClientFormData>(initial);
+  const [formStep, setFormStep] = useState<1 | 2>(1);
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
@@ -522,7 +523,7 @@ function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit, curren
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { clients } = useClientsStore();
 
-  useEffect(() => { if (open) setForm(initial); }, [open, initial]);
+  useEffect(() => { if (open) { setForm(initial); setFormStep(1); } }, [open, initial]);
 
   useEffect(() => {
     if (!open) return;
@@ -539,6 +540,19 @@ function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit, curren
 
   const expiryStatus = getExpiryStatus(form.passportExpiry);
   const canSave = form.name.trim() && !saving && !scanning && expiryStatus !== "expired";
+
+  const handleSave = async () => {
+    if (expiryStatus === "warning") {
+      const ok = window.confirm(
+        "⚠️ Paspor kurang dari 6 bulan. Jamaah mungkin ditolak imigrasi.\n\nLanjutkan menyimpan?"
+      );
+      if (!ok) return;
+    }
+    setSaving(true);
+    try { await onSubmit(form); }
+    catch (e) { toast.error("Gagal simpan", { description: e instanceof Error ? e.message : "Coba lagi." }); }
+    finally { setSaving(false); }
+  };
 
   const handleScanFile = async (file: File) => {
     setScanning(true);
@@ -596,38 +610,30 @@ function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit, curren
           </div>
         )}
 
-        <div className="space-y-3 pt-1">
-          {/* Nama */}
-          <Field label="Nama" required icon={<User className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
-            {scanning ? <SkeletonInput /> : (
-              <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Nama lengkap sesuai paspor" />
-            )}
-          </Field>
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className={cn("h-2 flex-1 rounded-full", formStep === 1 ? "bg-primary" : "bg-muted")} />
+          <div className={cn("h-2 flex-1 rounded-full", formStep === 2 ? "bg-primary" : "bg-muted")} />
+        </div>
 
-          {/* Telp + Email */}
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Telp" icon={<Phone className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
-              <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="08xxx" disabled={scanning} />
-            </Field>
-            <Field label="Email" icon={<Mail className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
-              <Input value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="email@..." disabled={scanning} />
-            </Field>
-          </div>
-
-          {/* Divider: Passport section */}
-          <div className="flex items-center gap-2 pt-1">
-            <div className="h-px flex-1 bg-slate-100" />
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Data Paspor</span>
-            <div className="h-px flex-1 bg-slate-100" />
-          </div>
-
-          {/* No. Paspor + Jenis Kelamin */}
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="No. Paspor" icon={<CreditCard className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+        {/* ── Langkah 1: Data dasar ── */}
+        {formStep === 1 && (
+          <div className="space-y-3">
+            <Field label="Nama" required icon={<User className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
               {scanning ? <SkeletonInput /> : (
-                <Input value={form.passportNumber} onChange={(e) => update("passportNumber", e.target.value.toUpperCase())} placeholder="A1234567" className="font-mono" />
+                <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Nama lengkap sesuai paspor" />
               )}
             </Field>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Telp" icon={<Phone className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+                <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="08xxx" disabled={scanning} />
+              </Field>
+              <Field label="Email" icon={<Mail className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+                <Input value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="email@..." disabled={scanning} />
+              </Field>
+            </div>
+
             <Field label="Jenis Kelamin" icon={<UserCheck className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
               {scanning ? <SkeletonInput /> : (
                 <select value={form.gender}
@@ -639,141 +645,139 @@ function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit, curren
                 </select>
               )}
             </Field>
-          </div>
 
-          {/* Tgl Lahir + Tempat Lahir */}
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Tgl Lahir" icon={<Calendar className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
-              {scanning ? <SkeletonInput /> : (
-                <DateMaskInput value={form.birthDate} onChange={(v) => update("birthDate", v)} />
-              )}
-            </Field>
-            <Field label="Tempat Lahir" icon={<MapPin className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
-              <Input value={form.birthPlace} onChange={(e) => update("birthPlace", e.target.value)} placeholder="Kota lahir" disabled={scanning} />
-            </Field>
-          </div>
-
-          {/* Tgl Pengeluaran + Tgl Expiry */}
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Tgl Pengeluaran" icon={<CalendarCheck className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
-              <DateMaskInput value={form.passportIssueDate} onChange={(v) => update("passportIssueDate", v)} disabled={scanning} />
-            </Field>
-            <Field label="Tgl Habis Berlaku" icon={<CalendarClock className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
-              {scanning ? <SkeletonInput /> : (
-                <DateMaskInput value={form.passportExpiry} onChange={(v) => update("passportExpiry", v)} />
-              )}
-            </Field>
-          </div>
-
-          {/* Expiry alert */}
-          {expiryStatus === "expired" && (
-            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
-              <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" strokeWidth={1.75} />
-              <p className="text-xs text-red-700 font-medium leading-snug">
-                Paspor sudah <span className="font-bold">EXPIRED</span>. Klien tidak dapat melakukan perjalanan. Wajib perpanjang sebelum booking.
-              </p>
+            <div className="flex items-center gap-2 pt-1">
+              <div className="h-px flex-1 bg-slate-100" />
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Sumber Klien</span>
+              <div className="h-px flex-1 bg-slate-100" />
             </div>
-          )}
-          {expiryStatus === "warning" && (
-            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
-              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" strokeWidth={1.75} />
-              <p className="text-xs text-amber-700 font-medium leading-snug">
-                ⚠️ Peringatan: Masa berlaku paspor kurang dari 6 bulan. Segera lakukan perpanjangan!
-              </p>
-            </div>
-          )}
-          {expiryStatus === "ok" && form.passportExpiry && (
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-              <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" strokeWidth={1.75} />
-              <p className="text-xs text-emerald-700 font-medium">Paspor masih berlaku dan aman untuk perjalanan.</p>
-            </div>
-          )}
 
-          {/* Kantor Pengeluaran */}
-          <Field label="Kantor Pengeluaran" icon={<BuildingOffice className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
-            <Input value={form.passportIssuingOffice} onChange={(e) => update("passportIssuingOffice", e.target.value)} placeholder="Contoh: Kantor Imigrasi Jakarta Selatan" disabled={scanning} />
-          </Field>
-
-          {/* Divider: Sumber Klien */}
-          <div className="flex items-center gap-2 pt-1">
-            <div className="h-px flex-1 bg-slate-100" />
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Sumber Klien</span>
-            <div className="h-px flex-1 bg-slate-100" />
-          </div>
-
-          {/* Closing / Referensi dari */}
-          <Field label="Closing / Referensi dari" icon={<UserCheck className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
-            <select
-              value={form.referredBy}
-              onChange={(e) => update("referredBy", e.target.value)}
-              disabled={scanning || membersLoading}
-              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-            >
-              <option value="">— Belum dipilih —</option>
-              {members.map((m) => (
-                <option key={m.userId} value={m.userId}>
-                  {m.displayName} {m.role === "owner" ? "(Owner)" : "(Agen)"}
-                </option>
-              ))}
-            </select>
-            {membersLoading && (
-              <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
-                <Loader2 className="h-2.5 w-2.5 animate-spin" /> Memuat daftar anggota…
-              </p>
-            )}
-            {!membersLoading && members.length === 0 && (
-              <p className="text-[10px] text-muted-foreground mt-1">Belum ada agen/owner terdaftar.</p>
-            )}
-          </Field>
-
-          {/* Direferensikan oleh klien */}
-          <Field label="Direferensikan oleh Klien" icon={<span className="text-[11px]">🤝</span>}>
-            <select
-              value={form.referredByClientId}
-              onChange={(e) => update("referredByClientId", e.target.value)}
-              disabled={scanning}
-              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-            >
-              <option value="">— Tidak ada / belum dipilih —</option>
-              {clients
-                .filter((c) => c.id !== currentClientId)
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+            <Field label="Closing / Referensi dari" icon={<UserCheck className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+              <select
+                value={form.referredBy}
+                onChange={(e) => update("referredBy", e.target.value)}
+                disabled={scanning || membersLoading}
+                className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+              >
+                <option value="">— Belum dipilih —</option>
+                {members.map((m) => (
+                  <option key={m.userId} value={m.userId}>
+                    {m.displayName} {m.role === "owner" ? "(Owner)" : "(Agen)"}
+                  </option>
                 ))}
-            </select>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Jika klien ini datang karena ajakan klien lain, pilih referrernya di sini. Saat order klien ini Confirmed/Paid/Selesai, referrer otomatis dapat +1 stamp.
-            </p>
-          </Field>
+              </select>
+              {membersLoading && (
+                <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" /> Memuat daftar anggota…
+                </p>
+              )}
+              {!membersLoading && members.length === 0 && (
+                <p className="text-[10px] text-muted-foreground mt-1">Belum ada agen/owner terdaftar.</p>
+              )}
+            </Field>
 
-          {/* Catatan */}
-          <Field label="Catatan" icon={<FileText className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
-            <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)}
-              className="w-full min-h-[56px] rounded-md border border-input bg-transparent px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-              placeholder="Catatan internal…" disabled={scanning} />
-          </Field>
-        </div>
+            <Field label="Direferensikan oleh Klien" icon={<span className="text-[11px]">🤝</span>}>
+              <select
+                value={form.referredByClientId}
+                onChange={(e) => update("referredByClientId", e.target.value)}
+                disabled={scanning}
+                className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+              >
+                <option value="">— Tidak ada / belum dipilih —</option>
+                {clients
+                  .filter((c) => c.id !== currentClientId)
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+              </select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Jika klien ini datang karena ajakan klien lain, pilih referrernya di sini. Saat order klien ini Confirmed/Paid/Selesai, referrer otomatis dapat +1 stamp.
+              </p>
+            </Field>
+          </div>
+        )}
 
-        <DialogFooter className="pt-2 gap-2">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={scanning || saving}>Batal</Button>
-          <Button size="sm" disabled={!canSave}
-            title={expiryStatus === "expired" ? "Paspor expired — tidak bisa disimpan" : undefined}
-            onClick={async () => {
-              if (expiryStatus === "warning") {
-                const ok = window.confirm(
-                  "⚠️ Paspor kurang dari 6 bulan. Jamaah mungkin ditolak imigrasi.\n\nLanjutkan menyimpan?"
-                );
-                if (!ok) return;
-              }
-              setSaving(true);
-              try { await onSubmit(form); }
-              catch (e) { toast.error("Gagal simpan", { description: e instanceof Error ? e.message : "Coba lagi." }); }
-              finally { setSaving(false); }
-            }}>
-            {saving ? "Menyimpan…" : "Simpan"}
-          </Button>
-        </DialogFooter>
+        {/* ── Langkah 2: Data paspor ── */}
+        {formStep === 2 && (
+          <div className="space-y-3">
+            <Field label="No. Paspor" icon={<CreditCard className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+              {scanning ? <SkeletonInput /> : (
+                <Input value={form.passportNumber} onChange={(e) => update("passportNumber", e.target.value.toUpperCase())} placeholder="A1234567" className="font-mono" />
+              )}
+            </Field>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Tgl Lahir" icon={<Calendar className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+                {scanning ? <SkeletonInput /> : (
+                  <DateMaskInput value={form.birthDate} onChange={(v) => update("birthDate", v)} />
+                )}
+              </Field>
+              <Field label="Tempat Lahir" icon={<MapPin className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+                <Input value={form.birthPlace} onChange={(e) => update("birthPlace", e.target.value)} placeholder="Kota lahir" disabled={scanning} />
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Tgl Pengeluaran" icon={<CalendarCheck className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+                <DateMaskInput value={form.passportIssueDate} onChange={(v) => update("passportIssueDate", v)} disabled={scanning} />
+              </Field>
+              <Field label="Tgl Habis Berlaku" icon={<CalendarClock className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+                {scanning ? <SkeletonInput /> : (
+                  <DateMaskInput value={form.passportExpiry} onChange={(v) => update("passportExpiry", v)} />
+                )}
+              </Field>
+            </div>
+
+            {expiryStatus === "expired" && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
+                <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" strokeWidth={1.75} />
+                <p className="text-xs text-red-700 font-medium leading-snug">
+                  Paspor sudah <span className="font-bold">EXPIRED</span>. Klien tidak dapat melakukan perjalanan. Wajib perpanjang sebelum booking.
+                </p>
+              </div>
+            )}
+            {expiryStatus === "warning" && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" strokeWidth={1.75} />
+                <p className="text-xs text-amber-700 font-medium leading-snug">
+                  ⚠️ Peringatan: Masa berlaku paspor kurang dari 6 bulan. Segera lakukan perpanjangan!
+                </p>
+              </div>
+            )}
+            {expiryStatus === "ok" && form.passportExpiry && (
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" strokeWidth={1.75} />
+                <p className="text-xs text-emerald-700 font-medium">Paspor masih berlaku dan aman untuk perjalanan.</p>
+              </div>
+            )}
+
+            <Field label="Kantor Pengeluaran" icon={<BuildingOffice className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+              <Input value={form.passportIssuingOffice} onChange={(e) => update("passportIssuingOffice", e.target.value)} placeholder="Contoh: Kantor Imigrasi Jakarta Selatan" disabled={scanning} />
+            </Field>
+
+            <Field label="Catatan" icon={<FileText className="h-3 w-3 text-blue-500" strokeWidth={1.75} />}>
+              <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)}
+                className="w-full min-h-[56px] rounded-md border border-input bg-transparent px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                placeholder="Catatan internal…" disabled={scanning} />
+            </Field>
+          </div>
+        )}
+
+        {formStep === 1 ? (
+          <DialogFooter className="pt-4 gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={scanning || saving}>Batal</Button>
+            <Button type="button" disabled={!form.name.trim()} onClick={() => setFormStep(2)}>Lanjut →</Button>
+          </DialogFooter>
+        ) : (
+          <DialogFooter className="pt-4 gap-2">
+            <Button type="button" variant="ghost" onClick={() => setFormStep(1)}>← Kembali</Button>
+            <Button type="button" variant="outline" disabled={!form.name.trim() || saving || scanning} onClick={handleSave}>Simpan (lewati paspor)</Button>
+            <Button type="button" disabled={!canSave} title={expiryStatus === "expired" ? "Paspor expired — tidak bisa disimpan" : undefined} onClick={handleSave}>
+              {saving ? "Menyimpan…" : "Simpan Lengkap"}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

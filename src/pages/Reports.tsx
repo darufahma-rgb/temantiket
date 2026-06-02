@@ -123,6 +123,7 @@ export default function Reports() {
 
   const [range, setRange]             = useState<RangeKey>("this_month");
   const [agentFilter, setAgentFilter] = useState<AgentFilter>("all");
+  const [dateFilterMode, setDateFilterMode] = useState<"createdAt" | "paidAt">("createdAt");
   const [members, setMembers]         = useState<MemberInfo[]>([]);
   const [points, setPoints]           = useState<AgentPoint[]>([]);
   const [activeTab, setActiveTab]     = useState<ActiveTab>("ringkasan");
@@ -181,14 +182,17 @@ export default function Reports() {
     (os: Order[], f: Date | null, t: Date | null) =>
       os.filter((o) => {
         if (o.status === "Cancelled") return false;
-        const ts = new Date(o.createdAt).getTime();
+        const orderDate = dateFilterMode === "paidAt"
+          ? (o.meta?.paidAt ?? o.updatedAt ?? o.createdAt)
+          : o.createdAt;
+        const ts = new Date(orderDate).getTime();
         if (f && ts < f.getTime()) return false;
         if (t && ts >= t.getTime()) return false;
         if (agentFilter === "direct" && o.createdByAgent != null) return false;
         if (agentFilter !== "all" && agentFilter !== "direct" && o.createdByAgent !== agentFilter) return false;
         return true;
       }),
-    [agentFilter],
+    [agentFilter, dateFilterMode],
   );
 
   const filtered = useMemo(() => filterOrders(orders, from, to), [orders, from, to, filterOrders]);
@@ -538,6 +542,22 @@ export default function Reports() {
                   ))}
                 </SelectContent>
               </Select>
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-muted">
+                <button
+                  onClick={() => setDateFilterMode("createdAt")}
+                  className={cn("text-xs px-3 py-1 rounded-md transition-colors",
+                    dateFilterMode === "createdAt" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
+                >
+                  Tgl Dibuat
+                </button>
+                <button
+                  onClick={() => setDateFilterMode("paidAt")}
+                  className={cn("text-xs px-3 py-1 rounded-md transition-colors",
+                    dateFilterMode === "paidAt" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
+                >
+                  Tgl Dibayar
+                </button>
+              </div>
             </div>
             {/* Right — mobile icon buttons */}
             <div className="flex sm:hidden items-center gap-1.5 shrink-0">
@@ -580,6 +600,22 @@ export default function Reports() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-1 p-1 rounded-lg bg-muted shrink-0">
+              <button
+                onClick={() => setDateFilterMode("createdAt")}
+                className={cn("text-xs px-3 py-1 rounded-md transition-colors",
+                  dateFilterMode === "createdAt" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
+              >
+                Tgl Dibuat
+              </button>
+              <button
+                onClick={() => setDateFilterMode("paidAt")}
+                className={cn("text-xs px-3 py-1 rounded-md transition-colors",
+                  dateFilterMode === "paidAt" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
+              >
+                Tgl Dibayar
+              </button>
+            </div>
           </div>
 
           {/* ── Tab bar ── */}

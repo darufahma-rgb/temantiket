@@ -575,7 +575,12 @@ export default function Orders() {
 
                         {/* Price + chevron */}
                         <div className="flex flex-col items-end gap-1.5 shrink-0 ml-1">
-                          <p className="text-[12px] font-extrabold text-[#0f1c3f] tabular-nums whitespace-nowrap">{fmtOrderPrice(o.totalPrice, o.currency)}</p>
+                          <p className="text-[12px] font-extrabold text-[#0f1c3f] tabular-nums whitespace-nowrap">
+                            {fmtOrderPrice(o.totalPrice, o.currency)}
+                            {CURRENCY_BY_TYPE[o.type] === "EGP" && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 ml-1">EGP</span>
+                            )}
+                          </p>
                           <ChevronRight className="h-4 w-4 text-slate-300" strokeWidth={2} />
                         </div>
                       </motion.button>
@@ -832,7 +837,12 @@ export default function Orders() {
                     )}
                     {/* Bottom: price + HPP */}
                     <div className="flex items-center justify-between mt-auto pt-1 border-t border-slate-100">
-                      <p className="text-[14px] font-black font-mono text-slate-800 tabular-nums">{fmtOrderPrice(o.totalPrice, o.currency)}</p>
+                      <p className="text-[14px] font-black font-mono text-slate-800 tabular-nums">
+                        {fmtOrderPrice(o.totalPrice, o.currency)}
+                        {CURRENCY_BY_TYPE[o.type] === "EGP" && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 ml-1">EGP</span>
+                        )}
+                      </p>
                       <div className="flex items-center gap-1">
                         {user?.role !== "agent" && (!o.costPrice || o.costPrice === 0) && (
                           <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
@@ -955,6 +965,9 @@ export default function Orders() {
                           </span>
                           <p className="text-[13.5px] font-black font-mono text-slate-800 tabular-nums text-right">
                             {fmtOrderPrice(o.totalPrice, o.currency)}
+                            {CURRENCY_BY_TYPE[o.type] === "EGP" && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 ml-1">EGP</span>
+                            )}
                           </p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-400 transition-colors" />
