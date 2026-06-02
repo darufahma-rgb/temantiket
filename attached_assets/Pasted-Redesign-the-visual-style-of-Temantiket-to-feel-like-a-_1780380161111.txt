@@ -1,0 +1,181 @@
+Redesign the visual style of Temantiket to feel like a modern native app (reference: Gojek app). 
+The goal is cleaner, more spacious, more "native" feel. Make ALL changes only in 
+src/index.css and tailwind.config.ts — do NOT touch any page or component files.
+
+---
+
+CHANGE 1: tailwind.config.ts — border radius
+
+Change:
+  borderRadius: {
+    lg: "var(--radius)",
+    md: "calc(var(--radius) - 2px)",
+    sm: "calc(var(--radius) - 4px)",
+  }
+
+To:
+  borderRadius: {
+    lg: "var(--radius)",
+    md: "calc(var(--radius) - 4px)",
+    sm: "calc(var(--radius) - 8px)",
+    xl: "calc(var(--radius) + 4px)",
+    "2xl": "calc(var(--radius) + 8px)",
+    full: "9999px",
+  }
+
+---
+
+CHANGE 2: tailwind.config.ts — font stack
+
+Change:
+  sans: ["Sk-Modernist", "Manrope", "system-ui", "-apple-system", "sans-serif"],
+
+To:
+  sans: ["Poppins", "Sk-Modernist", "Manrope", "system-ui", "-apple-system", "sans-serif"],
+
+Poppins is already loaded in the Google Fonts import in index.css.
+
+---
+
+CHANGE 3: src/index.css — :root variables (light mode)
+
+Find the :root { block and update these specific variables:
+
+  --radius: 1.25rem;                    /* was 1rem — bigger pill radius like Gojek */
+  --background: 220 20% 96%;            /* slightly warmer light grey, not pure blue-white */
+  --card: 0 0% 100%;                    /* keep white */
+  --border: 220 20% 88%;                /* softer border */
+  --shadow-card: 0 2px 16px -2px hsl(225 50% 50% / 0.08), 0 1px 4px -1px hsl(225 50% 60% / 0.06);
+  --shadow-sm: 0 1px 4px 0 hsl(225 50% 50% / 0.06);
+  --shadow-md: 0 4px 20px -4px hsl(225 50% 50% / 0.10);
+  --shadow-lg: 0 8px 32px -8px hsl(225 50% 50% / 0.14);
+
+---
+
+CHANGE 4: src/index.css — mobile font size
+
+Find:
+  @media (max-width: 767px) {
+    html {
+      font-size: 14px;
+    }
+  }
+
+Change to:
+  @media (max-width: 767px) {
+    html {
+      font-size: 15px;
+    }
+  }
+
+This makes mobile text slightly larger and more readable, like native apps.
+
+---
+
+CHANGE 5: src/index.css — add global base styles
+
+After the @tailwind utilities; line, add a new @layer base block with these global styles:
+
+@layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-feature-settings: "kern" 1, "liga" 1;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  /* Native-app feel: remove tap highlight on mobile */
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Smoother scrolling */
+  * {
+    scroll-behavior: smooth;
+  }
+
+  /* Card default shadow */
+  .card-native {
+    border-radius: var(--radius);
+    background: hsl(var(--card));
+    box-shadow: var(--shadow-card);
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* Native pill button */
+  .btn-native {
+    border-radius: 9999px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  /* Section title style like Gojek */
+  .section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    letter-spacing: -0.02em;
+  }
+}
+
+---
+
+CHANGE 6: src/index.css — mobile-specific improvements
+
+Find the existing .layout-safe-inset class or add after the @layer base block:
+
+@layer utilities {
+  /* Consistent card padding for native feel */
+  .native-card {
+    padding: 1rem;
+    border-radius: var(--radius);
+    background: hsl(var(--card));
+    box-shadow: var(--shadow-sm);
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* List item row style */
+  .native-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    background: hsl(var(--card));
+    border-bottom: 1px solid hsl(var(--border));
+    transition: background 0.15s;
+  }
+  .native-row:active {
+    background: hsl(var(--accent));
+  }
+
+  /* Avatar circle */
+  .native-avatar {
+    border-radius: 9999px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+
+  /* Bottom sheet handle */
+  .sheet-handle {
+    width: 2.5rem;
+    height: 0.25rem;
+    border-radius: 9999px;
+    background: hsl(var(--border));
+    margin: 0.5rem auto 0;
+  }
+}
+
+After making all changes, verify the app builds without errors by checking 
+that no TypeScript or Tailwind compilation errors appear.
