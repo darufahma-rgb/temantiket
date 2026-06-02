@@ -1,0 +1,170 @@
+In src/lib/aiCommandCenter.ts, add missing static imports.
+
+Find this line:
+  import { useAuthStore } from "@/store/authStore";
+
+Add these 3 lines directly after it:
+  import { useClientsStore } from "@/store/clientsStore";
+  import { useOrdersStore } from "@/store/ordersStore";
+  import { usePackagesStore } from "@/store/packagesStore";
+
+Then find the case "create_client" in executeTool switch.
+Replace the entire case with:
+
+    case "create_client": {
+      const { addClient } = useClientsStore.getState();
+      const clientData = {
+        name: args.name as string,
+        phone: (args.phone as string) || null,
+        email: (args.email as string) || null,
+        gender: (args.gender as "L" | "P") || null,
+        birthDate: (args.birthDate as string) || null,
+        birthPlace: (args.birthPlace as string) || null,
+        passportNumber: (args.passportNumber as string) || null,
+        passportExpiry: (args.passportExpiry as string) || null,
+        notes: (args.notes as string) || null,
+      };
+      const newClient = await addClient(clientData);
+      return {
+        result: JSON.stringify({ success: true, clientId: newClient?.id, name: clientData.name }),
+        displayData: { type: "create_client", client: clientData, id: newClient?.id },
+        success: true,
+      };
+    }
+
+Find the case "create_order" in executeTool switch.
+Replace the entire case with:
+
+    case "create_order": {
+      const { addOrder } = useOrdersStore.getState();
+      const agencyId = useAuthStore.getState().user?.agencyId;
+      const userId = useAuthStore.getState().user?.id;
+      const orderData = {
+        clientId: args.clientId as string,
+        type: args.type as string,
+        title: args.title as string,
+        totalPrice: args.totalPrice as number,
+        costPrice: (args.costPrice as number) || 0,
+        currency: (args.currency as string) || "IDR",
+        status: (args.status as string) || "Draft",
+        notes: (args.notes as string) || null,
+        departureDateStr: (args.departureDateStr as string) || null,
+        agencyId,
+        createdByAgent: userId,
+      };
+      const newOrder = await addOrder(orderData);
+      return {
+        result: JSON.stringify({ success: true, orderId: newOrder?.id, title: orderData.title }),
+        displayData: { type: "create_order", order: orderData, id: newOrder?.id },
+        success: true,
+      };
+    }
+
+Find the case "update_order_status" in executeTool switch.
+Replace the entire case with:
+
+    case "update_order_status": {
+      const { patchOrder } = useOrdersStore.getState();
+      await patchOrder(args.orderId as string, {
+        status: args.status as string,
+        ...(args.notes ? { notes: args.notes as string } : {}),
+      });
+      return {
+        result: JSON.stringify({ success: true, orderId: args.orderId, newStatus: args.status }),
+        displayData: { type: "update_order_status", orderId: args.orderId, status: args.status },
+        success: true,
+      };
+    }
+
+Find the case "update_client" in executeTool switch.
+Replace the entire case with:
+
+    case "update_client": {
+      const { patchClient } = useClientsStore.getState();
+      const { clientId, ...rest } = args as Record<string, string>;
+      const patch = Object.fromEntries(
+        Object.entries(rest).filter(([, v]) => v !== undefined && v !== null && v !== "")
+      );
+      await patchClient(clientId, patch);
+      return {
+        result: JSON.stringify({ success: true, clientId, updated: Object.keys(patch) }),
+        displayData: { type: "update_client", clientId, updated: patch },
+        success: true,
+      };
+    }
+
+Find the case "generate_marketing_caption" in executeTool switch.
+Replace the entire case with:
+
+    case "generate_marketing_caption": {
+      const packagesStore = usePackagesStore.getState();
+      if (packagesStore.packages.length === 0) await packagesStore.refresh();
+      const packages = usePackagesStore.getState().packages;
+
+      let targetPackage = args.packageId
+        ? packages.find(p => p.id === args.packageId)
+        : packages.filter(p => !p.status || p.status === "active")[0];
+
+      if (!targetPackage) targetPackage = packages[0];
+      if (!targetPackage) {
+        return {
+          result: JSON.stringify({ error: "Tidak ada paket aktif di database" }),
+          displayData: { type: "error", message: "Buat paket dulu di halaman Paket & Trip" },
+          success: false,
+        };
+      }
+
+      const platform = (args.platform as string) ?? "both";
+      const tone = (args.tone as string) ?? "casual";
+
+      const packageInfo = {
+        name: targetPackage.name,
+        price: targetPackage.pricePerPax,
+        currency: "IDR",
+        destination: targetPackage.destination,
+        duration: targetPackage.durationNights,
+        quota: targetPackage.quotaPax,
+        departDate: targetPackage.startDate,
+      };
+
+      const captionRes = await callAI({
+        model: "openai/gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Kamu adalah copywriter marketing travel umrah/haji profesional Indonesia.
+Buat caption yang menarik, authentic, dan menggunakan data nyata dari paket.
+Tone: ${tone}. Platform: ${platform}.
+Format output JSON: { "instagram": "...", "whatsapp": "..." }
+Untuk Instagram: gunakan emoji, hashtag relevan, max 2200 karakter.
+Untuk WhatsApp: format broadcast yang personal, tanpa hashtag, max 500 karakter.
+Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsapp, sebaliknya.`,
+          },
+          {
+            role: "user",
+            content: `Buatkan caption marketing untuk paket ini:\n${JSON.stringify(packageInfo, null, 2)}`,
+          },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.8,
+        max_tokens: 1000,
+      });
+
+      const captionData = await captionRes.json();
+      const captions = JSON.parse(captionData.choices?.[0]?.message?.content ?? "{}");
+
+      return {
+        result: JSON.stringify({ success: true, package: packageInfo, captions }),
+        displayData: {
+          type: "marketing_caption",
+          packageName: targetPackage.name,
+          instagram: captions.instagram,
+          whatsapp: captions.whatsapp,
+          platform,
+        },
+        success: true,
+      };
+    }
+
+After all changes run: npx tsc --noEmit
+Fix all TypeScript errors before committing and pushing.

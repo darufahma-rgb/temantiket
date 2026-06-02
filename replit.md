@@ -7,8 +7,7 @@ Temantiket is a comprehensive travel management SPA for Umrah & Haji agencies �
 - **Dev**: `npm run dev` — concurrently runs Express API (port 3001) + Vite (port 5000)
 - **Build**: `npm run build`
 - **Production run**: `node ./dist/index.cjs`
-- **Required env vars (shared)**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_URL_BACKUP`, `NODE_ENV` (set in `.replit` `[userenv.shared]`)
-- **Required secrets**: `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (invite/remove member), optionally `OPENROUTER_API_KEY` or `OPENAI_API_KEY` (AI features) — all stored in Replit Secrets
+- **Required secrets** (all stored in Replit Secrets): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (invite/remove member), `OPENROUTER_API_KEY` (AI features — OCR, chat, captions), `DATABASE_URL` + `SESSION_SECRET` (auto-provisioned by Replit)
 - Schema managed via Supabase SQL Editor — see `supabase/schema.sql` and `supabase/migrations/`
 
 ## Stack
