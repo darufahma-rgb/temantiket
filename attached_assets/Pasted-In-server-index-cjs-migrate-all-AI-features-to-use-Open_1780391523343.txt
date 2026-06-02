@@ -1,0 +1,185 @@
+In server/index.cjs, migrate all AI features to use OpenAI API directly 
+instead of OpenRouter. Make EXACT changes below — do not change anything else.
+
+---
+
+CHANGE 1: Replace OpenRouter constants with OpenAI constants
+
+Find and DELETE these lines:
+  const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
+  const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+  const MODEL_OCR          = 'google/gemini-2.0-flash-001';
+  const MODEL_OCR_FALLBACK = 'google/gemini-flash-1.5';
+  const MODEL_CHAT         = 'openai/gpt-4.1';
+  const MODEL_TEXT         = 'google/gemini-2.0-flash-001';
+  function openrouterHeaders() {
+    const referer = process.env.APP_URL || 'https://temantiket.vercel.app';
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'HTTP-Referer': referer,
+      'X-Title': 'Temantiket',
+    };
+  }
+
+Replace with:
+  const MODEL_OCR  = 'gpt-4o';       // vision — baca gambar paspor
+  const MODEL_CHAT = 'gpt-4o-mini';  // Caption Generator — murah, cepat
+
+Note: OPENAI_API_KEY and OPENAI_BASE_URL already exist in the file — reuse them.
+Note: openaiHeaders() already exists in the file — reuse it.
+
+---
+
+CHANGE 2: Fix /api/ocr-passport to use OpenAI instead of OpenRouter
+
+Find the /api/ocr-passport handler. Make these changes inside it:
+
+2a. Find:
+  console.log(`[ocr-passport] OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
+  if (!OPENROUTER_API_KEY) {
+    return err(res, 503, 'OPENROUTER_API_KEY tidak ditemukan. Pastikan sudah diset di environment variables.');
+  }
+
+Replace with:
+  console.log(`[ocr-passport] OPENAI_API_KEY detected: ${!!OPENAI_API_KEY}`);
+  if (!OPENAI_API_KEY) {
+    return err(res, 503, 'OPENAI_API_KEY tidak ditemukan. Pastikan sudah diset di environment variables.');
+  }
+
+2b. Find the loop that tries multiple models:
+  const ocrModelsToTry = [MODEL_OCR, MODEL_OCR_FALLBACK];
+  let lastOcrError = '';
+  let ocrRaw = null;
+  let ocrUsedModel = MODEL_OCR;
+  for (const tryModel of ocrModelsToTry) {
+    console.log(`[ocr-passport] Calling OpenRouter — model: "${tryModel}"`);
+    const ocrRes = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: openrouterHeaders(),
+      ...
+    });
+
+Replace the entire loop with a single OpenAI call (no fallback needed):
+  let ocrRaw = null;
+  const ocrUsedModel = MODEL_OCR;
+  console.log(`[ocr-passport] Calling OpenAI — model: "${MODEL_OCR}"`);
+  const ocrRes = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: openaiHeaders(),
+    body: JSON.stringify({
+      model: MODEL_OCR,
+      temperature: 0,
+      max_tokens: 400,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Read the MRZ from this passport and return the JSON.' },
+            { type: 'image_url', image_url: { url: imageDataUrl, detail: 'high' } },
+          ],
+        },
+      ],
+    }),
+  });
+
+  const bodyText = await ocrRes.text();
+  if (!ocrRes.ok) {
+    console.error(`[ocr-passport] OpenAI HTTP ${ocrRes.status} — ${bodyText.slice(0, 400)}`);
+    if (ocrRes.status === 401 || ocrRes.status === 403) {
+      return err(res, 503, 'API key OpenAI tidak valid atau kedaluwarsa. Periksa OPENAI_API_KEY di Replit Secrets.');
+    }
+    return err(res, 502, `OCR API error HTTP ${ocrRes.status}: ${bodyText.slice(0, 300)}`);
+  }
+
+  let completion;
+  try { completion = JSON.parse(bodyText); }
+  catch { return err(res, 502, 'OpenAI returned non-JSON response'); }
+
+  if (completion.error) {
+    return err(res, 502, `OCR error: ${JSON.stringify(completion.error).slice(0, 300)}`);
+  }
+
+  const candidate = completion?.choices?.[0]?.message?.content;
+  if (!candidate || typeof candidate !== 'string') {
+    return err(res, 502, 'OpenAI returned empty OCR response');
+  }
+  ocrRaw = candidate;
+  console.log(`[ocr-passport] Success — model: "${MODEL_OCR}"`);
+
+2c. Find:
+  const out = { source: 'openrouter', model: ocrUsedModel, mrzValid: parsed.mrzValid === true };
+
+Replace with:
+  const out = { source: 'openai', model: ocrUsedModel, mrzValid: parsed.mrzValid === true };
+
+---
+
+CHANGE 3: Fix /api/ai/chat (Caption Generator) to use OpenAI instead of OpenRouter
+
+Find the /api/ai/chat handler. Make these changes:
+
+3a. Find:
+  console.log(`[Caption Generator] OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
+  if (!OPENROUTER_API_KEY) {
+    return err(res, 503, 'OPENROUTER_API_KEY tidak ditemukan. Pastikan sudah diset di environment variables.');
+  }
+
+Replace with:
+  console.log(`[Caption Generator] OPENAI_API_KEY detected: ${!!OPENAI_API_KEY}`);
+  if (!OPENAI_API_KEY) {
+    return err(res, 503, 'OPENAI_API_KEY tidak ditemukan. Pastikan sudah diset di environment variables.');
+  }
+
+3b. Find:
+  const requestedModel = req.body.model || MODEL_CHAT;
+  const resolvedModel = (typeof requestedModel === 'string' && !requestedModel.includes('/'))
+    ? `openai/${requestedModel}`
+    : requestedModel;
+  console.log(`[Caption Generator] Using OpenRouter with model: ${resolvedModel}`);
+  const bodyWithModel = { ...req.body, model: resolvedModel };
+
+Replace with:
+  const resolvedModel = MODEL_CHAT;
+  console.log(`[Caption Generator] Using OpenAI with model: ${resolvedModel}`);
+  const bodyWithModel = { ...req.body, model: resolvedModel };
+
+3c. Find:
+  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: openrouterHeaders(),
+    body: JSON.stringify(bodyWithModel),
+    signal: controller.signal,
+  });
+  if (response.status === 401 || response.status === 403) {
+    return err(res, 503, 'API key OpenRouter tidak valid atau kedaluwarsa. Periksa OPENROUTER_API_KEY di Replit Secrets.');
+  }
+
+Replace with:
+  const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: openaiHeaders(),
+    body: JSON.stringify(bodyWithModel),
+    signal: controller.signal,
+  });
+  if (response.status === 401 || response.status === 403) {
+    return err(res, 503, 'API key OpenAI tidak valid atau kedaluwarsa. Periksa OPENAI_API_KEY di Replit Secrets.');
+  }
+
+---
+
+CHANGE 4: Update environment variable in Replit Secrets
+
+Make sure OPENAI_API_KEY is set in Replit Secrets (Tools → Secrets).
+The value should be your OpenAI API key starting with "sk-...".
+
+Do NOT add OPENROUTER_API_KEY anymore — it's no longer needed.
+
+---
+
+After all changes, restart the server and verify:
+- /api/ocr-passport calls api.openai.com
+- /api/ai/chat calls api.openai.com  
+- /api/ai/assistant was already using OpenAI — do not touch it
