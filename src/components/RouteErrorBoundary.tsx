@@ -29,6 +29,16 @@ export class RouteErrorBoundary extends Component<Props, State> {
       error,
       info.componentStack,
     );
+    fetch("/api/log-client-error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: error.message,
+        stack: error.stack,
+        pageName: this.props.pageName,
+        url: typeof window !== "undefined" ? window.location.href : "",
+      }),
+    }).catch(() => {});
   }
 
   private retry = () => {
@@ -90,14 +100,14 @@ function ErrorFallback({
       </p>
 
       {isDev && (
-        <details className="mt-2 mb-4 text-left w-full max-w-sm">
+        <details open className="mt-2 mb-4 text-left w-full max-w-sm">
           <summary className="text-[11px] font-semibold text-red-500 cursor-pointer select-none">
             Detail error (dev)
           </summary>
-          <pre className="mt-1 text-[10px] bg-red-50 border border-red-200 rounded-xl p-3 overflow-auto whitespace-pre-wrap break-words text-red-700 max-h-40">
+          <pre className="mt-1 text-[10px] bg-red-50 border border-red-200 rounded-xl p-3 overflow-auto whitespace-pre-wrap break-words text-red-700 max-h-48">
             {error.message}
-            {"\n"}
-            {error.stack?.split("\n").slice(1, 5).join("\n")}
+            {"\n\n"}
+            {error.stack?.split("\n").slice(0, 8).join("\n")}
           </pre>
         </details>
       )}

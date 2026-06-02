@@ -131,12 +131,14 @@ const AVATAR_GRADIENTS = [
   "from-fuchsia-400 to-rose-500",
 ];
 function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return ((parts[0][0] ?? "") + (parts[1][0] ?? "")).toUpperCase();
+  return (name.slice(0, 2) || "?").toUpperCase();
 }
 function getGradient(name: string) {
-  return AVATAR_GRADIENTS[(name.charCodeAt(0) ?? 0) % AVATAR_GRADIENTS.length];
+  const code = name ? name.charCodeAt(0) : 0;
+  return AVATAR_GRADIENTS[(isNaN(code) ? 0 : code) % AVATAR_GRADIENTS.length];
 }
 
 // ── Payment status helpers ──────────────────────────────────────────────────
@@ -1136,8 +1138,8 @@ export default function Clients() {
     const s = debouncedQ.trim().toLowerCase();
     if (!s) return clients;
     return clients.filter((c) =>
-      c.name.toLowerCase().includes(s) ||
-      c.phone.toLowerCase().includes(s) ||
+      (c.name ?? "").toLowerCase().includes(s) ||
+      (c.phone ?? "").toLowerCase().includes(s) ||
       (c.email ?? "").toLowerCase().includes(s) ||
       (c.passportNumber ?? "").toLowerCase().includes(s),
     );

@@ -1500,6 +1500,15 @@ app.get('/api/health-check', async (req, res) => {
 });
 
 /* ──────────────────────────────────────────────
+   POST /api/log-client-error — capture frontend crash reports
+────────────────────────────────────────────── */
+app.post('/api/log-client-error', (req, res) => {
+  const { message, stack, pageName, url } = req.body || {};
+  console.error('[CLIENT ERROR]', `page="${pageName || 'unknown'}" url="${url || ''}"`, '\nMessage:', message, '\nStack:', stack);
+  return res.json({ ok: true });
+});
+
+/* ──────────────────────────────────────────────
    Serve static frontend in production
 ────────────────────────────────────────────── */
 /* ──────────────────────────────────────────────
