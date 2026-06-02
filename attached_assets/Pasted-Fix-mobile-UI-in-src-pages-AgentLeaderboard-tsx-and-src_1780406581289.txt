@@ -1,0 +1,114 @@
+Fix mobile UI in src/pages/AgentLeaderboard.tsx and 
+src/pages/AgentCommandCenter.tsx. Make EXACT changes:
+
+---
+
+FIX 1: AgentLeaderboard.tsx — Fix podium cards
+
+Find the podium/top-3 section (renders 3 cards side by side for rank 1, 2, 3).
+Each card shows: rank number, avatar circle, name (truncated), tier badge, 
+points, and mini stats row (ORD KLIEN REVEN).
+
+Changes:
+1. Name: increase max chars before truncation — add title attribute with full name
+   Find name display and add: title={agent.displayName}
+   
+2. Mini stats row labels "ORD KLIEN REVEN" are truncated — replace with icons:
+   Instead of text labels, use small icons:
+   - ORDER → <ShoppingBag className="h-2.5 w-2.5" />
+   - KLIEN → <Users className="h-2.5 w-2.5" />
+   - REVEN → <TrendingUp className="h-2.5 w-2.5" />
+   
+   Find the mini stats row and change each label from text to icon.
+
+3. Reduce podium card padding: p-3 → p-2.5
+4. Reduce avatar size in podium: h-14 w-14 → h-12 w-12 for rank 1, 
+   h-12 w-12 → h-10 w-10 for rank 2 and 3
+
+---
+
+FIX 2: AgentLeaderboard.tsx — Fix stats cards (TOTAL AGEN, TOTAL ORDER, etc)
+
+Find the 2x2 stats grid below the podium showing:
+  TOTAL AGEN, TOTAL ORDER, TOTAL KLIEN, TOTAL REVENUE
+
+These have uppercase labels and are too large.
+
+Replace with compact horizontal 4-column layout:
+  <div className="grid grid-cols-4 gap-2 px-4">
+    {statsItems.map(({ label, value, icon: Icon, iconBg, iconColor }) => (
+      <div key={label} className="rounded-2xl bg-white p-2.5 shadow-sm flex flex-col items-center text-center">
+        <div className="h-7 w-7 rounded-lg flex items-center justify-center mb-1"
+          style={{ background: iconBg }}>
+          <Icon className="h-3.5 w-3.5" style={{ color: iconColor }} strokeWidth={1.8} />
+        </div>
+        <p className="text-[15px] font-extrabold text-[#0f1c3f] leading-none">{value}</p>
+        <p className="text-[9px] text-slate-500 font-medium mt-0.5 leading-tight">{label}</p>
+      </div>
+    ))}
+  </div>
+
+Change labels to sentence case:
+  "TOTAL AGEN" → "Agen"
+  "TOTAL ORDER" → "Order"
+  "TOTAL KLIEN" → "Klien"
+  "TOTAL REVENUE" → "Revenue"
+
+---
+
+FIX 3: AgentLeaderboard.tsx — Fix activity log UUID display
+
+Find the "Aktivitas Terbaru" section. Each activity item shows something like:
+  "Menyelesaikan order c0e63e07-c4b5-..."
+
+The UUID is shown raw. Find where order ID is displayed in activity items.
+Replace the raw UUID display with a shortened version:
+  Find: {activity.orderId} or {activity.description} containing full UUID
+  Replace UUID pattern with: #${(orderId || "").slice(0, 6).toUpperCase()}
+  
+  So "Menyelesaikan order c0e63e07-c4b5-..." becomes 
+  "Menyelesaikan order #C0E63E"
+
+If the description is a full string containing UUID, use:
+  description.replace(
+    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+    (match) => '#' + match.slice(0, 6).toUpperCase()
+  )
+
+---
+
+FIX 4: AgentCommandCenter.tsx — Fix stats 2x2 to compact 4-column
+
+Find the 2x2 stats grid in mobile section:
+  Total Agent, Online, Alert, Top Performer
+
+Replace with compact 4-column layout same as FIX 2 above.
+Change labels to be shorter:
+  "Total Agent" → "Agen"
+  "Online" → "Online"
+  "Alert" → "Alert"
+  "Top Performer" → "Top"
+
+---
+
+FIX 5: AgentCommandCenter.tsx — Fix header title wrapping
+
+Find the mobile header with title "Manajemen Agent" — it wraps to 2 lines.
+
+Find the h1 element with this title and change:
+  className containing "text-[17px]" or larger → "text-[15px] font-bold"
+  
+Also make the icon smaller if present:
+  h-14 w-14 → h-10 w-10
+
+---
+
+FIX 6: AgentLeaderboard.tsx — Fix header subtitle wrapping
+
+Find subtitle "Peringkat agen berdasarkan performa dan pencapaian" — wraps to 2 lines.
+
+Change to single line by reducing font or truncating:
+  Add: className="... truncate" or "line-clamp-1"
+  Or reduce text to: "Peringkat & performa agen"
+
+After all changes: npx tsc --noEmit and fix errors before committing.

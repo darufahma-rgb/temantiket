@@ -1,0 +1,160 @@
+Fix mobile UI across multiple pages in Temantiket to feel like a native app.
+These are GLOBAL patterns that repeat across pages — fix all occurrences.
+
+---
+
+FIX 1: GLOBAL — Fix page header title wrapping (affects ALL mobile pages)
+
+The pattern is a header with back button, title (h1), subtitle (p), and action button.
+The title is currently too large causing it to wrap to 2 lines.
+
+In these files, find the mobile header title and reduce font size:
+- src/pages/Reports.tsx
+- src/pages/AgentCommandCenter.tsx  
+- src/pages/OwnerVisaTrackerPage.tsx
+
+Find any h1 with className containing "text-[17px]" or "text-[18px]" or "text-[20px]"
+that is wrapping to 2 lines (titles like "Laporan Keuangan", "Manajemen Agent").
+
+Change font sizes:
+  "text-[20px] font-extrabold" → "text-[16px] font-bold"
+  "text-[18px] font-extrabold" → "text-[16px] font-bold"
+  "text-[17px] font-extrabold" → "text-[15px] font-semibold"
+
+Also make the header icon (the colored circle with icon) smaller:
+  h-12 w-12 → h-10 w-10
+  h-14 w-14 → h-10 w-10
+  text-2xl inside icon → text-xl
+
+---
+
+FIX 2: GLOBAL — Fix stats 2x2 grid to compact 4-column row
+
+This pattern appears in: Reports, AgentCommandCenter, OwnerVisaTrackerPage.
+
+Find ANY section that renders a 2x2 stats grid like:
+  <div className="grid grid-cols-2 gap-3">
+    {[...4 items...].map(({ label, value, icon }) => (
+      <div className="rounded-2xl bg-white p-3.5 shadow-sm">
+        <div className="h-9 w-9 ...icon..."></div>
+        <p className="text-[22px] font-extrabold...">{value}</p>
+        <p className="text-[11px]...">{label}</p>
+      </div>
+    ))}
+  </div>
+
+Replace ALL occurrences with compact 4-column horizontal layout:
+  <div className="grid grid-cols-4 gap-2">
+    {[...same array...].map(({ label, value, icon: Icon, iconBg, iconColor }) => (
+      <div key={label} className="rounded-2xl bg-white p-2.5 shadow-sm flex flex-col items-center text-center">
+        <div className="h-7 w-7 rounded-lg flex items-center justify-center mb-1"
+          style={{ background: iconBg }}>
+          <Icon className="h-3.5 w-3.5" style={{ color: iconColor }} strokeWidth={1.8} />
+        </div>
+        <p className="text-[16px] font-extrabold text-[#0f1c3f] leading-none">{value}</p>
+        <p className="text-[9px] text-slate-500 font-medium mt-0.5 leading-tight">{label}</p>
+      </div>
+    ))}
+  </div>
+
+---
+
+FIX 3: Reports.tsx — Fix header layout
+
+Find the mobile header in src/pages/Reports.tsx.
+The "Laporan Keuangan" title wraps to 2 lines because it's next to a large icon.
+
+Find the header section containing the wallet/reports icon circle and title.
+Change the layout to single line:
+- Icon: h-10 w-10 rounded-2xl (not h-12 or larger)
+- Title: text-[15px] font-bold (not text-[18px] or larger)
+- Subtitle: text-[10px] (not text-[11px] or larger)
+
+---
+
+FIX 4: Reports.tsx — Fix KPI cards labels (uppercase)
+
+Find KPI card labels like:
+  "KEUNTUNGAN BERSIH", "UANG MASUK", "TOTAL MODAL KELUAR", "POTENSI KEUNTUNGAN"
+
+These are uppercase because they use CSS uppercase or are hardcoded uppercase.
+Find the label elements and change to sentence case:
+  "KEUNTUNGAN BERSIH" → "Keuntungan Bersih"
+  "UANG MASUK" → "Uang Masuk"  
+  "TOTAL MODAL KELUAR" → "Total Modal Keluar"
+  "POTENSI KEUNTUNGAN" → "Potensi Keuntungan"
+  "LEWAT MITRA" → "Lewat Mitra"
+  "PROFIT LANGSUNG" → "Profit Langsung"
+
+Also find any className containing "uppercase" in Reports.tsx mobile section
+and remove "uppercase" from those classNames.
+
+---
+
+FIX 5: AgentCommandCenter.tsx — Fix card layout
+
+In src/pages/AgentCommandCenter.tsx mobile section, find the agent card 
+(shows NA avatar, "Naufal Alfatih", Staff badge, Alert badge, stats row).
+
+The card is too tall. Make these changes:
+- Reduce card padding from p-4 to p-3
+- Make stats row (Selesai, Aktif, Rate) more compact:
+  Change stats number font from text-[18px] to text-[15px]
+  Change stats label from text-[10px] to text-[9px]
+- Remove bottom margin between stats and progress bar
+- Make progress bar height from h-1.5 to h-1
+
+---
+
+FIX 6: OwnerVisaTrackerPage.tsx — Fix visa card layout
+
+In src/pages/OwnerVisaTrackerPage.tsx mobile section, find the visa cards
+(shows SA/AR/SF avatars with "SHAFA AZZAHRA MIRZ...", passport number, 
+status badge, progress bar, agent name, Detail button).
+
+Fix ALL CAPS names — find where client name is displayed and ensure
+no "uppercase" CSS class is applied. Name should be Title Case naturally.
+
+Reduce card size:
+- Card padding: p-4 → p-3
+- Avatar size: h-12 w-12 → h-10 w-10
+- Name font: text-[15px] → text-[14px] font-semibold
+- Progress bar: h-2 → h-1.5
+
+---
+
+FIX 7: GLOBAL — Remove "Aksi Cepat" sections that have unbuilt features
+
+In src/pages/AgentCommandCenter.tsx, find "Aksi Cepat" section at bottom of 
+mobile layout. DELETE the entire section if it contains features not yet built
+(Import Agent, Export, Grup, etc.).
+
+In src/pages/OwnerVisaTrackerPage.tsx, same — find and DELETE any "Aksi Cepat"
+section at bottom of mobile layout.
+
+---
+
+FIX 8: GLOBAL — Fix paddingTop for all mobile page headers
+
+Every mobile page has a sticky header with paddingTop to avoid overlap with
+the DashboardLayout floating header. Some pages use 60px which is too small.
+
+In ALL these files, find:
+  paddingTop: "calc(60px + env(safe-area-inset-top, 0px))"
+  or
+  paddingTop: "calc(56px + env(safe-area-inset-top, 0px))"
+
+Replace with:
+  paddingTop: "calc(74px + env(safe-area-inset-top, 0px))"
+
+Files to check:
+- src/pages/Reports.tsx
+- src/pages/AgentCommandCenter.tsx
+- src/pages/OwnerVisaTrackerPage.tsx
+- src/pages/Notes.tsx
+- src/pages/TicketPrices.tsx
+- src/pages/Calculator.tsx
+
+---
+
+After all changes: npx tsc --noEmit and fix errors before committing.

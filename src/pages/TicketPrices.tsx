@@ -2865,7 +2865,7 @@ export default function TicketPrices() {
         {/* ── PAGE HEADER ── */}
         <div
           className="bg-white px-4 pb-3 sticky top-0 z-20"
-          style={{ paddingTop: "calc(60px + env(safe-area-inset-top, 0px))", boxShadow: "0 1px 0 rgba(0,0,0,0.06)" }}
+          style={{ paddingTop: "calc(74px + env(safe-area-inset-top, 0px))", boxShadow: "0 1px 0 rgba(0,0,0,0.06)" }}
         >
           <div className="flex items-center gap-2">
             <button

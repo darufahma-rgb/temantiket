@@ -569,7 +569,7 @@ export default function OwnerVisaTrackerPage() {
             <ChevronLeft className="h-5 w-5 text-[#0f1c3f]" strokeWidth={2.5} />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-[#0f1c3f]">Visa Tracker</h1>
+            <h1 className="text-[16px] font-bold text-[#0f1c3f]">Visa Tracker</h1>
             <p className="text-[11px] text-[#64748b] mt-0.5">Monitoring semua berkas visa</p>
           </div>
         </div>
@@ -584,19 +584,19 @@ export default function OwnerVisaTrackerPage() {
 
       <div className="px-4 space-y-4">
         {/* Mobile stats */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-4 gap-2">
           {[
             { label: "Total Berkas", value: stats.total, bg: "bg-blue-50", ic: "text-blue-600", Icon: FileText },
             { label: "Diproses", value: stats.diproses, bg: "bg-orange-50", ic: "text-orange-600", Icon: CircleDot },
             { label: "Visa Terbit", value: stats.selesai, bg: "bg-green-50", ic: "text-green-600", Icon: CheckCircle2 },
             { label: "Bermasalah", value: stats.kendala, bg: "bg-red-50", ic: "text-red-600", Icon: AlertTriangle },
           ].map((s) => (
-            <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${s.bg}`}>
-                <s.Icon className={`h-4 w-4 ${s.ic}`} strokeWidth={1.5} />
+            <div key={s.label} className="rounded-2xl bg-white p-2.5 shadow-sm flex flex-col items-center text-center">
+              <div className={`h-7 w-7 rounded-lg flex items-center justify-center mb-1 ${s.bg}`}>
+                <s.Icon className={`h-3.5 w-3.5 ${s.ic}`} strokeWidth={1.8} />
               </div>
-              <div className="text-2xl font-bold text-[#0f1c3f]">{s.value}</div>
-              <div className="text-[11px] text-[#64748b] mt-0.5">{s.label}</div>
+              <p className="text-[16px] font-extrabold text-[#0f1c3f] leading-none">{s.value}</p>
+              <p className="text-[9px] text-slate-500 font-medium mt-0.5 leading-tight">{s.label}</p>
             </div>
           ))}
         </div>
@@ -673,10 +673,10 @@ export default function OwnerVisaTrackerPage() {
 
               return (
                 <div key={order.id} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                  <div className="p-4">
+                  <div className="p-3">
                     <div className="flex items-start gap-3">
                       <div
-                        className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 text-white text-[13px] font-bold"
+                        className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-white text-[13px] font-bold"
                         style={{ background: avatarColor(clientName) }}
                       >
                         {initials(clientName)}
@@ -684,7 +684,7 @@ export default function OwnerVisaTrackerPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-[14px] font-bold text-[#0f1c3f] truncate">{clientName}</p>
+                            <p className="text-[14px] font-semibold text-[#0f1c3f] truncate">{clientName}</p>
                             {client?.passportNumber && (
                               <p className="text-[10px] text-[#94a3b8] font-mono">{client.passportNumber}</p>
                             )}
@@ -723,7 +723,7 @@ export default function OwnerVisaTrackerPage() {
                         <span className="text-[10px] text-[#64748b]">Progress</span>
                         <span className="text-[10px] font-bold text-[#0f1c3f]">{stage.pct}%</span>
                       </div>
-                      <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                      <div className="h-1 rounded-full bg-gray-100 overflow-hidden">
                         <div
                           className={`h-full rounded-full ${stage.barColor} transition-all duration-500`}
                           style={{ width: `${stage.pct}%` }}

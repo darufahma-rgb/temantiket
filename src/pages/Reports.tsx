@@ -499,7 +499,7 @@ export default function Reports() {
                 <Wallet className="h-4 w-4 text-white" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-[17px] font-bold text-foreground leading-tight">Laporan Keuangan</h1>
+                <h1 className="text-[15px] font-semibold text-foreground leading-tight">Laporan Keuangan</h1>
                 <p className="text-[10.5px] text-muted-foreground hidden sm:block">
                   Ringkasan performa keuangan & profitabilitas bisnis Anda
                 </p>
@@ -644,7 +644,7 @@ export default function Reports() {
         <div className="px-4 md:px-6 space-y-4 pt-4">
 
           {/* ── 4 KPI Cards ── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 gap-2">
             {[
               {
                 label: "Keuntungan Bersih",
@@ -681,9 +681,9 @@ export default function Reports() {
             ].map((card) => {
               const growth = growthPct(card.value, card.prev);
               return (
-                <div key={card.label} className="rounded-2xl border border-[hsl(var(--border))] bg-white p-4 flex flex-col gap-2">
+                <div key={card.label} className="rounded-2xl border border-[hsl(var(--border))] bg-white p-2.5 flex flex-col gap-1.5">
                   <div className="flex items-start justify-between">
-                    <p className="text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground leading-tight">
+                    <p className="text-[10px] font-semibold text-muted-foreground leading-tight">
                       {card.label}
                     </p>
                     <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center shrink-0", card.iconBg)}>
@@ -733,7 +733,7 @@ export default function Reports() {
             {/* Card 1: Direct Commission */}
             <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
               <div className="px-4 pt-4 pb-3 border-b border-[hsl(var(--border))]">
-                <p className="text-[9.5px] font-bold uppercase tracking-widest text-sky-600">Profit Langsung</p>
+                <p className="text-[10px] font-semibold text-sky-600">Profit Langsung</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">order tanpa mitra</p>
                 <p className="text-[22px] font-black font-mono tabular-nums text-foreground mt-1 leading-none">
                   {fmtIDR(split.directProfit)}
@@ -770,7 +770,7 @@ export default function Reports() {
             {/* Card 2: Via Mitra */}
             <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
               <div className="px-4 pt-4 pb-3 border-b border-[hsl(var(--border))]">
-                <p className="text-[9.5px] font-bold uppercase tracking-widest text-orange-600">Lewat Mitra</p>
+                <p className="text-[10px] font-semibold text-orange-600">Lewat Mitra</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">bersih setelah semua fee mitra</p>
                 <p className="text-[22px] font-black font-mono tabular-nums text-foreground mt-1 leading-none">
                   {fmtIDR(split.agentNetForAgency)}
@@ -819,7 +819,7 @@ export default function Reports() {
             {/* Card 3: Net Profit Agency (with sparkline) */}
             <div className="rounded-2xl border border-[hsl(var(--border))] bg-white overflow-hidden">
               <div className="px-4 pt-4 pb-3">
-                <p className="text-[9.5px] font-bold uppercase tracking-widest text-emerald-600">Profit Bersih Agensi</p>
+                <p className="text-[10px] font-semibold text-emerald-600">Profit Bersih Agensi</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">langsung + lewat mitra</p>
                 <p className="text-[22px] font-black font-mono tabular-nums text-foreground mt-1 leading-none">
                   {fmtIDR(split.netAgencyProfit)}

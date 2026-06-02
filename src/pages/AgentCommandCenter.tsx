@@ -828,12 +828,12 @@ export default function AgentCommandCenter() {
       {/* ── Header ─────────────────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="flex items-start gap-4">
-          <div className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
+          <div className="h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
             style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
-            <Crown className="h-7 w-7 text-white" strokeWidth={2} />
+            <Crown className="h-5 w-5 text-white" strokeWidth={2} />
           </div>
           <div>
-            <h1 className="text-[26px] font-black text-slate-900 leading-tight tracking-tight">Manajemen Agen</h1>
+            <h1 className="text-[16px] font-bold text-slate-900 leading-tight tracking-tight">Manajemen Agen</h1>
             <p className="text-[13px] text-slate-500 mt-0.5">Kelola, monitor, dan tingkatkan performa agen dalam satu dashboard.</p>
           </div>
         </div>
