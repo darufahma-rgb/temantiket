@@ -57,12 +57,25 @@ function openaiHeaders() {
 }
 
 const app = express();
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '20mb' }));
 
-const walletLimiter = rateLimit({ windowMs: 60_000, max: 20, message: { error: 'Too many requests' } });
-const ocrLimiter    = rateLimit({ windowMs: 60_000, max: 10, message: { error: 'Too many requests' } });
-const pointsLimiter = rateLimit({ windowMs: 60_000, max: 30, message: { error: 'Too many requests' } });
+/* ── CORS: restrict to own origin in production ── */
+const ALLOWED_ORIGINS = process.env.NODE_ENV === 'production'
+  ? [process.env.VITE_APP_URL, process.env.APP_URL].filter(Boolean)
+  : true;
+app.use(cors({
+  origin: ALLOWED_ORIGINS,
+  credentials: true,
+}));
+
+app.use(express.json({ limit: '5mb' }));
+
+/* ── Rate limiters ── */
+const walletLimiter  = rateLimit({ windowMs: 60_000, max: 20,  message: { error: 'Too many requests' } });
+const ocrLimiter     = rateLimit({ windowMs: 60_000, max: 10,  message: { error: 'Too many requests' } });
+const pointsLimiter  = rateLimit({ windowMs: 60_000, max: 30,  message: { error: 'Too many requests' } });
+const aiLimiter      = rateLimit({ windowMs: 60_000, max: 15,  message: { error: 'Too many AI requests — coba lagi dalam 1 menit' } });
+const invoiceLimiter = rateLimit({ windowMs: 60_000, max: 10,  message: { error: 'Too many export requests' } });
+const logLimiter     = rateLimit({ windowMs: 60_000, max: 30,  message: { error: 'Too many requests' } });
 
 // ── Auth routes (Supabase Bearer JWT) ────────────────────────────────────────
 registerAuthRoutes(app);
@@ -629,10 +642,7 @@ app.delete('/api/agent-points-for-client/:clientId', isAuthenticatedOrBearer, as
    POST /api/export/invoice
    PDF invoice generation (ported from Vercel serverless function)
 ────────────────────────────────────────────── */
-app.post('/api/export/invoice', async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+app.post('/api/export/invoice', invoiceLimiter, isAuthenticatedOrBearer, async (req, res) => {
   try {
     const data = req.body;
     if (!data || !data.order) return err(res, 400, 'Missing order data');
@@ -897,10 +907,7 @@ app.post('/api/export/invoice', async (req, res) => {
    IGH (Umrah offer) PDF generation (ported from Vercel serverless function)
    Uses dynamic import for ESM pdf-lib + @pdf-lib/fontkit
 ────────────────────────────────────────────── */
-app.post('/api/export/igh', async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+app.post('/api/export/igh', invoiceLimiter, isAuthenticatedOrBearer, async (req, res) => {
   try {
     const { data, layout, adminSettings, baseUrl: bodyBaseUrl } = req.body ?? {};
     if (!data) return err(res, 400, 'Missing data');
@@ -1094,7 +1101,7 @@ Rules:
    Hanya menggunakan OpenRouter — TIDAK ada OpenAI di sini.
    Jika caller tidak set model di body, server inject MODEL_CHAT.
 ────────────────────────────────────────────── */
-app.post('/api/ai/chat', async (req, res) => {
+app.post('/api/ai/chat', aiLimiter, isAuthenticatedOrBearer, async (req, res) => {
   try {
     console.log(`[Caption Generator] OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
     if (!OPENROUTER_API_KEY) {
@@ -1146,7 +1153,7 @@ app.post('/api/ai/chat', async (req, res) => {
    Hanya menggunakan OpenAI — TIDAK ada OpenRouter di sini.
    Mendukung function calling (tools) untuk kontrol penuh Temantiket.
 ────────────────────────────────────────────── */
-app.post('/api/ai/assistant', async (req, res) => {
+app.post('/api/ai/assistant', aiLimiter, isAuthenticatedOrBearer, async (req, res) => {
   try {
     console.log(`[AITEM] OPENAI_API_KEY detected: ${!!OPENAI_API_KEY}`);
     if (!OPENAI_API_KEY) {
@@ -1502,7 +1509,7 @@ app.get('/api/health-check', async (req, res) => {
 /* ──────────────────────────────────────────────
    POST /api/log-client-error — capture frontend crash reports
 ────────────────────────────────────────────── */
-app.post('/api/log-client-error', (req, res) => {
+app.post('/api/log-client-error', logLimiter, (req, res) => {
   const { message, stack, pageName, url } = req.body || {};
   console.error('[CLIENT ERROR]', `page="${pageName || 'unknown'}" url="${url || ''}"`, '\nMessage:', message, '\nStack:', stack);
   return res.json({ ok: true });
@@ -1671,19 +1678,16 @@ app.post('/api/backfill-field-fees', isAuthenticatedOrBearer, async (req, res) =
    (not null/undefined). Idempotent — safe to call multiple times.
    Returns { ok, migrated, skipped, errors }.
 ────────────────────────────────────────────── */
-app.post('/api/migrate-progress-steps', async (req, res) => {
+app.post('/api/migrate-progress-steps', isAuthenticatedOrBearer, async (req, res) => {
   const ROUTE = '[migrate-progress-steps]';
   try {
-    const callerUser = await getCallerUser(req.headers['authorization'] ?? '');
-    if (callerUser) {
-      const { data: memberRows } = await getSb()
-        .from('agency_members')
-        .select('role')
-        .eq('user_id', callerUser.id)
-        .limit(1);
-      if (!memberRows?.[0] || !['owner', 'staff'].includes(memberRows[0].role)) {
-        return err(res, 403, 'Hanya owner/staff yang dapat menjalankan migrasi');
-      }
+    const { data: memberRows } = await getSb()
+      .from('agency_members')
+      .select('role')
+      .eq('user_id', req.user.id)
+      .limit(1);
+    if (!memberRows?.[0] || !['owner', 'staff'].includes(memberRows[0].role)) {
+      return err(res, 403, 'Hanya owner/staff yang dapat menjalankan migrasi');
     }
 
     const MIGRATIONS = {
