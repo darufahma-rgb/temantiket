@@ -1311,7 +1311,7 @@ export async function sendAIMessage(
     const choice = data.choices?.[0];
     const assistantMsg = choice?.message;
 
-    if (!assistantMsg) throw new Error("Respons OpenAI kosong");
+    if (!assistantMsg) throw new Error("Respons AI kosong");
 
     fullMessages.push(assistantMsg);
 

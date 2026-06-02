@@ -1035,7 +1035,7 @@ export function AIChatWidget() {
                 </button>
               </div>
               <div className="text-[10px] text-slate-400 mt-1.5 text-center">
-                Shift+Enter untuk baris baru · Didukung OpenAI
+                Shift+Enter untuk baris baru · Didukung OpenRouter
               </div>
             </div>
           </motion.div>
