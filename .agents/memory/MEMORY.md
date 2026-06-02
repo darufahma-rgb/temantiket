@@ -1,0 +1,1 @@
+- [DESIGN.md reference](design-system.md) — Temantiket pakai DESIGN.md sebagai panduan UI; baca sebelum nulis komponen atau halaman baru.
