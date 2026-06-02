@@ -7,7 +7,7 @@ const SUPABASE_ANON_KEY  = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SU
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 const OPENAI_BASE_URL     = 'https://api.openai.com/v1';
-const MODEL_ASSISTANT     = 'gpt-4o-mini';
+const MODEL_ASSISTANT     = 'openai/gpt-4o-mini';
 
 async function getCallerUser(authHeader) {
   if (!authHeader || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
@@ -41,28 +41,36 @@ async function handleChat(req, res, caller) {
   }
 }
 
-// ── /api/ai/assistant — OpenAI proxy (AITEM) ──────────────────────────────────
+// ── /api/ai/assistant — OpenRouter proxy (AITEM) ──────────────────────────────
 async function handleAssistant(req, res, caller) {
-  if (!OPENAI_API_KEY) return res.status(503).json({ error: 'OPENAI_API_KEY belum di-set di Vercel Environment Variables.' });
+  if (!OPENROUTER_API_KEY) return res.status(503).json({ error: 'OPENROUTER_API_KEY belum di-set di Vercel Environment Variables.' });
   try {
     const requestedModel = (req.body && req.body.model) || MODEL_ASSISTANT;
-    const resolvedModel = (typeof requestedModel === 'string' && requestedModel.includes('/'))
-      ? requestedModel.split('/').slice(1).join('/')
+    const resolvedModel = (typeof requestedModel === 'string' && !requestedModel.includes('/'))
+      ? `openai/${requestedModel}`
       : requestedModel;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 90_000);
     try {
-      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+      const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'HTTP-Referer': 'https://temantiket.vercel.app',
+          'X-Title': 'Temantiket',
+        },
         body: JSON.stringify({ ...req.body, model: resolvedModel }),
         signal: controller.signal,
       });
+      if (response.status === 401 || response.status === 403) {
+        return res.status(503).json({ error: 'API key OpenRouter tidak valid. Periksa OPENROUTER_API_KEY di Vercel Environment Variables.' });
+      }
       const text = await response.text();
       res.status(response.status).setHeader('Content-Type', 'application/json').send(text);
     } catch (fetchErr) {
-      if (fetchErr.name === 'AbortError') return res.status(504).json({ error: 'AITEM request timeout (90 s) — coba lagi.' });
+      if (fetchErr.name === 'AbortError') return res.status(504).json({ error: 'AITEM request timeout (90s) — coba lagi.' });
       throw fetchErr;
     } finally {
       clearTimeout(timer);
