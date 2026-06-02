@@ -83,7 +83,7 @@ function prevRangeBounds(key: RangeKey): { from: Date | null; to: Date | null } 
 }
 
 const TYPE_COLOR: Record<string, string> = {
-  umrah:        "#1a44d4",
+  umrah:        "#0064E0",
   flight:       "#f97316",
   visa_voa:     "#a855f7",
   visa_student: "#10b981",
@@ -495,7 +495,7 @@ export default function Reports() {
             {/* Left */}
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "linear-gradient(135deg,#1a44d4,#0a2472)" }}>
+                style={{ background: "linear-gradient(135deg,#0064E0,#0457cb)" }}>
                 <Wallet className="h-4 w-4 text-white" />
               </div>
               <div className="min-w-0">
@@ -840,13 +840,13 @@ export default function Reports() {
                     <AreaChart data={sparklineData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
                       <defs>
                         <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%"   stopColor="#1a44d4" stopOpacity={0.25} />
-                          <stop offset="100%" stopColor="#1a44d4" stopOpacity={0.02} />
+                          <stop offset="0%"   stopColor="#0064E0" stopOpacity={0.25} />
+                          <stop offset="100%" stopColor="#0064E0" stopOpacity={0.02} />
                         </linearGradient>
                       </defs>
                       <XAxis dataKey="d" hide />
                       <YAxis hide />
-                      <Area type="monotone" dataKey="v" stroke="#1a44d4" strokeWidth={2} fill="url(#profitGrad)" dot={false} />
+                      <Area type="monotone" dataKey="v" stroke="#0064E0" strokeWidth={2} fill="url(#profitGrad)" dot={false} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -994,7 +994,7 @@ export default function Reports() {
                           className="h-full rounded-full"
                           style={{
                             width: `${item.pct}%`,
-                            background: "linear-gradient(90deg,#1a44d4,#4f74e8)",
+                            background: "linear-gradient(90deg,#0064E0,#4f74e8)",
                           }}
                         />
                       </div>

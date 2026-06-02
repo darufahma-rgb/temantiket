@@ -76,7 +76,7 @@ const SEASONAL_OVERRIDES: SeasonalBrandOverride[] = [
     endMonth: 7, endDay: 31,
     override: {
       tagline: "Musim Haji — Layanan Perjalanan Ibadah Terpercaya",
-      accentColor: "#1a44d4",
+      accentColor: "#0064E0",
     },
   },
 ];
@@ -89,7 +89,7 @@ const DEFAULT_BRAND: BrandConfig = {
   logoLight:     "/temantiket-logo.svg",
   logoDark:      "/temantiket-logo.svg",
   favicon:       "/favicon.ico",
-  brandColor:    "#1a44d4",
+  brandColor:    "#0064E0",
   accentColor:   "#3b82f6",
   adminWhatsApp: undefined,
   supportEmail:  undefined,

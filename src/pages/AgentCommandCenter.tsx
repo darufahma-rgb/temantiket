@@ -45,7 +45,7 @@ import {
 const M = { fontFamily: "'Manrope', sans-serif" };
 
 const AGENT_COLORS = [
-  "#1a44d4", "#f97316", "#10b981", "#8b5cf6",
+  "#0064E0", "#f97316", "#10b981", "#8b5cf6",
   "#ec4899", "#f59e0b", "#14b8a6", "#ef4444",
 ];
 

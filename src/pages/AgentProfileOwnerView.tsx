@@ -1841,7 +1841,7 @@ export default function AgentProfileOwnerView() {
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate("/agent-center")}>
                       <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Kembali
                     </Button>
-                    <Button size="sm" className="flex-1 bg-[#0a2472] hover:bg-[#051650] text-white" onClick={() => navigate("/agent-center", { state: { focusAgent: agentId } })}>
+                    <Button size="sm" className="flex-1 bg-[#0457cb] hover:bg-[#0a1317] text-white" onClick={() => navigate("/agent-center", { state: { focusAgent: agentId } })}>
                       <BarChart3 className="h-3.5 w-3.5 mr-1" /> Lihat Analitik
                     </Button>
                   </div>
@@ -1954,7 +1954,7 @@ export default function AgentProfileOwnerView() {
                   <button
                     onClick={() => void handleSaveProfile()}
                     disabled={isSaving}
-                    className="flex items-center gap-1.5 bg-[#0a2472] text-white text-[11px] font-bold px-4 py-1.5 rounded-lg hover:bg-[#051650] transition-colors disabled:opacity-60"
+                    className="flex items-center gap-1.5 bg-[#0457cb] text-white text-[11px] font-bold px-4 py-1.5 rounded-lg hover:bg-[#0a1317] transition-colors disabled:opacity-60"
                   >
                     {isSaving ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                     Simpan
@@ -2003,7 +2003,7 @@ export default function AgentProfileOwnerView() {
               {canEdit && (
                 <button
                   onClick={() => { setEditName(agent.displayName); setEditEmail(agent.email); setIsEditMode(true); }}
-                  className="flex items-center gap-1.5 bg-[#0a2472] text-white text-[12px] font-semibold px-4 py-2 rounded-xl hover:bg-[#051650] transition-colors"
+                  className="flex items-center gap-1.5 bg-[#0457cb] text-white text-[12px] font-semibold px-4 py-2 rounded-xl hover:bg-[#0a1317] transition-colors"
                 >
                   <Pencil className="h-3.5 w-3.5" />Edit Profil
                 </button>
@@ -2851,7 +2851,7 @@ export default function AgentProfileOwnerView() {
                 </Button>
                 <Button
                   size="sm"
-                  className="flex-1 bg-[#0a2472] hover:bg-[#051650] text-white"
+                  className="flex-1 bg-[#0457cb] hover:bg-[#0a1317] text-white"
                   onClick={() =>
                     navigate("/agent-center", {
                       state: { focusAgent: agentId },

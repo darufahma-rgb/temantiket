@@ -1,1 +1,2 @@
 - [DESIGN.md reference](design-system.md) — Temantiket pakai DESIGN.md sebagai panduan UI; baca sebelum nulis komponen atau halaman baru.
+- [Meta redesign token map](meta-redesign.md) — Panduan penggantian warna navy lama → Meta cobalt; semua token CSS sudah diupdate ke nilai DESIGN.md.

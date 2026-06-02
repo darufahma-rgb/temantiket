@@ -1603,7 +1603,7 @@ export default function PublicTicketPrices() {
               </div>
 
               {waNumber && (
-                <div className="mt-8 relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0a2472] via-[#123499] to-[#1a44d4] p-8 text-center text-white shadow-xl">
+                <div className="mt-8 relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0457cb] via-[#0064E0] to-[#0064E0] p-8 text-center text-white shadow-xl">
                   <div className="absolute inset-0 opacity-10">
                     <div className="absolute -top-6 -right-6 w-40 h-40 rounded-full bg-white/30" />
                     <div className="absolute -bottom-8 -left-8 w-52 h-52 rounded-full bg-white/20" />
@@ -1616,7 +1616,7 @@ export default function PublicTicketPrices() {
                       href={whatsappUrl(waNumber)}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-2 bg-white text-[#0a2472] font-black text-sm px-7 py-3 rounded-xl hover:bg-blue-50 transition-colors shadow-lg"
+                      className="inline-flex items-center gap-2 bg-white text-[#0457cb] font-black text-sm px-7 py-3 rounded-xl hover:bg-blue-50 transition-colors shadow-lg"
                     >
                       <MessageCircle className="w-4 h-4 text-green-600" />
                       Chat via WhatsApp

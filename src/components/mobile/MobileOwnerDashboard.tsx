@@ -337,14 +337,14 @@ export function MobileOwnerDashboard() {
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" style={{ boxShadow: "0 0 4px #34d399" }} />
           <div className="flex items-center gap-1 leading-none">
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">USD</span>
-            <span className="text-[12px] font-extrabold text-[#1a44d4]">
+            <span className="text-[12px] font-extrabold text-[#0064E0]">
               {rates.USD ? `${(rates.USD / 1000).toFixed(1)}k` : "—"}
             </span>
             {rates.SAR && (
               <>
                 <span className="text-[9px] text-slate-300 mx-0.5">·</span>
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">SAR</span>
-                <span className="text-[12px] font-extrabold text-[#1a44d4]">
+                <span className="text-[12px] font-extrabold text-[#0064E0]">
                   {rates.SAR.toLocaleString("id-ID")}
                 </span>
               </>

@@ -278,7 +278,7 @@ function AddTripDialog({ open, onClose }: { open: boolean; onClose: () => void }
               type="submit"
               disabled={loading}
               className="flex-1 h-9 rounded-xl text-[12.5px] font-bold text-white transition-all disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#1a44d4,#123499)" }}
+              style={{ background: "#0064E0" }}
             >
               {loading ? "Menyimpan…" : "Simpan Paket"}
             </button>
@@ -1232,7 +1232,7 @@ export default function Dashboard() {
         >
           <div
             className="rounded-3xl p-6 md:p-8 relative overflow-hidden"
-            style={{ background: "linear-gradient(135deg,#00072d 0%,#0a2472 50%,#1a44d4 100%)" }}
+            style={{ background: "linear-gradient(135deg,#0a1317 0%,#1c1e21 50%,#0064E0 100%)" }}
           >
             {/* Decorative background */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">

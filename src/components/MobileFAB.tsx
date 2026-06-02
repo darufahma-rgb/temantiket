@@ -17,7 +17,7 @@ interface MobileFABProps {
 
 const FAB_BOTTOM = "calc(78px + env(safe-area-inset-bottom, 0px))";
 
-const GRADIENT = "linear-gradient(135deg, #1a44d4, #0a2472)";
+const GRADIENT = "linear-gradient(135deg, #0064E0, #0457cb)";
 const SHADOW   = "0 8px 24px -4px rgba(26,68,212,0.48)";
 
 function useKeyboardOpen() {

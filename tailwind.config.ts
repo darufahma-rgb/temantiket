@@ -21,19 +21,33 @@ export default {
         /* ── Brand palette override ──
            Primary: #00072d → #051650 → #0a2472 → #123499
            Interactive accent: #1a44d4 (sky-500) */
+        /* ── Meta cobalt palette (replaces old navy sky) ── */
         sky: {
-          50:  "#eef3ff",
-          100: "#d4e0ff",
-          200: "#a8c0ff",
-          300: "#6694ff",
-          400: "#3d6af0",
-          500: "#1a44d4",
-          600: "#123499",
-          700: "#0a2472",
-          800: "#051650",
-          900: "#00072d",
-          950: "#000219",
+          50:  "#e8f0fb",
+          100: "#cce0ff",
+          200: "#99c2ff",
+          300: "#5599ff",
+          400: "#2277f5",
+          500: "#0064E0",   /* Meta cobalt primary */
+          600: "#0457cb",   /* Meta cobalt deep */
+          700: "#0143b5",   /* selected/active */
+          800: "#02318a",
+          900: "#011d5c",
+          950: "#010e33",
         },
+        /* ── Meta ink scale ── */
+        ink: {
+          deep:    "#0a1317",
+          DEFAULT: "#1c1e21",
+          charcoal:"#444950",
+          slate:   "#4b4c4f",
+          steel:   "#5d6c7b",
+          stone:   "#8595a4",
+        },
+        canvas: "#ffffff",
+        "surface-soft": "#f1f4f7",
+        hairline: "#ced0d4",
+        "hairline-soft": "#dee3e9",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -87,12 +101,16 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 8px)",
-        xl: "calc(var(--radius) + 4px)",
-        "2xl": "calc(var(--radius) + 8px)",
-        full: "9999px",
+        xs:      "2px",
+        sm:      "4px",
+        md:      "6px",
+        lg:      "var(--radius)",   /* 8px — Meta lg */
+        xl:      "16px",            /* Meta xl */
+        "2xl":   "24px",            /* Meta xxl */
+        "3xl":   "32px",            /* Meta xxxl */
+        feature: "40px",            /* Meta feature */
+        full:    "100px",           /* Meta pill */
+        circle:  "9999px",
       },
       keyframes: {
         "accordion-down": {

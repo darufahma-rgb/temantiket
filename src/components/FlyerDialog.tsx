@@ -19,7 +19,7 @@ interface FlyerDialogProps {
 }
 
 const TEMPLATES = [
-  { id: "sunset", name: "Sunset Gold", from: "#1a44d4", to: "#dc2626" },
+  { id: "sunset", name: "Sunset Gold", from: "#0064E0", to: "#dc2626" },
   { id: "emerald", name: "Emerald Holy", from: "#059669", to: "#0f766e" },
   { id: "midnight", name: "Midnight Blue", from: "#1e3a8a", to: "#312e81" },
 ];

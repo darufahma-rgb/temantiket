@@ -3112,7 +3112,7 @@ export default function Calculator() {
                 <div className="space-y-3">
                   <div
                     className="rounded-xl p-4 text-white relative overflow-hidden"
-                    style={{ background: "linear-gradient(135deg,#123499,#1a44d4 60%,#6694ff)" }}
+                    style={{ background: "linear-gradient(135deg,#0064E0,#0064E0 60%,#6694ff)" }}
                   >
                     <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 90% 10%,white 0%,transparent 55%)" }} />
                     <div className="relative">

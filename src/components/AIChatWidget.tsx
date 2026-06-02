@@ -232,7 +232,7 @@ function EditPreviewCard({ result }: { result: ToolResult }) {
       {/* Header */}
       <div
         className="flex items-center gap-2 px-3 py-2.5 text-white text-xs"
-        style={{ background: "linear-gradient(135deg, #1a44d4 0%, #0a2472 100%)" }}
+        style={{ background: "linear-gradient(135deg, #0064E0 0%, #0457cb 100%)" }}
       >
         {isBroadcast ? (
           <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
@@ -270,7 +270,7 @@ function EditPreviewCard({ result }: { result: ToolResult }) {
           <button
             onClick={handleApply}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-white text-xs font-semibold transition-colors"
-            style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
+            style={{ background: "linear-gradient(135deg, #0064E0, #0457cb)" }}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
             Terapkan
@@ -900,7 +900,7 @@ export function AIChatWidget() {
             {/* Header */}
             <div
               className="flex items-center gap-3 px-4 py-3 shrink-0"
-              style={{ background: "linear-gradient(135deg, #1a44d4 0%, #0a2472 100%)" }}
+              style={{ background: "linear-gradient(135deg, #0064E0 0%, #0457cb 100%)" }}
             >
               <div className="w-9 h-9 rounded-2xl bg-white/15 flex items-center justify-center shrink-0 border border-white/20">
                 <motion.img
@@ -933,7 +933,7 @@ export function AIChatWidget() {
                   <div className="text-center pt-5 pb-1">
                     <div
                       className="w-[60px] h-[60px] rounded-[20px] flex items-center justify-center mx-auto mb-3 shadow-lg"
-                      style={{ background: "linear-gradient(135deg, #1a44d4 0%, #0a2472 100%)" }}
+                      style={{ background: "linear-gradient(135deg, #0064E0 0%, #0457cb 100%)" }}
                     >
                       <img src="/chatgpt-icon.png" alt="AITEM" className="w-8 h-8 object-contain" />
                     </div>
@@ -979,12 +979,12 @@ export function AIChatWidget() {
 
               {loading && (
                 <div className="flex items-start gap-1.5">
-                  <div className="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center shrink-0 mt-0.5" style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}>
+                  <div className="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center shrink-0 mt-0.5" style={{ background: "linear-gradient(135deg, #0064E0, #0457cb)" }}>
                     <img src="/chatgpt-icon.png" alt="AITEM" className="w-3.5 h-3.5 object-contain" />
                   </div>
                   <div className="bg-white border border-border/60 rounded-2xl rounded-bl-sm px-3 py-2.5 shadow-sm">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "#1a44d4" }} />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "#0064E0" }} />
                       <span>AITEM sedang memproses…</span>
                     </div>
                   </div>
@@ -1029,7 +1029,7 @@ export function AIChatWidget() {
                   onClick={() => void sendMessage(input)}
                   disabled={!input.trim() || loading}
                   className="w-8 h-8 rounded-xl flex items-center justify-center text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all shrink-0 mb-0.5"
-                  style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}
+                  style={{ background: "linear-gradient(135deg, #0064E0, #0457cb)" }}
                 >
                   <Send className="w-3.5 h-3.5" />
                 </button>

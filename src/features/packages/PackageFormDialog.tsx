@@ -185,7 +185,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSubmit }: Pro
               >
                 <div className="flex items-center gap-2.5 md:gap-3 min-w-0">
                   <div className="h-8 w-8 md:h-9 md:w-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: "linear-gradient(135deg,#1a44d4,#123499)" }}>
+                    style={{ background: "linear-gradient(135deg,#0064E0,#0064E0)" }}>
                     <Package strokeWidth={1.8} className="h-4 w-4 md:h-4.5 md:w-4.5 text-white" />
                   </div>
                   <div className="min-w-0">
@@ -443,7 +443,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSubmit }: Pro
                   onClick={handleSave}
                   disabled={saving || !canSave}
                   className="flex-[1.4] md:flex-1 h-10 rounded-xl text-[13px] font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
-                  style={{ background: "linear-gradient(135deg,#1a44d4,#123499)" }}
+                  style={{ background: "linear-gradient(135deg,#0064E0,#0064E0)" }}
                 >
                   {saving ? (
                     <>

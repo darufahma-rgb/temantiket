@@ -149,7 +149,7 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, AppErrorState>
                 height: 40,
                 padding: "0 20px",
                 borderRadius: 12,
-                background: "linear-gradient(135deg,#1a44d4,#0a2472)",
+                background: "linear-gradient(135deg,#0064E0,#0457cb)",
                 color: "#fff",
                 fontWeight: 700,
                 fontSize: "0.8125rem",

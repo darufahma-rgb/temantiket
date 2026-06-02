@@ -18,9 +18,9 @@ import { toast } from "sonner";
 
 // ── Jamaah step config ────────────────────────────────────────────────────────
 const JAMAAH_STEPS = [
-  { key: "registered", label: "Terdaftar",      icon: UserCheck,  color: "#1a44d4" },
+  { key: "registered", label: "Terdaftar",      icon: UserCheck,  color: "#0064E0" },
   { key: "docs",       label: "Dokumen",         icon: FileKey,    color: "#8b5cf6" },
-  { key: "paid",       label: "Pembayaran",      icon: CreditCard, color: "#1a44d4" },
+  { key: "paid",       label: "Pembayaran",      icon: CreditCard, color: "#0064E0" },
   { key: "approved",   label: "Disetujui",       icon: BadgeCheck, color: "#10b981" },
   { key: "departed",   label: "Siap Berangkat",  icon: Plane,      color: "#f59e0b" },
 ];
@@ -92,7 +92,7 @@ function JamaahRow({ jamaah, step, tripId }: { jamaah: Jamaah; step: number; tri
         <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-700"
-            style={{ width: `${pct}%`, background: `linear-gradient(90deg, #1a44d4, ${stepColor})` }}
+            style={{ width: `${pct}%`, background: `linear-gradient(90deg, #0064E0, ${stepColor})` }}
           />
         </div>
         <div className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5">
@@ -142,7 +142,7 @@ function TripBlock({ trip, jamaahList, docMap }: { trip: Trip; jamaahList: Jamaa
         onClick={() => setOpen((v) => !v)}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #1a44d4, #123499)" }}>
+          <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #0064E0, #0064E0)" }}>
             <Plane className="h-4 w-4 text-white" strokeWidth={2} />
           </div>
           <div className="min-w-0 text-left">
@@ -153,7 +153,7 @@ function TripBlock({ trip, jamaahList, docMap }: { trip: Trip; jamaahList: Jamaa
         <div className="flex items-center gap-3 shrink-0 ml-3">
           <svg className="h-9 w-9 -rotate-90" viewBox="0 0 36 36">
             <circle cx="18" cy="18" r="14" fill="none" stroke="#f1f5f9" strokeWidth="4" />
-            <circle cx="18" cy="18" r="14" fill="none" stroke="#1a44d4" strokeWidth="4"
+            <circle cx="18" cy="18" r="14" fill="none" stroke="#0064E0" strokeWidth="4"
               strokeDasharray={`${(avgPct / 100) * 88} 88`} strokeLinecap="round" />
           </svg>
           {open ? <ChevronUp className="h-4 w-4 text-[hsl(var(--muted-foreground))]" /> : <ChevronDown className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />}
@@ -320,7 +320,7 @@ export default function ProgressTracker() {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}
         className="grid grid-cols-3 gap-2">
         {[
-          { label: "Total Jamaah", value: totalJamaah, icon: Users, color: "#1a44d4" },
+          { label: "Total Jamaah", value: totalJamaah, icon: Users, color: "#0064E0" },
           { label: "Siap Berangkat", value: fullyDone, icon: Plane, color: "#10b981" },
           { label: "Progres Rata-rata", value: `${overallPct}%`, icon: TrendingUp, color: "#8b5cf6" },
         ].map((card) => (
@@ -348,7 +348,7 @@ export default function ProgressTracker() {
               animate={{ width: `${overallPct}%` }}
               transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
               className="h-full rounded-full"
-              style={{ background: "linear-gradient(90deg, #1a44d4, #6694ff, #fbbf24)" }}
+              style={{ background: "linear-gradient(90deg, #0064E0, #6694ff, #fbbf24)" }}
             />
           </div>
           <div className="flex justify-between mt-2">

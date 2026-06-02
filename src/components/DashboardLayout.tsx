@@ -234,7 +234,7 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
                   width: 30,
                   height: 30,
                   fontSize: "11.5px",
-                  background: "linear-gradient(140deg, #2563eb 0%, #1a44d4 55%, #0a2472 100%)",
+                  background: "linear-gradient(140deg, #2563eb 0%, #0064E0 55%, #0457cb 100%)",
                   boxShadow: "0 2px 8px rgba(26,68,212,0.35)",
                 }}
               >
@@ -269,7 +269,7 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
                     navigate(`/clients?q=${encodeURIComponent(searchQuery.trim())}`);
                   }
                 }}
-                onFocus={(e) => { e.target.style.borderColor = "#1a44d4"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.12)"; }}
+                onFocus={(e) => { e.target.style.borderColor = "#0064E0"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.12)"; }}
                 onBlur={(e) => { e.target.style.borderColor = "hsl(var(--border))"; e.target.style.boxShadow = "none"; }}
               />
               <span className="hidden sm:inline-flex absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "hsl(var(--border))", color: "hsl(var(--muted-foreground))", fontFamily: "monospace" }}>⌘K</span>
@@ -284,7 +284,7 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
                 className="flex items-center gap-1.5 h-9 px-2 sm:px-3 rounded-xl transition-all hover:bg-[hsl(var(--secondary))] active:scale-95"
                 style={{ border: "1px solid hsl(var(--border))" }}
               >
-                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: rateMode === "manual" ? "#1a44d4" : "#10b981", boxShadow: rateMode === "manual" ? "0 0 4px #1a44d4" : "0 0 4px #10b981" }} />
+                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: rateMode === "manual" ? "#0064E0" : "#10b981", boxShadow: rateMode === "manual" ? "0 0 4px #0064E0" : "0 0 4px #10b981" }} />
                 <span className="text-[11px] font-semibold text-[hsl(var(--muted-foreground))]" style={{ fontVariantNumeric: "tabular-nums" }}>
                   <span className="hidden sm:inline">USD </span>
                   <span className="font-bold" style={{ color: "#4361EE" }}>Rp{rates.USD ? (rates.USD >= 10000 ? `${(rates.USD / 1000).toFixed(1)}k` : rates.USD.toLocaleString("id-ID")) : "—"}</span>
@@ -293,7 +293,7 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
                 <RefreshCw className={cn("h-3 w-3 shrink-0", ratesLoading && "animate-spin")} style={{ color: "hsl(var(--muted-foreground))" }} strokeWidth={2} />
               </button>
 
-              <button onClick={() => navigate("/itinerary")} className="keep-icon-bg hidden sm:flex items-center gap-2 h-9 px-3 md:px-3.5 rounded-xl text-white text-[12px] font-semibold transition-all hover:opacity-90 active:scale-95 shrink-0" style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}>
+              <button onClick={() => navigate("/itinerary")} className="keep-icon-bg hidden sm:flex items-center gap-2 h-9 px-3 md:px-3.5 rounded-xl text-white text-[12px] font-semibold transition-all hover:opacity-90 active:scale-95 shrink-0" style={{ background: "linear-gradient(135deg, #0064E0, #0457cb)" }}>
                 <img src="/chatgpt-icon.png" alt="AI" className="h-3.5 w-3.5 shrink-0 object-contain" />
                 <span className="hidden md:inline">AITEM</span>
               </button>
@@ -315,7 +315,7 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
               <NotificationBell />
 
               <button onClick={() => navigate("/settings")} className="flex items-center gap-2 h-9 pl-1.5 pr-1.5 md:pl-2 md:pr-3 rounded-xl transition-colors hover:bg-[hsl(var(--secondary))] shrink-0" style={{ border: "1px solid hsl(var(--border))" }}>
-                <div className="h-6 w-6 rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: "linear-gradient(135deg, #1a44d4, #0a2472)" }}>
+                <div className="h-6 w-6 rounded-lg flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: "linear-gradient(135deg, #0064E0, #0457cb)" }}>
                   {displayName.charAt(0).toUpperCase()}
                 </div>
                 <div className="hidden lg:flex flex-col items-start leading-none">
@@ -407,13 +407,13 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
                 strokeWidth={isActive ? 2.2 : 1.6}
                 className={cn(
                   "h-[20px] w-[20px] relative transition-colors",
-                  isActive ? "text-[#1a44d4]" : "text-[hsl(var(--muted-foreground))]"
+                  isActive ? "text-[#0064E0]" : "text-[hsl(var(--muted-foreground))]"
                 )}
               />
               <span
                 className={cn(
                   "relative text-[10px] font-semibold tracking-[0.01em] transition-colors",
-                  isActive ? "text-[#1a44d4]" : "text-[hsl(var(--muted-foreground))]"
+                  isActive ? "text-[#0064E0]" : "text-[hsl(var(--muted-foreground))]"
                 )}
               >
                 {item.label}
@@ -578,7 +578,7 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Cari klien, trip, order…"
                     className="w-full h-11 pl-10 pr-4 rounded-xl text-[13px] outline-none transition-all"
-                    style={{ background: "hsl(var(--secondary))", border: "1.5px solid #1a44d4", boxShadow: "0 0 0 3px rgba(26,68,212,0.10)", color: "hsl(var(--foreground))" }}
+                    style={{ background: "hsl(var(--secondary))", border: "1.5px solid #0064E0", boxShadow: "0 0 0 3px rgba(26,68,212,0.10)", color: "hsl(var(--foreground))" }}
                   />
                 </div>
                 <button type="button" onClick={() => { setSearchOpen(false); setSearchQuery(""); }} className="h-10 w-10 flex items-center justify-center rounded-xl transition-colors hover:bg-[hsl(var(--secondary))] shrink-0">

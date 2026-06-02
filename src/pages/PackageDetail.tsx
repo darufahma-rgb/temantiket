@@ -552,7 +552,7 @@ function AddJamaahWithOcrDialog({ open, packageId, onClose }: { open: boolean; p
             </button>
             <button type="submit" disabled={saving}
               className="flex-1 h-9 rounded-xl text-[12.5px] font-bold text-white transition-all disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#1a44d4,#123499)" }}>
+              style={{ background: "linear-gradient(135deg,#0064E0,#0064E0)" }}>
               {saving ? "Menyimpan…" : "Tambah Jamaah"}
             </button>
           </div>
@@ -1880,7 +1880,7 @@ export default function PackageDetail() {
                     <div className="space-y-3">
                       <div
                         className="rounded-xl p-4 text-white relative overflow-hidden"
-                        style={{ background: "linear-gradient(135deg,#123499,#1a44d4 60%,#6694ff)" }}
+                        style={{ background: "linear-gradient(135deg,#0064E0,#0064E0 60%,#6694ff)" }}
                       >
                         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 90% 10%,white 0%,transparent 55%)" }} />
                         <div className="relative">
@@ -1945,7 +1945,7 @@ export default function PackageDetail() {
               </button>
               <button onClick={() => setBulkOpen(true)}
                 className="h-8 px-2.5 rounded-xl text-[11.5px] font-bold text-white flex items-center gap-1 transition-all"
-                style={{ background: "linear-gradient(135deg,#1a44d4,#123499)" }}>
+                style={{ background: "linear-gradient(135deg,#0064E0,#0064E0)" }}>
                 <Layers className="h-3.5 w-3.5" /> Bulk OCR
               </button>
             </div>
@@ -1963,7 +1963,7 @@ export default function PackageDetail() {
                 </button>
                 <button onClick={() => setBulkOpen(true)}
                   className="h-8 px-3 rounded-xl text-[11.5px] font-bold text-white flex items-center gap-1"
-                  style={{ background: "linear-gradient(135deg,#1a44d4,#123499)" }}>
+                  style={{ background: "linear-gradient(135deg,#0064E0,#0064E0)" }}>
                   <Layers className="h-3.5 w-3.5" /> Bulk Scan
                 </button>
               </div>

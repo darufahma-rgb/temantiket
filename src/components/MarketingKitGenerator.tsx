@@ -314,7 +314,7 @@ export function CaptionGenerator() {
                 onChange={(e) => setUserContext(e.target.value)}
                 placeholder={PLACEHOLDER}
                 rows={7}
-                className="w-full rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-3 text-[13px] text-foreground placeholder-muted-foreground/50 resize-y focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 focus:border-[#1a44d4]/50 transition-all leading-relaxed"
+                className="w-full rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-3 text-[13px] text-foreground placeholder-muted-foreground/50 resize-y focus:outline-none focus:ring-2 focus:ring-[#0064E0]/40 focus:border-[#0064E0]/50 transition-all leading-relaxed"
               />
               <p className="text-[10.5px] text-muted-foreground mt-1.5">
                 Ceritakan bebas — produk, target, tujuan, harga, promo, apapun. AI memahami konteksmu dan menyesuaikan caption secara otomatis.
@@ -339,8 +339,8 @@ export function CaptionGenerator() {
                       className={cn(
                         "flex-1 rounded-lg border py-2 text-[12.5px] font-medium transition-all",
                         platform === key
-                          ? "border-[#1a44d4] bg-[#1a44d4] text-white"
-                          : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40 hover:bg-blue-50/30",
+                          ? "border-[#0064E0] bg-[#0064E0] text-white"
+                          : "border-border/70 bg-white text-foreground hover:border-[#0064E0]/40 hover:bg-blue-50/30",
                       )}
                     >
                       {label}
@@ -360,8 +360,8 @@ export function CaptionGenerator() {
                       className={cn(
                         "flex-1 rounded-lg border px-3 py-2 text-left transition-all",
                         captionLength === key
-                          ? "border-[#1a44d4] bg-[#1a44d4] text-white"
-                          : "border-border/70 bg-white hover:border-[#1a44d4]/40 hover:bg-blue-50/30",
+                          ? "border-[#0064E0] bg-[#0064E0] text-white"
+                          : "border-border/70 bg-white hover:border-[#0064E0]/40 hover:bg-blue-50/30",
                       )}
                     >
                       <div className={cn("text-[12.5px] font-semibold", captionLength === key ? "text-white" : "text-foreground")}>{label}</div>
@@ -380,7 +380,7 @@ export function CaptionGenerator() {
                       onClick={() => setUseEmoji(true)}
                       className={cn(
                         "flex-1 rounded-lg border py-2 text-[12px] font-medium transition-all",
-                        useEmoji ? "border-[#1a44d4] bg-[#1a44d4] text-white" : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40",
+                        useEmoji ? "border-[#0064E0] bg-[#0064E0] text-white" : "border-border/70 bg-white text-foreground hover:border-[#0064E0]/40",
                       )}
                     >
                       Pakai 😊
@@ -389,7 +389,7 @@ export function CaptionGenerator() {
                       onClick={() => setUseEmoji(false)}
                       className={cn(
                         "flex-1 rounded-lg border py-2 text-[12px] font-medium transition-all",
-                        !useEmoji ? "border-[#1a44d4] bg-[#1a44d4] text-white" : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40",
+                        !useEmoji ? "border-[#0064E0] bg-[#0064E0] text-white" : "border-border/70 bg-white text-foreground hover:border-[#0064E0]/40",
                       )}
                     >
                       Tanpa
@@ -403,7 +403,7 @@ export function CaptionGenerator() {
                     <select
                       value={audience}
                       onChange={(e) => setAudience(e.target.value)}
-                      className="w-full appearance-none rounded-lg border border-border/70 bg-white px-3 py-[9px] text-[12px] text-foreground focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 pr-8 cursor-pointer"
+                      className="w-full appearance-none rounded-lg border border-border/70 bg-white px-3 py-[9px] text-[12px] text-foreground focus:outline-none focus:ring-2 focus:ring-[#0064E0]/40 pr-8 cursor-pointer"
                     >
                       <option value="">Auto-detect dari konteks</option>
                       {AUDIENCES.map((a) => <option key={a} value={a}>{a}</option>)}
@@ -436,7 +436,7 @@ export function CaptionGenerator() {
                   onDrop={handleDrop}
                   className={cn(
                     "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 cursor-pointer transition-all select-none",
-                    isDragging ? "border-[#1a44d4] bg-blue-50/60" : "border-border/60 bg-gray-50/50 hover:border-[#1a44d4]/50 hover:bg-blue-50/30",
+                    isDragging ? "border-[#0064E0] bg-blue-50/60" : "border-border/60 bg-gray-50/50 hover:border-[#0064E0]/50 hover:bg-blue-50/30",
                   )}
                 >
                   <div className="h-11 w-11 rounded-xl border border-border/60 bg-white flex items-center justify-center shadow-sm">
@@ -483,7 +483,7 @@ export function CaptionGenerator() {
                 onClick={() => setActiveTone(key)}
                 className={cn(
                   "rounded-xl border px-3 py-2.5 text-left transition-all",
-                  isActive ? "border-[#1a44d4] bg-[#1a44d4] text-white" : "border-border/70 bg-white hover:border-[#1a44d4]/40 hover:bg-blue-50/40",
+                  isActive ? "border-[#0064E0] bg-[#0064E0] text-white" : "border-border/70 bg-white hover:border-[#0064E0]/40 hover:bg-blue-50/40",
                 )}
               >
                 <div className={cn("text-[12.5px] font-semibold", isActive ? "text-white" : "text-foreground")}>{label}</div>
@@ -505,11 +505,11 @@ export function CaptionGenerator() {
             value={waNumber}
             onChange={(e) => setWaNumber(e.target.value.replace(/[^0-9]/g, ""))}
             placeholder="628xxxxxxxxxx"
-            className="flex-1 rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-2.5 text-[13px] text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-[#1a44d4]/40 focus:border-[#1a44d4]/50 transition-all"
+            className="flex-1 rounded-xl border border-border/70 bg-gray-50/60 px-3.5 py-2.5 text-[13px] text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-[#0064E0]/40 focus:border-[#0064E0]/50 transition-all"
           />
         </div>
         {waNumber.trim() ? (
-          <p className="text-[10.5px] text-[#1a44d4] mt-1.5">Akan ditambahkan: 📲 Hubungi kami via WA: wa.me/{waNumber.trim()}</p>
+          <p className="text-[10.5px] text-[#0064E0] mt-1.5">Akan ditambahkan: 📲 Hubungi kami via WA: wa.me/{waNumber.trim()}</p>
         ) : (
           <p className="text-[10.5px] text-muted-foreground mt-1.5">Opsional — jika diisi, link WA otomatis ditambahkan di akhir caption.</p>
         )}
@@ -537,7 +537,7 @@ export function CaptionGenerator() {
       <Button
         onClick={() => void handleGenerate()}
         disabled={!canGenerate}
-        className="w-full h-11 text-[13.5px] font-semibold bg-[#1a44d4] text-white hover:bg-[#1535b0] transition-all rounded-xl disabled:opacity-50"
+        className="w-full h-11 text-[13.5px] font-semibold bg-[#0064E0] text-white hover:bg-[#1535b0] transition-all rounded-xl disabled:opacity-50"
       >
         <AnimatePresence mode="wait">
           {loading ? (
@@ -574,14 +574,14 @@ export function CaptionGenerator() {
             initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.2 }}
             className="flex items-center justify-center gap-2 px-2 py-0.5"
           >
-            <div className={cn("flex items-center gap-1.5 text-[11.5px] font-medium transition-colors duration-300", posterStatus === "Menyusun caption..." ? "text-emerald-600" : "text-[#1a44d4]")}>
+            <div className={cn("flex items-center gap-1.5 text-[11.5px] font-medium transition-colors duration-300", posterStatus === "Menyusun caption..." ? "text-emerald-600" : "text-[#0064E0]")}>
               {posterStatus === "Menyusun caption..."
                 ? <CheckCheck className="h-3 w-3 shrink-0" strokeWidth={2.5} />
                 : <Loader2 className="h-3 w-3 shrink-0 animate-spin" />}
               Membaca poster
             </div>
             <ArrowRight className={cn("h-3 w-3 shrink-0 transition-colors duration-300", posterStatus === "Menyusun caption..." ? "text-emerald-500" : "text-muted-foreground/30")} strokeWidth={2} />
-            <div className={cn("flex items-center gap-1.5 text-[11.5px] font-medium transition-colors duration-300", posterStatus === "Menyusun caption..." ? "text-[#1a44d4]" : "text-muted-foreground/40")}>
+            <div className={cn("flex items-center gap-1.5 text-[11.5px] font-medium transition-colors duration-300", posterStatus === "Menyusun caption..." ? "text-[#0064E0]" : "text-muted-foreground/40")}>
               {posterStatus === "Menyusun caption..."
                 ? <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
                 : <span className="h-3 w-3 shrink-0 rounded-full border-2 border-current inline-flex" />}
@@ -633,8 +633,8 @@ export function CaptionGenerator() {
                   className={cn(
                     "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium transition-all border shrink-0",
                     copied
-                      ? "border-[#1a44d4]/30 bg-[#1a44d4] text-white"
-                      : "border-border/70 text-muted-foreground hover:border-[#1a44d4]/40 hover:text-[#1a44d4]",
+                      ? "border-[#0064E0]/30 bg-[#0064E0] text-white"
+                      : "border-border/70 text-muted-foreground hover:border-[#0064E0]/40 hover:text-[#0064E0]",
                   )}
                 >
                   {copied
@@ -659,8 +659,8 @@ export function CaptionGenerator() {
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-medium transition-all",
                       variantLoading === key
-                        ? "border-[#1a44d4] bg-[#1a44d4] text-white"
-                        : "border-border/70 bg-white text-foreground hover:border-[#1a44d4]/40 hover:bg-blue-50/40 disabled:opacity-40 disabled:cursor-not-allowed",
+                        ? "border-[#0064E0] bg-[#0064E0] text-white"
+                        : "border-border/70 bg-white text-foreground hover:border-[#0064E0]/40 hover:bg-blue-50/40 disabled:opacity-40 disabled:cursor-not-allowed",
                     )}
                   >
                     {variantLoading === key

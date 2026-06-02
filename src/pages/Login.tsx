@@ -9,21 +9,13 @@ import { toast } from "sonner";
 
 const cardVariants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.08, delayChildren: 0.18 } },
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.15 } },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 14 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
 };
-
-const SPARKLES = Array.from({ length: 22 }, (_, i) => {
-  const seed = (i + 1) * 9301 + 49297;
-  const r1 = ((seed * 1103515245) % 1000) / 1000;
-  const r2 = ((seed * 214013) % 1000) / 1000;
-  const r3 = ((seed * 25214903917) % 1000) / 1000;
-  return { x: r1 * 100, y: r2 * 100, size: 1.5 + r3 * 2.5, dur: 3 + r1 * 4, delay: r2 * 5 };
-});
 
 export default function Login() {
   const [email, setEmail]           = useState("");
@@ -77,10 +69,7 @@ export default function Login() {
   };
 
   return (
-    <div
-      className="h-fill relative flex items-center justify-center overflow-hidden"
-      style={{ backgroundColor: "#020617" }}
-    >
+    <div className="h-fill relative flex items-center justify-center overflow-hidden bg-[#0a1317]">
       {/* Ken-Burns background */}
       <motion.div
         className="absolute inset-0"
@@ -90,61 +79,41 @@ export default function Login() {
           backgroundPosition: "center",
           willChange: "transform",
         }}
-        initial={{ scale: 1.08, x: -8, y: -4 }}
-        animate={{ scale: 1.18, x: 8, y: 4 }}
-        transition={{ duration: 18, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" }}
+        initial={{ scale: 1.06, x: -6, y: -3 }}
+        animate={{ scale: 1.14, x: 6, y: 3 }}
+        transition={{ duration: 20, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" }}
       />
 
-      {/* Vignette */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/70" />
+      {/* Dark overlay — lighter than before so photo breathes */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0a1317]/60 via-[#0a1317]/40 to-[#0a1317]/75" />
 
-      {/* Aurora blobs */}
+      {/* Cobalt aurora blob */}
       <motion.div
-        className="pointer-events-none absolute -top-32 -left-32 h-[420px] w-[420px] rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(56,189,248,0.35) 0%, rgba(56,189,248,0) 70%)", filter: "blur(40px)" }}
-        animate={{ scale: [1, 1.25, 1], opacity: [0.6, 0.95, 0.6], x: [0, 30, 0], y: [0, 20, 0] }}
-        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none absolute -top-24 -left-24 h-[360px] w-[360px] rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(0,100,224,0.28) 0%, rgba(0,100,224,0) 70%)", filter: "blur(48px)" }}
+        animate={{ scale: [1, 1.22, 1], opacity: [0.55, 0.85, 0.55] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="pointer-events-none absolute -bottom-40 -right-24 h-[480px] w-[480px] rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(37,99,235,0.4) 0%, rgba(37,99,235,0) 70%)", filter: "blur(50px)" }}
-        animate={{ scale: [1.1, 0.9, 1.1], opacity: [0.5, 0.85, 0.5], x: [0, -25, 0], y: [0, -15, 0] }}
-        transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-      />
-
-      {/* Sparkles */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {SPARKLES.map((s, i) => (
-          <motion.span
-            key={i}
-            className="absolute rounded-full bg-white/70"
-            style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size, boxShadow: "0 0 8px rgba(255,255,255,0.7)" }}
-            animate={{ y: [0, -18, 0], opacity: [0.15, 0.85, 0.15] }}
-            transition={{ duration: s.dur, repeat: Infinity, ease: "easeInOut", delay: s.delay }}
-          />
-        ))}
-      </div>
-
-      {/* Shimmer sweep */}
-      <motion.div
-        className="pointer-events-none absolute inset-0"
-        style={{ background: "linear-gradient(110deg, transparent 40%, rgba(125,211,252,0.08) 50%, transparent 60%)" }}
-        animate={{ backgroundPosition: ["-200% 0%", "200% 0%"] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+        className="pointer-events-none absolute -bottom-32 -right-16 h-[420px] w-[420px] rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(4,87,203,0.32) 0%, rgba(4,87,203,0) 70%)", filter: "blur(56px)" }}
+        animate={{ scale: [1.08, 0.92, 1.08], opacity: [0.45, 0.75, 0.45] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
       />
 
       {/* Card wrapper */}
       <motion.div
-        className="relative z-10 flex w-full max-w-sm flex-col items-center px-6"
-        initial={{ opacity: 0, y: -16 }}
+        className="relative z-10 flex w-full max-w-[400px] flex-col items-center px-5"
+        initial={{ opacity: 0, y: -18 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.34, 1.2, 0.64, 1] }}
+        transition={{ duration: 0.55, ease: [0.34, 1.2, 0.64, 1] }}
       >
+        {/* Logo */}
         <img
           src="/temantiket-logo-new.png"
           alt="Temantiket"
-          className="h-16 w-auto object-contain mb-2"
-          style={{ mixBlendMode: "screen", filter: "drop-shadow(0 8px 32px rgba(14,165,233,0.55))" }}
+          className="h-14 w-auto object-contain mb-6"
+          style={{ filter: "drop-shadow(0 4px 20px rgba(0,100,224,0.50)) brightness(0) invert(1)" }}
         />
 
         <AnimatePresence mode="wait">
@@ -153,35 +122,36 @@ export default function Login() {
           {phase === "form" && (
             <motion.div
               key="form"
-              className="mt-4 w-full"
-              initial={{ opacity: 0, y: 32, scale: 0.94, filter: "blur(10px)" }}
-              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -16, scale: 0.97, filter: "blur(6px)" }}
-              transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full"
+              initial={{ opacity: 0, y: 28, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -14, scale: 0.97 }}
+              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="rounded-3xl border border-white/20 bg-white/10 p-7 shadow-[0_24px_60px_rgba(0,0,0,0.4)] backdrop-blur-md">
-                <motion.div variants={cardVariants} initial="hidden" animate="show" className="space-y-4">
+              {/* Meta-style white card */}
+              <div className="w-full rounded-3xl bg-white border border-[#dee3e9] px-8 py-8 shadow-[rgba(20,22,26,0.20)_0px_4px_24px_0px]">
+                <motion.div variants={cardVariants} initial="hidden" animate="show" className="space-y-5">
 
-                  <motion.div variants={itemVariants} className="mb-6 text-center">
-                    <h1 className="text-xl font-extrabold tracking-tight text-white">Portal Admin</h1>
-                    <p className="mt-1 text-[12px] text-white/60">Masuk untuk mengakses Temantiket Portal</p>
+                  <motion.div variants={itemVariants} className="text-center">
+                    <h1 className="text-[22px] font-semibold tracking-tight text-[#0a1317]">Portal Admin</h1>
+                    <p className="mt-1 text-[13px] text-[#5d6c7b]">Masuk untuk mengakses Temantiket Portal</p>
                   </motion.div>
 
                   <AnimatePresence>
                     {error && (
                       <motion.div
-                        className="flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/20 px-3.5 py-2.5"
+                        className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5"
                         initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                       >
-                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-300" />
-                        <p className="text-[12px] font-medium text-red-200">{error}</p>
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
+                        <p className="text-[13px] font-medium text-red-600">{error}</p>
                       </motion.div>
                     )}
                   </AnimatePresence>
 
-                  <form onSubmit={handleLogin} className="space-y-3">
+                  <form onSubmit={handleLogin} className="space-y-4">
                     <motion.div variants={itemVariants} className="space-y-1.5">
-                      <label className="pl-1 text-[11px] font-bold uppercase tracking-widest text-white/70">Email</label>
+                      <label className="text-[11px] font-bold uppercase tracking-widest text-[#444950]">Email</label>
                       <input
                         type="email"
                         autoComplete="email"
@@ -189,12 +159,12 @@ export default function Login() {
                         value={email}
                         onChange={(e) => { setEmail(e.target.value); clearError(); }}
                         disabled={isLoading}
-                        className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-sm text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
+                        className="h-11 w-full rounded-lg border border-[#ced0d4] bg-white px-4 text-[14px] text-[#0a1317] placeholder-[#8595a4] outline-none transition-all focus:border-[#1876f2] focus:ring-2 focus:ring-[#1876f2]/20 disabled:opacity-50"
                       />
                     </motion.div>
 
                     <motion.div variants={itemVariants} className="space-y-1.5">
-                      <label className="pl-1 text-[11px] font-bold uppercase tracking-widest text-white/70">Password</label>
+                      <label className="text-[11px] font-bold uppercase tracking-widest text-[#444950]">Password</label>
                       <div className="relative">
                         <input
                           type={showPass ? "text" : "password"}
@@ -203,13 +173,13 @@ export default function Login() {
                           value={password}
                           onChange={(e) => { setPassword(e.target.value); clearError(); }}
                           disabled={isLoading}
-                          className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 pr-11 text-sm text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
+                          className="h-11 w-full rounded-lg border border-[#ced0d4] bg-white px-4 pr-11 text-[14px] text-[#0a1317] placeholder-[#8595a4] outline-none transition-all focus:border-[#1876f2] focus:ring-2 focus:ring-[#1876f2]/20 disabled:opacity-50"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPass((p) => !p)}
                           tabIndex={-1}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8595a4] hover:text-[#5d6c7b] transition-colors"
                         >
                           {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -220,13 +190,13 @@ export default function Login() {
                       <motion.button
                         type="submit"
                         disabled={isLoading || !email.trim() || !password}
-                        className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
+                        className="flex h-12 w-full items-center justify-center gap-2 rounded-full text-[14px] font-bold tracking-[-0.14px] text-white transition-all disabled:opacity-50"
                         style={{
-                          background: "linear-gradient(135deg, #123499 0%, #1a44d4 60%, #6694ff 100%)",
-                          boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
+                          background: "#0064E0",
+                          boxShadow: "rgba(20,22,26,0.20) 0px 2px 8px 0px",
                         }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={{ scale: 1.01, backgroundColor: "#0457cb" } as any}
+                        whileTap={{ scale: 0.99 }}
                       >
                         {isLoading ? (
                           <>
@@ -241,13 +211,16 @@ export default function Login() {
                         )}
                       </motion.button>
                     </motion.div>
-                    <button
-                      type="button"
-                      onClick={handleForgotPassword}
-                      className="w-full text-center text-[12px] text-white/50 hover:text-white/80 transition-colors mt-2"
-                    >
-                      Lupa password?
-                    </button>
+
+                    <motion.div variants={itemVariants}>
+                      <button
+                        type="button"
+                        onClick={handleForgotPassword}
+                        className="w-full text-center text-[13px] text-[#5d6c7b] hover:text-[#0064E0] transition-colors mt-1"
+                      >
+                        Lupa password?
+                      </button>
+                    </motion.div>
                   </form>
 
                 </motion.div>
@@ -259,39 +232,39 @@ export default function Login() {
           {phase === "pin" && (
             <motion.div
               key="pin"
-              className="mt-4 w-full"
-              initial={{ opacity: 0, y: 32, scale: 0.94, filter: "blur(10px)" }}
-              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -16, scale: 0.97, filter: "blur(6px)" }}
-              transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full"
+              initial={{ opacity: 0, y: 28, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -14, scale: 0.97 }}
+              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="rounded-3xl border border-white/20 bg-white/10 p-7 shadow-[0_24px_60px_rgba(0,0,0,0.4)] backdrop-blur-md">
-                <motion.div variants={cardVariants} initial="hidden" animate="show" className="space-y-4">
-                  <motion.div variants={itemVariants} className="mb-6 text-center">
+              <div className="w-full rounded-3xl bg-white border border-[#dee3e9] px-8 py-8 shadow-[rgba(20,22,26,0.20)_0px_4px_24px_0px]">
+                <motion.div variants={cardVariants} initial="hidden" animate="show" className="space-y-5">
+                  <motion.div variants={itemVariants} className="text-center">
                     <div className="flex justify-center mb-3">
-                      <div className="h-12 w-12 rounded-2xl bg-sky-500/30 border border-sky-400/40 flex items-center justify-center">
-                        <KeyRound className="h-5 w-5 text-sky-300" />
+                      <div className="h-12 w-12 rounded-2xl bg-[#e8f0fb] border border-[#cce0ff] flex items-center justify-center">
+                        <KeyRound className="h-5 w-5 text-[#0064E0]" />
                       </div>
                     </div>
-                    <h1 className="text-xl font-extrabold tracking-tight text-white">Verifikasi 2FA</h1>
-                    <p className="mt-1 text-[12px] text-white/60">Masukkan PIN keamanan Anda</p>
+                    <h1 className="text-[22px] font-semibold tracking-tight text-[#0a1317]">Verifikasi 2FA</h1>
+                    <p className="mt-1 text-[13px] text-[#5d6c7b]">Masukkan PIN keamanan Anda</p>
                   </motion.div>
 
                   <form onSubmit={handlePinSubmit} className="space-y-4">
                     <AnimatePresence>
                       {error && (
                         <motion.div
-                          className="flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/20 px-3.5 py-2.5"
+                          className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5"
                           initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                         >
-                          <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-300" />
-                          <p className="text-[12px] font-medium text-red-200">{error}</p>
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
+                          <p className="text-[13px] font-medium text-red-600">{error}</p>
                         </motion.div>
                       )}
                     </AnimatePresence>
 
                     <motion.div variants={itemVariants} className="space-y-1.5">
-                      <label className="pl-1 text-[11px] font-bold uppercase tracking-widest text-white/70">PIN Keamanan</label>
+                      <label className="text-[11px] font-bold uppercase tracking-widest text-[#444950]">PIN Keamanan</label>
                       <input
                         type="password"
                         inputMode="numeric"
@@ -300,7 +273,7 @@ export default function Login() {
                         value={pin}
                         onChange={(e) => { setPin(e.target.value.replace(/\D/g, "")); clearError(); }}
                         disabled={isLoading}
-                        className="h-11 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-center text-xl font-bold tracking-[0.5em] text-white placeholder-white/30 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/60 disabled:opacity-50"
+                        className="h-11 w-full rounded-lg border border-[#ced0d4] bg-white px-4 text-center text-xl font-bold tracking-[0.4em] text-[#0a1317] placeholder-[#8595a4] outline-none transition-all focus:border-[#1876f2] focus:ring-2 focus:ring-[#1876f2]/20 disabled:opacity-50"
                       />
                     </motion.div>
 
@@ -308,13 +281,13 @@ export default function Login() {
                       <motion.button
                         type="submit"
                         disabled={isLoading || !pin.trim()}
-                        className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-extrabold uppercase tracking-widest text-white transition-all disabled:opacity-50"
+                        className="flex h-12 w-full items-center justify-center gap-2 rounded-full text-[14px] font-bold tracking-[-0.14px] text-white transition-all disabled:opacity-50"
                         style={{
-                          background: "linear-gradient(135deg, #123499 0%, #1a44d4 60%, #6694ff 100%)",
-                          boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
+                          background: "#0064E0",
+                          boxShadow: "rgba(20,22,26,0.20) 0px 2px 8px 0px",
                         }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={{ scale: 1.01 } as any}
+                        whileTap={{ scale: 0.99 }}
                       >
                         {isLoading ? (
                           <>
@@ -334,7 +307,7 @@ export default function Login() {
                       <button
                         type="button"
                         onClick={() => { setPhase("form"); setPin(""); clearError(); }}
-                        className="w-full text-center text-[12px] text-white/50 hover:text-white/80 transition-colors mt-1"
+                        className="w-full text-center text-[13px] text-[#5d6c7b] hover:text-[#0064E0] transition-colors"
                       >
                         Kembali ke login
                       </button>
@@ -346,7 +319,8 @@ export default function Login() {
           )}
 
         </AnimatePresence>
-        <p className="mt-4 text-center text-[11px] text-white/40">
+
+        <p className="mt-5 text-center text-[12px] text-white/50">
           Belum punya akun? Hubungi administrator biro Anda.
         </p>
       </motion.div>

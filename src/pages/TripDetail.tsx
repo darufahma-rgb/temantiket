@@ -336,7 +336,7 @@ function AddJamaahDialog({ open, tripId, onClose }: { open: boolean; tripId: str
             </button>
             <button type="submit" disabled={loading}
               className="flex-1 h-9 rounded-xl text-[12.5px] font-bold text-white transition-all disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#1a44d4,#123499)" }}>
+              style={{ background: "linear-gradient(135deg,#0064E0,#0064E0)" }}>
               {loading ? "Menyimpan…" : "Tambah Jamaah"}
             </button>
           </div>
@@ -467,7 +467,7 @@ function JamaahPreviewDialog({
                     onClick={handleSave}
                     disabled={saving}
                     className="h-8 px-3 rounded-xl text-[11.5px] font-bold text-white flex items-center gap-1.5 disabled:opacity-60"
-                    style={{ background: "linear-gradient(135deg,#1a44d4,#123499)" }}
+                    style={{ background: "linear-gradient(135deg,#0064E0,#0064E0)" }}
                   >
                     <Save className="h-3 w-3" />
                     {saving ? "Menyimpan…" : "Simpan"}
