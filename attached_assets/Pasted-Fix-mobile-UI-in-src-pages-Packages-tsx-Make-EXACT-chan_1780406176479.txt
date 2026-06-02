@@ -1,0 +1,86 @@
+Fix mobile UI in src/pages/Packages.tsx. Make EXACT changes:
+
+---
+
+FIX 1: Reduce stats cards size — too large for summary data
+
+Find the grid stats section:
+  <div className="grid grid-cols-2 gap-3">
+    {[...].map(({ label, value, icon: Icon, iconBg, iconColor }) => (
+      <div key={label} className="rounded-2xl bg-white p-3.5 shadow-sm">
+        <div className="h-9 w-9 rounded-xl flex items-center justify-center mb-2.5" ...>
+          <Icon className="h-4.5 w-4.5" .../>
+        </div>
+        <p className="text-[22px] font-extrabold text-[#0f1c3f] leading-none">{value}</p>
+        <p className="text-[11px] text-slate-500 font-medium mt-1">{label}</p>
+      </div>
+    ))}
+  </div>
+
+Replace with a horizontal 4-column compact row instead of 2x2 grid:
+  <div className="grid grid-cols-4 gap-2">
+    {[...same array...].map(({ label, value, icon: Icon, iconBg, iconColor }) => (
+      <div key={label} className="rounded-2xl bg-white p-3 shadow-sm flex flex-col items-center text-center">
+        <div
+          className="h-8 w-8 rounded-xl flex items-center justify-center mb-1.5"
+          style={{ background: iconBg }}
+        >
+          <Icon className="h-4 w-4" style={{ color: iconColor }} strokeWidth={1.8} />
+        </div>
+        <p className="text-[18px] font-extrabold text-[#0f1c3f] leading-none">{value}</p>
+        <p className="text-[9px] text-slate-500 font-medium mt-1 leading-tight">{label}</p>
+      </div>
+    ))}
+  </div>
+
+---
+
+FIX 2: Fix header paddingTop overlap with DashboardLayout floating header
+
+Find:
+  paddingTop: "calc(60px + env(safe-area-inset-top, 0px))",
+
+Replace with:
+  paddingTop: "calc(74px + env(safe-area-inset-top, 0px))",
+
+---
+
+FIX 3: Fix "Aksi Cepat" section — cards too large
+
+Find the "Aksi Cepat" section (it has items like "Paket Baru", "Kelola Itinerary", 
+"Kalkulator", "Harga Tiket" in a 2-column grid).
+
+Find the card container for each Aksi Cepat item. It currently has large padding
+and big icon. Change each card to:
+  <button
+    key={item.label}
+    onClick={() => navigate(item.path)}
+    className="flex items-center gap-3 p-3 rounded-2xl bg-white shadow-sm active:opacity-70 transition-opacity text-left"
+    style={{ WebkitTapHighlightColor: "transparent" }}
+  >
+    <div
+      className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0"
+      style={{ background: item.iconBg }}
+    >
+      <item.icon className="h-4 w-4" style={{ color: item.iconColor }} strokeWidth={1.8} />
+    </div>
+    <div className="min-w-0">
+      <p className="text-[13px] font-semibold text-[#0f1c3f] truncate">{item.label}</p>
+      <p className="text-[11px] text-slate-400 truncate">{item.desc}</p>
+    </div>
+  </button>
+
+And change the Aksi Cepat grid from grid-cols-2 to grid-cols-1 for these 
+list-style cards, or keep grid-cols-2 if items are short.
+
+---
+
+FIX 4: Make empty state more compact
+
+Find the empty state section (shows "Belum ada paket." and "Buat Paket Pertama" button).
+Change the empty state container padding from p-12 or py-16 to py-8.
+Change the icon size from h-16 w-16 to h-12 w-12.
+Change "Buat Paket Pertama" button from full width to auto width:
+  className="... w-auto px-6 ..."
+
+After changes: npx tsc --noEmit and fix errors before committing.

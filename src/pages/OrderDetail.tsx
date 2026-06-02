@@ -506,7 +506,7 @@ export default function OrderDetail() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
           {order.type === "flight" && currentUser?.role !== "staff" && (
             <Button
               variant="outline"
@@ -526,8 +526,9 @@ export default function OrderDetail() {
             </Button>
           )}
           {currentUser?.role !== "staff" && (
-            <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
-              <Trash2 className="h-3.5 w-3.5" />
+            <Button variant="outline" size="icon" onClick={() => setConfirmDelete(true)}
+              className="shrink-0 border-red-200 text-red-500 hover:bg-red-50">
+              <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -585,6 +586,9 @@ export default function OrderDetail() {
 
       {/* Generic editable form */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider pt-2 md:col-span-2">
+          Info Order
+        </p>
         <Field label="Judul">
           <Input value={draft.title ?? ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} disabled={currentUser?.role === "staff"} />
         </Field>
@@ -609,11 +613,21 @@ export default function OrderDetail() {
         {currentUser?.role !== "staff" && (
           <Field label={`Harga Modal (${order.currency})`}>
             <Input type="number" value={String(draft.costPrice ?? 0)} onChange={(e) => setDraft({ ...draft, costPrice: Number(e.target.value) || 0 })} />
+            {(draft.costPrice ?? order.costPrice) ? (
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                = {fmtIDR(Number(draft.costPrice ?? order.costPrice))}
+              </p>
+            ) : null}
           </Field>
         )}
         {currentUser?.role !== "staff" && (
           <Field label={`Harga Jual (${order.currency})`}>
             <Input type="number" value={String(draft.totalPrice ?? 0)} onChange={(e) => setDraft({ ...draft, totalPrice: Number(e.target.value) || 0 })} />
+            {(draft.totalPrice ?? order.totalPrice) ? (
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                = {fmtIDR(Number(draft.totalPrice ?? order.totalPrice))}
+              </p>
+            ) : null}
           </Field>
         )}
         {isValidAgentOrder && currentUser?.role !== "staff" && (() => {
@@ -625,7 +639,7 @@ export default function OrderDetail() {
           return (
             <div className="space-y-1.5 md:col-span-2">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+                <label className="text-[12px] font-semibold text-foreground/60">
                   Fee Komisi Agen
                 </label>
                 <Select
@@ -691,7 +705,9 @@ export default function OrderDetail() {
           </Field>
         )}
         {currentUser?.role !== "staff" && (
-          <Field label="Currency"><Input value={order.currency} disabled /></Field>
+          <div className="hidden md:block">
+            <Field label="Currency"><Input value={order.currency} disabled /></Field>
+          </div>
         )}
       </div>
 
@@ -700,17 +716,21 @@ export default function OrderDetail() {
           value={draft.notes ?? ""}
           onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
           className="w-full min-h-[80px] rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono"
-          placeholder="Tulis catatan dalam format Markdown… (# Judul, **bold**, - list)"
+          placeholder="Tulis catatan tambahan…"
         />
         {draft.notes && draft.notes.trim().length > 0 && (
           <div className="mt-2 rounded-lg border border-border bg-muted/20 px-3.5 py-3">
-            <p className="text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1">
+            <p className="text-[11px] font-semibold text-foreground/60 mb-2 flex items-center gap-1">
               <FileText className="h-3 w-3" /> Preview
             </p>
             <MarkdownContent content={draft.notes} size="sm" />
           </div>
         )}
       </Field>
+
+      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider pt-2">
+        Pembayaran
+      </p>
 
       {/* ── Pembayaran Klien ────────────────────────────────────────────────── */}
       {currentUser?.role !== "staff" && (() => {
@@ -758,22 +778,22 @@ export default function OrderDetail() {
             {/* Breakdown */}
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="rounded-xl bg-white border border-border p-2.5">
-                <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Total Order</div>
+                <div className="text-[11px] text-muted-foreground font-medium mb-0.5">Total Order</div>
                 <div className="text-[13px] font-extrabold font-mono text-foreground">{fmtNat(totalPrice)}</div>
               </div>
               <div className="rounded-xl bg-white border border-emerald-200 p-2.5">
-                <div className="text-[10px] text-emerald-700 uppercase tracking-wide mb-0.5">Sudah Dibayar</div>
+                <div className="text-[11px] text-emerald-700 font-medium mb-0.5">Sudah Dibayar</div>
                 <div className="text-[13px] font-extrabold font-mono text-emerald-700">{fmtNat(paidAmount)}</div>
               </div>
               <div className={`rounded-xl bg-white border p-2.5 ${remaining > 0 ? "border-red-200" : "border-emerald-200"}`}>
-                <div className={`text-[10px] uppercase tracking-wide mb-0.5 ${remaining > 0 ? "text-red-600" : "text-emerald-700"}`}>Sisa Tagihan</div>
+                <div className={`text-[11px] font-medium mb-0.5 ${remaining > 0 ? "text-red-600" : "text-emerald-700"}`}>Sisa Tagihan</div>
                 <div className={`text-[13px] font-extrabold font-mono ${remaining > 0 ? "text-red-600" : "text-emerald-700"}`}>{fmtNat(remaining)}</div>
               </div>
             </div>
 
             {/* Input: record payment */}
             <div className="space-y-2">
-              <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+              <label className="text-[12px] font-semibold text-foreground/60">
                 Total Diterima ({currency})
               </label>
               <div className="flex gap-2">
@@ -840,7 +860,7 @@ export default function OrderDetail() {
       {/* Linked entities */}
       {(linkedClient || order.packageId || order.tripId || order.jamaahId) && (
         <div className="rounded-2xl border border-border bg-secondary/30 p-4 space-y-2">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Tautan</div>
+          <div className="text-[12px] font-semibold text-foreground/60">Tautan</div>
           {linkedClient && (
             <Link to={`/clients/${linkedClient.id}`} className="flex items-center gap-2 text-sm hover:underline">
               <ExternalLink className="h-3.5 w-3.5" /> Klien: <span className="font-semibold">{linkedClient.name}</span>
@@ -878,6 +898,10 @@ export default function OrderDetail() {
           )}
         </div>
       )}
+
+      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider pt-2">
+        Operasional
+      </p>
 
       {/* ── VOA Biaya Operasional Panel ─────────────────────────────────────── */}
       {order.type === "visa_voa" && currentUser?.role !== "staff" && (() => {
@@ -955,7 +979,7 @@ export default function OrderDetail() {
                 const idrVal = toIDRAmount(rawVal, voaFeeCurrency, rates);
                 return (
                   <div key={f.rawKey} className="space-y-1">
-                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                    <label className="text-[12px] font-semibold text-foreground/60">
                       {f.label} ({voaFeeCurrency})
                     </label>
                     <input
@@ -1072,7 +1096,7 @@ export default function OrderDetail() {
                 const idrVal = toIDRAmount(rawVal, kurirCurrency, rates);
                 return (
                   <div key={f.rawKey} className="space-y-1">
-                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                    <label className="text-[12px] font-semibold text-foreground/60">
                       {f.label} ({kurirCurrency})
                     </label>
                     <input
@@ -1124,6 +1148,10 @@ export default function OrderDetail() {
         );
       })()}
 
+      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider pt-2">
+        Ringkasan Profit
+      </p>
+
       {/* Total preview — hidden from staff */}
       {currentUser?.role !== "staff" && (() => {
         const total = Number(draft.totalPrice ?? order.totalPrice);
@@ -1154,7 +1182,7 @@ export default function OrderDetail() {
               </div>
             )}
             <div>
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Pendapatan Kotor</div>
+              <div className="text-[12px] font-medium text-foreground/60">Pendapatan Kotor</div>
               <div className="text-2xl md:text-3xl font-extrabold font-mono mt-1">
                 {order.currency !== "IDR" ? `${order.currency} ` : ""}{total.toLocaleString("id-ID")}
               </div>
@@ -1320,8 +1348,8 @@ export default function OrderDetail() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1">
-      <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</Label>
+    <div className="space-y-1.5">
+      <Label className="text-[12px] font-semibold text-foreground/70">{label}</Label>
       {children}
     </div>
   );
