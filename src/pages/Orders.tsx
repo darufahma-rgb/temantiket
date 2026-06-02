@@ -82,6 +82,11 @@ export default function Orders() {
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [mobileCat, setMobileCat] = useState<"all" | "flight" | "arsip">("all");
+
+  useEffect(() => {
+    const qParam = searchParams.get("q");
+    if (qParam) setQ(qParam);
+  }, []);
   const [showSearch, setShowSearch] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
   const [mobileStatus, setMobileStatus] = useState<string>("all");

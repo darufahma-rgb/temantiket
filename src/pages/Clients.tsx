@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useNavigate, useParams, Link, useLocation } from "react-router-dom";
+import { useNavigate, useParams, Link, useLocation, useSearchParams } from "react-router-dom";
 import { useNotificationStore } from "@/store/notificationStore";
 import { useRatesStore } from "@/store/ratesStore";
 import { MobileFAB } from "@/components/MobileFAB";
@@ -1022,6 +1022,12 @@ export default function Clients() {
   const [mobileStatusFilter, setMobileStatusFilter] = useState<"all" | "aktif" | "jamaah" | "loyal">("all");
   const MOBILE_PAGE_SIZE = 10;
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const qParam = searchParams.get("q");
+    if (qParam) setQ(qParam);
+  }, []);
 
   // ── Mobile: notification + rates ──────────────────────────────────
   const { notifications, fetchNotifications } = useNotificationStore();

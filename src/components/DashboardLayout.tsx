@@ -65,6 +65,20 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
     return () => { leavePresence(); };
   }, [currentUser?.id, currentUser?.agencyId, joinPresence, leavePresence]);
 
+  // Global ⌘K / Ctrl+K shortcut: focus desktop search or open mobile overlay
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        const input = document.querySelector<HTMLInputElement>('input[placeholder="Cari klien, order, trip…"]');
+        if (input) input.focus();
+        else setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   // Keyboard detection via visualViewport — hides bottom nav when on-screen
   // keyboard opens on iOS / Android to prevent overlap with focused input.
   useEffect(() => {
@@ -113,7 +127,7 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
     if (searchQuery.trim()) {
       setSearchOpen(false);
       setSearchQuery("");
-      navigate("/clients");
+      navigate(`/clients?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
@@ -248,6 +262,13 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
                 placeholder="Cari klien, order, trip…"
                 className="w-full h-9 pl-9 pr-3 text-[12.5px] rounded-xl outline-none transition-all"
                 style={{ background: "hsl(var(--secondary))", border: "1px solid hsl(var(--border))", color: "hsl(var(--foreground))" }}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && searchQuery.trim()) {
+                    navigate(`/clients?q=${encodeURIComponent(searchQuery.trim())}`);
+                  }
+                }}
                 onFocus={(e) => { e.target.style.borderColor = "#1a44d4"; e.target.style.boxShadow = "0 0 0 3px rgba(14,165,233,0.12)"; }}
                 onBlur={(e) => { e.target.style.borderColor = "hsl(var(--border))"; e.target.style.boxShadow = "none"; }}
               />
