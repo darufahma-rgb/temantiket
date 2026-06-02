@@ -1,0 +1,90 @@
+In the file api/ai/[action].js, change the AITEM assistant to use 
+OpenRouter instead of OpenAI. Make EXACT changes below:
+
+---
+
+CHANGE 1: Update constants at the top
+
+Find:
+  const MODEL_ASSISTANT = 'gpt-4o-mini';
+
+Replace with:
+  const MODEL_ASSISTANT = 'openai/gpt-4o-mini';
+
+---
+
+CHANGE 2: Rewrite handleAssistant function
+
+Find the entire handleAssistant function:
+  async function handleAssistant(req, res, caller) {
+    if (!OPENAI_API_KEY) return res.status(503).json({ error: 'OPENAI_API_KEY belum di-set di Vercel Environment Variables.' });
+    try {
+      const requestedModel = (req.body && req.body.model) || MODEL_ASSISTANT;
+      const resolvedModel = (typeof requestedModel === 'string' && requestedModel.includes('/'))
+        ? requestedModel.split('/').slice(1).join('/')
+        : requestedModel;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 90_000);
+      try {
+        const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+          body: JSON.stringify({ ...req.body, model: resolvedModel }),
+          signal: controller.signal,
+
+Replace the entire function with:
+  async function handleAssistant(req, res, caller) {
+    if (!OPENROUTER_API_KEY) return res.status(503).json({ error: 'OPENROUTER_API_KEY belum di-set di Vercel Environment Variables.' });
+    try {
+      const requestedModel = (req.body && req.body.model) || MODEL_ASSISTANT;
+      const resolvedModel = (typeof requestedModel === 'string' && !requestedModel.includes('/'))
+        ? `openai/${requestedModel}`
+        : requestedModel;
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 90_000);
+      try {
+        const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+            'HTTP-Referer': 'https://temantiket.vercel.app',
+            'X-Title': 'Temantiket',
+          },
+          body: JSON.stringify({ ...req.body, model: resolvedModel }),
+          signal: controller.signal,
+        });
+        if (response.status === 401 || response.status === 403) {
+          return res.status(503).json({ error: 'API key OpenRouter tidak valid. Periksa OPENROUTER_API_KEY di Vercel Environment Variables.' });
+        }
+        const text = await response.text();
+        res.status(response.status).setHeader('Content-Type', 'application/json').send(text);
+      } catch (fetchErr) {
+        if (fetchErr.name === 'AbortError') return res.status(504).json({ error: 'AITEM request timeout (90s) — coba lagi.' });
+        throw fetchErr;
+      } finally {
+        clearTimeout(timer);
+      }
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+---
+
+CHANGE 3: Also check api/[...path].js
+
+In api/[...path].js, find any endpoint that calls OpenAI directly for 
+OCR or assistant features and replace with OpenRouter the same way.
+Search for: fetch(`${OPENAI_BASE_URL}` or fetch('https://api.openai.com
+If found, replace with OpenRouter URL and headers same as above.
+
+---
+
+After changes, commit and push to GitHub so Vercel auto-deploys.
+Then verify OPENROUTER_API_KEY is set in Vercel:
+  Vercel Dashboard → temantiket project → Settings → Environment Variables
+  Add: OPENROUTER_API_KEY = sk-or-v1-...
+  Make sure it applies to Production environment.
+  Redeploy after adding.
