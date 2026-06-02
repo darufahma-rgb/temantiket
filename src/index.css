@@ -20,6 +20,92 @@
 @tailwind utilities;
 
 @layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-feature-settings: "kern" 1, "liga" 1;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  * {
+    scroll-behavior: smooth;
+  }
+
+  .card-native {
+    border-radius: var(--radius);
+    background: hsl(var(--card));
+    box-shadow: var(--shadow-card);
+    border: 1px solid hsl(var(--border));
+  }
+
+  .btn-native {
+    border-radius: 9999px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer utilities {
+  .native-card {
+    padding: 1rem;
+    border-radius: var(--radius);
+    background: hsl(var(--card));
+    box-shadow: var(--shadow-sm);
+    border: 1px solid hsl(var(--border));
+  }
+
+  .native-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    background: hsl(var(--card));
+    border-bottom: 1px solid hsl(var(--border));
+    transition: background 0.15s;
+  }
+  .native-row:active {
+    background: hsl(var(--accent));
+  }
+
+  .native-avatar {
+    border-radius: 9999px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+
+  .sheet-handle {
+    width: 2.5rem;
+    height: 0.25rem;
+    border-radius: 9999px;
+    background: hsl(var(--border));
+    margin: 0.5rem auto 0;
+  }
+}
+
+@layer base {
   :root {
     /* Safe area insets for notch/home-indicator */
     --sat: env(safe-area-inset-top, 0px);
@@ -29,7 +115,7 @@
 
     /* ── Brand palette light mode ──
        Rich Black #00072d · Dark Navy #051650 · Navy Blue #0a2472 · Caribbean Blue #123499 */
-    --background: 225 60% 97%;       /* light blue-tinted white */
+    --background: 220 20% 96%;       /* slightly warmer light grey, not pure blue-white */
     --foreground: 235 100% 9%;       /* #00072d Rich Black */
 
     --card: 0 0% 100%;
@@ -60,19 +146,19 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 225 40% 85%;
-    --input: 225 40% 85%;
+    --border: 220 20% 88%;
+    --input: 220 20% 88%;
     --ring: 225 72% 47%;             /* #1a44d4 interactive blue */
 
-    --radius: 1rem;
+    --radius: 1.25rem;
 
     --gradient-primary: linear-gradient(135deg, hsl(225 72% 47%), hsl(225 79% 34%));
     --gradient-hero: linear-gradient(135deg, hsl(226 84% 24%) 0%, hsl(225 79% 34%) 50%, hsl(225 72% 47%) 100%);
     --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(225 50% 98%) 100%);
-    --shadow-card: 0 8px 40px -8px hsl(225 79% 34% / 0.15), 0 2px 8px -2px hsl(225 50% 60% / 0.1);
-    --shadow-sm: 0 1px 3px 0 hsl(225 50% 50% / 0.08);
-    --shadow-md: 0 4px 16px -2px hsl(225 50% 50% / 0.12);
-    --shadow-lg: 0 12px 40px -8px hsl(225 50% 50% / 0.18);
+    --shadow-card: 0 2px 16px -2px hsl(225 50% 50% / 0.08), 0 1px 4px -1px hsl(225 50% 60% / 0.06);
+    --shadow-sm: 0 1px 4px 0 hsl(225 50% 50% / 0.06);
+    --shadow-md: 0 4px 20px -4px hsl(225 50% 50% / 0.10);
+    --shadow-lg: 0 8px 32px -8px hsl(225 50% 50% / 0.14);
     --shadow-glow: 0 0 30px hsl(225 72% 47% / 0.30);
 
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -89,10 +175,10 @@
 
   @media (max-width: 767px) {
     html {
-      /* Mobile base: 14px → all rem units scale ~15% smaller than 16px desktop.
-         text-xs=10.5px  text-sm=12.25px  text-base=14px  text-lg=15.75px
-         text-xl=17.5px  text-2xl=21px  — perfect mobile type hierarchy.    */
-      font-size: 14px;
+      /* Mobile base: 15px → slightly larger and more readable, like native apps.
+         text-xs=11.25px  text-sm=13.125px  text-base=15px  text-lg=16.875px
+         text-xl=18.75px  text-2xl=22.5px  — native-app type hierarchy.    */
+      font-size: 15px;
     }
   }
 
