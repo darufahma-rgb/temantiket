@@ -1,0 +1,65 @@
+This is a React + TypeScript codebase called Temantiket. Fix the search functionality across 3 files:
+
+---
+
+FIX 1: src/components/DashboardLayout.tsx
+
+1a. The handleSearchSubmit function currently does:
+  navigate("/clients");
+Change it to:
+  navigate(`/clients?q=${encodeURIComponent(searchQuery.trim())}`);
+
+1b. The desktop search <input> has no keyboard submit handler. Add onKeyDown to it:
+  onKeyDown={(e) => {
+    if (e.key === "Enter" && searchQuery.trim()) {
+      navigate(`/clients?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  }}
+
+1c. Add a global keyboard shortcut for ⌘K / Ctrl+K. In the DashboardLayout component body, add a useEffect:
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        // On desktop: focus the search input
+        const input = document.querySelector<HTMLInputElement>('input[placeholder="Cari klien, order, trip…"]');
+        if (input) input.focus();
+        // On mobile: open search overlay
+        else setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+---
+
+FIX 2: src/pages/Clients.tsx
+
+The file already imports useLocation from react-router-dom but does NOT import useSearchParams. 
+
+2a. Add useSearchParams to the existing react-router-dom import line.
+
+2b. Inside the Clients component function, add after the existing useState declarations:
+  const [searchParams] = useSearchParams();
+  
+2c. Find where the search query state is initialized (look for useState("") used for filtering clients by name/phone). There should be a state like const [q, setQ] = useState("") or similar. Add a useEffect that reads the URL param on mount:
+  useEffect(() => {
+    const qParam = searchParams.get("q");
+    if (qParam) setQ(qParam); // use whatever the actual search state setter is named
+  }, []);
+
+---
+
+FIX 3: src/pages/Orders.tsx
+
+The file already has: const [searchParams] = useSearchParams(); (confirmed in imports).
+It also has: const [q, setQ] = useState("");
+
+Add a useEffect that reads ?q= param on mount, after the existing useEffect blocks:
+  useEffect(() => {
+    const qParam = searchParams.get("q");
+    if (qParam) setQ(qParam);
+  }, []);
+
+This ensures when user searches from the header and lands on /orders?q=..., the filter is pre-applied.

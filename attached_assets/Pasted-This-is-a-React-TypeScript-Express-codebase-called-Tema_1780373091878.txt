@@ -1,0 +1,68 @@
+This is a React + TypeScript + Express codebase called Temantiket (travel management app for Umrah/Haji agencies). Make the following fixes exactly as described:
+
+---
+
+FIX 1: BrowserRouter position in src/App.tsx
+
+Currently the App component wraps only AnimatedRoutes and PwaInstallPrompt inside BrowserRouter, while StoreBootstrap, LoginAlertNotifier, AppearanceBootstrap, etc. are outside it. Move BrowserRouter to wrap the entire content inside the App component's return statement, including all bootstrap components. The const App should look like:
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Toaster />
+        <Sonner />
+        <AppearanceBootstrap />
+        <LangDirectionBootstrap />
+        <AuthInitBootstrap />
+        <SyncStatusBootstrap />
+        <StoreBootstrap />
+        <LoginAlertNotifier />
+        <OfflineBar />
+        <AnimatedRoutes />
+        <PwaInstallPrompt />
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
+
+---
+
+FIX 2: Fix misleading CTA in src/components/AppSidebar.tsx
+
+Find this button (around line where "Upgrade Sekarang" text is):
+  onClick={() => { navigate("/itinerary"); onClose?.(); }}
+  text: "Upgrade Sekarang"
+
+Change it to:
+  onClick={() => { navigate("/itinerary"); onClose?.(); }}
+  text: "Coba Itinerary AI"
+
+Also change the card title from:
+  "Upgrade ke AI Power"
+to:
+  "Fitur AI Temantiket"
+
+And the description from:
+  "Nikmati fitur AI untuk mengoptimasi bisnis travel Anda."
+to:
+  "Generate itinerary, caption marketing, dan scan paspor dengan AI."
+
+---
+
+FIX 3: Remove ghost page and debug files
+
+3a. Check if src/pages/StaffPerformanceCenter.tsx is imported anywhere in the project. It is NOT imported in App.tsx. Delete the file src/pages/StaffPerformanceCenter.tsx.
+
+3b. Delete these debug/diagnostic files from the project root:
+- diagnose-login.js
+- diagnose-owner-dashboard.js
+- diagnose-agent-profile-crash.js
+- diagnose-ai-chat-layout.sh
+- browser-crash-capture.js
+- browser-crash-capture.cjs
+- verify-production.js
+- verify-production-fix.js
+- full-audit-temantiket.js
+
+Do not delete any file in src/, server/, public/, or supabase/.

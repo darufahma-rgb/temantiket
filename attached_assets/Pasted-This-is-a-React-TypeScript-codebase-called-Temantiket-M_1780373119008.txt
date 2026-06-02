@@ -1,0 +1,70 @@
+This is a React + TypeScript codebase called Temantiket. Make these auth and access UX improvements:
+
+---
+
+FIX 1: Add forgot password to src/pages/Login.tsx
+
+1a. Add a new state: const [forgotMode, setForgotMode] = useState(false);
+1b. Import { supabase } from wherever it's imported in other pages (check src/lib/supabase.ts or similar).
+1c. Add a handler:
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      toast.error("Masukkan email Anda terlebih dahulu.");
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+    if (error) toast.error("Gagal mengirim email reset: " + error.message);
+    else toast.success("Email reset password telah dikirim. Cek inbox Anda.");
+  };
+1d. In the login form JSX, after the submit button and before closing the form, add:
+  <button
+    type="button"
+    onClick={handleForgotPassword}
+    className="w-full text-center text-[12px] text-white/50 hover:text-white/80 transition-colors mt-2"
+  >
+    Lupa password?
+  </button>
+1e. Below the entire card, add:
+  <p className="mt-4 text-center text-[11px] text-white/40">
+    Belum punya akun? Hubungi administrator biro Anda.
+  </p>
+
+---
+
+FIX 2: Add logout confirmation in src/components/AppSidebar.tsx
+
+2a. Add useState for logout dialog: const [logoutOpen, setLogoutOpen] = useState(false);
+2b. Import AlertDialog components — they are already available in the project via @/components/ui/alert-dialog.
+2c. Change the handleLogout button onClick from directly calling handleLogout to: onClick={() => setLogoutOpen(true)}
+2d. Add AlertDialog JSX at the bottom of the component return, before the final closing tag:
+  <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Keluar dari akun?</AlertDialogTitle>
+        <AlertDialogDescription>
+          Sesi Anda akan diakhiri dan Anda akan diarahkan ke halaman login.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Batal</AlertDialogCancel>
+        <AlertDialogAction onClick={handleLogout} className="bg-red-500 hover:bg-red-600">
+          Keluar
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+
+---
+
+FIX 3: Show toast before role redirect in src/App.tsx
+
+In the RequireRole component, before the Navigate redirect line, add a toast. The RequireRole component currently has:
+  return <Navigate to={fallback} replace />;
+
+Wrap it with a useEffect that fires the toast before redirect:
+  useEffect(() => {
+    toast.warning("Halaman ini tidak dapat diakses dengan role Anda.");
+  }, []);
+  return <Navigate to={fallback} replace />;
+
+Note: toast is already imported in App.tsx from "sonner".
