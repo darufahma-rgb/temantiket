@@ -503,6 +503,22 @@ PENTING:
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "extract_and_attach_itinerary",
+      description: "Ekstrak data penerbangan dari teks mentah PNR (Galileo, Amadeus, email booking, teks tiket) dan attach langsung ke order yang relevan. Gunakan ketika user paste teks tiket atau PNR dan minta diinput ke sistem. Cari order yang cocok by nama penumpang atau tanggal jika orderId tidak diketahui.",
+      parameters: {
+        type: "object",
+        properties: {
+          rawText: { type: "string", description: "Teks mentah PNR/itinerary/booking yang akan diekstrak" },
+          orderId: { type: "string", description: "ID order yang akan di-attach itinerary (opsional, akan dicari otomatis jika tidak ada)" },
+          clientName: { type: "string", description: "Nama klien untuk mencari order yang relevan (opsional)" },
+        },
+        required: ["rawText"],
+      },
+    },
+  },
 ];
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -634,6 +650,7 @@ Lo WAJIB mendeteksi intent dan langsung eksekusi tool yang tepat:
 1. LANGSUNG EKSEKUSI kalau parameternya sudah jelas — jangan tanya konfirmasi tidak perlu
 2. TANYA DULU hanya kalau info krusial benar-benar kurang (misal: "bikin misi" tapi tidak ada judul)
 3. PARALEL: Kalau butuh banyak data, panggil multiple tools sekaligus
+- Ketika user paste teks PNR atau itinerary, langsung gunakan extract_and_attach_itinerary tanpa perlu ditanya lagi. Cari order yang relevan secara otomatis dari nama penumpang.
 4. CHAINING: Hasil satu tool bisa jadi input tool berikutnya dalam 1 percakapan
 5. Setelah sukses → ringkasan singkat yang informatif + satu insight/saran relevan
 6. JANGAN tampilkan UUID/ID teknis ke user — tampilkan nama, email, atau judul
@@ -1463,6 +1480,69 @@ async function executeTool(
             summary: args.summary as string,
             data: args.data,
           },
+          success: true,
+        };
+      }
+
+      case "extract_and_attach_itinerary": {
+        const { extractItinerary: extractItin } = await import("@/lib/itineraryAI");
+        const { patchOrder: patchOrd, orders: allFlightOrders } = await import("@/store/ordersStore").then(m => ({
+          patchOrder: m.useOrdersStore.getState().patchOrder,
+          orders: m.useOrdersStore.getState().orders,
+        }));
+
+        const itinerary = await extractItin(args.rawText as string);
+        if (!itinerary || itinerary.legs.length === 0) {
+          return {
+            result: JSON.stringify({ error: "Tidak bisa mengekstrak data penerbangan dari teks ini" }),
+            displayData: { type: "error", message: "Ekstraksi PNR gagal — pastikan format teks benar" },
+            success: false,
+          };
+        }
+
+        let targetOrderId = args.orderId as string | undefined;
+
+        if (!targetOrderId) {
+          const flightOrders = allFlightOrders.filter((o: { type: string }) => o.type === "flight");
+          if (args.clientName) {
+            const clients = await listClients();
+            const matched = clients.find((c) =>
+              c.name.toLowerCase().includes((args.clientName as string).toLowerCase())
+            );
+            if (matched) {
+              const clientOrder = flightOrders.find((o: { clientId: string }) => o.clientId === matched.id);
+              if (clientOrder) targetOrderId = (clientOrder as { id: string }).id;
+            }
+          }
+          if (!targetOrderId && itinerary.passengerName) {
+            const clients = await listClients();
+            const matched = clients.find((c) =>
+              c.name.toLowerCase().includes(itinerary.passengerName!.toLowerCase().split(" ")[0])
+            );
+            if (matched) {
+              const clientOrder = flightOrders.find((o: { clientId: string }) => o.clientId === matched.id);
+              if (clientOrder) targetOrderId = (clientOrder as { id: string }).id;
+            }
+          }
+        }
+
+        const summary = {
+          pnr: itinerary.pnr,
+          passenger: itinerary.passengerName,
+          legs: itinerary.legs.map((l) => `${l.flightNumber} ${l.fromCode}→${l.toCode} ${l.departDate} ${l.departTime}`),
+          totalPrice: itinerary.totalPrice,
+          currency: itinerary.priceCurrency,
+        };
+
+        if (targetOrderId) {
+          await patchOrd(targetOrderId, {
+            ...(itinerary.totalPrice ? { totalPrice: itinerary.totalPrice } : {}),
+          });
+        }
+
+        return {
+          result: JSON.stringify({ success: true, orderId: targetOrderId, itinerary: summary }),
+          displayData: { type: "itinerary_extracted", itinerary: summary, orderId: targetOrderId, attached: !!targetOrderId },
           success: true,
         };
       }
