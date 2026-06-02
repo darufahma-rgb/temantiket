@@ -726,6 +726,7 @@ export default function Dashboard() {
   const { orders, fetchOrders, loaded: ordersLoaded } = useOrdersStore();
   const { clients, fetchClients, loaded: clientsLoaded } = useClientsStore();
   const user = useAuthStore((s) => s.user);
+  const agencyId = user?.agencyId;
   const { language } = useRegionalStore();
   const locale = getLocale(language);
   const t = useT();
@@ -734,6 +735,28 @@ export default function Dashboard() {
   const [tab, setTab] = useState<"all" | "upcoming" | "done">("all");
   const [totalJamaah, setTotalJamaah] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+
+  const storageKey = `onboarding_done_${agencyId}`;
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (!agencyId) return false;
+    const raw = localStorage.getItem(`onboarding_done_${agencyId}`);
+    if (!raw) return true;
+    const done = JSON.parse(raw);
+    return !done.dismissed && Object.values(done).filter(Boolean).length < 4;
+  });
+  const [onboardingDone, setOnboardingDone] = useState<Record<string, boolean>>(() => {
+    if (!agencyId) return {};
+    return JSON.parse(localStorage.getItem(`onboarding_done_${agencyId}`) || "{}");
+  });
+
+  const checkItem = (key: string) => {
+    const updated = { ...onboardingDone, [key]: true };
+    setOnboardingDone(updated);
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+    if (Object.keys(updated).filter(k => k !== "dismissed" && updated[k]).length >= 4) {
+      setShowOnboarding(false);
+    }
+  };
 
   // ── Financial stats for desktop summary cards ─────────────────────────────
   const egpRate = useRatesStore((s) => s.rates.EGP);
@@ -844,6 +867,39 @@ export default function Dashboard() {
 
   return (
     <div className="xl:flex xl:min-h-0 xl:gap-5 md:pt-2">
+      {showOnboarding && (
+        <div className="mb-6 p-4 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 xl:hidden">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+              Selesaikan setup awal ({Object.keys(onboardingDone).filter(k => k !== "dismissed" && onboardingDone[k]).length}/4 selesai)
+            </p>
+            <button onClick={() => {
+              const updated = { ...onboardingDone, dismissed: true };
+              localStorage.setItem(storageKey, JSON.stringify(updated));
+              setShowOnboarding(false);
+            }} className="text-blue-400 hover:text-blue-600 text-xs">Tutup</button>
+          </div>
+          {[
+            { key: "logo",   label: "Upload logo agency",      path: "/settings" },
+            { key: "member", label: "Undang anggota pertama",  path: "/agent-center" },
+            { key: "paket",  label: "Buat paket pertama",      path: "/packages" },
+            { key: "order",  label: "Buat order pertama",      path: "/orders" },
+          ].map(item => (
+            <div key={item.key} className="flex items-center gap-3 py-1.5">
+              <button onClick={() => checkItem(item.key)} className={cn(
+                "h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
+                onboardingDone[item.key] ? "bg-blue-600 border-blue-600" : "border-blue-300"
+              )}>
+                {onboardingDone[item.key] && <CheckCircle className="h-3 w-3 text-white" />}
+              </button>
+              <button onClick={() => navigate(item.path)} className="text-sm text-blue-700 dark:text-blue-300 hover:underline text-left">
+                {item.label}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ══════════════════════════════════════════════════════════════
            MOBILE LAYOUT  (hidden on md+) — Native App Style
       ══════════════════════════════════════════════════════════════ */}

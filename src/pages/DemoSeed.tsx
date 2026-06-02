@@ -358,6 +358,8 @@ export default function DemoSeed() {
   const [runningMasisir,  setRunningMasisir]  = useState(false);
   const [cleaningMasisir, setCleaningMasisir] = useState(false);
   const [basicOpen, setBasicOpen] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
 
   const user     = useAuthStore((s) => s.user);
   const agencyId = user?.agencyId ?? "";
@@ -1207,6 +1209,30 @@ export default function DemoSeed() {
   const quickSeedErr   = quickSeedItems.filter((it)  => it.status === "error").length;
 
   const anyRunning = runningQuick || cleaningQuick || runningBasic || cleaningBasic || runningMasisir || cleaningMasisir;
+
+  if (!confirmed) {
+    return (
+      <div className="max-w-md mx-auto mt-20 p-6 border border-red-200 rounded-xl bg-red-50">
+        <h2 className="text-lg font-bold text-red-800 mb-2">⚠️ Peringatan</h2>
+        <p className="text-sm text-red-700 mb-4">
+          Tindakan ini akan menambah data dummy ke database. Ketik <strong>CONFIRM</strong> untuk melanjutkan.
+        </p>
+        <input
+          value={confirmText}
+          onChange={e => setConfirmText(e.target.value)}
+          placeholder="Ketik CONFIRM"
+          className="w-full border rounded-lg px-3 py-2 text-sm mb-3"
+        />
+        <button
+          disabled={confirmText !== "CONFIRM"}
+          onClick={() => setConfirmed(true)}
+          className="w-full py-2 rounded-lg bg-red-600 text-white text-sm font-bold disabled:opacity-40"
+        >
+          Lanjutkan
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto py-8 px-4 space-y-6">

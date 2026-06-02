@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const rateLimit = require('express-rate-limit');
 
 const PORT = process.env.PORT || 3001;
 
@@ -58,6 +59,10 @@ function openaiHeaders() {
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
+
+const walletLimiter = rateLimit({ windowMs: 60_000, max: 20, message: { error: 'Too many requests' } });
+const ocrLimiter    = rateLimit({ windowMs: 60_000, max: 10, message: { error: 'Too many requests' } });
+const pointsLimiter = rateLimit({ windowMs: 60_000, max: 30, message: { error: 'Too many requests' } });
 
 // ── Auth routes (Supabase Bearer JWT) ────────────────────────────────────────
 registerAuthRoutes(app);
@@ -504,7 +509,7 @@ app.post('/api/remove-member', isAuthenticatedOrBearer, async (req, res) => {
    POST /api/award-completion-points
    Owner menandai order selesai → agen mendapat 10 poin di agent_points.
 ────────────────────────────────────────────── */
-app.post('/api/award-completion-points', isAuthenticatedOrBearer, async (req, res) => {
+app.post('/api/award-completion-points', pointsLimiter, isAuthenticatedOrBearer, async (req, res) => {
   try {
 
     const { data: callerRows } = await getSb()
@@ -921,7 +926,7 @@ app.post('/api/export/igh', async (req, res) => {
    Dedicated passport OCR via OpenRouter vision.
    Requires Supabase Bearer JWT.
 ────────────────────────────────────────────── */
-app.post('/api/ocr-passport', isAuthenticatedOrBearer, async (req, res) => {
+app.post('/api/ocr-passport', ocrLimiter, isAuthenticatedOrBearer, async (req, res) => {
   try {
     console.log(`[ocr-passport] OPENROUTER_API_KEY detected: ${!!OPENROUTER_API_KEY}`);
     if (!OPENROUTER_API_KEY) {
@@ -1191,7 +1196,7 @@ app.post('/api/ai/assistant', async (req, res) => {
    POST /api/credit-wallet-tx
    Insert a wallet transaction via Supabase (service role — bypasses RLS).
 ────────────────────────────────────────────── */
-app.post('/api/credit-wallet-tx', isAuthenticatedOrBearer, async (req, res) => {
+app.post('/api/credit-wallet-tx', walletLimiter, isAuthenticatedOrBearer, async (req, res) => {
   try {
 
     const { data: memberRows } = await getSb()
