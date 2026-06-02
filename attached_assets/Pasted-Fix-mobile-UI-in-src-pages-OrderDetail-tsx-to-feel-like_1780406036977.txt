@@ -1,0 +1,153 @@
+Fix mobile UI in src/pages/OrderDetail.tsx to feel like a native app.
+Make EXACT changes below:
+
+---
+
+FIX 1: Fix Field component label style (last function in file)
+
+Find the Field function at the bottom of the file:
+  function Field({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+      <div className="space-y-1">
+        <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</Label>
+        {children}
+      </div>
+    );
+  }
+
+Replace with:
+  function Field({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+      <div className="space-y-1.5">
+        <Label className="text-[12px] font-semibold text-foreground/70">{label}</Label>
+        {children}
+      </div>
+    );
+  }
+
+---
+
+FIX 2: Fix all other uppercase tracking-wide labels in the file
+
+Find and replace ALL occurrences of these class combinations:
+  "text-[11px] uppercase tracking-wide text-muted-foreground font-medium"
+  → "text-[12px] font-semibold text-foreground/60"
+
+  "text-[11px] font-medium text-muted-foreground uppercase tracking-wide"
+  → "text-[12px] font-semibold text-foreground/60"
+
+  "text-[11px] uppercase tracking-wide text-muted-foreground font-semibold"
+  → "text-[12px] font-semibold text-foreground/60"
+
+  "text-[11px] uppercase tracking-wide text-muted-foreground"
+  → "text-[12px] font-medium text-foreground/60"
+
+  "text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"
+  → "text-[11px] font-semibold text-foreground/60 mb-2 flex items-center gap-1"
+
+  "text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5"
+  → "text-[11px] text-muted-foreground font-medium mb-0.5"
+
+  "text-[10px] text-emerald-700 uppercase tracking-wide mb-0.5"
+  → "text-[11px] text-emerald-700 font-medium mb-0.5"
+
+  Any remaining className containing both "uppercase" and "tracking-wide" or "tracking-widest"
+  → remove "uppercase" and "tracking-wide"/"tracking-widest" from those classNames
+
+---
+
+FIX 3: Format harga mentah jadi formatted
+
+Find where Harga Modal and Harga Jual input fields are rendered.
+They currently show raw numbers like "2523000".
+
+Find the Input for totalPrice and costPrice. They look like:
+  <Input value={draft.totalPrice ?? order.totalPrice ?? ""} onChange=... />
+  <Input value={draft.costPrice ?? order.costPrice ?? 0} onChange=... />
+
+These inputs are for editing so keep them as-is (user needs to type numbers).
+BUT add a formatted display hint below each input:
+
+After the totalPrice Input, add:
+  {(draft.totalPrice ?? order.totalPrice) ? (
+    <p className="text-[11px] text-muted-foreground mt-0.5">
+      = {fmtIDR(Number(draft.totalPrice ?? order.totalPrice))}
+    </p>
+  ) : null}
+
+After the costPrice Input, add:
+  {(draft.costPrice ?? order.costPrice) ? (
+    <p className="text-[11px] text-muted-foreground mt-0.5">
+      = {fmtIDR(Number(draft.costPrice ?? order.costPrice))}
+    </p>
+  ) : null}
+
+---
+
+FIX 4: Fix Catatan placeholder
+
+Find the textarea or Input for "Catatan" field. It has placeholder:
+  "Tulis catatan dalam format Markdown… (# Judul, **bold**, - list)"
+
+Replace placeholder with:
+  "Tulis catatan tambahan…"
+
+---
+
+FIX 5: Hide "Currency" field on mobile — it's redundant
+
+Find:
+  <Field label="Currency"><Input value={order.currency} disabled /></Field>
+
+Wrap it with md:block to hide on mobile:
+  <div className="hidden md:block">
+    <Field label="Currency"><Input value={order.currency} disabled /></Field>
+  </div>
+
+---
+
+FIX 6: Fix action buttons at top — too cramped on mobile
+
+Find the top action buttons section (Cetak Invoice, Simpan, Hapus).
+They currently render as 3 buttons in a row.
+
+Change the container to:
+  <div className="flex items-center gap-2 flex-wrap">
+
+And make the delete button icon-only on mobile:
+Find the Trash2/delete button and change to:
+  <Button variant="outline" size="icon" onClick={() => setConfirmDelete(true)}
+    className="shrink-0 border-red-200 text-red-500 hover:bg-red-50">
+    <Trash2 className="h-4 w-4" />
+  </Button>
+
+---
+
+FIX 7: Add section grouping with dividers on mobile
+
+The page currently shows all fields stacked without visual grouping.
+Find the main content div (the motion.div or main container inside OrderDetail).
+
+Add subtle section headers before key groups:
+
+Before the <Field label="Judul"> add:
+  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider pt-2">
+    Info Order
+  </p>
+
+Before the payment/status section (Status Pembayaran Klien) add:
+  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider pt-2">
+    Pembayaran
+  </p>
+
+Before the agent/operational section (Operasional VOA or Agent Lapangan) add:
+  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider pt-2">
+    Operasional
+  </p>
+
+Before the profit summary section add:
+  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider pt-2">
+    Ringkasan Profit
+  </p>
+
+After all changes run: npx tsc --noEmit and fix errors before committing.
