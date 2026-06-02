@@ -257,7 +257,7 @@ export default function Packages() {
             background: "rgba(240,244,251,0.96)",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
-            paddingTop: "calc(60px + env(safe-area-inset-top, 0px))",
+            paddingTop: "calc(74px + env(safe-area-inset-top, 0px))",
           }}
         >
           <div className="flex items-center gap-2 pb-3">
@@ -319,22 +319,22 @@ export default function Packages() {
           {activeTab === "paket" && (
             <>
               {/* ── Stats Cards ── */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-4 gap-2">
                 {[
                   { label: "Total Paket",       value: mobileStats.total,      icon: PackageIcon, iconBg: "#EEF2FF", iconColor: "#4F46E5" },
                   { label: "Paket Aktif",        value: mobileStats.aktif,      icon: TrendingUp,  iconBg: "#ECFDF5", iconColor: "#10B981" },
                   { label: "Dalam Perjalanan",   value: mobileStats.perjalanan, icon: Plane,       iconBg: "#F0F9FF", iconColor: "#0EA5E9" },
                   { label: "Paket Selesai",      value: mobileStats.selesai,    icon: Clock,       iconBg: "#F8FAFC", iconColor: "#64748B" },
                 ].map(({ label, value, icon: Icon, iconBg, iconColor }) => (
-                  <div key={label} className="rounded-2xl bg-white p-3.5 shadow-sm">
+                  <div key={label} className="rounded-2xl bg-white p-3 shadow-sm flex flex-col items-center text-center">
                     <div
-                      className="h-9 w-9 rounded-xl flex items-center justify-center mb-2.5"
+                      className="h-8 w-8 rounded-xl flex items-center justify-center mb-1.5"
                       style={{ background: iconBg }}
                     >
-                      <Icon className="h-4.5 w-4.5" style={{ color: iconColor }} strokeWidth={1.8} />
+                      <Icon className="h-4 w-4" style={{ color: iconColor }} strokeWidth={1.8} />
                     </div>
-                    <p className="text-[22px] font-extrabold text-[#0f1c3f] leading-none">{value}</p>
-                    <p className="text-[11px] text-slate-500 font-medium mt-1">{label}</p>
+                    <p className="text-[18px] font-extrabold text-[#0f1c3f] leading-none">{value}</p>
+                    <p className="text-[9px] text-slate-500 font-medium mt-1 leading-tight">{label}</p>
                   </div>
                 ))}
               </div>
@@ -397,12 +397,12 @@ export default function Packages() {
 
               {/* ── Empty state ── */}
               {!loading && filtered.length === 0 && (
-                <div className="rounded-3xl bg-white shadow-sm py-10 text-center space-y-3">
+                <div className="rounded-3xl bg-white shadow-sm py-8 text-center space-y-3">
                   <div
-                    className="h-14 w-14 rounded-2xl flex items-center justify-center mx-auto"
+                    className="h-12 w-12 rounded-2xl flex items-center justify-center mx-auto"
                     style={{ background: "#EEF2FF" }}
                   >
-                    <PackageIcon className="h-7 w-7 text-[#4F46E5]" strokeWidth={1.6} />
+                    <PackageIcon className="h-6 w-6 text-[#4F46E5]" strokeWidth={1.6} />
                   </div>
                   <p className="text-[13px] font-semibold text-slate-500">
                     {query || category !== "all" ? "Paket tidak ditemukan." : "Belum ada paket."}
@@ -410,7 +410,7 @@ export default function Packages() {
                   {!query && category === "all" && (
                     <button
                       onClick={openCreate}
-                      className="inline-flex items-center gap-1.5 h-9 px-5 rounded-xl text-[12px] font-bold text-white active:scale-95 transition-transform"
+                      className="inline-flex items-center gap-1.5 h-9 px-6 rounded-xl text-[12px] font-bold text-white active:scale-95 transition-transform w-auto"
                       style={{ background: "linear-gradient(135deg,#0866FF,#0654D6)" }}
                     >
                       <Plus className="h-3.5 w-3.5" /> Buat Paket Pertama
@@ -634,7 +634,7 @@ export default function Packages() {
                     + Tambah Baru
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-2">
                   {[
                     {
                       label: "Paket Baru",
@@ -668,20 +668,23 @@ export default function Packages() {
                       Icon: Tag,
                       action: () => navigate("/ticket-prices"),
                     },
-                  ].map(({ label, sub, iconBg, iconColor, Icon, action }) => (
+                  ].map((item) => (
                     <button
-                      key={label}
-                      onClick={action}
-                      className="rounded-2xl bg-white shadow-sm p-4 text-left active:scale-95 transition-transform"
+                      key={item.label}
+                      onClick={item.action}
+                      className="flex items-center gap-3 p-3 rounded-2xl bg-white shadow-sm active:opacity-70 transition-opacity text-left"
+                      style={{ WebkitTapHighlightColor: "transparent" }}
                     >
                       <div
-                        className="h-10 w-10 rounded-xl flex items-center justify-center mb-3"
-                        style={{ background: iconBg }}
+                        className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: item.iconBg }}
                       >
-                        <Icon className="h-5 w-5" style={{ color: iconColor }} strokeWidth={1.8} />
+                        <item.Icon className="h-4 w-4" style={{ color: item.iconColor }} strokeWidth={1.8} />
                       </div>
-                      <p className="text-[13px] font-bold text-[#0f1c3f] leading-tight">{label}</p>
-                      <p className="text-[11px] text-slate-500 font-medium mt-0.5 leading-snug">{sub}</p>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-semibold text-[#0f1c3f] truncate">{item.label}</p>
+                        <p className="text-[11px] text-slate-400 truncate">{item.sub}</p>
+                      </div>
                     </button>
                   ))}
                 </div>
