@@ -519,6 +519,20 @@ PENTING:
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "predict_cashflow",
+      description: "Prediksi cash flow dan estimasi pendapatan bulan depan berdasarkan pipeline order aktif (Draft + Confirmed). Beri peringatan jika pipeline tipis. Gunakan ketika user tanya 'estimasi bulan depan', 'pipeline bulan ini', 'prediksi revenue', atau 'perkiraan pendapatan'.",
+      parameters: {
+        type: "object",
+        properties: {
+          months: { type: "number", description: "Berapa bulan ke depan yang diprediksi (default: 1)" },
+        },
+        required: [],
+      },
+    },
+  },
 ];
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -728,6 +742,7 @@ Misi agen: cara owner boost motivasi dan produktivitas tim agen
 - Angka keuangan: format IDR yang rapi (Rp 15.000.000 bukan 15000000)
 - Kalau ada data kosong: tetap informatif, jangan cuma bilang "tidak ada data"
 - Saat menampilkan laporan keuangan, SELALU sertakan analisis naratif: kondisi profit/loss, pipeline order, dan 1-2 rekomendasi konkret yang actionable. Jangan hanya tampilkan angka.
+- Untuk prediksi cash flow, jelaskan dengan bahasa sederhana: berapa potensi pendapatan dari pipeline yang ada, berapa yang kemungkinan besar akan convert, dan apa risikonya. Sertakan rekomendasi tindakan konkret.
 - Emoji boleh tapi tidak berlebihan — gunakan untuk emphasis, bukan dekorasi
 - NAMA BUKAN UUID: Selalu tampilkan nama asli. UUID hanya untuk kebutuhan teknis jika diminta
 - Untuk data agen: tampilkan dalam bentuk tabel atau list yang rapi dengan semua kolom relevan
@@ -1510,6 +1525,61 @@ async function executeTool(
             summary: args.summary as string,
             data: args.data,
           },
+          success: true,
+        };
+      }
+
+      case "predict_cashflow": {
+        const allOrders = await listOrders();
+        const egpRateLocal = ratesStore.rates.EGP ?? 515;
+
+        const draftOrdersList     = allOrders.filter((o) => o.status === "Draft");
+        const confirmedOrdersList  = allOrders.filter((o) => o.status === "Confirmed");
+
+        const draftPotential     = draftOrdersList.reduce((sum, o) => sum + revenueIDR(o, egpRateLocal), 0);
+        const confirmedPotential = confirmedOrdersList.reduce((sum, o) => sum + revenueIDR(o, egpRateLocal), 0);
+
+        const estimatedRevenue = (draftPotential * 0.4) + (confirmedPotential * 0.8);
+
+        const lastMonth = new Date();
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        const lastMonthStr = lastMonth.toISOString().slice(0, 7);
+        const lastMonthRevenue = allOrders
+          .filter((o) => o.status === "Completed" || o.status === "Paid")
+          .filter((o) => (o.createdAt ?? "").startsWith(lastMonthStr))
+          .reduce((sum, o) => sum + revenueIDR(o, egpRateLocal), 0);
+
+        const trend = lastMonthRevenue > 0
+          ? ((estimatedRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1)
+          : null;
+
+        const warnings: string[] = [];
+        if (draftOrdersList.length === 0 && confirmedOrdersList.length === 0) {
+          warnings.push("⚠️ KRITIS: Pipeline kosong! Tidak ada order aktif sama sekali.");
+        } else if (estimatedRevenue < lastMonthRevenue * 0.5) {
+          warnings.push("⚠️ Pipeline sangat tipis — estimasi revenue bulan depan turun >50% dari bulan lalu.");
+        } else if (draftOrdersList.length > confirmedOrdersList.length * 2) {
+          warnings.push("💡 Banyak order masih Draft — perlu follow up aktif untuk konversi ke Confirmed.");
+        }
+
+        const cashflowResult = {
+          draftOrders: draftOrdersList.length,
+          confirmedOrders: confirmedOrdersList.length,
+          draftPotential,
+          confirmedPotential,
+          estimatedRevenue,
+          lastMonthRevenue,
+          trend,
+          warnings,
+          breakdown: [
+            { label: "Order Draft (estimasi 40% convert)", value: draftPotential * 0.4, count: draftOrdersList.length },
+            { label: "Order Confirmed (estimasi 80% lunas)", value: confirmedPotential * 0.8, count: confirmedOrdersList.length },
+          ],
+        };
+
+        return {
+          result: JSON.stringify(cashflowResult),
+          displayData: { type: "cashflow_prediction", ...cashflowResult },
           success: true,
         };
       }
