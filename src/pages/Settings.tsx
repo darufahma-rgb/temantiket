@@ -606,7 +606,7 @@ export default function Settings() {
     <div className="flex flex-col md:flex-row gap-3 md:gap-6">
 
       {/* ── Tab nav: horizontal scroll on mobile, vertical sidebar on desktop ── */}
-      <div className="md:w-48 md:shrink-0 -mx-3 md:mx-0 px-3 md:px-0 sticky top-0 z-10 bg-[hsl(var(--card))] py-1 md:py-0 md:static md:bg-transparent">
+      <div className="md:w-48 md:shrink-0 -mx-3 md:mx-0 px-3 md:px-0 sticky z-30 bg-[hsl(var(--background))] py-1 md:py-0 md:static md:bg-transparent" style={{ top: "calc(74px + env(safe-area-inset-top, 0px))" }}>
         {/* Mobile: horizontal pill tabs with group separators */}
         <div className="flex md:hidden gap-1 overflow-x-auto no-scrollbar -mx-1 px-1 items-center">
           {TAB_GROUPS.map((group, gi) => (
@@ -687,7 +687,7 @@ export default function Settings() {
               >
                 <div
                   className={cn(
-                    "h-12 w-12 rounded-xl shadow-glow overflow-hidden flex items-center justify-center text-white text-base font-bold",
+                    "h-16 w-16 rounded-full shadow-glow overflow-hidden flex items-center justify-center text-white text-base font-bold",
                     profilePhoto ? "bg-[hsl(var(--secondary))]" : "gradient-primary"
                   )}
                 >
@@ -699,11 +699,11 @@ export default function Settings() {
                     "?"
                   )}
                 </div>
-                <div className="absolute inset-0 rounded-xl bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <Camera strokeWidth={1.5} className="h-4 w-4 text-white" />
                 </div>
                 {photoUploading && (
-                  <div className="absolute inset-0 rounded-xl bg-black/60 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
                     <RefreshCw strokeWidth={2} className="h-4 w-4 text-white animate-spin" />
                   </div>
                 )}
@@ -780,14 +780,13 @@ export default function Settings() {
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div>
               <Button
                 onClick={handleSaveProfileName}
                 disabled={savingName || !profile.name.trim()}
-                className="h-8 px-4 rounded-xl text-xs gradient-primary text-white"
+                className="h-11 px-6 rounded-xl font-semibold text-[13px] gradient-primary text-white"
               >
-                <Save strokeWidth={1.5} className="h-3 w-3 mr-1.5" />
-                {savingName ? "Menyimpan…" : "Simpan Nama"}
+                {savingName ? "Menyimpan…" : "Simpan"}
               </Button>
             </div>
 
@@ -799,8 +798,8 @@ export default function Settings() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[13px] font-semibold text-[hsl(var(--foreground))]">Kontak Admin (Footer Penawaran)</p>
-                  <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5 leading-snug">
-                    Akan muncul di footer PDF penawaran sejajar dengan Instagram, dan ditampilkan di Dashboard untuk admin internal.
+                  <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+                    Muncul di footer PDF penawaran dan Dashboard admin.
                   </p>
                 </div>
               </div>
