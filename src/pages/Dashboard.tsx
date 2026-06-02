@@ -870,7 +870,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="xl:flex xl:min-h-0 xl:gap-5 md:pt-2">
+    <>
       {alerts.length > 0 && (
         <div className="mb-4 space-y-2">
           {alerts.map((alert: AitemAlert) => (
@@ -921,6 +921,7 @@ export default function Dashboard() {
           ))}
         </div>
       )}
+      <div className="xl:flex xl:min-h-0 xl:gap-5 md:pt-2">
       {showOnboarding && (
         <div className="mb-6 p-4 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 xl:hidden">
           <div className="flex items-center justify-between mb-3">
@@ -1432,5 +1433,6 @@ export default function Dashboard() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </>
   );
 }
