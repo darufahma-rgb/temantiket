@@ -570,6 +570,36 @@ PENTING:
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "delete_client",
+      description: "Hapus klien dari database. SELALU gunakan confirm_action dulu sebelum menghapus. Gunakan ketika user minta 'hapus klien', 'delete jamaah', atau 'hilangkan data klien X'. Cari clientId dulu dengan get_clients jika belum tahu.",
+      parameters: {
+        type: "object",
+        properties: {
+          clientId: { type: "string", description: "ID klien yang akan dihapus" },
+          clientName: { type: "string", description: "Nama klien untuk konfirmasi (opsional)" },
+        },
+        required: ["clientId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_order",
+      description: "Hapus order dari database. SELALU gunakan confirm_action dulu sebelum menghapus. Gunakan ketika user minta 'hapus order', 'delete order X', atau 'batalkan dan hapus order'.",
+      parameters: {
+        type: "object",
+        properties: {
+          orderId: { type: "string", description: "ID order yang akan dihapus" },
+          orderTitle: { type: "string", description: "Judul order untuk konfirmasi (opsional)" },
+        },
+        required: ["orderId"],
+      },
+    },
+  },
 ];
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -816,6 +846,7 @@ Cara kerjamu saat user input data:
 4. Tunggu user bilang 'ya', 'oke', 'lanjut', atau konfirmasi sejenis sebelum eksekusi
 5. Setelah berhasil simpan, kasih tahu user dengan jelas dan refresh data terkait
 6. Jika user cerita tentang klien yang sudah ada (misal update paspor), cari dulu dengan get_clients
+7. Untuk hapus data (delete_client, delete_order): WAJIB gunakan confirm_action dulu dengan pesan peringatan yang jelas bahwa data tidak bisa dikembalikan. Contoh summary: '⚠️ HAPUS PERMANEN: Klien Ahmad Fauzi dan semua riwayat ordernya akan dihapus. Tindakan ini tidak bisa dibatalkan.' Baru eksekusi setelah user konfirmasi.
 
 Contoh flow yang benar:
 User: 'ada jamaah baru namanya Ahmad Fauzi HP 081234567890 mau umrah'
@@ -1816,6 +1847,36 @@ Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsa
         return {
           result: JSON.stringify({ success: true, orderId: targetOrderId, itinerary: summary }),
           displayData: { type: "itinerary_extracted", itinerary: summary, orderId: targetOrderId, attached: !!targetOrderId },
+          success: true,
+        };
+      }
+
+      case "delete_client": {
+        const { removeClient } = useClientsStore.getState();
+        await removeClient(args.clientId as string);
+        return {
+          result: JSON.stringify({ success: true, clientId: args.clientId, deleted: true }),
+          displayData: {
+            type: "delete_client",
+            clientId: args.clientId,
+            clientName: args.clientName ?? "Klien",
+            message: `Klien "${args.clientName ?? args.clientId}" berhasil dihapus.`,
+          },
+          success: true,
+        };
+      }
+
+      case "delete_order": {
+        const { removeOrder } = useOrdersStore.getState();
+        await removeOrder(args.orderId as string);
+        return {
+          result: JSON.stringify({ success: true, orderId: args.orderId, deleted: true }),
+          displayData: {
+            type: "delete_order",
+            orderId: args.orderId,
+            orderTitle: args.orderTitle ?? "Order",
+            message: `Order "${args.orderTitle ?? args.orderId}" berhasil dihapus.`,
+          },
           success: true,
         };
       }

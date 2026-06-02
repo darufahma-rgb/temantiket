@@ -1,0 +1,79 @@
+In src/lib/aiCommandCenter.ts, add delete client and delete order 
+tools so AITEM can delete records when user requests it.
+
+CHANGE 1: Add to TOOLS array (before the closing ] of TOOLS):
+
+  {
+    type: "function",
+    function: {
+      name: "delete_client",
+      description: "Hapus klien dari database. SELALU gunakan confirm_action dulu sebelum menghapus. Gunakan ketika user minta 'hapus klien', 'delete jamaah', atau 'hilangkan data klien X'. Cari clientId dulu dengan get_clients jika belum tahu.",
+      parameters: {
+        type: "object",
+        properties: {
+          clientId: { type: "string", description: "ID klien yang akan dihapus" },
+          clientName: { type: "string", description: "Nama klien untuk konfirmasi (opsional)" },
+        },
+        required: ["clientId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_order",
+      description: "Hapus order dari database. SELALU gunakan confirm_action dulu sebelum menghapus. Gunakan ketika user minta 'hapus order', 'delete order X', atau 'batalkan dan hapus order'.",
+      parameters: {
+        type: "object",
+        properties: {
+          orderId: { type: "string", description: "ID order yang akan dihapus" },
+          orderTitle: { type: "string", description: "Judul order untuk konfirmasi (opsional)" },
+        },
+        required: ["orderId"],
+      },
+    },
+  },
+
+CHANGE 2: Add cases in executeTool switch, before the default: case:
+
+    case "delete_client": {
+      const { removeClient } = useClientsStore.getState();
+      await removeClient(args.clientId as string);
+      return {
+        result: JSON.stringify({ success: true, clientId: args.clientId, deleted: true }),
+        displayData: { 
+          type: "delete_client", 
+          clientId: args.clientId,
+          clientName: args.clientName ?? "Klien",
+          message: `Klien "${args.clientName ?? args.clientId}" berhasil dihapus.`,
+        },
+        success: true,
+      };
+    }
+
+    case "delete_order": {
+      const { removeOrder } = useOrdersStore.getState();
+      await removeOrder(args.orderId as string);
+      return {
+        result: JSON.stringify({ success: true, orderId: args.orderId, deleted: true }),
+        displayData: {
+          type: "delete_order",
+          orderId: args.orderId,
+          orderTitle: args.orderTitle ?? "Order",
+          message: `Order "${args.orderTitle ?? args.orderId}" berhasil dihapus.`,
+        },
+        success: true,
+      };
+    }
+
+CHANGE 3: Update system prompt in buildSystemPrompt.
+Find the capabilities section and add:
+"- Untuk hapus data (delete_client, delete_order): WAJIB gunakan confirm_action dulu dengan pesan peringatan yang jelas bahwa data tidak bisa dikembalikan. Contoh summary: '⚠️ HAPUS PERMANEN: Klien Ahmad Fauzi dan semua riwayat ordernya akan dihapus. Tindakan ini tidak bisa dibatalkan.' Baru eksekusi setelah user konfirmasi."
+
+CHANGE 4: Verify removeClient and removeOrder exist in the stores.
+Check src/store/clientsStore.ts — find the function name used for deleting a client.
+Check src/store/ordersStore.ts — find the function name used for deleting an order.
+If the function names are different (e.g. deleteClient, destroyOrder, etc.), 
+use the correct names in the cases above.
+
+After changes run: npx tsc --noEmit and fix all errors before committing.
