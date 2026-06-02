@@ -344,7 +344,7 @@ export function CeoDailyQuest() {
                         { icon: ShoppingBag,  label: "Buat Order",    path: "/orders",        color: "#6366f1", bg: "rgba(99,102,241,0.08)"   },
                         { icon: Users,        label: "Tambah Klien",  path: "/clients",       color: "#10b981", bg: "rgba(16,185,129,0.08)"   },
                         { icon: Package,      label: "Buat Trip",     path: "/packages",      color: "#f59e0b", bg: "rgba(245,158,11,0.08)"   },
-                        { icon: MessageSquare,label: "Broadcast",     path: "/bc-templates",  color: "#0ea5e9", bg: "rgba(14,165,233,0.08)"   },
+                        { icon: MessageSquare,label: "Broadcast",     path: "/bc-templates",  color: "#0ea5e9", bg: "rgba(8,102,255,0.08)"   },
                       ].map((action) => (
                         <button
                           key={action.path}

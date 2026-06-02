@@ -67,7 +67,7 @@ export function SplashScreen() {
             className="absolute inset-0 pointer-events-none"
             style={{
               background:
-                "radial-gradient(circle at 50% 42%, rgba(14,165,233,0.55) 0%, rgba(14,165,233,0.18) 22%, transparent 55%)",
+                "radial-gradient(circle at 50% 42%, rgba(8,102,255,0.55) 0%, rgba(8,102,255,0.18) 22%, transparent 55%)",
             }}
             animate={{ opacity: [0.55, 0.95, 0.55], scale: [1, 1.08, 1] }}
             transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
@@ -142,7 +142,7 @@ export function SplashScreen() {
                 <img
                   src="/temantiket-icon.svg"
                   alt="Temantiket"
-                  className="h-16 w-16 object-contain drop-shadow-[0_12px_32px_rgba(14,165,233,0.45)]"
+                  className="h-16 w-16 object-contain drop-shadow-[0_12px_32px_rgba(8,102,255,0.45)]"
                   onError={(e) => {
                     const img = e.target as HTMLImageElement;
                     img.style.display = "none";
@@ -232,7 +232,7 @@ export function SplashScreen() {
                         background:
                           "linear-gradient(90deg, #6694ff, #0866FF, #a8c0ff, #0866FF, #6694ff)",
                         backgroundSize: "200% 100%",
-                        boxShadow: "0 0 12px rgba(14,165,233,0.7)",
+                        boxShadow: "0 0 12px rgba(8,102,255,0.7)",
                       }}
                       initial={{ width: "0%", backgroundPosition: "0% 0%" }}
                       animate={{ width: "100%", backgroundPosition: "200% 0%" }}
@@ -344,7 +344,7 @@ export function SplashScreen() {
                         style={{
                           background: "linear-gradient(135deg, #0866FF 0%, #0866FF 60%, #6694ff 100%)",
                           color: "white",
-                          boxShadow: "0 8px 28px rgba(14,165,233,0.4)",
+                          boxShadow: "0 8px 28px rgba(8,102,255,0.4)",
                         }}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}

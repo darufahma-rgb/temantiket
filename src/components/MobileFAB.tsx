@@ -18,7 +18,7 @@ interface MobileFABProps {
 const FAB_BOTTOM = "calc(78px + env(safe-area-inset-bottom, 0px))";
 
 const GRADIENT = "linear-gradient(135deg, #0866FF, #0654D6)";
-const SHADOW   = "0 8px 24px -4px rgba(26,68,212,0.48)";
+const SHADOW   = "0 8px 24px -4px rgba(8,102,255,0.48)";
 
 function useKeyboardOpen() {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
@@ -68,7 +68,7 @@ export function MobileFAB({ onClick, icon, label, actions }: MobileFABProps) {
                   transition={{ type: "spring", stiffness: 420, damping: 28, delay: i * 0.055 }}
                   onClick={() => { action.onClick(); setOpen(false); }}
                   className="flex items-center gap-2 h-10 pl-3 pr-4 rounded-full text-white text-[12.5px] font-semibold active:scale-95 transition-transform"
-                  style={{ background: GRADIENT, boxShadow: "0 4px 14px rgba(26,68,212,0.38)" }}
+                  style={{ background: GRADIENT, boxShadow: "0 4px 14px rgba(8,102,255,0.38)" }}
                 >
                   <span className="flex items-center justify-center h-5 w-5">{action.icon}</span>
                   {action.label}

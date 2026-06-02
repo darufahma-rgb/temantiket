@@ -966,7 +966,7 @@ export default function Dashboard() {
                   onNavigate={navigate}
                   items={[
                     { icon: ShoppingBag,  label: "Pesanan",    path: "/orders",        color: "#8b5cf6", bg: "rgba(139,92,246,0.09)"  },
-                    { icon: Users,        label: "Klien",      path: "/clients",       color: "#0ea5e9", bg: "rgba(14,165,233,0.09)"   },
+                    { icon: Users,        label: "Klien",      path: "/clients",       color: "#0ea5e9", bg: "rgba(8,102,255,0.09)"   },
                     { icon: Ticket,       label: "Harga Tiket",path: "/ticket-prices", color: "#f59e0b", bg: "rgba(245,158,11,0.09)"   },
                     { icon: Package,      label: "Paket/Trip", path: "/packages",      color: "#10b981", bg: "rgba(16,185,129,0.09)"   },
                     { icon: StickyNote,   label: "Catatan",    path: "/notes",         color: "#ec4899", bg: "rgba(236,72,153,0.09)"   },
@@ -1237,7 +1237,7 @@ export default function Dashboard() {
             {/* Decorative background */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
               <div className="absolute -top-20 -right-20 h-72 w-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,255,255,0.07) 0%, transparent 65%)" }} />
-              <div className="absolute -bottom-16 left-1/3 h-56 w-56 rounded-full" style={{ background: "radial-gradient(circle, rgba(26,68,212,0.35) 0%, transparent 70%)" }} />
+              <div className="absolute -bottom-16 left-1/3 h-56 w-56 rounded-full" style={{ background: "radial-gradient(circle, rgba(8,102,255,0.35) 0%, transparent 70%)" }} />
               <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "28px 28px" }} />
             </div>
 
@@ -1315,7 +1315,7 @@ export default function Dashboard() {
               value: fmtStatValue(totalProfit),
               growth: profitGrowth,
               iconColor: "#0ea5e9",
-              iconBg: "rgba(14,165,233,0.1)",
+              iconBg: "rgba(8,102,255,0.1)",
               onClick: () => navigate("/reports"),
             },
           ].map((stat) => (

@@ -90,7 +90,7 @@ export default function Login() {
       {/* Cobalt aurora blob */}
       <motion.div
         className="pointer-events-none absolute -top-24 -left-24 h-[360px] w-[360px] rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(0,100,224,0.28) 0%, rgba(0,100,224,0) 70%)", filter: "blur(48px)" }}
+        style={{ background: "radial-gradient(circle, rgba(8,102,255,0.28) 0%, rgba(8,102,255,0) 70%)", filter: "blur(48px)" }}
         animate={{ scale: [1, 1.22, 1], opacity: [0.55, 0.85, 0.55] }}
         transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
       />
@@ -113,7 +113,7 @@ export default function Login() {
           src="/temantiket-logo-new.png"
           alt="Temantiket"
           className="h-14 w-auto object-contain mb-6"
-          style={{ filter: "drop-shadow(0 4px 20px rgba(0,100,224,0.50)) brightness(0) invert(1)" }}
+          style={{ filter: "drop-shadow(0 4px 20px rgba(8,102,255,0.50)) brightness(0) invert(1)" }}
         />
 
         <AnimatePresence mode="wait">

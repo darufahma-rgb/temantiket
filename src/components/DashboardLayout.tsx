@@ -235,7 +235,7 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
                   height: 30,
                   fontSize: "11.5px",
                   background: "linear-gradient(140deg, #0866FF 0%, #0866FF 55%, #0654D6 100%)",
-                  boxShadow: "0 2px 8px rgba(26,68,212,0.35)",
+                  boxShadow: "0 2px 8px rgba(8,102,255,0.35)",
                 }}
               >
                 {displayName.charAt(0).toUpperCase()}
@@ -400,7 +400,7 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
               {isActive && (
                 <span
                   className="absolute top-[8px] w-10 h-8 rounded-full"
-                  style={{ background: "rgba(26,68,212,0.10)" }}
+                  style={{ background: "rgba(8,102,255,0.10)" }}
                 />
               )}
               <item.icon

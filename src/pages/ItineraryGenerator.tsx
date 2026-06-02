@@ -163,8 +163,8 @@ async function renderTravelCard(canvas: HTMLCanvasElement, data: ItineraryData, 
 
   // Subtle radial accent — top-right
   const glowTR = ctx.createRadialGradient(W, 0, 0, W, 0, 520);
-  glowTR.addColorStop(0, "rgba(14,165,233,0.22)");
-  glowTR.addColorStop(0.5, "rgba(14,165,233,0.06)");
+  glowTR.addColorStop(0, "rgba(8,102,255,0.22)");
+  glowTR.addColorStop(0.5, "rgba(8,102,255,0.06)");
   glowTR.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = glowTR;
   ctx.fillRect(0, 0, W, H);
@@ -185,7 +185,7 @@ async function renderTravelCard(canvas: HTMLCanvasElement, data: ItineraryData, 
 
   // ── Header bar ──
   roundRect(ctx, 0, 0, W, 100, 0);
-  ctx.fillStyle = "rgba(14,165,233,0.08)";
+  ctx.fillStyle = "rgba(8,102,255,0.08)";
   ctx.fill();
 
   const logo = await loadImage("/temantiket-icon.svg");
@@ -209,9 +209,9 @@ async function renderTravelCard(canvas: HTMLCanvasElement, data: ItineraryData, 
   const badgeX = W - badgeW - 48;
   const badgeY = cursorY + 5;
   roundRect(ctx, badgeX, badgeY, badgeW, badgeH, 6);
-  ctx.fillStyle = "rgba(14,165,233,0.20)";
+  ctx.fillStyle = "rgba(8,102,255,0.20)";
   ctx.fill();
-  ctx.strokeStyle = "rgba(14,165,233,0.55)";
+  ctx.strokeStyle = "rgba(8,102,255,0.55)";
   ctx.lineWidth = 1;
   ctx.stroke();
   ctx.fillStyle = "#7DD3FC";
@@ -231,7 +231,7 @@ async function renderTravelCard(canvas: HTMLCanvasElement, data: ItineraryData, 
   }
 
   // Divider
-  ctx.strokeStyle = "rgba(14,165,233,0.18)";
+  ctx.strokeStyle = "rgba(8,102,255,0.18)";
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(48, cursorY); ctx.lineTo(W - 48, cursorY); ctx.stroke();
   cursorY += 32;
@@ -245,11 +245,11 @@ async function renderTravelCard(canvas: HTMLCanvasElement, data: ItineraryData, 
     // Card background
     roundRect(ctx, 44, cursorY, W - 88, legCardH, 18);
     const cardBg = ctx.createLinearGradient(44, cursorY, W - 44, cursorY + legCardH);
-    cardBg.addColorStop(0, "rgba(14,165,233,0.11)");
-    cardBg.addColorStop(1, "rgba(14,165,233,0.04)");
+    cardBg.addColorStop(0, "rgba(8,102,255,0.11)");
+    cardBg.addColorStop(1, "rgba(8,102,255,0.04)");
     ctx.fillStyle = cardBg;
     ctx.fill();
-    ctx.strokeStyle = "rgba(14,165,233,0.28)";
+    ctx.strokeStyle = "rgba(8,102,255,0.28)";
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
@@ -289,7 +289,7 @@ async function renderTravelCard(canvas: HTMLCanvasElement, data: ItineraryData, 
     const toW = (() => { ctx.save(); ctx.font = `700 ${bigFontSize}px system-ui, sans-serif`; const w = ctx.measureText(leg.toCode ?? "???").width; ctx.restore(); return w; })();
     const lineY = codeY - Math.round(bigFontSize * 0.34);
     ctx.setLineDash([5, 6]);
-    ctx.strokeStyle = "rgba(14,165,233,0.40)";
+    ctx.strokeStyle = "rgba(8,102,255,0.40)";
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(70 + fromW + 14, lineY); ctx.lineTo(W / 2 - 28, lineY); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(W / 2 + 28, lineY); ctx.lineTo(W - 70 - toW - 14, lineY); ctx.stroke();
@@ -363,7 +363,7 @@ async function renderTravelCard(canvas: HTMLCanvasElement, data: ItineraryData, 
   // ── Smart tips ──
   const tips = buildSmartTips(data.legs);
   if (tips.length > 0) {
-    ctx.strokeStyle = "rgba(14,165,233,0.15)";
+    ctx.strokeStyle = "rgba(8,102,255,0.15)";
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(48, cursorY); ctx.lineTo(W - 48, cursorY); ctx.stroke();
     cursorY += 24;
@@ -399,11 +399,11 @@ async function renderTravelCard(canvas: HTMLCanvasElement, data: ItineraryData, 
 
     roundRect(ctx, 44, cursorY, W - 88, 50, 12);
     const priceBg = ctx.createLinearGradient(44, cursorY, W - 44, cursorY + 50);
-    priceBg.addColorStop(0, "rgba(14,165,233,0.14)");
-    priceBg.addColorStop(1, "rgba(14,165,233,0.05)");
+    priceBg.addColorStop(0, "rgba(8,102,255,0.14)");
+    priceBg.addColorStop(1, "rgba(8,102,255,0.05)");
     ctx.fillStyle = priceBg;
     ctx.fill();
-    ctx.strokeStyle = "rgba(14,165,233,0.25)";
+    ctx.strokeStyle = "rgba(8,102,255,0.25)";
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.font = "600 18px system-ui, sans-serif";
@@ -418,7 +418,7 @@ async function renderTravelCard(canvas: HTMLCanvasElement, data: ItineraryData, 
   const footerY = Math.max(cursorY + 24, H - 66);
 
   // Footer separator
-  ctx.strokeStyle = "rgba(14,165,233,0.12)";
+  ctx.strokeStyle = "rgba(8,102,255,0.12)";
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(48, footerY); ctx.lineTo(W - 48, footerY); ctx.stroke();
 
@@ -466,8 +466,8 @@ async function renderSocialCard(canvas: HTMLCanvasElement, data: ItineraryData):
 
   // Glow
   const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 460);
-  glow.addColorStop(0, "rgba(14,165,233,0.13)");
-  glow.addColorStop(1, "rgba(14,165,233,0)");
+  glow.addColorStop(0, "rgba(8,102,255,0.13)");
+  glow.addColorStop(1, "rgba(8,102,255,0)");
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, S, S);
 
@@ -505,7 +505,7 @@ async function renderSocialCard(canvas: HTMLCanvasElement, data: ItineraryData):
   const fromW2 = (() => { ctx.save(); ctx.font = "700 100px system-ui, sans-serif"; const w = ctx.measureText(fromCode).width; ctx.restore(); return w; })();
   const toW2 = (() => { ctx.save(); ctx.font = "700 100px system-ui, sans-serif"; const w = ctx.measureText(toCode).width; ctx.restore(); return w; })();
   ctx.setLineDash([7, 7]);
-  ctx.strokeStyle = "rgba(14,165,233,0.35)";
+  ctx.strokeStyle = "rgba(8,102,255,0.35)";
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(56 + fromW2 + 16, centerY - 34); ctx.lineTo(S / 2 - 36, centerY - 34); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(S / 2 + 36, centerY - 34); ctx.lineTo(S - 56 - toW2 - 16, centerY - 34); ctx.stroke();
@@ -540,7 +540,7 @@ async function renderSocialCard(canvas: HTMLCanvasElement, data: ItineraryData):
   ctx.fillText([dateStr, flightStr].filter(Boolean).join("   ·   "), S / 2, dateY);
 
   const divY = S * 0.70;
-  ctx.strokeStyle = "rgba(14,165,233,0.18)";
+  ctx.strokeStyle = "rgba(8,102,255,0.18)";
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(48, divY); ctx.lineTo(S - 48, divY); ctx.stroke();
 

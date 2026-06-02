@@ -155,7 +155,7 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, AppErrorState>
                 fontSize: "0.8125rem",
                 border: "none",
                 cursor: "pointer",
-                boxShadow: "0 4px 12px rgba(26,68,212,0.4)",
+                boxShadow: "0 4px 12px rgba(8,102,255,0.4)",
               }}
             >
               Muat Ulang

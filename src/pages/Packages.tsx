@@ -786,7 +786,7 @@ export default function Packages() {
                     <motion.div
                       key={pkg.id}
                       onClick={() => navigate(`/packages/${pkg.id}`)}
-                      className="group overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-[0_14px_40px_-24px_rgba(14,165,233,0.55)] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_20px_48px_-24px_rgba(15,23,42,0.30)] cursor-pointer"
+                      className="group overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-[0_14px_40px_-24px_rgba(8,102,255,0.55)] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_20px_48px_-24px_rgba(15,23,42,0.30)] cursor-pointer"
                       style={{ fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif" }}
                       variants={{
                         hidden:   { opacity: 0, y: 18, scale: 0.96 },
