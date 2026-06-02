@@ -404,6 +404,105 @@ PENTING:
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "create_client",
+      description: "Tambah klien baru ke database. Gunakan ketika user cerita tentang jamaah/klien baru yang mau didaftarkan. Ekstrak nama, nomor HP, email, nomor paspor, tanggal lahir, jenis kelamin dari cerita user secara cerdas.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Nama lengkap klien" },
+          phone: { type: "string", description: "Nomor HP (format: 08xx atau +62xx)" },
+          email: { type: "string", description: "Email klien (opsional)" },
+          gender: { type: "string", enum: ["L", "P"], description: "L = laki-laki, P = perempuan" },
+          birthDate: { type: "string", description: "Tanggal lahir format YYYY-MM-DD (opsional)" },
+          birthPlace: { type: "string", description: "Tempat lahir (opsional)" },
+          passportNumber: { type: "string", description: "Nomor paspor (opsional)" },
+          passportExpiry: { type: "string", description: "Tanggal kadaluarsa paspor format YYYY-MM-DD (opsional)" },
+          notes: { type: "string", description: "Catatan tambahan tentang klien (opsional)" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_order",
+      description: "Buat order baru untuk klien. Gunakan ketika user cerita ada jamaah yang mau order tiket, umrah, atau visa. Cari clientId dulu dengan get_clients jika belum tahu.",
+      parameters: {
+        type: "object",
+        properties: {
+          clientId: { type: "string", description: "ID klien dari database (gunakan get_clients untuk cari)" },
+          type: { type: "string", enum: ["umrah", "flight", "visa_voa", "visa_student"], description: "Tipe order" },
+          title: { type: "string", description: "Judul order, contoh: 'Tiket QR978 CGK-DOH 15 Mar'" },
+          totalPrice: { type: "number", description: "Harga jual total" },
+          costPrice: { type: "number", description: "Harga modal/HPP (opsional)" },
+          currency: { type: "string", enum: ["IDR", "EGP"], description: "Mata uang (default: IDR)" },
+          status: { type: "string", enum: ["Draft", "Confirmed", "Paid"], description: "Status awal order (default: Draft)" },
+          notes: { type: "string", description: "Catatan order (opsional)" },
+          departureDateStr: { type: "string", description: "Tanggal keberangkatan format YYYY-MM-DD (opsional)" },
+        },
+        required: ["clientId", "type", "title", "totalPrice"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_order_status",
+      description: "Update status order yang sudah ada. Gunakan ketika user bilang order sudah dibayar, dikonfirmasi, selesai, atau dibatalkan.",
+      parameters: {
+        type: "object",
+        properties: {
+          orderId: { type: "string", description: "ID order yang akan diupdate" },
+          status: { type: "string", enum: ["Draft", "Confirmed", "Paid", "Completed", "Cancelled"], description: "Status baru" },
+          notes: { type: "string", description: "Catatan tambahan (opsional)" },
+        },
+        required: ["orderId", "status"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_client",
+      description: "Update data klien yang sudah ada. Gunakan ketika user ingin update nomor paspor, nomor HP, atau data lain dari klien.",
+      parameters: {
+        type: "object",
+        properties: {
+          clientId: { type: "string", description: "ID klien yang akan diupdate" },
+          name: { type: "string", description: "Nama baru (opsional)" },
+          phone: { type: "string", description: "Nomor HP baru (opsional)" },
+          email: { type: "string", description: "Email baru (opsional)" },
+          passportNumber: { type: "string", description: "Nomor paspor baru (opsional)" },
+          passportExpiry: { type: "string", description: "Tanggal kadaluarsa paspor baru format YYYY-MM-DD (opsional)" },
+          birthDate: { type: "string", description: "Tanggal lahir baru format YYYY-MM-DD (opsional)" },
+          birthPlace: { type: "string", description: "Tempat lahir baru (opsional)" },
+          gender: { type: "string", enum: ["L", "P"], description: "Jenis kelamin (opsional)" },
+          notes: { type: "string", description: "Catatan baru (opsional)" },
+        },
+        required: ["clientId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "confirm_action",
+      description: "Tampilkan ringkasan aksi yang akan dilakukan dan minta konfirmasi dari user sebelum menyimpan data. Gunakan SELALU sebelum create_client, create_order, update_order_status, atau update_client. Jangan langsung simpan data tanpa konfirmasi.",
+      parameters: {
+        type: "object",
+        properties: {
+          actionType: { type: "string", enum: ["create_client", "create_order", "update_order_status", "update_client"], description: "Tipe aksi yang akan dilakukan" },
+          summary: { type: "string", description: "Ringkasan data yang akan disimpan dalam bahasa Indonesia yang mudah dibaca" },
+          data: { type: "object", description: "Data lengkap yang akan disimpan" },
+        },
+        required: ["actionType", "summary", "data"],
+      },
+    },
+  },
 ];
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -634,7 +733,25 @@ Lo TIDAK membantu:
 - Hal yang sama sekali tidak ada kaitannya dengan bisnis/operasional Temantiket
 
 CARA MENOLAK (hanya untuk hal yang benar-benar di luar zona):
-Tolak singkat dan arahkan balik: "Wkwk itu di luar zona gue bro — gue cuma bisa bantu urusan Temantiket. Ada yang mau dicek dari sistem?"`;
+Tolak singkat dan arahkan balik: "Wkwk itu di luar zona gue bro — gue cuma bisa bantu urusan Temantiket. Ada yang mau dicek dari sistem?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 KEMAMPUAN INPUT DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Kamu bisa tambah klien baru, buat order, dan update data langsung ke sistem.
+Cara kerjamu saat user input data:
+1. Ekstrak semua informasi dari cerita user secara cerdas (nama, HP, tipe order, harga, dll)
+2. Jika ada info yang kurang untuk field wajib, tanya dengan spesifik — jangan tanya semua sekaligus
+3. SELALU gunakan confirm_action dulu sebelum menyimpan — tampilkan ringkasan data yang akan disimpan
+4. Tunggu user bilang 'ya', 'oke', 'lanjut', atau konfirmasi sejenis sebelum eksekusi
+5. Setelah berhasil simpan, kasih tahu user dengan jelas dan refresh data terkait
+6. Jika user cerita tentang klien yang sudah ada (misal update paspor), cari dulu dengan get_clients
+
+Contoh flow yang benar:
+User: 'ada jamaah baru namanya Ahmad Fauzi HP 081234567890 mau umrah'
+AITEM: gunakan confirm_action dengan summary lengkap
+User: 'ya betul'
+AITEM: eksekusi create_client lalu create_order`;
 }
 
 // ── Tool executor ────────────────────────────────────────────────────────────
@@ -1256,6 +1373,95 @@ async function executeTool(
             proposedContent,
             editSummary,
             targetType,
+          },
+          success: true,
+        };
+      }
+
+      case "create_client": {
+        const { addClient } = await import("@/store/clientsStore").then(m => m.useClientsStore.getState());
+        const clientData = {
+          name: args.name as string,
+          phone: (args.phone as string) || null,
+          email: (args.email as string) || null,
+          gender: (args.gender as "L" | "P") || null,
+          birthDate: (args.birthDate as string) || null,
+          birthPlace: (args.birthPlace as string) || null,
+          passportNumber: (args.passportNumber as string) || null,
+          passportExpiry: (args.passportExpiry as string) || null,
+          notes: (args.notes as string) || null,
+        };
+        const newClient = await addClient(clientData);
+        return {
+          result: JSON.stringify({ success: true, clientId: newClient?.id, name: clientData.name }),
+          displayData: { type: "create_client", client: clientData, id: newClient?.id },
+          success: true,
+        };
+      }
+
+      case "create_order": {
+        const { addOrder } = await import("@/store/ordersStore").then(m => m.useOrdersStore.getState());
+        const orderData = {
+          clientId: args.clientId as string,
+          type: args.type as string,
+          title: args.title as string,
+          totalPrice: args.totalPrice as number,
+          costPrice: (args.costPrice as number) || 0,
+          currency: (args.currency as string) || "IDR",
+          status: (args.status as string) || "Draft",
+          notes: (args.notes as string) || null,
+          departureDateStr: (args.departureDateStr as string) || null,
+          agencyId,
+          createdByAgent: userId,
+        };
+        const newOrder = await addOrder(orderData);
+        return {
+          result: JSON.stringify({ success: true, orderId: newOrder?.id, title: orderData.title }),
+          displayData: { type: "create_order", order: orderData, id: newOrder?.id },
+          success: true,
+        };
+      }
+
+      case "update_order_status": {
+        const { patchOrder } = await import("@/store/ordersStore").then(m => m.useOrdersStore.getState());
+        await patchOrder(args.orderId as string, {
+          status: args.status as string,
+          ...(args.notes ? { notes: args.notes as string } : {}),
+        });
+        return {
+          result: JSON.stringify({ success: true, orderId: args.orderId, newStatus: args.status }),
+          displayData: { type: "update_order_status", orderId: args.orderId, status: args.status },
+          success: true,
+        };
+      }
+
+      case "update_client": {
+        const { patchClient } = await import("@/store/clientsStore").then(m => m.useClientsStore.getState());
+        const { clientId, ...rest } = args as Record<string, string>;
+        const patch = Object.fromEntries(
+          Object.entries(rest).filter(([, v]) => v !== undefined && v !== null && v !== "")
+        );
+        await patchClient(clientId, patch);
+        return {
+          result: JSON.stringify({ success: true, clientId, updated: Object.keys(patch) }),
+          displayData: { type: "update_client", clientId, updated: patch },
+          success: true,
+        };
+      }
+
+      case "confirm_action": {
+        return {
+          result: JSON.stringify({
+            status: "awaiting_confirmation",
+            actionType: args.actionType,
+            summary: args.summary,
+            data: args.data,
+          }),
+          displayData: {
+            type: "confirm_action",
+            actionType: args.actionType,
+            summary: args.summary as string,
+            data: args.data,
           },
           success: true,
         };

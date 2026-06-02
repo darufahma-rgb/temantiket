@@ -1,0 +1,81 @@
+In src/lib/aiCommandCenter.ts, add a cash flow prediction tool.
+
+CHANGE 1: Add to TOOLS array:
+
+  {
+    type: "function",
+    function: {
+      name: "predict_cashflow",
+      description: "Prediksi cash flow dan estimasi pendapatan bulan depan berdasarkan pipeline order aktif (Draft + Confirmed). Beri peringatan jika pipeline tipis. Gunakan ketika user tanya 'estimasi bulan depan', 'pipeline bulan ini', 'prediksi revenue', atau 'perkiraan pendapatan'.",
+      parameters: {
+        type: "object",
+        properties: {
+          months: { type: "number", description: "Berapa bulan ke depan yang diprediksi (default: 1)" },
+        },
+        required: [],
+      },
+    },
+  },
+
+CHANGE 2: Add case in executeTool:
+
+    case "predict_cashflow": {
+      const agencyId = useAuthStore.getState().user?.agencyId ?? "";
+      const egpRate = useRatesStore.getState().rates.EGP ?? 515;
+      const allOrders = await listOrders(agencyId);
+      
+      const draftOrders = allOrders.filter(o => o.status === "Draft");
+      const confirmedOrders = allOrders.filter(o => o.status === "Confirmed");
+      
+      const draftPotential = draftOrders.reduce((sum, o) => sum + revenueIDR(o, egpRate), 0);
+      const confirmedPotential = confirmedOrders.reduce((sum, o) => sum + revenueIDR(o, egpRate), 0);
+      
+      // Conversion rate estimate: Draft→Confirmed ~40%, Confirmed→Paid ~80%
+      const estimatedRevenue = (draftPotential * 0.4) + (confirmedPotential * 0.8);
+      
+      // Compare with last month
+      const lastMonth = new Date();
+      lastMonth.setMonth(lastMonth.getMonth() - 1);
+      const lastMonthStr = lastMonth.toISOString().slice(0, 7);
+      const lastMonthOrders = allOrders.filter(o => 
+        o.status === "Completed" || o.status === "Paid"
+      ).filter(o => (o.createdAt ?? "").startsWith(lastMonthStr));
+      const lastMonthRevenue = lastMonthOrders.reduce((sum, o) => sum + revenueIDR(o, egpRate), 0);
+      
+      const trend = lastMonthRevenue > 0 
+        ? ((estimatedRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1)
+        : null;
+      
+      const warnings = [];
+      if (draftOrders.length === 0 && confirmedOrders.length === 0) {
+        warnings.push("⚠️ KRITIS: Pipeline kosong! Tidak ada order aktif sama sekali.");
+      } else if (estimatedRevenue < lastMonthRevenue * 0.5) {
+        warnings.push("⚠️ Pipeline sangat tipis — estimasi revenue bulan depan turun >50% dari bulan lalu.");
+      } else if (draftOrders.length > confirmedOrders.length * 2) {
+        warnings.push("💡 Banyak order masih Draft — perlu follow up aktif untuk konversi ke Confirmed.");
+      }
+      
+      const result = {
+        draftOrders: draftOrders.length,
+        confirmedOrders: confirmedOrders.length,
+        draftPotential,
+        confirmedPotential,
+        estimatedRevenue,
+        lastMonthRevenue,
+        trend,
+        warnings,
+        breakdown: [
+          { label: "Order Draft (estimasi 40% convert)", value: draftPotential * 0.4, count: draftOrders.length },
+          { label: "Order Confirmed (estimasi 80% lunas)", value: confirmedPotential * 0.8, count: confirmedOrders.length },
+        ],
+      };
+      
+      return {
+        result: JSON.stringify(result),
+        displayData: { type: "cashflow_prediction", ...result },
+        success: true,
+      };
+    }
+
+CHANGE 3: Update system prompt — add:
+"- Untuk prediksi cash flow, jelaskan dengan bahasa sederhana: berapa potensi pendapatan dari pipeline yang ada, berapa yang kemungkinan besar akan convert, dan apa risikonya. Sertakan rekomendasi tindakan konkret."

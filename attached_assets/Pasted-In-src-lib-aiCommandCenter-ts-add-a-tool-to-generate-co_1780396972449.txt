@@ -1,0 +1,99 @@
+In src/lib/aiCommandCenter.ts, add a tool to generate contextual 
+marketing captions based on active packages in database.
+
+CHANGE 1: Add to TOOLS array:
+
+  {
+    type: "function",
+    function: {
+      name: "generate_marketing_caption",
+      description: "Generate caption marketing Instagram/WhatsApp yang kontekstual berdasarkan paket aktif di database. Jauh lebih relevan dari caption generik karena pakai data nyata (nama paket, harga, tanggal, kuota). Gunakan ketika user minta 'buatkan caption', 'caption untuk paket X', 'konten marketing', atau 'post Instagram'.",
+      parameters: {
+        type: "object",
+        properties: {
+          packageId: { type: "string", description: "ID paket spesifik (opsional, akan ambil paket terbaru jika tidak ada)" },
+          platform: { type: "string", enum: ["instagram", "whatsapp", "both"], description: "Platform target (default: both)" },
+          tone: { type: "string", enum: ["formal", "casual", "excited"], description: "Tone caption (default: casual)" },
+          language: { type: "string", enum: ["id", "en", "ar"], description: "Bahasa caption (default: id)" },
+        },
+        required: [],
+      },
+    },
+  },
+
+CHANGE 2: Add case in executeTool:
+
+    case "generate_marketing_caption": {
+      const { packages, refresh } = await import("@/store/packagesStore").then(m => ({
+        packages: m.usePackagesStore.getState().packages,
+        refresh: m.usePackagesStore.getState().refresh,
+      }));
+      
+      if (packages.length === 0) await refresh();
+      const freshPackages = (await import("@/store/packagesStore")).usePackagesStore.getState().packages;
+      
+      let targetPackage = args.packageId 
+        ? freshPackages.find(p => p.id === args.packageId)
+        : freshPackages.filter(p => p.status === "active" || !p.status)[0];
+      
+      if (!targetPackage) targetPackage = freshPackages[0];
+      if (!targetPackage) {
+        return {
+          result: JSON.stringify({ error: "Tidak ada paket aktif di database" }),
+          displayData: { type: "error", message: "Buat paket dulu di halaman Paket & Trip" },
+          success: false,
+        };
+      }
+
+      const platform = (args.platform as string) ?? "both";
+      const tone = (args.tone as string) ?? "casual";
+      
+      const packageInfo = {
+        name: targetPackage.name,
+        price: targetPackage.pricePerPax,
+        currency: "IDR",
+        destination: targetPackage.destination,
+        duration: targetPackage.durationNights,
+        quota: targetPackage.quotaPax,
+        departDate: targetPackage.startDate,
+      };
+
+      const { callAI } = await import("@/lib/aiFetch");
+      const captionRes = await callAI({
+        model: "openai/gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Kamu adalah copywriter marketing travel umrah/haji profesional Indonesia. 
+Buat caption yang menarik, authentic, dan menggunakan data nyata dari paket. 
+Tone: ${tone}. Platform: ${platform}.
+Format output JSON: { "instagram": "...", "whatsapp": "..." }
+Untuk Instagram: gunakan emoji, hashtag relevan, max 2200 karakter.
+Untuk WhatsApp: format broadcast yang personal, tanpa hashtag, max 500 karakter.
+Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsapp, sebaliknya.`
+          },
+          {
+            role: "user",
+            content: `Buatkan caption marketing untuk paket ini:\n${JSON.stringify(packageInfo, null, 2)}`,
+          },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.8,
+        max_tokens: 1000,
+      });
+
+      const captionData = await captionRes.json();
+      const captions = JSON.parse(captionData.choices?.[0]?.message?.content ?? "{}");
+      
+      return {
+        result: JSON.stringify({ success: true, package: packageInfo, captions }),
+        displayData: { 
+          type: "marketing_caption",
+          packageName: targetPackage.name,
+          instagram: captions.instagram,
+          whatsapp: captions.whatsapp,
+          platform,
+        },
+        success: true,
+      };
+    }

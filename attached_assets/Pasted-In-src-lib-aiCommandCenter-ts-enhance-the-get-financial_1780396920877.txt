@@ -1,0 +1,46 @@
+In src/lib/aiCommandCenter.ts, enhance the get_financial_report tool 
+to generate narrative analysis, not just numbers.
+
+CHANGE 1: Find the case "get_financial_report": in executeTool.
+After the existing logic that returns the financial data, before the return statement,
+add narrative generation:
+
+Find the return statement in case "get_financial_report" that returns displayData.
+Before it, add:
+
+      // Generate narrative analysis
+      const prevMonthData = await buildLedgerEntries(agencyId);
+      const summary = ledgerSummary(prevMonthData);
+      
+      const revenueThisMonth = summary.totalRevenue ?? 0;
+      const profitThisMonth = summary.netProfit ?? 0;
+      const cancelledOrders = (await listOrders(agencyId)).filter(o => o.status === "Cancelled").length;
+      const draftOrders = (await listOrders(agencyId)).filter(o => o.status === "Draft").length;
+      const confirmedOrders = (await listOrders(agencyId)).filter(o => o.status === "Confirmed").length;
+      
+      const narrative = [
+        `📊 **Ringkasan Keuangan**`,
+        `Total revenue: ${fmtIDR(revenueThisMonth)} | Net profit: ${fmtIDR(profitThisMonth)}`,
+        profitThisMonth > 0 
+          ? `✅ Bisnis dalam kondisi profit dengan margin ${((profitThisMonth/revenueThisMonth)*100).toFixed(1)}%`
+          : `⚠️ Perlu perhatian — profit masih negatif`,
+        ``,
+        `📌 **Kondisi Pipeline**`,
+        `- ${draftOrders} order masih Draft (belum dikonfirmasi)`,
+        `- ${confirmedOrders} order Confirmed (menunggu pembayaran)`,
+        cancelledOrders > 0 ? `- ⚠️ ${cancelledOrders} order Cancelled — cek penyebabnya` : `- Tidak ada order Cancelled`,
+        ``,
+        draftOrders > 3 
+          ? `💡 **Rekomendasi:** Ada ${draftOrders} order Draft yang perlu di-follow up. Prioritaskan konversi ke Confirmed untuk meningkatkan cash flow.`
+          : `💡 Pipeline sehat. Fokus ke akuisisi klien baru.`,
+      ].join("\n");
+
+Then in the return statement, add narrative to displayData:
+      return {
+        result: JSON.stringify({ ...existingResult, narrative }),
+        displayData: { ...existingDisplayData, narrative },
+        success: true,
+      };
+
+CHANGE 2: Update system prompt — add:
+"- Saat menampilkan laporan keuangan, SELALU sertakan analisis naratif: kondisi profit/loss, pipeline order, dan 1-2 rekomendasi konkret yang actionable. Jangan hanya tampilkan angka."

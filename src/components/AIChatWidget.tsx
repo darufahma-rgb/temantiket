@@ -492,6 +492,22 @@ function ToolResultCard({ result }: { result: ToolResult }) {
     );
   }
 
+  if (type === "confirm_action") {
+    return (
+      <div className="p-3 rounded-xl border border-amber-200 bg-amber-50">
+        <p className="text-xs font-semibold text-amber-800 mb-1">
+          ⚡ Konfirmasi sebelum disimpan
+        </p>
+        <p className="text-sm text-amber-900 whitespace-pre-wrap">
+          {String(d.summary ?? "")}
+        </p>
+        <p className="text-xs text-amber-600 mt-2">
+          Ketik "ya" atau "lanjut" untuk menyimpan data ini.
+        </p>
+      </div>
+    );
+  }
+
   if (type === "invoice_ready") {
     const handleDownload = () => {
       const a = document.createElement("a");

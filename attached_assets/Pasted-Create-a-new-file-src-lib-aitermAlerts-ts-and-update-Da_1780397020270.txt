@@ -1,0 +1,160 @@
+Create a new file src/lib/aitermAlerts.ts and update Dashboard.tsx 
+to show proactive AITEM alerts.
+
+CHANGE 1: Create new file src/lib/aitemAlerts.ts with this content:
+
+import { useOrdersStore } from "@/store/ordersStore";
+import { useClientsStore } from "@/store/clientsStore";
+import { useTripsStore } from "@/store/tripsStore";
+
+export interface AitemAlert {
+  id: string;
+  type: "warning" | "info" | "urgent";
+  title: string;
+  message: string;
+  action?: { label: string; prompt: string };
+}
+
+export function generateAitemAlerts(): AitemAlert[] {
+  const alerts: AitemAlert[] = [];
+  const orders = useOrdersStore.getState().orders;
+  const clients = useClientsStore.getState().clients;
+  const trips = useTripsStore.getState().trips;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().slice(0, 10);
+  const in7Days = new Date(today);
+  in7Days.setDate(in7Days.getDate() + 7);
+  const in30Days = new Date(today);
+  in30Days.setDate(in30Days.getDate() + 30);
+
+  // 1. Paspor akan expired dalam 30 hari
+  const expiringPassports = clients.filter(c => {
+    if (!c.passportExpiry) return false;
+    const exp = new Date(c.passportExpiry);
+    return exp >= today && exp <= in30Days;
+  });
+  if (expiringPassports.length > 0) {
+    alerts.push({
+      id: "passport-expiry",
+      type: "urgent",
+      title: `${expiringPassports.length} Paspor Akan Expired`,
+      message: `${expiringPassports.map(c => c.name).slice(0, 3).join(", ")}${expiringPassports.length > 3 ? ` +${expiringPassports.length - 3} lainnya` : ""} — paspor habis dalam 30 hari`,
+      action: { label: "Cek sekarang", prompt: `Siapa saja jamaah yang paspornya akan expired dalam 30 hari? Berikan daftarnya dan saran tindakan.` },
+    });
+  }
+
+  // 2. Order Draft > 7 hari tidak bergerak
+  const staleDrafts = orders.filter(o => {
+    if (o.status !== "Draft") return false;
+    const created = new Date(o.createdAt ?? "");
+    const diffDays = (today.getTime() - created.getTime()) / 86400000;
+    return diffDays > 7;
+  });
+  if (staleDrafts.length > 0) {
+    alerts.push({
+      id: "stale-drafts",
+      type: "warning",
+      title: `${staleDrafts.length} Order Draft Stagnan`,
+      message: `${staleDrafts.length} order sudah >7 hari di status Draft — perlu follow up`,
+      action: { label: "Lihat detail", prompt: `Tampilkan order Draft yang sudah lebih dari 7 hari tidak bergerak. Siapa kliennya dan apa rekomendasinya?` },
+    });
+  }
+
+  // 3. Keberangkatan dalam 7 hari
+  const upcomingTrips = trips.filter(t => {
+    if (!t.startDate) return false;
+    const dep = new Date(t.startDate);
+    return dep >= today && dep <= in7Days;
+  });
+  if (upcomingTrips.length > 0) {
+    alerts.push({
+      id: "upcoming-departures",
+      type: "info",
+      title: `${upcomingTrips.length} Trip Berangkat Minggu Ini`,
+      message: upcomingTrips.map(t => `${t.name} (${t.startDate})`).join(", "),
+      action: { label: "Siapkan broadcast", prompt: `Buatkan pesan broadcast WhatsApp untuk jamaah yang berangkat minggu ini. Sertakan reminder dokumen dan tips perjalanan.` },
+    });
+  }
+
+  // 4. Pipeline tipis
+  const activeOrders = orders.filter(o => ["Draft", "Confirmed"].includes(o.status));
+  if (activeOrders.length < 3) {
+    alerts.push({
+      id: "thin-pipeline",
+      type: "warning",
+      title: "Pipeline Tipis",
+      message: `Hanya ada ${activeOrders.length} order aktif — saatnya gencarkan marketing`,
+      action: { label: "Buat caption marketing", prompt: "Buatkan caption marketing Instagram untuk paket yang sedang aktif sekarang." },
+    });
+  }
+
+  return alerts;
+}
+
+CHANGE 2: In src/pages/Dashboard.tsx, import and use alerts.
+
+Add import at top:
+  import { generateAitemAlerts, type AitemAlert } from "@/lib/aitemAlerts";
+  import { useAIChatStore } from "@/store/aiChatStore";
+
+Inside the Dashboard component, add:
+  const alerts = useMemo(() => generateAitemAlerts(), [orders, clients, trips]);
+  const openWithText = useAIChatStore(s => s.openWithText);
+
+Add this JSX at the very top of the Dashboard return (before existing content),
+only show if alerts.length > 0:
+
+  {alerts.length > 0 && (
+    <div className="mb-4 space-y-2">
+      {alerts.map(alert => (
+        <div
+          key={alert.id}
+          className={cn(
+            "flex items-start gap-3 px-4 py-3 rounded-xl border text-sm",
+            alert.type === "urgent" && "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800",
+            alert.type === "warning" && "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800",
+            alert.type === "info" && "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800",
+          )}
+        >
+          <span className="text-lg shrink-0">
+            {alert.type === "urgent" ? "🚨" : alert.type === "warning" ? "⚠️" : "💡"}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className={cn(
+              "font-semibold text-sm",
+              alert.type === "urgent" && "text-red-800 dark:text-red-300",
+              alert.type === "warning" && "text-amber-800 dark:text-amber-300",
+              alert.type === "info" && "text-blue-800 dark:text-blue-300",
+            )}>
+              {alert.title}
+            </p>
+            <p className={cn(
+              "text-xs mt-0.5",
+              alert.type === "urgent" && "text-red-600 dark:text-red-400",
+              alert.type === "warning" && "text-amber-600 dark:text-amber-400",
+              alert.type === "info" && "text-blue-600 dark:text-blue-400",
+            )}>
+              {alert.message}
+            </p>
+          </div>
+          {alert.action && (
+            <button
+              onClick={() => openWithText(alert.action!.prompt)}
+              className={cn(
+                "shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors",
+                alert.type === "urgent" && "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-300",
+                alert.type === "warning" && "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-300",
+                alert.type === "info" && "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300",
+              )}
+            >
+              {alert.action.label} →
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
+
+After all changes: npx tsc --noEmit and fix all errors before committing.
