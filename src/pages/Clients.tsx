@@ -39,6 +39,7 @@ import { ClientDocVault } from "@/components/ClientDocVault";
 import { buildMemberSlug, buildPublicMemberUrl } from "@/lib/memberSlug";
 import { decrementReferralStamp } from "@/features/clients/clientsRepo";
 import { useAIContextStore } from "@/store/aiContextStore";
+import { cn } from "@/lib/utils";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const fmtIDR = (v: number) =>
