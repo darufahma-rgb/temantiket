@@ -22,7 +22,7 @@ import {
   FileDown, Copy, ClipboardCheck, X, Edit3, FileText,
 } from "lucide-react";
 import { sendAIMessage, type ChatMessage, type ToolResult, type PageContext } from "@/lib/aiCommandCenter";
-import { useAIChatStore } from "@/store/aiChatStore";
+import { useAIChatStore, type StoredUIMessage, type StoredChatMessage } from "@/store/aiChatStore";
 import { useAIContextStore } from "@/store/aiContextStore";
 import { cn } from "@/lib/utils";
 
@@ -547,12 +547,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 // ── Message bubble ────────────────────────────────────────────────────────────
 
-interface StoredMessage {
-  msg: ChatMessage;
-  toolResults?: ToolResult[];
-}
-
-function MessageBubble({ msg, toolResults }: { msg: ChatMessage; toolResults?: ToolResult[] }) {
+function MessageBubble({ msg, toolResults }: { msg: StoredChatMessage; toolResults?: ToolResult[] }) {
   const isUser = msg.role === "user";
 
   const editPreviews = toolResults?.filter(
@@ -738,12 +733,15 @@ function ContextBadge({ item, page }: { item: { title: string; type: string } | 
 export function AIChatWidget() {
   const { pathname } = useLocation();
   const { isOpen, pendingText, open, close, clearPendingText } = useAIChatStore();
+  const history        = useAIChatStore((s) => s.history);
+  const apiMessages    = useAIChatStore((s) => s.apiMessages);
+  const addUser        = useAIChatStore((s) => s.addUserMessage);
+  const addAssistant   = useAIChatStore((s) => s.addAssistantMessage);
+  const resetConversation = useAIChatStore((s) => s.resetConversation);
   const { page, activeItem } = useAIContextStore();
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState<StoredMessage[]>([]);
-  const [apiMessages, setApiMessages] = useState<ChatMessage[]>([]);
   const [hasUnread, setHasUnread] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -783,8 +781,7 @@ export function AIChatWidget() {
     const userMsg: ChatMessage = { role: "user", content: trimmed };
     const nextApiMessages = [...apiMessages, userMsg];
 
-    setHistory((h) => [...h, { msg: userMsg }]);
-    setApiMessages(nextApiMessages);
+    addUser(userMsg);
     setInput("");
     setLoading(true);
 
@@ -809,16 +806,14 @@ export function AIChatWidget() {
     try {
       const response = await sendAIMessage(nextApiMessages, pageCtx);
       const assistantMsg: ChatMessage = { role: "assistant", content: response.message };
-      setHistory((h) => [...h, { msg: assistantMsg, toolResults: response.toolResults }]);
-      setApiMessages((prev) => [...prev, assistantMsg]);
+      addAssistant(assistantMsg, response.toolResults);
       if (!isOpen) setHasUnread(true);
     } catch (err) {
       const errMsg: ChatMessage = {
         role: "assistant",
         content: `Maaf, terjadi error: ${err instanceof Error ? err.message : "Unknown error"}. Coba lagi ya.`,
       };
-      setHistory((h) => [...h, { msg: errMsg }]);
-      setApiMessages((prev) => [...prev, errMsg]);
+      addAssistant(errMsg, []);
     } finally {
       setLoading(false);
     }
@@ -918,6 +913,11 @@ export function AIChatWidget() {
                 <div className="font-bold text-[15px] text-white leading-tight tracking-tight">AITEM</div>
                 <ContextBadge item={activeItem} page={page} />
               </div>
+              {history.length > 0 && (
+                <span className="text-[10px] text-white/50 mr-2">
+                  {history.filter(h => h.msg.role !== "system").length} pesan
+                </span>
+              )}
               <button
                 onClick={close}
                 className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 active:bg-white/30 flex items-center justify-center transition-colors shrink-0"
@@ -998,7 +998,7 @@ export function AIChatWidget() {
             {!isEmpty && (
               <div className="px-3 py-1 border-t border-border/30 bg-white/80 shrink-0">
                 <button
-                  onClick={() => { setHistory([]); setApiMessages([]); }}
+                  onClick={resetConversation}
                   className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
                 >
                   <RefreshCw className="w-2.5 h-2.5" /> Reset percakapan

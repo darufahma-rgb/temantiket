@@ -1,0 +1,124 @@
+In Temantiket, persist AITEM chat history across page navigations by 
+moving conversation state to Zustand store. Make EXACT changes below:
+
+---
+
+CHANGE 1: src/store/aiChatStore.ts — Add conversation history to store
+
+Replace the entire file content with:
+
+import { create } from "zustand";
+
+export interface StoredChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+export interface StoredUIMessage {
+  msg: StoredChatMessage;
+  toolResults?: Array<{ toolName: string; displayData: Record<string, unknown>; success: boolean }>;
+}
+
+interface AIChatState {
+  isOpen: boolean;
+  pendingText: string | null;
+  history: StoredUIMessage[];
+  apiMessages: StoredChatMessage[];
+  open: () => void;
+  close: () => void;
+  openWithText: (text: string) => void;
+  clearPendingText: () => void;
+  addUserMessage: (msg: StoredChatMessage) => void;
+  addAssistantMessage: (msg: StoredChatMessage, toolResults?: StoredUIMessage["toolResults"]) => void;
+  resetConversation: () => void;
+}
+
+export const useAIChatStore = create<AIChatState>((set) => ({
+  isOpen: false,
+  pendingText: null,
+  history: [],
+  apiMessages: [],
+  open: () => set({ isOpen: true }),
+  close: () => set({ isOpen: false }),
+  openWithText: (text) => set({ isOpen: true, pendingText: text }),
+  clearPendingText: () => set({ pendingText: null }),
+  addUserMessage: (msg) => set((s) => ({
+    history: [...s.history, { msg }],
+    apiMessages: [...s.apiMessages, msg],
+  })),
+  addAssistantMessage: (msg, toolResults) => set((s) => ({
+    history: [...s.history, { msg, toolResults }],
+    apiMessages: [...s.apiMessages, msg],
+  })),
+  resetConversation: () => set({ history: [], apiMessages: [] }),
+}));
+
+---
+
+CHANGE 2: src/components/AIChatWidget.tsx — Use store for history
+
+2a. Add these imports from aiChatStore (they already import useAIChatStore):
+  The existing import line is:
+    import { useAIChatStore } from "@/store/aiChatStore";
+  Change to:
+    import { useAIChatStore, type StoredUIMessage, type StoredChatMessage } from "@/store/aiChatStore";
+
+2b. Inside the AIChatWidget component, find these two useState declarations:
+    const [history, setHistory] = useState<StoredMessage[]>([]);
+    const [apiMessages, setApiMessages] = useState<ChatMessage[]>([]);
+  
+  Remove both lines and replace with store selectors:
+    const history        = useAIChatStore((s) => s.history);
+    const apiMessages    = useAIChatStore((s) => s.apiMessages);
+    const addUser        = useAIChatStore((s) => s.addUserMessage);
+    const addAssistant   = useAIChatStore((s) => s.addAssistantMessage);
+    const resetConversation = useAIChatStore((s) => s.resetConversation);
+
+2c. Find the message sending logic. It currently does:
+    const nextApiMessages = [...apiMessages, userMsg];
+    setHistory((h) => [...h, { msg: userMsg }]);
+    setApiMessages(nextApiMessages);
+    ...
+    const response = await sendAIMessage(nextApiMessages, pageCtx);
+    setHistory((h) => [...h, { msg: assistantMsg, toolResults: response.toolResults }]);
+    setApiMessages((prev) => [...prev, assistantMsg]);
+    ...
+    setHistory((h) => [...h, { msg: errMsg }]);
+    setApiMessages((prev) => [...prev, errMsg]);
+
+  Replace with:
+    addUser(userMsg);
+    const nextApiMessages = [...apiMessages, userMsg];
+    ...
+    const response = await sendAIMessage(nextApiMessages, pageCtx);
+    addAssistant(assistantMsg, response.toolResults);
+    ...
+    addAssistant(errMsg, []);
+
+2d. Find the "Reset percakapan" button. It currently calls something like 
+    setHistory([]) and setApiMessages([]). 
+    Replace with: resetConversation()
+
+2e. Find any local StoredMessage type definition in AIChatWidget.tsx 
+    (something like: interface StoredMessage { msg: ChatMessage; toolResults?: ... })
+    Remove it since it's now imported from the store.
+
+---
+
+CHANGE 3: Add session indicator to chat header
+
+In AIChatWidget.tsx, find the chat header JSX (where "AITEM" title is shown).
+Add a message count indicator next to the reset button:
+
+  {history.length > 0 && (
+    <span className="text-[10px] text-white/50 mr-2">
+      {history.filter(h => h.msg.role !== "system").length} pesan
+    </span>
+  )}
+
+This shows the user how many messages are in the current session.
+
+---
+
+After changes, verify with: npx tsc --noEmit
+Fix any type errors before committing.
