@@ -12,7 +12,7 @@ import { useSyncStatusStore, type SyncStatus } from "@/store/syncStatusStore";
 import { usePresenceStore } from "@/store/presenceStore";
 import { NotificationBell } from "./NotificationBell";
 import {
-  OWNER_BOTTOM_NAV, OWNER_MORE_ITEMS,
+  OWNER_BOTTOM_NAV, OWNER_MORE_ITEMS, OWNER_MORE_GROUPS,
   AGENT_BOTTOM_NAV, AGENT_MORE_ITEMS,
   STAFF_BOTTOM_NAV, STAFF_MORE_ITEMS,
   type MobileNavItem,
@@ -458,36 +458,79 @@ export function DashboardLayout({ children, noPadding = false, hideMobileChrome 
                 </button>
               </div>
 
-              {/* Items grid — icon box + label */}
-              <div className="px-4 pb-5 grid grid-cols-4 gap-x-2 gap-y-4">
-                {moreItems.map((item) => {
-                  const isActive = !!item.path && location.pathname.startsWith(item.path);
-                  return (
-                    <button
-                      key={item.path}
-                      onClick={() => { navigate(item.path!); setMoreOpen(false); }}
-                      className="flex flex-col items-center gap-1.5 active:scale-90 transition-transform"
-                      style={{ WebkitTapHighlightColor: "transparent" }}
-                    >
-                      <div
-                        className="h-12 w-12 rounded-2xl flex items-center justify-center transition-colors"
-                        style={{ background: isActive ? "hsl(var(--primary) / 0.12)" : "hsl(var(--secondary))" }}
-                      >
-                        <item.icon
-                          strokeWidth={isActive ? 2.1 : 1.7}
-                          className="h-5 w-5"
-                          style={{ color: isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
-                        />
+              {/* Items grid — grouped for owner, flat for agent/staff */}
+              <div className="px-4 pb-5">
+                {(!isAgent && !isStaff)
+                  ? OWNER_MORE_GROUPS.map((group) => (
+                      <div key={group.label}>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-1 mb-2 mt-3">
+                          {group.label}
+                        </p>
+                        <div className="grid grid-cols-4 gap-x-2 gap-y-3">
+                          {group.items.map((item) => {
+                            const isActive = !!item.path && location.pathname.startsWith(item.path);
+                            return (
+                              <button
+                                key={item.path}
+                                onClick={() => { navigate(item.path!); setMoreOpen(false); }}
+                                className="flex flex-col items-center gap-1.5 active:scale-90 transition-transform"
+                                style={{ WebkitTapHighlightColor: "transparent" }}
+                              >
+                                <div
+                                  className="h-12 w-12 rounded-2xl flex items-center justify-center transition-colors"
+                                  style={{ background: isActive ? "hsl(var(--primary) / 0.12)" : "hsl(var(--secondary))" }}
+                                >
+                                  <item.icon
+                                    strokeWidth={isActive ? 2.1 : 1.7}
+                                    className="h-5 w-5"
+                                    style={{ color: isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
+                                  />
+                                </div>
+                                <span
+                                  className="text-[10px] font-semibold text-center leading-tight"
+                                  style={{ color: isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
+                                >
+                                  {item.label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <span
-                        className="text-[10px] font-semibold text-center leading-tight"
-                        style={{ color: isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
-                      >
-                        {item.label}
-                      </span>
-                    </button>
-                  );
-                })}
+                    ))
+                  : (
+                    <div className="grid grid-cols-4 gap-x-2 gap-y-4">
+                      {moreItems.map((item) => {
+                        const isActive = !!item.path && location.pathname.startsWith(item.path);
+                        return (
+                          <button
+                            key={item.path}
+                            onClick={() => { navigate(item.path!); setMoreOpen(false); }}
+                            className="flex flex-col items-center gap-1.5 active:scale-90 transition-transform"
+                            style={{ WebkitTapHighlightColor: "transparent" }}
+                          >
+                            <div
+                              className="h-12 w-12 rounded-2xl flex items-center justify-center transition-colors"
+                              style={{ background: isActive ? "hsl(var(--primary) / 0.12)" : "hsl(var(--secondary))" }}
+                            >
+                              <item.icon
+                                strokeWidth={isActive ? 2.1 : 1.7}
+                                className="h-5 w-5"
+                                style={{ color: isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
+                              />
+                            </div>
+                            <span
+                              className="text-[10px] font-semibold text-center leading-tight"
+                              style={{ color: isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
+                            >
+                              {item.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )
+                }
               </div>
 
               {/* Logout row */}

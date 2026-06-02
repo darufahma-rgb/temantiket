@@ -69,7 +69,7 @@ const FLIGHT_SEARCH: NavItemConfig = { icon: SearchCheck,     title: "Cari Harga
 const ITINERARY:     NavItemConfig = { icon: Sparkles,        title: "Itinerary",          label: "Itinerary AI",  url: "/itinerary",        badge: "AI" };
 const CALC:          NavItemConfig = { icon: Calculator,      title: "Kalkulator & Kurs",  label: "Kalkulator",    url: "/calculator"        };
 const BC:            NavItemConfig = { icon: MessageSquare,   title: "Template Broadcast", label: "Broadcast",     url: "/bc-templates"      };
-const CAPTION:       NavItemConfig = { icon: Megaphone,       title: "Caption Generator",  label: "Caption Gen",   url: "/caption-generator", badge: "AI", ownerOnly: true };
+const CAPTION:       NavItemConfig = { icon: Megaphone,       title: "Caption Generator",  label: "Caption Gen",   url: "/caption-generator", badge: "AI" };
 const NOTES:         NavItemConfig = { icon: StickyNote,      title: "Catatan",                                    url: "/notes"             };
 const REPORTS:       NavItemConfig = { icon: BarChart3,       title: "Laporan Keuangan",   label: "Laporan",       url: "/reports"           };
 const EXPORTS:       NavItemConfig = { icon: FileSpreadsheet, title: "Export Center",      label: "Export",        url: "/exports"           };
@@ -103,7 +103,7 @@ export const AGENT_SIDEBAR_SECTIONS: SidebarSectionConfig[] = [
   { key: "home",       label: "",            items: [DASHBOARD_AGENT]                     },
   { key: "bisnis",     label: "Bisnis",      items: [CLIENTS, ORDERS, PACKAGES]           },
   { key: "alat-bantu", label: "Alat Bantu",  items: [TICKETS, ITINERARY, CALC]            },
-  { key: "pemasaran",  label: "Pemasaran",   items: [BC, NOTES]                           },
+  { key: "pemasaran",  label: "Pemasaran",   items: [BC, CAPTION, NOTES]                  },
   { key: "agen",       label: "Agen Saya",   items: [LEADERBOARD, AGENT_CENTER]           },
   { key: "settings",   label: "",            items: [SETTINGS]                            },
 ];
@@ -136,6 +136,15 @@ export const OWNER_MORE_ITEMS: MobileNavItem[] = [
   m(SETTINGS),
 ];
 
+/** Grouped version of OWNER_MORE_ITEMS for mobile "Menu Lengkap" sheet */
+export const OWNER_MORE_GROUPS: { label: string; items: MobileNavItem[] }[] = [
+  { label: "Alat Bantu", items: [m(CALC), m(ITINERARY), m(TICKETS), m(FLIGHT_SEARCH)] },
+  { label: "Keuangan",   items: [m(REPORTS), m(EXPORTS)] },
+  { label: "Pemasaran",  items: [m(BC), m(CAPTION), m(NOTES)] },
+  { label: "Tim & Agen", items: [m(VISA_TRACKER), m(AGENT_CENTER), m(LEADERBOARD), m(STAFF_MGMT), m(AUDIT)] },
+  { label: "Lainnya",    items: [m(SETTINGS)] },
+];
+
 // ── Agent mobile nav ───────────────────────────────────────────────────────────
 
 export const AGENT_BOTTOM_NAV: MobileNavItem[] = [
@@ -148,7 +157,7 @@ export const AGENT_BOTTOM_NAV: MobileNavItem[] = [
 
 export const AGENT_MORE_ITEMS: MobileNavItem[] = [
   m(TICKETS), m(ITINERARY), m(CALC),
-  m(BC), m(NOTES),
+  m(BC), m(CAPTION), m(NOTES),
   m(AGENT_CENTER), m(LEADERBOARD),
   m(SETTINGS),
 ];

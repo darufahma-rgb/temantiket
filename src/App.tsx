@@ -427,7 +427,7 @@ function AnimatedRoutes() {
         }
       />
       <Route path="/bc-templates" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><P name="Template BC"><BCTemplates /></P></DashboardLayout></RequireRole></RequireAuth>} />
-      <Route path="/caption-generator" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><P name="Caption Generator"><CaptionGenerator /></P></DashboardLayout></RequireRole></RequireAuth>} />
+      <Route path="/caption-generator" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><P name="Caption Generator"><CaptionGenerator /></P></DashboardLayout></RequireRole></RequireAuth>} />
       <Route path="/itinerary" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><P name="Itinerary Generator"><ItineraryGenerator /></P></DashboardLayout></RequireRole></RequireAuth>} />
       <Route path="/demo-seed" element={<RequireAuth><RequireRole roles={["owner"]}><DashboardLayout><P name="Demo Seed"><DemoSeed /></P></DashboardLayout></RequireRole></RequireAuth>} />
       <Route path="/ticket-prices" element={<RequireAuth><RequireRole roles={["owner", "agent"]}><DashboardLayout><P name="Harga Tiket"><TicketPrices /></P></DashboardLayout></RequireRole></RequireAuth>} />
