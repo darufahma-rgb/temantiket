@@ -522,6 +522,23 @@ PENTING:
   {
     type: "function",
     function: {
+      name: "auto_assign_missions",
+      description: "Cek performa semua agen dan buat misi otomatis untuk agen yang underperform (order di bawah threshold). Gunakan ketika owner minta 'buatkan misi untuk agen yang kurang aktif', 'assign task ke agen', atau 'motivasi agen yang ordernya sedikit'.",
+      parameters: {
+        type: "object",
+        properties: {
+          minOrders: { type: "number", description: "Threshold minimum order per bulan ini — agen di bawah ini dianggap underperform (default: 3)" },
+          missionTitle: { type: "string", description: "Judul misi yang akan dibuat (opsional, akan di-generate otomatis)" },
+          missionDescription: { type: "string", description: "Deskripsi misi (opsional)" },
+          rewardPoints: { type: "number", description: "Poin reward (default: 15)" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "predict_cashflow",
       description: "Prediksi cash flow dan estimasi pendapatan bulan depan berdasarkan pipeline order aktif (Draft + Confirmed). Beri peringatan jika pipeline tipis. Gunakan ketika user tanya 'estimasi bulan depan', 'pipeline bulan ini', 'prediksi revenue', atau 'perkiraan pendapatan'.",
       parameters: {
@@ -1524,6 +1541,74 @@ async function executeTool(
             actionType: args.actionType,
             summary: args.summary as string,
             data: args.data,
+          },
+          success: true,
+        };
+      }
+
+      case "auto_assign_missions": {
+        const agencyId = useAuthStore.getState().user?.agencyId ?? "";
+        const createdBy = useAuthStore.getState().user?.id ?? "";
+        const minOrders = (args.minOrders as number) ?? 3;
+        const rewardPts = (args.rewardPoints as number) ?? 15;
+
+        const [members, allOrdersForMission] = await Promise.all([
+          useAuthStore.getState().listMembers(),
+          listOrders(),
+        ]);
+        const agents = members.filter((m) => m.role === "agent");
+
+        const thisMonthStr = new Date().toISOString().slice(0, 7);
+        const thisMonthOrders = allOrdersForMission.filter((o) => (o.createdAt ?? "").startsWith(thisMonthStr));
+
+        const underperformers = agents.filter((agent) => {
+          const agentOrders = thisMonthOrders.filter((o) => o.createdByAgent === agent.userId);
+          return agentOrders.length < minOrders;
+        });
+
+        if (underperformers.length === 0) {
+          return {
+            result: JSON.stringify({ success: true, message: "Semua agen sudah memenuhi target!", assigned: 0 }),
+            displayData: { type: "auto_missions", assigned: 0, message: "Semua agen sudah on track! 🎉" },
+            success: true,
+          };
+        }
+
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + 7);
+        deadline.setHours(23, 59, 0, 0);
+
+        const missionTitle = (args.missionTitle as string) || `Target ${minOrders} Order Bulan Ini 🎯`;
+        const missionDesc = (args.missionDescription as string) ||
+          `Kamu perlu mencapai minimal ${minOrders} order bulan ini. Setiap order yang berhasil closed akan mendekatkanmu ke target. Yuk gas! 💪`;
+
+        const missionResults = await Promise.allSettled(
+          underperformers.map(() =>
+            createMission(agencyId, {
+              title: missionTitle,
+              description: missionDesc,
+              rewardPoints: rewardPts,
+              deadline: deadline.toISOString(),
+            }, createdBy)
+          )
+        );
+
+        const successCount = missionResults.filter((r) => r.status === "fulfilled").length;
+
+        return {
+          result: JSON.stringify({
+            success: true,
+            assigned: successCount,
+            agents: underperformers.map((a) => a.displayName),
+            missionTitle,
+            rewardPoints: rewardPts,
+          }),
+          displayData: {
+            type: "auto_missions",
+            assigned: successCount,
+            agents: underperformers.map((a) => a.displayName),
+            missionTitle,
+            rewardPoints: rewardPts,
           },
           success: true,
         };
