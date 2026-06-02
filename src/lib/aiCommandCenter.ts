@@ -522,6 +522,23 @@ PENTING:
   {
     type: "function",
     function: {
+      name: "generate_marketing_caption",
+      description: "Generate caption marketing Instagram/WhatsApp yang kontekstual berdasarkan paket aktif di database. Jauh lebih relevan dari caption generik karena pakai data nyata (nama paket, harga, tanggal, kuota). Gunakan ketika user minta 'buatkan caption', 'caption untuk paket X', 'konten marketing', atau 'post Instagram'.",
+      parameters: {
+        type: "object",
+        properties: {
+          packageId: { type: "string", description: "ID paket spesifik (opsional, akan ambil paket terbaru jika tidak ada)" },
+          platform: { type: "string", enum: ["instagram", "whatsapp", "both"], description: "Platform target (default: both)" },
+          tone: { type: "string", enum: ["formal", "casual", "excited"], description: "Tone caption (default: casual)" },
+          language: { type: "string", enum: ["id", "en", "ar"], description: "Bahasa caption (default: id)" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "auto_assign_missions",
       description: "Cek performa semua agen dan buat misi otomatis untuk agen yang underperform (order di bawah threshold). Gunakan ketika owner minta 'buatkan misi untuk agen yang kurang aktif', 'assign task ke agen', atau 'motivasi agen yang ordernya sedikit'.",
       parameters: {
@@ -1541,6 +1558,76 @@ async function executeTool(
             actionType: args.actionType,
             summary: args.summary as string,
             data: args.data,
+          },
+          success: true,
+        };
+      }
+
+      case "generate_marketing_caption": {
+        const pkgStore = await import("@/store/packagesStore").then((m) => m.usePackagesStore.getState());
+        if (pkgStore.items.length === 0) await pkgStore.refresh();
+        const freshItems = (await import("@/store/packagesStore")).usePackagesStore.getState().items;
+
+        let targetPkg = args.packageId
+          ? freshItems.find((p) => p.id === (args.packageId as string))
+          : freshItems.filter((p) => p.status === "Confirmed" || p.status === "Calculated" || p.status === "Draft")[0];
+        if (!targetPkg) targetPkg = freshItems[0];
+
+        if (!targetPkg) {
+          return {
+            result: JSON.stringify({ error: "Tidak ada paket aktif di database" }),
+            displayData: { type: "error", message: "Buat paket dulu di halaman Paket & Trip" },
+            success: false,
+          };
+        }
+
+        const platform = (args.platform as string) ?? "both";
+        const tone     = (args.tone as string) ?? "casual";
+
+        const packageInfo = {
+          name:        targetPkg.name,
+          price:       targetPkg.totalIDR,
+          currency:    "IDR",
+          destination: targetPkg.destination,
+          duration:    targetPkg.days,
+          quota:       targetPkg.people,
+          departDate:  targetPkg.departureDate ?? null,
+        };
+
+        const { callAI: callAICaption } = await import("@/lib/aiFetch");
+        const captionRes = await callAICaption({
+          model: "openai/gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: `Kamu adalah copywriter marketing travel umrah/haji profesional Indonesia. Buat caption yang menarik, authentic, dan menggunakan data nyata dari paket. Tone: ${tone}. Platform: ${platform}. Format output JSON: { "instagram": "...", "whatsapp": "..." } Untuk Instagram: gunakan emoji, hashtag relevan, max 2200 karakter. Untuk WhatsApp: format broadcast yang personal, tanpa hashtag, max 500 karakter. Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsapp, isi instagram dengan string kosong.`,
+            },
+            {
+              role: "user",
+              content: `Buatkan caption marketing untuk paket ini:\n${JSON.stringify(packageInfo, null, 2)}`,
+            },
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.8,
+          max_tokens: 1000,
+        });
+
+        const captionData = await captionRes.json() as { choices?: Array<{ message?: { content?: string } }> };
+        let captions: { instagram?: string; whatsapp?: string } = {};
+        try {
+          captions = JSON.parse(captionData.choices?.[0]?.message?.content ?? "{}") as { instagram?: string; whatsapp?: string };
+        } catch {
+          captions = {};
+        }
+
+        return {
+          result: JSON.stringify({ success: true, package: packageInfo, captions }),
+          displayData: {
+            type: "marketing_caption",
+            packageName: targetPkg.name,
+            instagram: captions.instagram ?? "",
+            whatsapp: captions.whatsapp ?? "",
+            platform,
           },
           success: true,
         };
