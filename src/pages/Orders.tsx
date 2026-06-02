@@ -547,7 +547,7 @@ export default function Orders() {
                         key={o.id}
                         variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } } }}
                         onClick={() => navigate(`/orders/detail/${o.id}`)}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-slate-50 transition-colors"
+                        className="w-full flex items-center gap-2 px-3 py-3 text-left active:bg-slate-50 transition-colors"
                         style={{ WebkitTapHighlightColor: "transparent" }}
                       >
                         {/* Type icon */}
@@ -560,7 +560,6 @@ export default function Orders() {
                           {clientName && <p className="text-[11px] text-slate-400 mt-0.5 truncate font-medium">{clientName}</p>}
                           <p className="text-[10px] text-slate-400 mt-0.5">{dateStr}</p>
                           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full" style={{ backgroundColor: sb.bg, color: sb.text }}>{sb.label}</span>
                             <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: (PAYMENT_DOT[ps] ?? "#64748b") + "20", color: PAYMENT_DOT[ps] ?? "#64748b" }}>
                               <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: PAYMENT_DOT[ps] ?? "#64748b" }} />
                               {PAYMENT_LBL[ps] ?? ps}

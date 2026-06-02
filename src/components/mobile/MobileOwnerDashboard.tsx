@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Bell, Users, ShoppingBag, Ticket, Calculator,
+  Users, ShoppingBag, Ticket, Calculator,
   Package, StickyNote, CheckCircle, ChevronRight,
   Map, Home, MoreHorizontal, Calendar, TrendingUp,
   TrendingDown, Sparkles, Grid3X3,
@@ -302,81 +302,6 @@ export function MobileOwnerDashboard() {
     <div className="min-h-screen bg-[#F2F5FB] overflow-x-hidden pb-[76px]">
 
       {/* ═══════════════════════════════════════════════════════════════
-          HEADER
-      ═══════════════════════════════════════════════════════════════ */}
-      <div
-        className="bg-white px-5 pb-3 flex items-center justify-between gap-3"
-        style={{
-          paddingTop: "calc(12px + env(safe-area-inset-top, 0px))",
-          boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
-        }}
-      >
-        {/* Logo */}
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 shrink-0 active:opacity-70"
-          style={{ WebkitTapHighlightColor: "transparent" }}
-        >
-          <img
-            src="/temantiket-icon-mark.svg"
-            alt="Temantiket"
-            className="h-8 w-8 object-contain"
-          />
-          <div>
-            <p className="text-[13px] font-black text-[#0f1c3f] leading-none tracking-tight">temantiket</p>
-            <p className="text-[8px] text-slate-400 font-medium leading-none mt-0.5">mudah, cepat, amanah</p>
-          </div>
-        </button>
-
-        {/* Center: live exchange rates */}
-        <button
-          onClick={() => navigate("/reports")}
-          className="flex items-center gap-1.5 bg-[#F2F5FB] rounded-full px-3 py-1.5 active:opacity-70"
-          style={{ WebkitTapHighlightColor: "transparent" }}
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" style={{ boxShadow: "0 0 4px #34d399" }} />
-          <div className="flex items-center gap-1 leading-none">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">USD</span>
-            <span className="text-[12px] font-extrabold text-[#0866FF]">
-              {rates.USD ? `${(rates.USD / 1000).toFixed(1)}k` : "—"}
-            </span>
-            {rates.SAR && (
-              <>
-                <span className="text-[9px] text-slate-300 mx-0.5">·</span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">SAR</span>
-                <span className="text-[12px] font-extrabold text-[#0866FF]">
-                  {rates.SAR.toLocaleString("id-ID")}
-                </span>
-              </>
-            )}
-          </div>
-        </button>
-
-        {/* Right: bell + avatar */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => navigate("/notifications")}
-            className="relative h-9 w-9 rounded-full bg-[#F2F5FB] flex items-center justify-center active:opacity-70"
-            style={{ WebkitTapHighlightColor: "transparent" }}
-          >
-            <Bell strokeWidth={1.8} className="h-5 w-5 text-slate-600" />
-            {unread > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-0.5 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center">
-                {unread > 9 ? "9+" : unread}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => navigate("/settings")}
-            className="h-9 w-9 rounded-full bg-gradient-to-br from-[#0654D6] to-[#33A6FF] flex items-center justify-center shadow-sm active:opacity-80"
-            style={{ WebkitTapHighlightColor: "transparent" }}
-          >
-            <span className="text-white text-[12px] font-extrabold">{getInitials(user?.displayName)}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════
           HERO CARD
       ═══════════════════════════════════════════════════════════════ */}
       <motion.div
@@ -566,62 +491,6 @@ export function MobileOwnerDashboard() {
             );
           })}
         </div>
-      </motion.div>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          AI POWER BANNER
-      ═══════════════════════════════════════════════════════════════ */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.38, delay: 0.14, ease: [0.22, 1, 0.36, 1] }}
-        className="mx-4 mt-5"
-      >
-        <button
-          onClick={() => navigate("/caption-generator")}
-          className="w-full rounded-[20px] overflow-hidden active:opacity-80 transition-opacity text-left"
-          style={{
-            background: "linear-gradient(135deg, #5b21b6 0%, #7c3aed 40%, #0866FF 100%)",
-            boxShadow: "0 8px 24px rgba(124,58,237,0.30)",
-            WebkitTapHighlightColor: "transparent",
-          }}
-        >
-          <div className="flex items-center gap-4 px-5 py-4">
-            {/* Icon */}
-            <div className="h-12 w-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}>
-              <span className="text-[24px] font-black text-white">AI</span>
-              <span className="text-white text-[14px] ml-0.5">+</span>
-            </div>
-            {/* Text */}
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-[14px] font-extrabold leading-snug">Upgrade ke AI Power</p>
-              <p className="text-white/70 text-[10px] mt-0.5 leading-snug">Nikmati fitur AI untuk mengoptimasi bisnis travel Anda.</p>
-              <div className="mt-2.5 inline-flex items-center gap-1.5 bg-white/20 border border-white/30 rounded-full px-3 py-1">
-                <span className="text-white text-[10px] font-bold">Upgrade Sekarang</span>
-                <ChevronRight className="h-3 w-3 text-white" strokeWidth={2.5} />
-              </div>
-            </div>
-            {/* AI chip decoration */}
-            <div className="shrink-0 opacity-60">
-              <svg viewBox="0 0 48 48" width="48" height="48" fill="none">
-                <rect x="14" y="14" width="20" height="20" rx="4" stroke="white" strokeWidth="1.5" />
-                <rect x="18" y="18" width="12" height="12" rx="2" fill="white" fillOpacity="0.3" />
-                <line x1="9"  y1="19" x2="14" y2="19" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="9"  y1="24" x2="14" y2="24" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="9"  y1="29" x2="14" y2="29" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="39" y1="19" x2="34" y2="19" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="39" y1="24" x2="34" y2="24" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="39" y1="29" x2="34" y2="29" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="19" y1="9"  x2="19" y2="14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="24" y1="9"  x2="24" y2="14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="29" y1="9"  x2="29" y2="14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="19" y1="39" x2="19" y2="34" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="24" y1="39" x2="24" y2="34" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="29" y1="39" x2="29" y2="34" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-            </div>
-          </div>
-        </button>
       </motion.div>
 
       {/* ═══════════════════════════════════════════════════════════════

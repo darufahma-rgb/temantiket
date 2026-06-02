@@ -1,0 +1,134 @@
+Fix mobile UI issues in Temantiket to make it feel like a native app.
+Make EXACT changes in these files:
+
+---
+
+FIX 1: src/components/mobile/MobileOwnerDashboard.tsx — Remove double header
+
+The MobileOwnerDashboard renders its own header (logo + USD rate + bell + avatar)
+BUT DashboardLayout already renders a floating header on mobile.
+This causes double header on Dashboard page.
+
+Find the header section inside MobileOwnerDashboard JSX — it contains the 
+temantiket logo, USD rate pill, bell icon, and avatar button.
+It looks something like:
+  <div className="... flex items-center ...">
+    <div>temantiket</div>
+    ... USD rate ...
+    <Bell ... />
+    ... avatar ...
+  </div>
+
+DELETE the entire header div from MobileOwnerDashboard.
+The floating header from DashboardLayout is sufficient.
+
+---
+
+FIX 2: src/components/mobile/MobileOwnerDashboard.tsx — Fix alert banner
+
+Find the alert/pipeline section that renders the "Pipeline Tipis" warning.
+It currently renders as a large card with big text that wraps awkwardly.
+
+Replace the alert card styling with compact inline style:
+- Max height: auto, padding: 10px 14px
+- Font size for title: text-[13px] font-semibold
+- Font size for description: text-[11px]  
+- Make the action button smaller: text-[11px] px-3 py-1.5
+- Add: truncate or line-clamp-1 to description text
+
+Find the alert wrapper div and change to:
+  <div className="mx-4 mb-3 flex items-center gap-3 px-4 py-3 rounded-2xl border"
+    style={{ borderColor: alertBorderColor, background: alertBgColor }}>
+    <span className="text-lg shrink-0">{alertEmoji}</span>
+    <div className="flex-1 min-w-0">
+      <p className="text-[13px] font-semibold truncate" style={{ color: alertTitleColor }}>
+        {alertTitle}
+      </p>
+      <p className="text-[11px] truncate" style={{ color: alertDescColor }}>
+        {alertDesc}
+      </p>
+    </div>
+    <button className="shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-xl"
+      style={{ background: alertBtnBg, color: alertBtnColor }}
+      onClick={alertAction}>
+      {alertBtnLabel}
+    </button>
+  </div>
+
+If the alert uses a different variable structure, adapt accordingly —
+the key requirement is: single line title, single line description, compact height.
+
+---
+
+FIX 3: src/components/mobile/MobileOwnerDashboard.tsx — Remove "Upgrade ke AI Power" banner
+
+Find the "Upgrade ke AI Power" or "AI Power" promotional banner card
+in the MobileOwnerDashboard JSX (it has a gradient purple/blue background
+with "Upgrade Sekarang" button).
+
+DELETE the entire banner div. It's misleading (as noted in audit) and
+clutters the mobile dashboard.
+
+---
+
+FIX 4: src/pages/Clients.tsx — Fix ALL CAPS client names
+
+Find the mobile client list rendering (inside the md:hidden section).
+Find where client name is displayed, something like:
+  <p className="... font-bold ...">{client.name}</p>
+  or
+  <p className="... uppercase ...">{client.name}</p>
+
+If there's a className containing "uppercase", remove it.
+If the name appears normal but renders in caps due to CSS,
+add className="capitalize" or just ensure no "uppercase" class is present.
+
+Also find the MobileClientCard component or inline card JSX and make sure:
+- Name uses: className="text-[14px] font-semibold text-[#0f1c3f]" (no uppercase)
+- Passport number uses: className="text-[11px] text-slate-400"
+- Row height: min-h-[64px]
+- Avatar size: h-10 w-10 rounded-full
+
+---
+
+FIX 5: src/pages/Orders.tsx — Remove redundant status badges
+
+In the mobile order card (inside md:hidden section), find where both
+status badges are shown together, like:
+  <span>SELESAI</span>
+  <span>PAID</span>
+
+Keep only ONE badge — the payment status (PAID/UNPAID/etc).
+Remove the order status badge (SELESAI/CONFIRMED/etc) from the card list view.
+The order status is still visible in detail page.
+
+Also reduce order card padding:
+Find the order card container and change padding from p-4 to p-3.
+Change gap between items from gap-3 to gap-2.
+
+---
+
+FIX 6: src/pages/Clients.tsx — Remove "Aksi Cepat" section
+
+Find the "Aksi Cepat" section at the bottom of the mobile Clients page.
+It shows: Import Klien, Export Data, Grup Klien, Tag Klien buttons.
+These features don't exist yet.
+
+DELETE the entire "Aksi Cepat" section div.
+
+---
+
+FIX 7: src/components/DashboardLayout.tsx — Fix mobile header overlap
+
+The mobile floating header has top position that may overlap with content.
+Find the mobile header element:
+  className="md:hidden fixed z-50 ..."
+
+Make sure the main content area has enough top padding to not be hidden
+under the floating header. Find the layout-safe-inset class in src/index.css
+and ensure it includes:
+  padding-top: calc(54px + 10px + env(safe-area-inset-top, 0px) + 8px);
+
+If layout-safe-inset doesn't have padding-top, add it.
+
+After all changes: npx tsc --noEmit and fix errors before committing.

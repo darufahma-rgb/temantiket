@@ -288,7 +288,7 @@
      .layout-safe-pb     : extra bottom padding matching bottom nav + home indicator
      These use env() which resolves to 0px on browsers without notch support. */
   .layout-safe-inset {
-    padding-top: calc(64px + env(safe-area-inset-top, 0px));
+    padding-top: calc(54px + 10px + env(safe-area-inset-top, 0px) + 8px);
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
     overscroll-behavior: contain;
     /* Smooth momentum scroll on iOS */

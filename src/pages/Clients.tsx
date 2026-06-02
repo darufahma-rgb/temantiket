@@ -1480,27 +1480,6 @@ export default function Clients() {
             )}
           </div>
 
-          {/* ── AKSI CEPAT ── */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[15px] font-extrabold text-[#0f1c3f]">Aksi Cepat</p>
-              <button className="text-[11px] text-[#0866FF] font-bold active:opacity-60" style={{ WebkitTapHighlightColor: "transparent" }}>Lihat Semua</button>
-            </div>
-            <div className="grid grid-cols-4 gap-3">
-              {[
-                { label: "Import Klien", icon: <Upload   className="h-5 w-5" style={{ color: "#0866FF" }} strokeWidth={1.8} />, iconBg: "#eff6ff", action: () => toast.info("Segera hadir") },
-                { label: "Export Data",  icon: <Download className="h-5 w-5" style={{ color: "#16a34a" }} strokeWidth={1.8} />, iconBg: "#ecfdf5", action: () => toast.info("Segera hadir") },
-                { label: "Grup Klien",  icon: <Users    className="h-5 w-5" style={{ color: "#7c3aed" }} strokeWidth={1.8} />, iconBg: "#f5f3ff", action: () => toast.info("Segera hadir") },
-                { label: "Tag Klien",   icon: <Tag      className="h-5 w-5" style={{ color: "#d97706" }} strokeWidth={1.8} />, iconBg: "#fffbeb", action: () => toast.info("Segera hadir") },
-              ].map((item) => (
-                <button key={item.label} onClick={item.action} className="bg-white rounded-[16px] p-3 flex flex-col items-center gap-2 active:opacity-70 transition-opacity" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)", WebkitTapHighlightColor: "transparent" }}>
-                  <div className="h-11 w-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: item.iconBg }}>{item.icon}</div>
-                  <p className="text-[9px] font-bold text-[#0f1c3f] text-center leading-tight">{item.label}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <div className="h-2" />
         </div>
 
