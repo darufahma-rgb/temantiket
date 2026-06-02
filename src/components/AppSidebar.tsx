@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { LogOut, Sparkles } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   OWNER_SIDEBAR_SECTIONS, AGENT_SIDEBAR_SECTIONS, STAFF_SIDEBAR_SECTIONS,
   type NavItemConfig, type SidebarSectionConfig,
@@ -149,6 +154,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
     OWNER_SIDEBAR_SECTIONS
   );
 
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const handleLogout = () => { logout(); onClose?.(); navigate("/login"); };
 
   const roleLabel =
@@ -260,7 +266,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
 
         {/* Logout */}
         <button
-          onClick={handleLogout}
+          onClick={() => setLogoutOpen(true)}
           className="w-full flex items-center gap-2.5 h-8 px-2.5 rounded-lg text-[12px] font-medium text-[hsl(var(--muted-foreground))] hover:text-red-500 hover:bg-red-500/8 transition-all duration-150 group"
         >
           <LogOut className="h-[14px] w-[14px] shrink-0 transition-colors group-hover:text-red-500" strokeWidth={1.8} />
@@ -272,6 +278,23 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
 
   return (
     <>
+      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Keluar dari akun?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sesi Anda akan diakhiri dan Anda akan diarahkan ke halaman login.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout} className="bg-red-500 hover:bg-red-600">
+              Keluar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Desktop */}
       <div className="hidden md:flex shrink-0 h-full">{sidebarContent}</div>
 

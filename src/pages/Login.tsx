@@ -4,6 +4,8 @@ import { LogIn, AlertCircle, KeyRound, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { AnimatePresence, motion } from "framer-motion";
 import splashBackground from "@assets/image_1777530688079.png";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const cardVariants = {
   hidden: {},
@@ -29,6 +31,7 @@ export default function Login() {
   const [showPass, setShowPass]     = useState(false);
   const [pin, setPin]               = useState("");
   const [phase, setPhase]           = useState<"form" | "pin">("form");
+  const [forgotMode, setForgotMode] = useState(false);
 
   const { login, completePinLogin, isLoading, error, isAuthenticated, clearError, pendingLoginUser } = useAuthStore();
   const navigate = useNavigate();
@@ -41,6 +44,20 @@ export default function Login() {
     if (pendingLoginUser) setPhase("pin");
     else setPhase("form");
   }, [pendingLoginUser]);
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      toast.error("Masukkan email Anda terlebih dahulu.");
+      return;
+    }
+    if (!supabase) {
+      toast.error("Supabase belum dikonfigurasi.");
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+    if (error) toast.error("Gagal mengirim email reset: " + error.message);
+    else toast.success("Email reset password telah dikirim. Cek inbox Anda.");
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,6 +241,13 @@ export default function Login() {
                         )}
                       </motion.button>
                     </motion.div>
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="w-full text-center text-[12px] text-white/50 hover:text-white/80 transition-colors mt-2"
+                    >
+                      Lupa password?
+                    </button>
                   </form>
 
                 </motion.div>
@@ -322,6 +346,9 @@ export default function Login() {
           )}
 
         </AnimatePresence>
+        <p className="mt-4 text-center text-[11px] text-white/40">
+          Belum punya akun? Hubungi administrator biro Anda.
+        </p>
       </motion.div>
     </div>
   );

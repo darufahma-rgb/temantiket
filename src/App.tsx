@@ -213,6 +213,14 @@ function RequireRole({
 }) {
   const user          = useAuthStore((s) => s.user);
   const isInitialized = useAuthStore((s) => s.isInitialized);
+  const denied        = isInitialized && (!user || !roles.includes(user.role));
+
+  useEffect(() => {
+    if (denied) {
+      toast.warning("Halaman ini tidak dapat diakses dengan role Anda.");
+    }
+  }, [denied]);
+
   if (!isInitialized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white/60 text-sm">
@@ -220,7 +228,7 @@ function RequireRole({
       </div>
     );
   }
-  if (!user || !roles.includes(user.role)) {
+  if (denied) {
     const fallback =
       user?.role === "agent" ? "/agent" :
       user?.role === "staff" ? "/staff/dashboard" : "/";
