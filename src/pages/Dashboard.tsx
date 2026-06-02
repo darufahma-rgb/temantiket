@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LiveClock } from "@/components/LiveClock";
 import { AdminWhatsappCard } from "@/components/AdminWhatsappCard";
@@ -40,6 +40,8 @@ import { useRegionalStore } from "@/store/regionalStore";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, type Variants } from "framer-motion";
+import { generateAitemAlerts, type AitemAlert } from "@/lib/aitemAlerts";
+import { useAIChatStore } from "@/store/aiChatStore";
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 8 },
@@ -730,6 +732,8 @@ export default function Dashboard() {
   const { language } = useRegionalStore();
   const locale = getLocale(language);
   const t = useT();
+  const alerts = useMemo(() => generateAitemAlerts(), [orders, clients, trips]);
+  const openWithText = useAIChatStore((s) => s.openWithText);
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Trip | null>(null);
   const [tab, setTab] = useState<"all" | "upcoming" | "done">("all");
@@ -867,6 +871,56 @@ export default function Dashboard() {
 
   return (
     <div className="xl:flex xl:min-h-0 xl:gap-5 md:pt-2">
+      {alerts.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {alerts.map((alert: AitemAlert) => (
+            <div
+              key={alert.id}
+              className={cn(
+                "flex items-start gap-3 px-4 py-3 rounded-xl border text-sm",
+                alert.type === "urgent" && "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800",
+                alert.type === "warning" && "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800",
+                alert.type === "info" && "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800",
+              )}
+            >
+              <span className="text-lg shrink-0">
+                {alert.type === "urgent" ? "🚨" : alert.type === "warning" ? "⚠️" : "💡"}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className={cn(
+                  "font-semibold text-sm",
+                  alert.type === "urgent" && "text-red-800 dark:text-red-300",
+                  alert.type === "warning" && "text-amber-800 dark:text-amber-300",
+                  alert.type === "info" && "text-blue-800 dark:text-blue-300",
+                )}>
+                  {alert.title}
+                </p>
+                <p className={cn(
+                  "text-xs mt-0.5",
+                  alert.type === "urgent" && "text-red-600 dark:text-red-400",
+                  alert.type === "warning" && "text-amber-600 dark:text-amber-400",
+                  alert.type === "info" && "text-blue-600 dark:text-blue-400",
+                )}>
+                  {alert.message}
+                </p>
+              </div>
+              {alert.action && (
+                <button
+                  onClick={() => openWithText(alert.action!.prompt)}
+                  className={cn(
+                    "shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors",
+                    alert.type === "urgent" && "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-300",
+                    alert.type === "warning" && "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-300",
+                    alert.type === "info" && "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300",
+                  )}
+                >
+                  {alert.action.label} →
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       {showOnboarding && (
         <div className="mb-6 p-4 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 xl:hidden">
           <div className="flex items-center justify-between mb-3">
