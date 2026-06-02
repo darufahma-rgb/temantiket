@@ -258,7 +258,7 @@ export default function AgentLeaderboard() {
         return {
           agentId:   o.createdByAgent!,
           agentName: agent?.displayName ?? "Agen",
-          orderId:   o.id?.toString().slice(0, 14) ?? "—",
+          orderId:   o.id ? '#' + o.id.toString().slice(0, 6).toUpperCase() : "—",
           time:      o.createdAt,
         };
       }),
@@ -295,7 +295,7 @@ export default function AgentLeaderboard() {
           </div>
           <div>
             <h1 className="text-[26px] font-black text-slate-900 leading-tight tracking-tight">Leaderboard</h1>
-            <p className="text-[13px] text-slate-500 mt-0.5">Peringkat agen berdasarkan performa dan pencapaian</p>
+            <p className="text-[13px] text-slate-500 mt-0.5">Peringkat & performa agen</p>
             {myRank && (
               <span className="inline-block mt-1.5 text-[11px] font-bold bg-amber-50 border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">
                 🏆 Kamu #{myRank}
@@ -371,34 +371,20 @@ export default function AgentLeaderboard() {
           )}
 
           {/* ── 4 Stat Cards ──────────────────────────────────── */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 gap-2">
             {[
-              { label: "Total Agen",    value: String(totalAgents),        growth: null,         icon: Users,       iconBg: "#dbeafe", iconColor: "#0866FF" },
-              { label: "Total Order",   value: String(totalOrders),        growth: orderGrowth,  icon: ShoppingBag, iconBg: "#fef3c7", iconColor: "#d97706" },
-              { label: "Total Klien",   value: String(totalClients),       growth: null,         icon: UserCheck,   iconBg: "#ede9fe", iconColor: "#7c3aed" },
-              { label: "Total Revenue", value: fmtIDR(totalRevenue),       growth: revenueGrowth,icon: TrendingUp,  iconBg: "#dcfce7", iconColor: "#16a34a", small: true },
-            ].map((s, i) => (
-              <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-start gap-3">
-                <div
-                  className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: s.iconBg, color: s.iconColor }}
-                >
-                  <s.icon className="h-5 w-5" />
+              { label: "Agen",    value: String(totalAgents),  icon: Users,       iconBg: "#dbeafe", iconColor: "#0866FF" },
+              { label: "Order",   value: String(totalOrders),  icon: ShoppingBag, iconBg: "#fef3c7", iconColor: "#d97706" },
+              { label: "Klien",   value: String(totalClients), icon: UserCheck,   iconBg: "#ede9fe", iconColor: "#7c3aed" },
+              { label: "Revenue", value: fmtIDR(totalRevenue), icon: TrendingUp,  iconBg: "#dcfce7", iconColor: "#16a34a" },
+            ].map(({ label, value, icon: Icon, iconBg, iconColor }) => (
+              <div key={label} className="rounded-2xl bg-white p-2.5 shadow-sm flex flex-col items-center text-center">
+                <div className="h-7 w-7 rounded-lg flex items-center justify-center mb-1"
+                  style={{ background: iconBg }}>
+                  <Icon className="h-3.5 w-3.5" style={{ color: iconColor }} strokeWidth={1.8} />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide leading-none">{s.label}</p>
-                  <p className={cn("font-black font-mono text-slate-900 leading-tight mt-1 tabular-nums", s.small ? "text-[16px]" : "text-[22px]")}>
-                    {s.value}
-                  </p>
-                  {s.growth !== null && s.growth !== undefined ? (
-                    <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-0.5 font-semibold">
-                      <TrendingUp className="h-3 w-3" />
-                      ↑ {s.growth}% dari periode lalu
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-slate-400 mt-1">dari periode lalu</p>
-                  )}
-                </div>
+                <p className="text-[15px] font-extrabold text-[#0f1c3f] leading-none">{value}</p>
+                <p className="text-[9px] text-slate-500 font-medium mt-0.5 leading-tight">{label}</p>
               </div>
             ))}
           </div>
@@ -784,7 +770,7 @@ function PodiumCard({
         <div
           className={cn(
             "rounded-full flex items-center justify-center text-white font-extrabold shadow overflow-hidden",
-            elevated ? "h-[60px] w-[60px] text-[22px]" : "h-[44px] w-[44px] text-[16px]",
+            elevated ? "h-[48px] w-[48px] text-[18px]" : "h-[40px] w-[40px] text-[14px]",
           )}
           style={{ background: row.photoUrl ? "transparent" : avatarBg(row.name) }}
         >
@@ -797,7 +783,7 @@ function PodiumCard({
         <p className={cn(
           "font-bold text-slate-900 text-center truncate w-full mt-2 leading-tight px-1",
           elevated ? "text-[13px]" : "text-[11.5px]",
-        )}>
+        )} title={row.name}>
           {row.name}
         </p>
 
@@ -828,13 +814,13 @@ function PodiumCard({
       {/* Stats row */}
       <div className="mx-3 mb-3 grid grid-cols-3 gap-1 text-center">
         {[
-          { label: "Order",   val: String(row.orders) },
-          { label: "Klien",   val: String(row.clientCount) },
-          { label: "Revenue", val: fmtIDR(row.revenue) },
-        ].map((s) => (
-          <div key={s.label} className="bg-white/60 rounded-lg py-1.5 px-1 border border-white/80">
-            <p className="text-[8px] text-slate-400 font-semibold uppercase tracking-wide leading-none">{s.label}</p>
-            <p className="text-[10px] font-bold text-slate-700 font-mono leading-tight mt-0.5 truncate">{s.val}</p>
+          { icon: ShoppingBag, val: String(row.orders) },
+          { icon: Users,       val: String(row.clientCount) },
+          { icon: TrendingUp,  val: fmtIDR(row.revenue) },
+        ].map((s, i) => (
+          <div key={i} className="bg-white/60 rounded-lg py-1.5 px-1 border border-white/80">
+            <s.icon className="h-2.5 w-2.5 text-slate-400 mx-auto mb-0.5" />
+            <p className="text-[10px] font-bold text-slate-700 font-mono leading-tight truncate">{s.val}</p>
           </div>
         ))}
       </div>
