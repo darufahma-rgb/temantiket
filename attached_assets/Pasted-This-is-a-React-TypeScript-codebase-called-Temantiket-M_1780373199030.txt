@@ -1,0 +1,76 @@
+This is a React + TypeScript codebase called Temantiket. Make these form and business logic improvements:
+
+---
+
+FIX 1: 2-step client form in src/pages/Clients.tsx
+
+Find the Dialog component used for adding/editing clients (search for DialogTitle containing "Tambah Klien" or "Edit Klien").
+
+Add state: const [formStep, setFormStep] = useState<1 | 2>(1);
+Reset it when dialog opens: add setFormStep(1) wherever the add dialog is opened (where setAddOpen(true) is called).
+
+Step 1 JSX — show only: name, phone, email, gender, referredBy fields.
+Step 2 JSX — show only: passportNumber, birthDate, birthPlace, passportExpiry, passportIssueDate, passportIssuingOffice fields.
+
+Add step indicator at top of dialog:
+  <div className="flex items-center gap-2 mb-4">
+    <div className={cn("h-2 flex-1 rounded-full", formStep === 1 ? "bg-primary" : "bg-muted")} />
+    <div className={cn("h-2 flex-1 rounded-full", formStep === 2 ? "bg-primary" : "bg-muted")} />
+  </div>
+
+DialogFooter for step 1:
+  <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Batal</Button>
+  <Button type="button" onClick={() => setFormStep(2)}>Lanjut →</Button>
+
+DialogFooter for step 2:
+  <Button type="button" variant="ghost" onClick={() => setFormStep(1)}>← Kembali</Button>
+  <Button type="button" variant="outline" onClick={handleSubmit}>Simpan (lewati paspor)</Button>
+  <Button type="submit">Simpan Lengkap</Button>
+
+The actual submit logic stays the same — both "Simpan" buttons call the same handleSubmit/handleSave function. Only the UI is split.
+
+---
+
+FIX 2: Currency badge on order cards in src/pages/Orders.tsx
+
+Find the CURRENCY_BY_TYPE constant (already exists in the file):
+  const CURRENCY_BY_TYPE: Record<OrderType, "IDR" | "EGP"> = { umrah: "IDR", flight: "IDR", visa_voa: "EGP", visa_student: "EGP" };
+
+Find where order cards/rows are rendered in the list (where fmtOrderPrice is called to show the price). Next to the price display, add a currency badge:
+  {CURRENCY_BY_TYPE[order.type] === "EGP" && (
+    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 ml-1">
+      EGP
+    </span>
+  )}
+
+---
+
+FIX 3: Date filter toggle in src/pages/Reports.tsx
+
+Find the filter section at the top of the Reports component (where date range filters are rendered).
+
+Add state: const [dateFilterMode, setDateFilterMode] = useState<"createdAt" | "paidAt">("createdAt");
+
+Add a toggle UI next to the existing filters:
+  <div className="flex items-center gap-1 p-1 rounded-lg bg-muted">
+    <button
+      onClick={() => setDateFilterMode("createdAt")}
+      className={cn("text-xs px-3 py-1 rounded-md transition-colors",
+        dateFilterMode === "createdAt" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
+    >
+      Tgl Dibuat
+    </button>
+    <button
+      onClick={() => setDateFilterMode("paidAt")}
+      className={cn("text-xs px-3 py-1 rounded-md transition-colors",
+        dateFilterMode === "paidAt" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
+    >
+      Tgl Dibayar
+    </button>
+  </div>
+
+Find where orders are filtered by date (look for o.createdAt comparison). Add a condition:
+  const orderDate = dateFilterMode === "paidAt"
+    ? (o.meta?.paidAt ?? o.updatedAt ?? o.createdAt)
+    : o.createdAt;
+Use orderDate instead of o.createdAt in the date comparison.

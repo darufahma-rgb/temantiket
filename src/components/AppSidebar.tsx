@@ -241,10 +241,10 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
                 >
                   <ChatGPTIcon className="h-3 w-3 text-white" />
                 </div>
-                <p className="text-[11px] font-bold text-white leading-tight">Upgrade ke AI Power</p>
+                <p className="text-[11px] font-bold text-white leading-tight">Fitur AI Temantiket</p>
               </div>
               <p className="text-[9px] text-blue-200/80 leading-snug mb-2">
-                Nikmati fitur AI untuk mengoptimasi bisnis travel Anda.
+                Generate itinerary, caption marketing, dan scan paspor dengan AI.
               </p>
               <button
                 onClick={() => { navigate("/itinerary"); onClose?.(); }}
@@ -252,7 +252,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
                 style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)" }}
               >
                 <Sparkles className="h-3 w-3" strokeWidth={2} />
-                Upgrade Sekarang
+                Coba Itinerary AI
               </button>
             </div>
           </div>

@@ -451,16 +451,16 @@ function AnimatedRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AppearanceBootstrap />
-      <LangDirectionBootstrap />
-      <AuthInitBootstrap />
-      <SyncStatusBootstrap />
-      <StoreBootstrap />
-      <LoginAlertNotifier />
-      <OfflineBar />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Toaster />
+        <Sonner />
+        <AppearanceBootstrap />
+        <LangDirectionBootstrap />
+        <AuthInitBootstrap />
+        <SyncStatusBootstrap />
+        <StoreBootstrap />
+        <LoginAlertNotifier />
+        <OfflineBar />
         <AnimatedRoutes />
         <PwaInstallPrompt />
       </BrowserRouter>
