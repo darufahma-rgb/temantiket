@@ -1,0 +1,71 @@
+In src/lib/aiCommandCenter.ts, fix ALL dynamic imports. 
+The file currently has these broken dynamic imports that must be replaced:
+
+STEP 1: Check the current static imports at the top of the file.
+Find the line:
+  import { useAuthStore } from "@/store/authStore";
+
+If these lines don't exist yet, add them right after:
+  import { useClientsStore } from "@/store/clientsStore";
+  import { useOrdersStore } from "@/store/ordersStore";
+  import { usePackagesStore } from "@/store/packagesStore";
+  import { extractItinerary } from "@/lib/itineraryAI";
+
+Note: callAI is already imported statically at the top — do not import it again.
+
+STEP 2: Find and replace ALL these dynamic imports one by one:
+
+Replace:
+  const { addClient } = await import("@/store/clientsStore").then(m => m.useClientsStore.getState());
+With:
+  const { addClient } = useClientsStore.getState();
+
+Replace:
+  const { addOrder } = await import("@/store/ordersStore").then(m => m.useOrdersStore.getState());
+With:
+  const { addOrder } = useOrdersStore.getState();
+
+Replace:
+  const { patchOrder } = await import("@/store/ordersStore").then(m => m.useOrdersStore.getState());
+With:
+  const { patchOrder } = useOrdersStore.getState();
+
+Replace:
+  const { patchClient } = await import("@/store/clientsStore").then(m => m.useClientsStore.getState());
+With:
+  const { patchClient } = useClientsStore.getState();
+
+Replace:
+  const pkgStore = await import("@/store/packagesStore").then((m) => m.usePackagesStore.getState());
+With:
+  const pkgStore = usePackagesStore.getState();
+
+Replace:
+  const freshItems = (await import("@/store/packagesStore")).usePackagesStore.getState().items;
+With:
+  const freshItems = usePackagesStore.getState().packages;
+
+Replace:
+  const { callAI: callAICaption } = await import("@/lib/aiFetch");
+With:
+  (remove this line entirely — callAI is already imported at top of file)
+  Then find all uses of callAICaption and replace with callAI.
+
+Replace:
+  const { extractItinerary: extractItin } = await import("@/lib/itineraryAI");
+With:
+  (remove this line entirely — extractItinerary is now imported statically)
+  Then find all uses of extractItin and replace with extractItinerary.
+
+Replace:
+  const { patchOrder: patchOrd, orders: allFlightOrders } = await import("@/store/ordersStore").then(m => ({
+    patchOrder: m.useOrdersStore.getState().patchOrder,
+    orders: m.useOrdersStore.getState().orders,
+  }));
+With:
+  const { patchOrder: patchOrd, orders: allFlightOrders } = useOrdersStore.getState();
+
+STEP 3: After all replacements, verify no "await import" remains:
+Search for "await import" in the file — there should be ZERO results.
+
+STEP 4: Run npx tsc --noEmit and fix all TypeScript errors before committing.

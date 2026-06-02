@@ -1762,13 +1762,9 @@ Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsa
       }
 
       case "extract_and_attach_itinerary": {
-        const { extractItinerary: extractItin } = await import("@/lib/itineraryAI");
-        const { patchOrder: patchOrd, orders: allFlightOrders } = await import("@/store/ordersStore").then(m => ({
-          patchOrder: m.useOrdersStore.getState().patchOrder,
-          orders: m.useOrdersStore.getState().orders,
-        }));
+        const { patchOrder: patchOrd, orders: allFlightOrders } = useOrdersStore.getState();
 
-        const itinerary = await extractItin(args.rawText as string);
+        const itinerary = await extractItinerary(args.rawText as string);
         if (!itinerary || itinerary.legs.length === 0) {
           return {
             result: JSON.stringify({ error: "Tidak bisa mengekstrak data penerbangan dari teks ini" }),
