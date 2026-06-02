@@ -1099,6 +1099,7 @@ export default function Clients() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(6);
   const [quickNote, setQuickNote] = useState("");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   const { setPageContext, setPageData, clearContext } = useAIContextStore();
   useEffect(() => {
@@ -1609,10 +1610,16 @@ export default function Clients() {
               <Filter className="h-4 w-4" /> Filter
             </Button>
             <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden shrink-0">
-              <button className="h-10 w-10 flex items-center justify-center bg-blue-600 text-white">
+              <button
+                onClick={() => setViewMode("list")}
+                className={cn("h-10 w-10 flex items-center justify-center transition-colors", viewMode === "list" ? "bg-blue-600 text-white" : "text-muted-foreground hover:bg-slate-50")}
+              >
                 <LayoutList className="h-4 w-4" />
               </button>
-              <button className="h-10 w-10 flex items-center justify-center text-muted-foreground hover:bg-slate-50 transition-colors">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={cn("h-10 w-10 flex items-center justify-center transition-colors", viewMode === "grid" ? "bg-blue-600 text-white" : "text-muted-foreground hover:bg-slate-50")}
+              >
                 <LayoutGrid className="h-4 w-4" />
               </button>
             </div>
@@ -1650,6 +1657,43 @@ export default function Clients() {
               </div>
             ) : tabFiltered.length === 0 ? (
               <EmptyState hasQuery={!!debouncedQ} onAdd={() => setAddOpen(true)} />
+            ) : viewMode === "grid" ? (
+              <div className="p-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {pagedClients.map((c) => {
+                  const summary = clientOrderSummary.get(c.id);
+                  const orderCount = summary?.count ?? 0;
+                  const totalSpend = summary?.totalPrice ?? 0;
+                  const isAktif = clientIdsWithActiveOrder.has(c.id);
+                  const isVIP = orderCount >= 3;
+                  const initials = getInitials(c.name);
+                  const gradient = getGradient(c.name);
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => navigate(`/clients/${c.id}`)}
+                      className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col gap-3 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-sm`}>
+                          <span className="text-white text-xs font-bold">{initials}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm text-foreground truncate">{c.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{c.phone || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {isVIP && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">⭐ VIP</span>}
+                        {isAktif && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Aktif</span>}
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-slate-100 pt-2 mt-auto">
+                        <span>{orderCount} Order</span>
+                        <span className="font-semibold text-foreground">{totalSpend > 0 ? fmtIDR(totalSpend) : "—"}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <table className="w-full">
                 <tbody>

@@ -1,0 +1,121 @@
+Fix broken functionality in Temantiket. Make EXACT changes as described below.
+
+---
+
+FIX 1: src/components/DashboardLayout.tsx — Search still broken
+
+Find this exact code in handleSearchSubmit:
+    if (searchQuery.trim()) {
+      setSearchQuery("");
+      navigate("/clients");
+
+Replace with:
+    if (searchQuery.trim()) {
+      const q = encodeURIComponent(searchQuery.trim());
+      setSearchQuery("");
+      navigate(`/clients?q=${q}`);
+
+Also find the desktop search input (placeholder="Cari klien, order, trip…") and add onKeyDown:
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && searchQuery.trim()) {
+          navigate(`/clients?q=${encodeURIComponent(searchQuery.trim())}`);
+        }
+      }}
+
+Also add ⌘K / Ctrl+K shortcut — add this useEffect inside DashboardLayout component:
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        const input = document.querySelector<HTMLInputElement>('input[placeholder="Cari klien, order, trip…"]');
+        if (input) input.focus();
+        else setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+---
+
+FIX 2: src/pages/Clients.tsx — Add useSearchParams and pre-fill search
+
+2a. The current import line is:
+  import { useNavigate, useParams, Link, useLocation } from "react-router-dom";
+
+Change to:
+  import { useNavigate, useParams, Link, useLocation, useSearchParams } from "react-router-dom";
+
+2b. Find the Clients component main function (export default function Clients).
+Inside it, find where these states are declared:
+  const [q, setQ] = useState("");
+
+Right after that line, add:
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const qParam = searchParams.get("q");
+    if (qParam) setQ(qParam);
+  }, []);
+
+---
+
+FIX 3: src/pages/Orders.tsx — Pre-fill search from URL param
+
+The file already has useSearchParams imported and [searchParams] declared.
+It also has: const [q, setQ] = useState("");
+
+Find the block of useEffect calls near the top of the Orders component.
+After the last existing useEffect in that group, add:
+  useEffect(() => {
+    const qParam = searchParams.get("q");
+    if (qParam) setQ(qParam);
+  }, []);
+
+---
+
+FIX 4: src/pages/Clients.tsx — Fix grid view toggle
+
+The Clients page has LayoutList and LayoutGrid icons imported but the view toggle
+may not be working. Find the view state (look for useState with "list" or "grid" value).
+If it doesn't exist, add it:
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+
+Then find where the toggle buttons for LayoutList/LayoutGrid icons are rendered.
+Make sure each button sets viewMode correctly:
+  <button onClick={() => setViewMode("list")} 
+    className={cn("p-1.5 rounded-lg", viewMode === "list" ? "bg-primary text-white" : "text-muted-foreground")}>
+    <LayoutList className="h-4 w-4" />
+  </button>
+  <button onClick={() => setViewMode("grid")}
+    className={cn("p-1.5 rounded-lg", viewMode === "grid" ? "bg-primary text-white" : "text-muted-foreground")}>
+    <LayoutGrid className="h-4 w-4" />
+  </button>
+
+Then find where the client list is rendered (the map over filtered clients).
+Wrap it with a conditional:
+  <div className={cn(
+    viewMode === "grid" 
+      ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" 
+      : "flex flex-col divide-y divide-border"
+  )}>
+    {filteredClients.map(client => ...existing card JSX...)}
+  </div>
+
+---
+
+FIX 5: src/pages/Clients.tsx — Fix filter not working
+
+Find the filter logic for clients (useMemo that filters the clients array).
+The search variable used must match the state name q. Verify the filter includes:
+  const s = q.trim().toLowerCase();
+  if (s) out = out.filter(c =>
+    c.name.toLowerCase().includes(s) ||
+    (c.phone ?? "").toLowerCase().includes(s) ||
+    (c.email ?? "").toLowerCase().includes(s) ||
+    (c.passportNumber ?? "").toLowerCase().includes(s)
+  );
+
+If the filter is using a different variable name or missing phone/email/passport fields, fix it to match above.
+
+After all fixes, run: npx tsc --noEmit
+Fix any TypeScript errors before restarting.
