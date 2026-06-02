@@ -727,6 +727,7 @@ Misi agen: cara owner boost motivasi dan produktivitas tim agen
 - Pakai markdown ringan (bold, bullet points, tabel) untuk keterbacaan
 - Angka keuangan: format IDR yang rapi (Rp 15.000.000 bukan 15000000)
 - Kalau ada data kosong: tetap informatif, jangan cuma bilang "tidak ada data"
+- Saat menampilkan laporan keuangan, SELALU sertakan analisis naratif: kondisi profit/loss, pipeline order, dan 1-2 rekomendasi konkret yang actionable. Jangan hanya tampilkan angka.
 - Emoji boleh tapi tidak berlebihan — gunakan untuk emphasis, bukan dekorasi
 - NAMA BUKAN UUID: Selalu tampilkan nama asli. UUID hanya untuk kebutuhan teknis jika diminta
 - Untuk data agen: tampilkan dalam bentuk tabel atau list yang rapi dengan semua kolom relevan
@@ -1355,8 +1356,36 @@ async function executeTool(
         }
 
         const rangeLabel: Record<string, string> = { this_month: "Bulan Ini", last_month: "Bulan Lalu", this_year: "Tahun Ini", all: "Semua Waktu" };
+
+        // Generate narrative analysis
+        const revenueThisRange = stats.totalRevenue ?? 0;
+        const profitThisRange  = stats.netProfit ?? 0;
+        const cancelledOrders  = orders.filter((o) => o.status === "Cancelled").length;
+        const draftOrders      = orders.filter((o) => o.status === "Draft").length;
+        const confirmedOrders  = orders.filter((o) => o.status === "Confirmed").length;
+        const marginPct        = revenueThisRange > 0 ? ((profitThisRange / revenueThisRange) * 100).toFixed(1) : "0.0";
+
+        const narrative = [
+          `📊 **Ringkasan Keuangan — ${rangeLabel[range] ?? "Semua Waktu"}**`,
+          `Total revenue: ${fmtIDR(revenueThisRange)} | Net profit: ${fmtIDR(profitThisRange)}`,
+          profitThisRange > 0
+            ? `✅ Bisnis dalam kondisi profit dengan margin ${marginPct}%`
+            : `⚠️ Perlu perhatian — profit masih negatif`,
+          ``,
+          `📌 **Kondisi Pipeline**`,
+          `- ${draftOrders} order masih Draft (belum dikonfirmasi)`,
+          `- ${confirmedOrders} order Confirmed (menunggu pembayaran)`,
+          cancelledOrders > 0
+            ? `- ⚠️ ${cancelledOrders} order Cancelled — cek penyebabnya`
+            : `- Tidak ada order Cancelled`,
+          ``,
+          draftOrders > 3
+            ? `💡 **Rekomendasi:** Ada ${draftOrders} order Draft yang perlu di-follow up. Prioritaskan konversi ke Confirmed untuk meningkatkan cash flow.`
+            : `💡 Pipeline sehat. Fokus ke akuisisi klien baru.`,
+        ].join("\n");
+
         return {
-          result: JSON.stringify({ range, rangeLabel: rangeLabel[range], stats, agentCommissions }),
+          result: JSON.stringify({ range, rangeLabel: rangeLabel[range], stats, agentCommissions, narrative }),
           displayData: {
             type: "financial_report",
             rangeLabel: rangeLabel[range] ?? "Semua Waktu",
@@ -1370,6 +1399,7 @@ async function executeTool(
             netProfit: fmtIDR(stats.netProfit),
             avgMarginPct: `${stats.avgMargin.toFixed(1)}%`,
             agentCommissions,
+            narrative,
           },
           success: true,
         };
