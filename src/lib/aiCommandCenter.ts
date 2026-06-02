@@ -18,11 +18,14 @@ import { extractItinerary } from "@/lib/itineraryAI";
 import { fmtIDR, netProfitIDR, revenueIDR } from "@/lib/profit";
 import { useRatesStore } from "@/store/ratesStore";
 import { useAuthStore } from "@/store/authStore";
+import { useClientsStore } from "@/store/clientsStore";
+import { useOrdersStore } from "@/store/ordersStore";
+import { usePackagesStore } from "@/store/packagesStore";
 import { nextInvoiceNumber, todayString } from "@/lib/invoiceGenerator";
 import { generateInvoicePdfRemote } from "@/lib/exportPdfApi";
 import { useInvoiceStore } from "@/store/invoiceStore";
 import { loadIghAdminSettings } from "@/lib/ighSettings";
-import { callAIAssistant } from "@/lib/aiFetch";
+import { callAI, callAIAssistant } from "@/lib/aiFetch";
 import { listWalletTxs, walletBalance } from "@/lib/agentWallet";
 import { buildLedgerEntries, ledgerSummary } from "@/lib/ledgerSync";
 import { loadProductCommissions } from "@/lib/productCommissions";
@@ -1475,7 +1478,7 @@ async function executeTool(
       }
 
       case "create_client": {
-        const { addClient } = await import("@/store/clientsStore").then(m => m.useClientsStore.getState());
+        const { addClient } = useClientsStore.getState();
         const clientData = {
           name: args.name as string,
           phone: (args.phone as string) || null,
@@ -1496,7 +1499,9 @@ async function executeTool(
       }
 
       case "create_order": {
-        const { addOrder } = await import("@/store/ordersStore").then(m => m.useOrdersStore.getState());
+        const { addOrder } = useOrdersStore.getState();
+        const agencyId = useAuthStore.getState().user?.agencyId;
+        const userId = useAuthStore.getState().user?.id;
         const orderData = {
           clientId: args.clientId as string,
           type: args.type as string,
@@ -1519,7 +1524,7 @@ async function executeTool(
       }
 
       case "update_order_status": {
-        const { patchOrder } = await import("@/store/ordersStore").then(m => m.useOrdersStore.getState());
+        const { patchOrder } = useOrdersStore.getState();
         await patchOrder(args.orderId as string, {
           status: args.status as string,
           ...(args.notes ? { notes: args.notes as string } : {}),
@@ -1532,7 +1537,7 @@ async function executeTool(
       }
 
       case "update_client": {
-        const { patchClient } = await import("@/store/clientsStore").then(m => m.useClientsStore.getState());
+        const { patchClient } = useClientsStore.getState();
         const { clientId, ...rest } = args as Record<string, string>;
         const patch = Object.fromEntries(
           Object.entries(rest).filter(([, v]) => v !== undefined && v !== null && v !== "")
@@ -1564,16 +1569,16 @@ async function executeTool(
       }
 
       case "generate_marketing_caption": {
-        const pkgStore = await import("@/store/packagesStore").then((m) => m.usePackagesStore.getState());
-        if (pkgStore.items.length === 0) await pkgStore.refresh();
-        const freshItems = (await import("@/store/packagesStore")).usePackagesStore.getState().items;
+        const packagesStore = usePackagesStore.getState();
+        if (packagesStore.items.length === 0) await packagesStore.refresh();
+        const packages = usePackagesStore.getState().items;
 
-        let targetPkg = args.packageId
-          ? freshItems.find((p) => p.id === (args.packageId as string))
-          : freshItems.filter((p) => p.status === "Confirmed" || p.status === "Calculated" || p.status === "Draft")[0];
-        if (!targetPkg) targetPkg = freshItems[0];
+        let targetPackage = args.packageId
+          ? packages.find((p) => p.id === args.packageId)
+          : packages.filter((p) => p.status === "Confirmed" || p.status === "Calculated" || p.status === "Draft")[0];
 
-        if (!targetPkg) {
+        if (!targetPackage) targetPackage = packages[0];
+        if (!targetPackage) {
           return {
             result: JSON.stringify({ error: "Tidak ada paket aktif di database" }),
             displayData: { type: "error", message: "Buat paket dulu di halaman Paket & Trip" },
@@ -1582,25 +1587,30 @@ async function executeTool(
         }
 
         const platform = (args.platform as string) ?? "both";
-        const tone     = (args.tone as string) ?? "casual";
+        const tone = (args.tone as string) ?? "casual";
 
         const packageInfo = {
-          name:        targetPkg.name,
-          price:       targetPkg.totalIDR,
-          currency:    "IDR",
-          destination: targetPkg.destination,
-          duration:    targetPkg.days,
-          quota:       targetPkg.people,
-          departDate:  targetPkg.departureDate ?? null,
+          name: targetPackage.name,
+          price: targetPackage.totalIDR,
+          currency: "IDR",
+          destination: targetPackage.destination,
+          duration: targetPackage.days,
+          quota: targetPackage.people,
+          departDate: targetPackage.departureDate ?? null,
         };
 
-        const { callAI: callAICaption } = await import("@/lib/aiFetch");
-        const captionRes = await callAICaption({
+        const captionRes = await callAI({
           model: "openai/gpt-4o-mini",
           messages: [
             {
               role: "system",
-              content: `Kamu adalah copywriter marketing travel umrah/haji profesional Indonesia. Buat caption yang menarik, authentic, dan menggunakan data nyata dari paket. Tone: ${tone}. Platform: ${platform}. Format output JSON: { "instagram": "...", "whatsapp": "..." } Untuk Instagram: gunakan emoji, hashtag relevan, max 2200 karakter. Untuk WhatsApp: format broadcast yang personal, tanpa hashtag, max 500 karakter. Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsapp, isi instagram dengan string kosong.`,
+              content: `Kamu adalah copywriter marketing travel umrah/haji profesional Indonesia.
+Buat caption yang menarik, authentic, dan menggunakan data nyata dari paket.
+Tone: ${tone}. Platform: ${platform}.
+Format output JSON: { "instagram": "...", "whatsapp": "..." }
+Untuk Instagram: gunakan emoji, hashtag relevan, max 2200 karakter.
+Untuk WhatsApp: format broadcast yang personal, tanpa hashtag, max 500 karakter.
+Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsapp, sebaliknya.`,
             },
             {
               role: "user",
@@ -1613,18 +1623,13 @@ async function executeTool(
         });
 
         const captionData = await captionRes.json() as { choices?: Array<{ message?: { content?: string } }> };
-        let captions: { instagram?: string; whatsapp?: string } = {};
-        try {
-          captions = JSON.parse(captionData.choices?.[0]?.message?.content ?? "{}") as { instagram?: string; whatsapp?: string };
-        } catch {
-          captions = {};
-        }
+        const captions = JSON.parse(captionData.choices?.[0]?.message?.content ?? "{}") as { instagram?: string; whatsapp?: string };
 
         return {
           result: JSON.stringify({ success: true, package: packageInfo, captions }),
           displayData: {
             type: "marketing_caption",
-            packageName: targetPkg.name,
+            packageName: targetPackage.name,
             instagram: captions.instagram ?? "",
             whatsapp: captions.whatsapp ?? "",
             platform,
