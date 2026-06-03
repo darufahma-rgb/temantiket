@@ -53,9 +53,9 @@ export const OR_MODELS = {
   /** Vision + OCR: poster, paspor, tiket screenshot. Gemini 2.0 Flash 001 — stabil, murah, vision. */
   VISION:          "google/gemini-2.0-flash-001",
   /** Caption marketing — manual maupun dari poster. */
-  CAPTION:         "google/gemini-2.0-flash-001",
-  /** Caption writer setelah OCR poster — Gemini 2.0 Flash 001. */
-  CAPTION_WRITER:  "google/gemini-2.0-flash-001",
+  CAPTION:         "openai/gpt-4o-mini",
+  /** Caption writer setelah OCR poster — GPT-4o Mini. */
+  CAPTION_WRITER:  "openai/gpt-4o-mini",
   /** Rapikan catatan, formatting teks ringan. */
   TEXT_FAST:       "google/gemini-2.0-flash-001",
   /** Rapikan catatan — Gemini 2.0 Flash 001 (Claude requires paid OpenRouter plan). */
