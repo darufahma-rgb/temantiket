@@ -4,6 +4,9 @@ const SUPABASE_URL      = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE
 const SUPABASE_ANON_KEY = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
 const SERVICE_ROLE_KEY  = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const OPENAI_API_KEY    = (process.env.OPENAI_API_KEY || '').trim();
+const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const MODEL_OCR = 'openai/gpt-4o';
 const SERPAPI_KEY       = (process.env.SERPAPI_KEY || '').trim();
 
 const BUCKETS_TO_CHECK = ['jamaah-photos', 'jamaah-docs', 'card-backs', 'pdf-templates'];
@@ -644,7 +647,7 @@ async function handleAuthUser(req, res, caller, authHeader) {
 
 async function handleOcrPassport(req, res, admin, caller) {
   try {
-    if (!OPENAI_API_KEY) return res.status(503).json({ error: 'OPENAI_API_KEY belum di-set di Vercel Environment Variables.' });
+    if (!OPENROUTER_API_KEY) return res.status(503).json({ error: 'OPENROUTER_API_KEY belum di-set di Vercel Environment Variables.' });
 
     const { data: membership, error: memErr } = await admin
       .from('agency_members').select('agency_id').eq('user_id', caller.id).maybeSingle();
@@ -655,11 +658,16 @@ async function handleOcrPassport(req, res, admin, caller) {
     if (!imageDataUrl.startsWith('data:image/')) return res.status(400).json({ error: 'imageDataUrl must be a data URL (data:image/...;base64,...)' });
     if (imageDataUrl.length > 6 * 1024 * 1024) return res.status(400).json({ error: 'Image terlalu besar (>6 MB), tolong di-compress dulu' });
 
-    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openaiRes = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'HTTP-Referer': 'https://temantiket.vercel.app',
+        'X-Title': 'Temantiket',
+      },
       body: JSON.stringify({
-        model: 'gpt-4o-mini', temperature: 0, max_tokens: 400,
+        model: MODEL_OCR, temperature: 0, max_tokens: 400,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: OCR_SYSTEM_PROMPT },
