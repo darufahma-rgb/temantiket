@@ -881,7 +881,14 @@ export default async function handler(req, res) {
   if (resource === 'health-check' && req.method === 'GET') return handleHealthCheck(req, res);
   if (resource === 'setup-card-back' && req.method === 'POST') return handleSetupCardBack(req, res);
   if (resource === 'bootstrap' && req.method === 'POST') return handleBootstrap(req, res);
-  if (resource === 'public' && subId === 'ticket-prices' && req.method === 'GET') return handlePublicTicketPrices(req, res);
+  if (req.method === 'GET') {
+    const fullPath = segments.join('/');
+    if (
+      fullPath === 'public/ticket-prices' ||
+      resource === 'public' && subId === 'ticket-prices' ||
+      req.url?.includes('/public/ticket-prices')
+    ) return handlePublicTicketPrices(req, res);
+  }
 
   // ── Auth-gated routes ───────────────────────────────────────────────────────
   const authHeader = req.headers.authorization;
