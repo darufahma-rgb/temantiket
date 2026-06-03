@@ -1,58 +1,40 @@
 'use strict';
 
-/**
- * data.cjs — Supabase-native CRUD routes
- * Replit PostgreSQL (pool) telah dihapus sepenuhnya.
- * Semua operasi data menggunakan Supabase Admin client.
- */
-
-const { getSb } = require('../supabaseAdmin.cjs');
+const { query, queryOne } = require('../pgDb.cjs');
 
 function ok(res, data) { return res.status(200).json(data); }
 function fail(res, code, message) { return res.status(code).json({ error: message }); }
 
-/** Filter null/undefined — used for partial UPDATE (COALESCE equivalent). */
-function patch(obj) {
-  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== null && v !== undefined));
+function pick(obj, keys) {
+  const result = {};
+  for (const k of keys) {
+    if (obj[k] !== undefined && obj[k] !== null) result[k] = obj[k];
+  }
+  return result;
 }
 
-function resolveUserId(req) {
-  return req.user?.id ?? null;
-}
-
-/** Get caller agency membership from Supabase. Returns { agency_id, role, commission_pct } or null. */
 async function getCallerAgency(req) {
-  const userId = resolveUserId(req);
+  const userId = req.user?.id;
   if (!userId) return null;
   try {
-    const { data: rows, error } = await getSb()
-      .from('agency_members')
-      .select('agency_id, role, commission_pct')
-      .eq('user_id', userId)
-      .limit(1);
-    if (error) { console.warn('[getCallerAgency]', error.message); return null; }
-    return rows?.[0] ?? null;
+    return await queryOne(
+      `SELECT agency_id, role, commission_pct FROM agency_members WHERE user_id = $1 LIMIT 1`,
+      [userId]
+    );
   } catch (e) {
     console.warn('[getCallerAgency]', e.message);
     return null;
   }
 }
 
-/** Middleware: require Supabase Bearer JWT + agency membership. */
 async function requireMember(req, res, next) {
-  const hasBearer = (req.headers['authorization'] ?? '').startsWith('Bearer ');
-  if (!hasBearer) return fail(res, 401, 'Unauthorized');
+  if (!req.user?.id) return fail(res, 401, 'Unauthorized');
   const agency = await getCallerAgency(req).catch(() => null);
   if (!agency) return fail(res, 403, 'Tidak terdaftar di agency');
   req.agency = agency;
-  if (!req.user?.id) {
-    const uid = resolveUserId(req);
-    if (uid) req.user = { id: uid };
-  }
   next();
 }
 
-/** Middleware: require owner role. */
 async function requireOwner(req, res, next) {
   await requireMember(req, res, () => {
     if (req.agency.role !== 'owner') return fail(res, 403, 'Hanya owner yang dapat melakukan ini');
@@ -60,7 +42,6 @@ async function requireOwner(req, res, next) {
   });
 }
 
-/** Middleware: require owner or staff. */
 async function requireOwnerOrStaff(req, res, next) {
   await requireMember(req, res, () => {
     if (!['owner', 'staff'].includes(req.agency.role)) {
@@ -75,97 +56,92 @@ async function requireOwnerOrStaff(req, res, next) {
 function registerClientRoutes(app) {
   app.get('/api/clients', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('clients')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id)
-        .order('created_at', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM clients WHERE agency_id = $1 ORDER BY created_at DESC`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.get('/api/clients/:id', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('clients')
-        .select('*')
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id)
-        .single();
-      if (error || !data) return fail(res, 404, 'Client tidak ditemukan');
-      return ok(res, data);
+      const row = await queryOne(
+        `SELECT * FROM clients WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
+      if (!row) return fail(res, 404, 'Client tidak ditemukan');
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/clients', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:               req.agency.agency_id,
-        name:                    b.name,
-        phone:                   b.phone ?? '',
-        email:                   b.email ?? null,
-        birth_date:              b.birth_date ?? null,
-        birth_place:             b.birth_place ?? null,
-        passport_number:         b.passport_number ?? null,
-        passport_expiry:         b.passport_expiry ?? null,
-        passport_issue_date:     b.passport_issue_date ?? null,
-        passport_issuing_office: b.passport_issuing_office ?? null,
-        gender:                  b.gender ?? null,
-        photo_data_url:          b.photo_data_url ?? null,
-        notes:                   b.notes ?? null,
-        legacy_jamaah_id:        b.legacy_jamaah_id ?? null,
-        created_by_agent:        b.created_by_agent ?? null,
-        referred_by_client_id:   b.referred_by_client_id ?? null,
-        referral_stamps:         b.referral_stamps ?? 0,
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('clients').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const id = b.id || undefined;
+      const row = await queryOne(
+        `INSERT INTO clients (${id ? 'id, ' : ''}agency_id, name, phone, email, birth_date, birth_place,
+          passport_number, passport_expiry, passport_issue_date, passport_issuing_office,
+          gender, photo_data_url, notes, legacy_jamaah_id, created_by_agent,
+          referred_by_client_id, referral_stamps)
+         VALUES (${id ? '$1, $2' : '$1'}, ${id ? '$3' : '$2'}, ${id ? '$4' : '$3'}, ${id ? '$5' : '$4'},
+                 ${id ? '$6' : '$5'}, ${id ? '$7' : '$6'}, ${id ? '$8' : '$7'}, ${id ? '$9' : '$8'},
+                 ${id ? '$10' : '$9'}, ${id ? '$11' : '$10'}, ${id ? '$12' : '$11'}, ${id ? '$13' : '$12'},
+                 ${id ? '$14' : '$13'}, ${id ? '$15' : '$14'}, ${id ? '$16' : '$15'}, ${id ? '$17' : '$16'},
+                 ${id ? '$18' : '$17'}, ${id ? '$19' : '$18'})
+         RETURNING *`,
+        id
+          ? [id, req.agency.agency_id, b.name, b.phone ?? '', b.email ?? null, b.birth_date ?? null,
+             b.birth_place ?? null, b.passport_number ?? null, b.passport_expiry ?? null,
+             b.passport_issue_date ?? null, b.passport_issuing_office ?? null,
+             b.gender ?? null, b.photo_data_url ?? null, b.notes ?? null,
+             b.legacy_jamaah_id ?? null, b.created_by_agent ?? null,
+             b.referred_by_client_id ?? null, b.referral_stamps ?? 0]
+          : [req.agency.agency_id, b.name, b.phone ?? '', b.email ?? null, b.birth_date ?? null,
+             b.birth_place ?? null, b.passport_number ?? null, b.passport_expiry ?? null,
+             b.passport_issue_date ?? null, b.passport_issuing_office ?? null,
+             b.gender ?? null, b.photo_data_url ?? null, b.notes ?? null,
+             b.legacy_jamaah_id ?? null, b.created_by_agent ?? null,
+             b.referred_by_client_id ?? null, b.referral_stamps ?? 0]
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.put('/api/clients/:id', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const { data, error } = await getSb()
-        .from('clients')
-        .update(patch({
-          name:                    b.name,
-          phone:                   b.phone,
-          email:                   b.email,
-          birth_date:              b.birth_date,
-          birth_place:             b.birth_place,
-          passport_number:         b.passport_number,
-          passport_expiry:         b.passport_expiry,
-          passport_issue_date:     b.passport_issue_date,
-          passport_issuing_office: b.passport_issuing_office,
-          gender:                  b.gender,
-          photo_data_url:          b.photo_data_url,
-          notes:                   b.notes,
-          created_by_agent:        b.created_by_agent,
-          referred_by_client_id:   b.referred_by_client_id,
-          updated_at:              new Date().toISOString(),
-        }))
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id)
-        .select()
-        .single();
-      if (error || !data) return fail(res, 404, 'Client tidak ditemukan');
-      return ok(res, data);
+      const row = await queryOne(
+        `UPDATE clients SET
+          name = COALESCE($1, name), phone = COALESCE($2, phone), email = COALESCE($3, email),
+          birth_date = COALESCE($4, birth_date), birth_place = COALESCE($5, birth_place),
+          passport_number = COALESCE($6, passport_number), passport_expiry = COALESCE($7, passport_expiry),
+          passport_issue_date = COALESCE($8, passport_issue_date),
+          passport_issuing_office = COALESCE($9, passport_issuing_office),
+          gender = COALESCE($10, gender), photo_data_url = COALESCE($11, photo_data_url),
+          notes = COALESCE($12, notes), created_by_agent = COALESCE($13, created_by_agent),
+          referred_by_client_id = COALESCE($14, referred_by_client_id),
+          updated_at = NOW()
+         WHERE id = $15 AND agency_id = $16
+         RETURNING *`,
+        [b.name ?? null, b.phone ?? null, b.email ?? null, b.birth_date ?? null,
+         b.birth_place ?? null, b.passport_number ?? null, b.passport_expiry ?? null,
+         b.passport_issue_date ?? null, b.passport_issuing_office ?? null,
+         b.gender ?? null, b.photo_data_url ?? null, b.notes ?? null,
+         b.created_by_agent ?? null, b.referred_by_client_id ?? null,
+         req.params.id, req.agency.agency_id]
+      );
+      if (!row) return fail(res, 404, 'Client tidak ditemukan');
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/clients/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('clients')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM clients WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -176,83 +152,79 @@ function registerClientRoutes(app) {
 function registerOrderRoutes(app) {
   app.get('/api/orders', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('orders')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id)
-        .order('created_at', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM orders WHERE agency_id = $1 ORDER BY created_at DESC`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/orders', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:        req.agency.agency_id,
-        client_id:        b.client_id ?? null,
-        type:             b.type ?? 'umrah',
-        status:           b.status ?? 'Draft',
-        title:            b.title ?? null,
-        total_price:      b.total_price ?? 0,
-        cost_price:       b.cost_price ?? 0,
-        currency:         b.currency ?? 'IDR',
-        metadata:         b.metadata ?? {},
-        trip_id:          b.trip_id ?? null,
-        package_id:       b.package_id ?? null,
-        jamaah_id:        b.jamaah_id ?? null,
-        created_by_agent: b.created_by_agent ?? null,
-        notes:            b.notes ?? null,
-        payment_status:   b.payment_status ?? 'UNPAID',
-        paid_amount:      b.paid_amount ?? 0,
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('orders').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO orders (${b.id ? 'id, ' : ''}agency_id, client_id, type, status, title,
+          total_price, cost_price, currency, metadata, trip_id, package_id, jamaah_id,
+          created_by_agent, notes, payment_status, paid_amount)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7' : '$6'},
+                 ${b.id ? '$8' : '$7'}, ${b.id ? '$9' : '$8'}, ${b.id ? '$10' : '$9'},
+                 ${b.id ? '$11' : '$10'}, ${b.id ? '$12' : '$11'}, ${b.id ? '$13' : '$12'},
+                 ${b.id ? '$14' : '$13'}, ${b.id ? '$15' : '$14'}, ${b.id ? '$16' : '$15'},
+                 ${b.id ? '$17' : '$16'}, ${b.id ? '$18' : '$17'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.agency.agency_id, b.client_id ?? null, b.type ?? 'umrah',
+             b.status ?? 'Draft', b.title ?? null, b.total_price ?? 0, b.cost_price ?? 0,
+             b.currency ?? 'IDR', JSON.stringify(b.metadata ?? {}), b.trip_id ?? null,
+             b.package_id ?? null, b.jamaah_id ?? null, b.created_by_agent ?? null,
+             b.notes ?? null, b.payment_status ?? 'UNPAID', b.paid_amount ?? 0]
+          : [req.agency.agency_id, b.client_id ?? null, b.type ?? 'umrah',
+             b.status ?? 'Draft', b.title ?? null, b.total_price ?? 0, b.cost_price ?? 0,
+             b.currency ?? 'IDR', JSON.stringify(b.metadata ?? {}), b.trip_id ?? null,
+             b.package_id ?? null, b.jamaah_id ?? null, b.created_by_agent ?? null,
+             b.notes ?? null, b.payment_status ?? 'UNPAID', b.paid_amount ?? 0]
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.put('/api/orders/:id', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const { data, error } = await getSb()
-        .from('orders')
-        .update(patch({
-          client_id:        b.client_id,
-          type:             b.type,
-          status:           b.status,
-          title:            b.title,
-          total_price:      b.total_price,
-          cost_price:       b.cost_price,
-          currency:         b.currency,
-          metadata:         b.metadata,
-          trip_id:          b.trip_id,
-          package_id:       b.package_id,
-          notes:            b.notes,
-          payment_status:   b.payment_status,
-          paid_amount:      b.paid_amount,
-          created_by_agent: b.created_by_agent,
-          updated_at:       new Date().toISOString(),
-        }))
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id)
-        .select()
-        .single();
-      if (error || !data) return fail(res, 404, 'Order tidak ditemukan');
-      return ok(res, data);
+      const row = await queryOne(
+        `UPDATE orders SET
+          client_id = COALESCE($1, client_id), type = COALESCE($2, type),
+          status = COALESCE($3, status), title = COALESCE($4, title),
+          total_price = COALESCE($5, total_price), cost_price = COALESCE($6, cost_price),
+          currency = COALESCE($7, currency),
+          metadata = CASE WHEN $8::jsonb IS NOT NULL THEN $8::jsonb ELSE metadata END,
+          trip_id = COALESCE($9, trip_id), package_id = COALESCE($10, package_id),
+          notes = COALESCE($11, notes), payment_status = COALESCE($12, payment_status),
+          paid_amount = COALESCE($13, paid_amount),
+          created_by_agent = COALESCE($14, created_by_agent),
+          updated_at = NOW()
+         WHERE id = $15 AND agency_id = $16
+         RETURNING *`,
+        [b.client_id ?? null, b.type ?? null, b.status ?? null, b.title ?? null,
+         b.total_price ?? null, b.cost_price ?? null, b.currency ?? null,
+         b.metadata ? JSON.stringify(b.metadata) : null,
+         b.trip_id ?? null, b.package_id ?? null, b.notes ?? null,
+         b.payment_status ?? null, b.paid_amount ?? null, b.created_by_agent ?? null,
+         req.params.id, req.agency.agency_id]
+      );
+      if (!row) return fail(res, 404, 'Order tidak ditemukan');
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/orders/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('orders')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM orders WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -263,84 +235,78 @@ function registerOrderRoutes(app) {
 function registerPackageRoutes(app) {
   app.get('/api/packages', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('packages')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id)
-        .order('created_at', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM packages WHERE agency_id = $1 ORDER BY created_at DESC`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/packages', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:      req.agency.agency_id,
-        name:           b.name,
-        destination:    b.destination ?? '',
-        people:         b.people ?? 1,
-        days:           b.days ?? 1,
-        hpp:            b.hpp ?? 0,
-        total_idr:      b.total_idr ?? 0,
-        status:         b.status ?? 'Draft',
-        emoji:          b.emoji ?? '📦',
-        cover_image:    b.cover_image ?? null,
-        departure_date: b.departure_date ?? null,
-        return_date:    b.return_date ?? null,
-        airline:        b.airline ?? null,
-        hotel_level:    b.hotel_level ?? null,
-        notes:          b.notes ?? null,
-        facilities:     b.facilities ?? null,
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('packages').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO packages (${b.id ? 'id, ' : ''}agency_id, name, destination, people, days,
+          hpp, total_idr, status, emoji, cover_image, departure_date, return_date,
+          airline, hotel_level, notes, facilities)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7' : '$6'},
+                 ${b.id ? '$8' : '$7'}, ${b.id ? '$9' : '$8'}, ${b.id ? '$10' : '$9'},
+                 ${b.id ? '$11' : '$10'}, ${b.id ? '$12' : '$11'}, ${b.id ? '$13' : '$12'},
+                 ${b.id ? '$14' : '$13'}, ${b.id ? '$15' : '$14'}, ${b.id ? '$16' : '$15'},
+                 ${b.id ? '$17' : '$16'}, ${b.id ? '$18' : '$17'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.agency.agency_id, b.name, b.destination ?? '', b.people ?? 1,
+             b.days ?? 1, b.hpp ?? 0, b.total_idr ?? 0, b.status ?? 'Draft',
+             b.emoji ?? '📦', b.cover_image ?? null, b.departure_date ?? null,
+             b.return_date ?? null, b.airline ?? null, b.hotel_level ?? null,
+             b.notes ?? null, b.facilities ? JSON.stringify(b.facilities) : null]
+          : [req.agency.agency_id, b.name, b.destination ?? '', b.people ?? 1,
+             b.days ?? 1, b.hpp ?? 0, b.total_idr ?? 0, b.status ?? 'Draft',
+             b.emoji ?? '📦', b.cover_image ?? null, b.departure_date ?? null,
+             b.return_date ?? null, b.airline ?? null, b.hotel_level ?? null,
+             b.notes ?? null, b.facilities ? JSON.stringify(b.facilities) : null]
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.put('/api/packages/:id', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const { data, error } = await getSb()
-        .from('packages')
-        .update(patch({
-          name:           b.name,
-          destination:    b.destination,
-          people:         b.people,
-          days:           b.days,
-          hpp:            b.hpp,
-          total_idr:      b.total_idr,
-          status:         b.status,
-          emoji:          b.emoji,
-          cover_image:    b.cover_image,
-          departure_date: b.departure_date,
-          return_date:    b.return_date,
-          airline:        b.airline,
-          hotel_level:    b.hotel_level,
-          notes:          b.notes,
-          facilities:     b.facilities,
-          updated_at:     new Date().toISOString(),
-        }))
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id)
-        .select()
-        .single();
-      if (error || !data) return fail(res, 404, 'Package tidak ditemukan');
-      return ok(res, data);
+      const row = await queryOne(
+        `UPDATE packages SET
+          name = COALESCE($1, name), destination = COALESCE($2, destination),
+          people = COALESCE($3, people), days = COALESCE($4, days),
+          hpp = COALESCE($5, hpp), total_idr = COALESCE($6, total_idr),
+          status = COALESCE($7, status), emoji = COALESCE($8, emoji),
+          cover_image = COALESCE($9, cover_image), departure_date = COALESCE($10, departure_date),
+          return_date = COALESCE($11, return_date), airline = COALESCE($12, airline),
+          hotel_level = COALESCE($13, hotel_level), notes = COALESCE($14, notes),
+          facilities = CASE WHEN $15::jsonb IS NOT NULL THEN $15::jsonb ELSE facilities END,
+          updated_at = NOW()
+         WHERE id = $16 AND agency_id = $17
+         RETURNING *`,
+        [b.name ?? null, b.destination ?? null, b.people ?? null, b.days ?? null,
+         b.hpp ?? null, b.total_idr ?? null, b.status ?? null, b.emoji ?? null,
+         b.cover_image ?? null, b.departure_date ?? null, b.return_date ?? null,
+         b.airline ?? null, b.hotel_level ?? null, b.notes ?? null,
+         b.facilities ? JSON.stringify(b.facilities) : null,
+         req.params.id, req.agency.agency_id]
+      );
+      if (!row) return fail(res, 404, 'Package tidak ditemukan');
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/packages/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('packages')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM packages WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -351,96 +317,89 @@ function registerPackageRoutes(app) {
 function registerTicketPriceRoutes(app) {
   app.get('/api/ticket-prices', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('ticket_prices')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id)
-        .order('sort_order', { ascending: true });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM ticket_prices WHERE agency_id = $1 ORDER BY sort_order ASC`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/ticket-prices', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:        req.agency.agency_id,
-        airline:          b.airline ?? '',
-        airline_code:     b.airline_code ?? '',
-        from_code:        b.from_code ?? '',
-        from_city:        b.from_city ?? '',
-        to_code:          b.to_code ?? '',
-        to_city:          b.to_city ?? '',
-        depart_date:      b.depart_date ?? null,
-        base_price:       b.base_price ?? 0,
-        currency:         b.currency ?? 'IDR',
-        valid_until:      b.valid_until ?? null,
-        notes:            b.notes ?? null,
-        is_published:     b.is_published ?? true,
-        sort_order:       b.sort_order ?? 0,
-        flight_number:    b.flight_number ?? null,
-        etd:              b.etd ?? null,
-        eta:              b.eta ?? null,
-        terminal:         b.terminal ?? null,
-        transit_code:     b.transit_code ?? null,
-        transit_city:     b.transit_city ?? null,
-        transit_duration: b.transit_duration ?? null,
-        baggage_info:     b.baggage_info ?? null,
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('ticket_prices').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO ticket_prices (${b.id ? 'id, ' : ''}agency_id, airline, airline_code,
+          from_code, from_city, to_code, to_city, depart_date, base_price, currency,
+          valid_until, notes, is_published, sort_order, flight_number, etd, eta,
+          terminal, transit_code, transit_city, transit_duration, baggage_info)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7' : '$6'},
+                 ${b.id ? '$8' : '$7'}, ${b.id ? '$9' : '$8'}, ${b.id ? '$10' : '$9'},
+                 ${b.id ? '$11' : '$10'}, ${b.id ? '$12' : '$11'}, ${b.id ? '$13' : '$12'},
+                 ${b.id ? '$14' : '$13'}, ${b.id ? '$15' : '$14'}, ${b.id ? '$16' : '$15'},
+                 ${b.id ? '$17' : '$16'}, ${b.id ? '$18' : '$17'}, ${b.id ? '$19' : '$18'},
+                 ${b.id ? '$20' : '$19'}, ${b.id ? '$21' : '$20'}, ${b.id ? '$22' : '$21'},
+                 ${b.id ? '$23' : '$22'}, ${b.id ? '$24' : '$23'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.agency.agency_id, b.airline ?? '', b.airline_code ?? '',
+             b.from_code ?? '', b.from_city ?? '', b.to_code ?? '', b.to_city ?? '',
+             b.depart_date ?? null, b.base_price ?? 0, b.currency ?? 'IDR',
+             b.valid_until ?? null, b.notes ?? null, b.is_published ?? true,
+             b.sort_order ?? 0, b.flight_number ?? null, b.etd ?? null, b.eta ?? null,
+             b.terminal ?? null, b.transit_code ?? null, b.transit_city ?? null,
+             b.transit_duration ?? null, b.baggage_info ?? null]
+          : [req.agency.agency_id, b.airline ?? '', b.airline_code ?? '',
+             b.from_code ?? '', b.from_city ?? '', b.to_code ?? '', b.to_city ?? '',
+             b.depart_date ?? null, b.base_price ?? 0, b.currency ?? 'IDR',
+             b.valid_until ?? null, b.notes ?? null, b.is_published ?? true,
+             b.sort_order ?? 0, b.flight_number ?? null, b.etd ?? null, b.eta ?? null,
+             b.terminal ?? null, b.transit_code ?? null, b.transit_city ?? null,
+             b.transit_duration ?? null, b.baggage_info ?? null]
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.put('/api/ticket-prices/:id', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const { data, error } = await getSb()
-        .from('ticket_prices')
-        .update(patch({
-          airline:          b.airline,
-          airline_code:     b.airline_code,
-          from_code:        b.from_code,
-          from_city:        b.from_city,
-          to_code:          b.to_code,
-          to_city:          b.to_city,
-          depart_date:      b.depart_date,
-          base_price:       b.base_price,
-          currency:         b.currency,
-          valid_until:      b.valid_until,
-          notes:            b.notes,
-          is_published:     b.is_published,
-          sort_order:       b.sort_order,
-          flight_number:    b.flight_number,
-          etd:              b.etd,
-          eta:              b.eta,
-          terminal:         b.terminal,
-          transit_code:     b.transit_code,
-          transit_city:     b.transit_city,
-          transit_duration: b.transit_duration,
-          baggage_info:     b.baggage_info,
-          updated_at:       new Date().toISOString(),
-        }))
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id)
-        .select()
-        .single();
-      if (error || !data) return fail(res, 404, 'Ticket price tidak ditemukan');
-      return ok(res, data);
+      const row = await queryOne(
+        `UPDATE ticket_prices SET
+          airline = COALESCE($1, airline), airline_code = COALESCE($2, airline_code),
+          from_code = COALESCE($3, from_code), from_city = COALESCE($4, from_city),
+          to_code = COALESCE($5, to_code), to_city = COALESCE($6, to_city),
+          depart_date = COALESCE($7, depart_date), base_price = COALESCE($8, base_price),
+          currency = COALESCE($9, currency), valid_until = COALESCE($10, valid_until),
+          notes = COALESCE($11, notes), is_published = COALESCE($12, is_published),
+          sort_order = COALESCE($13, sort_order), flight_number = COALESCE($14, flight_number),
+          etd = COALESCE($15, etd), eta = COALESCE($16, eta),
+          terminal = COALESCE($17, terminal), transit_code = COALESCE($18, transit_code),
+          transit_city = COALESCE($19, transit_city),
+          transit_duration = COALESCE($20, transit_duration),
+          baggage_info = COALESCE($21, baggage_info), updated_at = NOW()
+         WHERE id = $22 AND agency_id = $23
+         RETURNING *`,
+        [b.airline ?? null, b.airline_code ?? null, b.from_code ?? null, b.from_city ?? null,
+         b.to_code ?? null, b.to_city ?? null, b.depart_date ?? null, b.base_price ?? null,
+         b.currency ?? null, b.valid_until ?? null, b.notes ?? null,
+         b.is_published ?? null, b.sort_order ?? null, b.flight_number ?? null,
+         b.etd ?? null, b.eta ?? null, b.terminal ?? null, b.transit_code ?? null,
+         b.transit_city ?? null, b.transit_duration ?? null, b.baggage_info ?? null,
+         req.params.id, req.agency.agency_id]
+      );
+      if (!row) return fail(res, 404, 'Ticket price tidak ditemukan');
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/ticket-prices/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('ticket_prices')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM ticket_prices WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -451,202 +410,185 @@ function registerTicketPriceRoutes(app) {
 function registerTripRoutes(app) {
   app.get('/api/trips', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('trips')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id)
-        .order('created_at', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM trips WHERE agency_id = $1 ORDER BY created_at DESC`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/trips', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:     req.agency.agency_id,
-        name:          b.name,
-        destination:   b.destination ?? '',
-        start_date:    b.start_date ?? '',
-        end_date:      b.end_date ?? '',
-        emoji:         b.emoji ?? '✈️',
-        cover_image:   b.cover_image ?? null,
-        quota_pax:     b.quota_pax ?? null,
-        price_per_pax: b.price_per_pax ?? null,
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('trips').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO trips (${b.id ? 'id, ' : ''}agency_id, name, destination, start_date,
+          end_date, emoji, cover_image, quota_pax, price_per_pax)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7' : '$6'},
+                 ${b.id ? '$8' : '$7'}, ${b.id ? '$9' : '$8'}, ${b.id ? '$10' : '$9'},
+                 ${b.id ? '$11' : '$10'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.agency.agency_id, b.name, b.destination ?? '', b.start_date ?? '',
+             b.end_date ?? '', b.emoji ?? '✈️', b.cover_image ?? null,
+             b.quota_pax ?? null, b.price_per_pax ?? null]
+          : [req.agency.agency_id, b.name, b.destination ?? '', b.start_date ?? '',
+             b.end_date ?? '', b.emoji ?? '✈️', b.cover_image ?? null,
+             b.quota_pax ?? null, b.price_per_pax ?? null]
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.put('/api/trips/:id', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const { data, error } = await getSb()
-        .from('trips')
-        .update(patch({
-          name:          b.name,
-          destination:   b.destination,
-          start_date:    b.start_date,
-          end_date:      b.end_date,
-          emoji:         b.emoji,
-          cover_image:   b.cover_image,
-          quota_pax:     b.quota_pax,
-          price_per_pax: b.price_per_pax,
-        }))
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id)
-        .select()
-        .single();
-      if (error || !data) return fail(res, 404, 'Trip tidak ditemukan');
-      return ok(res, data);
+      const row = await queryOne(
+        `UPDATE trips SET
+          name = COALESCE($1, name), destination = COALESCE($2, destination),
+          start_date = COALESCE($3, start_date), end_date = COALESCE($4, end_date),
+          emoji = COALESCE($5, emoji), cover_image = COALESCE($6, cover_image),
+          quota_pax = COALESCE($7, quota_pax), price_per_pax = COALESCE($8, price_per_pax)
+         WHERE id = $9 AND agency_id = $10
+         RETURNING *`,
+        [b.name ?? null, b.destination ?? null, b.start_date ?? null, b.end_date ?? null,
+         b.emoji ?? null, b.cover_image ?? null, b.quota_pax ?? null, b.price_per_pax ?? null,
+         req.params.id, req.agency.agency_id]
+      );
+      if (!row) return fail(res, 404, 'Trip tidak ditemukan');
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/trips/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('trips')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM trips WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
 
-  // ── Jamaah (nested under trip) ────────────────────────────────────────────
-
   app.get('/api/trips/:tripId/jamaah', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('jamaah')
-        .select('*')
-        .eq('trip_id', req.params.tripId)
-        .eq('agency_id', req.agency.agency_id)
-        .order('created_at', { ascending: true });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM jamaah WHERE trip_id = $1 AND agency_id = $2 ORDER BY created_at ASC`,
+        [req.params.tripId, req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.get('/api/jamaah', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('jamaah')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id)
-        .order('created_at', { ascending: true });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM jamaah WHERE agency_id = $1 ORDER BY created_at ASC`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/jamaah', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:       req.agency.agency_id,
-        trip_id:         b.trip_id,
-        name:            b.name,
-        phone:           b.phone ?? '',
-        birth_date:      b.birth_date ?? '',
-        passport_number: b.passport_number ?? '',
-        passport_expiry: b.passport_expiry ?? null,
-        gender:          b.gender ?? '',
-        photo_data_url:  b.photo_data_url ?? null,
-        needs_review:    b.needs_review ?? false,
-        booking_code:    b.booking_code ?? null,
-        payment_status:  b.payment_status ?? 'Belum Lunas',
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('jamaah').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO jamaah (${b.id ? 'id, ' : ''}agency_id, trip_id, name, phone,
+          birth_date, passport_number, passport_expiry, gender, photo_data_url,
+          needs_review, booking_code, payment_status)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7' : '$6'},
+                 ${b.id ? '$8' : '$7'}, ${b.id ? '$9' : '$8'}, ${b.id ? '$10' : '$9'},
+                 ${b.id ? '$11' : '$10'}, ${b.id ? '$12' : '$11'}, ${b.id ? '$13' : '$12'},
+                 ${b.id ? '$14' : '$13'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.agency.agency_id, b.trip_id, b.name, b.phone ?? '',
+             b.birth_date ?? '', b.passport_number ?? '', b.passport_expiry ?? null,
+             b.gender ?? '', b.photo_data_url ?? null, b.needs_review ?? false,
+             b.booking_code ?? null, b.payment_status ?? 'Belum Lunas']
+          : [req.agency.agency_id, b.trip_id, b.name, b.phone ?? '',
+             b.birth_date ?? '', b.passport_number ?? '', b.passport_expiry ?? null,
+             b.gender ?? '', b.photo_data_url ?? null, b.needs_review ?? false,
+             b.booking_code ?? null, b.payment_status ?? 'Belum Lunas']
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.put('/api/jamaah/:id', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const { data, error } = await getSb()
-        .from('jamaah')
-        .update(patch({
-          name:            b.name,
-          phone:           b.phone,
-          birth_date:      b.birth_date,
-          passport_number: b.passport_number,
-          passport_expiry: b.passport_expiry,
-          gender:          b.gender,
-          photo_data_url:  b.photo_data_url,
-          needs_review:    b.needs_review,
-          booking_code:    b.booking_code,
-          payment_status:  b.payment_status,
-        }))
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id)
-        .select()
-        .single();
-      if (error || !data) return fail(res, 404, 'Jamaah tidak ditemukan');
-      return ok(res, data);
+      const row = await queryOne(
+        `UPDATE jamaah SET
+          name = COALESCE($1, name), phone = COALESCE($2, phone),
+          birth_date = COALESCE($3, birth_date),
+          passport_number = COALESCE($4, passport_number),
+          passport_expiry = COALESCE($5, passport_expiry),
+          gender = COALESCE($6, gender), photo_data_url = COALESCE($7, photo_data_url),
+          needs_review = COALESCE($8, needs_review),
+          booking_code = COALESCE($9, booking_code),
+          payment_status = COALESCE($10, payment_status)
+         WHERE id = $11 AND agency_id = $12
+         RETURNING *`,
+        [b.name ?? null, b.phone ?? null, b.birth_date ?? null, b.passport_number ?? null,
+         b.passport_expiry ?? null, b.gender ?? null, b.photo_data_url ?? null,
+         b.needs_review ?? null, b.booking_code ?? null, b.payment_status ?? null,
+         req.params.id, req.agency.agency_id]
+      );
+      if (!row) return fail(res, 404, 'Jamaah tidak ditemukan');
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/jamaah/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('jamaah')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM jamaah WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
 
-  // Jamaah docs
   app.get('/api/jamaah/:jamaahId/docs', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('jamaah_docs')
-        .select('*')
-        .eq('jamaah_id', req.params.jamaahId)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM jamaah_docs WHERE jamaah_id = $1 AND agency_id = $2`,
+        [req.params.jamaahId, req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/jamaah-docs', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:  req.agency.agency_id,
-        jamaah_id:  b.jamaah_id,
-        category:   b.category ?? 'other',
-        label:      b.label ?? '',
-        file_name:  b.file_name ?? '',
-        file_type:  b.file_type ?? 'image',
-        data_url:   b.data_url ?? '',
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('jamaah_docs').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO jamaah_docs (${b.id ? 'id, ' : ''}agency_id, jamaah_id, category,
+          label, file_name, file_type, data_url)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7' : '$6'},
+                 ${b.id ? '$8' : '$7'}, ${b.id ? '$9' : '$8'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.agency.agency_id, b.jamaah_id, b.category ?? 'other',
+             b.label ?? '', b.file_name ?? '', b.file_type ?? 'image', b.data_url ?? '']
+          : [req.agency.agency_id, b.jamaah_id, b.category ?? 'other',
+             b.label ?? '', b.file_name ?? '', b.file_type ?? 'image', b.data_url ?? '']
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/jamaah-docs/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('jamaah_docs')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM jamaah_docs WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -658,69 +600,63 @@ function registerPaymentRoutes(app) {
   app.get('/api/payments', requireMember, async (req, res) => {
     try {
       const q = req.query;
-      let query = getSb()
-        .from('payments')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id);
-      if (q.jamaah_id) query = query.eq('jamaah_id', q.jamaah_id);
-      if (q.trip_id)   query = query.eq('trip_id', q.trip_id);
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      let sql = `SELECT * FROM payments WHERE agency_id = $1`;
+      const params = [req.agency.agency_id];
+      if (q.jamaah_id) { params.push(q.jamaah_id); sql += ` AND jamaah_id = $${params.length}`; }
+      if (q.trip_id)   { params.push(q.trip_id);   sql += ` AND trip_id = $${params.length}`; }
+      sql += ' ORDER BY created_at DESC';
+      const rows = await query(sql, params);
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/payments', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:  req.agency.agency_id,
-        jamaah_id:  b.jamaah_id,
-        trip_id:    b.trip_id ?? null,
-        type:       b.type ?? 'other',
-        amount:     b.amount ?? 0,
-        method:     b.method ?? '',
-        paid_at:    b.paid_at ?? '',
-        notes:      b.notes ?? '',
-        proof_url:  b.proof_url ?? null,
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('payments').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO payments (${b.id ? 'id, ' : ''}agency_id, jamaah_id, trip_id,
+          type, amount, method, paid_at, notes, proof_url)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7' : '$6'},
+                 ${b.id ? '$8' : '$7'}, ${b.id ? '$9' : '$8'}, ${b.id ? '$10' : '$9'},
+                 ${b.id ? '$11' : '$10'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.agency.agency_id, b.jamaah_id, b.trip_id ?? null,
+             b.type ?? 'other', b.amount ?? 0, b.method ?? '', b.paid_at ?? '',
+             b.notes ?? '', b.proof_url ?? null]
+          : [req.agency.agency_id, b.jamaah_id, b.trip_id ?? null,
+             b.type ?? 'other', b.amount ?? 0, b.method ?? '', b.paid_at ?? '',
+             b.notes ?? '', b.proof_url ?? null]
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.put('/api/payments/:id', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const { data, error } = await getSb()
-        .from('payments')
-        .update(patch({
-          type:      b.type,
-          amount:    b.amount,
-          method:    b.method,
-          paid_at:   b.paid_at,
-          notes:     b.notes,
-          proof_url: b.proof_url,
-        }))
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id)
-        .select()
-        .single();
-      if (error || !data) return fail(res, 404, 'Payment tidak ditemukan');
-      return ok(res, data);
+      const row = await queryOne(
+        `UPDATE payments SET
+          type = COALESCE($1, type), amount = COALESCE($2, amount),
+          method = COALESCE($3, method), paid_at = COALESCE($4, paid_at),
+          notes = COALESCE($5, notes), proof_url = COALESCE($6, proof_url)
+         WHERE id = $7 AND agency_id = $8
+         RETURNING *`,
+        [b.type ?? null, b.amount ?? null, b.method ?? null, b.paid_at ?? null,
+         b.notes ?? null, b.proof_url ?? null, req.params.id, req.agency.agency_id]
+      );
+      if (!row) return fail(res, 404, 'Payment tidak ditemukan');
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/payments/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('payments')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM payments WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -731,63 +667,58 @@ function registerPaymentRoutes(app) {
 function registerBcTemplateRoutes(app) {
   app.get('/api/bc-templates', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('bc_templates')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id)
-        .order('sort_order', { ascending: true });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM bc_templates WHERE agency_id = $1 ORDER BY sort_order ASC`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/bc-templates', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:  req.agency.agency_id,
-        title:      b.title,
-        category:   b.category ?? 'general',
-        body:       b.body ?? '',
-        sort_order: b.sort_order ?? 0,
-        created_by: req.user.id,
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('bc_templates').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO bc_templates (${b.id ? 'id, ' : ''}agency_id, title, category, body,
+          sort_order, created_by)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7' : '$6'},
+                 ${b.id ? '$8' : '$7'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.agency.agency_id, b.title, b.category ?? 'general',
+             b.body ?? '', b.sort_order ?? 0, req.user.id]
+          : [req.agency.agency_id, b.title, b.category ?? 'general',
+             b.body ?? '', b.sort_order ?? 0, req.user.id]
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.put('/api/bc-templates/:id', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const { data, error } = await getSb()
-        .from('bc_templates')
-        .update(patch({
-          title:      b.title,
-          category:   b.category,
-          body:       b.body,
-          sort_order: b.sort_order,
-          updated_at: new Date().toISOString(),
-        }))
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id)
-        .select()
-        .single();
-      if (error || !data) return fail(res, 404, 'Template tidak ditemukan');
-      return ok(res, data);
+      const row = await queryOne(
+        `UPDATE bc_templates SET
+          title = COALESCE($1, title), category = COALESCE($2, category),
+          body = COALESCE($3, body), sort_order = COALESCE($4, sort_order),
+          updated_at = NOW()
+         WHERE id = $5 AND agency_id = $6
+         RETURNING *`,
+        [b.title ?? null, b.category ?? null, b.body ?? null, b.sort_order ?? null,
+         req.params.id, req.agency.agency_id]
+      );
+      if (!row) return fail(res, 404, 'Template tidak ditemukan');
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/bc-templates/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('bc_templates')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM bc_templates WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -798,54 +729,39 @@ function registerBcTemplateRoutes(app) {
 function registerMemberRoutes(app) {
   app.get('/api/agency-members', requireMember, async (req, res) => {
     try {
-      const { data: members, error } = await getSb()
-        .from('agency_members')
-        .select('user_id, role, commission_pct, created_at, phone_wa, agent_notes, agent_status, card_back_image_url')
-        .eq('agency_id', req.agency.agency_id)
-        .order('created_at', { ascending: true });
-      if (error) return fail(res, 500, error.message);
-
-      // Try to enrich with Supabase auth user metadata (requires SERVICE_ROLE_KEY)
-      const sb = getSb();
-      const enriched = await Promise.all((members ?? []).map(async (m) => {
-        let email = null, first_name = null, last_name = null, profile_image_url = null;
-        try {
-          const { data: { user } } = await sb.auth.admin.getUserById(m.user_id);
-          if (user) {
-            email = user.email ?? null;
-            const fullName = (user.user_metadata?.full_name || user.user_metadata?.name || '');
-            const parts = String(fullName).trim().split(' ');
-            first_name = parts[0] || null;
-            last_name  = parts.slice(1).join(' ') || null;
-            profile_image_url = user.user_metadata?.avatar_url ?? null;
-          }
-        } catch { /* auth.admin not available without SERVICE_ROLE_KEY — that's OK */ }
-        return { ...m, email, first_name, last_name, profile_image_url };
-      }));
-
-      return ok(res, enriched);
+      const rows = await query(
+        `SELECT am.user_id, am.role, am.commission_pct, am.created_at, am.phone_wa,
+                am.agent_notes, am.agent_status, am.card_back_image_url,
+                u.email, u.first_name, u.last_name, u.profile_image_url
+         FROM agency_members am
+         LEFT JOIN users u ON u.id = am.user_id
+         WHERE am.agency_id = $1
+         ORDER BY am.created_at ASC`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.put('/api/agency-members/:userId', requireOwner, async (req, res) => {
     try {
       const b = req.body;
-      const { data, error } = await getSb()
-        .from('agency_members')
-        .update(patch({
-          role:                b.role,
-          commission_pct:      b.commission_pct,
-          phone_wa:            b.phone_wa,
-          agent_notes:         b.agent_notes,
-          agent_status:        b.agent_status,
-          card_back_image_url: b.card_back_image_url,
-        }))
-        .eq('user_id', req.params.userId)
-        .eq('agency_id', req.agency.agency_id)
-        .select()
-        .single();
-      if (error || !data) return fail(res, 404, 'Member tidak ditemukan');
-      return ok(res, data);
+      const row = await queryOne(
+        `UPDATE agency_members SET
+          role = COALESCE($1, role),
+          commission_pct = COALESCE($2, commission_pct),
+          phone_wa = COALESCE($3, phone_wa),
+          agent_notes = COALESCE($4, agent_notes),
+          agent_status = COALESCE($5, agent_status),
+          card_back_image_url = COALESCE($6, card_back_image_url)
+         WHERE user_id = $7 AND agency_id = $8
+         RETURNING *`,
+        [b.role ?? null, b.commission_pct ?? null, b.phone_wa ?? null,
+         b.agent_notes ?? null, b.agent_status ?? null, b.card_back_image_url ?? null,
+         req.params.userId, req.agency.agency_id]
+      );
+      if (!row) return fail(res, 404, 'Member tidak ditemukan');
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 }
@@ -855,13 +771,11 @@ function registerMemberRoutes(app) {
 function registerNoteRoutes(app) {
   app.get('/api/notes', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('notes')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id)
-        .order('pinned', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM notes WHERE agency_id = $1 ORDER BY pinned DESC`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
@@ -869,33 +783,28 @@ function registerNoteRoutes(app) {
     try {
       const b = req.body;
       const now = Date.now();
-      const { data, error } = await getSb()
-        .from('notes')
-        .upsert({
-          id:         b.id,
-          agency_id:  req.agency.agency_id,
-          title:      b.title ?? '',
-          content:    b.content ?? '',
-          color:      b.color ?? 'bg-white border-slate-200',
-          pinned:     b.pinned ?? false,
-          tags:       b.tags ?? [],
-          updated_at: b.updated_at ?? now,
-        }, { onConflict: 'id' })
-        .select()
-        .single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO notes (id, agency_id, title, content, color, pinned, tags, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
+         ON CONFLICT (id) DO UPDATE SET
+           title = EXCLUDED.title, content = EXCLUDED.content,
+           color = EXCLUDED.color, pinned = EXCLUDED.pinned,
+           tags = EXCLUDED.tags, updated_at = EXCLUDED.updated_at
+         RETURNING *`,
+        [b.id, req.agency.agency_id, b.title ?? '', b.content ?? '',
+         b.color ?? 'bg-white border-slate-200', b.pinned ?? false,
+         JSON.stringify(b.tags ?? []), b.updated_at ?? now]
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/notes/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('notes')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM notes WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -906,42 +815,35 @@ function registerNoteRoutes(app) {
 function registerPdfTemplateRoutes(app) {
   app.get('/api/pdf-templates', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('pdf_templates')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id)
-        .order('created_at', { ascending: true });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM pdf_templates WHERE agency_id = $1 ORDER BY created_at ASC`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/pdf-templates', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const { data, error } = await getSb()
-        .from('pdf_templates')
-        .upsert({
-          id:        b.id,
-          agency_id: req.agency.agency_id,
-          name:      b.name ?? '',
-          payload:   b.payload ?? {},
-        }, { onConflict: 'id' })
-        .select()
-        .single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO pdf_templates (id, agency_id, name, payload)
+         VALUES ($1, $2, $3, $4::jsonb)
+         ON CONFLICT (id) DO UPDATE SET
+           name = EXCLUDED.name, payload = EXCLUDED.payload
+         RETURNING *`,
+        [b.id, req.agency.agency_id, b.name ?? '', JSON.stringify(b.payload ?? {})]
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/pdf-templates/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('pdf_templates')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM pdf_templates WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -952,42 +854,37 @@ function registerPdfTemplateRoutes(app) {
 function registerVisaCalcRoutes(app) {
   app.get('/api/visa-calcs', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('visa_saved_calcs')
-        .select('*')
-        .eq('user_id', req.user.id)
-        .eq('agency_id', req.agency.agency_id)
-        .order('created_at', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM visa_saved_calcs WHERE user_id = $1 AND agency_id = $2 ORDER BY created_at DESC`,
+        [req.user.id, req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/visa-calcs', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        user_id:    req.user.id,
-        agency_id:  req.agency.agency_id,
-        name:       b.name,
-        visa_type:  b.visa_type ?? 'voa',
-        state:      b.state ?? {},
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('visa_saved_calcs').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO visa_saved_calcs (${b.id ? 'id, ' : ''}user_id, agency_id, name,
+          visa_type, state)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7::jsonb' : '$6::jsonb'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.user.id, req.agency.agency_id, b.name, b.visa_type ?? 'voa', JSON.stringify(b.state ?? {})]
+          : [req.user.id, req.agency.agency_id, b.name, b.visa_type ?? 'voa', JSON.stringify(b.state ?? {})]
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/visa-calcs/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('visa_saved_calcs')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('user_id', req.user.id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM visa_saved_calcs WHERE id = $1 AND user_id = $2`,
+        [req.params.id, req.user.id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -999,35 +896,28 @@ function registerAgentPointRoutes(app) {
   app.get('/api/agent-points', requireMember, async (req, res) => {
     try {
       const q = req.query;
-      let query = getSb()
-        .from('agent_points')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id);
-      if (q.agent_id) query = query.eq('agent_id', q.agent_id);
-      const { data, error } = await query.order('awarded_at', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      let sql = `SELECT * FROM agent_points WHERE agency_id = $1`;
+      const params = [req.agency.agency_id];
+      if (q.agent_id) { params.push(q.agent_id); sql += ` AND agent_id = $${params.length}`; }
+      sql += ' ORDER BY awarded_at DESC';
+      const rows = await query(sql, params);
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.get('/api/agent-leaderboard', requireMember, async (req, res) => {
     try {
-      // Supabase doesn't support aggregate queries via PostgREST natively;
-      // fetch all records and aggregate in JS
-      const { data, error } = await getSb()
-        .from('agent_points')
-        .select('agent_id, points')
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
-      const map = new Map();
-      for (const row of (data ?? [])) {
-        const existing = map.get(row.agent_id) ?? { agent_id: row.agent_id, total_points: 0, order_count: 0 };
-        existing.total_points += Number(row.points ?? 0);
-        existing.order_count  += 1;
-        map.set(row.agent_id, existing);
-      }
-      const leaderboard = [...map.values()].sort((a, b) => b.total_points - a.total_points);
-      return ok(res, leaderboard);
+      const rows = await query(
+        `SELECT agent_id, SUM(points) AS total_points, COUNT(*) AS order_count
+         FROM agent_points WHERE agency_id = $1
+         GROUP BY agent_id ORDER BY total_points DESC`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows.map(r => ({
+        agent_id: r.agent_id,
+        total_points: Number(r.total_points),
+        order_count: Number(r.order_count),
+      })));
     } catch (e) { return fail(res, 500, e.message); }
   });
 }
@@ -1038,14 +928,12 @@ function registerWalletRoutes(app) {
   app.get('/api/wallet-transactions', requireMember, async (req, res) => {
     try {
       const q = req.query;
-      let query = getSb()
-        .from('agent_wallet_transactions')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id);
-      if (q.agent_id) query = query.eq('agent_id', q.agent_id);
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      let sql = `SELECT * FROM agent_wallet_transactions WHERE agency_id = $1`;
+      const params = [req.agency.agency_id];
+      if (q.agent_id) { params.push(q.agent_id); sql += ` AND agent_id = $${params.length}`; }
+      sql += ' ORDER BY created_at DESC';
+      const rows = await query(sql, params);
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 }
@@ -1055,116 +943,108 @@ function registerWalletRoutes(app) {
 function registerMissionRoutes(app) {
   app.get('/api/missions', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('daily_missions')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id)
-        .order('created_at', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM daily_missions WHERE agency_id = $1 ORDER BY created_at DESC`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/missions', requireOwnerOrStaff, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:      req.agency.agency_id,
-        title:          b.title,
-        description:    b.description ?? '',
-        reward_points:  b.reward_points ?? 10,
-        deadline:       b.deadline,
-        created_by:     req.user.id,
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('daily_missions').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO daily_missions (${b.id ? 'id, ' : ''}agency_id, title, description,
+          reward_points, deadline, created_by)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7' : '$6'},
+                 ${b.id ? '$8' : '$7'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.agency.agency_id, b.title, b.description ?? '', b.reward_points ?? 10, b.deadline, req.user.id]
+          : [req.agency.agency_id, b.title, b.description ?? '', b.reward_points ?? 10, b.deadline, req.user.id]
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.get('/api/mission-submissions', requireMember, async (req, res) => {
     try {
       const q = req.query;
-      let query = getSb()
-        .from('mission_submissions')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id);
-      if (q.agent_id)   query = query.eq('agent_id', q.agent_id);
-      if (q.mission_id) query = query.eq('mission_id', q.mission_id);
-      const { data, error } = await query.order('submitted_at', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      let sql = `SELECT * FROM mission_submissions WHERE agency_id = $1`;
+      const params = [req.agency.agency_id];
+      if (q.agent_id)   { params.push(q.agent_id);   sql += ` AND agent_id = $${params.length}`; }
+      if (q.mission_id) { params.push(q.mission_id); sql += ` AND mission_id = $${params.length}`; }
+      sql += ' ORDER BY submitted_at DESC';
+      const rows = await query(sql, params);
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/mission-submissions', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:       req.agency.agency_id,
-        mission_id:      b.mission_id,
-        agent_id:        req.user.id,
-        status:          b.status ?? 'pending',
-        proof_image_url: b.proof_image_url ?? null,
-        notes:           b.notes ?? null,
-        reward_points:   b.reward_points ?? 0,
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('mission_submissions').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO mission_submissions (${b.id ? 'id, ' : ''}agency_id, mission_id, agent_id,
+          status, proof_image_url, notes, reward_points)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7' : '$6'},
+                 ${b.id ? '$8' : '$7'}, ${b.id ? '$9' : '$8'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.agency.agency_id, b.mission_id, req.user.id, b.status ?? 'pending',
+             b.proof_image_url ?? null, b.notes ?? null, b.reward_points ?? 0]
+          : [req.agency.agency_id, b.mission_id, req.user.id, b.status ?? 'pending',
+             b.proof_image_url ?? null, b.notes ?? null, b.reward_points ?? 0]
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.put('/api/mission-submissions/:id', requireOwnerOrStaff, async (req, res) => {
     try {
       const b = req.body;
-      const { data, error } = await getSb()
-        .from('mission_submissions')
-        .update(patch({
-          status:        b.status,
-          reward_points: b.reward_points,
-          reviewed_at:   new Date().toISOString(),
-          reviewed_by:   req.user.id,
-        }))
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id)
-        .select()
-        .single();
-      if (error || !data) return fail(res, 404, 'Submission tidak ditemukan');
-      return ok(res, data);
+      const row = await queryOne(
+        `UPDATE mission_submissions SET
+          status = COALESCE($1, status),
+          reward_points = COALESCE($2, reward_points),
+          reviewed_at = NOW(), reviewed_by = $3
+         WHERE id = $4 AND agency_id = $5
+         RETURNING *`,
+        [b.status ?? null, b.reward_points ?? null, req.user.id, req.params.id, req.agency.agency_id]
+      );
+      if (!row) return fail(res, 404, 'Submission tidak ditemukan');
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.get('/api/reward-redemptions', requireMember, async (req, res) => {
     try {
       const q = req.query;
-      let query = getSb()
-        .from('reward_redemptions')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id);
-      if (q.agent_id) query = query.eq('agent_id', q.agent_id);
-      const { data, error } = await query.order('requested_at', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      let sql = `SELECT * FROM reward_redemptions WHERE agency_id = $1`;
+      const params = [req.agency.agency_id];
+      if (q.agent_id) { params.push(q.agent_id); sql += ` AND agent_id = $${params.length}`; }
+      sql += ' ORDER BY requested_at DESC';
+      const rows = await query(sql, params);
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/reward-redemptions', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:    req.agency.agency_id,
-        agent_id:     req.user.id,
-        reward_key:   b.reward_key,
-        cost_points:  b.cost_points ?? 0,
-        status:       b.status ?? 'pending',
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('reward_redemptions').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO reward_redemptions (${b.id ? 'id, ' : ''}agency_id, agent_id, reward_key,
+          cost_points, status)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7' : '$6'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.agency.agency_id, req.user.id, b.reward_key, b.cost_points ?? 0, b.status ?? 'pending']
+          : [req.agency.agency_id, req.user.id, b.reward_key, b.cost_points ?? 0, b.status ?? 'pending']
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 }
@@ -1174,13 +1054,12 @@ function registerMissionRoutes(app) {
 function registerSettingsRoutes(app) {
   app.get('/api/settings/agency', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('agency_settings')
-        .select('key, value')
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      const rows = await query(
+        `SELECT key, value FROM agency_settings WHERE agency_id = $1`,
+        [req.agency.agency_id]
+      );
       const settings = {};
-      for (const r of (data ?? [])) settings[r.key] = r.value;
+      for (const r of rows) settings[r.key] = r.value;
       return ok(res, settings);
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -1189,28 +1068,24 @@ function registerSettingsRoutes(app) {
     try {
       const { key, value } = req.body;
       if (!key) return fail(res, 400, 'key required');
-      const { error } = await getSb()
-        .from('agency_settings')
-        .upsert({
-          agency_id:  req.agency.agency_id,
-          key,
-          value,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'agency_id,key' });
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `INSERT INTO agency_settings (agency_id, key, value, updated_at)
+         VALUES ($1, $2, $3::jsonb, NOW())
+         ON CONFLICT (agency_id, key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+        [req.agency.agency_id, key, JSON.stringify(value)]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.get('/api/settings/user', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('user_settings')
-        .select('key, value')
-        .eq('user_id', req.user.id);
-      if (error) return fail(res, 500, error.message);
+      const rows = await query(
+        `SELECT key, value FROM user_settings WHERE user_id = $1`,
+        [req.user.id]
+      );
       const settings = {};
-      for (const r of (data ?? [])) settings[r.key] = r.value;
+      for (const r of rows) settings[r.key] = r.value;
       return ok(res, settings);
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -1219,15 +1094,12 @@ function registerSettingsRoutes(app) {
     try {
       const { key, value } = req.body;
       if (!key) return fail(res, 400, 'key required');
-      const { error } = await getSb()
-        .from('user_settings')
-        .upsert({
-          user_id:    req.user.id,
-          key,
-          value,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,key' });
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `INSERT INTO user_settings (user_id, key, value, updated_at)
+         VALUES ($1, $2, $3::jsonb, NOW())
+         ON CONFLICT (user_id, key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+        [req.user.id, key, JSON.stringify(value)]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -1238,29 +1110,23 @@ function registerSettingsRoutes(app) {
 function registerPackageCalcRoutes(app) {
   app.get('/api/package-calculations/:packageId', requireMember, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('package_calculations')
-        .select('*')
-        .eq('package_id', req.params.packageId)
-        .eq('agency_id', req.agency.agency_id)
-        .single();
-      if (error && error.code !== 'PGRST116') return fail(res, 500, error.message);
-      return ok(res, data ?? null);
+      const row = await queryOne(
+        `SELECT * FROM package_calculations WHERE package_id = $1 AND agency_id = $2`,
+        [req.params.packageId, req.agency.agency_id]
+      );
+      return ok(res, row ?? null);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/package-calculations', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const { error } = await getSb()
-        .from('package_calculations')
-        .upsert({
-          package_id: b.package_id,
-          agency_id:  req.agency.agency_id,
-          payload:    b.payload ?? {},
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'package_id' });
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `INSERT INTO package_calculations (package_id, agency_id, payload, updated_at)
+         VALUES ($1, $2, $3::jsonb, NOW())
+         ON CONFLICT (package_id) DO UPDATE SET payload = EXCLUDED.payload, updated_at = NOW()`,
+        [b.package_id, req.agency.agency_id, JSON.stringify(b.payload ?? {})]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -1272,44 +1138,41 @@ function registerClientDocRoutes(app) {
   app.get('/api/client-docs', requireMember, async (req, res) => {
     try {
       const q = req.query;
-      let query = getSb()
-        .from('client_docs')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id);
-      if (q.client_id) query = query.eq('client_id', q.client_id);
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      let sql = `SELECT * FROM client_docs WHERE agency_id = $1`;
+      const params = [req.agency.agency_id];
+      if (q.client_id) { params.push(q.client_id); sql += ` AND client_id = $${params.length}`; }
+      sql += ' ORDER BY created_at DESC';
+      const rows = await query(sql, params);
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/client-docs', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const payload = {
-        agency_id:  req.agency.agency_id,
-        client_id:  b.client_id,
-        category:   b.category ?? 'other',
-        label:      b.label ?? '',
-        file_name:  b.file_name ?? '',
-        file_type:  b.file_type ?? 'image',
-        data_url:   b.data_url ?? '',
-      };
-      if (b.id) payload.id = b.id;
-      const { data, error } = await getSb().from('client_docs').insert(payload).select().single();
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data);
+      const row = await queryOne(
+        `INSERT INTO client_docs (${b.id ? 'id, ' : ''}agency_id, client_id, category,
+          label, file_name, file_type, data_url)
+         VALUES (${b.id ? '$1, $2' : '$1'}, ${b.id ? '$3' : '$2'}, ${b.id ? '$4' : '$3'},
+                 ${b.id ? '$5' : '$4'}, ${b.id ? '$6' : '$5'}, ${b.id ? '$7' : '$6'},
+                 ${b.id ? '$8' : '$7'}, ${b.id ? '$9' : '$8'})
+         RETURNING *`,
+        b.id
+          ? [b.id, req.agency.agency_id, b.client_id, b.category ?? 'other',
+             b.label ?? '', b.file_name ?? '', b.file_type ?? 'image', b.data_url ?? '']
+          : [req.agency.agency_id, b.client_id, b.category ?? 'other',
+             b.label ?? '', b.file_name ?? '', b.file_type ?? 'image', b.data_url ?? '']
+      );
+      return ok(res, row);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.delete('/api/client-docs/:id', requireMember, async (req, res) => {
     try {
-      const { error } = await getSb()
-        .from('client_docs')
-        .delete()
-        .eq('id', req.params.id)
-        .eq('agency_id', req.agency.agency_id);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `DELETE FROM client_docs WHERE id = $1 AND agency_id = $2`,
+        [req.params.id, req.agency.agency_id]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -1320,38 +1183,29 @@ function registerClientDocRoutes(app) {
 function registerAuditRoutes(app) {
   app.get('/api/audit-log', requireOwnerOrStaff, async (req, res) => {
     try {
-      const { data, error } = await getSb()
-        .from('audit_logs')
-        .select('*')
-        .eq('agency_id', req.agency.agency_id)
-        .order('created_at', { ascending: false })
-        .limit(500);
-      if (error) return fail(res, 500, error.message);
-      return ok(res, data ?? []);
+      const rows = await query(
+        `SELECT * FROM audit_logs WHERE agency_id = $1 ORDER BY created_at DESC LIMIT 500`,
+        [req.agency.agency_id]
+      );
+      return ok(res, rows);
     } catch (e) { return fail(res, 500, e.message); }
   });
 
   app.post('/api/audit-log', requireMember, async (req, res) => {
     try {
       const b = req.body;
-      const { error } = await getSb()
-        .from('audit_logs')
-        .insert({
-          agency_id:  req.agency.agency_id,
-          user_id:    req.user.id,
-          table_name: b.table_name,
-          record_id:  b.record_id ?? null,
-          action:     b.action,
-          old_data:   b.old_data ?? null,
-          new_data:   b.new_data ?? null,
-        });
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `INSERT INTO audit_logs (agency_id, user_id, table_name, record_id, action, old_data, new_data)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)`,
+        [req.agency.agency_id, req.user.id, b.table_name, b.record_id ?? null,
+         b.action, JSON.stringify(b.old_data ?? null), JSON.stringify(b.new_data ?? null)]
+      );
       return ok(res, { ok: true });
     } catch (e) { return fail(res, 500, e.message); }
   });
 }
 
-// ── Upload card back (store base64 in DB) ────────────────────────────────────
+// ── CARD BACK ────────────────────────────────────────────────────────────────
 
 function registerCardBackRoutes(app) {
   app.post('/api/upload-card-back', requireMember, async (req, res) => {
@@ -1363,12 +1217,11 @@ function registerCardBackRoutes(app) {
       if (req.agency.role !== 'owner' && targetUserId !== req.user.id) {
         return fail(res, 403, 'Hanya owner yang bisa upload kartu member lain');
       }
-      const { error } = await getSb()
-        .from('agency_members')
-        .update({ card_back_image_url: imageBase64 })
-        .eq('user_id', targetUserId)
-        .eq('agency_id', agencyId);
-      if (error) return fail(res, 500, error.message);
+      await query(
+        `UPDATE agency_members SET card_back_image_url = $1
+         WHERE user_id = $2 AND agency_id = $3`,
+        [imageBase64, targetUserId, agencyId]
+      );
       return ok(res, { ok: true, url: imageBase64 });
     } catch (e) { return fail(res, 500, e.message); }
   });
@@ -1381,15 +1234,14 @@ function registerCardBackRoutes(app) {
         return fail(res, 403, 'Hanya owner yang bisa update kartu member lain');
       }
       const url = storagePath ?? null;
-      const { data, error } = await getSb()
-        .from('agency_members')
-        .update({ card_back_image_url: url })
-        .eq('user_id', targetUserId)
-        .eq('agency_id', agencyId)
-        .select('user_id, card_back_image_url')
-        .single();
-      if (error || !data) return fail(res, 404, 'User tidak ditemukan di agency ini');
-      return ok(res, { ok: true, url: data.card_back_image_url });
+      const row = await queryOne(
+        `UPDATE agency_members SET card_back_image_url = $1
+         WHERE user_id = $2 AND agency_id = $3
+         RETURNING user_id, card_back_image_url`,
+        [url, targetUserId, agencyId]
+      );
+      if (!row) return fail(res, 404, 'User tidak ditemukan di agency ini');
+      return ok(res, { ok: true, url: row.card_back_image_url });
     } catch (e) { return fail(res, 500, e.message); }
   });
 }

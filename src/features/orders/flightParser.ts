@@ -31,6 +31,16 @@ export interface ParsedFlight {
   passengerName?: string;
   costPrice?: number;
   sellPrice?: number;
+  tripType?: "one_way" | "return";
+  returnFromCode?: string;
+  returnFromCity?: string;
+  returnToCode?: string;
+  returnToCity?: string;
+  returnDate?: string;
+  returnDepartTime?: string;
+  returnArriveDate?: string;
+  returnArriveTime?: string;
+  returnFlightNumber?: string;
 }
 
 // ── Constant tables ────────────────────────────────────────────────────────
@@ -417,6 +427,37 @@ export function parseFlightText(rawText: string): ParsedFlight {
     costPrice: prices.costPrice,
     sellPrice: prices.sellPrice,
   };
+
+  // Deteksi return trip dari format itinerary WhatsApp / Trip.com
+  // Pola: ada "Perjalanan 2" atau "Pulang" diikuti tanggal, kode IATA, waktu, nomor penerbangan
+  const returnPattern = text.match(
+    /(?:Perjalanan\s*2|Pulang)[^–\-\n]*[–\-]\s*(\d{1,2}\s+[A-Za-z]+\s+\d{2,4})\s*[\r\n]+\s*([A-Z]{3})\s+([\d.]+)\s*[→>]\s*([A-Z]{3})\s+([\d.]+)\s*\*?\(([A-Z]{2}\d{2,4})\)\*?/i
+  );
+  if (returnPattern) {
+    out.tripType = "return";
+    out.returnDate = parseDateLoose(returnPattern[1]);
+    out.returnFromCode = returnPattern[2];
+    out.returnFromCity = CITY_BY_IATA[returnPattern[2]] ?? returnPattern[2];
+    out.returnToCode = returnPattern[4];
+    out.returnToCity = CITY_BY_IATA[returnPattern[4]] ?? returnPattern[4];
+    out.returnDepartTime = parseTimeLoose(returnPattern[3].replace(".", ":"));
+    out.returnArriveTime = parseTimeLoose(returnPattern[5].replace(".", ":"));
+    out.returnFlightNumber = returnPattern[6];
+    // Jika jam tiba < jam berangkat → tiba keesokan harinya
+    const depH = parseInt(returnPattern[3].split(".")[0], 10);
+    const arrH = parseInt(returnPattern[5].split(".")[0], 10);
+    if (out.returnDate) {
+      if (arrH < depH) {
+        const d = new Date(out.returnDate + "T00:00:00");
+        d.setDate(d.getDate() + 1);
+        out.returnArriveDate = d.toISOString().slice(0, 10);
+      } else {
+        out.returnArriveDate = out.returnDate;
+      }
+    }
+  } else {
+    out.tripType = "one_way";
+  }
 
   // Strip undefined keys agar Object.assign ke flight metadata bersih
   const cleaned: ParsedFlight = {};

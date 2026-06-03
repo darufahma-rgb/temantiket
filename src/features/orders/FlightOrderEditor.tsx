@@ -13,6 +13,7 @@ import { parseFlightText, formatRoute, type ParsedFlight } from "@/features/orde
 import { decidePassportSync } from "@/features/clients/passportSync";
 import { PassportScanButton } from "@/components/PassportScanButton";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 /**
  * Bentuk metadata yang kita simpan di kolom `orders.metadata` ketika
@@ -38,6 +39,18 @@ export interface FlightMeta {
   sellPrice?: number;
   /** Raw text yg dipaste user di Magic Parser, disimpan utk reference. */
   rawText?: string;
+  /** Tipe perjalanan: sekali jalan atau pulang pergi */
+  tripType?: "one_way" | "return";
+  /** Field leg pulang (return trip) */
+  returnFromCode?: string;
+  returnFromCity?: string;
+  returnToCode?: string;
+  returnToCity?: string;
+  returnDate?: string;
+  returnDepartTime?: string;
+  returnArriveDate?: string;
+  returnArriveTime?: string;
+  returnFlightNumber?: string;
 }
 
 const fmtIDR = (v: number) =>
@@ -262,6 +275,37 @@ export function FlightOrderEditor({ value, clientId, onChange, onAutoTitle }: Pr
           <h3 className="text-sm font-semibold">Detail Tiket</h3>
         </div>
 
+        {/* Trip type toggle */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-sm font-medium text-slate-600">Tipe Perjalanan:</span>
+          <div className="flex rounded-xl border border-slate-200 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => updateMeta({ tripType: "one_way" })}
+              className={cn(
+                "px-4 py-1.5 text-[13px] font-semibold transition-colors",
+                (meta.tripType ?? "one_way") === "one_way"
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-500 hover:bg-slate-50"
+              )}
+            >
+              Sekali Jalan
+            </button>
+            <button
+              type="button"
+              onClick={() => updateMeta({ tripType: "return" })}
+              className={cn(
+                "px-4 py-1.5 text-[13px] font-semibold transition-colors",
+                meta.tripType === "return"
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-500 hover:bg-slate-50"
+              )}
+            >
+              Pulang Pergi ⇄
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Field label="PNR / Kode Booking">
             <Input
@@ -347,6 +391,120 @@ export function FlightOrderEditor({ value, clientId, onChange, onAutoTitle }: Pr
             </div>
           </div>
         </div>
+
+        {/* Return leg — hanya tampil kalau pulang pergi */}
+        {meta.tripType === "return" && (
+          <div className="border border-violet-200 rounded-2xl p-4 space-y-3 bg-violet-50/30">
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] font-bold text-violet-700">✈️ Leg Pulang</span>
+              <span className="text-[11px] text-violet-400">(return flight)</span>
+            </div>
+
+            {/* Nomor penerbangan pulang */}
+            <div>
+              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                Nomor Penerbangan Pulang
+              </label>
+              <Input
+                placeholder="e.g. EK357"
+                value={meta.returnFlightNumber ?? ""}
+                onChange={(e) => updateMeta({ returnFlightNumber: e.target.value.toUpperCase() })}
+                className="mt-1"
+              />
+            </div>
+
+            {/* Rute pulang */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2 border border-slate-200 rounded-xl p-3 bg-white">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Berangkat (Pulang)</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-400">Kode (IATA)</label>
+                    <Input
+                      placeholder="DXB"
+                      value={meta.returnFromCode ?? ""}
+                      onChange={(e) => updateMeta({ returnFromCode: e.target.value.toUpperCase().slice(0, 3) })}
+                      className="mt-0.5 uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400">Kota</label>
+                    <Input
+                      placeholder="Dubai"
+                      value={meta.returnFromCity ?? ""}
+                      onChange={(e) => updateMeta({ returnFromCity: e.target.value })}
+                      className="mt-0.5"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-400">Tgl</label>
+                    <Input
+                      type="date"
+                      value={meta.returnDate ?? ""}
+                      onChange={(e) => updateMeta({ returnDate: e.target.value })}
+                      className="mt-0.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400">Jam</label>
+                    <Input
+                      type="time"
+                      value={meta.returnDepartTime ?? ""}
+                      onChange={(e) => updateMeta({ returnDepartTime: e.target.value })}
+                      className="mt-0.5"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 border border-slate-200 rounded-xl p-3 bg-white">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tiba (Pulang)</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-400">Kode (IATA)</label>
+                    <Input
+                      placeholder="CGK"
+                      value={meta.returnToCode ?? ""}
+                      onChange={(e) => updateMeta({ returnToCode: e.target.value.toUpperCase().slice(0, 3) })}
+                      className="mt-0.5 uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400">Kota</label>
+                    <Input
+                      placeholder="Jakarta"
+                      value={meta.returnToCity ?? ""}
+                      onChange={(e) => updateMeta({ returnToCity: e.target.value })}
+                      className="mt-0.5"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-400">Tgl Tiba</label>
+                    <Input
+                      type="date"
+                      value={meta.returnArriveDate ?? ""}
+                      onChange={(e) => updateMeta({ returnArriveDate: e.target.value })}
+                      className="mt-0.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400">Jam Tiba</label>
+                    <Input
+                      type="time"
+                      value={meta.returnArriveTime ?? ""}
+                      onChange={(e) => updateMeta({ returnArriveTime: e.target.value })}
+                      className="mt-0.5"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Route preview */}
         {(meta.fromCode || meta.toCode) && (

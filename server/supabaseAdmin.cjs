@@ -1,40 +1,5 @@
 'use strict';
 
-/**
- * Supabase Admin client — menggantikan Replit PostgreSQL (pool).
- * Menggunakan SUPABASE_SERVICE_ROLE_KEY jika tersedia (bypass RLS),
- * fallback ke VITE_SUPABASE_ANON_KEY jika tidak.
- */
+const { query, queryOne, getPool } = require('./pgDb.cjs');
 
-const SUPABASE_URL = (process.env.VITE_SUPABASE_URL || '').trim();
-const SERVICE_KEY  = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
-const ANON_KEY     = (process.env.VITE_SUPABASE_ANON_KEY || '').trim();
-const SUPABASE_KEY = SERVICE_KEY || ANON_KEY;
-
-let _sb = null;
-
-function getSb() {
-  if (_sb) return _sb;
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    throw new Error(
-      'Supabase belum dikonfigurasi. Pastikan VITE_SUPABASE_URL dan ' +
-      'SUPABASE_SERVICE_ROLE_KEY (atau VITE_SUPABASE_ANON_KEY) sudah diset di Secrets.',
-    );
-  }
-  try {
-    const { createClient } = require('@supabase/supabase-js');
-    // Node.js 20 doesn't have native WebSocket — pass the 'ws' package explicitly
-    // so @supabase/supabase-js v2.40+ doesn't throw on initialisation.
-    let wsImpl;
-    try { wsImpl = require('ws'); } catch { /* ws not available — realtime won't work but REST is fine */ }
-    _sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-      ...(wsImpl ? { realtime: { transport: wsImpl } } : {}),
-    });
-    return _sb;
-  } catch (e) {
-    throw new Error(`Gagal inisialisasi Supabase client: ${e.message}`);
-  }
-}
-
-module.exports = { getSb, SUPABASE_URL, SUPABASE_KEY, SERVICE_KEY, ANON_KEY };
+module.exports = { query, queryOne, getPool };

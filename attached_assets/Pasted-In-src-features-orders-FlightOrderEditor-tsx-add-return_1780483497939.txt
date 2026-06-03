@@ -1,0 +1,265 @@
+In src/features/orders/FlightOrderEditor.tsx, add return trip 
+support to FlightMeta and the form.
+
+CHANGE 1: Add return fields to FlightMeta interface
+
+Find:
+  export interface FlightMeta {
+    pnr?: string;
+    ...
+    rawText?: string;
+  }
+
+Add these fields before the closing }:
+    /** Trip type: one_way or return */
+    tripType?: "one_way" | "return";
+    /** Return leg fields */
+    returnFromCode?: string;
+    returnFromCity?: string;
+    returnToCode?: string;
+    returnToCity?: string;
+    returnDate?: string;
+    returnDepartTime?: string;
+    returnArriveDate?: string;
+    returnArriveTime?: string;
+    returnFlightNumber?: string;
+
+---
+
+CHANGE 2: Add trip type toggle to form
+
+Find the form JSX section in FlightOrderEditor. Find where PNR input is rendered:
+  <div ...>
+    <label ...>PNR / KODE BOOKING</label>
+    <Input ... value={meta.pnr ?? ""} .../>
+  </div>
+
+Add BEFORE it a trip type toggle:
+  {/* Trip type toggle */}
+  <div className="flex items-center gap-2 mb-4">
+    <span className="text-sm font-medium text-slate-600">Tipe Perjalanan:</span>
+    <div className="flex rounded-xl border border-slate-200 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => updateMeta({ tripType: "one_way" })}
+        className={cn(
+          "px-4 py-1.5 text-[13px] font-semibold transition-colors",
+          (meta.tripType ?? "one_way") === "one_way"
+            ? "bg-blue-600 text-white"
+            : "text-slate-500 hover:bg-slate-50"
+        )}
+      >
+        Sekali Jalan
+      </button>
+      <button
+        type="button"
+        onClick={() => updateMeta({ tripType: "return" })}
+        className={cn(
+          "px-4 py-1.5 text-[13px] font-semibold transition-colors",
+          meta.tripType === "return"
+            ? "bg-blue-600 text-white"
+            : "text-slate-500 hover:bg-slate-50"
+        )}
+      >
+        Pulang Pergi ⇄
+      </button>
+    </div>
+  </div>
+
+---
+
+CHANGE 3: Add return leg form section
+
+Find where the arrive date/time inputs end (after the TIBA section).
+After the closing of that section, add:
+
+  {/* Return leg — only shown for round trips */}
+  {meta.tripType === "return" && (
+    <div className="border border-violet-200 rounded-2xl p-4 space-y-3 bg-violet-50/30">
+      <div className="flex items-center gap-2">
+        <span className="text-[13px] font-bold text-violet-700">✈️ Leg Pulang</span>
+        <span className="text-[11px] text-violet-400">(return flight)</span>
+      </div>
+
+      {/* Return flight number */}
+      <div>
+        <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+          Nomor Penerbangan Pulang
+        </label>
+        <Input
+          placeholder="e.g. EK357"
+          value={meta.returnFlightNumber ?? ""}
+          onChange={(e) => updateMeta({ returnFlightNumber: e.target.value.toUpperCase() })}
+          className="mt-1"
+        />
+      </div>
+
+      {/* Return route */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2 border border-slate-200 rounded-xl p-3 bg-white">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Berangkat (Pulang)</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-slate-400">Kode (IATA)</label>
+              <Input
+                placeholder="DXB"
+                value={meta.returnFromCode ?? ""}
+                onChange={(e) => {
+                  const code = e.target.value.toUpperCase().slice(0, 3);
+                  updateMeta({ returnFromCode: code });
+                }}
+                className="mt-0.5 uppercase"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-400">Kota</label>
+              <Input
+                placeholder="Dubai"
+                value={meta.returnFromCity ?? ""}
+                onChange={(e) => updateMeta({ returnFromCity: e.target.value })}
+                className="mt-0.5"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-slate-400">Tgl</label>
+              <Input
+                type="date"
+                value={meta.returnDate ?? ""}
+                onChange={(e) => updateMeta({ returnDate: e.target.value })}
+                className="mt-0.5"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-400">Jam</label>
+              <Input
+                type="time"
+                value={meta.returnDepartTime ?? ""}
+                onChange={(e) => updateMeta({ returnDepartTime: e.target.value })}
+                className="mt-0.5"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2 border border-slate-200 rounded-xl p-3 bg-white">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tiba (Pulang)</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-slate-400">Kode (IATA)</label>
+              <Input
+                placeholder="CGK"
+                value={meta.returnToCode ?? ""}
+                onChange={(e) => {
+                  const code = e.target.value.toUpperCase().slice(0, 3);
+                  updateMeta({ returnToCode: code });
+                }}
+                className="mt-0.5 uppercase"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-400">Kota</label>
+              <Input
+                placeholder="Jakarta"
+                value={meta.returnToCity ?? ""}
+                onChange={(e) => updateMeta({ returnToCity: e.target.value })}
+                className="mt-0.5"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-slate-400">Tgl Tiba</label>
+              <Input
+                type="date"
+                value={meta.returnArriveDate ?? ""}
+                onChange={(e) => updateMeta({ returnArriveDate: e.target.value })}
+                className="mt-0.5"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-400">Jam Tiba</label>
+              <Input
+                type="time"
+                value={meta.returnArriveTime ?? ""}
+                onChange={(e) => updateMeta({ returnArriveTime: e.target.value })}
+                className="mt-0.5"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
+
+---
+
+CHANGE 4: Update flightParser.ts to detect and parse return trips
+
+In src/features/orders/flightParser.ts, add return trip detection.
+
+Find the ParsedFlight interface and add:
+  tripType?: "one_way" | "return";
+  returnFromCode?: string;
+  returnFromCity?: string;
+  returnToCode?: string;
+  returnToCity?: string;
+  returnDate?: string;
+  returnDepartTime?: string;
+  returnArriveDate?: string;
+  returnArriveTime?: string;
+  returnFlightNumber?: string;
+
+Find the parseFlightText function and add return trip detection after 
+extracting the basic fields:
+
+  // Detect return trip from WhatsApp itinerary format
+  // Pattern: second leg "Perjalanan 2" or "Pulang"
+  const returnPattern = text.match(
+    /(?:Perjalanan\s*2|Pulang)[^–\-\n]*[–\-]\s*(\d{1,2}\s+[A-Za-z]+\s+\d{2,4})\s*[\r\n]+\s*([A-Z]{3})\s+([\d.]+)\s*[→>]\s*([A-Z]{3})\s+([\d.]+)\s*\*?\(([A-Z]{2}\d{2,4})\)\*?/i
+  );
+  if (returnPattern) {
+    out.tripType = "return";
+    out.returnDate = parseDateLoose(returnPattern[1]);
+    out.returnFromCode = returnPattern[2];
+    out.returnFromCity = CITY_BY_IATA[returnPattern[2]] ?? returnPattern[2];
+    out.returnToCode = returnPattern[4];
+    out.returnToCity = CITY_BY_IATA[returnPattern[4]] ?? returnPattern[4];
+    out.returnDepartTime = parseTimeLoose(returnPattern[3].replace(".", ":"));
+    out.returnArriveTime = parseTimeLoose(returnPattern[5].replace(".", ":"));
+    out.returnFlightNumber = returnPattern[6];
+    // arriveDate for return = next day if arrive time < depart time
+    const depH = parseInt(returnPattern[3].split(".")[0], 10);
+    const arrH = parseInt(returnPattern[5].split(".")[0], 10);
+    if (out.returnDate) {
+      if (arrH < depH) {
+        const d = new Date(out.returnDate + "T00:00:00");
+        d.setDate(d.getDate() + 1);
+        out.returnArriveDate = d.toISOString().slice(0, 10);
+      } else {
+        out.returnArriveDate = out.returnDate;
+      }
+    }
+  } else {
+    out.tripType = "one_way";
+  }
+
+---
+
+CHANGE 5: Map return fields from parser to FlightMeta in handleParse
+
+In FlightOrderEditor.tsx, find the handleParse function where 
+parsed fields are merged into meta:
+
+  (Object.keys(parsed) as (keyof ParsedFlight)[]).forEach((k) => {
+    const cur = (merged as Record<string, unknown>)[k];
+    if (cur === undefined || cur === "" || cur === 0 || cur === null) {
+      (merged as Record<string, unknown>)[k] = parsed[k];
+    }
+  });
+
+This already handles all fields including new return fields.
+Just make sure ParsedFlight and FlightMeta have matching field names.
+
+After changes: npx tsc --noEmit and fix errors before committing.
