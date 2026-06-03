@@ -1,0 +1,60 @@
+In src/pages/Clients.tsx, add dropdown menu to the "..." button in 
+the desktop client list.
+
+CHANGE 1: Add DropdownMenu imports
+Find the existing import from "@/components/ui/dialog" section.
+Add this import if not already present:
+  import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+  } from "@/components/ui/dropdown-menu";
+
+CHANGE 2: Replace the empty "..." button
+
+Find:
+  <button
+    className="h-8 w-8 rounded-lg bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-slate-100 transition-colors"
+    title="Lainnya"
+  >
+    <MoreHorizontal className="h-4 w-4" />
+  </button>
+
+Replace with:
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <button
+        className="h-8 w-8 rounded-lg bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-slate-100 transition-colors"
+        title="Lainnya"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuItem onClick={() => { setEditTarget(c); setForm(clientToForm(c)); setAddOpen(true); }}>
+        <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Data Klien
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => navigate(`/clients/${c.id}`)}>
+        <FileText className="h-3.5 w-3.5 mr-2" /> Lihat Detail
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={() => {
+          const url = buildPublicMemberUrl(buildMemberSlug(c.name, c.id));
+          window.open(url, "_blank");
+        }}
+      >
+        <ExternalLink className="h-3.5 w-3.5 mr-2" /> Kartu Member
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        className="text-red-600 focus:text-red-600 focus:bg-red-50"
+        onClick={() => setConfirmDeleteId(c.id)}
+      >
+        <Trash2 className="h-3.5 w-3.5 mr-2" /> Hapus Klien
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
+
+Note: setEditTarget, setForm, setAddOpen, setConfirmDeleteId, buildPublicMemberUrl, 
+buildMemberSlug are already used elsewhere in the file — use the exact same 
+variable/function names that exist in the component.
+
+After changes: npx tsc --noEmit and fix errors before committing.

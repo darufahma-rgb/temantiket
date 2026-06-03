@@ -34,8 +34,6 @@ import { loadProductCommissions } from "@/lib/productCommissions";
 // Mencegah AITEM mengeksekusi operasi tulis tanpa konfirmasi eksplisit dari user.
 // Setiap write tool (create/update/delete) WAJIB cek ini sebelum jalan.
 let _pendingConfirmation: {
-  actionType: string;
-  data: Record<string, unknown>;
   timestamp: number;
   usesRemaining: number;
 } | null = null;
@@ -934,6 +932,22 @@ Tolak singkat: "Wkwk itu di luar zona gue bro — ada yang mau dicek dari sistem
 
 // ── Tool executor ────────────────────────────────────────────────────────────
 
+function requireConfirmation(): { error: string } | null {
+  if (!_pendingConfirmation) {
+    return { error: "Harus konfirmasi dulu. Gunakan confirm_action sebelum menyimpan data." };
+  }
+  const age = Date.now() - _pendingConfirmation.timestamp;
+  if (age > 5 * 60 * 1000) {
+    _pendingConfirmation = null;
+    return { error: "Konfirmasi sudah expired (>5 menit). Ulangi perintahnya." };
+  }
+  _pendingConfirmation.usesRemaining -= 1;
+  if (_pendingConfirmation.usesRemaining <= 0) {
+    _pendingConfirmation = null;
+  }
+  return null;
+}
+
 async function executeTool(
   toolName: string,
   args: Record<string, unknown>,
@@ -1587,26 +1601,8 @@ async function executeTool(
       }
 
       case "create_client": {
-        const confirmAge = _pendingConfirmation 
-          ? Date.now() - _pendingConfirmation.timestamp 
-          : Infinity;
-        if (!_pendingConfirmation || confirmAge > 5 * 60 * 1000) {
-          if (_pendingConfirmation && confirmAge > 5 * 60 * 1000) {
-            _pendingConfirmation = null;
-          }
-          return {
-            result: JSON.stringify({ error: "Konfirmasi diperlukan sebelum eksekusi." }),
-            displayData: { type: "error", message: "⚠️ Perlu konfirmasi dulu. Ketik ulang perintahnya." },
-            success: false,
-          };
-        }
-        // Decrement uses — clear only when exhausted
-        if (_pendingConfirmation) {
-          _pendingConfirmation.usesRemaining -= 1;
-          if (_pendingConfirmation.usesRemaining <= 0) {
-            _pendingConfirmation = null;
-          }
-        }
+        const _c1 = requireConfirmation();
+        if (_c1) return { result: JSON.stringify(_c1), displayData: { type: "error", message: _c1.error }, success: false };
         const { addClient } = useClientsStore.getState();
         const clientData = {
           name: args.name as string,
@@ -1634,26 +1630,8 @@ async function executeTool(
       }
 
       case "create_order": {
-        const confirmAge = _pendingConfirmation 
-          ? Date.now() - _pendingConfirmation.timestamp 
-          : Infinity;
-        if (!_pendingConfirmation || confirmAge > 5 * 60 * 1000) {
-          if (_pendingConfirmation && confirmAge > 5 * 60 * 1000) {
-            _pendingConfirmation = null;
-          }
-          return {
-            result: JSON.stringify({ error: "Konfirmasi diperlukan sebelum eksekusi." }),
-            displayData: { type: "error", message: "⚠️ Perlu konfirmasi dulu. Ketik ulang perintahnya." },
-            success: false,
-          };
-        }
-        // Decrement uses — clear only when exhausted
-        if (_pendingConfirmation) {
-          _pendingConfirmation.usesRemaining -= 1;
-          if (_pendingConfirmation.usesRemaining <= 0) {
-            _pendingConfirmation = null;
-          }
-        }
+        const _c2 = requireConfirmation();
+        if (_c2) return { result: JSON.stringify(_c2), displayData: { type: "error", message: _c2.error }, success: false };
         const { addOrder } = useOrdersStore.getState();
         const agencyId = useAuthStore.getState().user?.agencyId;
         const userId = useAuthStore.getState().user?.id;
@@ -1689,26 +1667,8 @@ async function executeTool(
       }
 
       case "update_order_status": {
-        const confirmAge = _pendingConfirmation 
-          ? Date.now() - _pendingConfirmation.timestamp 
-          : Infinity;
-        if (!_pendingConfirmation || confirmAge > 5 * 60 * 1000) {
-          if (_pendingConfirmation && confirmAge > 5 * 60 * 1000) {
-            _pendingConfirmation = null;
-          }
-          return {
-            result: JSON.stringify({ error: "Konfirmasi diperlukan sebelum eksekusi." }),
-            displayData: { type: "error", message: "⚠️ Perlu konfirmasi dulu. Ketik ulang perintahnya." },
-            success: false,
-          };
-        }
-        // Decrement uses — clear only when exhausted
-        if (_pendingConfirmation) {
-          _pendingConfirmation.usesRemaining -= 1;
-          if (_pendingConfirmation.usesRemaining <= 0) {
-            _pendingConfirmation = null;
-          }
-        }
+        const _c4 = requireConfirmation();
+        if (_c4) return { result: JSON.stringify(_c4), displayData: { type: "error", message: _c4.error }, success: false };
         const { patchOrder } = useOrdersStore.getState();
         await patchOrder(args.orderId as string, {
           status: args.status as string,
@@ -1722,26 +1682,8 @@ async function executeTool(
       }
 
       case "update_client": {
-        const confirmAge = _pendingConfirmation 
-          ? Date.now() - _pendingConfirmation.timestamp 
-          : Infinity;
-        if (!_pendingConfirmation || confirmAge > 5 * 60 * 1000) {
-          if (_pendingConfirmation && confirmAge > 5 * 60 * 1000) {
-            _pendingConfirmation = null;
-          }
-          return {
-            result: JSON.stringify({ error: "Konfirmasi diperlukan sebelum eksekusi." }),
-            displayData: { type: "error", message: "⚠️ Perlu konfirmasi dulu. Ketik ulang perintahnya." },
-            success: false,
-          };
-        }
-        // Decrement uses — clear only when exhausted
-        if (_pendingConfirmation) {
-          _pendingConfirmation.usesRemaining -= 1;
-          if (_pendingConfirmation.usesRemaining <= 0) {
-            _pendingConfirmation = null;
-          }
-        }
+        const _c3 = requireConfirmation();
+        if (_c3) return { result: JSON.stringify(_c3), displayData: { type: "error", message: _c3.error }, success: false };
         const { patchClient } = useClientsStore.getState();
         const { clientId, ...rest } = args as Record<string, string>;
         const patch = Object.fromEntries(
@@ -1756,20 +1698,9 @@ async function executeTool(
       }
 
       case "confirm_action": {
-        // Simpan pending confirmation — write tools tidak akan jalan sampai ini ada
-        // Count how many items need to be processed (for batch ops)
-        const dataObj = (args.data as Record<string, unknown>) ?? {};
-        const itemCount = Array.isArray(dataObj.items) 
-          ? dataObj.items.length 
-          : Array.isArray(dataObj.orderIds)
-            ? dataObj.orderIds.length
-            : 10; // default: allow up to 10 uses per confirmation
-
         _pendingConfirmation = {
-          actionType: args.actionType as string,
-          data: dataObj,
           timestamp: Date.now(),
-          usesRemaining: Math.max(itemCount, 10),
+          usesRemaining: 20,
         };
         return {
           result: JSON.stringify({
@@ -1777,11 +1708,11 @@ async function executeTool(
             actionType: args.actionType,
             summary: args.summary,
             data: args.data,
-            instruction: "STOP. Do NOT call any write tool yet. Wait for user to reply 'ya' or 'oke' before proceeding.",
+            instruction: "STOP. Wait for user reply before calling any write tool.",
           }),
           displayData: {
             type: "confirm_action",
-            actionType: args.actionType,
+            actionType: args.actionType as string,
             summary: args.summary as string,
             data: args.data,
           },
@@ -2042,26 +1973,8 @@ Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsa
       }
 
       case "delete_client": {
-        const confirmAge = _pendingConfirmation 
-          ? Date.now() - _pendingConfirmation.timestamp 
-          : Infinity;
-        if (!_pendingConfirmation || confirmAge > 5 * 60 * 1000) {
-          if (_pendingConfirmation && confirmAge > 5 * 60 * 1000) {
-            _pendingConfirmation = null;
-          }
-          return {
-            result: JSON.stringify({ error: "Konfirmasi diperlukan sebelum eksekusi." }),
-            displayData: { type: "error", message: "⚠️ Perlu konfirmasi dulu. Ketik ulang perintahnya." },
-            success: false,
-          };
-        }
-        // Decrement uses — clear only when exhausted
-        if (_pendingConfirmation) {
-          _pendingConfirmation.usesRemaining -= 1;
-          if (_pendingConfirmation.usesRemaining <= 0) {
-            _pendingConfirmation = null;
-          }
-        }
+        const _c5 = requireConfirmation();
+        if (_c5) return { result: JSON.stringify(_c5), displayData: { type: "error", message: _c5.error }, success: false };
         const { removeClient } = useClientsStore.getState();
         await removeClient(args.clientId as string);
         return {
@@ -2077,26 +1990,8 @@ Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsa
       }
 
       case "delete_order": {
-        const confirmAge = _pendingConfirmation 
-          ? Date.now() - _pendingConfirmation.timestamp 
-          : Infinity;
-        if (!_pendingConfirmation || confirmAge > 5 * 60 * 1000) {
-          if (_pendingConfirmation && confirmAge > 5 * 60 * 1000) {
-            _pendingConfirmation = null;
-          }
-          return {
-            result: JSON.stringify({ error: "Konfirmasi diperlukan sebelum eksekusi." }),
-            displayData: { type: "error", message: "⚠️ Perlu konfirmasi dulu. Ketik ulang perintahnya." },
-            success: false,
-          };
-        }
-        // Decrement uses — clear only when exhausted
-        if (_pendingConfirmation) {
-          _pendingConfirmation.usesRemaining -= 1;
-          if (_pendingConfirmation.usesRemaining <= 0) {
-            _pendingConfirmation = null;
-          }
-        }
+        const _c6 = requireConfirmation();
+        if (_c6) return { result: JSON.stringify(_c6), displayData: { type: "error", message: _c6.error }, success: false };
         const { removeOrder } = useOrdersStore.getState();
         await removeOrder(args.orderId as string);
         return {
