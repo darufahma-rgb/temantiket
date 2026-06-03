@@ -85,9 +85,9 @@ const SEASONAL_OVERRIDES: SeasonalBrandOverride[] = [
 const DEFAULT_BRAND: BrandConfig = {
   name:          "Temantiket",
   tagline:       "Mitra Perjalanan Umrah & Haji Terpercaya",
-  logoIcon:      "/temantiket-icon.svg",
-  logoLight:     "/temantiket-logo.svg",
-  logoDark:      "/temantiket-logo.svg",
+  logoIcon:      "/temantiket-logo.png",
+  logoLight:     "/temantiket-logo.png",
+  logoDark:      "/temantiket-logo.png",
   favicon:       "/favicon.ico",
   brandColor:    "#0866FF",
   accentColor:   "#3b82f6",
