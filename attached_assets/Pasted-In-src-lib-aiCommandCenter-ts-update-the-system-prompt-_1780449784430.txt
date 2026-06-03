@@ -1,0 +1,77 @@
+In src/lib/aiCommandCenter.ts, update the system prompt in buildSystemPrompt 
+function to teach AITEM how to correctly input orders with proper profit breakdown.
+
+Find the system prompt string and add this section:
+
+"CARA INPUT ORDER YANG BENAR:
+
+Sistem profit order menggunakan rumus:
+Net Profit = (totalPrice - costPrice) - pelaksanaFee - voaOpCost - kurirOpCost
+
+VISA STUDENT (visa_pelajar):
+- totalPrice = harga yang dibayar klien
+- costPrice = 0 (tidak ada modal ke supplier)
+- metadata.pelaksanaId = user_id staff yang mengerjakan visa
+- metadata.pelaksanaFee = fee staff dalam IDR (default 200.000)
+- paidAmount = uang yang benar-benar diterima (setelah dikurangi pengembalian)
+- paymentStatus = REFUNDED jika ada uang dikembalikan ke klien
+- notes = catat detail pengembalian dana
+
+Contoh kasus: Klien bayar Rp 1.300.000, dikembalikan Rp 900.000, fee staff Naufal Rp 200.000
+→ totalPrice: 1300000
+→ costPrice: 0
+→ paidAmount: 400000 (1.300.000 - 900.000)
+→ paymentStatus: REFUNDED
+→ metadata.pelaksanaFee: 200000
+→ metadata.pelaksanaId: [id Naufal]
+→ notes: 'Dikembalikan Rp 900.000 ke klien karena visa tidak jadi'
+→ Net Profit otomatis: 400.000 - 200.000 = Rp 200.000 ✓
+
+VISA VOA:
+- totalPrice = harga jual ke klien (dalam EGP atau IDR)
+- costPrice = harga modal ke mandub/supplier (dalam EGP atau IDR)
+- currency = EGP jika transaksi dalam EGP, IDR jika dalam IDR
+- metadata.voaFieldAgentId = user_id agent lapangan
+- metadata.voaAgentFee = fee agent lapangan dalam IDR
+- metadata.voaTransportFee = biaya transport dalam IDR (opsional)
+- paidAmount = sama dengan totalPrice jika lunas
+- paymentStatus = PAID jika lunas
+
+Contoh kasus: Klien bayar 185 USD, modal 145 USD, fee Fairuz Rp 300.000
+PENTING: Sistem tidak punya currency USD untuk visa_voa, konversi ke IDR dulu.
+→ totalPrice: 3348500 (185 x 18100)
+→ costPrice: 2624500 (145 x 18100)  
+→ currency: IDR
+→ metadata.voaAgentFee: 300000
+→ metadata.voaFieldAgentId: [id Fairuz]
+→ paymentStatus: PAID
+→ Net Profit otomatis: (3.348.500 - 2.624.500) - 300.000 = Rp 424.000 ✓
+
+JANGAN buat order terpisah untuk fee staff atau pengembalian dana.
+Semua dimasukkan ke 1 order dengan field yang tepat.
+Gunakan confirm_action dulu sebelum menyimpan, tampilkan breakdown profit yang akan tercatat."
+
+Also update the create_order tool in TOOLS array to add these fields to parameters:
+
+Find the create_order tool parameters and add:
+  pelaksanaId: { type: "string", description: "User ID staff pelaksana visa student (opsional, untuk visa_student)" },
+  pelaksanaFee: { type: "number", description: "Fee staff pelaksana dalam IDR (default 200000 untuk visa_student)" },
+  voaFieldAgentId: { type: "string", description: "User ID agent lapangan VOA (opsional, untuk visa_voa)" },
+  voaAgentFee: { type: "number", description: "Fee agent lapangan VOA dalam IDR (opsional)" },
+  voaTransportFee: { type: "number", description: "Biaya transport VOA dalam IDR (opsional)" },
+  paidAmount: { type: "number", description: "Jumlah yang sudah diterima dari klien" },
+  paymentStatus: { type: "string", enum: ["UNPAID", "DP", "PAID", "REFUNDED"], description: "Status pembayaran" },
+
+Then in the case 'create_order': in executeTool, update the orderData object to include:
+  metadata: {
+    ...(args.pelaksanaId ? { pelaksanaId: args.pelaksanaId, pelaksanaFee: args.pelaksanaFee ?? 200000 } : {}),
+    ...(args.voaFieldAgentId ? { 
+      voaFieldAgentId: args.voaFieldAgentId, 
+      voaAgentFee: args.voaAgentFee ?? 0,
+      voaTransportFee: args.voaTransportFee ?? 0,
+    } : {}),
+  },
+  paidAmount: (args.paidAmount as number) ?? (args.totalPrice as number),
+  paymentStatus: (args.paymentStatus as string) ?? "PAID",
+
+After changes run: npx tsc --noEmit and fix errors.
