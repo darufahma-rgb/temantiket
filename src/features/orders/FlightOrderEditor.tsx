@@ -222,6 +222,16 @@ export function FlightOrderEditor({ value, clientId, onChange, onAutoTitle }: Pr
         <Textarea
           value={rawText}
           onChange={(e) => setRawText(e.target.value)}
+          onPaste={(e) => {
+            const pasted = e.clipboardData.getData("text");
+            if (pasted.trim().length > 20) {
+              setTimeout(() => {
+                setRawText(pasted);
+                const btn = document.querySelector('[data-parse-btn]') as HTMLButtonElement;
+                if (btn) btn.click();
+              }, 100);
+            }
+          }}
           placeholder={`Contoh:\n  1 GA 980 Y 15MAR 4 CGKJED HK1  1700 0030 16MAR\n  RLOC 1A ABC123\n  Total: IDR 12.500.000`}
           className="min-h-[120px] font-mono text-[12px]"
         />
@@ -232,6 +242,7 @@ export function FlightOrderEditor({ value, clientId, onChange, onAutoTitle }: Pr
             onClick={handleParse}
             disabled={parsing || !rawText.trim()}
             className="bg-amber-600 hover:bg-amber-700 text-white"
+            data-parse-btn="true"
           >
             <Wand2 className="h-3.5 w-3.5 mr-1.5" />
             {parsing ? "Parsing…" : "Parse Sekarang"}
