@@ -1,0 +1,96 @@
+In src/lib/ocrPassport.ts and api/[...path].js, add birthPlace, 
+issueDate, and issuingOffice to passport OCR extraction.
+
+---
+
+CHANGE 1: src/lib/ocrPassport.ts — Add fields to PassportData interface
+
+Find:
+  export interface PassportData {
+    name?: string;
+    passportNumber?: string;
+    nationality?: string;
+    birthDate?: string;
+    expiryDate?: string;
+    gender?: "L" | "P";
+
+Add these fields after gender:
+    birthPlace?: string | null;
+    issueDate?: string | null;
+    issuingOffice?: string | null;
+
+---
+
+CHANGE 2: api/[...path].js — Update OCR system prompt
+
+Find the OCR_SYSTEM_PROMPT constant. It currently asks for 5 fields.
+Replace the entire prompt with:
+
+  const OCR_SYSTEM_PROMPT = `You are an OCR engine for Indonesian passports.
+Extract data from the passport image and return ONLY a JSON object with this exact shape:
+
+{
+  "name": "FULL NAME (given names then surname)",
+  "passportNumber": "DOCUMENT NUMBER (alphanumeric, no '<' fillers)",
+  "birthDate": "YYYY-MM-DD",
+  "gender": "L for male, P for female",
+  "expiryDate": "YYYY-MM-DD",
+  "birthPlace": "city/place of birth if visible on passport, null if not visible",
+  "issueDate": "YYYY-MM-DD issue date if visible, null if not visible",
+  "issuingOffice": "issuing office/kantor imigrasi if visible, null if not visible",
+  "mrzValid": true
+}
+
+Rules:
+- Read BOTH the MRZ (bottom strip) AND the visual data fields on the passport
+- passportNumber: alphanumeric only, remove '<' characters
+- birthDate/expiryDate/issueDate: YYYY-MM-DD format. For 2-digit years: >30 = 19xx, else 20xx
+- gender: exactly "L" (laki-laki/male) or "P" (perempuan/female)
+- birthPlace: look for "Tempat Lahir" or "Place of Birth" field on the passport
+- issuingOffice: look for "Kantor Penerbit" or issuing authority text
+- issueDate: look for "Tanggal Pengeluaran" or "Date of Issue" field
+- Set mrzValid to true only if MRZ check digits all match
+- If a field is unreadable or not visible, set it to null
+- Return ONLY the JSON object, no prose, no markdown`;
+
+---
+
+CHANGE 3: api/[...path].js — Map new fields in handleOcrPassport response
+
+Find the response mapping in handleOcrPassport:
+  const out = { source: 'openai', model: ocrUsedModel, mrzValid: parsed.mrzValid === true };
+  if (typeof parsed.name === 'string' && parsed.name.trim()) out.name = parsed.name.trim();
+  if (typeof parsed.passportNumber === 'string' ...) out.passportNumber = ...
+  if (typeof parsed.birthDate === 'string' ...) out.birthDate = parsed.birthDate;
+  if (typeof parsed.expiryDate === 'string' ...) out.expiryDate = parsed.expiryDate;
+  if (parsed.gender === 'L' || parsed.gender === 'P') out.gender = parsed.gender;
+
+After the existing mappings, add:
+  if (typeof parsed.birthPlace === 'string' && parsed.birthPlace.trim()) {
+    out.birthPlace = parsed.birthPlace.trim();
+  }
+  if (typeof parsed.issueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.issueDate)) {
+    out.issueDate = parsed.issueDate;
+  }
+  if (typeof parsed.issuingOffice === 'string' && parsed.issuingOffice.trim()) {
+    out.issuingOffice = parsed.issuingOffice.trim();
+  }
+
+---
+
+CHANGE 4: src/pages/Clients.tsx — Map new OCR fields to form
+
+Find the scan result handler:
+  if (result.name) update("name", result.name);
+  if (result.passportNumber) update("passportNumber", result.passportNumber);
+  if (result.birthDate) update("birthDate", result.birthDate);
+  if (result.expiryDate) update("passportExpiry", result.expiryDate);
+  if (result.gender) update("gender", result.gender);
+  toast.success("Scan selesai!", ...);
+
+Add these lines before the toast:
+  if (result.birthPlace) update("birthPlace", result.birthPlace);
+  if (result.issueDate) update("passportIssueDate", result.issueDate);
+  if (result.issuingOffice) update("passportIssuingOffice", result.issuingOffice);
+
+After all changes: npx tsc --noEmit and fix errors before committing.

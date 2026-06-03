@@ -492,26 +492,32 @@ async function handleMigrateProgressSteps(req, res, admin, caller) {
   }
 }
 
-const OCR_SYSTEM_PROMPT = `You are an OCR engine specialized in reading the Machine Readable Zone (MRZ) of international passports (ICAO 9303 TD3 format, two lines of 44 characters each).
-
-Look at the bottom of the passport photo for the MRZ strip. Extract EXACTLY these 5 fields and return ONLY a JSON object (no prose, no markdown fences) with this exact shape:
+const OCR_SYSTEM_PROMPT = `You are an OCR engine for Indonesian passports.
+Extract data from the passport image and return ONLY a JSON object with this exact shape:
 
 {
-  "name": "FULL NAME AS PRINTED (given names then surname, single space separated)",
+  "name": "FULL NAME (given names then surname)",
   "passportNumber": "DOCUMENT NUMBER (alphanumeric, no '<' fillers)",
   "birthDate": "YYYY-MM-DD",
   "gender": "L for male, P for female",
   "expiryDate": "YYYY-MM-DD",
+  "birthPlace": "city/place of birth if visible on passport, null if not visible",
+  "issueDate": "YYYY-MM-DD issue date if visible, null if not visible",
+  "issuingOffice": "issuing office/kantor imigrasi if visible, null if not visible",
   "mrzValid": true
 }
 
 Rules:
-- Only return the 5 fields above plus mrzValid. Do not return nationality or any other field.
-- If a field is unreadable, set it to null (do NOT guess).
-- For 2-digit years in MRZ: if year > 30 it means 19xx, otherwise 20xx for birth date. Expiry is always 20xx.
-- Set mrzValid to true only if you successfully read all check digits and they all match.
-- gender must be exactly "L" (laki-laki) or "P" (perempuan), null if unreadable.
-- Return ONLY the JSON object, nothing else.`;
+- Read BOTH the MRZ (bottom strip) AND the visual data fields on the passport
+- passportNumber: alphanumeric only, remove '<' characters
+- birthDate/expiryDate/issueDate: YYYY-MM-DD format. For 2-digit years: >30 = 19xx, else 20xx
+- gender: exactly "L" (laki-laki/male) or "P" (perempuan/female)
+- birthPlace: look for "Tempat Lahir" or "Place of Birth" field on the passport
+- issuingOffice: look for "Kantor Penerbit" or issuing authority text
+- issueDate: look for "Tanggal Pengeluaran" or "Date of Issue" field
+- Set mrzValid to true only if MRZ check digits all match
+- If a field is unreadable or not visible, set it to null
+- Return ONLY the JSON object, no prose, no markdown`;
 
 async function handleAuthUser(req, res, caller, authHeader) {
   try {
@@ -698,8 +704,17 @@ async function handleOcrPassport(req, res, admin, caller) {
     if (typeof parsed.birthDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.birthDate)) out.birthDate = parsed.birthDate;
     if (typeof parsed.expiryDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.expiryDate)) out.expiryDate = parsed.expiryDate;
     if (parsed.gender === 'L' || parsed.gender === 'P') out.gender = parsed.gender;
+    if (typeof parsed.birthPlace === 'string' && parsed.birthPlace.trim()) {
+      out.birthPlace = parsed.birthPlace.trim();
+    }
+    if (typeof parsed.issueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.issueDate)) {
+      out.issueDate = parsed.issueDate;
+    }
+    if (typeof parsed.issuingOffice === 'string' && parsed.issuingOffice.trim()) {
+      out.issuingOffice = parsed.issuingOffice.trim();
+    }
     out.mrzValid = parsed.mrzValid === true;
-    out.source = 'openai';
+    out.source = 'openrouter';
     return res.status(200).json(out);
   } catch (e) {
     return res.status(500).json({ error: e.message });

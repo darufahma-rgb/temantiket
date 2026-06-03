@@ -104,6 +104,9 @@ export interface PassportData {
   birthDate?: string;
   expiryDate?: string;
   gender?: "L" | "P";
+  birthPlace?: string | null;
+  issueDate?: string | null;
+  issuingOffice?: string | null;
   checksums?: {
     passportNumber: boolean;
     birthDate: boolean;

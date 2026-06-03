@@ -567,6 +567,9 @@ function ClientFormDialog({ open, onOpenChange, initial, title, onSubmit, curren
       if (result.birthDate) update("birthDate", result.birthDate);
       if (result.expiryDate) update("passportExpiry", result.expiryDate);
       if (result.gender) update("gender", result.gender);
+      if (result.birthPlace) update("birthPlace", result.birthPlace);
+      if (result.issueDate) update("passportIssueDate", result.issueDate);
+      if (result.issuingOffice) update("passportIssuingOffice", result.issuingOffice);
       toast.success("Scan selesai!", { description: "Data paspor berhasil dibaca." });
     } catch (e) {
       toast.error("Scan gagal", { description: e instanceof Error ? e.message : "Coba foto ulang lebih jelas." });
