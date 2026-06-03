@@ -561,6 +561,46 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+// ── Copy button ───────────────────────────────────────────────────────────────
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback untuk browser yang tidak support Clipboard API
+      const el = document.createElement("textarea");
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className={cn(
+        "absolute -bottom-5 right-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-all",
+        "opacity-0 group-hover:opacity-100",
+        copied
+          ? "bg-emerald-100 text-emerald-600 opacity-100"
+          : "bg-muted text-muted-foreground hover:bg-muted/80"
+      )}
+    >
+      {copied
+        ? <><ClipboardCheck className="w-3 h-3" /> Tersalin</>
+        : <><Copy className="w-3 h-3" /> Salin</>
+      }
+    </button>
+  );
+}
+
 // ── Message bubble ────────────────────────────────────────────────────────────
 
 function MessageBubble({ msg, toolResults }: { msg: StoredChatMessage; toolResults?: ToolResult[] }) {
@@ -595,107 +635,113 @@ function MessageBubble({ msg, toolResults }: { msg: StoredChatMessage; toolResul
 
       {/* Text bubble */}
       {msg.content && (
-        <div className={cn(
-          "max-w-[85%] min-w-0 overflow-hidden px-3 py-2 rounded-2xl text-sm leading-relaxed",
-          isUser
-            ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-br-sm"
-            : "bg-white border border-border/60 text-foreground rounded-bl-sm shadow-sm",
-        )}>
-          {isUser ? (
-            msg.content
-          ) : (
-            <div className="min-w-0 max-w-full overflow-hidden">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                p: ({ children }) => (
-                  <p className="mb-2 last:mb-0 leading-relaxed font-normal">{children}</p>
-                ),
-                strong: ({ children }) => (
-                  <strong className="font-bold text-foreground">{children}</strong>
-                ),
-                em: ({ children }) => (
-                  <em className="italic opacity-80">{children}</em>
-                ),
-                ul: ({ children }) => (
-                  <ul className="mb-2 last:mb-0 space-y-1.5 pl-0.5">{children}</ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="mb-2 last:mb-0 space-y-1.5 pl-5 list-decimal marker:text-muted-foreground/60">{children}</ol>
-                ),
-                li: ({ children }) => (
-                  <li className="flex items-start gap-2 text-sm list-none font-normal">
-                    <span className="mt-[0.5em] h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0 flex-none" />
-                    <span className="flex-1 min-w-0">{children}</span>
-                  </li>
-                ),
-                h1: ({ children }) => (
-                  <h1 className="text-base font-bold mb-1.5 mt-2 first:mt-0">{children}</h1>
-                ),
-                h2: ({ children }) => (
-                  <h2 className="text-sm font-bold mb-1 mt-2 first:mt-0">{children}</h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="text-sm font-semibold mb-1 mt-1.5 first:mt-0">{children}</h3>
-                ),
-                code: ({ children, className }) => {
-                  const isBlock = className?.includes("language-");
-                  return isBlock ? (
-                    <code className="block bg-slate-100 rounded-lg px-3 py-2 text-xs font-mono my-2 overflow-x-auto text-slate-800">
-                      {children}
-                    </code>
-                  ) : (
-                    <code className="bg-slate-100 rounded px-1.5 py-0.5 text-xs font-mono text-slate-800">
-                      {children}
-                    </code>
-                  );
-                },
-                pre: ({ children }) => (
-                  <pre className="bg-slate-100 rounded-lg my-2 overflow-x-auto">{children}</pre>
-                ),
-                blockquote: ({ children }) => (
-                  <blockquote className="border-l-2 border-sky-300 pl-3 my-2 text-muted-foreground font-normal">
-                    {children}
-                  </blockquote>
-                ),
-                hr: () => <hr className="my-2 border-border/40" />,
-                a: ({ href, children }) => (
-                  <a href={href} target="_blank" rel="noopener noreferrer"
-                    className="text-sky-600 underline underline-offset-2 hover:text-sky-700">
-                    {children}
-                  </a>
-                ),
-                table: ({ children }) => (
-                  <div className="max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white my-2">
-                    <table className="w-max min-w-full border-collapse text-[11px] md:text-xs">
-                      {children}
-                    </table>
-                  </div>
-                ),
-                thead: ({ children }) => (
-                  <thead>{children}</thead>
-                ),
-                tbody: ({ children }) => (
-                  <tbody>{children}</tbody>
-                ),
-                tr: ({ children }) => (
-                  <tr className="border-b border-slate-100 last:border-0">{children}</tr>
-                ),
-                th: ({ children }) => (
-                  <th className="px-2 py-1.5 text-left font-bold bg-slate-50 border-b border-slate-200 whitespace-nowrap">
-                    {children}
-                  </th>
-                ),
-                td: ({ children }) => (
-                  <td className="px-2 py-1.5 border-b border-slate-100 align-top max-w-[160px] md:max-w-[220px] [overflow-wrap:anywhere]">
-                    {children}
-                  </td>
-                ),
-              }}
-            >
-              {msg.content}
-            </ReactMarkdown>
-            </div>
+        <div className={cn("max-w-[85%] min-w-0 group relative")}>
+          <div className={cn(
+            "overflow-hidden px-3 py-2 rounded-2xl text-sm leading-relaxed",
+            isUser
+              ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-br-sm"
+              : "bg-white border border-border/60 text-foreground rounded-bl-sm shadow-sm",
+          )}>
+            {isUser ? (
+              msg.content
+            ) : (
+              <div className="min-w-0 max-w-full overflow-hidden">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    p: ({ children }) => (
+                      <p className="mb-2 last:mb-0 leading-relaxed font-normal">{children}</p>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-bold text-foreground">{children}</strong>
+                    ),
+                    em: ({ children }) => (
+                      <em className="italic opacity-80">{children}</em>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="mb-2 last:mb-0 space-y-1.5 pl-0.5">{children}</ul>
+                    ),
+                    ol: ({ children }) => (
+                      <ol className="mb-2 last:mb-0 space-y-1.5 pl-5 list-decimal marker:text-muted-foreground/60">{children}</ol>
+                    ),
+                    li: ({ children }) => (
+                      <li className="flex items-start gap-2 text-sm list-none font-normal">
+                        <span className="mt-[0.5em] h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0 flex-none" />
+                        <span className="flex-1 min-w-0">{children}</span>
+                      </li>
+                    ),
+                    h1: ({ children }) => (
+                      <h1 className="text-base font-bold mb-1.5 mt-2 first:mt-0">{children}</h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 className="text-sm font-bold mb-1 mt-2 first:mt-0">{children}</h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3 className="text-sm font-semibold mb-1 mt-1.5 first:mt-0">{children}</h3>
+                    ),
+                    code: ({ children, className }) => {
+                      const isBlock = className?.includes("language-");
+                      return isBlock ? (
+                        <code className="block bg-slate-100 rounded-lg px-3 py-2 text-xs font-mono my-2 overflow-x-auto text-slate-800">
+                          {children}
+                        </code>
+                      ) : (
+                        <code className="bg-slate-100 rounded px-1.5 py-0.5 text-xs font-mono text-slate-800">
+                          {children}
+                        </code>
+                      );
+                    },
+                    pre: ({ children }) => (
+                      <pre className="bg-slate-100 rounded-lg my-2 overflow-x-auto">{children}</pre>
+                    ),
+                    blockquote: ({ children }) => (
+                      <blockquote className="border-l-2 border-sky-300 pl-3 my-2 text-muted-foreground font-normal">
+                        {children}
+                      </blockquote>
+                    ),
+                    hr: () => <hr className="my-2 border-border/40" />,
+                    a: ({ href, children }) => (
+                      <a href={href} target="_blank" rel="noopener noreferrer"
+                        className="text-sky-600 underline underline-offset-2 hover:text-sky-700">
+                        {children}
+                      </a>
+                    ),
+                    table: ({ children }) => (
+                      <div className="max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white my-2">
+                        <table className="w-max min-w-full border-collapse text-[11px] md:text-xs">
+                          {children}
+                        </table>
+                      </div>
+                    ),
+                    thead: ({ children }) => (
+                      <thead>{children}</thead>
+                    ),
+                    tbody: ({ children }) => (
+                      <tbody>{children}</tbody>
+                    ),
+                    tr: ({ children }) => (
+                      <tr className="border-b border-slate-100 last:border-0">{children}</tr>
+                    ),
+                    th: ({ children }) => (
+                      <th className="px-2 py-1.5 text-left font-bold bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                        {children}
+                      </th>
+                    ),
+                    td: ({ children }) => (
+                      <td className="px-2 py-1.5 border-b border-slate-100 align-top max-w-[160px] md:max-w-[220px] [overflow-wrap:anywhere]">
+                        {children}
+                      </td>
+                    ),
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              </div>
+            )}
+          </div>
+          {/* Copy button — muncul saat hover, hanya untuk pesan AITEM */}
+          {!isUser && (
+            <CopyButton text={msg.content} />
           )}
         </div>
       )}
@@ -1028,18 +1074,28 @@ export function AIChatWidget() {
                 <textarea
                   ref={inputRef}
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    e.target.style.height = "auto";
+                    e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px";
+                  }}
                   onKeyDown={handleKeyDown}
+                  onPaste={(e) => {
+                    const text = e.clipboardData.getData("text");
+                    if (text.length > 200) {
+                      setTimeout(() => {
+                        if (inputRef.current) {
+                          inputRef.current.style.height = "auto";
+                          inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 160) + "px";
+                        }
+                      }, 10);
+                    }
+                  }}
                   placeholder={activeItem ? `Edit "${activeItem.title.slice(0, 20)}…" atau tanya apa saja…` : "Ketik perintah… (Enter untuk kirim)"}
                   rows={1}
                   disabled={loading}
-                  className="flex-1 resize-none bg-transparent text-[13px] placeholder:text-slate-400 focus:outline-none disabled:opacity-50 max-h-24 leading-relaxed"
-                  style={{ minHeight: "20px" }}
-                  onInput={(e) => {
-                    const el = e.currentTarget;
-                    el.style.height = "auto";
-                    el.style.height = `${el.scrollHeight}px`;
-                  }}
+                  className="flex-1 bg-transparent text-[13px] placeholder:text-slate-400 focus:outline-none disabled:opacity-50 leading-relaxed"
+                  style={{ resize: "none", minHeight: "40px", maxHeight: "160px" }}
                 />
                 <button
                   onClick={() => void sendMessage(input)}
@@ -1052,6 +1108,8 @@ export function AIChatWidget() {
               </div>
               <div className="text-[10px] text-slate-400 mt-1.5 text-center">
                 Shift+Enter untuk baris baru · Didukung OpenRouter
+                <span className="mx-1 opacity-30">·</span>
+                <span>Ctrl+V untuk paste</span>
               </div>
             </div>
           </motion.div>
