@@ -595,6 +595,21 @@ PENTING:
   {
     type: "function",
     function: {
+      name: "get_members",
+      description: "Dapatkan daftar semua anggota agency (agent DAN staff) beserta userId mereka. Gunakan tool ini SEBELUM create_order atau update_client jika perlu voaFieldAgentId atau pelaksanaId — cari userId dari nama anggota yang disebutkan user.",
+      parameters: {
+        type: "object",
+        properties: {
+          search: { type: "string", description: "Filter by nama (opsional)" },
+          role: { type: "string", enum: ["agent", "staff", "owner", "all"], description: "Filter by role (default: all)" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "delete_order",
       description: "Hapus order dari database. SELALU gunakan confirm_action dulu sebelum menghapus. Gunakan ketika user minta 'hapus order', 'delete order X', atau 'batalkan dan hapus order'.",
       parameters: {
@@ -909,7 +924,16 @@ PENTING: Sistem tidak punya currency USD untuk visa_voa, konversi ke IDR dulu.
 
 JANGAN buat order terpisah untuk fee staff atau pengembalian dana.
 Semua dimasukkan ke 1 order dengan field yang tepat.
-Gunakan confirm_action dulu sebelum menyimpan, tampilkan breakdown profit yang akan tercatat.`;
+Gunakan confirm_action dulu sebelum menyimpan, tampilkan breakdown profit yang akan tercatat.
+
+CARA ASSIGN AGENT LAPANGAN / PELAKSANA:
+1. Jika user sebut nama (misal 'Fairuz' atau 'Naufal'), SELALU gunakan get_members dulu untuk cari userId-nya
+2. Gunakan userId yang didapat sebagai voaFieldAgentId atau pelaksanaId
+3. JANGAN tulis nama di notes sebagai pengganti — harus pakai userId yang benar
+4. Contoh flow:
+   User: 'fee Fairuz 300.000'
+   AITEM: get_members({search: 'Fairuz'}) → dapat userId: 'abc-123'
+   AITEM: create_order({..., voaFieldAgentId: 'abc-123', voaAgentFee: 300000})\`\`;
 }
 
 // ── Tool executor ────────────────────────────────────────────────────────────
@@ -1420,6 +1444,7 @@ async function executeTool(
           const txs = listWalletTxs(a.userId);
           const bal = walletBalance(txs);
           return {
+            userId: a.userId,
             name: a.displayName,
             email: a.email,
             commissionPct: a.commissionPct,
@@ -1944,6 +1969,33 @@ Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsa
             orderTitle: args.orderTitle ?? "Order",
             message: `Order "${args.orderTitle ?? args.orderId}" berhasil dihapus.`,
           },
+          success: true,
+        };
+      }
+
+      case "get_members": {
+        const { search, role } = args as { search?: string; role?: string };
+        const members = await useAuthStore.getState().listMembers();
+        let filtered = members;
+        if (role && role !== "all") {
+          filtered = filtered.filter((m) => m.role === role);
+        }
+        if (search) {
+          const q = search.toLowerCase();
+          filtered = filtered.filter((m) =>
+            m.displayName.toLowerCase().includes(q) ||
+            m.email.toLowerCase().includes(q)
+          );
+        }
+        const list = filtered.map((m) => ({
+          userId: m.userId,
+          name: m.displayName,
+          email: m.email,
+          role: m.role,
+        }));
+        return {
+          result: JSON.stringify({ members: list, total: list.length }),
+          displayData: { type: "members_list", members: list },
           success: true,
         };
       }
