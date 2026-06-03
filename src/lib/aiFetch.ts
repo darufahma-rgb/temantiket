@@ -52,8 +52,8 @@ export async function callAI(
 }
 
 /**
- * callAIAssistant — helper untuk /api/ai/assistant (AITEM, OpenAI).
- * Endpoint ini hanya menggunakan OpenAI — tidak pernah ke OpenRouter.
+ * callAIAssistant — helper untuk /api/ai/assistant (AITEM).
+ * Menggunakan OpenRouter untuk semua AI features.
  */
 export async function callAIAssistant(
   body: Record<string, unknown>,

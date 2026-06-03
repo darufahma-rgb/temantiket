@@ -1,0 +1,59 @@
+In api/ai/[action].js, migrate handleAssistant to use OpenRouter 
+instead of OpenAI directly.
+
+CHANGE 1: Find at the top of the file:
+  const OPENAI_API_KEY     = (process.env.OPENAI_API_KEY || '').trim();
+  const OPENAI_BASE_URL     = 'https://api.openai.com/v1';
+
+Replace with:
+  const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
+  const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+  const MODEL_ASSISTANT = 'openai/gpt-4o-mini';
+
+CHANGE 2: Find the handleAssistant function.
+Find:
+  if (!OPENAI_API_KEY) return res.status(503).json({ error: 'OPENAI_API_KEY belum di-set di Vercel Environment Variables.' });
+
+Replace with:
+  if (!OPENROUTER_API_KEY) return res.status(503).json({ error: 'OPENROUTER_API_KEY belum di-set di Vercel Environment Variables.' });
+
+CHANGE 3: Find the fetch call inside handleAssistant:
+  const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+
+Replace with:
+  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'HTTP-Referer': 'https://temantiket.vercel.app',
+      'X-Title': 'Temantiket',
+    },
+
+CHANGE 4: Find where model is resolved in handleAssistant:
+  const requestedModel = (req.body && req.body.model) || MODEL_ASSISTANT;
+  const resolvedModel = ...
+
+Make sure MODEL_ASSISTANT is now 'openai/gpt-4o-mini' (already set in CHANGE 1).
+The resolvedModel logic should keep format as-is since OpenRouter uses 'provider/model' format.
+Remove any logic that strips the provider prefix — OpenRouter needs it.
+
+Find:
+  const resolvedModel = (typeof requestedModel === 'string' && requestedModel.includes('/'))
+    ? requestedModel.split('/').slice(1).join('/')
+    : requestedModel;
+
+Replace with:
+  const resolvedModel = (typeof requestedModel === 'string' && !requestedModel.includes('/'))
+    ? `openai/${requestedModel}`
+    : requestedModel;
+
+Also update aiFetch.ts comment — find:
+  * callAIAssistant — helper untuk /api/ai/assistant (AITEM, OpenAI).
+  * Endpoint ini hanya menggunakan OpenAI — tidak pernah ke OpenRouter.
+
+Replace with:
+  * callAIAssistant — helper untuk /api/ai/assistant (AITEM).
+  * Menggunakan OpenRouter untuk semua AI features.

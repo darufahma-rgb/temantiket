@@ -1,13 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
 const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
-const OPENAI_API_KEY     = (process.env.OPENAI_API_KEY || '').trim();
 const SUPABASE_URL       = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
 const SUPABASE_ANON_KEY  = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
-const OPENAI_BASE_URL     = 'https://api.openai.com/v1';
-const MODEL_ASSISTANT     = 'openai/gpt-4o-mini';
+const MODEL_ASSISTANT = 'openai/gpt-4o-mini';
 
 async function getCallerUser(authHeader) {
   if (!authHeader || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
