@@ -26,6 +26,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -1783,12 +1786,39 @@ export default function Clients() {
                             >
                               <FileText className="h-4 w-4" />
                             </button>
-                            <button
-                              className="h-8 w-8 rounded-lg bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-slate-100 transition-colors"
-                              title="Lainnya"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  className="h-8 w-8 rounded-lg bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-slate-100 transition-colors"
+                                  title="Lainnya"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem onClick={() => { setEditTarget(c); setForm(clientToForm(c)); setAddOpen(true); }}>
+                                  <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Data Klien
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => navigate(`/clients/${c.id}`)}>
+                                  <FileText className="h-3.5 w-3.5 mr-2" /> Lihat Detail
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    const url = buildPublicMemberUrl(buildMemberSlug(c.name, c.id));
+                                    window.open(url, "_blank");
+                                  }}
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5 mr-2" /> Kartu Member
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                  onClick={() => setConfirmDeleteId(c.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Hapus Klien
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </td>
                       </tr>
