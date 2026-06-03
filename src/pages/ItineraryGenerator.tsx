@@ -43,9 +43,26 @@ function buildLabel(data: ItineraryData): string {
   return parts.join(" — ") || "Itinerary";
 }
 
+function fixItineraryYear(data: ItineraryData): ItineraryData {
+  const currentYear = new Date().getFullYear();
+  const fixDate = (d?: string | null) => {
+    if (!d) return d;
+    const y = parseInt(d.slice(0, 4), 10);
+    if (y < 2024) {
+      return `${currentYear}${d.slice(4)}`;
+    }
+    return d;
+  };
+  return {
+    ...data,
+    legs: data.legs?.map(l => ({ ...l, departDate: fixDate(l.departDate) ?? l.departDate })) ?? data.legs,
+  };
+}
+
 function loadHistory(): SavedItinerary[] {
   try {
-    return JSON.parse(localStorage.getItem(ITINERARY_HISTORY_KEY) ?? "[]") as SavedItinerary[];
+    const raw = JSON.parse(localStorage.getItem(ITINERARY_HISTORY_KEY) ?? "[]") as SavedItinerary[];
+    return raw.map(h => ({ ...h, data: fixItineraryYear(h.data) }));
   } catch { return []; }
 }
 
