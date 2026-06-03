@@ -88,7 +88,13 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const action = req.query.action;
+  // req.query.action — set by Vercel file-system routing (api/ai/[action].js)
+  // req.query.path   — set when vercel.json rewrite uses ":path*" as capture name
+  // URL fallback     — last segment of pathname, works regardless of routing config
+  const _qpath = req.query.path;
+  const action = req.query.action
+    ?? (Array.isArray(_qpath) ? _qpath[0] : _qpath)
+    ?? (() => { try { return new URL(req.url, 'http://x').pathname.split('/').filter(Boolean).pop(); } catch { return undefined; } })();
 
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: 'Missing Authorization header' });

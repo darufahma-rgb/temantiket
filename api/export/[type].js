@@ -681,7 +681,13 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const type = req.query.type;
+  // req.query.type — set by Vercel file-system routing (api/export/[type].js)
+  // req.query.path  — set when vercel.json rewrite uses ":path*" as capture name
+  // URL fallback    — last segment of pathname, works regardless of routing config
+  const _qpathExport = req.query.path;
+  const type = req.query.type
+    ?? (Array.isArray(_qpathExport) ? _qpathExport[0] : _qpathExport)
+    ?? (() => { try { return new URL(req.url, 'http://x').pathname.split('/').filter(Boolean).pop(); } catch { return undefined; } })();
 
   try {
     if (type === 'invoice') {
