@@ -48,26 +48,26 @@ function estimateCost(model: string, promptTokens: number, completionTokens: num
 
 // ✓ All model IDs verified valid on OpenRouter as of 2025-05
 // Note: anthropic/claude-* models require a paid Claude plan on OpenRouter.
-// Using google/gemini-2.0-flash-001 for all features — stabil, murah, cepat.
+// Using openai/gpt-4o-mini for all features — reliable, affordable, fast.
 export const OR_MODELS = {
-  /** Vision + OCR: poster, paspor, tiket screenshot. Gemini 2.0 Flash 001 — stabil, murah, vision. */
-  VISION:          "google/gemini-2.0-flash-001",
+  /** Vision + OCR: poster, paspor, tiket screenshot. */
+  VISION:          "openai/gpt-4o-mini",
   /** Caption marketing — manual maupun dari poster. */
   CAPTION:         "openai/gpt-4o-mini",
   /** Caption writer setelah OCR poster — GPT-4o Mini. */
   CAPTION_WRITER:  "openai/gpt-4o-mini",
   /** Rapikan catatan, formatting teks ringan. */
-  TEXT_FAST:       "google/gemini-2.0-flash-001",
-  /** Rapikan catatan — Gemini 2.0 Flash 001 (Claude requires paid OpenRouter plan). */
-  NOTES_WRITER:    "google/gemini-2.0-flash-001",
+  TEXT_FAST:       "openai/gpt-4o-mini",
+  /** Rapikan catatan. */
+  NOTES_WRITER:    "openai/gpt-4o-mini",
   /** Structured JSON output: itinerary, data terstruktur. */
-  STRUCTURED:      "google/gemini-2.0-flash-001",
-  /** Reasoning — Gemini 2.0 Flash 001 (Claude requires paid OpenRouter plan). */
-  REASONING:       "google/gemini-2.0-flash-001",
+  STRUCTURED:      "openai/gpt-4o-mini",
+  /** Reasoning. */
+  REASONING:       "openai/gpt-4o-mini",
 } as const;
 
-/** Fallback model jika primary Gemini model gagal (misal: model ID tidak valid). */
-const GEMINI_FALLBACK = "google/gemini-flash-1.5";
+/** Fallback model jika primary model gagal. */
+const GEMINI_FALLBACK = "openai/gpt-4o-mini";
 
 export type ORModel = (typeof OR_MODELS)[keyof typeof OR_MODELS];
 
