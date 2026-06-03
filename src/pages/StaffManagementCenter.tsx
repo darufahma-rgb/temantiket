@@ -1563,6 +1563,8 @@ export default function StaffManagementCenter() {
               </button>
             </div>
           ) : (
+            <>
+            {viewMode === "list" && (
             <div className="overflow-x-auto">
             <table className="w-full border-collapse min-w-[780px]">
               <thead>
@@ -1693,6 +1695,75 @@ export default function StaffManagementCenter() {
               </tbody>
             </table>
             </div>
+            )}
+            {viewMode === "grid" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                {tablePagedRows.map((m) => {
+                  const online = isOnline(m.staff.userId);
+                  const initials = (m.staff.displayName || m.staff.email)
+                    .split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+                  return (
+                    <div
+                      key={m.staff.userId}
+                      className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => setDrawerStaffId(m.staff.userId)}
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="relative">
+                          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-[15px]">
+                            {initials}
+                          </div>
+                          <div className={cn(
+                            "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white",
+                            online ? "bg-emerald-500" : "bg-slate-300"
+                          )} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-[14px] text-slate-800 truncate">{m.staff.displayName}</p>
+                          <p className="text-[11px] text-slate-400 truncate">{m.staff.email}</p>
+                        </div>
+                        <span className={cn(
+                          "text-[10px] font-semibold px-2 py-0.5 rounded-full",
+                          m.staff.role === "staff" ? "bg-blue-50 text-blue-600" : "bg-purple-50 text-purple-600"
+                        )}>
+                          {m.staff.role}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        <div className="text-center">
+                          <p className="text-[16px] font-bold text-slate-800">{m.total}</p>
+                          <p className="text-[10px] text-slate-400">Total Order</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[16px] font-bold text-emerald-600">{m.completed}</p>
+                          <p className="text-[10px] text-slate-400">Selesai</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[16px] font-bold text-amber-600">
+                            {Math.round(m.completionRate)}%
+                          </p>
+                          <p className="text-[10px] text-slate-400">Rate</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-slate-500">
+                          Fee: <span className="font-semibold text-slate-700">
+                            {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(m.totalFee)}
+                          </span>
+                        </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDrawerStaffId(m.staff.userId); }}
+                          className="text-[11px] text-sky-600 font-semibold hover:underline"
+                        >
+                          Detail →
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            </>
           )}
 
           {/* Pagination */}

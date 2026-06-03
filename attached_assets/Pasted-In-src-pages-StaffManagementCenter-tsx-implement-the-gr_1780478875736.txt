@@ -1,0 +1,96 @@
+In src/pages/StaffManagementCenter.tsx, implement the grid view 
+for the staff list.
+
+Find the staff table/list rendering section. It likely starts with:
+  {viewMode === "list" && (
+    <table ...>
+  or just renders a table directly.
+
+CHANGE 1: Find where the staff table is rendered (the <table> element 
+with columns STAFF, ROLE, STATUS, PERFORMA, etc.)
+
+Wrap it with a condition:
+  {viewMode === "list" && (
+    ... existing table JSX ...
+  )}
+
+CHANGE 2: Add grid view rendering after the table:
+
+  {viewMode === "grid" && (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+      {pagedStaff.map((member) => {
+        const metrics = metricMap.get(member.userId);
+        const presence = presenceMap?.[member.userId];
+        const isOnline = presence?.status === "online";
+        const extra = extraMap.get(member.userId);
+        const initials = member.displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+        return (
+          <div
+            key={member.userId}
+            className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => setSelectedStaff(member)}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="relative">
+                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-[15px]">
+                  {initials}
+                </div>
+                <div className={cn(
+                  "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white",
+                  isOnline ? "bg-emerald-500" : "bg-slate-300"
+                )} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-[14px] text-slate-800 truncate">{member.displayName}</p>
+                <p className="text-[11px] text-slate-400 truncate">{member.email}</p>
+              </div>
+              <span className={cn(
+                "text-[10px] font-semibold px-2 py-0.5 rounded-full",
+                member.role === "staff" ? "bg-blue-50 text-blue-600" : "bg-purple-50 text-purple-600"
+              )}>
+                {member.role}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="text-center">
+                <p className="text-[16px] font-bold text-slate-800">{metrics?.totalOrders ?? 0}</p>
+                <p className="text-[10px] text-slate-400">Total Order</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[16px] font-bold text-emerald-600">{metrics?.completedOrders ?? 0}</p>
+                <p className="text-[10px] text-slate-400">Selesai</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[16px] font-bold text-amber-600">
+                  {metrics?.totalOrders ? Math.round((metrics.completedOrders / metrics.totalOrders) * 100) : 0}%
+                </p>
+                <p className="text-[10px] text-slate-400">Rate</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-slate-500">
+                Fee: <span className="font-semibold text-slate-700">
+                  {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(metrics?.totalFeeIDR ?? 0)}
+                </span>
+              </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); setSelectedStaff(member); }}
+                className="text-[11px] text-sky-600 font-semibold hover:underline"
+              >
+                Detail →
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  )}
+
+Note: Use the exact variable names that exist in the component:
+- pagedStaff or equivalent for the paginated staff list
+- metricMap for staff metrics
+- presenceMap for online presence
+- extraMap for extra staff data
+- setSelectedStaff for opening staff detail
+
+After changes: npx tsc --noEmit and fix errors before committing.
