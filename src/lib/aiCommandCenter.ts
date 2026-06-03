@@ -30,6 +30,18 @@ import { listWalletTxs, walletBalance } from "@/lib/agentWallet";
 import { buildLedgerEntries, ledgerSummary } from "@/lib/ledgerSync";
 import { loadProductCommissions } from "@/lib/productCommissions";
 
+// ── Confirmation gate ─────────────────────────────────────────────────────────
+// Mencegah AITEM mengeksekusi operasi tulis tanpa konfirmasi eksplisit dari user.
+// Setiap write tool (create/update/delete) WAJIB cek ini sebelum jalan.
+let _pendingConfirmation: {
+  actionType: string;
+  data: Record<string, unknown>;
+  timestamp: number;
+} | null = null;
+
+export function getPendingConfirmation() { return _pendingConfirmation; }
+export function clearPendingConfirmation() { _pendingConfirmation = null; }
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface ChatMessage {
@@ -846,6 +858,28 @@ Untuk delete:
 Ketik "ya" untuk konfirmasi.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔒 ATURAN INPUT DATA — WAJIB DIIKUTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+URUTAN WAJIB untuk semua operasi tulis (create/update/delete):
+
+LANGKAH 1: Kumpulkan semua info yang dibutuhkan
+LANGKAH 2: Panggil confirm_action dengan summary lengkap
+LANGKAH 3: BERHENTI. Tunggu user reply.
+LANGKAH 4: HANYA jika user reply 'ya'/'oke'/'lanjut'/'betul'/'fix' → eksekusi tool
+LANGKAH 5: Jika user reply lain → JANGAN eksekusi, tanya lagi
+
+LARANGAN KERAS:
+❌ JANGAN panggil create_client/create_order/update/delete tanpa confirm_action dulu
+❌ JANGAN panggil write tool lebih dari 1x untuk data yang sama
+❌ JANGAN retry otomatis jika gagal — lapor error ke user dulu
+❌ JANGAN asumsikan 'ya' dari konteks sebelumnya
+
+DETEKSI DOUBLE INPUT:
+Sebelum create_client → selalu get_clients dulu untuk cek apakah nama sudah ada
+Sebelum create_order → selalu get_orders dulu untuk cek apakah order serupa sudah ada
+Jika data sudah ada → tanya user: 'Data ini sudah ada. Tetap tambah baru atau update yang lama?'
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚫 GUARDRAILS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 BOLEH: semua hal terkait Temantiket — data, operasional, konten, kalkulasi, fitur
@@ -1510,6 +1544,14 @@ async function executeTool(
       }
 
       case "create_client": {
+        if (!_pendingConfirmation) {
+          return {
+            result: JSON.stringify({ error: "Harus konfirmasi dulu sebelum simpan data. Gunakan confirm_action terlebih dahulu." }),
+            displayData: { type: "error", message: "⚠️ Belum ada konfirmasi. AITEM harus tampilkan ringkasan dulu sebelum menyimpan." },
+            success: false,
+          };
+        }
+        _pendingConfirmation = null;
         const { addClient } = useClientsStore.getState();
         const clientData = {
           name: args.name as string,
@@ -1531,6 +1573,14 @@ async function executeTool(
       }
 
       case "create_order": {
+        if (!_pendingConfirmation) {
+          return {
+            result: JSON.stringify({ error: "Harus konfirmasi dulu sebelum simpan data." }),
+            displayData: { type: "error", message: "⚠️ Belum ada konfirmasi. Tampilkan ringkasan dulu." },
+            success: false,
+          };
+        }
+        _pendingConfirmation = null;
         const { addOrder } = useOrdersStore.getState();
         const agencyId = useAuthStore.getState().user?.agencyId;
         const userId = useAuthStore.getState().user?.id;
@@ -1566,6 +1616,14 @@ async function executeTool(
       }
 
       case "update_order_status": {
+        if (!_pendingConfirmation) {
+          return {
+            result: JSON.stringify({ error: "Harus konfirmasi dulu sebelum update status." }),
+            displayData: { type: "error", message: "⚠️ Belum ada konfirmasi. Tampilkan ringkasan perubahan dulu." },
+            success: false,
+          };
+        }
+        _pendingConfirmation = null;
         const { patchOrder } = useOrdersStore.getState();
         await patchOrder(args.orderId as string, {
           status: args.status as string,
@@ -1579,6 +1637,14 @@ async function executeTool(
       }
 
       case "update_client": {
+        if (!_pendingConfirmation) {
+          return {
+            result: JSON.stringify({ error: "Harus konfirmasi dulu sebelum update data klien." }),
+            displayData: { type: "error", message: "⚠️ Belum ada konfirmasi. Tampilkan ringkasan perubahan dulu." },
+            success: false,
+          };
+        }
+        _pendingConfirmation = null;
         const { patchClient } = useClientsStore.getState();
         const { clientId, ...rest } = args as Record<string, string>;
         const patch = Object.fromEntries(
@@ -1593,12 +1659,19 @@ async function executeTool(
       }
 
       case "confirm_action": {
+        // Simpan pending confirmation — write tools tidak akan jalan sampai ini ada
+        _pendingConfirmation = {
+          actionType: args.actionType as string,
+          data: (args.data as Record<string, unknown>) ?? {},
+          timestamp: Date.now(),
+        };
         return {
           result: JSON.stringify({
             status: "awaiting_confirmation",
             actionType: args.actionType,
             summary: args.summary,
             data: args.data,
+            instruction: "STOP. Do NOT call any write tool yet. Wait for user to reply 'ya' or 'oke' before proceeding.",
           }),
           displayData: {
             type: "confirm_action",
@@ -1863,6 +1936,14 @@ Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsa
       }
 
       case "delete_client": {
+        if (!_pendingConfirmation) {
+          return {
+            result: JSON.stringify({ error: "Harus konfirmasi dulu sebelum menghapus klien." }),
+            displayData: { type: "error", message: "⚠️ Belum ada konfirmasi. Tampilkan peringatan hapus dulu." },
+            success: false,
+          };
+        }
+        _pendingConfirmation = null;
         const { removeClient } = useClientsStore.getState();
         await removeClient(args.clientId as string);
         return {
@@ -1878,6 +1959,14 @@ Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsa
       }
 
       case "delete_order": {
+        if (!_pendingConfirmation) {
+          return {
+            result: JSON.stringify({ error: "Harus konfirmasi dulu sebelum menghapus order." }),
+            displayData: { type: "error", message: "⚠️ Belum ada konfirmasi. Tampilkan peringatan hapus dulu." },
+            success: false,
+          };
+        }
+        _pendingConfirmation = null;
         const { removeOrder } = useOrdersStore.getState();
         await removeOrder(args.orderId as string);
         return {

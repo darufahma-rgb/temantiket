@@ -1,0 +1,117 @@
+In src/lib/aiCommandCenter.ts, fix the double-input problem by adding 
+a proper confirmation gate that BLOCKS execution until user confirms.
+
+---
+
+CHANGE 1: Add a pending confirmation state at module level
+
+Add these lines near the top of the file, after the imports:
+
+// Confirmation gate — prevents AITEM from executing write operations
+// without explicit user confirmation
+let _pendingConfirmation: {
+  actionType: string;
+  data: Record<string, unknown>;
+  timestamp: number;
+} | null = null;
+
+export function getPendingConfirmation() { return _pendingConfirmation; }
+export function clearPendingConfirmation() { _pendingConfirmation = null; }
+
+---
+
+CHANGE 2: Update case "confirm_action" to store pending state
+
+Find case "confirm_action": and replace with:
+
+    case "confirm_action": {
+      // Store pending confirmation — blocks write tools until confirmed
+      _pendingConfirmation = {
+        actionType: args.actionType as string,
+        data: (args.data as Record<string, unknown>) ?? {},
+        timestamp: Date.now(),
+      };
+      return {
+        result: JSON.stringify({
+          status: "awaiting_confirmation",
+          actionType: args.actionType,
+          summary: args.summary,
+          data: args.data,
+          instruction: "STOP. Do NOT call any write tool yet. Wait for user to reply 'ya' or 'oke' before proceeding.",
+        }),
+        displayData: {
+          type: "confirm_action",
+          actionType: args.actionType,
+          summary: args.summary as string,
+          data: args.data,
+        },
+        success: true,
+      };
+    }
+
+---
+
+CHANGE 3: Add confirmation check to all write tools
+
+Find case "create_client": and add at the very beginning:
+
+    case "create_client": {
+      // Safety check — require confirmation before writing
+      if (!_pendingConfirmation) {
+        return {
+          result: JSON.stringify({ error: "Harus konfirmasi dulu sebelum simpan data. Gunakan confirm_action terlebih dahulu." }),
+          displayData: { type: "error", message: "⚠️ Belum ada konfirmasi. AITEM harus tampilkan ringkasan dulu sebelum menyimpan." },
+          success: false,
+        };
+      }
+      _pendingConfirmation = null; // Clear after use
+      // ... rest of existing create_client code
+
+Find case "create_order": and add the same check at the beginning:
+    case "create_order": {
+      if (!_pendingConfirmation) {
+        return {
+          result: JSON.stringify({ error: "Harus konfirmasi dulu sebelum simpan data." }),
+          displayData: { type: "error", message: "⚠️ Belum ada konfirmasi. Tampilkan ringkasan dulu." },
+          success: false,
+        };
+      }
+      _pendingConfirmation = null;
+      // ... rest of existing create_order code
+
+Find case "update_client": and add the same check.
+Find case "update_order_status": and add the same check.
+Find case "delete_client": and add the same check.
+Find case "delete_order": and add the same check.
+
+---
+
+CHANGE 4: Update system prompt to be very explicit about the flow
+
+Find the KEMAMPUAN INPUT DATA section in buildSystemPrompt and replace with:
+
+"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔒 ATURAN INPUT DATA — WAJIB DIIKUTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+URUTAN WAJIB untuk semua operasi tulis (create/update/delete):
+
+LANGKAH 1: Kumpulkan semua info yang dibutuhkan
+LANGKAH 2: Panggil confirm_action dengan summary lengkap
+LANGKAH 3: BERHENTI. Tunggu user reply.
+LANGKAH 4: HANYA jika user reply 'ya'/'oke'/'lanjut'/'betul'/'fix' → eksekusi tool
+LANGKAH 5: Jika user reply lain → JANGAN eksekusi, tanya lagi
+
+LARANGAN KERAS:
+❌ JANGAN panggil create_client/create_order/update/delete tanpa confirm_action dulu
+❌ JANGAN panggil write tool lebih dari 1x untuk data yang sama
+❌ JANGAN retry otomatis jika gagal — lapor error ke user dulu
+❌ JANGAN asumsikan 'ya' dari konteks sebelumnya
+
+DETEKSI DOUBLE INPUT:
+Sebelum create_client → selalu get_clients dulu untuk cek apakah nama sudah ada
+Sebelum create_order → selalu get_orders dulu untuk cek apakah order serupa sudah ada
+Jika data sudah ada → tanya user: 'Data ini sudah ada. Tetap tambah baru atau update yang lama?'"
+
+---
+
+After all changes run: npx tsc --noEmit and fix errors before committing.

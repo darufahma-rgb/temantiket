@@ -1,0 +1,57 @@
+In src/lib/aiCommandCenter.ts, improve error reporting in executeTool 
+so AITEM shows the actual error message instead of "Terjadi error tidak dikenal".
+
+Find the catch block at the bottom of executeTool function:
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Terjadi error tidak dikenal";
+    return {
+      result: JSON.stringify({ error: msg }),
+      displayData: { type: "error", message: msg },
+      success: false,
+    };
+  }
+
+Replace with:
+  } catch (err) {
+    const msg = err instanceof Error 
+      ? err.message 
+      : (typeof err === "object" && err !== null && "message" in err)
+        ? String((err as Record<string, unknown>).message)
+        : JSON.stringify(err).slice(0, 300);
+    console.error("[AITEM executeTool] error:", toolName, err);
+    return {
+      result: JSON.stringify({ error: msg, tool: toolName }),
+      displayData: { type: "error", message: `[${toolName}] ${msg}` },
+      success: false,
+    };
+  }
+
+Also fix the create_client case to handle photo upload gracefully.
+Find case "create_client": and wrap the addClient call with better error handling:
+
+    case "create_client": {
+      const { addClient } = useClientsStore.getState();
+      const clientData = {
+        name: args.name as string,
+        phone: (args.phone as string) || null,
+        email: (args.email as string) || null,
+        gender: (args.gender as "L" | "P") || null,
+        birthDate: (args.birthDate as string) || null,
+        birthPlace: (args.birthPlace as string) || null,
+        passportNumber: (args.passportNumber as string) || null,
+        passportExpiry: (args.passportExpiry as string) || null,
+        notes: (args.notes as string) || null,
+        photoDataUrl: null,
+      };
+      try {
+        const newClient = await addClient(clientData);
+        return {
+          result: JSON.stringify({ success: true, clientId: newClient?.id, name: clientData.name }),
+          displayData: { type: "create_client", client: clientData, id: newClient?.id },
+          success: true,
+        };
+      } catch (clientErr) {
+        const clientMsg = clientErr instanceof Error ? clientErr.message : String(clientErr);
+        throw new Error(`Gagal tambah klien: ${clientMsg}`);
+      }
+    }
