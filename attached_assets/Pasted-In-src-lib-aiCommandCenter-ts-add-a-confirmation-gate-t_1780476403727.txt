@@ -1,0 +1,80 @@
+In src/lib/aiCommandCenter.ts, add a confirmation gate to prevent 
+double input. Make EXACT changes:
+
+CHANGE 1: Add module-level state after all imports, before the TOOLS array:
+
+let _pendingConfirmation: {
+  timestamp: number;
+  usesRemaining: number;
+} | null = null;
+
+CHANGE 2: Find case "confirm_action": and replace entire case with:
+
+    case "confirm_action": {
+      _pendingConfirmation = {
+        timestamp: Date.now(),
+        usesRemaining: 20,
+      };
+      return {
+        result: JSON.stringify({
+          status: "awaiting_confirmation",
+          actionType: args.actionType,
+          summary: args.summary,
+          data: args.data,
+          instruction: "STOP. Wait for user reply before calling any write tool.",
+        }),
+        displayData: {
+          type: "confirm_action",
+          actionType: args.actionType as string,
+          summary: args.summary as string,
+          data: args.data,
+        },
+        success: true,
+      };
+    }
+
+CHANGE 3: Add this helper function before executeTool function:
+
+function requireConfirmation(): { error: string } | null {
+  if (!_pendingConfirmation) {
+    return { error: "Harus konfirmasi dulu. Gunakan confirm_action sebelum menyimpan data." };
+  }
+  const age = Date.now() - _pendingConfirmation.timestamp;
+  if (age > 5 * 60 * 1000) {
+    _pendingConfirmation = null;
+    return { error: "Konfirmasi sudah expired (>5 menit). Ulangi perintahnya." };
+  }
+  _pendingConfirmation.usesRemaining -= 1;
+  if (_pendingConfirmation.usesRemaining <= 0) {
+    _pendingConfirmation = null;
+  }
+  return null;
+}
+
+CHANGE 4: Add confirmation check to write tools.
+
+In case "create_client":, add at the very beginning (before const { addClient }):
+  const _c1 = requireConfirmation();
+  if (_c1) return { result: JSON.stringify(_c1), displayData: { type: "error", message: _c1.error }, success: false };
+
+In case "create_order":, add at the very beginning:
+  const _c2 = requireConfirmation();
+  if (_c2) return { result: JSON.stringify(_c2), displayData: { type: "error", message: _c2.error }, success: false };
+
+In case "update_client":, add at the very beginning:
+  const _c3 = requireConfirmation();
+  if (_c3) return { result: JSON.stringify(_c3), displayData: { type: "error", message: _c3.error }, success: false };
+
+In case "update_order_status":, add at the very beginning:
+  const _c4 = requireConfirmation();
+  if (_c4) return { result: JSON.stringify(_c4), displayData: { type: "error", message: _c4.error }, success: false };
+
+In case "delete_client":, add at the very beginning:
+  const _c5 = requireConfirmation();
+  if (_c5) return { result: JSON.stringify(_c5), displayData: { type: "error", message: _c5.error }, success: false };
+
+In case "delete_order":, add at the very beginning:
+  const _c6 = requireConfirmation();
+  if (_c6) return { result: JSON.stringify(_c6), displayData: { type: "error", message: _c6.error }, success: false };
+
+After changes: npx tsc --noEmit and fix errors before committing.

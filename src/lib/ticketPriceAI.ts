@@ -282,8 +282,11 @@ function normalizeTime(raw: string | null | undefined): string | null {
   if (!raw) return null;
   // Strip next-day markers: +1, +2, (#), (+1), (+2), trailing #
   let s = String(raw).replace(/\s*(#|\(\+\d+\)|\+\d+)\s*$/, "").trim();
-  // Handle HHMM → HH:MM (if no colon)
+  // Handle dot-separated time: 04.05 → 04:05
+  if (/^\d{1,2}\.\d{2}$/.test(s)) s = s.replace(".", ":");
+  // Handle HHMM → HH:MM (if no colon or dot)
   if (/^\d{4}$/.test(s)) s = `${s.slice(0, 2)}:${s.slice(2)}`;
+  // Validate HH:MM format
   return /^\d{1,2}:\d{2}$/.test(s) ? s.padStart(5, "0") : null;
 }
 
