@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL      = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
 const SUPABASE_ANON_KEY = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
 const SERVICE_ROLE_KEY  = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
-const OPENAI_API_KEY    = (process.env.OPENAI_API_KEY || '').trim();
 const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 const MODEL_OCR = 'openai/gpt-4o';
