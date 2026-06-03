@@ -199,6 +199,7 @@ export default defineConfig(({ mode }) => ({
       { find: "@assets", replacement: path.resolve(__dirname, "./attached_assets") },
       { find: /^pdf-lib$/, replacement: path.resolve(__dirname, "node_modules/pdf-lib/dist/pdf-lib.esm.js") },
       { find: /^pdfjs-dist$/, replacement: path.resolve(__dirname, "node_modules/pdfjs-dist/build/pdf.mjs") },
+
     ],
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
@@ -213,5 +214,8 @@ export default defineConfig(({ mode }) => ({
       "tesseract.js",
       "xlsx",
     ],
+    esbuildOptions: {
+      conditions: ["browser", "module", "import", "default"],
+    },
   },
 }));

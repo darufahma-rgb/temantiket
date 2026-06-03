@@ -1,3 +1,4 @@
 - [DESIGN.md reference](design-system.md) — Temantiket pakai DESIGN.md sebagai panduan UI; baca sebelum nulis komponen atau halaman baru.
 - [Meta redesign token map](meta-redesign.md) — Panduan penggantian warna navy lama → Meta cobalt; semua token CSS sudah diupdate ke nilai DESIGN.md.
 - [Replit migration](replit-migration.md) — Supabase is the canonical data store; do NOT replace with Replit Postgres. All secrets in Replit Secrets. Server proxies all AI/auth calls.
+- [Vite date-fns fix](vite-date-fns-fix.md) — date-fns v3 needs esbuildOptions conditions in optimizeDeps to resolve correctly in Vite 5; do NOT alias to index.js (breaks sub-path imports).

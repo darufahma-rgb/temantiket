@@ -1,0 +1,86 @@
+In src/lib/aiCommandCenter.ts, fix the confirmation gate so it works 
+for batch operations (multiple deletes/creates in one confirmation).
+
+CHANGE 1: Update the _pendingConfirmation state to support batch ops
+
+Find:
+  let _pendingConfirmation: {
+    actionType: string;
+    data: Record<string, unknown>;
+    timestamp: number;
+  } | null = null;
+
+Replace with:
+  let _pendingConfirmation: {
+    actionType: string;
+    data: Record<string, unknown>;
+    timestamp: number;
+    usesRemaining: number;
+  } | null = null;
+
+CHANGE 2: Update confirm_action case to set usesRemaining
+
+Find in case "confirm_action":
+  _pendingConfirmation = {
+    actionType: args.actionType as string,
+    data: (args.data as Record<string, unknown>) ?? {},
+    timestamp: Date.now(),
+  };
+
+Replace with:
+  // Count how many items need to be processed (for batch ops)
+  const dataObj = (args.data as Record<string, unknown>) ?? {};
+  const itemCount = Array.isArray(dataObj.items) 
+    ? dataObj.items.length 
+    : Array.isArray(dataObj.orderIds)
+      ? dataObj.orderIds.length
+      : 10; // default: allow up to 10 uses per confirmation
+
+  _pendingConfirmation = {
+    actionType: args.actionType as string,
+    data: dataObj,
+    timestamp: Date.now(),
+    usesRemaining: Math.max(itemCount, 10),
+  };
+
+CHANGE 3: Update all write tool cases to decrement instead of clear
+
+Find ALL occurrences of:
+  _pendingConfirmation = null; // Clear after use
+
+Replace ALL of them with:
+  // Decrement uses — clear only when exhausted
+  if (_pendingConfirmation) {
+    _pendingConfirmation.usesRemaining -= 1;
+    if (_pendingConfirmation.usesRemaining <= 0) {
+      _pendingConfirmation = null;
+    }
+  }
+
+CHANGE 4: Update the confirmation check to allow recent confirmations
+
+Find ALL occurrences of the confirmation check:
+  if (!_pendingConfirmation) {
+    return {
+      result: JSON.stringify({ error: "Harus konfirmasi dulu sebelum simpan data." }),
+      ...
+    };
+  }
+
+Replace ALL of them with:
+  const confirmAge = _pendingConfirmation 
+    ? Date.now() - _pendingConfirmation.timestamp 
+    : Infinity;
+  if (!_pendingConfirmation || confirmAge > 5 * 60 * 1000) {
+    // No confirmation or confirmation expired (>5 minutes old)
+    if (_pendingConfirmation && confirmAge > 5 * 60 * 1000) {
+      _pendingConfirmation = null;
+    }
+    return {
+      result: JSON.stringify({ error: "Konfirmasi diperlukan sebelum eksekusi." }),
+      displayData: { type: "error", message: "⚠️ Perlu konfirmasi dulu. Ketik ulang perintahnya." },
+      success: false,
+    };
+  }
+
+After changes: npx tsc --noEmit and fix errors before committing.
