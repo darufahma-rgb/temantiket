@@ -1563,13 +1563,19 @@ async function executeTool(
           passportNumber: (args.passportNumber as string) || null,
           passportExpiry: (args.passportExpiry as string) || null,
           notes: (args.notes as string) || null,
+          photoDataUrl: null,
         };
-        const newClient = await addClient(clientData);
-        return {
-          result: JSON.stringify({ success: true, clientId: newClient?.id, name: clientData.name }),
-          displayData: { type: "create_client", client: clientData, id: newClient?.id },
-          success: true,
-        };
+        try {
+          const newClient = await addClient(clientData);
+          return {
+            result: JSON.stringify({ success: true, clientId: newClient?.id, name: clientData.name }),
+            displayData: { type: "create_client", client: clientData, id: newClient?.id },
+            success: true,
+          };
+        } catch (clientErr) {
+          const clientMsg = clientErr instanceof Error ? clientErr.message : String(clientErr);
+          throw new Error(`Gagal tambah klien: ${clientMsg}`);
+        }
       }
 
       case "create_order": {
@@ -2012,10 +2018,15 @@ Jika platform=instagram, isi whatsapp dengan string kosong. Jika platform=whatsa
         throw new Error(`Tool tidak dikenal: ${toolName}`);
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Terjadi error tidak dikenal";
+    const msg = err instanceof Error
+      ? err.message
+      : (typeof err === "object" && err !== null && "message" in err)
+        ? String((err as Record<string, unknown>).message)
+        : JSON.stringify(err).slice(0, 300);
+    console.error("[AITEM executeTool] error:", toolName, err);
     return {
-      result: JSON.stringify({ error: msg }),
-      displayData: { type: "error", message: msg },
+      result: JSON.stringify({ error: msg, tool: toolName }),
+      displayData: { type: "error", message: `[${toolName}] ${msg}` },
       success: false,
     };
   }

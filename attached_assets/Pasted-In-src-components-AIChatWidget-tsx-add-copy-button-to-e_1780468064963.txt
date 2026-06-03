@@ -1,0 +1,136 @@
+In src/components/AIChatWidget.tsx, add copy button to each AITEM 
+message and improve paste support in input. Make EXACT changes:
+
+---
+
+CHANGE 1: Add copy button to AITEM message bubble
+
+Find the MessageBubble function. Find the text bubble div for assistant messages:
+  {msg.content && (
+    <div className={cn(
+      "max-w-[85%] min-w-0 overflow-hidden px-3 py-2 rounded-2xl text-sm leading-relaxed",
+      isUser
+        ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-br-sm"
+        : "bg-white border border-border/60 text-foreground rounded-bl-sm shadow-sm",
+    )}>
+
+Replace the entire {msg.content && (...)} block with:
+
+  {msg.content && (
+    <div className={cn("max-w-[85%] min-w-0 group relative")}>
+      <div className={cn(
+        "overflow-hidden px-3 py-2 rounded-2xl text-sm leading-relaxed",
+        isUser
+          ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-br-sm"
+          : "bg-white border border-border/60 text-foreground rounded-bl-sm shadow-sm",
+      )}>
+        {isUser ? (
+          msg.content
+        ) : (
+          <div className="min-w-0 max-w-full overflow-hidden">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed font-normal">{children}</p>,
+                strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
+                em: ({ children }) => <em className="italic opacity-80">{children}</em>,
+                ul: ({ children }) => <ul className="mb-2 last:mb-0 space-y-1.5 pl-0.5">{children}</ul>,
+                ol: ({ children }) => <ol className="mb-2 last:mb-0 space-y-1.5 pl-5 list-decimal marker:text-muted-foreground/60">{children}</ol>,
+              }}
+            >
+              {msg.content}
+            </ReactMarkdown>
+          </div>
+        )}
+      </div>
+      {/* Copy button — shows on hover for assistant messages */}
+      {!isUser && (
+        <CopyButton text={msg.content} />
+      )}
+    </div>
+  )}
+
+---
+
+CHANGE 2: Add CopyButton component
+
+Add this new component BEFORE the MessageBubble function definition:
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback
+      const el = document.createElement("textarea");
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className={cn(
+        "absolute -bottom-5 right-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-all",
+        "opacity-0 group-hover:opacity-100",
+        copied
+          ? "bg-emerald-100 text-emerald-600 opacity-100"
+          : "bg-muted text-muted-foreground hover:bg-muted/80"
+      )}
+    >
+      {copied
+        ? <><ClipboardCheck className="w-3 h-3" /> Tersalin</>
+        : <><Copy className="w-3 h-3" /> Salin</>
+      }
+    </button>
+  );
+}
+
+---
+
+CHANGE 3: Improve textarea for better paste support
+
+Find the textarea element (inputRef). It should have placeholder "Ketik perintah...".
+Find the full textarea JSX and make these changes:
+
+1. Add onPaste handler to show paste indicator:
+  onPaste={(e) => {
+    const text = e.clipboardData.getData("text");
+    if (text.length > 200) {
+      // Long paste — show indicator
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.style.height = "auto";
+          inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 160) + "px";
+        }
+      }, 10);
+    }
+  }}
+
+2. Make sure the textarea auto-resizes. Find the onChange handler of the textarea
+   and add after setInput(e.target.value):
+   // Auto-resize
+   e.target.style.height = "auto";
+   e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px";
+
+3. Add style to textarea:
+   style={{ resize: "none", minHeight: "40px", maxHeight: "160px" }}
+
+---
+
+CHANGE 4: Add "Paste teks panjang" hint below input
+
+Find the area below the textarea (where "Shift+Enter untuk baris baru" text is).
+Add next to it:
+  <span className="mx-1 opacity-30">·</span>
+  <span>Ctrl+V untuk paste</span>
+
+After all changes: npx tsc --noEmit and fix errors before committing.
