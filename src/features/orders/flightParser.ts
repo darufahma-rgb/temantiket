@@ -205,6 +205,10 @@ function parseDateLoose(raw: string, fallbackYear?: number): string | undefined 
 
 /** Parse "1430" / "14:30" / "2:30 PM" → "HH:MM" 24h. */
 function parseTimeLoose(raw: string): string | undefined {
+  // Handle dot-separated time: "20.05" → "20:05"
+  if (/^\d{1,2}\.\d{2}$/.test(raw.trim())) {
+    raw = raw.trim().replace(".", ":");
+  }
   const t = raw.trim().toUpperCase();
   // 1430 (Galileo) — 4 digits exact
   let m = t.match(/^(\d{2})(\d{2})$/);
@@ -312,6 +316,17 @@ function extractDateAndTime(text: string): {
     return out;
   }
 
+  // ── WhatsApp itinerary format: "Berangkat* – 26 Agustus 2026\nCAI 20.05 → DXB 00.40" ──
+  const waPattern = text.match(
+    /(?:Berangkat|Perjalanan\s*1)[^–\-\n]*[–\-]\s*(\d{1,2}\s+[A-Za-z]+\s+\d{2,4})\s*[\r\n]+\s*([A-Z]{3})\s+([\d.]+)\s*[→>]\s*([A-Z]{3})\s+([\d.]+)/i
+  );
+  if (waPattern) {
+    out.departDate = parseDateLoose(waPattern[1]);
+    out.departTime = parseTimeLoose(waPattern[3].replace(".", ":"));
+    out.arriveTime = parseTimeLoose(waPattern[5].replace(".", ":"));
+    return out;
+  }
+
   // ── Generic e-ticket: "Departure: 15 Mar 2026, 14:30" ──
   const depLine = text.match(
     /(?:depart(?:ure)?|berangkat|tgl\s*berangkat)\s*[:-]?\s*([0-9]{1,2}[\s\-/A-Za-z0-9]{2,18}\d{2,4})[,\s]+(?:at\s*)?([\d:APMapm]{4,8})/i,
@@ -330,12 +345,12 @@ function extractDateAndTime(text: string): {
 
   // Fallback: ambil tanggal pertama saja
   if (!out.departDate) {
-    const anyDate = text.match(/\b(\d{1,2}\s*(?:Jan|Feb|Mar|Apr|May|Mei|Jun|Jul|Aug|Agt|Ags|Sep|Oct|Okt|Nov|Dec|Des)[a-z]*\s*\d{2,4})\b/i);
+    const anyDate = text.match(/\b(\d{1,2}\s*(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Agt|Ags|Sep|Oct|Okt|Nov|Dec|Des)[a-z]*\s*\d{2,4})\b/i);
     if (anyDate) out.departDate = parseDateLoose(anyDate[1]);
   }
   if (!out.departTime) {
-    const anyTime = text.match(/\b(\d{1,2}:\d{2}(?:\s?[APap][Mm])?)\b/);
-    if (anyTime) out.departTime = parseTimeLoose(anyTime[1]);
+    const anyTime = text.match(/\b(\d{1,2}[:.]\d{2}(?:\s?[APap][Mm])?)\b/);
+    if (anyTime) out.departTime = parseTimeLoose(anyTime[1].replace(".", ":"));
   }
 
   return out;

@@ -1,0 +1,61 @@
+In src/features/orders/flightParser.ts, fix extractDateAndTime 
+to handle WhatsApp itinerary format from Temantiket.
+
+The format is:
+  • *Berangkat* – 26 Agustus 2026
+  CAI 20.05 → DXB 00.40 *(EK924)*
+
+  • *Perjalanan 2* – 27 Agustus 2026
+  DXB 04.05 → CGK 15.40 *(EK356)*
+
+CHANGE 1: Add WhatsApp itinerary pattern to extractDateAndTime
+
+Find the extractDateAndTime function. After the Galileo pattern and 
+before the generic e-ticket pattern, add:
+
+  // ── WhatsApp itinerary format: "Berangkat* – 26 Agustus 2026\nCAI 20.05 → DXB 00.40"
+  const waPattern = text.match(
+    /(?:Berangkat|Perjalanan\s*1)[^–\-\n]*[–\-]\s*(\d{1,2}\s+[A-Za-z]+\s+\d{2,4})\s*[\r\n]+\s*([A-Z]{3})\s+([\d.]+)\s*[→>]\s*([A-Z]{3})\s+([\d.]+)/i
+  );
+  if (waPattern) {
+    out.departDate = parseDateLoose(waPattern[1]);
+    out.departTime = parseTimeLoose(waPattern[3].replace(".", ":"));
+    out.arriveTime = parseTimeLoose(waPattern[5].replace(".", ":"));
+    return out;
+  }
+
+CHANGE 2: Fix parseTimeLoose to handle dot-separated times
+
+Find the parseTimeLoose function. It likely handles HH:MM format.
+Add dot-separated format support:
+
+Find:
+  function parseTimeLoose(raw: string): string | undefined {
+
+Add at the beginning of the function after the null check:
+  // Handle dot-separated time: "20.05" → "20:05"
+  if (/^\d{1,2}\.\d{2}$/.test(raw.trim())) {
+    raw = raw.trim().replace(".", ":");
+  }
+
+CHANGE 3: Add fallback date extractor for Indonesian full date format
+
+Find the fallback section:
+  if (!out.departDate) {
+    const anyDate = text.match(/\b(\d{1,2}\s*(?:Jan|Feb|Mar|Apr|May|Mei|Jun|Jul|Aug|Agt|Ags|Sep|Oct|Okt|Nov|Dec|Des)[a-z]*\s*\d{2,4})\b/i);
+
+Replace the regex to also catch full Indonesian month names:
+    const anyDate = text.match(/\b(\d{1,2}\s*(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Agt|Ags|Sep|Oct|Okt|Nov|Dec|Des)[a-z]*\s*\d{2,4})\b/i);
+
+CHANGE 4: Add dot-separated time to fallback time extractor
+
+Find:
+  if (!out.departTime) {
+    const anyTime = text.match(/\b(\d{1,2}:\d{2}(?:\s?[APap][Mm])?)\b/);
+
+Replace with:
+  if (!out.departTime) {
+    const anyTime = text.match(/\b(\d{1,2}[:.]\d{2}(?:\s?[APap][Mm])?)\b/);
+    if (anyTime) out.departTime = parseTimeLoose(anyTime[1].replace(".", ":"));
+
+After changes: npx tsc --noEmit and fix errors before committing.
