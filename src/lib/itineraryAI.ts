@@ -380,7 +380,7 @@ const BASE_SCHEMA = `{
   "priceCurrency": "IDR/EGP/USD/SAR or null"
 }`;
 
-const TEXT_SYSTEM_PROMPT = `You are a precision flight itinerary extractor for an Indonesian travel agency (Temantiket).
+const _TEXT_SYSTEM_PROMPT_TEMPLATE = `You are a precision flight itinerary extractor for an Indonesian travel agency (Temantiket).
 Parse raw input that may be: Galileo GDS display, Amadeus entries, Trip.com pages, airline e-ticket emails, or plain booking text.
 
 Return ONLY valid JSON — no markdown fences, no explanation, no trailing text:
@@ -431,6 +431,23 @@ GALILEO PNR BOOKING CONFIRMATION (airports concatenated 6-char, class glued to f
 - legs must always be an array, even for a single flight.
 - Extract price from "TOTAL AMOUNT XXXXX.XX EGP" or similar lines.`;
 
+function buildTextSystemPrompt(): string {
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = now.getMonth() + 1;
+  return _TEXT_SYSTEM_PROMPT_TEMPLATE
+    .replace(
+      '- Dates ALWAYS YYYY-MM-DD. "03JUN" → current or nearest future year.',
+      `- Dates ALWAYS YYYY-MM-DD. Current year is ${yr}. Today is ${now.toISOString().slice(0, 10)}.` +
+      `\n- "03JUN" with no year: if month >= ${mo} use ${yr}, else use ${yr + 1}.` +
+      `\n- NEVER output a year < ${yr}. All flight dates must be ${yr} or later.`
+    )
+    .replace(
+      '- If year is EXPLICIT in GDS format (e.g. "06Aug26"), use it directly as 20YY. "26" = 2026, never 2022.',
+      `- If year is EXPLICIT (e.g. "06Aug26"): "26" = 2026. Always 20YY format.`
+    );
+}
+
 const IMAGE_SYSTEM_PROMPT = `You are a precision OCR and flight data extractor. Analyze this screenshot of a flight ticket, booking confirmation, Galileo GDS display, or itinerary page.
 
 Extract ALL flight segments visible in the image and return ONLY valid JSON:
@@ -449,6 +466,19 @@ CRITICAL RULES:
 - Set null only for genuinely missing fields — never guess.
 - Return ONLY the JSON, nothing else.`;
 
+function buildImageSystemPrompt(): string {
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = now.getMonth() + 1;
+  return IMAGE_SYSTEM_PROMPT
+    .replace(
+      "- Dates ALWAYS YYYY-MM-DD.",
+      `- Dates ALWAYS YYYY-MM-DD. Current year is ${yr}. Today is ${now.toISOString().slice(0, 10)}.` +
+      `\n- For dates without year (e.g. "03JUN"): if month >= ${mo} use ${yr}, else use ${yr + 1}.` +
+      `\n- NEVER output year < ${yr}.`
+    );
+}
+
 // ── OpenAI Text caller (via server proxy) ──────────────────────────────────
 
 async function callOpenAIText(text: string): Promise<ItineraryData> {
@@ -458,7 +488,7 @@ async function callOpenAIText(text: string): Promise<ItineraryData> {
     max_tokens: 2500,
     response_format: { type: "json_object" },
     messages: [
-      { role: "system", content: TEXT_SYSTEM_PROMPT },
+      { role: "system", content: buildTextSystemPrompt() },
       { role: "user", content: text.slice(0, 8000) },
     ],
   });
@@ -475,7 +505,7 @@ async function callOpenAIVision(imageDataUrl: string): Promise<ItineraryData> {
     max_tokens: 2500,
     response_format: { type: "json_object" },
     messages: [
-      { role: "system", content: IMAGE_SYSTEM_PROMPT },
+      { role: "system", content: buildImageSystemPrompt() },
       {
         role: "user",
         content: [
@@ -498,6 +528,16 @@ function parseOpenAIResponse(raw: string, originalText: string): ItineraryData {
     throw new Error("AI mengembalikan format JSON tidak valid — coba lagi");
   }
   if (!Array.isArray(parsed.legs)) parsed.legs = [];
+
+  // Fix any wrong years returned by AI (e.g. AI returns 2022 instead of 2026)
+  const currentYear = new Date().getFullYear();
+  const fixDate = (d: unknown): unknown => {
+    if (typeof d !== "string" || d.length < 4) return d;
+    const y = parseInt(d.slice(0, 4), 10);
+    if (y < currentYear) return `${currentYear}${d.slice(4)}`;
+    return d;
+  };
+
   parsed.legs = parsed.legs.map((leg) => {
     const clean: FlightLeg = {};
     (Object.keys(leg) as (keyof FlightLeg)[]).forEach((k) => {
@@ -511,6 +551,9 @@ function parseOpenAIResponse(raw: string, originalText: string): ItineraryData {
     if (clean.toCode && !clean.toCity && KNOWN_AIRPORTS[clean.toCode]) {
       clean.toCity = KNOWN_AIRPORTS[clean.toCode];
     }
+    // Perbaiki tahun yang salah (AI kadang return tahun lama)
+    if (clean.departDate) clean.departDate = fixDate(clean.departDate) as string;
+    if (clean.arriveDate) clean.arriveDate = fixDate(clean.arriveDate) as string;
     return clean;
   });
   return { ...parsed, rawText: originalText };

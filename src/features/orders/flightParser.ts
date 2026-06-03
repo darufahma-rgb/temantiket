@@ -41,6 +41,10 @@ export interface ParsedFlight {
   returnArriveDate?: string;
   returnArriveTime?: string;
   returnFlightNumber?: string;
+  /** Kode bandara transit (jika penerbangan via transit) */
+  transitCode?: string;
+  /** Nama kota transit */
+  transitCity?: string;
 }
 
 // ── Constant tables ────────────────────────────────────────────────────────
@@ -428,10 +432,10 @@ export function parseFlightText(rawText: string): ParsedFlight {
     sellPrice: prices.sellPrice,
   };
 
-  // Deteksi return trip dari format itinerary WhatsApp / Trip.com
-  // Pola: ada "Perjalanan 2" atau "Pulang" diikuti tanggal, kode IATA, waktu, nomor penerbangan
+  // Deteksi return trip — HANYA dari "Pulang" atau "Return", BUKAN "Perjalanan 2"
+  // ("Perjalanan 2" = leg transit, bukan penerbangan pulang)
   const returnPattern = text.match(
-    /(?:Perjalanan\s*2|Pulang)[^–\-\n]*[–\-]\s*(\d{1,2}\s+[A-Za-z]+\s+\d{2,4})\s*[\r\n]+\s*([A-Z]{3})\s+([\d.]+)\s*[→>]\s*([A-Z]{3})\s+([\d.]+)\s*\*?\(([A-Z]{2}\d{2,4})\)\*?/i
+    /(?:Pulang|Return)[^–\-\n]*[–\-]\s*(\d{1,2}\s+[A-Za-z]+\s+\d{2,4})\s*[\r\n]+\s*([A-Z]{3})\s+([\d.]+)\s*[→>]\s*([A-Z]{3})\s+([\d.]+)\s*\*?\(([A-Z]{2}\d{2,4})\)\*?/i
   );
   if (returnPattern) {
     out.tripType = "return";
@@ -456,6 +460,43 @@ export function parseFlightText(rawText: string): ParsedFlight {
       }
     }
   } else {
+    out.tripType = "one_way";
+  }
+
+  // Deteksi leg transit dari "Perjalanan 2" di itinerary WhatsApp
+  // "Perjalanan 2" artinya penerbangan ke-2 dalam perjalanan transit, BUKAN pulang
+  const transitPattern = text.match(
+    /Perjalanan\s*2[^–\-\n]*[–\-]\s*(\d{1,2}\s+[A-Za-z]+\s+\d{2,4})\s*[\r\n]+\s*([A-Z]{3})\s+([\d.]+)\s*[→>]\s*([A-Z]{3})\s+([\d.]+)\s*\*?\(([A-Z]{2}\d{2,4})\)\*?/i
+  );
+  if (transitPattern && !out.returnFromCode) {
+    // Leg 2 adalah transit — update tujuan ke destinasi akhir
+    // Bandara transit = toCode saat ini (misal DXB)
+    // Destinasi akhir = toCode leg 2 (misal CGK)
+    if (out.toCode) {
+      out.transitCode = out.toCode;
+      out.transitCity = out.toCity ?? CITY_BY_IATA[out.toCode] ?? out.toCode;
+    }
+    out.toCode = transitPattern[4];
+    out.toCity = CITY_BY_IATA[transitPattern[4]] ?? transitPattern[4];
+    // Update jam tiba ke jam tiba leg terakhir
+    out.arriveTime = parseTimeLoose(transitPattern[5].replace(".", ":"));
+    // Update tanggal tiba
+    const depH2 = parseInt(transitPattern[3].split(".")[0], 10);
+    const arrH2 = parseInt(transitPattern[5].split(".")[0], 10);
+    const leg2Date = parseDateLoose(transitPattern[1]);
+    if (leg2Date) {
+      if (arrH2 < depH2) {
+        const d = new Date(leg2Date + "T00:00:00");
+        d.setDate(d.getDate() + 1);
+        out.arriveDate = d.toISOString().slice(0, 10);
+      } else {
+        out.arriveDate = leg2Date;
+      }
+    }
+    // Gabungkan nomor penerbangan: misal EK924/EK356
+    if (transitPattern[6] && out.flightNumber) {
+      out.flightNumber = `${out.flightNumber}/${transitPattern[6]}`;
+    }
     out.tripType = "one_way";
   }
 

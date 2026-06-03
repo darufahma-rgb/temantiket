@@ -1,0 +1,122 @@
+In src/lib/itineraryAI.ts, inject current year into the system prompts
+so AI knows what year to use when inferring dates from GDS format like "03JUN".
+
+CHANGE 1: Find TEXT_SYSTEM_PROMPT and add current year injection
+
+Find:
+  const TEXT_SYSTEM_PROMPT = `You are a precision flight itinerary extractor...
+
+This is a static string. We need to make it dynamic to include current year.
+
+Change it from const to a function:
+
+Find the entire line:
+  const TEXT_SYSTEM_PROMPT = `You are...
+
+Replace with a function that returns the prompt with current year injected:
+  function getTextSystemPrompt(): string {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const nextYear = currentYear + 1;
+    const currentMonth = now.getMonth() + 1; // 1-12
+    return `You are a precision flight itinerary extractor for an Indonesian travel agency (Temantiket).
+
+CURRENT DATE CONTEXT: Today is ${now.toISOString().slice(0, 10)}. Current year is ${currentYear}.
+When inferring year for dates like "03JUN" or "15MAR" (no explicit year):
+- If the month is >= current month: use ${currentYear}
+- If the month is < current month: use ${nextYear} (next year, flight hasn't happened yet)
+- NEVER use any year before ${currentYear}
+- NEVER return a year like 2022, 2023, or any past year for future flights
+
+` + TEXT_SYSTEM_PROMPT_BODY;
+  }
+
+  const TEXT_SYSTEM_PROMPT_BODY = `Parse raw input that may be: Galileo GDS display...
+  [rest of the existing TEXT_SYSTEM_PROMPT content]
+  `;
+
+Actually, simpler approach — just find the CRITICAL RULES section in TEXT_SYSTEM_PROMPT and update the date rule:
+
+Find in TEXT_SYSTEM_PROMPT:
+  - Dates ALWAYS YYYY-MM-DD. "03JUN" → current or nearest future year.
+  - If year is EXPLICIT in GDS format (e.g. "06Aug26"), use it directly as 20YY. "26" = 2026, never 2022.
+  - Only infer year when NO year is present in the date string.
+
+Replace with a dynamic version. Change TEXT_SYSTEM_PROMPT from a const string to a function call:
+
+Step 1: Rename the existing const:
+  Change: const TEXT_SYSTEM_PROMPT = `...`
+  To: const _TEXT_SYSTEM_PROMPT_TEMPLATE = `...`
+
+Step 2: In the same file, add a function after the const:
+  function buildTextSystemPrompt(): string {
+    const now = new Date();
+    const yr = now.getFullYear();
+    const mo = now.getMonth() + 1;
+    return _TEXT_SYSTEM_PROMPT_TEMPLATE
+      .replace(
+        '- Dates ALWAYS YYYY-MM-DD. "03JUN" → current or nearest future year.',
+        `- Dates ALWAYS YYYY-MM-DD. Current year is ${yr}. Today is ${now.toISOString().slice(0,10)}.` +
+        `\n- "03JUN" with no year: if month >= ${mo} use ${yr}, else use ${yr+1}.` +
+        `\n- NEVER output a year < ${yr}. All flight dates must be ${yr} or later.`
+      )
+      .replace(
+        '- If year is EXPLICIT in GDS format (e.g. "06Aug26"), use it directly as 20YY. "26" = 2026, never 2022.',
+        `- If year is EXPLICIT (e.g. "06Aug26"): "26" = 2026. Always 20YY format.`
+      );
+  }
+
+Step 3: Find where TEXT_SYSTEM_PROMPT is used in the API call:
+  messages: [{ role: "system", content: TEXT_SYSTEM_PROMPT }, ...]
+
+Replace with:
+  messages: [{ role: "system", content: buildTextSystemPrompt() }, ...]
+
+CHANGE 2: Do the same for IMAGE_SYSTEM_PROMPT
+
+Find in IMAGE_SYSTEM_PROMPT:
+  - Dates ALWAYS YYYY-MM-DD.
+
+Replace with dynamic version — create buildImageSystemPrompt() function:
+  function buildImageSystemPrompt(): string {
+    const now = new Date();
+    const yr = now.getFullYear();
+    const mo = now.getMonth() + 1;
+    return IMAGE_SYSTEM_PROMPT
+      .replace(
+        '- Dates ALWAYS YYYY-MM-DD.',
+        `- Dates ALWAYS YYYY-MM-DD. Current year is ${yr}. Today is ${now.toISOString().slice(0,10)}.` +
+        `\n- For dates without year (e.g. "03JUN"): if month >= ${mo} use ${yr}, else use ${yr+1}.` +
+        `\n- NEVER output year < ${yr}.`
+      );
+  }
+
+Find where IMAGE_SYSTEM_PROMPT is used and replace with buildImageSystemPrompt().
+
+CHANGE 3: Add post-processing to fix any wrong years returned by AI
+
+Find the function that processes AI response (likely parseItineraryResponse or similar).
+After parsing the JSON from AI, add year validation:
+
+Find where legs array is processed after JSON.parse and add:
+  // Fix any wrong years returned by AI
+  const currentYear = new Date().getFullYear();
+  if (data.legs && Array.isArray(data.legs)) {
+    data.legs = data.legs.map((leg: Record<string, unknown>) => {
+      const fixDate = (d: unknown) => {
+        if (typeof d !== 'string') return d;
+        const y = parseInt(d.slice(0, 4), 10);
+        if (y < currentYear) {
+          return `${currentYear}${d.slice(4)}`;
+        }
+        return d;
+      };
+      return {
+        ...leg,
+        departDate: fixDate(leg.departDate),
+        arriveDate: fixDate(leg.arriveDate),
+      };
+    });
+  }
+
+After changes: npx tsc --noEmit and fix errors before committing.
