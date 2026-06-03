@@ -81,20 +81,5 @@ export function generateAitemAlerts(): AitemAlert[] {
     });
   }
 
-  // 4. Pipeline tipis
-  const activeOrders = orders.filter((o) => ["Draft", "Confirmed"].includes(o.status));
-  if (activeOrders.length < 3) {
-    alerts.push({
-      id: "thin-pipeline",
-      type: "warning",
-      title: "Pipeline Tipis",
-      message: `Hanya ada ${activeOrders.length} order aktif — saatnya gencarkan marketing`,
-      action: {
-        label: "Buat caption marketing",
-        prompt: "Buatkan caption marketing Instagram untuk paket yang sedang aktif sekarang.",
-      },
-    });
-  }
-
   return alerts;
 }
