@@ -171,7 +171,12 @@ GALILEO EXAMPLE — 4 rows → return 4 separate one_way entries:
   { fromCode:"BAH", toCode:"CAI", flightNumber:"GF79",  etd:"01:10", eta:"04:30", departDate:"YYYY-09-04", basePrice:29283.80, currency:"EGP", tripType:"one_way", ... all return* fields: null }
 
 NOTE on next-day arrival: the "#" or "+1" suffix means the ARRIVAL is next day. The departDate is still the row's departure date. The eta time value does NOT include "#".
-NOTE: "YYYY" = current year unless month already passed (then next year).
+NOTE on dates:
+  - If the text contains an EXPLICIT 2-digit year (e.g. "06Aug26", "07AUG26", "26AUG25"), 
+    use that year directly: "26" = 2026, "25" = 2025, "27" = 2027. ALWAYS 20xx, never 19xx.
+  - GDS format DDMmmYY: "06Aug26" = 2026-08-06, "07Aug26" = 2026-08-07
+  - Only use current year inference when NO year is specified in the text (e.g. "06Aug" with no year suffix).
+  - Never override an explicit year in the source text.
 
 ════════════════════════════════════════════════════════════
  RULE 1 — MORE N BLOCKS (Galileo multi-option)

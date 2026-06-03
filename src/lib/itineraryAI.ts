@@ -422,6 +422,8 @@ GALILEO PNR BOOKING CONFIRMATION (airports concatenated 6-char, class glued to f
 
 - Times are ALWAYS HH:MM 24-hour. "2355" → "23:55". "0340" → "03:40".
 - Dates ALWAYS YYYY-MM-DD. "03JUN" → current or nearest future year.
+- If year is EXPLICIT in GDS format (e.g. "06Aug26"), use it directly as 20YY. "26" = 2026, never 2022.
+- Only infer year when NO year is present in the date string.
 - If arrival is next day (#), increment the arriveDate accordingly.
 - flightNumber: combine airline code + number without space: "GF 70" → "GF70".
 - duration: Indonesian format "Xj Ym". Convert "8h 35m" → "8j 35m".
