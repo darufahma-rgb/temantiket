@@ -11,8 +11,11 @@
     "api/ai/[action].js":    { "maxDuration": 30 }
   },
   "rewrites": [
-    { "source": "/api/public/:path*", "destination": "/api/[...path]" },
-    { "source": "/api/:path*",        "destination": "/api/[...path]" },
+    { "source": "/api/public/:path*",  "destination": "/api/[...path]" },
+    { "source": "/api/ai/:path*",      "destination": "/api/ai/[action]" },
+    { "source": "/api/auth/:path*",    "destination": "/api/auth/user" },
+    { "source": "/api/export/:path*",  "destination": "/api/export/[type]" },
+    { "source": "/api/:path*",         "destination": "/api/[...path]" },
     { "source": "/((?!api(?:/|$)).*)", "destination": "/index.html" }
   ],
   "headers": [
