@@ -1,0 +1,56 @@
+In src/features/orders/flightParser.ts, fix the multi-leg detection.
+
+CHANGE 1: Remove the return trip detection for "Perjalanan 2" pattern
+because "Perjalanan 2" means transit leg, NOT return trip.
+
+Find the returnPattern we added:
+  const returnPattern = text.match(
+    /(?:Perjalanan\s*2|Pulang)[^–\-\n]*[–\-]\s*...
+  );
+
+Change the pattern to ONLY detect "Pulang" keyword, NOT "Perjalanan 2":
+  const returnPattern = text.match(
+    /(?:Pulang|Return)[^–\-\n]*[–\-]\s*(\d{1,2}\s+[A-Za-z]+\s+\d{2,4})\s*[\r\n]+\s*([A-Z]{3})\s+([\d.]+)\s*[→>]\s*([A-Z]{3})\s+([\d.]+)\s*\*?\(([A-Z]{2}\d{2,4})\)\*?/i
+  );
+
+CHANGE 2: Add transit detection for "Perjalanan 2" pattern
+
+After the returnPattern block, add transit detection:
+
+  // Detect transit leg from "Perjalanan 2" in WhatsApp itinerary
+  const transitPattern = text.match(
+    /Perjalanan\s*2[^–\-\n]*[–\-]\s*(\d{1,2}\s+[A-Za-z]+\s+\d{2,4})\s*[\r\n]+\s*([A-Z]{3})\s+([\d.]+)\s*[→>]\s*([A-Z]{3})\s+([\d.]+)\s*\*?\(([A-Z]{2}\d{2,4})\)\*?/i
+  );
+  if (transitPattern && !out.returnFromCode) {
+    // This is a transit leg — update destination to final destination
+    // Transit airport = current toCode (DXB)
+    // Final destination = leg 2 toCode (CGK)
+    if (out.toCode) {
+      out.transitCode = out.toCode;
+      out.transitCity = out.toCity ?? CITY_BY_IATA[out.toCode] ?? out.toCode;
+    }
+    out.toCode = transitPattern[4];
+    out.toCity = CITY_BY_IATA[transitPattern[4]] ?? transitPattern[4];
+    // Update arrive time to final leg arrive time
+    out.arriveTime = parseTimeLoose(transitPattern[5].replace(".", ":"));
+    // Update arrive date
+    const depH2 = parseInt(transitPattern[3].split(".")[0], 10);
+    const arrH2 = parseInt(transitPattern[5].split(".")[0], 10);
+    const leg2Date = parseDateLoose(transitPattern[1]);
+    if (leg2Date) {
+      if (arrH2 < depH2) {
+        const d = new Date(leg2Date + "T00:00:00");
+        d.setDate(d.getDate() + 1);
+        out.arriveDate = d.toISOString().slice(0, 10);
+      } else {
+        out.arriveDate = leg2Date;
+      }
+    }
+    // Combine flight numbers: EK924/EK356
+    if (transitPattern[6] && out.flightNumber) {
+      out.flightNumber = `${out.flightNumber}/${transitPattern[6]}`;
+    }
+    out.tripType = "one_way";
+  }
+
+After changes: npx tsc --noEmit and fix errors before committing.
