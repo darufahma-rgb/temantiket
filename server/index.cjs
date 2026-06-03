@@ -1846,8 +1846,14 @@ const _server = app.listen(PORT, '0.0.0.0', () => {
 
 _server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`[server] Port ${PORT} already in use — exiting with code 1 so the process manager can restart cleanly.`);
-    process.exit(1);
+    const { execSync } = require('child_process');
+    try { execSync(`fuser -k ${PORT}/tcp`, { stdio: 'ignore' }); } catch {}
+    setTimeout(() => {
+      _server.close();
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`[server] Restarted on port ${PORT} after clearing stale process.`);
+      });
+    }, 1000);
   } else {
     console.error('[server] HTTP server error:', err.message);
   }
