@@ -68,7 +68,9 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
 
   addOrder: async (draft) => {
     const o = await createOrder(draft);
-    set((s) => ({ orders: [o, ...s.orders] }));
+    set((s) => ({
+      orders: [o, ...s.orders.filter((existing) => existing.id !== o.id)],
+    }));
     return o;
   },
 

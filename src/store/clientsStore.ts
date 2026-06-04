@@ -51,7 +51,9 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
 
   addClient: async (draft) => {
     const c = await createClient(draft);
-    set((s) => ({ clients: [c, ...s.clients] }));
+    set((s) => ({
+      clients: [c, ...s.clients.filter((existing) => existing.id !== c.id)],
+    }));
     return c;
   },
 
